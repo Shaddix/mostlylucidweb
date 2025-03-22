@@ -11,6 +11,7 @@ using Mostlylucid.Shared.Config;
 try
 {  Log.Logger = new LoggerConfiguration()
              .WriteTo.Console()
+             .WriteTo.File("logs/boot-*.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
              .CreateBootstrapLogger();
     var builder = WebApplication.CreateBuilder(args);
     
@@ -175,10 +176,21 @@ try
 
     app.UseStaticFiles(new StaticFileOptions
     {
+        ServeUnknownFileTypes = true, // This is necessary if serving uncommon file types
+        DefaultContentType = "application/octet-stream", // Fallback for unknown types
         OnPrepareResponse = ctx =>
         {
             ctx.Context.Response.Headers.Append(
                 "Cache-Control", $"public, max-age={cacheMaxAgeOneWeek}");
+            var fileExt = Path.GetExtension(ctx.File.Name);
+            if (fileExt.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                ctx.Context.Response.ContentType = "application/pdf";
+            }
+            else if (fileExt.Equals(".docx", StringComparison.OrdinalIgnoreCase))
+            {
+                ctx.Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            }
         }
     });
     app.UseStatusCodePagesWithReExecute("/error/{0}");

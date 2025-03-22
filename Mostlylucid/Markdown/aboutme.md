@@ -12,10 +12,12 @@ Need help to build your next project?
 
 **Phone:** +44 7498 479 614
 
+**You can download a PDF of my resume <a href="https://www.mostlylucid.net/uploads/SimpleResume.pdf" hx-boost="false">here</a> and Word version <a href="https://www.mostlylucid.net/uploads/SimpleResume.docx" hx-boost="false">here</a>.**
+
 
 [TOC]
 
----
+----
 
 # Skills
 
@@ -57,6 +59,7 @@ gantt
 
     section Employment History
         Consulting (Lead Developer) : active, 2012-01-01, 2024-09-29
+        Zenchef (Contract Lead Developer) : 2024-10-14, 2025-06-01
         Very Jane Ltd (Senior Contract Developer) : 2024-04-01, 2024-08-01
         Seamcor Ltd (Head of Engineering) : 2022-12-01, 2024-04-01
         GBG Plc (Lead Engineer) : 2022-08-01, 2022-11-01
@@ -83,6 +86,11 @@ Directed multiple client projects as Lead Developer, Architect, and interim CTO,
 Developed a comprehensive training program for over 200 novice developers, achieving a 90% employment success rate.
 Modernized legacy systems, enhancing operational efficiency and user experience through advanced technological solutions.
 Overhauled an e-commerce platform, improving performance, scalability, and maintainability.
+
+## ZenChef | Contract Lead Developer (Formitable) | Remote
+Oct 2024 – Present
+
+Managing the Formitable platform sunsetting and enhancing performance and reliability while reducing costs. This is a large, distributed system running on Azure with a mix of VMs, Service Bus, CosmosDB, Azure Functions, SQL server etc etc... I was asked to keep the system running until it's eventual sunsetting while ensuring it can run more efficiently and with less downtime.
 
 ## Very Jane Ltd | Senior Contract Developer | Remote
 Apr 2024 – Aug 2024

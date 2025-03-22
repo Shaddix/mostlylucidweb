@@ -59,7 +59,7 @@ public static class BlogViewMapperExtensions
         var summaryText = postEntity.PlainTextContent;
         var wordCount = summaryText.WordCount();
         
-        if (summaryText.StartsWith(introductionText, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(summaryText) && summaryText.StartsWith(introductionText, StringComparison.OrdinalIgnoreCase))
         {
             summaryText = summaryText.Substring(introductionText.Length);
         }

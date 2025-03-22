@@ -21,19 +21,14 @@ public class NewsletterManagementService(MostlylucidDbContext dbContext, IBlogSe
         var date = DateTime.Now;
         var subscriptionEntities = Query(subscriptionType);
        var subscriptions = subscriptionEntities.Select(x=>x.FromEntity());
-        switch (subscriptionType)
-        {
-            case SubscriptionType.Daily:
-                return await subscriptions.ToListAsync();
-            case SubscriptionType.Weekly:
-                return await subscriptions.Where(x => x.Day == date.DayOfWeek.ToString()).ToListAsync();
-            case SubscriptionType.Monthly:
-                return await subscriptions.Where(x => x.Day == date.Day.ToString()).ToListAsync();
-            case SubscriptionType.EveryPost:
-                return await subscriptions.ToListAsync();
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
+       return subscriptionType switch
+       {
+           SubscriptionType.Daily => await subscriptions.ToListAsync(),
+           SubscriptionType.Weekly => await subscriptions.Where(x => x.Day == date.DayOfWeek.ToString()).ToListAsync(),
+           SubscriptionType.Monthly => await subscriptions.Where(x => x.Day == date.Day.ToString()).ToListAsync(),
+           SubscriptionType.EveryPost => await subscriptions.ToListAsync(),
+           _ => throw new ArgumentOutOfRangeException()
+       };
     }
     
     public async Task<List<BlogPostDto>> GetPostsToSend(SubscriptionType subscriptionType)

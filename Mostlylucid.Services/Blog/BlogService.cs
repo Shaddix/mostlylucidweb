@@ -200,7 +200,6 @@ public class BlogService(
             var categories =await GetCategories(slug, true);
             post.Categories = categories;
         }
-
         var langArr = await GetLanguagesForSlug(slug);
         return post.ToDto(langArr);
     }

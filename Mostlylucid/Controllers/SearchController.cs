@@ -3,9 +3,11 @@ using Htmx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.Mapper;
+using Mostlylucid.Models.Blog;
 using Mostlylucid.Models.Search;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Blog;
+using Mostlylucid.Shared.Models;
 
 namespace Mostlylucid.Controllers;
 
@@ -22,6 +24,16 @@ public class SearchController(
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request","pagerquest" },VaryByQueryKeys = new[] {"query", "page", "pageSize" })]
     public async Task<IActionResult> Search(string? query, int page = 1, int pageSize = 10,[FromHeader] bool pagerequest=false)
     {
+        if(string.IsNullOrEmpty(query?.Trim()))
+        {
+            var emptyModel = new SearchResultsModel
+            {
+                Query = query,
+                SearchResults = new ()
+            };
+            if (Request.IsHtmx()) return PartialView("SearchResults", emptyModel);
+            return View("SearchResults", emptyModel);
+        }
         var searchResults = await searchService.GetPosts(query, page, pageSize);
  
         var searchModel = new SearchResultsModel

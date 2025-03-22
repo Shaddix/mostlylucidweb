@@ -31,6 +31,7 @@ public class MarkdownTranslatorService(
 
         try
         {
+            logger.LogWarning("Checking service status for {IPs}", string.Join(", ", IPs));
             foreach (var ip in IPs)
             {
                 logger.LogInformation("Checking service status at {IP}", ip);
