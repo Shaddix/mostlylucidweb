@@ -2,6 +2,7 @@
 import hljsRazor from "highlightjs-cshtml-razor";
 window.mostlylucid = window.mostlylucid || {};
 import mermaid from "mermaid";
+import Alpine from 'alpinejs';
 import htmx from "htmx.org";
 import hljs from "highlight.js";
 import 'highlight.js/styles/atom-one-dark-reasonable.min.css';
@@ -65,6 +66,7 @@ window.onload = function(ev) {
         hljs.highlightAll();
         setLogoutLink();
         updateMetaUrls();
+
         console.log('Document is ready');
 
         // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
@@ -74,6 +76,7 @@ window.onload = function(ev) {
              console.log("Ignoring swap event for target:", targetId);
                 return;
             }
+
             initGoogleSignIn();
             console.log('HTMX afterSettle triggered', evt);
             mermaidinit();
@@ -207,3 +210,5 @@ window.showToast = function(message, duration = 3000, type = 'success') {
         toast.classList.add('hidden');
     }, duration);
 }
+
+Alpine.start();

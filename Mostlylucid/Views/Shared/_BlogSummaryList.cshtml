@@ -4,10 +4,10 @@
    
     <div class="inline-flex w-full items-center justify-center print:!hidden">
  
-            <paging hx-boost="true"
+            <paging 
                     class="mt-4"
                     hx-target="#content"
- 
+                    hx-push-url="false"
                     hx-swap="show:none"
                     hx-headers='{"pagerequest": "true"}'
                     model="@Model">
