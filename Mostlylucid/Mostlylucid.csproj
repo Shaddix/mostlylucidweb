@@ -96,6 +96,9 @@
       <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\DailyTemplate.cshtml" />
       <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\WeeklyTemplate.cshtml" />
     </ItemGroup>
+    <ItemGroup>
+      <None Include="wwwroot\articleimages\userrow.png" />
+    </ItemGroup>
   
 
 </Project>
