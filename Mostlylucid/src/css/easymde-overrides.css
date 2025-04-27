@@ -1,0 +1,144 @@
+/* EASYMDE DARK MODE SUPPORT with Tailwind's .dark class */
+.dark .EasyMDEContainer,
+.dark .editor-toolbar,
+.dark .editor-toolbar button,
+.dark .CodeMirror,
+.dark .editor-preview,
+.dark .editor-statusbar {
+    background-color: #1f2937; /* Tailwind's gray-800 */
+    color: #f9fafb; /* Tailwind's gray-100 */
+    border-color: #374151; /* Tailwind's gray-700 */
+}
+
+.dark .editor-toolbar button.active,
+.dark .editor-toolbar button:hover {
+    background-color: #374151; /* Tailwind gray-700 */
+}
+
+.dark .editor-toolbar i {
+    color: #f9fafb; /* Tailwind gray-100 */
+}
+
+.dark .CodeMirror-cursor {
+    border-left: 1px solid #f9fafb; /* Make cursor visible */
+}
+
+.dark .CodeMirror-selected {
+    background: #4b5563; /* Tailwind gray-600 for selection */
+}
+
+.dark .editor-preview pre {
+    background-color: #1f2937; /* same as editor bg */
+}
+
+.dark .editor-statusbar {
+    background-color: #1f2937; /* gray-800 */
+    color: #d1d5db; /* gray-300 */
+}
+
+/* EASYMDE PREVIEW CLEANER HEADING SIZES (light + dark) */
+.EasyMDEContainer .editor-preview h1,
+.dark .EasyMDEContainer .editor-preview h1 {
+    font-size: 1.5rem; /* Tailwind text-2xl (24px) */
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.EasyMDEContainer .editor-preview h2,
+.dark .EasyMDEContainer .editor-preview h2 {
+    font-size: 1.25rem; /* Tailwind text-xl (20px) */
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.EasyMDEContainer .editor-preview h3,
+.dark .EasyMDEContainer .editor-preview h3 {
+    font-size: 1.125rem; /* Tailwind text-lg (18px) */
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.EasyMDEContainer .editor-preview p,
+.dark .EasyMDEContainer .editor-preview p {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+/* Optional: Tidy up code blocks */
+.EasyMDEContainer .editor-preview pre,
+.dark .EasyMDEContainer .editor-preview pre {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #1f2937; /* Tailwind gray-800 */
+    overflow-x: auto;
+}
+
+/* Editor itself - CodeMirror formatting for headings */
+.CodeMirror .cm-header-1 {
+    font-size: 1.5rem; /* Tailwind text-2xl */
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.CodeMirror .cm-header-2 {
+    font-size: 1.25rem; /* Tailwind text-xl */
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.CodeMirror .cm-header-3 {
+    font-size: 1.125rem; /* Tailwind text-lg */
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Optional: for bold/italic inside headings */
+.CodeMirror .cm-strong {
+    font-weight: 700;
+}
+
+.CodeMirror .cm-em {
+    font-style: italic;
+}
+
+/* CodeMirror dark mode support */
+.dark .CodeMirror {
+    background-color: #1f2937; /* Tailwind gray-800 */
+    color: #f9fafb; /* Tailwind gray-100 */
+}
+
+.dark .CodeMirror-cursor {
+    border-left: 1px solid #f9fafb;
+}
+
+.dark .CodeMirror-selected {
+    background-color: #4b5563; /* Tailwind gray-600 */
+}
+
+.cm-s-easymde .cm-header-1 {
+    font-size: 1.5rem; /* Tailwind text-2xl */
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem; /* override their .5rem */
+    line-height: 1.25; /* slightly more breathing room */
+}
+
+.cm-s-easymde .cm-header-2 {
+    font-size: 1.25rem; /* Tailwind text-xl */
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+}
+
+.cm-s-easymde .cm-header-3 {
+    font-size: 1.125rem; /* Tailwind text-lg */
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}

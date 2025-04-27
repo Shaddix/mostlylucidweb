@@ -1,9 +1,8 @@
 using mostlylucid.pagingtaghelper.Models;
-using Mostlylucid.Shared.Interfaces;
 
 namespace Mostlylucid.Shared.Models;
 
-public class BasePagingModel<T> : IPagingModel<T> where T : class
+public class BasePagingModel<T> : Interfaces.IPagingModel<T> where T : class
 {
     public int Page { get; set; }
     public int TotalItems { get; set; }

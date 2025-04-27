@@ -1,7 +1,7 @@
 ﻿@using MarkdownBaseService = Mostlylucid.Services.Markdown.MarkdownBaseService
 @model Mostlylucid.Models.Editor.EditorModel
 
-<div class="min-h-screen bg-gray-100"  x-data
+<div class="min-h-screen bg-gray-300 dark:bg-gray-800"  x-data
      x-init="$nextTick(() =>{ window.mostlylucid.simplemde.setupCodeEditor('markdowneditor') })">
     @if (!string.IsNullOrEmpty(Model.PostViewModel.Slug))
     {

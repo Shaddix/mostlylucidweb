@@ -86,3 +86,7 @@ html {
 {
     top:110px !important;
 }
+
+.dark select.bg-gray-800 {
+    background-color: #2d3748 !important;
+}

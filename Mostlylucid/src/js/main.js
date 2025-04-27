@@ -8,6 +8,8 @@ import hljs from "highlight.js";
 import 'highlight.js/styles/atom-one-dark-reasonable.min.css';
 import EasyMDE from "easymde";
 import 'easymde/dist/easymde.min.css';
+import '../css/easymde-overrides.css';
+
 window.EasyMDE = EasyMDE;
 
 

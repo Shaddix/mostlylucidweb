@@ -1,68 +1,57 @@
 ﻿const defaultTheme = require("tailwindcss/defaultTheme");
+const colors = require("tailwindcss/colors");
 
 module.exports = {
-    
-    variants: {
-        extend: {
-            display: ['print']
-        },
-    },
-    content: ["./Views/**/*.cshtml","./EmailSubscription/**/*.cshtml"],
+    content: ["./Views/**/*.cshtml", "./EmailSubscription/**/*.cshtml"],
     safelist: ["dark", "light"],
-    darkMode: "class",
-    theme: {        
+    darkMode: "class", // Using class strategy for dark mode
+
+    theme: {
         fontFamily: {
             body: ["Raleway", "sans-serif"],
         },
 
-        screens: {
-            ...defaultTheme.screens,
-            xs: "375px",
-            print: { raw: 'print' },
-          
-        },
-
-        colors: {
-            'custom-light-bg': '#ffffff',
-            'custom-dark-bg': '#1d232a',
-            transparent: "transparent",
-            primary: "#072344",
-            secondary: "#00aaa1",
-            "green-light": "#cceeec",
-            green: "#007c85",
-            "green-dark": "#065a68",
-            "blue-light": "#b3d6f1",
-            blue: "#0074d1",
-            "blue-dark": "#072344",
-            black: "#000000",
-            white: "#ffffff",
-            "yellow-lighter": "#f6e8c6",
-            "yellow-light": "#f8edd0",
-            yellow: "#f4d06f",
-            "yellow-dark": "#daa512",
-            "grey-lightest": "#eff0f3",
-            "grey-lighter": "#eceef1",
-            "grey-light": "#ccd7e0",
-            "orange-light": "#f9e8e2",
-            orange: "#f9a825",
-            "orange-dark": "#f58f1e",
-            grey: "#adb6c4",
-        },
-
-        border: {
-            DEFAULT: "1px",
-            0: "0",
-            2: "2px",
-            4: "4px",
-            6: "6px",
-            8: "8px",
-        },
         container: {
             center: true,
             padding: "1rem",
         },
 
+        screens: {
+            ...defaultTheme.screens,
+            xs: "375px",
+            print: { raw: "print" },
+        },
+
         extend: {
+            colors: {
+                ...colors, // bring back all Tailwind default colors including gray-800
+
+                // Your custom colors
+                "custom-light-bg": "#ffffff",
+                "custom-dark-bg": "#1d232a",
+                primary: "#072344",
+                secondary: "#00aaa1",
+                "green-light": "#cceeec",
+                green: "#007c85",
+                "green-dark": "#065a68",
+                "blue-light": "#b3d6f1",
+                blue: "#0074d1",
+                "blue-dark": "#072344",
+                black: "#000000",
+                white: "#ffffff",
+                "yellow-lighter": "#f6e8c6",
+                "yellow-light": "#f8edd0",
+                yellow: "#f4d06f",
+                "yellow-dark": "#daa512",
+                "grey-lightest": "#eff0f3",
+                "grey-lighter": "#eceef1",
+                "grey-light": "#ccd7e0",
+                "orange-light": "#f9e8e2",
+                orange: "#f9a825",
+                "orange-dark": "#f58f1e",
+                grey: "#adb6c4",
+            },
+
             spacing: {
                 13: "3.25rem",
                 15: "3.75rem",
@@ -101,13 +90,16 @@ module.exports = {
                 200: "50rem",
                 204: "51rem",
             },
+
             inset: {
                 50: "50%",
                 100: "100%",
             },
+
             zIndex: {
                 "-1": "-1",
             },
+
             typography: (theme) => ({
                 DEFAULT: {
                     css: {
@@ -124,18 +116,10 @@ module.exports = {
                         "p, li": {
                             fontWeight: theme("fontWeight.light"),
                         },
-                        "h1":{
-                        fontSize: theme("fontSize.2xl"),  
-                        },
-                        "h2":{
-                            fontSize: theme("fontSize.xl"),
-                        },
-                        "h3":{
-                            fontSize: theme("fontSize.lg"),
-                        },
-                        "h4":{
-                            fontSize: theme("fontSize.base"),
-                        },
+                        h1: { fontSize: theme("fontSize.2xl") },
+                        h2: { fontSize: theme("fontSize.xl") },
+                        h3: { fontSize: theme("fontSize.lg") },
+                        h4: { fontSize: theme("fontSize.base") },
                         "h1, h2, h3, h4, h5, h6": {
                             fontWeight: theme("fontWeight.semibold"),
                         },
@@ -157,20 +141,21 @@ module.exports = {
                         },
                         pre: {
                             border: "1px solid #888",
-                            borderRadius: theme('borderRadius.xl'),
+                            borderRadius: theme("borderRadius.xl"),
                             padding: "0",
-                            backgroundColor: theme("colors.primary")
-                        }
+                            backgroundColor: theme("colors.primary"),
+                        },
                     },
                 },
+
                 dark: {
                     css: {
                         color: theme("colors.white"),
                         pre: {
                             border: "1px solid #888",
-                            borderRadius: theme('borderRadius.xl'),
+                            borderRadius: theme("borderRadius.xl"),
                             padding: "0",
-                            backgroundColor: theme("colors.primary")
+                            backgroundColor: theme("colors.primary"),
                         },
                         a: {
                             color: theme("colors.secondary"),
@@ -189,10 +174,16 @@ module.exports = {
             }),
         },
     },
+
+    variants: {
+        extend: {
+            display: ["print"],
+        },
+    },
+
     plugins: [
-        require("@tailwindcss/forms"),
         require("@tailwindcss/aspect-ratio"),
         require("@tailwindcss/typography"),
-        require('daisyui')
+        require("daisyui"),
     ],
 };

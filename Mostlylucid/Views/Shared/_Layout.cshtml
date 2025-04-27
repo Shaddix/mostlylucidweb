@@ -1,6 +1,6 @@
 ﻿@model Mostlylucid.Models.BaseViewModel
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en" class="dark">
 <head>
     <meta charset="utf-8" />
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
@@ -109,7 +109,7 @@
         <li class="group relative mb-1 hidden lg:block ml-2">
             <div class="flex items-center space-x-4">
             
-                    @if (Model.Authenticated)
+                    @if (Model?.Authenticated == true)
                     {
                         <div class="flex items-center space-x-4">
                             <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="btn btn-outline btn-sm text-blue-dark dark:text-white">
