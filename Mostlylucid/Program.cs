@@ -87,7 +87,11 @@ try
     services.SetupRSS();
     services.SetupBlog(config, builder.Environment);
     services.SetupUmamiClient(config);
-    
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+    });
+
     services.ConfigureEmailProcessor(config);
     services.AddAntiforgery(options =>
     {
@@ -132,6 +136,7 @@ try
         OfflineRoute = "Offline.html"
     });
     var app = builder.Build();
+    app.UseResponseCompression();
     app.UseSerilogRequestLogging();
     app.UseHealthChecks("/healthz");
     app.MapPrometheusScrapingEndpoint();

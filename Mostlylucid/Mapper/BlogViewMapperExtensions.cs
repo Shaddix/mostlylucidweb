@@ -24,6 +24,7 @@ public static class BlogViewMapperExtensions
     
     public static BlogPostViewModel ToViewModel(this BlogPostDto dto)
     {
+        var wordCount = dto.PlainTextContent.WordCount();
         return new BlogPostViewModel
         {
             Id = dto.Id,
@@ -35,7 +36,7 @@ public static class BlogViewMapperExtensions
             HtmlContent = dto.HtmlContent,
             PlainTextContent = dto.PlainTextContent,
             Slug = dto.Slug,
-            WordCount = dto.WordCount,
+            WordCount = wordCount,
             PublishedDate = dto.PublishedDate,
             Languages = dto.Languages
         };
