@@ -2,43 +2,87 @@
 const path = require('path');
 
 module.exports = (env, argv) => {
-
     const isProduction = argv.mode === 'production';
 
     return {
-        mode: isProduction ? 'production' : 'development', // Set mode based on environment
-        entry: './src/js/main.js', // Your entry file
+        mode: isProduction ? 'production' : 'development',
+        entry: {
+            main: './src/js/main.js',
+        },
         output: {
-            filename: 'main.js',
-            path: path.resolve(__dirname, 'wwwroot/js/dist'), // Corrected output directory path
+            filename: '[name].js',
+            chunkFilename: '[name].[contenthash].js',
+            path: path.resolve(__dirname, 'wwwroot/js/dist'),
+            publicPath: '/js/dist/',
+            module: true,
+            clean: true,
+        },
+        experiments:{
+            outputModule: true,
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.css$/i,
+                    use: ['style-loader', 'css-loader'],
+                },
+                {
+                    test: /\.js$/,
+                    exclude: /node_modules/,
+                    use: {
+                        loader: 'babel-loader',
+                        options: {
+                            presets: [
+                                ['@babel/preset-env', {
+                                    targets: '> 0.25%, not dead',
+                                    modules: false, // ✅ for tree shaking
+                                    useBuiltIns: 'usage',
+                                    corejs: 3,
+                                }],
+                            ],
+                        },
+                    },
+                },
+            ],
         },
         resolve: {
-            extensions: ['.js'], // Optional but fine to include
+            extensions: ['.js'],
         },
         optimization: {
-            minimize: isProduction, // Only minimize in production mode
+            splitChunks: {
+                chunks: 'all',
+                minSize: 20000,
+                maxSize: 100000,
+                name: false,
+            },
+            runtimeChunk: {
+                name: 'runtime', // ✅ avoid filename conflict
+            },
+            minimize: isProduction,
             minimizer: isProduction ? [
                 new TerserPlugin({
                     terserOptions: {
+                        ecma: 2020,
+                        compress: {
+                            drop_console: false,
+                            passes: 3,
+                            toplevel: true,
+                            pure_funcs: ['console.info', 'console.debug'],
+                        },
                         mangle: {
-                            // Enable variable and function name mangling
-                            properties: false, // Do not mangle properties
+                            toplevel: true,
                         },
                         format: {
-                            comments: false, // Remove comments
-                            beautify: false, // Disable beautification
-                        },
-                        compress: {
-                            drop_console: true, // Drop console statements
-                            keep_fnames: true, // Keep function names
-                            keep_classnames: true, // Keep class names
+                            comments: false,
                         },
                     },
                     extractComments: false,
                 }),
             ] : [],
         },
-        // Add the devtool property for source maps
-        devtool: isProduction ? 'source-map' : 'eval-source-map', // Use full source maps for production and eval-source-map for development
+        devtool: isProduction ? false : 'eval-source-map',
+        performance: {
+            hints: isProduction ? 'warning' : false,
+        }
     };
 };

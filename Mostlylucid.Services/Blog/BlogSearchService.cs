@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Shared.Entities;
-using Mostlylucid.Shared.Interfaces;
 using Mostlylucid.Shared.Mapper;
 using Mostlylucid.Shared.Models;
 using Serilog;
@@ -44,7 +43,7 @@ public class BlogSearchService(MostlylucidDbContext context)
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
-            .AsNoTrackingWithIdentityResolution()
+            .AsNoTracking()
             //.AsSplitQuery()
             .Where(x =>
                 // Search using the precomputed SearchVector
@@ -65,7 +64,7 @@ public class BlogSearchService(MostlylucidDbContext context)
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
-            .AsNoTrackingWithIdentityResolution()
+            .AsNoTracking()
             //.AsSplitQuery()
             .Where(x =>
                 // Search using the precomputed SearchVector

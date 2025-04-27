@@ -1,11 +1,13 @@
-﻿using Mostlylucid.Shared.Helpers;
-using Mostlylucid.Shared.Interfaces;
+﻿using mostlylucid.pagingtaghelper.Models;
+using Mostlylucid.Shared.Helpers;
+
 using Mostlylucid.Shared.Models;
 
 namespace Mostlylucid.Models.Blog;
 
-public class PostListViewModel : BaseViewModel, IPagingModel<PostListModel>
+public class PostListViewModel : BaseViewModel, IPagingModel
 {
+    public ViewType ViewType { get; set; } = ViewType.TailwindAndDaisy;
     public string LinkUrl { get; set; }
     public int Page { get; set; }
     

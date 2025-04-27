@@ -4,6 +4,11 @@ window.mostlylucid = window.mostlylucid || {};
 import mermaid from "mermaid";
 import htmx from "htmx.org";
 import hljs from "highlight.js";
+import 'highlight.js/styles/atom-one-dark-reasonable.min.css';
+import EasyMDE from "easymde";
+import 'easymde/dist/easymde.min.css';
+window.EasyMDE = EasyMDE;
+
 
 window.hljs=hljs;
 window.htmx = htmx;
@@ -12,10 +17,10 @@ mermaid.initialize({startOnLoad:false});
 // Importing modules
 import { typeahead } from "./typeahead";
 import { submitTranslation, viewTranslation } from "./translations";
-import { codeeditor } from "./simplemde";
+import { codeeditor } from "./simplemde_editor";
 import { globalSetup } from "./global";
 import  {comments} from  "./comments"; 
-import "./mdeswitch";
+import "./memmaid_theme_switch";
 window.mostlylucid.comments = comments();
 
 // Attach imported modules to the mostlylucid namespace
@@ -143,26 +148,7 @@ function handleCredentialResponse(response) {
     }
 }
 
-window.changePageSize = function changePageSize(linkUrl = null) {
-    const pageSize = document.getElementById('pageSize').value;
-    let url = new URL(linkUrl || window.location.href);
-    if (url.pathname.endsWith('/')) {
-        url.pathname = url.pathname.slice(0, -1);
-    }
-    url.searchParams.delete('page');
-    url.searchParams.delete('pageSize');
-    url.searchParams.set('page', '1');
-    url.searchParams.set('pageSize', pageSize);
-    
-    const newUrl = url.toString();
-    htmx.ajax('get', newUrl, {
-        target: '#content',
-        swap: 'innerHTML',
-        headers: { "pagerequest": "true" }
-    }).then(() => {
-        history.pushState({}, null, newUrl);
-    });
-}
+
 
 hljs.addPlugin({
     "after:highlightElement": ({ el, text }) => {

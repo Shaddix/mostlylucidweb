@@ -57,22 +57,15 @@
         rel="stylesheet"
         href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
     />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css"/>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="prefetch" href="/css/dist/main.css"  asp-append-version="true">
     <link
         href="/css/dist/main.css" asp-append-version="true"
         media="screen, print"
         rel="stylesheet"
     />
-    <link id="light-mode" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css" async>
-    <link id="dark-mode" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css" disabled async>
-    <link id="simplemde-dark" rel="stylesheet" href="https://cdn.rawgit.com/xcatliu/simplemde-theme-dark/master/dist/simplemde-theme-dark.min.css" disabled async>
-    <link id="simplemde-light" rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css" async>
     <link rel="manifest" href="~/manifest.json" />
 </head>
 <body
-    x-cloak
     x-data="globalSetup()"
     x-init="themeInit()"
     :class="isMobileMenuOpen ? 'max-h-screen overflow-hidden relative' : ''"
@@ -115,9 +108,8 @@
 
         <li class="group relative mb-1 hidden lg:block ml-2">
             <div class="flex items-center space-x-4">
-                @if (Model != null)
-                {
-                    if (Model.Authenticated)
+            
+                    @if (Model.Authenticated)
                     {
                         <div class="flex items-center space-x-4">
                             <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="btn btn-outline btn-sm text-blue-dark dark:text-white">
@@ -136,7 +128,6 @@
                             <div id="google_button"></div>
                         </div>
                     }
-                }
             </div>
         </li>
 
@@ -181,7 +172,14 @@
     </ul>
 
 </header>
-
+<span class="hidden btn btn-sm btn-active btn-disabled select select-primary select-sm
+        text-sm text-gray-600 text-neutral-500 border rounded flex items-center
+        justify-center min-w-[80px] pr-4 pt-0 mt-0 mr-2 btn-primary btn-outline
+bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
+        dark:bg-blue-500 dark:border-blue-400 dark:text-white dark:hover:bg-blue-600 
+        dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700
+        dark:btn-accent dark:btn-outline dark:btn-disabled dark:btn-primary dark:btn-active gap-2 whitespace-nowrap cursor-pointer">
+</span>
 <div class="container mx-auto" id="contentcontainer">
     @RenderBody()
 </div>
@@ -209,8 +207,7 @@
         }
     </style>
 </noscript>
-<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js" async></script>
-<script src="~/js/dist/main.js" asp-append-version="true" data-cfasync="false"> </script>
+<script src="~/js/dist/main.js" type="module"  data-cfasync="false"> </script>
 <script src="@(ViewBag.UmamiPath + "/" + ViewBag.UmamiScript)" data-website-id="@ViewBag.UmamiWebsiteId"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

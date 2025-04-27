@@ -37,6 +37,7 @@
       <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.8" />
       <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
       <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.0.2" />
+      <PackageReference Include="mostlylucid.pagingtaghelper" Version="0.9.4" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
       <PackageReference Include="OpenSearch.Client" Version="1.8.0" />
       <PackageReference Include="OpenSearch.Client.JsonNetSerializer" Version="1.8.0" />
@@ -47,7 +48,6 @@
       <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.9.0" />
       <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
       <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.9.0" />
-      <PackageReference Include="PaginationTagHelper.AspNetCore" Version="1.0.1" />
       <PackageReference Include="PreMailer.Net" Version="2.6.0" />
       <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
       <PackageReference Include="Serilog" Version="4.0.1" />
@@ -77,7 +77,7 @@
       <Folder Include="Markdown\comments\" />
       <Folder Include="Markdown\notmoderatedcomments\" />
       <Folder Include="wwwroot\css\dist\" />
-      <Folder Include="wwwroot\js\dist\" />
+      <Folder Include="wwwroot\js\" />
       <Folder Include="wwwroot\lib\" />
       <Folder Include="wwwroot\uploads\" />
     </ItemGroup>
