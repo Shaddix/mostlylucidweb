@@ -14,40 +14,36 @@
                     model="@Model">
             </paging>
    </div>
-    
     @if (ViewBag.Categories != null)
     {
-        <div class="mb-8 mt-6 border-neutral-400 dark:border-neutral-600 border rounded-lg" x-data="{ showCategories: false }">
-            <h4 
-                class="px-5 py-1 bg-neutral-500  bg-opacity-10 rounded-lg  font-body text-primary dark:text-white w-full flex justify-between items-center cursor-pointer"
-                x-on:click="showCategories = !showCategories"
-            >
-                Categories
-                <span>
-                    <i
-                        class="bx text-2xl"
-                        :class="showCategories ? 'bx-chevron-up' : 'bx-chevron-down'"
-                    ></i>
-                </span>
-            </h4>
-            <div 
-                class="flex flex-wrap gap-2 pt-2 pl-5 pr-5 pb-2"
-                x-show="showCategories" 
-                x-cloak
-                x-transition:enter="max-h-0 opacity-0"
-                x-transition:enter-end="max-h-screen opacity-100"
-                x-transition:leave="max-h-screen opacity-100"
-                x-transition:leave-end="max-h-0 opacity-0"
-            >
-                @foreach (var category in ViewBag.Categories)
-                {
-                    <partial name="_Category" model="category"/>
-                }
-           
+        <div class="mb-8 mt-6" x-data="{ openCategories: false }">
+            <div class="collapse collapse-arrow border border-neutral-400 dark:border-neutral-600 rounded-lg bg-base-100 dark:bg-gray-800">
+                <input 
+                    type="checkbox" 
+                    x-model="openCategories"
+                    class="absolute"
+                />
+            
+                <!-- Added flex and items-center to collapse-title -->
+                <div class="collapse-title p-0 min-h-0 text-lg font-medium text-base-content flex items-center">
+                    <div class="px-5 py-2 bg-neutral-500 bg-opacity-10 rounded-lg font-body text-primary dark:text-white w-full cursor-pointer"
+                         x-on:click="openCategories = !openCategories">
+                        Categories
+                    </div>
+                </div>
+            
+                <div class="collapse-content flex flex-wrap pl-5 pr-5 bg-gray-200 dark:bg-gray-700">
+                    <div class="pt-2 pb-2 gap-2 flex flex-wrap">
+                        @foreach (var category in ViewBag.Categories)
+                        {
+                            <partial name="_Category" model="category"/>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
-
     }
+    
     <text>
     @foreach (var post in Model.Data)
     {

@@ -90,3 +90,13 @@ html {
 .dark select.bg-gray-800 {
     background-color: #2d3748 !important;
 }
+
+.collapse-arrow .collapse-title:after {
+    top: 50% !important;
+    transform: translateY(-60%) rotate(45deg) !important;
+    right: 1.5rem !important;
+}
+
+.collapse-arrow > input:checked ~ .collapse-title:after {
+    transform: translateY(-60%) rotate(225deg) !important;
+}
