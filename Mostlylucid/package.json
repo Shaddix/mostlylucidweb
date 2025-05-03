@@ -1,22 +1,21 @@
 {
   "scripts": {
-    "clean": "rimraf ./.tmp ./wwwroot/css/dist ./wwwroot/js/dist",
+    "clean": "rimraf ./.tmp ./wwwroot/css/ ./wwwroot/js/",
 
     "dev": "npm-run-all clean dev:prepare dev:js",
     "dev:prepare": "npm-run-all --parallel dev:copy-once dev:tw-once",
-    "dev:copy-once": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\"",
+    "dev:copy-once": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\" && cpx \"node_modules/highlight.js/styles/default.min.css\" \"wwwroot/css/highlight\" && cpx \"node_modules/highlight.js/styles/atom-one-dark-reasonable.min.css\" \"wwwroot/css/highlight\"",
     "dev:tw-once": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css",
-    "dev:js": "webpack",
+    "dev:js": "webpack --env development",
 
-    "watch": "npm-run-all clean watch:prepare watch:js",
-    "watch:prepare": "npm-run-all --parallel watch:copy watch:tw",
-    "watch:copy": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\" --watch",
+    "watch": "npm-run-all clean --parallel watch:copy watch:tw watch:js",
+    "watch:copy": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\" --watch & cpx \"node_modules/highlight.js/styles/{default.min,atom-one-dark-reasonable.min}.css\" \"wwwroot/css/highlight\" --watch",
     "watch:tw": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --watch",
-    "watch:js": "webpack --watch --env development",
+    "watch:js": "webpack watch --env development",
 
     "build": "npm-run-all clean build:prepare build:js",
     "build:prepare": "npm-run-all --parallel build:copy build:tw",
-    "build:copy": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\"",
+    "build:copy": "cpx \"src/css/easymde-overrides.css\" \"wwwroot/css/dist\" & cpx \"node_modules/highlight.js/styles/{default.min,atom-one-dark-reasonable.min}.css\" \"wwwroot/css/highlight\"",
     "build:tw": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --no-map --verbose",
     "build:js": "webpack --env production"
   },

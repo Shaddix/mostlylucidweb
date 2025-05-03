@@ -1,8 +1,6 @@
 export  function globalSetup() {
-    const lightStylesheet = document.getElementById('light-mode');
-    const darkStylesheet = document.getElementById('dark-mode');
-    const simpleMdeDarkStylesheet = document.getElementById('simplemde-dark');
-    const simpleMdeLightStylesheet = document.getElementById('simplemde-light');
+    
+    
     return {
         isMobileMenuOpen: false,
         isDarkMode: false,
@@ -42,25 +40,22 @@ export  function globalSetup() {
                 document.documentElement.classList.remove("light");
                 this.isDarkMode = true;
             }
-            this.applyTheme(); // Apply the theme stylesheets after switching
+            this.applyTheme(); 
         },
 
         // Function to apply the appropriate stylesheets based on isDarkMode
         applyTheme() {
-         
+            const lightStylesheet = document.getElementById('light-mode');
+            const darkStylesheet = document.getElementById('dark-mode');
             if (this.isDarkMode) {
                 // Enable dark mode stylesheets
                 lightStylesheet.disabled = true;
                 darkStylesheet.disabled = false;
-                simpleMdeLightStylesheet.disabled = true;
-                simpleMdeDarkStylesheet.disabled = false;
             } else {
                 // Enable light mode stylesheets
                 lightStylesheet.disabled = false;
                 darkStylesheet.disabled = true;
-                simpleMdeLightStylesheet.disabled = false;
-                simpleMdeDarkStylesheet.disabled = true;
             }
-        }
+        } 
     };
 }
