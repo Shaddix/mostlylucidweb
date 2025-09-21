@@ -18,4 +18,4 @@ public class ActiveUsers_Test
         Assert.NotNull(activeUsers);
         Assert.Equal(HttpStatusCode.OK, activeUsers.Status);
     }
-}
+} 
