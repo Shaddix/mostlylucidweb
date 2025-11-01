@@ -24,37 +24,6 @@ This repository contains the source code for mostlylucid — the personal site a
 
 ---
 
-### 📌 Package Details
-
-#### mostlylucid.pagingtaghelper
-- **Author:** mostlylucid  
-- **Target Framework:** .NET 8.0+  
-- **Downloads:** 5,773  
-- **Last Updated:** 6 months ago  
-- **Latest Version:** 0.9.4.1  
-- **Tags:** web  
-- **Description:** A TagHelper and ViewComponent for adding a simple Umami endpoint to your ASP.NET Core application.
-
-#### Umami.Net
-- **Author:** mostlylucid  
-- **Target Framework:** .NET 8.0+  
-- **Downloads:** 1,931  
-- **Last Updated:** 2024-09-12  
-- **Latest Version:** 0.4.1  
-- **Tags:** web  
-- **Description:** Adds a simple Umami endpoint to your ASP.NET Core application.
-
-#### MostlyLucid.EufySecurity
-- **Author:** mostlylucid  
-- **Target Framework:** .NET 8.0+  
-- **Downloads:** 0  
-- **Last Updated:** 5 hours ago  
-- **Latest Version:** 0.1.5  
-- **Tags:** eufy, security, camera, doorbell, homeautomation, iot, smarthome, p2p, mostlylucid  
-- **Description:** A .NET client library for controlling Eufy Security devices by connecting to Eufy cloud servers and local/remote stations over P2P. Supports cameras, doorbells, locks, sensors, and more.
-
-
-
 ## About the Site
 
 mostlylucid  is a living lab: part portfolio, part blog, part playground. It’s where I share:
