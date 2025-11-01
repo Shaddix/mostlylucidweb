@@ -17,17 +17,17 @@ Reflections on freelancing, remote work, and the craft of building resilient sys
 The site is intentionally a work in progress — things may break, evolve, or get rebuilt entirely. That’s part of the ethos: showing how things are built, not just the polished result.
 
 ## Tech Stack
-.NET Core / ASP.NET Core for backend and APIs
+- .NET Core / ASP.NET Core for backend and APIs
 
-JavaScript (HTMX, Alpine.js, custom scripts) for dynamic UI
+- JavaScript (HTMX, Alpine.js, custom scripts) for dynamic UI
 
-Tailwind CSS + DaisyUI for styling and theming
+- Tailwind CSS + DaisyUI for styling and theming
 
-Markdown + SimpleMDE for content editing
+- Markdown + SimpleMDE for content editing
 
-Docker for containerized development and deployment
+- Docker for containerized development and deployment
 
-Prometheus / Grafana / Seq for monitoring and logging experiments
+- Prometheus / Grafana / Seq for monitoring and logging experiments
 
 ## Getting Started
 Clone the repo and install dependencies:
@@ -42,20 +42,22 @@ dotnet run
 Build frontend assets:
 
 npm run build
- Blog & Content
+
+ ## Blog & Content
+
 The blog covers a wide range of topics:
 
-ASP.NET Core & C# patterns
+- ASP.NET Core & C# patterns
 
-HTMX & Alpine.js integrations
+- HTMX & Alpine.js integrations
 
-Dockerized workflows
+- Dockerized workflows
 
-NuGet package development
+- NuGet package development
 
-Remote work & freelancing insights
+- Remote work & freelancing insights
 
-Check out the live site here: mostlylucid.net
+- Check out the live site here: mostlylucid.net
 
 ##  About Scott
 Scott is a former Microsoft ASP.NET Program Manager who has worked with Fortune 500 companies and startups alike. He specializes in:
