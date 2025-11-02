@@ -22,7 +22,8 @@ import { submitTranslation, viewTranslation } from "./translations";
 import { codeeditor } from "./simplemde_editor";
 import { globalSetup } from "./global";
 import  {comments} from  "./comments"; 
-import "./memmaid_theme_switch";
+import { initMermaid } from "./memmaid_theme_switch";
+
 window.mostlylucid.comments = comments();
 
 // Attach imported modules to the mostlylucid namespace
@@ -50,12 +51,11 @@ function setLogoutLink() {
 
 window.mermaidinit = function() {
     mermaid.initialize({ startOnLoad: false });
-        try {
-            window.initMermaid().then(r => console.log('Mermaid initialized'));
-        } catch (e) {
-            console.error('Failed to initialize Mermaid:', e);
-        }
-    
+    try {
+        initMermaid().then(r => console.log('Mermaid initialized'));
+    } catch (e) {
+        console.error('Failed to initialize Mermaid:', e);
+    }
 }
 
 window.onload = function(ev) {
