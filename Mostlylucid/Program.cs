@@ -136,6 +136,10 @@ try
         OfflineRoute = "Offline.html"
     });
     var app = builder.Build();
+
+    // Configure Markdig FetchMarkdownExtension with service provider
+    Mostlylucid.Services.Markdown.MarkDigExtensions.FetchMarkdownExtension.ConfigureServiceProvider(app.Services);
+
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
     app.UseHealthChecks("/healthz");

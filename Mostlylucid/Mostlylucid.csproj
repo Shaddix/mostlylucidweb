@@ -73,6 +73,7 @@
       <Folder Include="Markdown\comments\" />
       <Folder Include="Markdown\notmoderatedcomments\" />
       <Folder Include="wwwroot\css\dist\" />
+      <Folder Include="wwwroot\css\highlight\" />
       <Folder Include="wwwroot\js\" />
       <Folder Include="wwwroot\lib\" />
       <Folder Include="wwwroot\uploads\" />
@@ -94,6 +95,34 @@
     </ItemGroup>
     <ItemGroup>
       <None Include="wwwroot\articleimages\userrow.png" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.fi.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.es.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.el.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.de.md" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.de.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.ar.hash" />
+      <None Remove="Markdown\translated\aboutme.zh.hash" />
+      <None Remove="Markdown\translated\aboutme.nl.hash" />
+      <None Remove="Markdown\translated\aboutme.it.hash" />
+      <None Remove="Markdown\translated\aboutme.hi.hash" />
+      <None Remove="Markdown\translated\aboutme.fr.hash" />
+      <None Remove="Markdown\translated\aboutme.es.hash" />
+      <None Remove="Markdown\translated\aboutme.de.hash" />
+      <None Remove="Markdown\translated\alittleapology.nl.hash" />
+      <None Remove="Markdown\translated\alittleapology.it.hash" />
+      <None Remove="Markdown\translated\alittleapology.hi.hash" />
+      <None Remove="Markdown\translated\alittleapology.fr.hash" />
+      <None Remove="Markdown\translated\alittleapology.es.hash" />
+      <None Remove="Markdown\translated\alittleapology.de.md" />
+      <None Remove="Markdown\translated\alittleapology.de.hash" />
+      <None Remove="Markdown\translated\alittleapology.ar.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.zh.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.uk.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.sv.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.nl.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.it.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.hi.hash" />
+      <None Remove="Markdown\translated\alittleapology.zh.hash" />
     </ItemGroup>
   
 

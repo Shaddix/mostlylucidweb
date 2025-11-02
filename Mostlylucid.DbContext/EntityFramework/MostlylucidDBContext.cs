@@ -19,8 +19,10 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
     public DbSet<LanguageEntity> Languages { get; set; }
     
     public DbSet<EmailSubscriptionSendLogEntity> EmailSubscriptionSendLogs { get; set; }
-    
+
     public DbSet<EmailSubscriptionEntity> EmailSubscriptions { get; set; }
+
+    public DbSet<MarkdownFetchEntity> MarkdownFetches { get; set; }
 
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -57,8 +59,24 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
                 entity.HasIndex(x => x.Email);
             }
         );
-       
-    
+
+        modelBuilder.Entity<MarkdownFetchEntity>(entity =>
+        {
+            entity.ToTable("MarkdownFetches");
+            entity.HasKey(x => x.Id);
+
+            entity.HasOne(x => x.BlogPost)
+                .WithMany()
+                .HasForeignKey(x => x.BlogPostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(x => new { x.Url, x.BlogPostId }).IsUnique();
+            entity.HasIndex(x => x.LastFetchedAt);
+            entity.HasIndex(x => x.IsEnabled);
+
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
 
 
     modelBuilder.Entity<BlogPostEntity>(entity =>

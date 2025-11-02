@@ -6,6 +6,7 @@ using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
+using Mostlylucid.Services.Markdown.MarkDigExtensions;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
 using Npgsql;
@@ -18,6 +19,13 @@ public static class BlogSetup
     {
         var config = services.ConfigurePOCO<BlogConfig>(configuration.GetSection(BlogConfig.Section));
        services.ConfigurePOCO<MarkdownConfig>(configuration.GetSection(MarkdownConfig.Section));
+
+        // Register HttpClient factory for fetching remote markdown
+        services.AddHttpClient();
+
+        // Register markdown fetch service
+        services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
+
         switch (config.Mode)
         {
             case BlogMode.File:
@@ -36,6 +44,9 @@ public static class BlogSetup
                 services.AddSingleton<BlogUpdater>();
                 services.AddScoped<IBlogService, BlogService>();
                 services.AddHostedService<MarkdownDirectoryWatcherService>();
+
+                // Register markdown fetch polling service (only in database mode)
+                services.AddHostedService<MarkdownFetchPollingService>();
                 break;
         }
         services.AddScoped<IMarkdownBlogService, MarkdownBlogPopulator>();

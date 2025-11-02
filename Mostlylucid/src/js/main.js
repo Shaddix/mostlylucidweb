@@ -58,34 +58,40 @@ window.mermaidinit = function() {
     }
 }
 
-window.onload = function(ev) {
-    if(document.readyState === 'complete') {
+function initializePage() {
+    initGoogleSignIn();
+    mermaidinit();
+    const hljsRazor = require('highlightjs-cshtml-razor');
+    hljs.registerLanguage("cshtml-razor", hljsRazor);
+    hljs.highlightAll();
+    setLogoutLink();
+    updateMetaUrls();
+
+    console.log('Document is ready');
+
+    // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
+    document.body.addEventListener('htmx:afterSettle', function(evt) {
+        const targetId = evt.detail.target.id;
+        if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
+         console.log("Ignoring swap event for target:", targetId);
+            return;
+        }
+
         initGoogleSignIn();
+        console.log('HTMX afterSettle triggered', evt);
         mermaidinit();
-        const hljsRazor = require('highlightjs-cshtml-razor');
-        hljs.registerLanguage("cshtml-razor", hljsRazor);
         hljs.highlightAll();
-        setLogoutLink();
-        updateMetaUrls();
+         setLogoutLink();
+    });
+}
 
-        console.log('Document is ready');
-
-        // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
-        document.body.addEventListener('htmx:afterSettle', function(evt) {
-            const targetId = evt.detail.target.id;
-            if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
-             console.log("Ignoring swap event for target:", targetId);
-                return;
-            }
-
-            initGoogleSignIn();
-            console.log('HTMX afterSettle triggered', evt);
-            mermaidinit();
-            hljs.highlightAll();
-             setLogoutLink();
-        });
-    }
-};
+// Handle both cases: module loaded before or after page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePage);
+} else {
+    // DOM already loaded, run immediately
+    initializePage();
+}
 
 
 

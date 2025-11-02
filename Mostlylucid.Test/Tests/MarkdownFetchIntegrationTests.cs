@@ -1,0 +1,385 @@
+using Markdig;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Moq.Protected;
+using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.Services.Markdown;
+using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Shared.Entities;
+using Mostlylucid.Test.Extensions;
+using System.Net;
+
+namespace Mostlylucid.Test.Tests;
+
+/// <summary>
+/// Integration tests for the complete markdown fetch feature
+/// </summary>
+public class MarkdownFetchIntegrationTests
+{
+    private readonly Mock<IMostlylucidDBContext> _dbContextMock;
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
+    private readonly IServiceProvider _serviceProvider;
+
+    public MarkdownFetchIntegrationTests()
+    {
+        var services = new ServiceCollection();
+        _dbContextMock = new Mock<IMostlylucidDBContext>();
+        _httpClientFactoryMock = new Mock<IHttpClientFactory>();
+
+        services.AddSingleton(_dbContextMock.Object);
+        services.AddSingleton(_httpClientFactoryMock.Object);
+        services.AddLogging(configure => configure.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
+        services.AddScoped<MarkdownRenderingService>();
+
+        _serviceProvider = services.BuildServiceProvider();
+    }
+
+    [Fact]
+    public async Task EndToEnd_FetchAndRenderMarkdown()
+    {
+        // Arrange
+        var remoteUrl = "https://example.com/remote-content.md";
+        var remoteMarkdown = @"
+## Remote Heading
+
+This content was fetched from a remote source.
+
+- Remote item 1
+- Remote item 2
+
+**Bold remote text**
+";
+
+        var blogMarkdown = $@"
+# My Blog Post
+
+Here is some local content.
+
+<fetch markdownurl=""{remoteUrl}"" pollfrequency=""12h""/>
+
+More local content after the fetch.
+";
+
+        // Setup HTTP mock
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(remoteMarkdown)
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        // Setup database
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.NotNull(html);
+        Assert.Contains("<h1", html); // Local heading
+        Assert.Contains("<h2", html); // Remote heading
+        Assert.Contains("local content", html);
+        Assert.Contains("remote source", html);
+        Assert.Contains("<strong>Bold remote text</strong>", html);
+        Assert.Contains("Remote item 1", html);
+
+        // Verify NO database entity was created (blogPostId = 0)
+        _dbContextMock.Verify(x => x.MarkdownFetches.Add(It.IsAny<MarkdownFetchEntity>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EndToEnd_MultipleFetches_InSameDocument()
+    {
+        // Arrange
+        var url1 = "https://example.com/intro.md";
+        var url2 = "https://example.com/outro.md";
+        var content1 = "## Introduction\n\nThis is the intro.";
+        var content2 = "## Conclusion\n\nThis is the outro.";
+
+        var blogMarkdown = $@"
+# My Blog Post
+
+<fetch markdownurl=""{url1}"" pollfrequency=""6h""/>
+
+Some middle content.
+
+<fetch markdownurl=""{url2}"" pollfrequency=""24h""/>
+";
+
+        // Setup HTTP mock to return different content based on URL
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString() == url1),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(content1)
+            })
+            .Verifiable();
+
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString() == url2),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(content2)
+            })
+            .Verifiable();
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>()))
+            .Returns(() => new HttpClient(handlerMock.Object)); // Return new instance each time
+
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.Contains("Introduction", html);
+        Assert.Contains("Conclusion", html);
+        Assert.Contains("This is the intro", html);
+        Assert.Contains("This is the outro", html);
+        Assert.Contains("middle content", html);
+
+        // Verify NO database entities were created (blogPostId = 0)
+        _dbContextMock.Verify(x => x.MarkdownFetches.Add(It.IsAny<MarkdownFetchEntity>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EndToEnd_WithoutBlogPostId_SkipsCache()
+    {
+        // Arrange
+        var url = "https://example.com/content.md";
+        var remoteContent = "## Fresh Content\n\nThis is freshly fetched.";
+
+        // Setup HTTP mock to return content
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(remoteContent)
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        var blogMarkdown = $@"
+# Blog Post
+
+<fetch markdownurl=""{url}"" pollfrequency=""12h""/>
+";
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.Contains("Fresh Content", html);
+        Assert.Contains("This is freshly fetched", html);
+
+        // Verify HTTP call was made (no cache check with blogPostId = 0)
+        _httpClientFactoryMock.Verify(x => x.CreateClient(It.IsAny<string>()), Times.AtLeastOnce);
+
+        // Verify no database entity was created (blogPostId = 0)
+        _dbContextMock.Verify(x => x.MarkdownFetches.Add(It.IsAny<MarkdownFetchEntity>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EndToEnd_FetchFailure_ShowsComment()
+    {
+        // Arrange
+        var url = "https://example.com/notfound.md";
+
+        var blogMarkdown = $@"
+# Blog Post
+
+<fetch markdownurl=""{url}"" pollfrequency=""12h""/>
+";
+
+        // Setup HTTP mock to return 404
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.NotFound,
+                Content = new StringContent("Not Found")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.Contains("<!--", html); // Should contain HTML comment
+        Assert.Contains("Failed to fetch", html);
+        Assert.Contains(url, html);
+    }
+
+    [Fact]
+    public async Task EndToEnd_NestedMarkdownFeatures_RenderCorrectly()
+    {
+        // Arrange
+        var url = "https://example.com/complex.md";
+        var complexMarkdown = @"
+## Complex Content
+
+Here's a [link](https://example.com) and some `inline code`.
+
+```csharp
+var x = 42;
+Console.WriteLine(x);
+```
+
+| Column 1 | Column 2 |
+|----------|----------|
+| Cell 1   | Cell 2   |
+
+> This is a blockquote
+";
+
+        // Setup HTTP mock to return complex markdown
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(complexMarkdown)
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        var blogMarkdown = $@"# Test Post
+
+<fetch markdownurl=""{url}"" pollfrequency=""12h""/>";
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.Contains("<a href=", html);
+        Assert.Contains("<code>", html);
+        Assert.Contains("<table>", html);
+        Assert.Contains("<blockquote>", html);
+        Assert.Contains("var x = 42", html);
+    }
+
+    [Fact]
+    public async Task EndToEnd_FetchTag_WithAdditionalAttributes()
+    {
+        // Arrange
+        var url = "https://example.com/content.md";
+        var remoteMarkdown = "## Remote Content\n\nThis is fetched content.";
+
+        var blogMarkdown = $@"
+# Blog Post
+
+<fetch class=""hidden"" markdownurl=""{url}"" pollfrequency=""2h""/>
+
+More content.
+";
+
+        // Setup HTTP mock
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(remoteMarkdown)
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object);
+        _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+
+        var fetchEntities = new List<MarkdownFetchEntity>();
+        _dbContextMock.SetupDbSet(fetchEntities, x => x.MarkdownFetches);
+
+        // Use MarkdownRenderingService which does the preprocessing
+        var renderingService = _serviceProvider.GetRequiredService<MarkdownRenderingService>();
+
+        // Act
+        var result = renderingService.GetPageFromMarkdown(blogMarkdown, DateTime.Now, "test.md");
+        var html = result.HtmlContent;
+
+        // Assert
+        Assert.Contains("Remote Content", html);
+        Assert.Contains("This is fetched content", html);
+        Assert.Contains("More content", html);
+
+        // Verify NO database entity was created (blogPostId = 0)
+        _dbContextMock.Verify(x => x.MarkdownFetches.Add(It.IsAny<MarkdownFetchEntity>()), Times.Never);
+    }
+}

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mostlylucid.DbContext.EntityFramework;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -9,12 +10,14 @@ using NpgsqlTypes;
 
 #nullable disable
 
-namespace Mostlylucid.Migrations
+namespace Mostlylucid.DbContext.Migrations
 {
     [DbContext(typeof(MostlylucidDbContext))]
-    partial class MostlylucidDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251102205023_MarkdownFetcher")]
+    partial class MarkdownFetcher
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
