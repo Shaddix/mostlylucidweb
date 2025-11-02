@@ -59,6 +59,10 @@ public class BlogPostViewModel : BaseViewModel
     
     public string Slug { get; set; }= string.Empty;
     
+    // Adjacent posts in time
+    public PostListModel? PreviousPost { get; set; } // Newer post (later in time)
+    public PostListModel? NextPost { get; set; } // Older post (earlier in time)
+    
     public string ReadingTime
     {
         get

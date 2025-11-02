@@ -57,6 +57,23 @@ public class BlogController(BaseControllerService baseControllerService,
 
         commentViewList.Comments.ForEach(x => x.IsAdmin = user.IsAdmin);
         post.Comments = commentViewList;
+
+        // Determine previous (newer) and next (older) posts within the same language
+        var allInLanguage = await blogViewService.GetPostsForLanguage(language: post.Language);
+        if (allInLanguage?.Any() == true)
+        {
+            var index = allInLanguage.FindIndex(p => p.Slug.Equals(post.Slug, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+            {
+                // previous in time (newer) would be at index - 1 because list is ordered DESC (newest first)
+                if (index - 1 >= 0)
+                    post.PreviousPost = allInLanguage[index - 1];
+                // next in time (older) would be at index + 1
+                if (index + 1 < allInLanguage.Count)
+                    post.NextPost = allInLanguage[index + 1];
+            }
+        }
+
         if (Request.IsHtmx()) return PartialView("_PostPartial", post);
         return View("Post", post);
     }

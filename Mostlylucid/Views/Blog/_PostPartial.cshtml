@@ -4,9 +4,34 @@
 <div class="pt-2 lg:pt-2" id="blogpost" hx-boost="true"  hx-target="#contentcontainer" hx-swap="show:window:top">
     <div class="border-b border-grey-lighter pb-2 sm:pb-2">
 
-        <h2 class="pb-2 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white">
+        <h2 class="pb-1 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white">
             @Model.Title
         </h2>
+        
+        @if (Model.PreviousPost != null || Model.NextPost != null)
+        {
+            <nav class="flex items-center justify-between text-sm text-primary dark:text-white mb-2 print:hidden" aria-label="Post navigation">
+                <div>
+                    @if (Model.PreviousPost != null)
+                    {
+                        <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.PreviousPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                            <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
+                            <span>Newer: @Model.PreviousPost.Title</span>
+                        </a>
+                    }
+                </div>
+                <div>
+                    @if (Model.NextPost != null)
+                    {
+                        <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.NextPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                            <span>Older: @Model.NextPost.Title</span>
+                            <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
+                        </a>
+                    }
+                </div>
+            </nav>
+        }
+        
         <div>
             <a href="#commentsection" class="btn btn-outline btn-sm my-2 print:hidden " > <i class="bx bx-mail-send text-2xl"></i> Comments</a>
         </div>
