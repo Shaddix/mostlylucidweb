@@ -11,7 +11,7 @@ import '../css/easymde-overrides.css';
 
 window.EasyMDE = EasyMDE;
 
-
+window.Alpine = Alpine;
 window.hljs=hljs;
 window.htmx = htmx;
 window.mermaid=mermaid;
