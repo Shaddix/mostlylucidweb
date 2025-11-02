@@ -2,10 +2,10 @@
 @{
     var url = Url.Action("Category", "Blog", new { category = Model });
 }
-<a href="@url"
+<a 
    hx-get="@url"
    hx-push-url="true"
    hx-target="#contentcontainer"
    onclick="event.stopPropagation();">
-    <span class="inline-block rounded-full bg-blue-light dark:bg-gray-800 bg-opacity-20 px-2 py-1 font-body text-sm text-black dark:text-white outline-1 outline outline-blue-light dark:outline-blueGray-700">@Model</span>
+    <span class="inline-block  rounded-full bg-blue-light dark:bg-gray-800 bg-opacity-20 px-2 py-1 font-body text-sm text-black dark:text-white outline-1 outline outline-blue-light dark:outline-blueGray-700 cursor-pointer">@Model</span>
 </a>

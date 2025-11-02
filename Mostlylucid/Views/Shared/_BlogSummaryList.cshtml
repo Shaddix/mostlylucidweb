@@ -21,7 +21,7 @@
                 <input 
                     type="checkbox" 
                     x-model="openCategories"
-                    class="absolute"
+                    class="sr-only"
                 />
             
                 <!-- Added flex and items-center to collapse-title -->
@@ -32,7 +32,7 @@
                     </div>
                 </div>
             
-                <div class="collapse-content flex flex-wrap pl-5 pr-5 bg-gray-200 dark:bg-gray-700">
+                <div class="collapse-content flex flex-wrap pl-5 pr-5 bg-gray-200 dark:bg-gray-700" hx-boost="false">
                     <div class="pt-2 pb-2 gap-2 flex flex-wrap">
                         @foreach (var category in ViewBag.Categories)
                         {
