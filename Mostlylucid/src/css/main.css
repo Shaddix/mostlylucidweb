@@ -1,4 +1,4 @@
-@import "raleway.css";
+@import "./raleway.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
