@@ -268,3 +268,5 @@ __pycache__/
 /wwwroot/js/dist/
 /wwwroot/css/dist/
 /Markdown/translated/
+/wwwroot/css/highlight/atom-one-dark-reasonable.min.css
+/wwwroot/css/highlight/default.min.css

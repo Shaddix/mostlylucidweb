@@ -25,7 +25,7 @@ COPY ["Mostlylucid.Test/Mostlylucid.Test.csproj", "Mostlylucid.Test/"]
 COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
 COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
 COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
-
+COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension"]
 # Restore .NET dependencies
 RUN dotnet restore "./Mostlylucid/Mostlylucid.csproj"
 
@@ -35,7 +35,7 @@ COPY ./Mostlylucid.Test/ ./Mostlylucid.Test/
 COPY ./Mostlylucid.Shared/ ./Mostlylucid.Shared/
 COPY ./Mostlylucid.Services/ ./Mostlylucid.Services/
 COPY ./Mostlylucid.DbContext/ ./Mostlylucid.DbContext/
-
+COPY ./Mostlylucid.Markdig.FetchExtension ./Mostlylucid.Markdig.FetchExtension/
 # Install NPM dependencies (do this before the build step)
 WORKDIR "/src/Mostlylucid"
 COPY package*.json ./
