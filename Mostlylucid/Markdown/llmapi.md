@@ -20,7 +20,7 @@ Combined with my current love of 'AI assisted' coding random ideas it's led to t
 As with a lot of "AI Assisted" coding ideas it started with an idea about simulating output using LLMs. I was working on another project ([LucidForums](https://github.com/scottgal/lucidforums), a hilariously dysfunctional self populating LLM based forum experiment) and LLMs are really good (if a little slow) at generating sample data so *what if* I could use them to simulate any API. 
 
 # Requirements
-1. It shoudl be simple to implement in an ASP.NET Core App.  
+1. It shoudl be simple to implement in an ASP.NET Core App.   
 2. The data should be fairly realistic
 3. The data should be random
 4. It can accept JSON 'shapes' which tell the LLM what the response should be like
@@ -31,7 +31,7 @@ This is what I came up with. I'll add more detail on the thinking as I add more 
 
 Future additions will likely include caching in case you want faster perf.
 
-Here's the readme for the package (and yes I have just realised a markdown import command as part of my rendering pipeline would be handy!).
+Here's the readme for the package (this is current with the GitHub version using a Markdig extension which fetches remote content - article coming soon! :)).
 
 <fetch class="hidden" markdownurl="https://raw.githubusercontent.com/scottgal/LLMApi/refs/heads/master/README.md" pollfrequency="2h"/>
   

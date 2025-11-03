@@ -49,12 +49,12 @@ module.exports = (env, argv) => {
             extensions: ['.js'],
         },
         optimization: {
-            splitChunks: {
-                chunks: 'all',
-                minSize: 20000,
-                maxSize: 100000,
-                name: false,
-            },
+            // splitChunks: {
+            //     chunks: 'all',
+            //     minSize: 20000,
+            //     maxSize: 100000,
+            //     name: false,
+            // },
             runtimeChunk: {
                 name: 'runtime', // ✅ avoid filename conflict
             },

@@ -15,6 +15,7 @@ window.Alpine = Alpine;
 window.hljs=hljs;
 window.htmx = htmx;
 window.mermaid=mermaid;
+window.mermaid.initialize({startOnLoad : false});
 // Importing modules
 import { typeahead } from "./typeahead";
 import { submitTranslation, viewTranslation } from "./translations";
@@ -48,15 +49,16 @@ function setLogoutLink() {
     }
 }
 
-window.mermaidinit = async function() {
-    mermaid.initialize({ startOnLoad: false });
-    // try {
-    //     await initMermaid();
-    //     console.log('Mermaid initialization complete');
-    // } catch (e) {
-    //     console.error('Failed to initialize Mermaid:', e);
-    // }
+window.mermaidinit =async  function() {
+
+    try {
+      await  window.initMermaid().then(r => console.log('Mermaid initialized'));
+    } catch (e) {
+        console.error('Failed to initialize Mermaid:', e);
+    }
+
 }
+
 
 async function initializePage() {
     initGoogleSignIn();
