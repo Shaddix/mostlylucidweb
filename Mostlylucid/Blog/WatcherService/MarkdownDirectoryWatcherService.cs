@@ -30,7 +30,7 @@ public class MarkdownDirectoryWatcherService(
         // Subscribe to events
         _fileSystemWatcher.EnableRaisingEvents = true;
 
-        _awaitChangeTask = Task.Run(() => AwaitChanges(cancellationToken));
+        _awaitChangeTask = Task.Run(() => AwaitChanges(cancellationToken), cancellationToken);
         logger.LogInformation("Started watching directory {Directory}", markdownConfig.MarkdownPath);
 
 

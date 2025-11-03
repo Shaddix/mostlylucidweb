@@ -88,6 +88,7 @@
       <ProjectReference Include="..\Mostlylucid.DbContext\Mostlylucid.DbContext.csproj" />
       <ProjectReference Include="..\Mostlylucid.Services\Mostlylucid.Services.csproj" />
       <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
     </ItemGroup>
     <ItemGroup>
       <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\DailyTemplate.cshtml" />

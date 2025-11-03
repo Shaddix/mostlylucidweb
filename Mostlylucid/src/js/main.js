@@ -15,7 +15,6 @@ window.Alpine = Alpine;
 window.hljs=hljs;
 window.htmx = htmx;
 window.mermaid=mermaid;
-mermaid.initialize({startOnLoad:false});
 // Importing modules
 import { typeahead } from "./typeahead";
 import { submitTranslation, viewTranslation } from "./translations";
@@ -49,18 +48,32 @@ function setLogoutLink() {
     }
 }
 
-window.mermaidinit = function() {
+window.mermaidinit = async function() {
     mermaid.initialize({ startOnLoad: false });
-    try {
-        initMermaid().then(r => console.log('Mermaid initialized'));
-    } catch (e) {
-        console.error('Failed to initialize Mermaid:', e);
-    }
+    // try {
+    //     await initMermaid();
+    //     console.log('Mermaid initialization complete');
+    // } catch (e) {
+    //     console.error('Failed to initialize Mermaid:', e);
+    // }
 }
 
-function initializePage() {
+async function initializePage() {
     initGoogleSignIn();
-    mermaidinit();
+
+    // Wait for Alpine to be ready before initializing Mermaid
+    // This ensures themeInit() has run and the theme event has been fired
+    await new Promise(resolve => {
+        if (window.Alpine && window.Alpine.version) {
+            resolve();
+        } else {
+            document.addEventListener('alpine:init', resolve, { once: true });
+        }
+    });
+
+    // Now initialize Mermaid after theme is set
+    await mermaidinit();
+
     const hljsRazor = require('highlightjs-cshtml-razor');
     hljs.registerLanguage("cshtml-razor", hljsRazor);
     hljs.highlightAll();
@@ -70,7 +83,7 @@ function initializePage() {
     console.log('Document is ready');
 
     // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
-    document.body.addEventListener('htmx:afterSettle', function(evt) {
+    document.body.addEventListener('htmx:afterSettle', async function(evt) {
         const targetId = evt.detail.target.id;
         if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
          console.log("Ignoring swap event for target:", targetId);
@@ -79,7 +92,7 @@ function initializePage() {
 
         initGoogleSignIn();
         console.log('HTMX afterSettle triggered', evt);
-        mermaidinit();
+        await mermaidinit();
         hljs.highlightAll();
          setLogoutLink();
     });

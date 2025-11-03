@@ -21,7 +21,7 @@ public class CommentService(IMostlylucidDBContext context,  ILogger<CommentServi
       try
       {
          
-         var html = Markdig.Markdown.ToHtml(content);
+         var html = global::Markdig.Markdown.ToHtml(content);
          
           // Create the new comment
           var newComment = new CommentEntity()

@@ -6,9 +6,10 @@ using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
-using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Models;
+using Mostlylucid.Shared.Config.Markdown;
 using Mostlylucid.Test.Extensions;
 
 namespace Mostlylucid.Test.Tests;
@@ -56,7 +57,8 @@ public class MarkdownFetchPollingServiceTests
 
         var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = _serviceProvider.GetRequiredService<ILogger<MarkdownFetchPollingService>>();
-        var service = new MarkdownFetchPollingService(scopeFactory, logger);
+        var markdownConfig = new MarkdownConfig { MarkdownPath = ".", MarkdownTranslatedPath = "." };
+        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig);
 
         // Can't easily test the background service directly, but we can verify setup
         Assert.NotNull(service);
@@ -70,7 +72,8 @@ public class MarkdownFetchPollingServiceTests
         var logger = _serviceProvider.GetRequiredService<ILogger<MarkdownFetchPollingService>>();
 
         // Act
-        var service = new MarkdownFetchPollingService(scopeFactory, logger);
+        var markdownConfig = new MarkdownConfig { MarkdownPath = ".", MarkdownTranslatedPath = "." };
+        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig);
 
         // Assert
         Assert.NotNull(service);

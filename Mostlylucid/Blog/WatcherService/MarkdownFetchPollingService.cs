@@ -5,7 +5,7 @@ using Mostlylucid.MarkdownTranslator.Models;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
-using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared;
 using Mostlylucid.Shared.Config.Markdown;
 using Mostlylucid.Shared.Entities;
@@ -16,26 +16,17 @@ namespace Mostlylucid.Blog.WatcherService;
 /// <summary>
 /// Background service that polls remote markdown URLs and regenerates posts when content changes
 /// </summary>
-public class MarkdownFetchPollingService : BackgroundService
+public class MarkdownFetchPollingService(
+    IServiceScopeFactory serviceScopeFactory,
+    ILogger<MarkdownFetchPollingService> logger,
+    MarkdownConfig markdownConfig)
+    : BackgroundService
 {
-    private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly ILogger<MarkdownFetchPollingService> _logger;
-    private readonly MarkdownConfig _markdownConfig;
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(15); // Check every 15 minutes
-
-    public MarkdownFetchPollingService(
-        IServiceScopeFactory serviceScopeFactory,
-        ILogger<MarkdownFetchPollingService> logger,
-        MarkdownConfig markdownConfig)
-    {
-        _serviceScopeFactory = serviceScopeFactory;
-        _logger = logger;
-        _markdownConfig = markdownConfig;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Markdown Fetch Polling Service started");
+        logger.LogInformation("Markdown Fetch Polling Service started");
 
         // Wait a bit before starting to let the application fully initialize
         await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
@@ -48,14 +39,14 @@ public class MarkdownFetchPollingService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in Markdown Fetch Polling Service");
+                logger.LogError(ex, "Error in Markdown Fetch Polling Service");
             }
 
             // Wait for the next check interval
             await Task.Delay(_checkInterval, stoppingToken);
         }
 
-        _logger.LogInformation("Markdown Fetch Polling Service stopped");
+        logger.LogInformation("Markdown Fetch Polling Service stopped");
     }
 
     private async Task PollAndUpdateAsync(CancellationToken cancellationToken)
@@ -64,7 +55,7 @@ public class MarkdownFetchPollingService : BackgroundService
 
         try
         {
-            using var scope = _serviceScopeFactory.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IMostlylucidDBContext>();
             var fetchService = scope.ServiceProvider.GetRequiredService<IMarkdownFetchService>();
             var markdownBlogService = scope.ServiceProvider.GetRequiredService<IMarkdownBlogService>();
@@ -78,13 +69,13 @@ public class MarkdownFetchPollingService : BackgroundService
 
             if (fetches.Count == 0)
             {
-                _logger.LogDebug("No enabled markdown fetches found");
+                logger.LogDebug("No enabled markdown fetches found");
                 activity?.Activity?.SetTag("FetchCount", 0);
                 activity?.Complete();
                 return;
             }
 
-            _logger.LogInformation("Found {Count} enabled markdown fetches to check", fetches.Count);
+            logger.LogInformation("Found {Count} enabled markdown fetches to check", fetches.Count);
             activity?.Activity?.SetTag("FetchCount", fetches.Count);
 
             int updatedCount = 0;
@@ -103,7 +94,7 @@ public class MarkdownFetchPollingService : BackgroundService
                         var timeSinceLastFetch = DateTimeOffset.UtcNow - fetch.LastFetchedAt.Value;
                         if (timeSinceLastFetch.TotalHours < fetch.PollFrequencyHours)
                         {
-                            _logger.LogDebug(
+                            logger.LogDebug(
                                 "Skipping {Url} - not due for polling (last fetched {Hours:F2}h ago, frequency: {Frequency}h)",
                                 fetch.Url,
                                 timeSinceLastFetch.TotalHours,
@@ -112,7 +103,7 @@ public class MarkdownFetchPollingService : BackgroundService
                         }
                     }
 
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "Polling {Url} for blog post {PostId} (slug: {Slug})",
                         fetch.Url,
                         fetch.BlogPostId,
@@ -126,7 +117,7 @@ public class MarkdownFetchPollingService : BackgroundService
 
                     if (!result.Success)
                     {
-                        _logger.LogWarning(
+                        logger.LogWarning(
                             "Failed to fetch {Url}: {Error}",
                             fetch.Url,
                             result.ErrorMessage);
@@ -135,7 +126,7 @@ public class MarkdownFetchPollingService : BackgroundService
                         // If too many consecutive failures, consider disabling
                         if (fetch.ConsecutiveFailures >= 10)
                         {
-                            _logger.LogWarning(
+                            logger.LogWarning(
                                 "Disabling fetch for {Url} after {Count} consecutive failures",
                                 fetch.Url,
                                 fetch.ConsecutiveFailures);
@@ -152,7 +143,7 @@ public class MarkdownFetchPollingService : BackgroundService
 
                     if (updatedFetch != null && updatedFetch.ContentHash != fetch.ContentHash)
                     {
-                        _logger.LogInformation(
+                        logger.LogInformation(
                             "Content changed for {Url}, regenerating blog post {Slug}",
                             fetch.Url,
                             fetch.BlogPost?.Slug);
@@ -169,7 +160,7 @@ public class MarkdownFetchPollingService : BackgroundService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
+                    logger.LogError(
                         ex,
                         "Error polling fetch {Id} for URL {Url}",
                         fetch.Id,
@@ -182,7 +173,7 @@ public class MarkdownFetchPollingService : BackgroundService
             activity?.Activity?.SetTag("ErrorCount", errorCount);
             activity?.Complete();
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Polling complete: {Updated} posts updated, {Errors} errors",
                 updatedCount,
                 errorCount);
@@ -190,7 +181,7 @@ public class MarkdownFetchPollingService : BackgroundService
         catch (Exception ex)
         {
             activity?.Complete(LogEventLevel.Error, ex);
-            _logger.LogError(ex, "Error in PollAndUpdateAsync");
+            logger.LogError(ex, "Error in PollAndUpdateAsync");
         }
     }
 
@@ -202,7 +193,7 @@ public class MarkdownFetchPollingService : BackgroundService
     {
         if (blogPost == null)
         {
-            _logger.LogWarning("Cannot regenerate blog post - entity is null");
+            logger.LogWarning("Cannot regenerate blog post - entity is null");
             return;
         }
 
@@ -212,14 +203,14 @@ public class MarkdownFetchPollingService : BackgroundService
             var filePath = GetMarkdownFilePath(blogPost);
             if (!File.Exists(filePath))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Markdown file not found for post {Slug} at path {Path}",
                     blogPost.Slug,
                     filePath);
                 return;
             }
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Re-reading markdown file for post {Slug} from {Path}",
                 blogPost.Slug,
                 filePath);
@@ -234,7 +225,7 @@ public class MarkdownFetchPollingService : BackgroundService
             // Trigger translation if it's an English post
             if (blogModel.Language == Constants.EnglishLanguage)
             {
-                var translateService = _serviceScopeFactory.CreateScope()
+                var translateService = serviceScopeFactory.CreateScope()
                     .ServiceProvider.GetService<IBackgroundTranslateService>();
 
                 if (translateService != null)
@@ -249,13 +240,13 @@ public class MarkdownFetchPollingService : BackgroundService
                 }
             }
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Successfully regenerated blog post {Slug}",
                 blogPost.Slug);
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Error regenerating blog post {Slug}",
                 blogPost.Slug);
@@ -271,12 +262,12 @@ public class MarkdownFetchPollingService : BackgroundService
         if (language == Constants.EnglishLanguage)
         {
             // English posts are in the main markdown directory
-            return Path.Combine(_markdownConfig.MarkdownPath, $"{slug}.md");
+            return Path.Combine(markdownConfig.MarkdownPath, $"{slug}.md");
         }
         else
         {
             // Translated posts are in the translated directory with format: slug.language.md
-            return Path.Combine(_markdownConfig.MarkdownTranslatedPath, $"{slug}.{language}.md");
+            return Path.Combine(markdownConfig.MarkdownTranslatedPath, $"{slug}.{language}.md");
         }
     }
 }

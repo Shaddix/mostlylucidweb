@@ -44,7 +44,7 @@ public class ContactController(
 
         if (!ModelState.IsValid) return PartialView("_ContactForm", comment);
 
-        var commentHtml = Markdig.Markdown.ToHtml(comment.Comment!);
+        var commentHtml = global::Markdig.Markdown.ToHtml(comment.Comment!);
         var contactModel = new ContactEmailModel
         {
             SenderEmail = string.IsNullOrEmpty(comment.Email) ? "Anonymous" : comment.Email,

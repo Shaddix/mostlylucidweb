@@ -5,7 +5,7 @@ using Moq;
 using Moq.Protected;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Markdown;
-using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Test.Extensions;
 using System.Net;
@@ -34,6 +34,8 @@ public class MarkdownFetchIntegrationTests
         services.AddScoped<MarkdownRenderingService>();
 
         _serviceProvider = services.BuildServiceProvider();
+        // Configure fetch extension with the service provider
+        FetchMarkdownExtension.ConfigureServiceProvider(_serviceProvider);
     }
 
     [Fact]

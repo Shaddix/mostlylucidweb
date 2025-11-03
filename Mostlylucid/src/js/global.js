@@ -15,12 +15,15 @@ export  function globalSetup() {
                 document.documentElement.classList.add("dark");
                 document.documentElement.classList.remove("light");
                 this.isDarkMode = true;
+                // Dispatch dark theme event for Mermaid and other listeners
+                document.body.dispatchEvent(new CustomEvent('dark-theme-set'));
             } else {
                 localStorage.theme = "base";
                 document.documentElement.classList.remove("dark");
                 document.documentElement.classList.add("light");
                 this.isDarkMode = false;
-                // Apply light theme stylesheets
+                // Dispatch light theme event for Mermaid and other listeners
+                document.body.dispatchEvent(new CustomEvent('light-theme-set'));
             }
             this.applyTheme();
         },

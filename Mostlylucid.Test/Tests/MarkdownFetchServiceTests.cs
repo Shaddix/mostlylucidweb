@@ -5,7 +5,7 @@ using Moq;
 using Moq.Protected;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Markdown;
-using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Test.Extensions;
 using System.Net;

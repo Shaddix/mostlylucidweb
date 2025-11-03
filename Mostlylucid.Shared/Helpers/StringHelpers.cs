@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Mostlylucid.Shared.Helpers;
 
-public static class StringHelpers
+public static partial class StringHelpers
 {
     public static string TruncateAtWord(this string value, int length)
     {
@@ -32,9 +32,9 @@ public static class StringHelpers
         return BitConverter.ToString(hash).Replace("-", "");
     }
     
-    private static readonly Regex WordCountRegex = new(@"\b\w+\b",
-        RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking);
-    public  static int WordCount(this string text) => WordCountRegex.Matches(text).Count;
+    [System.Text.RegularExpressions.GeneratedRegex(@"\b\w+\b", RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    private static partial Regex WordCountRegex();
+    public  static int WordCount(this string text) => WordCountRegex().Matches(text).Count;
     
     public static string GetOrdinal(this int number)
     {

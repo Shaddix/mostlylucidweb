@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.DbContext.EntityFramework;
-using Mostlylucid.Services.Markdown.MarkDigExtensions;
+using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared.Entities;
 using Polly;
 using Polly.Retry;

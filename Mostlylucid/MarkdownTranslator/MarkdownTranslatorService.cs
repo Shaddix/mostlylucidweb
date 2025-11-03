@@ -97,7 +97,7 @@ public class MarkdownTranslatorService(
         
         var pipeline = new MarkdownPipelineBuilder().UsePreciseSourceLocation().ConfigureNewLine(Environment.NewLine)
             .Build();
-        var document = Markdig.Markdown.Parse(markdown, pipeline);
+        var document = global::Markdig.Markdown.Parse(markdown, pipeline);
         var textStrings = ExtractTextStrings(document);
         var batchSize = 5;
         var stringLength = textStrings.Count;
