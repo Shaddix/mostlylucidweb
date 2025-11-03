@@ -4,7 +4,7 @@
 <!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi-->
 <datetime class="hidden">2025-11-02T12:30</datetime>
 
-# Introduction
+# Introduction 
 One of my constant obsessions is sample data. It's an often annoying aspect of developing systems that you have the catch 22 of needing data to appropritately test fucntionality while developing the system which would let you create said data.
 Combined with my current love of 'AI assisted' coding random ideas it's led to the ceation of a little LLM enabled test data generator along with a nuget package with a middleware that can generate simulated API responses using an API:
 

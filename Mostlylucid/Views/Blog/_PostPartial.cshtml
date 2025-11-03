@@ -72,6 +72,29 @@
     <div class="prose prose dark:text-white text-black  max-w-none border-b py-2  sm:py-2" >
         @Html.Raw(Model.HtmlContent)
     </div>
+    @if (Model.PreviousPost != null || Model.NextPost != null)
+    {
+        <nav class="flex items-center justify-between text-sm text-primary dark:text-white mb-2 print:hidden" aria-label="Post navigation">
+            <div>
+                @if (Model.PreviousPost != null)
+                {
+                    <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.PreviousPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                        <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
+                        <span>Newer: @Model.PreviousPost.Title</span>
+                    </a>
+                }
+            </div>
+            <div>
+                @if (Model.NextPost != null)
+                {
+                    <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.NextPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                        <span>Older: @Model.NextPost.Title</span>
+                        <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
+                    </a>
+                }
+            </div>
+        </nav>
+    }
     <div x-data="{ showNewElement: false }" x-init="
     document.addEventListener('htmx:afterSwap', (event) => {
         if (event.detail.target.id === 'contentformarea') {
