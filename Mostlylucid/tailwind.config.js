@@ -140,10 +140,14 @@ module.exports = {
                             },
                         },
                         pre: {
-                            border: "1px solid #888",
-                            borderRadius: theme("borderRadius.xl"),
                             padding: "0",
-                            backgroundColor: theme("colors.primary"),
+                            backgroundColor: theme('colors.gray.100'), // neutral light gray
+                            color: theme('colors.gray.800'),           // text color
+                            border: '1px solid ' + theme('colors.gray.300'),
+                            borderRadius: theme('borderRadius.lg'),
+                        },
+                        'pre code': {
+                            backgroundColor: 'transparent',
                         },
                     },
                 },
@@ -152,10 +156,14 @@ module.exports = {
                     css: {
                         color: theme("colors.white"),
                         pre: {
-                            border: "1px solid #888",
-                            borderRadius: theme("borderRadius.xl"),
                             padding: "0",
-                            backgroundColor: theme("colors.primary"),
+                            backgroundColor: theme('colors.gray.800'), // neutral dark gray
+                            color: theme('colors.gray.100'),
+                            border: '1px solid ' + theme('colors.gray.600'),
+                            borderRadius: theme('borderRadius.lg'),
+                        },
+                        'pre code': {
+                            backgroundColor: 'transparent',
                         },
                         a: {
                             color: theme("colors.secondary"),

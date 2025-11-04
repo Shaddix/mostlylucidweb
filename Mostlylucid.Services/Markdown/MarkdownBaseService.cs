@@ -15,9 +15,10 @@ public class MarkdownBaseService
     {
         var builder = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
+            .Use<Mostlylucid.Markdig.FetchExtension.FetchMarkdownExtension>()
             .UseTableOfContent()
-            .Use<ImgExtension>()
-            .Use<Mostlylucid.Markdig.FetchExtension.FetchMarkdownExtension>();
+            .Use<ImgExtension>();
+
 
         // Allow additional configuration
         configure?.Invoke(builder);

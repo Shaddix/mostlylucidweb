@@ -5,7 +5,14 @@
 
     const loadMermaid = async (theme) => {
 
-        window.mermaid.initialize({startOnLoad: false, theme: theme });
+        window.mermaid.initialize({
+            startOnLoad: false,
+            theme: theme,
+            // Force transparent background so container styles (light/dark) show through
+            themeVariables: {
+                background: 'transparent'
+            }
+        });
         console.log("Loading mermaid with theme:", theme);
         await mermaid.run({
             querySelector: elementCode,

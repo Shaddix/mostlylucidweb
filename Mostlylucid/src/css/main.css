@@ -87,7 +87,7 @@ html {
     top:110px !important;
 }
 
-.dark select.bg-gray-800 {
+.dark select[class~="bg-gray-800"] {
     background-color: #2d3748 !important;
 }
 
@@ -99,4 +99,24 @@ html {
 
 .collapse-arrow > input:checked ~ .collapse-title:after {
     transform: translateY(-60%) rotate(225deg) !important;
+}
+
+/* Mermaid containers themed to match light/dark theme */
+.prose pre.mermaid,
+pre.mermaid,
+.prose div.mermaid,
+div.mermaid {
+    @apply p-0 rounded-lg border border-gray-300 bg-gray-100 text-gray-800;
+}
+
+.dark .prose pre.mermaid,
+.dark pre.mermaid,
+.dark .prose div.mermaid,
+.dark div.mermaid {
+    @apply p-0 rounded-lg border border-gray-600 bg-gray-800 text-gray-100;
+}
+
+/* Ensure the rendered SVG stays transparent so container bg shows through */
+.mermaid svg {
+    background-color: transparent !important;
 }
