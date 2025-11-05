@@ -4,6 +4,13 @@ This repository contains the source code for mostlylucid — the personal site a
 
 ##  NuGet Packages
 
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+[![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+- [mostlylucid.mockllmapi](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+A lightweight ASP.NET Core middleware for generating realistic mock API responses using local LLMs (via Ollama). Add intelligent mock endpoints to any project with just 2 lines of code!
+
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.pagingtaghelper.svg)](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.pagingtaghelper.svg)](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)
 
@@ -21,6 +28,7 @@ This repository contains the source code for mostlylucid — the personal site a
 
 - [MostlyLucid.EufySecurity](https://www.nuget.org/packages/MostlyLucid.EufySecurity)  
   A **HIGHLY EXPERIMENTAL** .NET client library for controlling Eufy Security devices by connecting to Eufy cloud servers and local/remote stations over P2P. Supports cameras, doorbells, locks, sensors, and more.
+
 
 ---
 
