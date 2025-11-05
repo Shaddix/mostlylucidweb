@@ -1,15 +1,16 @@
 using Markdig;
-using Markdig.Parsers.Inlines;
 using Markdig.Renderers;
-using Markdig.Renderers.Html.Inlines;
-using Markdig.Parsers;
-using Markdig.Renderers.Html;
 
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
 /// Markdig extension for fetching remote markdown content
 /// Syntax: <fetch markdownurl="url" pollfrequency="12h"/>
+///
+/// This extension processes fetch tags BEFORE rendering by:
+/// 1. Parsing the document normally (fetch tags become HTML blocks)
+/// 2. After parsing, replacing fetch blocks with parsed fetched markdown
+/// 3. Everything flows through the same pipeline once
 /// </summary>
 public class FetchMarkdownExtension : IMarkdownExtension
 {
@@ -25,36 +26,26 @@ public class FetchMarkdownExtension : IMarkdownExtension
         _serviceProvider = serviceProvider;
     }
 
-    public void Setup(MarkdownPipelineBuilder pipeline)
+    public void Setup(MarkdownPipelineBuilder pipelineBuilder)
     {
-        // Insert our block parser before default HTML block parser
-        if (!pipeline.BlockParsers.Contains<FetchMarkdownBlockParser>())
+        // Use DocumentProcessed to replace fetch tags with fetched content
+        // This happens after parsing but before rendering
+        pipelineBuilder.DocumentProcessed += document =>
         {
-            pipeline.BlockParsers.Insert(0, new FetchMarkdownBlockParser(_serviceProvider));
-        }
+            // Rebuild pipeline with same extensions for parsing fetched content
+            // This ensures fetched content gets the same treatment (TOC, etc.)
+            var pipeline = new MarkdownPipelineBuilder()
+                .UseAdvancedExtensions()
+                .UseTableOfContent()
+                .Build();
 
-        // Insert our inline parser before HTML inline parser
-        if (!pipeline.InlineParsers.Contains<FetchMarkdownInlineParser>())
-        {
-            pipeline.InlineParsers.Insert(0, new FetchMarkdownInlineParser(_serviceProvider));
-        }
+            var processor = new FetchMarkdownDocumentProcessor(_serviceProvider, pipeline);
+            processor.ProcessDocument(document);
+        };
     }
 
     public void Setup(MarkdownPipeline pipeline, IMarkdownRenderer renderer)
     {
-        if (renderer is HtmlRenderer htmlRenderer)
-        {
-            // Register block renderer
-            if (!htmlRenderer.ObjectRenderers.Contains<FetchMarkdownBlockRenderer>())
-            {
-                htmlRenderer.ObjectRenderers.InsertBefore<CodeBlockRenderer>(new FetchMarkdownBlockRenderer());
-            }
-
-            // Register inline renderer
-            if (!htmlRenderer.ObjectRenderers.Contains<FetchMarkdownInlineRenderer>())
-            {
-                htmlRenderer.ObjectRenderers.InsertBefore<LinkInlineRenderer>(new FetchMarkdownInlineRenderer());
-            }
-        }
+        // No custom renderers needed - everything is handled in document processing
     }
 }

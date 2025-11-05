@@ -13,10 +13,8 @@ public class FetchMarkdownInlineRenderer : HtmlObjectRenderer<FetchMarkdownInlin
     {
         if (obj.FetchSuccessful && !string.IsNullOrWhiteSpace(obj.FetchedContent))
         {
-            // Parse the fetched markdown content and convert to HTML
-            var pipeline = new MarkdownPipelineBuilder()
-                .UseAdvancedExtensions()
-                .Build();
+            // Use shared pipeline factory to ensure consistency with main document
+            var pipeline = FetchMarkdownPipelineFactory.CreatePipeline();
 
             var html = global::Markdig.Markdown.ToHtml(obj.FetchedContent, pipeline);
 

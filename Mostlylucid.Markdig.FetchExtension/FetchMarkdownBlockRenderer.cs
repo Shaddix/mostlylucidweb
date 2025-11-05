@@ -13,9 +13,8 @@ public class FetchMarkdownBlockRenderer : HtmlObjectRenderer<FetchMarkdownBlock>
     {
         if (obj.FetchSuccessful && !string.IsNullOrWhiteSpace(obj.FetchedContent))
         {
-            var pipeline = new MarkdownPipelineBuilder()
-                .UseAdvancedExtensions()
-                .Build();
+            // Use shared pipeline factory to ensure consistency with main document
+            var pipeline = FetchMarkdownPipelineFactory.CreatePipeline();
 
             var html = global::Markdig.Markdown.ToHtml(obj.FetchedContent, pipeline);
             renderer.Writer.Write(html);

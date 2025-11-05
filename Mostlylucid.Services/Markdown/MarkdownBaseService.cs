@@ -24,6 +24,8 @@ public class MarkdownBaseService
         // Allow additional configuration
         configure?.Invoke(builder);
 
-        return builder.Build();
+        var pipeline = builder.Build();
+
+        return pipeline;
     }
 }
