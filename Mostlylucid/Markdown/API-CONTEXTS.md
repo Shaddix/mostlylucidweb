@@ -15,7 +15,7 @@ When building and testing applications, one of the biggest challenges with tradi
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 
 You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the project, all public domain etc...
-~~~~
+----
 
 [TOC]
 ## The Problem: Stateless Chaos

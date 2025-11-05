@@ -86,7 +86,11 @@ public partial class MarkdownRenderingService : MarkdownBaseService
     {
         var slug = Path.GetFileNameWithoutExtension(fileName);
         if (slug.Contains(".")) slug = slug.Substring(0, slug.IndexOf(".", StringComparison.Ordinal));
-
+        if(slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            slug = slug[..^3];
+        
+        // Normalize slug: convert underscores/spaces to hyphens and lowercase for consistent lookup
+        slug = slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
         return slug.ToLowerInvariant();
     }
 }
