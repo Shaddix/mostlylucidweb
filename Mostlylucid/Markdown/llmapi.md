@@ -42,27 +42,48 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 
 ---
 
-## v1.2.0 Update - NO BREAKING CHANGES
+## Table of Contents
 
-**Full Backward Compatibility Guaranteed!** All existing code continues to work exactly as before.
+- [What's New in v1.5.0](#whats-new-in-v150)
+- [Features Overview](#features)
+- [Quick Start](#quick-start)
+- [Feature Documentation](#feature-documentation)
+- [Configuration](#configuration-options)
+- [Usage Examples](#usage-examples)
+- [Demo Applications](#demo-applications)
+- [Advanced Features](#advanced-features)
+- [Architecture](#architecture)
+- [Testing](#testing)
 
-**What's New:**
+---
+
+## What's New in v1.5.0
+
+**NO BREAKING CHANGES** - All existing code continues to work!
+
+### API Contexts - Shared Memory Across Requests (NEW!)
+- **Consistent Multi-Step Flows**: E-commerce journeys, game state, stock tickers with realistic variance
+- **Works Everywhere**: REST, Streaming, GraphQL, and SignalR all support contexts
+- **Smart Token Management**: Automatic 80/20 token allocation with detailed logging
+- **[Complete Guide: API Contexts](./docs/API-CONTEXTS.md)**
+
+### Previous Updates (v1.2.0)
 - **Native GraphQL Support** - POST to `/graphql` with standard GraphQL queries
 - **Fully Modular Architecture** - Use only the protocols you need (REST, GraphQL, SSE, SignalR)
 - **Polly Resilience Policies** - Built-in exponential backoff retry and circuit breaker patterns (enabled by default)
 - **30-40% Reduced Memory** - When using modular setup with single protocol
-- See [MODULAR_EXAMPLES](./MODULAR_EXAMPLES) for modular usage patterns
 
-**Migration Notes:**
+### Migration from v1.1.0 or earlier
 - Old method names (`Addmostlylucid_mockllmapi`, `Mapmostlylucid_mockllmapi`) still work but are deprecated
 - Recommended: Use new names (`AddLLMockApi`, `MapLLMockApi`) - or use modular methods like `AddLLMockRest()`
 - All examples below use the new recommended method names
+- See [MODULAR_EXAMPLES.md](./MODULAR_EXAMPLES.md) for modular usage patterns
 
 ---
 
 ## Features
 
-This package provides **four independent features** - use any combination you need:
+This package provides **five independent features** - use any combination you need:
 
 ### 1. REST API Mocking
 - **Super Simple**: `AddLLMockApi()` + `MapLLMockApi("/api/mock")` = instant mock API
@@ -87,10 +108,53 @@ This package provides **four independent features** - use any combination you ne
 - **Lifecycle Management**: Start/stop contexts dynamically with management API
 - **Works standalone**: No REST API setup required
 
+### 5. OpenAPI / Swagger Mock Generation
+- **Automatic Endpoint Generation**: Point to any OpenAPI/Swagger spec (URL or file)
+- **All Operations Mocked**: Every path and method from spec becomes a live endpoint
+- **Schema-Driven Data**: LLM generates realistic data matching your schemas
+- **Multiple Specs**: Load and mount multiple API specs simultaneously
+- **Works standalone**: No REST API setup required
+
 ### Common Features
 - **Configurable**: appsettings.json or inline configuration
 - **Highly Variable Data**: Each request/update generates completely different realistic data
 - **NuGet Package**: Easy to add to existing projects
+- **API Contexts (NEW in v1.5.0)**: Maintain consistency across related requests
+
+---
+
+## Feature Documentation
+
+For detailed guides with architecture diagrams, use cases, and implementation details:
+
+- **[API Contexts Guide](./docs/API-CONTEXTS.md)** - NEW!
+    - Shared memory across requests for consistent multi-step workflows
+    - E-commerce flows, stock tickers, game state examples
+    - Token management and intelligent truncation
+    - Mermaid architecture diagrams
+
+- **[OpenAPI Features Guide](./docs/OPENAPI-FEATURES.md)**
+    - Dynamic spec loading from URLs, files, or inline JSON
+    - Automatic endpoint generation with path parameters
+    - Request/response examples with the Petstore API
+    - SignalR integration for real-time updates
+
+- **[Modular Architecture Examples](./MODULAR_EXAMPLES.md)**
+    - REST-only, GraphQL-only, SignalR-only setups
+    - Memory optimization strategies
+    - Mix and match protocols
+
+- **[SignalR Demo Guide](./SIGNALR_DEMO_GUIDE.md)**
+    - Real-time data streaming setup
+    - Context lifecycle management
+    - Client connection examples
+
+- **[Release Notes](./RELEASE_NOTES.md)**
+    - Complete version history
+    - Breaking changes (none since v1.0!)
+    - Migration guides
+
+---
 
 ## Quick Start
 
@@ -221,6 +285,9 @@ That's it! Now all requests to `/api/mock/**` return intelligent mock data.
     "EnableVerboseLogging": false,
     "CustomPromptTemplate": null,
 
+    // Token Management (NEW in v1.5.0)
+    "MaxInputTokens": 4096,  // Adjust based on model (2048-8192)
+
     // Resilience Policies (enabled by default)
     "EnableRetryPolicy": true,
     "MaxRetryAttempts": 3,
@@ -231,6 +298,10 @@ That's it! Now all requests to `/api/mock/**` return intelligent mock data.
   }
 }
 ```
+
+**Model-Specific Token Limits**: See `LLMApi/appsettings.json` for configuration examples for different models (Llama 3, TinyLlama, Mistral, etc.). Each model has different context window sizes - adjust `MaxInputTokens` accordingly.
+
+**API Contexts**: For detailed information about using contexts to maintain consistency across requests, see the **[API Contexts Guide](./docs/API-CONTEXTS.md)**.
 
 ### Resilience Policies
 
@@ -320,6 +391,23 @@ curl http://localhost:5000/api/mock/users?limit=5
 ```
 
 Returns realistic user data generated by the LLM.
+
+### With API Context (NEW in v1.5.0)
+
+**Use contexts to maintain consistency across multiple related requests:**
+
+```bash
+# Step 1: Create a user
+curl "http://localhost:5000/api/mock/users?context=checkout-flow"
+
+# Step 2: Create order for that user (LLM references user from context)
+curl "http://localhost:5000/api/mock/orders?context=checkout-flow"
+
+# Step 3: Add payment (LLM references both user and order)
+curl "http://localhost:5000/api/mock/payments?context=checkout-flow"
+```
+
+Each request in the same context sees the previous requests, ensuring consistent IDs, names, and data relationships. Perfect for multi-step workflows! See the **[API Contexts Guide](./docs/API-CONTEXTS.md)** for complete examples.
 
 ### With Shape Control
 
@@ -546,6 +634,52 @@ Use the included `LLMApi.http` file which contains 5 ready-to-use GraphQL exampl
 - Complex organizational data
 
 See the [GraphQL examples in LLMApi.http](LLMApi/LLMApi.http#L229-L294) for complete working examples.
+
+### GraphQL Configuration
+
+#### Token Limits and Model Selection
+
+GraphQL responses can become large with deeply nested queries. To prevent JSON truncation errors, configure the `GraphQLMaxTokens` option:
+
+```json
+{
+  "MockLlmApi": {
+    "GraphQLMaxTokens": 300  // Recommended: 200-300 for reliability
+  }
+}
+```
+
+**Token Limit Guidelines:**
+
+| Model | Recommended Max Tokens | Notes |
+|-------|----------------------|-------|
+| **llama3** | 300-500 | Best balance of speed and complexity |
+| **mistral:7b** | 300-500 | Handles nested structures well |
+| **phi3** | 200-300 | Keep queries simple |
+| **tinyllama** | 150-200 | Use shallow queries only |
+
+**Why Lower Is Better:**
+- The prompt prioritizes **correctness over length**
+- Lower limits force the LLM to generate simpler, complete JSON
+- Higher limits risk truncated responses (invalid JSON)
+- If you see "Invalid JSON from LLM" errors, **reduce GraphQLMaxTokens**
+
+**For Complex Nested Queries:**
+1. Use larger models (llama3, mistral:7b)
+2. Increase GraphQLMaxTokens to 500-1000
+3. Keep array sizes small (2 items max by default)
+4. Monitor logs for truncation warnings
+
+**Example configuration for complex queries:**
+```json
+{
+  "MockLlmApi": {
+    "ModelName": "llama3",           // Larger model
+    "GraphQLMaxTokens": 800,          // Higher limit for nested data
+    "Temperature": 1.2
+  }
+}
+```
 
 ## SignalR Real-Time Data Streaming
 
@@ -1036,6 +1170,247 @@ POST /api/mock/contexts/metrics/start
 DELETE /api/mock/contexts/metrics
 ```
 
+## OpenAPI / Swagger Mock Generation
+
+**New Feature:** Automatically generate mock endpoints from OpenAPI/Swagger specifications! Point to any OpenAPI 3.0/Swagger 2.0 spec (URL or file) and the library will create mock endpoints for all defined operations.
+
+### Quick Start with OpenAPI
+
+```bash
+dotnet add package mostlylucid.mockllmapi
+```
+
+**Program.cs:**
+```csharp
+using mostlylucid.mockllmapi;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add OpenAPI mock services
+builder.Services.AddLLMockOpenApi(builder.Configuration);
+
+var app = builder.Build();
+app.UseRouting();
+
+// Map OpenAPI-based mock endpoints
+app.MapLLMockOpenApi();
+
+app.Run();
+```
+
+**appsettings.json:**
+```json
+{
+  "MockLlmApi": {
+    "BaseUrl": "http://localhost:11434/v1/",
+    "ModelName": "llama3",
+    "Temperature": 1.2,
+    "OpenApiSpecs": [
+      {
+        "Name": "petstore",
+        "Source": "https://petstore3.swagger.io/api/v3/openapi.json",
+        "BasePath": "/petstore",
+        "EnableStreaming": false
+      },
+      {
+        "Name": "myapi",
+        "Source": "./specs/my-api.yaml",
+        "BasePath": "/api/v1"
+      }
+    ]
+  }
+}
+```
+
+That's it! All endpoints from your OpenAPI spec are now available as intelligent LLM-powered mocks.
+
+### How It Works
+
+1. **Spec Loading**: Loads OpenAPI specs from URLs or local files (JSON or YAML)
+2. **Schema Conversion**: Converts OpenAPI schemas to JSON shape templates
+3. **Endpoint Mapping**: Automatically maps all operations to ASP.NET Core endpoints
+4. **LLM Generation**: Uses LLM to generate realistic mock data matching the schema
+5. **Path Parameters**: Handles path parameters like `/users/{id}` automatically
+
+### Configuration Options
+
+Each OpenAPI spec supports these configuration options:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Name` | string | Unique identifier for this spec (required) |
+| `Source` | string | URL or file path to OpenAPI spec (required) |
+| `BasePath` | string | Override base path (default: uses spec's `servers[0].url`) |
+| `EnableStreaming` | bool | Add `/stream` suffix for SSE streaming (default: false) |
+| `IncludeTags` | string[] | Only generate endpoints with these tags |
+| `ExcludeTags` | string[] | Skip endpoints with these tags |
+| `IncludePaths` | string[] | Only generate these paths (supports wildcards like `/users/*`) |
+| `ExcludePaths` | string[] | Skip these paths (supports wildcards) |
+
+### Advanced Configuration Examples
+
+**Filter by tags:**
+```json
+{
+  "Name": "petstore",
+  "Source": "https://petstore3.swagger.io/api/v3/openapi.json",
+  "IncludeTags": ["pet", "store"]
+}
+```
+
+**Filter by paths:**
+```json
+{
+  "Name": "api",
+  "Source": "./specs/api.yaml",
+  "IncludePaths": ["/users/*", "/products/*"],
+  "ExcludePaths": ["/admin/*"]
+}
+```
+
+**Enable streaming:**
+```json
+{
+  "Name": "api",
+  "Source": "./specs/api.yaml",
+  "BasePath": "/api",
+  "EnableStreaming": true
+}
+```
+
+### Testing OpenAPI Mocks
+
+Given this OpenAPI spec configuration:
+
+```json
+{
+  "Name": "petstore",
+  "Source": "./specs/petstore.json",
+  "BasePath": "/petstore"
+}
+```
+
+And a spec defining `GET /pet/{petId}` that returns a `Pet` object, you can test:
+
+```bash
+# Get a pet by ID
+curl http://localhost:5116/petstore/pet/123
+
+# Response (generated by LLM based on Pet schema):
+{
+  "id": 123,
+  "name": "Fluffy",
+  "category": {
+    "id": 1,
+    "name": "Cats"
+  },
+  "photoUrls": ["https://example.com/fluffy.jpg"],
+  "tags": [
+    {"id": 1, "name": "cute"},
+    {"id": 2, "name": "playful"}
+  ],
+  "status": "available"
+}
+```
+
+### Modular Usage
+
+OpenAPI mocks work independently of REST/GraphQL/SignalR:
+
+```csharp
+// Just OpenAPI mocks
+builder.Services.AddLLMockOpenApi(builder.Configuration);
+app.MapLLMockOpenApi();
+
+// Or combine with other features
+builder.Services.AddLLMockRest(builder.Configuration);
+builder.Services.AddLLMockOpenApi(builder.Configuration);
+app.MapLLMockRest("/api/mock");
+app.MapLLMockOpenApi();
+```
+
+### Supported Spec Formats
+
+- **OpenAPI 3.0** (JSON or YAML)
+- **OpenAPI 3.1** (JSON or YAML)
+- **Swagger 2.0** (JSON or YAML)
+
+### Key Features
+
+- **Automatic Endpoint Generation**: All paths and operations from spec become mock endpoints
+- **Schema-Driven**: Response shapes derived from OpenAPI response schemas
+- **Path Parameters**: Handles `/users/{id}`, `/posts/{postId}/comments/{commentId}`, etc.
+- **Multiple Specs**: Load and mount multiple API specs simultaneously
+- **Smart Filtering**: Include/exclude operations by tags or paths
+- **Streaming Support**: Optional SSE streaming for any endpoint
+- **LLM-Powered**: Generates realistic, varied data appropriate for each schema
+
+### Use Cases
+
+- **API-First Development**: Start coding against spec before backend is ready
+- **Frontend Prototyping**: Develop UI while API is being built
+- **Integration Testing**: Test client code without real API dependencies
+- **Demo Environments**: Showcase apps without production API access
+- **Contract Testing**: Verify clients handle all schema variations correctly
+- **Load Testing**: Generate realistic test data at scale
+
+### Limitations
+
+- Currently supports response schemas only (request validation not enforced)
+- Security schemes are ignored (no authentication required)
+- Only application/json content type supported for responses
+- Path parameter values are not validated against schema constraints
+
+### Testing OpenAPI Management
+
+The included `management.http` file contains comprehensive examples for all management endpoints:
+
+**Spec Management**:
+- Load spec from URL (Petstore, GitHub API, etc.)
+- Load spec from local file
+- Load spec from raw JSON/YAML
+- List all loaded specs
+- Get spec details with endpoints
+- Reload spec (refresh from source)
+- Delete spec
+
+**Endpoint Testing**:
+- Test GET endpoints with path parameters
+- Test POST/PUT/DELETE endpoints
+- Test endpoints with query parameters
+- Test multiple endpoints in sequence
+
+**Advanced Workflows**:
+- Load multiple specs simultaneously
+- Compare OpenAPI mocks vs regular mocks
+- Batch operations
+- Error handling examples
+
+**Example from management.http**:
+```http
+### Load Petstore API
+POST http://localhost:5116/api/openapi/specs
+Content-Type: application/json
+
+{
+  "name": "petstore",
+  "source": "https://petstore3.swagger.io/api/v3/openapi.json",
+  "basePath": "/petstore"
+}
+
+### Test an endpoint
+POST http://localhost:5116/api/openapi/test
+Content-Type: application/json
+
+{
+  "specName": "petstore",
+  "path": "/pet/123",
+  "method": "GET"
+}
+```
+
+See the complete [management.http](LLMApi/management.http) file for 20+ ready-to-use examples.
+
 ### Demo Applications
 
 The package includes two complete demo applications with interactive web interfaces featuring full context management:
@@ -1085,6 +1460,29 @@ The package includes two complete demo applications with interactive web interfa
 
 **Perfect for:** Observing LLM generation, debugging shapes, understanding streaming behavior, testing SSE
 
+#### OpenAPI Manager Demo (`/OpenApi`) — Dynamic Spec Loading & Testing
+
+**New Feature:** Interactive OpenAPI specification management with real-time updates!
+
+**Features:**
+- **Load Specs Dynamically**: From URL or paste raw JSON/YAML directly in browser
+- **Real-Time Updates**: SignalR-powered live notifications for all actions
+- **Endpoint Discovery**: Automatic extraction of all operations from spec
+- **In-Browser Testing**: Test any endpoint with one click, see LLM-generated mock data
+- **Lifecycle Management**: Load, reload, delete specs without restarting server
+- **Beautiful UI**: Color-coded HTTP methods, syntax-highlighted JSON responses
+- **Connection Status**: Live indicator shows SignalR connection state
+- **Comprehensive Help**: Inline documentation and example URLs
+
+**Quick-Start Examples:**
+- Load Petstore API from URL
+- Paste custom OpenAPI JSON
+- View all endpoints from spec
+- Test endpoints directly in page
+- See realistic mock data generated by LLM
+
+**Perfect for:** API prototyping, frontend development, contract testing, spec validation, demos
+
 **Run the demos:**
 ```bash
 cd LLMApi
@@ -1094,8 +1492,9 @@ dotnet run
 Navigate to:
 - `http://localhost:5116` - SignalR real-time data streaming with management UI
 - `http://localhost:5116/Streaming` - SSE progressive generation
+- `http://localhost:5116/OpenApi` - OpenAPI spec manager with dynamic loading
 
-Both demos include:
+All demos include:
 - Comprehensive inline documentation
 - Interactive quick-start examples
 - Code snippets for integration
@@ -1340,11 +1739,13 @@ flowchart TD
 ## Why Use mostlylucid.mockllmapi?
 
 - **Rapid Prototyping**: Frontend development without waiting for backend
+- **Consistent Workflows**: API contexts maintain realistic relationships across multi-step processes
 - **Demos**: Show realistic data flows without hardcoded fixtures
-- **Testing**: Generate varied test data for edge cases
+- **Testing**: Generate varied test data for edge cases - or consistent data with contexts
 - **API Design**: Experiment with response shapes before implementing
 - **Learning**: Example of LLM integration in .NET minimal APIs
 - **Zero Maintenance**: No database, no state, no mock data files to maintain
+- **Flexible**: Use any combination of REST, GraphQL, SSE, SignalR, or OpenAPI specs
 
 ## Building the NuGet Package
 
