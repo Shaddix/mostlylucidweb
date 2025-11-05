@@ -14,7 +14,7 @@ namespace Mostlylucid.Markdig.FetchExtension;
 public class FetchMarkdownBlockParser : BlockParser
 {
     private static readonly Regex FetchTagRegex = new(
-        @"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'][^>]*?/\s*>",
+        @"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?[^>]*?/\s*>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly IServiceProvider? _serviceProvider;
@@ -55,6 +55,9 @@ public class FetchMarkdownBlockParser : BlockParser
 
         var url = match.Groups[1].Value;
         var pollFrequencyHours = int.Parse(match.Groups[2].Value);
+        var transformLinks = match.Groups.Count > 3 &&
+                            match.Groups[3].Success &&
+                            match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
 
         string fetchedContent = string.Empty;
         bool fetchSuccessful = false;
@@ -74,6 +77,14 @@ public class FetchMarkdownBlockParser : BlockParser
                 if (result.Success)
                 {
                     fetchedContent = result.Content;
+
+                    // Transform relative links to absolute URLs pointing back to source
+                    if (transformLinks)
+                    {
+                        fetchedContent = MarkdownLinkRewriter.RewriteLinks(fetchedContent, url);
+                        logger.LogDebug("Transformed links in fetched markdown from {Url}", url);
+                    }
+
                     fetchSuccessful = true;
                 }
                 else

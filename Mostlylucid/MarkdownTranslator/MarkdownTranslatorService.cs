@@ -1,9 +1,12 @@
 ﻿using System.Diagnostics;
+using System.Net;
 using Markdig;
 using Markdig.Helpers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Mostlylucid.Shared.Config;
+using Polly;
+using Polly.CircuitBreaker;
 
 namespace Mostlylucid.MarkdownTranslator;
 
@@ -24,6 +27,37 @@ public class MarkdownTranslatorService(
     public int IPCount => IPs.Length;
 
     private string[] IPs = translateServiceConfig.IPs;
+
+    // Circuit breaker to handle service overload (403 responses)
+    private readonly ResiliencePipeline _circuitBreakerPolicy = new ResiliencePipelineBuilder()
+        .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+        {
+            FailureRatio = 1.0, // Break after all attempts fail
+            MinimumThroughput = 3, // Require 3 failures
+            BreakDuration = TimeSpan.FromMinutes(2),
+            ShouldHandle = new PredicateBuilder().Handle<HttpRequestException>(ex =>
+                ex.StatusCode == HttpStatusCode.Forbidden ||
+                ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                ex.StatusCode == HttpStatusCode.TooManyRequests),
+            OnOpened = args =>
+            {
+                logger.LogWarning(
+                    "Circuit breaker opened due to translation service overload. Will retry after {Duration}",
+                    args.BreakDuration);
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = args =>
+            {
+                logger.LogInformation("Circuit breaker reset. Translation service is available again.");
+                return ValueTask.CompletedTask;
+            },
+            OnHalfOpened = args =>
+            {
+                logger.LogInformation("Circuit breaker half-open. Testing translation service...");
+                return ValueTask.CompletedTask;
+            }
+        })
+        .Build();
 
     public async ValueTask<bool> IsServiceUp(CancellationToken cancellationToken)
     {
@@ -68,7 +102,8 @@ public class MarkdownTranslatorService(
 
     private async Task<string[]> Post(string[] elements, string targetLang, CancellationToken cancellationToken)
     {
-      
+        return await _circuitBreakerPolicy.ExecuteAsync(async ct =>
+        {
             if (!IPs.Any())
             {
                 logger.LogError("No IPs available for translation");
@@ -82,12 +117,35 @@ public class MarkdownTranslatorService(
             // Update the index for the next request
             currentIPIndex = (currentIPIndex + 1) % IPs.Length;
             var postObject = new PostRecord(targetLang, elements);
-            var response = await client.PostAsJsonAsync($"{ip}/translate", postObject, cancellationToken);
-            response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<PostResponse>(cancellationToken: cancellationToken);
+
+            var response = await client.PostAsJsonAsync($"{ip}/translate", postObject, ct);
+
+            // Handle service overload (403 Forbidden) explicitly
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+            {
+                logger.LogWarning("Translation service at {IP} returned 403 (overloaded)", ip);
+                throw new HttpRequestException(
+                    "Translation service is overloaded (403)",
+                    null,
+                    HttpStatusCode.Forbidden);
+            }
+
+            // Handle other non-success status codes
+            if (!response.IsSuccessStatusCode)
+            {
+                var statusCode = response.StatusCode;
+                logger.LogError("Translation service at {IP} returned {StatusCode}", ip, statusCode);
+                throw new HttpRequestException(
+                    $"Translation service returned {statusCode}",
+                    null,
+                    statusCode);
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<PostResponse>(cancellationToken: ct);
 
             logger.LogInformation("Translation took {Time} seconds", result.translation_time);
             return result.translated;
+        }, cancellationToken);
     }
 
 
@@ -112,6 +170,22 @@ public class MarkdownTranslatorService(
                 activity?.SetTag("Starting time", DateTime.UtcNow);
                 translatedStrings.AddRange(translatedBatch);
                 activity?.SetTag("Ending time", DateTime.UtcNow);
+            }
+            catch (BrokenCircuitException e)
+            {
+                logger.LogWarning("Circuit breaker is open - translation service is temporarily unavailable");
+                activity?.SetTag("CircuitBreakerOpen", true);
+                throw new TranslateException(
+                    "Translation service is temporarily unavailable due to overload. Circuit breaker is open.",
+                    textStrings.Skip(i).Take(batchSize).ToArray());
+            }
+            catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Forbidden)
+            {
+                logger.LogWarning("Translation service returned 403 (overloaded)");
+                activity?.SetTag("ServiceOverloaded", true);
+                throw new TranslateException(
+                    "Translation service is overloaded (403)",
+                    textStrings.Skip(i).Take(batchSize).ToArray());
             }
             catch (Exception e)
             {
@@ -156,7 +230,48 @@ public class MarkdownTranslatorService(
         if (imageExtensions.Any(text.Contains)) return false;
 
         if (text == "TOC]") return false;
+
+        // Skip emoticons/emoji - they break translation
+        if (ContainsEmoji(text)) return false;
+
         return text.Any(char.IsLetter);
+    }
+
+    private bool ContainsEmoji(string text)
+    {
+        // Check for common emoji Unicode ranges
+        foreach (var c in text)
+        {
+            var code = (int)c;
+
+            // Emoticons (U+1F600 to U+1F64F)
+            // Miscellaneous Symbols and Pictographs (U+1F300 to U+1F5FF)
+            // Transport and Map Symbols (U+1F680 to U+1F6FF)
+            // Supplemental Symbols and Pictographs (U+1F900 to U+1F9FF)
+            // Symbols and Pictographs Extended-A (U+1FA70 to U+1FAFF)
+            if (code >= 0x1F600 && code <= 0x1F64F ||
+                code >= 0x1F300 && code <= 0x1F5FF ||
+                code >= 0x1F680 && code <= 0x1F6FF ||
+                code >= 0x1F900 && code <= 0x1F9FF ||
+                code >= 0x1FA70 && code <= 0x1FAFF ||
+                // Additional emoji ranges
+                code >= 0x2600 && code <= 0x26FF ||   // Miscellaneous Symbols
+                code >= 0x2700 && code <= 0x27BF ||   // Dingbats
+                code >= 0xFE00 && code <= 0xFE0F ||   // Variation Selectors
+                code >= 0x1F000 && code <= 0x1F02F || // Mahjong Tiles
+                code >= 0x1F0A0 && code <= 0x1F0FF)   // Playing Cards
+            {
+                return true;
+            }
+
+            // Check for surrogate pairs (emoji outside BMP)
+            if (char.IsHighSurrogate(c))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ReinsertTranslatedStrings(MarkdownDocument document, string[] translatedStrings)

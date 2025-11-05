@@ -205,6 +205,12 @@ public class BlogService(
         return post.ToDto(langArr);
     }
 
+    public async Task<List<BlogPostDto>> GetAllPosts()
+    {
+        var posts = await NoTrackingQuery().ToListAsync();
+        return posts.Select(p => p.ToDto()).ToList();
+    }
+
     private async Task<List<CategoryEntity>> GetCategories(string slug, bool noTracking = false)
     {
         var query = noTracking ? PostsQuery().AsNoTracking() : PostsQuery();

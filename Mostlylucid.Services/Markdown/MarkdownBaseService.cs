@@ -17,7 +17,8 @@ public class MarkdownBaseService
             .UseAdvancedExtensions()
             .Use<Mostlylucid.Markdig.FetchExtension.FetchMarkdownExtension>()
             .UseTableOfContent()
-            .Use<ImgExtension>();
+            .Use<ImgExtension>()
+            .Use<LinkRewriteExtension>();
 
 
         // Allow additional configuration

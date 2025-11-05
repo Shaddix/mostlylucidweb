@@ -1,6 +1,7 @@
 ﻿using Mostlylucid.Blog.Markdown;
 using Mostlylucid.Blog.ViewServices;
 using Mostlylucid.Blog.WatcherService;
+using Mostlylucid.Blog.ValidationService;
 using Mostlylucid.DbContext;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Blog;
@@ -43,7 +44,9 @@ public static class BlogSetup
                 services.AddScoped<CommentViewService>();
                 services.AddSingleton<BlogUpdater>();
                 services.AddScoped<IBlogService, BlogService>();
+                services.AddScoped<BlogValidationService>();
                 services.AddHostedService<MarkdownDirectoryWatcherService>();
+                services.AddHostedService<BlogReconciliationService>();
 
                 // Register markdown fetch polling service (only in database mode)
                 services.AddHostedService<MarkdownFetchPollingService>();

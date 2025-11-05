@@ -13,7 +13,9 @@
       "Bash(npm run dev:js:*)",
       "Bash(dotnet restore:*)",
       "Bash(dotnet clean:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(dotnet add package:*)",
+      "Bash(dotnet add:*)"
     ],
     "deny": [],
     "ask": []

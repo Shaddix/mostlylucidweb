@@ -39,9 +39,23 @@ public partial class MarkdownRenderingService : MarkdownBaseService
 
     [GeneratedRegex(@"\r\n|\r|\n")]
     private static partial Regex SplitRegex();
+
     public BlogPostDto GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath)
     {
-        var pipeline = Pipeline();
+        return GetPageFromMarkdown(markdown, publishedDate, filePath, sourceUrl: null);
+    }
+
+    public BlogPostDto GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath, string? sourceUrl)
+    {
+        // Use RemoteLinkRewriteExtension if we have a source URL (for fetched content)
+        var pipeline = string.IsNullOrEmpty(sourceUrl)
+            ? Pipeline()
+            : Pipeline(builder =>
+            {
+                var extension = new MarkDigExtensions.RemoteLinkRewriteExtension(sourceUrl);
+                builder.Extensions.Add(extension);
+            });
+
         var lines =  SplitRegex().Split(markdown);
         // Get the title from the first line
         var title = lines.Length > 0 ? global::Markdig.Markdown.ToPlainText(lines[0].Trim()) : string.Empty;

@@ -60,10 +60,11 @@ public class MarkdownDirectoryWatcherService(
             }
             else if (fileEvent.ChangeType == WatcherChangeTypes.Deleted)
             {
-                OnDeleted(fileEvent);
+                await OnDeletedAsync(fileEvent);
             }
             else if (fileEvent.ChangeType == WatcherChangeTypes.Renamed)
             {
+                await OnRenamedAsync(fileEvent);
             }
         }
     }
@@ -130,10 +131,10 @@ public class MarkdownDirectoryWatcherService(
         }
     }
 
-    private void OnDeleted(WaitForChangedResult e)
+    private async Task OnDeletedAsync(WaitForChangedResult e)
     {
         if (e.Name == null) return;
-        var activity = Log.Logger.StartActivity("Markdown File Deleting {Name}", e.Name);
+        using var activity = Log.Logger.StartActivity("Markdown File Deleting {Name}", e.Name);
         try
         {
             var isTranslated = Path.GetFileNameWithoutExtension(e.Name).Contains(".");
@@ -147,19 +148,19 @@ public class MarkdownDirectoryWatcherService(
             }
             else
             {
+                // Delete all translated versions
                 var translatedFiles = Directory.GetFiles(markdownConfig.MarkdownTranslatedPath, $"{slug}.*.*");
                 _fileSystemWatcher.EnableRaisingEvents = false;
                 foreach (var file in translatedFiles)
                 {
                     File.Delete(file);
                 }
-
                 _fileSystemWatcher.EnableRaisingEvents = true;
             }
 
-            var scope = serviceScopeFactory.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var blogService = scope.ServiceProvider.GetRequiredService<IBlogViewService>();
-            blogService.Delete(slug, language);
+            await blogService.Delete(slug, language);
             activity?.Activity?.SetTag("Page Deleted", slug);
             activity?.Complete();
             logger.LogInformation("Deleted blog post {Slug} in {Language}", slug, language);
@@ -167,12 +168,63 @@ public class MarkdownDirectoryWatcherService(
         catch (Exception exception)
         {
             activity?.Complete(LogEventLevel.Error, exception);
-            logger.LogError("Error deleting blog post {Slug}", e.Name);
+            logger.LogError(exception, "Error deleting blog post {Slug}", e.Name);
         }
     }
 
-    private void OnRenamed(object sender, RenamedEventArgs e)
+    private async Task OnRenamedAsync(WaitForChangedResult e)
     {
-        Console.WriteLine($"File renamed: {e.OldFullPath} to {e.FullPath}");
+        if (e.Name == null || e.OldName == null) return;
+
+        using var activity = Log.Logger.StartActivity("Markdown File Renamed from {OldName} to {NewName}", e.OldName, e.Name);
+        try
+        {
+            // Extract old slug
+            var oldSlug = Path.GetFileNameWithoutExtension(e.OldName);
+            var oldIsTranslated = oldSlug.Contains(".");
+            var oldLanguage = MarkdownBaseService.EnglishLanguage;
+
+            if (oldIsTranslated)
+            {
+                var parts = oldSlug.Split('.');
+                oldSlug = parts.First();
+                oldLanguage = parts.Last();
+            }
+
+            // Delete old entry (and translated versions if it's the main file)
+            using var scope = serviceScopeFactory.CreateScope();
+            var blogService = scope.ServiceProvider.GetRequiredService<IBlogViewService>();
+
+            if (!oldIsTranslated)
+            {
+                // Delete all translated versions of the old slug
+                var translatedFiles = Directory.GetFiles(markdownConfig.MarkdownTranslatedPath, $"{oldSlug}.*.*");
+                _fileSystemWatcher.EnableRaisingEvents = false;
+                foreach (var file in translatedFiles)
+                {
+                    File.Delete(file);
+                }
+                _fileSystemWatcher.EnableRaisingEvents = true;
+            }
+
+            await blogService.Delete(oldSlug, oldLanguage);
+            logger.LogInformation("Deleted old blog post {OldSlug} in {Language}", oldSlug, oldLanguage);
+
+            // Now process the new file as if it was created
+            await OnChangedAsync(new WaitForChangedResult
+            {
+                ChangeType = WatcherChangeTypes.Created,
+                Name = e.Name
+            });
+
+            activity?.Activity?.SetTag("Old Slug", oldSlug);
+            activity?.Activity?.SetTag("New Name", e.Name);
+            activity?.Complete();
+        }
+        catch (Exception exception)
+        {
+            activity?.Complete(LogEventLevel.Error, exception);
+            logger.LogError(exception, "Error handling renamed file from {OldName} to {NewName}", e.OldName, e.Name);
+        }
     }
 }

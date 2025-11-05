@@ -13,4 +13,5 @@ public interface IBlogService
     Task<bool> Delete(string slug, string language);
     Task<BlogPostDto?> GetPost(BlogPostQueryModel model);
     Task<List<string>> GetCategories(bool noTracking = false);
+    Task<List<BlogPostDto>> GetAllPosts();
 }
