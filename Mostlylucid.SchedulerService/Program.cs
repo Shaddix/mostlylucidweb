@@ -8,6 +8,7 @@ using Mostlylucid.Services.Email;
 using Mostlylucid.Services.EmailSubscription;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Config;
+using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Debugging;
 
@@ -19,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var config = builder.Configuration;
 config.AddEnvironmentVariables();
+config.AddUserSecrets<Program>();
 builder.Host.UseSerilog((context, configuration) =>
 {
     configuration.ReadFrom.Configuration(context.Configuration);
@@ -32,8 +34,7 @@ builder.Host.UseSerilog((context, configuration) =>
 var configuration = builder.Configuration;
 var env = builder.Environment;
 var services = builder.Services;
-services.AddEndpointsApiExplorer();
-services.AddSwaggerGen();
+services.AddOpenApi();
 services.AddHealthChecks();
 services.AddScoped<NewsletterManagementService>();
 services.AddScoped<NewsletterSendingService>();
@@ -72,8 +73,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 var root = app.MapGroup("api").MapTodosApi().WithTags("email");
 

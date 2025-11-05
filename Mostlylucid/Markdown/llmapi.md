@@ -1,4 +1,4 @@
-﻿# Using Local LLMs to Automatically Simulate APIs in ASP.NET Core MimimalAPI
+﻿# Using Local LLMs to Automatically Simulate APIs in ASP.NET Core MinimalAPI
 
 
 <!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi-->
@@ -40,9 +40,29 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 
+---
+
+## v1.2.0 Update - NO BREAKING CHANGES
+
+**Full Backward Compatibility Guaranteed!** All existing code continues to work exactly as before.
+
+**What's New:**
+- **Native GraphQL Support** - POST to `/graphql` with standard GraphQL queries
+- **Fully Modular Architecture** - Use only the protocols you need (REST, GraphQL, SSE, SignalR)
+- **Polly Resilience Policies** - Built-in exponential backoff retry and circuit breaker patterns (enabled by default)
+- **30-40% Reduced Memory** - When using modular setup with single protocol
+- See [MODULAR_EXAMPLES](./MODULAR_EXAMPLES) for modular usage patterns
+
+**Migration Notes:**
+- Old method names (`Addmostlylucid_mockllmapi`, `Mapmostlylucid_mockllmapi`) still work but are deprecated
+- Recommended: Use new names (`AddLLMockApi`, `MapLLMockApi`) - or use modular methods like `AddLLMockRest()`
+- All examples below use the new recommended method names
+
+---
+
 ## Features
 
-This package provides **three independent features** - use any combination you need:
+This package provides **four independent features** - use any combination you need:
 
 ### 1. REST API Mocking
 - **Super Simple**: `AddLLMockApi()` + `MapLLMockApi("/api/mock")` = instant mock API
@@ -50,12 +70,18 @@ This package provides **three independent features** - use any combination you n
 - **All HTTP Methods**: Supports GET, POST, PUT, DELETE, PATCH
 - **Wildcard Routing**: Any path under your chosen endpoint works
 
-### 2. Server-Sent Events (SSE) Streaming
+### 2. GraphQL API Mocking
+- **Native GraphQL Support**: POST to `/api/mock/graphql` with standard GraphQL queries
+- **Query-Driven Shapes**: The GraphQL query itself defines the response structure
+- **Variables & Operations**: Full support for variables, operation names, and fragments
+- **Proper Error Handling**: Returns GraphQL-formatted errors with `data` and `errors` fields
+
+### 3. Server-Sent Events (SSE) Streaming
 - **Progressive Streaming**: SSE support with progressive JSON generation
 - **Real-time Updates**: Stream data token-by-token to clients
 - **Works standalone**: No REST API setup required
 
-### 3. SignalR Real-Time Streaming
+### 4. SignalR Real-Time Streaming
 - **WebSocket Streaming**: Continuous real-time mock data via SignalR
 - **Multiple Contexts**: Run multiple independent data streams simultaneously
 - **Lifecycle Management**: Start/stop contexts dynamically with management API
@@ -82,6 +108,73 @@ dotnet add package mostlylucid.mockllmapi
    ollama pull llama3
    ```
 
+### Choosing an LLM Model
+
+This package was **developed and tested with `llama3`** (8B parameters), which provides excellent results for all features. However, it works with any Ollama-compatible model:
+
+#### Recommended Models
+
+| Model | Size | Speed | Quality | Best For |
+|-------|------|-------|---------|----------|
+| **llama3** (default) | 8B | Fast | Excellent | General use, production |
+| **mistral:7b** | 7B | Fast | Excellent | Alternative to llama3 |
+| **phi3** | 3.8B | Very Fast | Good | Quick prototyping |
+| **tinyllama** | 1.1B | Ultra Fast | Basic | Resource-constrained environments |
+
+#### Model-Specific Configuration
+
+**For llama3 or mistral:7b (Recommended):**
+```json
+{
+  "ModelName": "llama3",  // or "mistral:7b"
+  "Temperature": 1.2      // High variety, diverse outputs
+}
+```
+
+**For smaller models (phi3, tinyllama):**
+```json
+{
+  "ModelName": "tinyllama",
+  "Temperature": 0.7      // Lower temperature for stability
+}
+```
+
+**Why Temperature Matters:**
+- **Larger models (7B+)** can handle high temperatures (1.0-1.5) while maintaining valid JSON
+- **Smaller models (<4B)** need lower temperatures (0.6-0.8) to avoid:
+    - Invalid JSON syntax (missing quotes, brackets)
+    - Truncated responses with ellipsis ("...")
+    - Hallucinated field names or structures
+- Lower temperature = more predictable output, less variety
+- Higher temperature = more creative output, more variety (but riskier for small models)
+
+#### Installation
+
+```bash
+# Recommended (best quality)
+ollama pull llama3
+
+# Alternative options
+ollama pull mistral:7b
+ollama pull phi3
+ollama pull tinyllama
+```
+
+**Important Limitations:**
+- **Smaller models** (`tinyllama`, `phi3`) work but may:
+    - Generate simpler/less varied data
+    - Struggle with complex GraphQL queries
+    - Need more retry attempts
+    - Work best with simple queries and small response sizes
+- **All models** can struggle with:
+    - **Very complex/deeply nested GraphQL queries** (>5 levels deep)
+    - **Many fields per object** (>10 fields)
+    - **Large array requests** - Limit to 2-5 items for reliability
+- **If seeing errors** about truncated JSON ("...") or comments ("//"):
+    - Lower temperature to 0.8 or below
+    - Simplify your GraphQL query (fewer fields, less nesting)
+    - Increase `MaxRetryAttempts` to 5 or more
+
 ### Basic Usage
 
 **Program.cs:**
@@ -90,13 +183,13 @@ using mostlylucid.mockllmapi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add LLMock API services
-builder.Services.Addmostlylucid.mockllmapi(builder.Configuration);
+// Add LLMock API services (all protocols: REST, GraphQL, SSE)
+builder.Services.AddLLMockApi(builder.Configuration);
 
 var app = builder.Build();
 
-// Map mock endpoints at /api/mock
-app.Mapmostlylucid.mockllmapi("/api/mock");
+// Map mock endpoints at /api/mock (includes REST, GraphQL, SSE)
+app.MapLLMockApi("/api/mock");
 
 app.Run();
 ```
@@ -126,10 +219,71 @@ That's it! Now all requests to `/api/mock/**` return intelligent mock data.
     "Temperature": 1.2,
     "TimeoutSeconds": 30,
     "EnableVerboseLogging": false,
-    "CustomPromptTemplate": null
+    "CustomPromptTemplate": null,
+
+    // Resilience Policies (enabled by default)
+    "EnableRetryPolicy": true,
+    "MaxRetryAttempts": 3,
+    "RetryBaseDelaySeconds": 1.0,
+    "EnableCircuitBreaker": true,
+    "CircuitBreakerFailureThreshold": 5,
+    "CircuitBreakerDurationSeconds": 30
   }
 }
 ```
+
+### Resilience Policies
+
+**New in v1.2.0:** Built-in Polly resilience policies protect your application from LLM service failures!
+
+The package includes two resilience patterns enabled by default:
+
+**Exponential Backoff Retry**
+- Automatically retries failed LLM requests with exponential delays (1s, 2s, 4s...)
+- Includes jitter to prevent thundering herd problems
+- Handles connection errors, timeouts, and non-success status codes
+- Default: 3 attempts with 1 second base delay
+
+**Circuit Breaker**
+- Opens after consecutive failures to prevent cascading failures
+- Stays open for a configured duration before allowing test requests
+- Three states: Closed (normal), Open (rejecting), Half-Open (testing)
+- Default: Opens after 5 consecutive failures, stays open for 30 seconds
+
+**Configuration:**
+
+```json
+{
+  "mostlylucid.mockllmapi": {
+    // Enable/disable retry policy
+    "EnableRetryPolicy": true,
+    "MaxRetryAttempts": 3,
+    "RetryBaseDelaySeconds": 1.0,  // Actual delays: 1s, 2s, 4s (exponential)
+
+    // Enable/disable circuit breaker
+    "EnableCircuitBreaker": true,
+    "CircuitBreakerFailureThreshold": 5,  // Open after 5 consecutive failures
+    "CircuitBreakerDurationSeconds": 30   // Stay open for 30 seconds
+  }
+}
+```
+
+**Logging:**
+
+The resilience policies log all retry attempts and circuit breaker state changes:
+
+```
+[Warning] LLM request failed (attempt 2/4). Retrying in 2000ms. Error: Connection refused
+[Error] Circuit breaker OPENED after 5 consecutive failures. All LLM requests will be rejected for 30 seconds
+[Information] Circuit breaker CLOSED. LLM requests will be attempted normally
+```
+
+**When to Adjust:**
+
+- **Slow LLM?** Increase `MaxRetryAttempts` or `RetryBaseDelaySeconds`
+- **Aggressive recovery?** Reduce `CircuitBreakerDurationSeconds`
+- **Many transient errors?** Increase `CircuitBreakerFailureThreshold`
+- **Disable for local testing?** Set both `EnableRetryPolicy` and `EnableCircuitBreaker` to `false`
 
 ### Via Code
 
@@ -230,6 +384,168 @@ The streaming endpoint supports all the same features as regular endpoints:
 - JSON Schema support
 - Custom prompts
 - All HTTP methods (GET, POST, PUT, DELETE, PATCH)
+
+## GraphQL API Mocking
+
+**New in v1.2.0:** Native GraphQL support with query-driven mock data generation!
+
+LLMock API includes built-in GraphQL endpoint support. Unlike REST endpoints where you specify shapes separately, GraphQL queries naturally define the exact structure they expect - the query IS the shape.
+
+### Quick Start with GraphQL
+
+The GraphQL endpoint is automatically available when you map the LLMock API:
+
+```csharp
+app.MapLLMockApi("/api/mock", includeGraphQL: true); // GraphQL enabled by default
+```
+
+This creates a GraphQL endpoint at `/api/mock/graphql`.
+
+### Basic Usage
+
+**Simple Query:**
+```bash
+curl -X POST http://localhost:5000/api/mock/graphql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ users { id name email role } }"}'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "users": [
+      { "id": 1, "name": "Alice Johnson", "email": "alice@example.com", "role": "admin" },
+      { "id": 2, "name": "Bob Smith", "email": "bob@example.com", "role": "user" }
+    ]
+  }
+}
+```
+
+### With Variables
+
+```bash
+curl -X POST http://localhost:5000/api/mock/graphql \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "query GetUser($userId: ID!) { user(id: $userId) { id name email } }",
+    "variables": { "userId": "12345" },
+    "operationName": "GetUser"
+  }'
+```
+
+### Nested Queries
+
+GraphQL's power shines with nested data:
+
+```graphql
+{
+  company {
+    name
+    employees {
+      id
+      firstName
+      lastName
+      department {
+        name
+        location
+      }
+      projects {
+        id
+        title
+        status
+        milestones {
+          title
+          dueDate
+          completed
+        }
+      }
+    }
+  }
+}
+```
+
+The LLM generates realistic data matching your exact query structure - including all nested relationships.
+
+### JavaScript Client Example
+
+```javascript
+async function fetchGraphQL(query, variables = {}) {
+    const response = await fetch('/api/mock/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables })
+    });
+
+    const result = await response.json();
+
+    if (result.errors) {
+        console.error('GraphQL errors:', result.errors);
+    }
+
+    return result.data;
+}
+
+// Usage
+const data = await fetchGraphQL(`
+    query GetProducts($category: String) {
+        products(category: $category) {
+            id
+            name
+            price
+            inStock
+            reviews {
+                rating
+                comment
+            }
+        }
+    }
+`, { category: 'electronics' });
+```
+
+### Error Handling
+
+GraphQL errors are returned in standard format:
+
+```json
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "Invalid GraphQL request format",
+      "extensions": {
+        "code": "INTERNAL_SERVER_ERROR"
+      }
+    }
+  ]
+}
+```
+
+### How It Works
+
+1. **Parse Request**: Extract GraphQL query, variables, and operation name
+2. **Build Prompt**: Send the query structure to the LLM with instructions to generate matching data
+3. **Generate Data**: LLM creates realistic data that exactly matches the query fields
+4. **Wrap Response**: Returns data in GraphQL format: `{ "data": {...} }`
+
+### Key Advantages
+
+- **No Shape Specification Needed**: The GraphQL query defines the structure
+- **Type Safety**: Queries explicitly request fields by name
+- **Nested Relationships**: Natural support for complex, nested data structures
+- **Standard Format**: Works with any GraphQL client library
+- **Realistic Data**: LLM generates contextually appropriate data for each field
+
+### Testing GraphQL
+
+Use the included `LLMApi.http` file which contains 5 ready-to-use GraphQL examples:
+- Simple user query
+- Query with variables
+- Nested fields with arrays
+- E-commerce product catalog
+- Complex organizational data
+
+See the [GraphQL examples in LLMApi.http](LLMApi/LLMApi.http#L229-L294) for complete working examples.
 
 ## SignalR Real-Time Data Streaming
 
@@ -741,7 +1057,7 @@ The package includes two complete demo applications with interactive web interfa
     - Keys (red), strings (green), numbers (orange), booleans (cyan), null (purple)
     - Clean, readable format with proper timestamp display
     - No external dependencies - lightweight built-in highlighter
- 
+
 **Quick-Start Examples:** One-click buttons for 5 pre-configured scenarios:
 - **IoT Sensors**: Temperature sensors with device ID, readings, battery percentage
 - **Stock Market**: Real-time prices with ticker, price, change percentage, volume
@@ -944,11 +1260,11 @@ dotnet test --verbosity detailed
 ```
 
 **Test Coverage:**
-- ✅ Body reading (empty, JSON content)
-- ✅ Shape extraction (query param, header, body field, precedence)
-- ✅ Prompt generation (randomness, shape inclusion, streaming modes)
-- ✅ Request building (temperature, model, messages)
-- ✅ Edge cases (invalid JSON, missing data)
+-  Body reading (empty, JSON content)
+-  Shape extraction (query param, header, body field, precedence)
+-  Prompt generation (randomness, shape inclusion, streaming modes)
+-  Request building (temperature, model, messages)
+-  Edge cases (invalid JSON, missing data)
 
 ## Architecture
 
@@ -1048,5 +1364,3 @@ This is a sample project demonstrating LLM-powered mock APIs. Feel free to fork 
 This is free and unencumbered software released into the public domain. See [LICENSE](LICENSE) for details or visit [unlicense.org](https://unlicense.org).
 
 
-
-  

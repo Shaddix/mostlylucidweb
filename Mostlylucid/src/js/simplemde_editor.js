@@ -55,7 +55,8 @@ function updateContent(easymde) {
     })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('renderedcontent').innerHTML = data.htmlContent;
+            const renderedContent = document.getElementById('renderedcontent');
+            renderedContent.innerHTML = data.htmlContent;
             document.getElementById('title').innerHTML = data.title;
             const date = new Date(data.publishedDate);
 
@@ -70,7 +71,11 @@ function updateContent(easymde) {
             window.mostlylucid.simplemde.populateCategories(data.categories);
 
             mermaid.run();
-            hljs.highlightAll();
+            // Only highlight new code blocks in the updated content
+            const codeBlocks = renderedContent.querySelectorAll('pre code:not(.hljs)');
+            codeBlocks.forEach((block) => {
+                hljs.highlightElement(block);
+            });
         })
         .catch(error => console.error('Error:', error));
 }

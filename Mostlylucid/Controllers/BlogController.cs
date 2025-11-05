@@ -36,6 +36,8 @@ public class BlogController(BaseControllerService baseControllerService,
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Show(string slug, string language = MarkdownBaseService.EnglishLanguage)
     {
+        if(slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            slug = slug[..^3];
         var post = await blogViewService.GetPost(slug, language);
         if (post == null) return NotFound();
 
@@ -115,6 +117,7 @@ public class BlogController(BaseControllerService baseControllerService,
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Language(string slug, string language)
     {
+        
         return await Show(slug, language);
     }
 }

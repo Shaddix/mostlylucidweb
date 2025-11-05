@@ -2,6 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services;
 using OpenTelemetry.Metrics;
+using Scalar.AspNetCore;
 using Serilog.Debugging;
 using Mostlylucid.EmailSubscription;
 using Mostlylucid.Services.Email;
@@ -14,9 +15,14 @@ try
              .WriteTo.File("logs/boot-*.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
              .CreateBootstrapLogger();
     var builder = WebApplication.CreateBuilder(args);
-    
+
     var config = builder.Configuration;
+    if (builder.Environment.IsDevelopment())
+    {
+        config.AddUserSecrets<Program>();
+    }
     config.AddEnvironmentVariables();
+
     builder.Host.UseSerilog((context, configuration) =>
     {
         configuration.ReadFrom.Configuration(context.Configuration);
@@ -73,8 +79,7 @@ try
 // the container.
     services.AddOutputCache();
     services.AddResponseCaching();
-    services.AddEndpointsApiExplorer();
-    services.AddSwaggerGen();
+    services.AddOpenApi();
     services.SetupTranslateService();
     services.SetupOpenSearch(config);
     services.AddHealthChecks();
@@ -209,9 +214,11 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+        app.MapScalarApiReference();
+    }
 
     await app.PopulateBlog();
     app.MapGet("/robots.txt", async httpContext =>

@@ -41,8 +41,7 @@
       <PackageReference Include="SerilogTracing" Version="2.3.1" />
       <PackageReference Include="SerilogTracing.Expressions" Version="2.3.1" />
       <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" Version="2.3.1" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.4" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="9.0.4" />
+      <PackageReference Include="Scalar.AspNetCore" Version="1.2.60" />
     </ItemGroup>
 
     <ItemGroup>

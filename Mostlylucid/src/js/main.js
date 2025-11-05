@@ -60,6 +60,14 @@ window.mermaidinit =async  function() {
 }
 
 
+function highlightCodeBlocks(container = document) {
+    // Only highlight code blocks that haven't been highlighted yet
+    const codeBlocks = container.querySelectorAll('pre code:not(.hljs)');
+    codeBlocks.forEach((block) => {
+        hljs.highlightElement(block);
+    });
+}
+
 async function initializePage() {
     initGoogleSignIn();
 
@@ -78,7 +86,7 @@ async function initializePage() {
 
     const hljsRazor = require('highlightjs-cshtml-razor');
     hljs.registerLanguage("cshtml-razor", hljsRazor);
-    hljs.highlightAll();
+    highlightCodeBlocks();
     setLogoutLink();
     updateMetaUrls();
 
@@ -95,17 +103,24 @@ async function initializePage() {
         initGoogleSignIn();
         console.log('HTMX afterSettle triggered', evt);
         await mermaidinit();
-        hljs.highlightAll();
+        // Only highlight new code blocks in the swapped content
+        highlightCodeBlocks(evt.detail.target);
          setLogoutLink();
     });
 }
 
 // Handle both cases: module loaded before or after page load
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializePage);
+    document.addEventListener('DOMContentLoaded', () => {
+        initializePage().catch(err => {
+            console.error('Failed to initialize page:', err);
+        });
+    });
 } else {
     // DOM already loaded, run immediately
-    initializePage();
+    initializePage().catch(err => {
+        console.error('Failed to initialize page:', err);
+    });
 }
 
 

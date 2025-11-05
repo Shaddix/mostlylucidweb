@@ -120,3 +120,39 @@ div.mermaid {
 .mermaid svg {
     background-color: transparent !important;
 }
+
+
+.prose :where(blockquote):not(:where([class~=not-prose],[class~=not-prose] *)) {
+    background-color: #cceeec;
+    border-inline-start-color: var(--tw-prose-quote-borders);
+    border-color: #065a68;
+    border-inline-start-width: .25rem;
+    border-left-width: 1rem;
+    border-radius: 3px;
+    color: #007c85;
+    font-style: normal;
+    font-weight: 500;
+    margin-bottom: 1.6em;
+    margin-top: 1.6em;
+    padding-inline-start: 1em;
+    padding: 1rem 1.5rem;
+    quotes: "\201C" "\201D" "\2018" "\2019";
+}
+
+/* Dark theme styling for Note-like blockquotes */
+.dark .prose :where(blockquote):not(:where([class~=not-prose],[class~=not-prose] *)) {
+    background-color: #07343a; /* dark teal surface to read well on dark bg */
+    border-inline-start-color: #22d3ee; /* cyan accent for the left border */
+    border-color: #164e63; /* subtle border on other sides */
+    border-inline-start-width: .25rem;
+    border-left-width: 1rem;
+    border-radius: 3px;
+    color: #e6fffb; /* high-contrast text with a soft teal tint */
+    font-style: normal;
+    font-weight: 500;
+    margin-bottom: 1.6em;
+    margin-top: 1.6em;
+    padding-inline-start: 1em;
+    padding: 1rem 1.5rem;
+    quotes: "\201C" "\201D" "\2018" "\2019";
+}
