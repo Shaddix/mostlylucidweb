@@ -47,6 +47,14 @@ public partial class MarkdownRenderingService : MarkdownBaseService
 
     public BlogPostDto GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath, string? sourceUrl)
     {
+        // Preprocess markdown to inject fetched content BEFORE parsing
+        // This ensures everything goes through the pipeline once
+        if (_serviceProvider != null)
+        {
+            var preprocessor = new Mostlylucid.Markdig.FetchExtension.MarkdownFetchPreprocessor(_serviceProvider);
+            markdown = preprocessor.Preprocess(markdown);
+        }
+
         // Use RemoteLinkRewriteExtension if we have a source URL (for fetched content)
         var pipeline = string.IsNullOrEmpty(sourceUrl)
             ? Pipeline()

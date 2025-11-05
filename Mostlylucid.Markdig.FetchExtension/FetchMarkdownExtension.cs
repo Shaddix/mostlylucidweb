@@ -28,20 +28,9 @@ public class FetchMarkdownExtension : IMarkdownExtension
 
     public void Setup(MarkdownPipelineBuilder pipelineBuilder)
     {
-        // Use DocumentProcessed to replace fetch tags with fetched content
-        // This happens after parsing but before rendering
-        pipelineBuilder.DocumentProcessed += document =>
-        {
-            // Rebuild pipeline with same extensions for parsing fetched content
-            // This ensures fetched content gets the same treatment (TOC, etc.)
-            var pipeline = new MarkdownPipelineBuilder()
-                .UseAdvancedExtensions()
-                .UseTableOfContent()
-                .Build();
-
-            var processor = new FetchMarkdownDocumentProcessor(_serviceProvider, pipeline);
-            processor.ProcessDocument(document);
-        };
+        // We need to preprocess markdown BEFORE parsing to inject fetched content
+        // This is handled by the MarkdownRenderingService calling the preprocessor
+        // No document processing needed here
     }
 
     public void Setup(MarkdownPipeline pipeline, IMarkdownRenderer renderer)
