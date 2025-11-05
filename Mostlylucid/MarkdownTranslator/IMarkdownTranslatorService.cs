@@ -9,4 +9,6 @@ public interface IMarkdownTranslatorService
 
     Task<string> TranslateMarkdown(string markdown, string targetLang, CancellationToken cancellationToken,
         Activity? activity);
+
+    IEnumerable<string> GetSkippedLanguages();
 }

@@ -28,6 +28,11 @@ public class MarkdownTranslatorService(
 
     private string[] IPs = translateServiceConfig.IPs;
 
+    // Track language failures to skip problematic languages temporarily
+    private static readonly LanguageFailureTracker _failureTracker = new(
+        maxConsecutiveFailures: 3,
+        resetInterval: TimeSpan.FromHours(24));
+
     // Circuit breaker to handle service overload (403 responses)
     private readonly ResiliencePipeline _circuitBreakerPolicy = new ResiliencePipelineBuilder()
         .AddCircuitBreaker(new CircuitBreakerStrategyOptions
@@ -152,7 +157,24 @@ public class MarkdownTranslatorService(
     public async Task<string> TranslateMarkdown(string markdown, string targetLang, CancellationToken cancellationToken,
         Activity? activity)
     {
-        
+        // Check if this language should be skipped due to consecutive failures
+        if (_failureTracker.ShouldSkip(targetLang))
+        {
+            var failureCount = _failureTracker.GetFailureCount(targetLang);
+            logger.LogWarning(
+                "Skipping translation to {Language} due to {FailureCount} consecutive failures. Will retry after reset.",
+                targetLang, failureCount);
+            activity?.SetTag("LanguageSkipped", true);
+            activity?.SetTag("FailureCount", failureCount);
+            throw new TranslateException(
+                $"Language {targetLang} temporarily skipped due to {failureCount} consecutive failures",
+                Array.Empty<string>());
+        }
+
+        // Note: We don't preprocess fetch tags here because we want to translate the original markdown
+        // The fetch preprocessing should only happen during rendering, not translation
+        // Translation works on the source markdown files, not the rendered/fetched content
+
         var pipeline = new MarkdownPipelineBuilder().UsePreciseSourceLocation().ConfigureNewLine(Environment.NewLine)
             .Build();
         var document = global::Markdig.Markdown.Parse(markdown, pipeline);
@@ -173,28 +195,34 @@ public class MarkdownTranslatorService(
             }
             catch (BrokenCircuitException e)
             {
-                logger.LogWarning("Circuit breaker is open - translation service is temporarily unavailable");
+                logger.LogWarning("Circuit breaker is open - translation service is temporarily unavailable for {Language}", targetLang);
                 activity?.SetTag("CircuitBreakerOpen", true);
+                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is temporarily unavailable due to overload. Circuit breaker is open.",
                     textStrings.Skip(i).Take(batchSize).ToArray());
             }
             catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Forbidden)
             {
-                logger.LogWarning("Translation service returned 403 (overloaded)");
+                logger.LogWarning("Translation service returned 403 (overloaded) for {Language}", targetLang);
                 activity?.SetTag("ServiceOverloaded", true);
+                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is overloaded (403)",
                     textStrings.Skip(i).Take(batchSize).ToArray());
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Error translating markdown: {Message} for strings {Strings}", e.Message,
+                logger.LogError(e, "Error translating markdown to {Language}: {Message} for strings {Strings}",
+                    targetLang, e.Message,
                     string.Concat(Environment.NewLine, textStrings.Skip(i).Take(batchSize)));
+                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(e.Message, textStrings.Skip(i).Take(batchSize).ToArray());
             }
         }
 
+        // Translation succeeded - reset failure count for this language
+        _failureTracker.RecordSuccess(targetLang);
 
         ReinsertTranslatedStrings(document, translatedStrings.ToArray());
         var outString = document.ToMarkdownString();
@@ -272,6 +300,14 @@ public class MarkdownTranslatorService(
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Get list of languages currently skipped due to consecutive failures
+    /// </summary>
+    public IEnumerable<string> GetSkippedLanguages()
+    {
+        return _failureTracker.GetSkippedLanguages();
     }
 
     private void ReinsertTranslatedStrings(MarkdownDocument document, string[] translatedStrings)

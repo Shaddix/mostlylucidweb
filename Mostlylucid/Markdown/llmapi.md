@@ -20,10 +20,10 @@ You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the proje
 As with a lot of "AI Assisted" coding ideas it started with an idea about simulating output using LLMs. I was working on another project ([LucidForums](https://github.com/scottgal/lucidforums), a hilariously dysfunctional self populating LLM based forum experiment) and LLMs are really good (if a little slow) at generating sample data so *what if* I could use them to simulate any API. 
 
 # Requirements
-1. It should be simple to implement in an ASP.NET Core App.   
-2. The data should be fairly realisticCan you 
+1. It should be simple to implement in an ASP.NET Core App.
+2. The data should be fairly realistic.
 3. The data should be random
-4. It can accept JSON 'shapes' which tell the LLM what the response should be like
+4. It can accept JSON 'shapes' which tell the LLM what the response should be like 
 5. It can use local Open Source LLMs  
 6. It should be a free to use Nuget control
 

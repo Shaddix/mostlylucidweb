@@ -147,8 +147,24 @@ public class BackgroundTranslateService(
         PageTranslationModel message)
     {
         var tasks = new List<Task<TaskCompletion>>();
+        var skippedLanguages = markdownTranslatorService.GetSkippedLanguages().ToHashSet();
+
+        if (skippedLanguages.Any())
+        {
+            logger.LogInformation(
+                "Currently skipping {Count} languages due to failures: {Languages}",
+                skippedLanguages.Count,
+                string.Join(", ", skippedLanguages));
+        }
+
         foreach (var language in translateServiceConfig.Languages)
         {
+            if (skippedLanguages.Contains(language))
+            {
+                logger.LogInformation("Skipping translation to {Language} (temporarily disabled)", language);
+                continue;
+            }
+
             var translateMessage = new PageTranslationModel
             {
                 Language = language,

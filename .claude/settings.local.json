@@ -15,7 +15,14 @@
       "Bash(dotnet clean:*)",
       "WebSearch",
       "Bash(dotnet add package:*)",
-      "Bash(dotnet add:*)"
+      "Bash(dotnet add:*)",
+      "Bash(cat:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker stats:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker inspect:*)"
     ],
     "deny": [],
     "ask": []
