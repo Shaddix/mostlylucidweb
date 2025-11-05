@@ -22,7 +22,8 @@
       "Bash(docker stats:*)",
       "Bash(docker exec:*)",
       "Bash(docker restart:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(npm run tw:dev:*)"
     ],
     "deny": [],
     "ask": []

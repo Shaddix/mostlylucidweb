@@ -35,19 +35,33 @@ window.mostlylucid.translations = {
 window.mostlylucid.simplemde = codeeditor(); // Assuming simplemde() returns the instance
 window.globalSetup = globalSetup;
 
-function setLogoutLink() {
-    // Get the logout link
-    var logoutLink = document.querySelector('a[data-logout-link]');
-    
-    if (logoutLink) {
-        // Get the current URL
-        var currentUrl = window.location.href;
+function setLogoutLink(container = document) {
+    // Get the logout link - search within container for HTMX swaps
+    var logoutLink = container.querySelector('a[data-logout-link]');
 
-        // Update the href attribute to include the return URL
-        var baseUrl = logoutLink.href.split('?')[0]; // Get the base URL without query parameters
-        logoutLink.href = baseUrl + '?returnUrl=' + encodeURIComponent(currentUrl);
+    if (logoutLink) {
+        try {
+            // Get the current URL
+            var currentUrl = window.location.href;
+
+            // Check if link already has the return URL set to avoid duplicate updates
+            if (logoutLink.href.includes('returnUrl=' + encodeURIComponent(currentUrl))) {
+                return;
+            }
+
+            // Update the href attribute to include the return URL
+            var baseUrl = logoutLink.href.split('?')[0]; // Get the base URL without query parameters
+            logoutLink.href = baseUrl + '?returnUrl=' + encodeURIComponent(currentUrl);
+
+            console.log('Logout link updated:', logoutLink.href);
+        } catch (error) {
+            console.error('Error setting logout link:', error);
+        }
     }
 }
+
+// Make setLogoutLink available globally for debugging and manual calls if needed
+window.setLogoutLink = setLogoutLink;
 
 window.mermaidinit =async  function() {
 
@@ -66,6 +80,41 @@ function highlightCodeBlocks(container = document) {
     codeBlocks.forEach((block) => {
         hljs.highlightElement(block);
     });
+}
+
+// Cloudflare-safe HTMX event listener registration
+function registerHTMXListener() {
+    // Defensive check: Only register if htmx is available
+    if (typeof window.htmx === 'undefined') {
+        console.warn('HTMX not loaded yet, retrying in 100ms...');
+        setTimeout(registerHTMXListener, 100);
+        return;
+    }
+
+    // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
+    document.body.addEventListener('htmx:afterSettle', async function(evt) {
+        const targetId = evt.detail.target.id;
+        if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
+            console.log("Ignoring swap event for target:", targetId);
+            return;
+        }
+
+        console.log('HTMX afterSettle triggered for:', targetId);
+
+        // Re-initialize Google Sign-In button if present in swapped content
+        initGoogleSignIn();
+
+        // Re-initialize Mermaid diagrams in the new content
+        await mermaidinit();
+
+        // Only highlight new code blocks in the swapped content
+        highlightCodeBlocks(evt.detail.target);
+
+        // Update logout link in the swapped content (search entire document in case it's in nav)
+        setLogoutLink(document);
+    }, { once: false }); // Don't use once - we need this for all HTMX swaps
+
+    console.log('HTMX event listener registered successfully');
 }
 
 async function initializePage() {
@@ -92,21 +141,8 @@ async function initializePage() {
 
     console.log('Document is ready');
 
-    // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
-    document.body.addEventListener('htmx:afterSettle', async function(evt) {
-        const targetId = evt.detail.target.id;
-        if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
-         console.log("Ignoring swap event for target:", targetId);
-            return;
-        }
-
-        initGoogleSignIn();
-        console.log('HTMX afterSettle triggered', evt);
-        await mermaidinit();
-        // Only highlight new code blocks in the swapped content
-        highlightCodeBlocks(evt.detail.target);
-         setLogoutLink();
-    });
+    // Register HTMX listener with Cloudflare-safe retry mechanism
+    registerHTMXListener();
 }
 
 // Handle both cases: module loaded before or after page load

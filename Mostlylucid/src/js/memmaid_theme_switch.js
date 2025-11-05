@@ -133,7 +133,20 @@ export async function initMermaid() {
         // Non-fatal in test envs
     }
 
-    const isDarkMode = localStorage.theme === 'dark';
+    // Cloudflare-safe theme detection with multiple fallbacks
+    // Check global state first (set by themeInit), then localStorage, then DOM
+    let isDarkMode = false;
+    if (typeof window.__themeState !== 'undefined') {
+        // Preferred: Global state set by themeInit (works even if event missed)
+        isDarkMode = window.__themeState === 'dark';
+    } else if (localStorage.theme) {
+        // Fallback: Check localStorage
+        isDarkMode = localStorage.theme === 'dark';
+    } else {
+        // Last resort: Check DOM class
+        isDarkMode = document.documentElement.classList.contains('dark');
+    }
+
     await loadMermaid(isDarkMode ? 'dark' : 'default');
 }
 
