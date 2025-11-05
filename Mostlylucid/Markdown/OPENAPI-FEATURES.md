@@ -10,6 +10,11 @@ Have you ever needed to test against an API that wasn't ready yet? Or wanted to 
 
 No configuration files. No manual endpoint creation. Just point it at an OpenAPI spec and start making requests.
 
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+[![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the project, all public domain etc...
+
 ![OpenApi Manager](openapi.png)
 
 [TOC]

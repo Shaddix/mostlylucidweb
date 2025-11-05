@@ -65,7 +65,7 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 - **Consistent Multi-Step Flows**: E-commerce journeys, game state, stock tickers with realistic variance
 - **Works Everywhere**: REST, Streaming, GraphQL, and SignalR all support contexts
 - **Smart Token Management**: Automatic 80/20 token allocation with detailed logging
-- **[Complete Guide: API Contexts](./docs/API-CONTEXTS.md)**
+- **[Complete Guide: API Contexts](/API-CONTEXTS)**
 
 ### Previous Updates (v1.2.0)
 - **Native GraphQL Support** - POST to `/graphql` with standard GraphQL queries
@@ -77,7 +77,7 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 - Old method names (`Addmostlylucid_mockllmapi`, `Mapmostlylucid_mockllmapi`) still work but are deprecated
 - Recommended: Use new names (`AddLLMockApi`, `MapLLMockApi`) - or use modular methods like `AddLLMockRest()`
 - All examples below use the new recommended method names
-- See [MODULAR_EXAMPLES.md](./MODULAR_EXAMPLES.md) for modular usage patterns
+- See [MODULAR_EXAMPLES](./MODULAR_EXAMPLES) for modular usage patterns
 
 ---
 
@@ -127,29 +127,29 @@ This package provides **five independent features** - use any combination you ne
 
 For detailed guides with architecture diagrams, use cases, and implementation details:
 
-- **[API Contexts Guide](./docs/API-CONTEXTS.md)** - NEW!
+- **[API Contexts Guide](/API-CONTEXTS)** - NEW!
     - Shared memory across requests for consistent multi-step workflows
     - E-commerce flows, stock tickers, game state examples
     - Token management and intelligent truncation
     - Mermaid architecture diagrams
 
-- **[OpenAPI Features Guide](./docs/OPENAPI-FEATURES.md)**
+- **[OpenAPI Features Guide](/OPENAPI-FEATURES.md)**
     - Dynamic spec loading from URLs, files, or inline JSON
     - Automatic endpoint generation with path parameters
     - Request/response examples with the Petstore API
     - SignalR integration for real-time updates
 
-- **[Modular Architecture Examples](./MODULAR_EXAMPLES.md)**
+- **[Modular Architecture Examples](./MODULAR_EXAMPLES)**
     - REST-only, GraphQL-only, SignalR-only setups
     - Memory optimization strategies
     - Mix and match protocols
 
-- **[SignalR Demo Guide](./SIGNALR_DEMO_GUIDE.md)**
+- **[SignalR Demo Guide](./SIGNALR_DEMO_GUIDE)**
     - Real-time data streaming setup
     - Context lifecycle management
     - Client connection examples
 
-- **[Release Notes](./RELEASE_NOTES.md)**
+- **[Release Notes](./RELEASE_NOTES)**
     - Complete version history
     - Breaking changes (none since v1.0!)
     - Migration guides
@@ -301,7 +301,7 @@ That's it! Now all requests to `/api/mock/**` return intelligent mock data.
 
 **Model-Specific Token Limits**: See `LLMApi/appsettings.json` for configuration examples for different models (Llama 3, TinyLlama, Mistral, etc.). Each model has different context window sizes - adjust `MaxInputTokens` accordingly.
 
-**API Contexts**: For detailed information about using contexts to maintain consistency across requests, see the **[API Contexts Guide](./docs/API-CONTEXTS.md)**.
+**API Contexts**: For detailed information about using contexts to maintain consistency across requests, see the **[API Contexts Guide](/API-CONTEXTS)**.
 
 ### Resilience Policies
 
@@ -407,7 +407,7 @@ curl "http://localhost:5000/api/mock/orders?context=checkout-flow"
 curl "http://localhost:5000/api/mock/payments?context=checkout-flow"
 ```
 
-Each request in the same context sees the previous requests, ensuring consistent IDs, names, and data relationships. Perfect for multi-step workflows! See the **[API Contexts Guide](./docs/API-CONTEXTS.md)** for complete examples.
+Each request in the same context sees the previous requests, ensuring consistent IDs, names, and data relationships. Perfect for multi-step workflows! See the **[API Contexts Guide](/API-CONTEXTS)** for complete examples.
 
 ### With Shape Control
 

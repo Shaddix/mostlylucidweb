@@ -6,6 +6,12 @@
 
 > NOTE: This is release documents for the llmapi, just ignore
 
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+[![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the project, all public domain etc...
+
+
 **New in v1.2.0:** Complete modularity! Each protocol (REST, Streaming, GraphQL, SignalR) can now be added and mapped independently.
 
 ## Table of Contents

@@ -38,6 +38,10 @@ public class BlogController(BaseControllerService baseControllerService,
     {
         if(slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
             slug = slug[..^3];
+        
+        // Normalize slug: convert underscores/spaces to hyphens and lowercase for consistent lookup
+        slug = slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
+        
         var post = await blogViewService.GetPost(slug, language);
         if (post == null) return NotFound();
 

@@ -9,7 +9,13 @@
 
 > NOTE: THis article is primarily AI generated as part of my nuget package as release documentation. It's pretty interesting so I put it here but if that's a problem for you please ignore it.
 
-As part of my [Nuget package LLMApi / mostlylucid.mockllmapi ](https://www.nuget.org/packages/mostlylucid.mockllmapi) I needed to have a page to enable using the SignalR features it has (it can simulate SignalR feeds using LLMs to provide data). So this is what i came up with. 
+As part of my [Nuget package LLMApi / mostlylucid.mockllmapi ](https://www.nuget.org/packages/mostlylucid.mockllmapi) I needed to have a page to enable using the SignalR features it has (it can simulate SignalR feeds using LLMs to provide data). So this is what i came up with.
+
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+[![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the project, all public domain etc...
+
 
 It quicly became quite a nice tool! 
 
