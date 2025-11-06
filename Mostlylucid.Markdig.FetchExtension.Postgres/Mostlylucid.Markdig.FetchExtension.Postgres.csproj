@@ -21,7 +21,7 @@
     <Product>mostlylucid.Markdig.FetchExtension.Postgres</Product>
     <Description>PostgreSQL storage provider for mostlylucid.Markdig.FetchExtension - enables persistent caching of fetched markdown in PostgreSQL databases.</Description>
     <PackageTags>markdig;markdown;extension;fetch;postgres;postgresql;database;mostlylucid</PackageTags>
-    <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>
+    <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension.Postgres</RepositoryUrl>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>

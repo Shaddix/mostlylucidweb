@@ -11,7 +11,7 @@
         <Product>mostlylucid.Markdig.FetchExtension</Product>
         <Description>Markdig extension that enables fetching remote Markdown via a &lt;fetch markdownurl="..." pollfrequency="..."/&gt; directive, with DI integration.</Description>
         <PackageTags>markdig;markdown;extension;fetch;mostlylucid</PackageTags>
-        <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>
+        <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension</RepositoryUrl>
 
         <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
       
