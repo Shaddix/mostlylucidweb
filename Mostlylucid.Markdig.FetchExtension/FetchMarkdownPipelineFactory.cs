@@ -11,12 +11,12 @@ public static class FetchMarkdownPipelineFactory
     /// <summary>
     ///     Creates a pipeline for rendering fetched markdown
     ///     Should match the configuration of the main pipeline
+    ///     NOTE: Add your own extensions as needed (e.g., ToC, custom parsers, etc.)
     /// </summary>
     public static MarkdownPipeline CreatePipeline()
     {
         return new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
-            .UseTableOfContent()
             .Build();
     }
 }

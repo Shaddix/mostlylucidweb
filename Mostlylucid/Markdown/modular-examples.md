@@ -1,7 +1,7 @@
-# Modular Architecture Examples
+# LLMApi: Modular Architecture Examples
 
 
-<!--category-- AI, LLM, LLMApi, ASP.NET Core, API, Nuget, mockllmapi, AI-Article-->
+<!--category-- AI, LLM,  LLMApi, ASP.NET Core, API, Nuget, mockllmapi, AI-Article-->
 <datetime class="hidden">2025-11-02T12:30</datetime>
 
 # Introduction

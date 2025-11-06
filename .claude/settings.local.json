@@ -23,7 +23,11 @@
       "Bash(docker exec:*)",
       "Bash(docker restart:*)",
       "Bash(docker inspect:*)",
-      "Bash(npm run tw:dev:*)"
+      "Bash(npm run tw:dev:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(git add:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

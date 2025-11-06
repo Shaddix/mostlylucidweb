@@ -1,6 +1,6 @@
-# Real-Time Mock Data with LLMs and SignalR: A Practical Guide
+# LLMApi:  Real-Time Mock Data with LLMs and SignalR: A Practical Guide
 
-<!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi, SignalR, AI-Article-->
+<!--category-- AI, LLM, LLMApi , ASP.NET Core, API, Nuget, mockllmapi, SignalR, AI-Article-->
 <datetime class="hidden">2025-11-04T21:15</datetime>
 
 # Introduction
@@ -11,8 +11,6 @@
 
 As part of my [Nuget package LLMApi / mostlylucid.mockllmapi ](https://www.nuget.org/packages/mostlylucid.mockllmapi) I needed to have a page to enable using the SignalR features it has (it can simulate SignalR feeds using LLMs to provide data). So this is what i came up with.
 
-[![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
-[![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi) 
 
 You can find the[ GitHub here ](https://github.com/scottgal/LLMApi)for the project, all public domain etc...
 
@@ -46,28 +44,24 @@ It's particularly useful when you're prototyping, building demos, or working on 
 ```mermaid
 graph TB
     Browser[Your Browser]
-    UI[Demo UI - Index.cshtml]
+    UI[Demo UI]
     API[Management API]
     Hub[SignalR Hub]
     Manager[Context Manager]
     BG[Background Service]
-    LLM[LLM - Ollama/OpenAI]
+    LLM[LLM Ollama/OpenAI]
     Cache[Response Cache]
 
-    Browser -->|1. Create Context| API
-    API -->|2. Store Config| Manager
-    Browser -->|3. Connect & Subscribe| Hub
-    Hub -->|4. Register Client| Manager
-    BG -->|5. Generate Data| LLM
-    LLM -->|6. Return JSON| BG
-    BG -->|7. Cache Responses| Cache
-    BG -->|8. Push to Clients| Hub
-    Hub -->|9. Real-time Updates| Browser
+    Browser -->|Create Context| API
+    API -->|Store Config| Manager
+    Browser -->|Connect Subscribe| Hub
+    Hub -->|Register Client| Manager
+    BG -->|Generate Data| LLM
+    LLM -->|Return JSON| BG
+    BG -->|Cache Responses| Cache
+    BG -->|Push to Clients| Hub
+    Hub -->|Real-time Updates| Browser
 
-    style Browser fill:#e1f5ff
-    style LLM fill:#ffe1e1
-    style Cache fill:#fff4e1
-    style Hub fill:#e1ffe1
 ```
 
 ## Why SignalR for Real-Time Updates?

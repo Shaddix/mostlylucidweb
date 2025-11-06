@@ -1,6 +1,6 @@
-# OpenAPI Dynamic Mock Generator: Load Any Spec, Mock Any API
+# LLMApi: OpenAPI Dynamic Mock Generator: Load Any Spec, Mock Any API
 
-<!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi, SignalR, AI-Article-->
+<!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi, LLMApi, SignalR, AI-Article-->
 <datetime class="hidden">2025-11-05T15:15</datetime>
 
 > NOTE: This article is primarily AI generated as part of my nuget package as release documentation. It's pretty interesting so I put it here but if that's a problem for you please ignore it.

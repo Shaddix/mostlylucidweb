@@ -1,0 +1,56 @@
+mostlylucid.Markdig.FetchExtension v1.0.0
+=========================================
+
+Initial release of the Markdig Fetch Extension - enables fetching and embedding remote
+Markdown content at render time with smart caching.
+
+KEY FEATURES
+------------
+
+* Simple inline syntax: <fetch markdownurl="URL" pollfrequency="24h"/>
+* Multiple storage backends: In-Memory, File-based, and custom implementations
+* Smart caching with configurable poll frequency (hours)
+* Stale-while-revalidate pattern: Returns cached content if fetch fails
+* Link transformation: Automatically rewrites relative links to absolute URLs
+* Fetch metadata summaries: Display when content was last fetched
+* Flexible template system for metadata display
+* Full dependency injection support
+* Thread-safe operations across all storage providers
+* Preprocessing architecture ensures fetched content flows through your entire
+  Markdig pipeline with all custom extensions
+
+STORAGE OPTIONS
+---------------
+
+* In-Memory: Perfect for demos, testing, simple apps (no persistence)
+* File-Based: Single-server production with disk persistence
+* Database Plugins: SQLite, PostgreSQL, SQL Server (separate packages)
+* Custom: Implement IMarkdownFetchService for specialized needs
+
+USAGE EXAMPLE
+-------------
+
+services.AddInMemoryMarkdownFetch();
+FetchMarkdownExtension.ConfigureServiceProvider(serviceProvider);
+var pipeline = new MarkdownPipelineBuilder()
+    .UseAdvancedExtensions()
+    .Use<FetchMarkdownExtension>()
+    .Build();
+
+REQUIREMENTS
+------------
+
+* .NET 9.0+
+* Markdig 0.42.0+
+* Microsoft.Extensions.DependencyInjection 9.0+
+
+DOCUMENTATION
+-------------
+
+Full documentation: https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension
+Integration guide: See INTEGRATION_GUIDE.md in the repository
+
+LICENSE
+-------
+
+Unlicense (public domain)

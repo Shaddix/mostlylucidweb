@@ -9,11 +9,10 @@ namespace Mostlylucid.Markdig.FetchExtension;
 /// <summary>
 ///     Parser for the <fetch> tag
 /// </summary>
-public class FetchMarkdownInlineParser : InlineParser
+public partial class FetchMarkdownInlineParser : InlineParser
 {
-    private static readonly Regex FetchTagRegex = new(
-        @"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?[^>]*?/\s*>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    [GeneratedRegex(@"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    private static partial Regex FetchTagRegex();
 
     private static bool _warnedNoUpdateService;
 
@@ -47,7 +46,7 @@ public class FetchMarkdownInlineParser : InlineParser
         var lookAheadLength = Math.Min(200, slice.Length);
         var lookAheadText = text.Substring(startPosition, lookAheadLength);
 
-        var match = FetchTagRegex.Match(lookAheadText);
+        var match = FetchTagRegex().Match(lookAheadText);
         if (!match.Success)
             return false;
 
@@ -56,6 +55,15 @@ public class FetchMarkdownInlineParser : InlineParser
         var transformLinks = match.Groups.Count > 3 &&
                              match.Groups[3].Success &&
                              match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var showSummary = match.Groups.Count > 4 &&
+                          match.Groups[4].Success &&
+                          match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var summaryTemplate = match.Groups.Count > 5 && match.Groups[5].Success
+            ? match.Groups[5].Value
+            : null;
+        var cssClass = match.Groups.Count > 6 && match.Groups[6].Success
+            ? match.Groups[6].Value
+            : null;
 
         // Try to fetch the content
         var fetchedContent = string.Empty;
@@ -97,6 +105,17 @@ public class FetchMarkdownInlineParser : InlineParser
                     {
                         fetchedContent = MarkdownLinkRewriter.RewriteLinks(fetchedContent, url);
                         logger.LogDebug("Transformed links in fetched markdown from {Url}", url);
+                    }
+
+                    // Append metadata summary if requested
+                    if (showSummary)
+                    {
+                        var summary = FetchMetadataSummary.Format(result, summaryTemplate, cssClass);
+                        if (!string.IsNullOrEmpty(summary))
+                        {
+                            fetchedContent = fetchedContent + "\n\n" + summary;
+                            logger.LogDebug("Added metadata summary to fetched content from {Url}", url);
+                        }
                     }
 
                     fetchSuccessful = true;
