@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Markdig.Syntax;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Stores fetch results during document parsing so they can be referenced by fetch-summary tags

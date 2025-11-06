@@ -1,8 +1,10 @@
 using Markdig;
 using Markdig.Renderers;
 using Markdig.Renderers.Html;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Processors;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Renderers;
 
 /// <summary>
 ///     Renderer for block-level fetch element

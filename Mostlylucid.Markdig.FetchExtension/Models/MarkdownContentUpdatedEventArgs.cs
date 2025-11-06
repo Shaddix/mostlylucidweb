@@ -1,4 +1,4 @@
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 public sealed class MarkdownContentUpdatedEventArgs : EventArgs
 {

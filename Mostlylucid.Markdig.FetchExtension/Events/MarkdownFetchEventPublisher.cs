@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension.Events;
 
@@ -127,5 +128,28 @@ public class MarkdownFetchEventPublisher : IMarkdownFetchEventPublisher
             AverageFetchDuration = avgDuration,
             LastFetchTime = _lastFetchTime
         };
+    }
+
+    public async Task RemoveCachedContentAsync(string url, int blogPostId = 0)
+    {
+        _logger.LogInformation("Removing cached content for {Url} (BlogPostId: {BlogPostId})", url, blogPostId);
+
+        // This requires the fetch service to support removal
+        // Services can handle this by implementing IMarkdownFetchService.RemoveCachedMarkdownAsync
+        if (_fetchService != null)
+        {
+            await _fetchService.RemoveCachedMarkdownAsync(url, blogPostId);
+        }
+    }
+
+    public Task StopPollingAsync(string url, int blogPostId = 0)
+    {
+        _logger.LogInformation("Stop polling requested for {Url} (BlogPostId: {BlogPostId})", url, blogPostId);
+
+        // If using IMarkdownFetchUpdateService, it should unregister the URL
+        // For now, we'll just log it - polling services can subscribe to a StopPolling event if needed
+        // This is a signal to external systems that polling should stop
+
+        return Task.CompletedTask;
     }
 }

@@ -1,6 +1,8 @@
 using Markdig;
 using Microsoft.AspNetCore.Mvc;
 using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Processors;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLogging();

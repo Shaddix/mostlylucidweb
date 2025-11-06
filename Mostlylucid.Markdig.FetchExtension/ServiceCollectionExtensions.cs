@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Mostlylucid.Markdig.FetchExtension.Storage;
 using Mostlylucid.Markdig.FetchExtension.Events;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension;
 

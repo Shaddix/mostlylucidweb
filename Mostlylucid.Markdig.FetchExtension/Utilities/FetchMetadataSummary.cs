@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Utilities;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Formats fetch metadata summaries using template strings

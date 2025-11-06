@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension.SqlServer;
 

@@ -3,8 +3,11 @@ using Markdig.Parsers;
 using Markdig.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 
 /// <summary>
 ///     Block parser for the <fetch /> tag placed on its own line.

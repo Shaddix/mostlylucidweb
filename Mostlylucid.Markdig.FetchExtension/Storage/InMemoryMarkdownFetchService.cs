@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.Markdig.FetchExtension.Events;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension.Storage;
 
@@ -264,6 +266,19 @@ public class InMemoryMarkdownFetchService : IMarkdownFetchService, ICacheInspect
             };
         }
         return null;
+    }
+
+    public Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
+    {
+        var cacheKey = GetCacheKey(url, blogPostId);
+        var removed = _cache.TryRemove(cacheKey, out _);
+
+        if (removed)
+        {
+            _logger.LogInformation("Removed cached markdown for {Url} (blogPostId: {BlogPostId})", url, blogPostId);
+        }
+
+        return Task.FromResult(removed);
     }
 
     private class CacheEntry

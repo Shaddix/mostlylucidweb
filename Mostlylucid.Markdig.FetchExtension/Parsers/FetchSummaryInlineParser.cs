@@ -2,8 +2,11 @@ using System.Text.RegularExpressions;
 using Markdig.Helpers;
 using Markdig.Parsers;
 using Markdig.Syntax.Inlines;
+using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 
 /// <summary>
 ///     Parser for the <fetch-summary> tag - displays metadata for a previously fetched URL
@@ -13,9 +16,12 @@ public partial class FetchSummaryInlineParser : InlineParser
     [GeneratedRegex(@"<fetch-summary\s+[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchSummaryTagRegex();
 
-    public FetchSummaryInlineParser()
+    private readonly ILogger<FetchSummaryInlineParser>? _logger;
+
+    public FetchSummaryInlineParser(ILogger<FetchSummaryInlineParser>? logger = null)
     {
         OpeningCharacters = new[] { '<' };
+        _logger = logger;
     }
 
     public override bool Match(InlineProcessor processor, ref StringSlice slice)
@@ -59,6 +65,10 @@ public partial class FetchSummaryInlineParser : InlineParser
         var cssClass = match.Groups.Count > 3 && match.Groups[3].Success
             ? match.Groups[3].Value
             : null;
+
+        _logger?.LogInformation(
+            "Parsed <fetch-summary> tag: url={Url}, template={Template}, cssClass={CssClass}",
+            url, template ?? "(none)", cssClass ?? "(none)");
 
         // Try to get the fetch result from context
         var document = processor.Document;

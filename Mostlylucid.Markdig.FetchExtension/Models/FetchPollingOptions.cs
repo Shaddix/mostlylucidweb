@@ -1,4 +1,4 @@
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Options to control the built-in in-memory polling service that tracks remote content

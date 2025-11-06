@@ -1,4 +1,5 @@
-using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
 namespace Mostlylucid.Markdig.FetchExtension.Tests;
 

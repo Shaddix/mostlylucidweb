@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension.Sqlite;
 
@@ -152,6 +154,23 @@ public class SqliteMarkdownFetchService : IMarkdownFetchService
                 ErrorMessage = ex.Message
             };
         }
+    }
+
+    public async Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
+    {
+        var cacheKey = GetCacheKey(url, blogPostId);
+        var cached = await _dbContext.MarkdownCache.FirstOrDefaultAsync(c => c.CacheKey == cacheKey);
+
+        if (cached == null)
+        {
+            return false;
+        }
+
+        _dbContext.MarkdownCache.Remove(cached);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Removed cached markdown from database for {Url} (blogPostId: {BlogPostId})", url, blogPostId);
+        return true;
     }
 
     private static string GetCacheKey(string url, int blogPostId)

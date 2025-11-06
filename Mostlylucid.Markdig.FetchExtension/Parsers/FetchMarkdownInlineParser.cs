@@ -3,8 +3,11 @@ using Markdig.Helpers;
 using Markdig.Parsers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 
 /// <summary>
 ///     Parser for the <fetch> tag
@@ -76,6 +79,10 @@ public partial class FetchMarkdownInlineParser : InlineParser
                 var provider = scope.ServiceProvider;
                 var fetchService = provider.GetRequiredService<IMarkdownFetchService>();
                 var logger = provider.GetRequiredService<ILogger<FetchMarkdownInlineParser>>();
+
+                logger.LogInformation(
+                    "Parsed <fetch> tag: url={Url}, pollFrequency={PollFrequency}h, transformLinks={TransformLinks}, showSummary={ShowSummary}, summaryTemplate={SummaryTemplate}, cssClass={CssClass}",
+                    url, pollFrequencyHours, transformLinks, showSummary, summaryTemplate ?? "(none)", cssClass ?? "(none)");
 
                 // Register with optional update service for polling/eventing
                 var updateService = provider.GetService<IMarkdownFetchUpdateService>();

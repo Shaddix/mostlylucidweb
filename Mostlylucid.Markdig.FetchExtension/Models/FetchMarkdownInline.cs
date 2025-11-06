@@ -1,6 +1,6 @@
 ﻿using Markdig.Syntax.Inlines;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Custom inline element to represent a fetch directive

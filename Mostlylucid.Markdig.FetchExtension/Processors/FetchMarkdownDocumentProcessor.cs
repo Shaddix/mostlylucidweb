@@ -4,7 +4,11 @@ using Markdig.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Processors;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
 /// <summary>
 ///     Document processor that replaces fetch tags with fetched markdown content

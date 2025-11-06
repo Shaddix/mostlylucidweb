@@ -2,7 +2,11 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Processors;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
 /// <summary>
 ///     Preprocesses markdown text to fetch remote content before parsing
@@ -63,6 +67,10 @@ public partial class MarkdownFetchPreprocessor
             var cssClass = match.Groups.Count > 6 && match.Groups[6].Success
                 ? match.Groups[6].Value
                 : null;
+
+            _logger?.LogInformation(
+                "Preprocessor parsed <fetch> tag: url={Url}, pollFrequency={PollFrequency}h, transformLinks={TransformLinks}, showSummary={ShowSummary}, summaryTemplate={SummaryTemplate}, cssClass={CssClass}",
+                url, pollFrequencyHours, transformLinks, showSummary, summaryTemplate ?? "(none)", cssClass ?? "(none)");
 
             var replacement = string.Empty;
             MarkdownFetchResult? fetchResult = null;
@@ -135,6 +143,10 @@ public partial class MarkdownFetchPreprocessor
             var cssClass = match.Groups.Count > 3 && match.Groups[3].Success
                 ? match.Groups[3].Value
                 : null;
+
+            _logger?.LogInformation(
+                "Preprocessor parsed <fetch-summary> tag: url={Url}, template={Template}, cssClass={CssClass}",
+                url, template ?? "(none)", cssClass ?? "(none)");
 
             string summaryReplacement;
             if (fetchResults.TryGetValue(url, out var fetchResult) && fetchResult.Success)

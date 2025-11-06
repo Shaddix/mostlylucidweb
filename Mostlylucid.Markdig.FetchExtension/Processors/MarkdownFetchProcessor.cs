@@ -1,6 +1,10 @@
 using Markdig;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Processors;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Utilities;
 
 /// <summary>
 /// Standalone processor for markdown with fetch tags.

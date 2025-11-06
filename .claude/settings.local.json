@@ -1,33 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:js:*)",
-      "Bash(npx webpack:*)",
-      "Bash(dir:*)",
-      "Bash(npm run build:*)",
-      "Bash(dotnet ef migrations add:*)",
-      "Bash(dotnet build:*)",
-      "Bash(dotnet test:*)",
-      "Bash(npm install:*)",
-      "Bash(npm test:*)",
-      "Bash(npm run dev:js:*)",
-      "Bash(dotnet restore:*)",
-      "Bash(dotnet clean:*)",
-      "WebSearch",
-      "Bash(dotnet add package:*)",
-      "Bash(dotnet add:*)",
-      "Bash(cat:*)",
-      "Bash(docker logs:*)",
-      "Bash(curl:*)",
-      "Bash(docker stats:*)",
-      "Bash(docker exec:*)",
-      "Bash(docker restart:*)",
-      "Bash(docker inspect:*)",
-      "Bash(npm run tw:dev:*)",
-      "Bash(dotnet new:*)",
-      "Bash(dotnet sln:*)",
-      "Bash(git add:*)",
-      "Bash(mkdir:*)"
+      "Bash(do sed -i 's/^namespace Mostlylucid.Markdig.FetchExtension;/namespace Mostlylucid.Markdig.FetchExtension.Processors;\\n\\nusing Mostlylucid.Markdig.FetchExtension.Models;\\nusing Mostlylucid.Markdig.FetchExtension.Services;\\nusing Mostlylucid.Markdig.FetchExtension.Utilities;/' \"$file\")",
+      "Bash(do sed -i 's/^namespace Mostlylucid.Markdig.FetchExtension;/namespace Mostlylucid.Markdig.FetchExtension.Utilities;\\n\\nusing Mostlylucid.Markdig.FetchExtension.Models;/' \"$file\")",
+      "Bash(do sed -i 's/^namespace Mostlylucid.Markdig.FetchExtension;/namespace Mostlylucid.Markdig.FetchExtension.Services;\\n\\nusing Mostlylucid.Markdig.FetchExtension.Models;/' \"$file\")"
     ],
     "deny": [],
     "ask": []

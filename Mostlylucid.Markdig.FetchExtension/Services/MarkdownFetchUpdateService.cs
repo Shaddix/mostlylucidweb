@@ -5,7 +5,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Services;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     In-memory polling service that tracks URLs (registered by the parser/host),

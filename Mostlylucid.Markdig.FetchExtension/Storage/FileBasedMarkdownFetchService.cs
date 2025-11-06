@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.Markdig.FetchExtension.Events;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 
 namespace Mostlylucid.Markdig.FetchExtension.Storage;
 
@@ -209,6 +211,34 @@ public class FileBasedMarkdownFetchService : IMarkdownFetchService
         {
             _logger.LogWarning(ex, "Failed to load cache entry from {File}", cacheFile);
             return null;
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
+    public async Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
+    {
+        var cacheKey = GetCacheKey(url, blogPostId);
+        var cacheFile = GetCacheFilePath(cacheKey);
+
+        if (!File.Exists(cacheFile))
+        {
+            return false;
+        }
+
+        await _fileLock.WaitAsync();
+        try
+        {
+            File.Delete(cacheFile);
+            _logger.LogInformation("Removed cached markdown file for {Url} (blogPostId: {BlogPostId})", url, blogPostId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove cache file {File}", cacheFile);
+            return false;
         }
         finally
         {

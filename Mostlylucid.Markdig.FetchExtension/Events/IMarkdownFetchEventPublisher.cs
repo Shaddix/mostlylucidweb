@@ -55,6 +55,18 @@ public interface IMarkdownFetchEventPublisher
     /// Gets statistics about fetch operations.
     /// </summary>
     FetchStatistics GetStatistics();
+
+    /// <summary>
+    /// Removes cached content for a specific URL, deleting it from storage.
+    /// The URL will be fetched fresh on next request.
+    /// </summary>
+    Task RemoveCachedContentAsync(string url, int blogPostId = 0);
+
+    /// <summary>
+    /// Stops automatic polling/updates for a specific URL.
+    /// The cache will remain but won't be automatically refreshed.
+    /// </summary>
+    Task StopPollingAsync(string url, int blogPostId = 0);
 }
 
 /// <summary>

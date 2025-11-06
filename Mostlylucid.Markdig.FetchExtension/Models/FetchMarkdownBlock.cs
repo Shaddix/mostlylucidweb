@@ -1,7 +1,7 @@
 using Markdig.Parsers;
 using Markdig.Syntax;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Block element to represent a fetch directive when used as a block (on its own line).

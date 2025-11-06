@@ -1,4 +1,6 @@
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Services;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     In-memory polling service API. Implemented by the extension to poll remote markdown

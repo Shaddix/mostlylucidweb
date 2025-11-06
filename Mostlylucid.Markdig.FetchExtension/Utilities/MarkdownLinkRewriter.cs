@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 
-namespace Mostlylucid.Markdig.FetchExtension;
+namespace Mostlylucid.Markdig.FetchExtension.Utilities;
+
+using Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Utility to rewrite relative markdown links to absolute URLs pointing back to source
