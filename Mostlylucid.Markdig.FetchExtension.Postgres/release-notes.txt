@@ -1,0 +1,69 @@
+mostlylucid.Markdig.FetchExtension.Postgres v1.0.0
+==================================================
+
+Initial release of the PostgreSQL storage provider for Markdig FetchExtension.
+
+OVERVIEW
+--------
+
+This plugin provides enterprise-grade PostgreSQL database storage for fetched Markdown
+content, enabling multi-server deployments with shared cache and high availability.
+
+KEY FEATURES
+------------
+
+* Multi-server support: Shared cache across application instances
+* Enterprise ready: PostgreSQL's ACID guarantees and reliability
+* High concurrency: Excellent performance under heavy load
+* Stale-while-revalidate: Returns cached content if fetch fails
+* Multi-post support: Same URL can have different cache per blog post
+* Automatic schema creation: No manual database setup required
+* Thread-safe: Safe for concurrent access across multiple servers
+
+PERFECT FOR
+-----------
+
+* Multi-server deployments
+* High-traffic applications
+* Cloud deployments (AWS RDS, Azure Database, Google Cloud SQL)
+* Kubernetes/container orchestration
+* Applications requiring centralized cache management
+
+INSTALLATION
+------------
+
+dotnet add package mostlylucid.Markdig.FetchExtension.Postgres
+
+USAGE
+-----
+
+services.AddPostgresMarkdownFetch(
+    "Host=localhost;Database=myapp;Username=user;Password=pass");
+serviceProvider.EnsureMarkdownCacheDatabase();
+
+PRODUCTION RECOMMENDATIONS
+--------------------------
+
+* Enable connection pooling: Pooling=true;MinPoolSize=5;MaxPoolSize=100
+* Use read replicas for scaling read operations
+* Configure appropriate timeout settings for large documents
+* Consider table partitioning for very large caches
+* Use managed database services for automatic backups and HA
+
+REQUIREMENTS
+------------
+
+* .NET 9.0+
+* mostlylucid.Markdig.FetchExtension 1.0.0+
+* Npgsql.EntityFrameworkCore.PostgreSQL 9.0+
+* PostgreSQL 12+ (recommended 14+)
+
+DOCUMENTATION
+-------------
+
+Repository: https://github.com/scottgal/mostlylucidweb
+
+LICENSE
+-------
+
+Unlicense (public domain)

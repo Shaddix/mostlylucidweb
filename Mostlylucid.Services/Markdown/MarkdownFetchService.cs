@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.DbContext.EntityFramework;
-using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Entities;
 using Polly;
 using Polly.Retry;
@@ -248,6 +249,23 @@ public class MarkdownFetchService : IMarkdownFetchService
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
+    {
+        var entity = await _context.MarkdownFetchEntities
+            .FirstOrDefaultAsync(e => e.Url == url && e.BlogPostId == blogPostId);
+
+        if (entity == null)
+        {
+            return false;
+        }
+
+        _context.MarkdownFetchEntities.Remove(entity);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Removed cached markdown from database for {Url} (blogPostId: {BlogPostId})", url, blogPostId);
+        return true;
     }
 
     private static string ComputeHash(string content)

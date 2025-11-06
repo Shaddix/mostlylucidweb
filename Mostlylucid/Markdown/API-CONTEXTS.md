@@ -1,6 +1,6 @@
-# API Contexts: Maintaining Consistency Across Mock API Calls
+# LLMApi: API Contexts: Maintaining Consistency Across Mock API Calls
 
-<!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi AI-Article-->
+<!--category-- AI, LLM, LLMApi, ASP.NET Core, API, Nuget, mockllmapi, AI-Article-->
 <datetime class="hidden">2025-11-05T13:52</datetime>
 
 > NOTE: THis article is primarily AI generated as part of my nuget package as release documentation. It's pretty interesting so I put it here but if that's a problem for you please ignore it.

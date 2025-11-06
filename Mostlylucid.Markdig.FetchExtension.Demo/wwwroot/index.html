@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mostlylucid.Markdig.FetchExtension Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css">
+    <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border: #404040;
+            --accent: #4a9eff;
+            --accent-hover: #6ab0ff;
+            --success: #4ade80;
+            --warning: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .subtitle code {
+            background: var(--bg-tertiary);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .info-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent);
+        }
+
+        .info-box p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            color: var(--text-secondary);
+            padding: 0.25rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .info-box li:before {
+            content: "✓";
+            color: var(--success);
+            position: absolute;
+            left: 0;
+        }
+
+        .stats-box {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .event-log {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .event-log .event {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .event-log .event:last-child {
+            border-bottom: none;
+        }
+
+        .event-log .event.success { color: var(--success); }
+        .event-log .event.warning { color: var(--warning); }
+        .event-log .event.error { color: #f87171; }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .editor-panel, .preview-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .render-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .render-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .render-btn:active {
+            transform: translateY(0);
+        }
+
+        .panel-content {
+            padding: 1.5rem;
+        }
+
+        .EasyMDEContainer {
+            background: var(--bg-primary);
+        }
+
+        .EasyMDEContainer .CodeMirror {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: none;
+            height: 500px;
+            font-size: 14px;
+        }
+
+        .EasyMDEContainer .CodeMirror-cursor {
+            border-color: var(--text-primary);
+        }
+
+        .EasyMDEContainer .CodeMirror-selected {
+            background: var(--bg-tertiary);
+        }
+
+        .EasyMDEContainer .cm-header {
+            color: var(--accent);
+        }
+
+        .EasyMDEContainer .cm-link {
+            color: #6ab0ff;
+        }
+
+        .EasyMDEContainer .cm-url {
+            color: #8b9dc3;
+        }
+
+        .EasyMDEContainer .editor-toolbar {
+            background: var(--bg-tertiary);
+            border-top: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .EasyMDEContainer .editor-toolbar button {
+            color: var(--text-secondary) !important;
+        }
+
+        .EasyMDEContainer .editor-toolbar button:hover {
+            background: var(--bg-primary);
+            border-color: var(--border);
+        }
+
+        .EasyMDEContainer .editor-toolbar i.separator {
+            border-color: var(--border);
+        }
+
+        .preview-content {
+            background: var(--bg-primary);
+            padding: 1.5rem;
+            border-radius: 4px;
+            min-height: 500px;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+
+        .preview-content:empty:before {
+            content: "Click 'Render Markdown' to see the output...";
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .preview-content h1, .preview-content h2, .preview-content h3 {
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .preview-content h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+        .preview-content h2 { font-size: 1.5rem; }
+        .preview-content h3 { font-size: 1.25rem; }
+
+        .preview-content p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .preview-content code {
+            background: var(--bg-tertiary);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .preview-content pre {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .preview-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .preview-content a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .preview-content a:hover {
+            text-decoration: underline;
+        }
+
+        .preview-content em {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .cache-viewer {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 2rem;
+            overflow: hidden;
+        }
+
+        .cache-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cache-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .refresh-btn {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.4rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--bg-secondary);
+        }
+
+        .cache-entries {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .cache-entry {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .cache-entry:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .cache-entry:last-child {
+            border-bottom: none;
+        }
+
+        .cache-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .cache-url {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--accent);
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .cache-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge.fresh { background: var(--success); color: #000; }
+        .badge.stale { background: var(--warning); color: #000; }
+
+        .cache-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .cache-preview {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            background: var(--bg-primary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        @media (max-width: 1200px) {
+            .editor-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>mostlylucid.Markdig.FetchExtension Demo</h1>
+        <p class="subtitle">Fetch and embed remote Markdown at render time using <code>&lt;fetch&gt;</code> tags</p>
+    </header>
+
+    <div class="container">
+        <div class="info-box">
+            <h2>Try it out</h2>
+            <p>Edit the markdown below and click "Render Markdown" to see the FetchExtension in action.</p>
+            <ul>
+                <li>Use <code>&lt;fetch markdownurl="URL" pollfrequency="24"/&gt;</code> to embed remote content</li>
+                <li>Add <code>transformlinks="true"</code> to rewrite relative links</li>
+                <li>Add <code>showsummary="true"</code> to display fetch metadata</li>
+                <li>Use <code>&lt;fetch-summary url="URL"/&gt;</code> to show metadata separately</li>
+            </ul>
+
+            <div class="stats-box">
+                <div class="stat">
+                    <div class="stat-value" id="totalFetches">0</div>
+                    <div class="stat-label">Total Fetches</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="cached">0</div>
+                    <div class="stat-label">Cache Hits</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="avgDuration">0ms</div>
+                    <div class="stat-label">Avg Duration</div>
+                </div>
+            </div>
+
+            <div class="event-log" id="eventLog"></div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Markdown Editor</span>
+                    <button class="render-btn" onclick="renderMarkdown()">Render Markdown</button>
+                </div>
+                <div class="panel-content">
+                    <textarea id="markdown-editor"></textarea>
+                </div>
+            </div>
+
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Rendered Output</span>
+                </div>
+                <div class="panel-content">
+                    <div id="preview" class="preview-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cache-viewer">
+            <div class="cache-header">
+                <span class="cache-title">In-Memory Cache (Last 100 Entries)</span>
+                <button class="refresh-btn" onclick="refreshCache()">Refresh Cache</button>
+            </div>
+            <div class="cache-entries" id="cacheEntries">
+                <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                    Click "Refresh Cache" to load cache entries
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js"></script>
+    <script>
+        const defaultMarkdown = `# Remote Content Demo
+
+This demonstrates the mostlylucid.Markdig.FetchExtension which can fetch and embed remote Markdown files.
+
+## Example: Fetch from GitHub
+
+Below we'll fetch a README from a GitHub repository:
+
+<fetch markdownurl="https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/Mostlylucid.Markdig.FetchExtension/README.md"
+       pollfrequency="24"
+       transformlinks="true"
+       showsummary="true"
+       summarytemplate="_Last updated {age} | Status: {status}_"/>
+
+## Features Demonstrated
+
+- Fetching remote Markdown content
+- Caching with configurable poll frequency
+- Link transformation for relative URLs
+- Metadata summaries with custom templates
+
+Try changing the URL, poll frequency, or template!`;
+
+        const easyMDE = new EasyMDE({
+            element: document.getElementById('markdown-editor'),
+            initialValue: defaultMarkdown,
+            spellChecker: false,
+            status: false,
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "quote", "unordered-list", "ordered-list", "|",
+                "link", "image", "|",
+                "preview", "side-by-side", "fullscreen", "|",
+                "guide"
+            ],
+            minHeight: "500px",
+            placeholder: "Enter your markdown here..."
+        });
+
+        let totalFetches = 0;
+        let cachedFetches = 0;
+        let totalDuration = 0;
+
+        function addEvent(message, type = 'success') {
+            const eventLog = document.getElementById('eventLog');
+            const event = document.createElement('div');
+            event.className = `event ${type}`;
+            const time = new Date().toLocaleTimeString();
+            event.textContent = `[${time}] ${message}`;
+            eventLog.insertBefore(event, eventLog.firstChild);
+
+            // Keep only last 20 events
+            while (eventLog.children.length > 20) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+
+        function updateStats(duration, cached) {
+            totalFetches++;
+            if (cached) cachedFetches++;
+            totalDuration += duration;
+
+            document.getElementById('totalFetches').textContent = totalFetches;
+            document.getElementById('cached').textContent = cachedFetches;
+            document.getElementById('avgDuration').textContent =
+                Math.round(totalDuration / totalFetches) + 'ms';
+        }
+
+        async function renderMarkdown() {
+            const markdown = easyMDE.value();
+            const preview = document.getElementById('preview');
+
+            preview.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">Rendering...</p>';
+            addEvent('Rendering markdown...', 'success');
+
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch('/render', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ markdown })
+                });
+
+                const duration = Math.round(performance.now() - startTime);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    preview.innerHTML = data.html;
+
+                    addEvent(`Rendered successfully in ${duration}ms`, 'success');
+                    updateStats(duration, data.wasCached || false);
+                } else {
+                    const error = await response.text();
+                    preview.innerHTML = '<p style="color: #f87171;">Error rendering markdown. Please check the console.</p>';
+                    addEvent(`Render failed: ${error}`, 'error');
+                }
+            } catch (error) {
+                preview.innerHTML = `<p style="color: #f87171;">Error: ${error.message}</p>`;
+                addEvent(`Error: ${error.message}`, 'error');
+                console.error('Render error:', error);
+            }
+        }
+
+        async function refreshCache() {
+            const cacheContainer = document.getElementById('cacheEntries');
+            cacheContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">Loading cache entries...</div>';
+
+            try {
+                const response = await fetch('/cache');
+                const entries = await response.json();
+
+                if (entries.length === 0 || entries[0].error) {
+                    cacheContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No cache entries found</div>';
+                    return;
+                }
+
+                cacheContainer.innerHTML = entries.map(entry => {
+                    const age = formatAge(entry.Age);
+                    const status = entry.IsStale ? 'stale' : 'fresh';
+                    const statusText = entry.IsStale ? 'Stale' : 'Fresh';
+                    const fetchedAt = new Date(entry.LastFetchedAt).toLocaleString();
+
+                    return `
+                        <div class="cache-entry">
+                            <div class="cache-entry-header">
+                                <div class="cache-url">${entry.Url}</div>
+                                <div class="cache-badges">
+                                    <span class="badge ${status}">${statusText}</span>
+                                </div>
+                            </div>
+                            <div class="cache-meta">
+                                <div><strong>Fetched:</strong> ${fetchedAt}</div>
+                                <div><strong>Age:</strong> ${age}</div>
+                                <div><strong>Poll Freq:</strong> ${entry.PollFrequencyHours}h</div>
+                                <div><strong>Size:</strong> ${formatBytes(entry.ContentLength)}</div>
+                            </div>
+                            <div class="cache-preview">${escapeHtml(entry.ContentPreview)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                addEvent(`Loaded ${entries.length} cache entries`, 'success');
+            } catch (error) {
+                cacheContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: #f87171;">Error loading cache entries</div>';
+                addEvent(`Cache load failed: ${error.message}`, 'error');
+            }
+        }
+
+        function formatAge(ageString) {
+            // Parse TimeSpan format (HH:MM:SS.mmm or d.HH:MM:SS)
+            const parts = ageString.split(':');
+            if (parts.length === 3) {
+                const days = parts[0].includes('.') ? parseInt(parts[0].split('.')[0]) : 0;
+                const hours = parts[0].includes('.') ? parseInt(parts[0].split('.')[1]) : parseInt(parts[0]);
+                const minutes = parseInt(parts[1]);
+
+                if (days > 0) return `${days}d ${hours}h ago`;
+                if (hours > 0) return `${hours}h ${minutes}m ago`;
+                if (minutes > 0) return `${minutes}m ago`;
+                return 'just now';
+            }
+            return ageString;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-render and load cache on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                renderMarkdown();
+                refreshCache();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

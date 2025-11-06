@@ -1,0 +1,85 @@
+mostlylucid.Markdig.FetchExtension.SqlServer v1.0.0
+===================================================
+
+Initial release of the SQL Server storage provider for Markdig FetchExtension.
+
+OVERVIEW
+--------
+
+This plugin provides enterprise SQL Server and Azure SQL Database storage for fetched
+Markdown content, enabling multi-server deployments in Microsoft-centric environments.
+
+KEY FEATURES
+------------
+
+* Multi-server support: Shared cache across application instances
+* Enterprise ready: SQL Server's ACID guarantees and enterprise features
+* High availability: Always On Availability Groups, Failover Clustering
+* Azure integration: Full support for Azure SQL Database
+* Stale-while-revalidate: Returns cached content if fetch fails
+* Multi-post support: Same URL can have different cache per blog post
+* Automatic schema creation: No manual database setup required
+* Thread-safe: Safe for concurrent access across multiple servers
+
+PERFECT FOR
+-----------
+
+* Microsoft/Azure-centric environments
+* Applications already using SQL Server infrastructure
+* Enterprise deployments with SQL Server licensing
+* Azure App Service + Azure SQL Database deployments
+* High-availability requirements with Always On
+
+INSTALLATION
+------------
+
+dotnet add package mostlylucid.Markdig.FetchExtension.SqlServer
+
+USAGE
+-----
+
+// Windows Authentication
+services.AddSqlServerMarkdownFetch(
+    "Server=localhost;Database=MyApp;Integrated Security=true");
+
+// Azure SQL Database
+services.AddSqlServerMarkdownFetch(
+    "Server=myserver.database.windows.net;Database=MyApp;User Id=admin;Password=pass");
+
+serviceProvider.EnsureMarkdownCacheDatabase();
+
+AZURE SQL RECOMMENDATIONS
+-------------------------
+
+* Use service tier S3+ for production workloads
+* Enable Query Store for performance monitoring
+* Configure firewall rules for your app servers
+* Consider Managed Identity for secure authentication
+* Use elastic pools for multiple database deployments
+
+PRODUCTION RECOMMENDATIONS
+--------------------------
+
+* Connection pooling is enabled by default
+* Configure Min/Max Pool Size for optimal performance
+* Use Always On for high availability scenarios
+* Consider table partitioning for very large caches
+* Enable columnstore indexes for analytical queries
+
+REQUIREMENTS
+------------
+
+* .NET 9.0+
+* mostlylucid.Markdig.FetchExtension 1.0.0+
+* Microsoft.EntityFrameworkCore.SqlServer 9.0+
+* SQL Server 2016+ or Azure SQL Database
+
+DOCUMENTATION
+-------------
+
+Repository: https://github.com/scottgal/mostlylucidweb
+
+LICENSE
+-------
+
+Unlicense (public domain)
