@@ -54,11 +54,10 @@ jobs:
         user: 'mostlylucid'
 
     - name: Publish to NuGet (Trusted Publisher)
-      env:
-        NUGET_AUTH_TOKEN: ${{ steps.nuget_login.outputs.NUGET_AUTH_TOKEN }}
       run: |
         dotnet nuget push ./artifacts/*.nupkg \
           --source https://api.nuget.org/v3/index.json \
+          --api-key ${{ steps.nuget_login.outputs.NUGET_AUTH_TOKEN }} \
           --skip-duplicate
 
     - name: Upload artifacts
