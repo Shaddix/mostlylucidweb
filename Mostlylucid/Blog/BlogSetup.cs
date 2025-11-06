@@ -8,6 +8,7 @@ using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
 using Npgsql;

@@ -7,6 +7,8 @@ using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Models;
+using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Models;
 using Mostlylucid.Shared.Config.Markdown;

@@ -51,7 +51,7 @@ public partial class MarkdownRenderingService : MarkdownBaseService
         // This ensures everything goes through the pipeline once
         if (_serviceProvider != null)
         {
-            var preprocessor = new Mostlylucid.Markdig.FetchExtension.MarkdownFetchPreprocessor(_serviceProvider);
+            var preprocessor = new Mostlylucid.Markdig.FetchExtension.Processors.MarkdownFetchPreprocessor(_serviceProvider);
             markdown = preprocessor.Preprocess(markdown);
         }
 
