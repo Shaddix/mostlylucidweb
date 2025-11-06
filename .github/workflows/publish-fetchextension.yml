@@ -41,5 +41,10 @@ jobs:
     - name: Pack
       run: dotnet pack Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj --configuration Release --no-build -p:PackageVersion=${{ steps.get_version.outputs.VERSION }} --output ./artifacts
 
+    - name: Login to NuGet (OIDC)
+      uses: NuGet/login@v1
+      with:
+        user: 'mostlylucid'
+
     - name: Publish to NuGet
       run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -106,6 +106,57 @@ CREATE INDEX ix_markdown_cache_url_blog_post_id ON markdown_cache(url, blog_post
 - **Multi-post Support** - Same URL can have different cache per blog post
 - **Automatic Schema Creation** - No manual database setup required
 
+## Multi-Server Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "Load Balancer"
+        LB[Load Balancer]
+    end
+
+    subgraph "Application Servers"
+        A1[App Server 1<br/>FetchExtension]
+        A2[App Server 2<br/>FetchExtension]
+        A3[App Server 3<br/>FetchExtension]
+    end
+
+    subgraph "Shared Cache"
+        PG[(PostgreSQL<br/>markdown_cache table)]
+    end
+
+    subgraph "External Content"
+        R1[Remote URL 1]
+        R2[Remote URL 2]
+        R3[Remote URL 3]
+    end
+
+    LB --> A1
+    LB --> A2
+    LB --> A3
+
+    A1 <-->|Read/Write Cache| PG
+    A2 <-->|Read/Write Cache| PG
+    A3 <-->|Read/Write Cache| PG
+
+    A1 -.->|Fetch if cache miss| R1
+    A2 -.->|Fetch if cache miss| R2
+    A3 -.->|Fetch if cache miss| R3
+
+    style PG fill:#4a90e2
+    style A1 fill:#c8e6c9
+    style A2 fill:#c8e6c9
+    style A3 fill:#c8e6c9
+    style R1 fill:#fff3cd
+    style R2 fill:#fff3cd
+    style R3 fill:#fff3cd
+```
+
+**Benefits of shared PostgreSQL cache:**
+- Cache consistency across all servers
+- Single source of truth for fetched content
+- No duplicate fetches from different servers
+- Centralized cache management
+
 ## When to Use PostgreSQL Storage
 
 **Best for:**

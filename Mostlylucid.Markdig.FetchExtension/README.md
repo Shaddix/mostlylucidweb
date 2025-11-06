@@ -32,6 +32,32 @@ A Markdig extension that enables fetching remote Markdown at render time using a
 - **DI-friendly** - Full dependency injection support
 - **Error handling** - Gracefully handles failures with HTML comments
 
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[Markdown with &lt;fetch&gt; tags] --> B[MarkdownFetchPreprocessor]
+    B --> C{Check Cache}
+    C -->|Fresh| D[Return Cached Content]
+    C -->|Stale/Missing| E[Fetch from Remote URL]
+    E -->|Success| F[Update Cache]
+    E -->|Failure| G{Has Cached?}
+    G -->|Yes| H[Return Stale Cache]
+    G -->|No| I[Return Error Comment]
+    F --> J[Replace &lt;fetch&gt; with Content]
+    D --> J
+    H --> J
+    I --> J
+    J --> K[Processed Markdown]
+    K --> L[Your Markdig Pipeline]
+    L --> M[Final HTML]
+
+    style A fill:#e1f5ff
+    style M fill:#c8e6c9
+    style E fill:#fff3cd
+    style G fill:#f8d7da
+```
+
 ## Quick Start
 
 ### Option 1: In-Memory Storage (Simplest)
@@ -132,6 +158,33 @@ builder.Services.AddScoped<IMarkdownFetchService, MyCustomMarkdownFetchService>(
 | **PostgreSQL** | Yes | Yes | Multi-server, cloud | Moderate |
 | **SQL Server** | Yes | Yes | Enterprise, Azure | Moderate |
 | **Custom** | Configurable | Configurable | Specialized needs | Advanced |
+
+### Storage Provider Architecture
+
+```mermaid
+graph LR
+    A[IMarkdownFetchService Interface] --> B[InMemoryMarkdownFetchService]
+    A --> C[FileBasedMarkdownFetchService]
+    A --> D[PostgresMarkdownFetchService]
+    A --> E[SqliteMarkdownFetchService]
+    A --> F[SqlServerMarkdownFetchService]
+    A --> G[YourCustomService]
+
+    B --> H[ConcurrentDictionary]
+    C --> I[File System + SemaphoreSlim]
+    D --> J[PostgreSQL Database]
+    E --> K[SQLite Database]
+    F --> L[SQL Server Database]
+    G --> M[Your Storage Backend]
+
+    style A fill:#4a90e2
+    style B fill:#e1f5ff
+    style C fill:#e1f5ff
+    style D fill:#c8e6c9
+    style E fill:#c8e6c9
+    style F fill:#c8e6c9
+    style G fill:#fff3cd
+```
 
 ## Usage Examples
 
@@ -421,6 +474,39 @@ The underlying storage providers handle concurrent access:
 ## Events and Monitoring
 
 The FetchExtension publishes events for all fetch operations, allowing you to monitor, log, and respond to fetch activity in real-time.
+
+```mermaid
+sequenceDiagram
+    participant MD as Markdown Processor
+    participant EP as Event Publisher
+    participant FS as Fetch Service
+    participant ST as Storage Backend
+    participant L as Your Listeners
+
+    MD->>EP: FetchBeginning
+    EP->>L: Notify FetchBeginning
+    EP->>FS: FetchMarkdownAsync(url)
+    FS->>ST: Check Cache
+    alt Cache Fresh
+        ST-->>FS: Cached Content
+        FS->>EP: FetchCompleted (cached=true)
+    else Cache Stale/Missing
+        FS->>FS: HTTP GET
+        alt Success
+            FS->>ST: Update Cache
+            ST-->>FS: OK
+            FS->>EP: FetchCompleted (cached=false)
+        else Failure
+            FS->>EP: FetchFailed
+            EP->>L: Notify FetchFailed
+        end
+    end
+    EP->>L: Notify FetchCompleted
+    EP->>L: Notify ContentUpdated
+    FS-->>MD: MarkdownFetchResult
+
+    Note over L: Listeners can be: Logging, Metrics, Telemetry, Webhooks
+```
 
 ### Available Events
 
@@ -743,6 +829,43 @@ See individual plugin READMEs for detailed configuration, performance tuning, an
 - `pollfrequency="24"` = Cache for 24 hours
 - Failed fetch with cache = Returns stale cached content
 - Failed fetch without cache = Returns error comment
+
+```mermaid
+stateDiagram-v2
+    [*] --> CheckCache: Fetch Request
+
+    CheckCache --> Fresh: Cache exists & age < pollFrequency
+    CheckCache --> Stale: Cache exists & age >= pollFrequency
+    CheckCache --> Missing: No cache entry
+
+    Fresh --> ReturnCached: Return cached content
+    ReturnCached --> [*]
+
+    Stale --> FetchRemote: Attempt HTTP GET
+    Missing --> FetchRemote: Attempt HTTP GET
+
+    FetchRemote --> UpdateCache: Success
+    FetchRemote --> HasStale: Failure
+
+    UpdateCache --> ReturnFresh: Return new content
+    ReturnFresh --> [*]
+
+    HasStale --> ReturnStale: Return stale cache
+    HasStale --> ReturnError: No cache available
+
+    ReturnStale --> [*]
+    ReturnError --> [*]
+
+    note right of Fresh
+        pollFrequency = 0
+        means always stale
+    end note
+
+    note right of HasStale
+        Stale-while-revalidate
+        pattern ensures uptime
+    end note
+```
 
 ## Error Handling
 

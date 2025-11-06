@@ -1,4 +1,4 @@
-﻿namespace Mostlylucid.Markdig.FetchExtension;
+﻿namespace Mostlylucid.Markdig.FetchExtension.Models;
 
 /// <summary>
 ///     Result of fetching markdown

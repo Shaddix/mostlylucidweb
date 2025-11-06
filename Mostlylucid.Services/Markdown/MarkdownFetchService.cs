@@ -253,7 +253,7 @@ public class MarkdownFetchService : IMarkdownFetchService
 
     public async Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
     {
-        var entity = await _context.MarkdownFetchEntities
+        var entity = await _context.MarkdownFetches
             .FirstOrDefaultAsync(e => e.Url == url && e.BlogPostId == blogPostId);
 
         if (entity == null)
@@ -261,7 +261,7 @@ public class MarkdownFetchService : IMarkdownFetchService
             return false;
         }
 
-        _context.MarkdownFetchEntities.Remove(entity);
+        _context.MarkdownFetches.Remove(entity);
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Removed cached markdown from database for {Url} (blogPostId: {BlogPostId})", url, blogPostId);
