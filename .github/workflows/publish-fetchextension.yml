@@ -36,7 +36,7 @@ jobs:
       run: dotnet build Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj --configuration Release --no-restore -p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Run tests
-      run: dotnet test Mostlylucid.Markdig.FetchExtension.Tests/Mostlylucid.Markdig.FetchExtension.Tests.csproj --configuration Release --no-build --verbosity normal
+      run: dotnet test Mostlylucid.Markdig.FetchExtension.Tests/Mostlylucid.Markdig.FetchExtension.Tests.csproj --configuration Release --verbosity normal
 
     - name: Update package version
       if: ${{ steps.get_version.outputs.VERSION != '' }}
