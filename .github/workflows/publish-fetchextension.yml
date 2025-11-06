@@ -38,13 +38,32 @@ jobs:
     - name: Run tests
       run: dotnet test Mostlylucid.Markdig.FetchExtension.Tests/Mostlylucid.Markdig.FetchExtension.Tests.csproj --configuration Release --no-build --verbosity normal
 
+    - name: Update package version
+      if: ${{ steps.get_version.outputs.VERSION != '' }}
+      run: |
+        sed -i 's#<Version>.*</Version>#<Version>${{ steps.get_version.outputs.VERSION }}</Version>#' Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj
+
     - name: Pack
       run: dotnet pack Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj --configuration Release --no-build -p:PackageVersion=${{ steps.get_version.outputs.VERSION }} --output ./artifacts
 
+
     - name: Login to NuGet (OIDC)
+      id: nuget_login
       uses: NuGet/login@v1
       with:
         user: 'mostlylucid'
 
-    - name: Publish to NuGet
-      run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
+    - name: Publish to NuGet (Trusted Publisher)
+      env:
+        NUGET_AUTH_TOKEN: ${{ steps.nuget_login.outputs.NUGET_AUTH_TOKEN }}
+      run: |
+        dotnet nuget push ./artifacts/*.nupkg \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: ./artifacts/*.nupkg
+
