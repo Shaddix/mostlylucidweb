@@ -56,8 +56,8 @@ jobs:
     - name: Publish to NuGet (Trusted Publisher)
       run: |
         dotnet nuget push ./artifacts/*.nupkg \
+          --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} \
           --source https://api.nuget.org/v3/index.json \
-          --api-key ${{ steps.nuget_login.outputs.NUGET_AUTH_TOKEN }} \
           --skip-duplicate
 
     - name: Upload artifacts
@@ -65,4 +65,3 @@ jobs:
       with:
         name: nuget-package
         path: ./artifacts/*.nupkg
-

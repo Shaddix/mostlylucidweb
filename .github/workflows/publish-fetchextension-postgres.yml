@@ -45,10 +45,9 @@ jobs:
       run: dotnet pack Mostlylucid.Markdig.FetchExtension.Postgres/Mostlylucid.Markdig.FetchExtension.Postgres.csproj --configuration Release --no-build -p:PackageVersion=${{ steps.get_version.outputs.VERSION }} --output ./artifacts
 
     - name: Login to NuGet (OIDC)
-      id: nuget_login
       uses: NuGet/login@v1
       with:
         user: 'mostlylucid'
 
     - name: Publish to NuGet
-      run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ steps.nuget_login.outputs.NUGET_AUTH_TOKEN }} --skip-duplicate
+      run: dotnet nuget push ./artifacts/*.nupkg --source nuget.org --skip-duplicate
