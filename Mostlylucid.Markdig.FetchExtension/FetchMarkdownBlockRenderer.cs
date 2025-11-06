@@ -5,7 +5,7 @@ using Markdig.Renderers.Html;
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Renderer for block-level fetch element
+///     Renderer for block-level fetch element
 /// </summary>
 public class FetchMarkdownBlockRenderer : HtmlObjectRenderer<FetchMarkdownBlock>
 {
@@ -16,7 +16,7 @@ public class FetchMarkdownBlockRenderer : HtmlObjectRenderer<FetchMarkdownBlock>
             // Use shared pipeline factory to ensure consistency with main document
             var pipeline = FetchMarkdownPipelineFactory.CreatePipeline();
 
-            var html = global::Markdig.Markdown.ToHtml(obj.FetchedContent, pipeline);
+            var html = Markdown.ToHtml(obj.FetchedContent, pipeline);
             renderer.Writer.Write(html);
         }
         else

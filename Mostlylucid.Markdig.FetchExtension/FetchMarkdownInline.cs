@@ -3,7 +3,7 @@
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Custom inline element to represent a fetch directive
+///     Custom inline element to represent a fetch directive
 /// </summary>
 public class FetchMarkdownInline : Inline
 {

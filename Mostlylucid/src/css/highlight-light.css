@@ -1,0 +1,8 @@
+/* Light theme for highlight.js - active by default, hidden when .dark class present */
+@import 'highlight.js/styles/default.css';
+
+/* Hide light theme when dark mode is active */
+.dark pre code.hljs,
+.dark code.hljs {
+    display: none !important;
+}

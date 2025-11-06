@@ -1,5 +1,3 @@
-using System;
-
 namespace Mostlylucid.Markdig.FetchExtension;
 
 public sealed class MarkdownContentUpdatedEventArgs : EventArgs

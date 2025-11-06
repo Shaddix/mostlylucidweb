@@ -7,6 +7,7 @@ A Markdig extension that enables fetching remote Markdown at render time using a
 ```
 
 Features:
+
 - Custom inline parser and renderer for a `<fetch>` tag
 - DI-friendly: resolves an `IMarkdownFetchService` from the configured `IServiceProvider`
 - Caching/refresh cadence is controlled by the `pollfrequency` attribute (in hours)
@@ -46,11 +47,16 @@ var pipeline = new MarkdownPipelineBuilder()
     .Build();
 ```
 
-Now any `<fetch markdownurl="..." pollfrequency="12h"/>` directive in your Markdown will be resolved to the fetched content rendered as HTML.
+Now any `<fetch markdownurl="..." pollfrequency="12h"/>` directive in your Markdown will be resolved to the fetched
+content rendered as HTML.
 
 ## Notes
-- The interface includes a `blogPostId` argument to support callers that track fetches against an entity. If you don't have one, pass `0` or ignore it in your implementation.
-- If the service isn't configured or fetching fails, the renderer emits an HTML comment with the error so your page still renders.
+
+- The interface includes a `blogPostId` argument to support callers that track fetches against an entity. If you don't
+  have one, pass `0` or ignore it in your implementation.
+- If the service isn't configured or fetching fails, the renderer emits an HTML comment with the error so your page
+  still renders.
 
 ## License
+
 MIT

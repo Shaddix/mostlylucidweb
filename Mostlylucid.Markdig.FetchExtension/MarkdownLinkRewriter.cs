@@ -3,8 +3,8 @@ using System.Text.RegularExpressions;
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Utility to rewrite relative markdown links to absolute URLs pointing back to source
-/// Used for fetched remote markdown to preserve link integrity
+///     Utility to rewrite relative markdown links to absolute URLs pointing back to source
+///     Used for fetched remote markdown to preserve link integrity
 /// </summary>
 public partial class MarkdownLinkRewriter
 {
@@ -43,9 +43,7 @@ public partial class MarkdownLinkRewriter
         {
             // Special handling for GitHub raw URLs
             if (sourceUrl.Contains("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
-            {
                 return ResolveGitHubUrl(sourceUrl, relativeUrl);
-            }
 
             // For other sources, use standard URL resolution
             var baseUri = new Uri(sourceUrl);
@@ -109,11 +107,9 @@ public partial class MarkdownLinkRewriter
         var relativeSegments = relativePath.Split('/');
 
         foreach (var segment in relativeSegments)
-        {
             if (segment == "." || string.IsNullOrEmpty(segment))
             {
                 // Current directory, skip
-                continue;
             }
             else if (segment == "..")
             {
@@ -126,7 +122,6 @@ public partial class MarkdownLinkRewriter
                 // Add segment
                 baseSegments.Add(segment);
             }
-        }
 
         return string.Join("/", baseSegments);
     }

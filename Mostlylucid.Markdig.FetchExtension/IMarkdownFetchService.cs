@@ -1,7 +1,7 @@
 ﻿namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Service interface for fetching remote markdown
+///     Service interface for fetching remote markdown
 /// </summary>
 public interface IMarkdownFetchService
 {

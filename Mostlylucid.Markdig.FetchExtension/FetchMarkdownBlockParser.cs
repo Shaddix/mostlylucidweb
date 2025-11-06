@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Markdig.Helpers;
 using Markdig.Parsers;
 using Markdig.Syntax;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,8 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Block parser for the <fetch/> tag placed on its own line.
-/// Ensures we intercept before the HtmlBlock parser would treat it as raw HTML.
+///     Block parser for the <fetch /> tag placed on its own line.
+///     Ensures we intercept before the HtmlBlock parser would treat it as raw HTML.
 /// </summary>
 public class FetchMarkdownBlockParser : BlockParser
 {
@@ -56,21 +55,20 @@ public class FetchMarkdownBlockParser : BlockParser
         var url = match.Groups[1].Value;
         var pollFrequencyHours = int.Parse(match.Groups[2].Value);
         var transformLinks = match.Groups.Count > 3 &&
-                            match.Groups[3].Success &&
-                            match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                             match.Groups[3].Success &&
+                             match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
 
-        string fetchedContent = string.Empty;
-        bool fetchSuccessful = false;
+        var fetchedContent = string.Empty;
+        var fetchSuccessful = false;
 
         if (_serviceProvider != null)
-        {
             try
             {
                 using var scope = _serviceProvider.CreateScope();
                 var fetchService = scope.ServiceProvider.GetRequiredService<IMarkdownFetchService>();
                 var logger = scope.ServiceProvider.GetRequiredService<ILogger<FetchMarkdownBlockParser>>();
 
-                var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, blogPostId: 0)
+                var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, 0)
                     .GetAwaiter()
                     .GetResult();
 
@@ -97,11 +95,8 @@ public class FetchMarkdownBlockParser : BlockParser
             {
                 fetchedContent = $"<!-- Error fetching content from {url}: {ex.Message} -->";
             }
-        }
         else
-        {
             fetchedContent = "<!-- Markdown fetch service not configured -->";
-        }
 
         var block = new FetchMarkdownBlock(this)
         {

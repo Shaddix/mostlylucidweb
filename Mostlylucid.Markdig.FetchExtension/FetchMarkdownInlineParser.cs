@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Parser for the <fetch> tag
+///     Parser for the <fetch> tag
 /// </summary>
 public class FetchMarkdownInlineParser : InlineParser
 {
@@ -15,8 +15,9 @@ public class FetchMarkdownInlineParser : InlineParser
         @"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?[^>]*?/\s*>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private readonly IServiceProvider? _serviceProvider;
     private static bool _warnedNoUpdateService;
+
+    private readonly IServiceProvider? _serviceProvider;
 
     public FetchMarkdownInlineParser(IServiceProvider? serviceProvider)
     {
@@ -53,15 +54,14 @@ public class FetchMarkdownInlineParser : InlineParser
         var url = match.Groups[1].Value;
         var pollFrequencyHours = int.Parse(match.Groups[2].Value);
         var transformLinks = match.Groups.Count > 3 &&
-                            match.Groups[3].Success &&
-                            match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                             match.Groups[3].Success &&
+                             match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
 
         // Try to fetch the content
-        string fetchedContent = string.Empty;
-        bool fetchSuccessful = false;
+        var fetchedContent = string.Empty;
+        var fetchSuccessful = false;
 
         if (_serviceProvider != null)
-        {
             try
             {
                 using var scope = _serviceProvider.CreateScope();
@@ -78,12 +78,13 @@ public class FetchMarkdownInlineParser : InlineParser
                 else if (!_warnedNoUpdateService)
                 {
                     _warnedNoUpdateService = true;
-                    logger.LogWarning("IMarkdownFetchUpdateService not configured; fetch polling events will be disabled.");
+                    logger.LogWarning(
+                        "IMarkdownFetchUpdateService not configured; fetch polling events will be disabled.");
                 }
 
                 // Attempt synchronous fetch (with caching)
                 // Note: blogPostId is 0 here since we don't have context. The background service will update later.
-                var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, blogPostId: 0)
+                var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, 0)
                     .GetAwaiter()
                     .GetResult();
 
@@ -110,11 +111,8 @@ public class FetchMarkdownInlineParser : InlineParser
             {
                 fetchedContent = $"<!-- Error fetching content from {url}: {ex.Message} -->";
             }
-        }
         else
-        {
-            fetchedContent = $"<!-- Markdown fetch service not configured -->";
-        }
+            fetchedContent = "<!-- Markdown fetch service not configured -->";
 
         // Create the inline element
         var inline = new FetchMarkdownInline

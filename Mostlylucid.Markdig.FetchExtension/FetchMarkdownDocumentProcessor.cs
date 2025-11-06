@@ -1,7 +1,5 @@
 using System.Text.RegularExpressions;
 using Markdig;
-using Markdig.Parsers;
-using Markdig.Renderers;
 using Markdig.Syntax;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,9 +7,9 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Document processor that replaces fetch tags with fetched markdown content
-/// This runs after initial parsing but before rendering, allowing fetched content
-/// to flow through the same pipeline
+///     Document processor that replaces fetch tags with fetched markdown content
+///     This runs after initial parsing but before rendering, allowing fetched content
+///     to flow through the same pipeline
 /// </summary>
 public class FetchMarkdownDocumentProcessor
 {
@@ -19,8 +17,9 @@ public class FetchMarkdownDocumentProcessor
         @"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?[^>]*?/\s*>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private readonly IServiceProvider? _serviceProvider;
     private readonly MarkdownPipeline _pipeline;
+
+    private readonly IServiceProvider? _serviceProvider;
 
     public FetchMarkdownDocumentProcessor(IServiceProvider? serviceProvider, MarkdownPipeline pipeline)
     {
@@ -29,7 +28,7 @@ public class FetchMarkdownDocumentProcessor
     }
 
     /// <summary>
-    /// Processes the document to replace fetch tags with fetched content
+    ///     Processes the document to replace fetch tags with fetched content
     /// </summary>
     public void ProcessDocument(MarkdownDocument document)
     {
@@ -49,10 +48,10 @@ public class FetchMarkdownDocumentProcessor
                 var url = match.Groups[1].Value;
                 var pollFrequencyHours = int.Parse(match.Groups[2].Value);
                 var transformLinks = match.Groups.Count > 3 &&
-                                    match.Groups[3].Success &&
-                                    match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+                                     match.Groups[3].Success &&
+                                     match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
 
-                string fetchedMarkdown = FetchMarkdown(url, pollFrequencyHours, transformLinks);
+                var fetchedMarkdown = FetchMarkdown(url, pollFrequencyHours, transformLinks);
 
                 if (!string.IsNullOrWhiteSpace(fetchedMarkdown))
                 {
@@ -61,16 +60,10 @@ public class FetchMarkdownDocumentProcessor
 
                     // Collect all blocks from the fetched document
                     var replacementBlocks = new List<Block>();
-                    foreach (var fetchedBlock in fetchedDocument)
-                    {
-                        replacementBlocks.Add(fetchedBlock);
-                    }
+                    foreach (var fetchedBlock in fetchedDocument) replacementBlocks.Add(fetchedBlock);
 
                     // Detach blocks from fetched document
-                    foreach (var fetchedBlock in replacementBlocks)
-                    {
-                        fetchedDocument.Remove(fetchedBlock);
-                    }
+                    foreach (var fetchedBlock in replacementBlocks) fetchedDocument.Remove(fetchedBlock);
 
                     blocksToReplace.Add((block, replacementBlocks));
                 }
@@ -89,10 +82,7 @@ public class FetchMarkdownDocumentProcessor
                 parent.Remove(original);
 
                 // Insert all replacement blocks at the same position
-                for (int i = 0; i < replacements.Count; i++)
-                {
-                    parent.Insert(index + i, replacements[i]);
-                }
+                for (var i = 0; i < replacements.Count; i++) parent.Insert(index + i, replacements[i]);
             }
         }
     }
@@ -105,7 +95,7 @@ public class FetchMarkdownDocumentProcessor
             var fetchService = scope.ServiceProvider.GetRequiredService<IMarkdownFetchService>();
             var logger = scope.ServiceProvider.GetService<ILogger<FetchMarkdownDocumentProcessor>>();
 
-            var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, blogPostId: 0)
+            var result = fetchService.FetchMarkdownAsync(url, pollFrequencyHours, 0)
                 .GetAwaiter()
                 .GetResult();
 
@@ -122,11 +112,9 @@ public class FetchMarkdownDocumentProcessor
                 logger?.LogInformation("Successfully fetched markdown from {Url}", url);
                 return content;
             }
-            else
-            {
-                logger?.LogWarning("Failed to fetch markdown from {Url}: {Error}", url, result.ErrorMessage);
-                return $"<!-- Failed to fetch content from {url}: {result.ErrorMessage} -->";
-            }
+
+            logger?.LogWarning("Failed to fetch markdown from {Url}: {Error}", url, result.ErrorMessage);
+            return $"<!-- Failed to fetch content from {url}: {result.ErrorMessage} -->";
         }
         catch (Exception ex)
         {

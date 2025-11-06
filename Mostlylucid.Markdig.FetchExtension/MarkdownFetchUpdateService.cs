@@ -1,39 +1,22 @@
 using System.Collections.Concurrent;
-using System.Net.Http;
+using System.IO.Hashing;
 using System.Text;
-using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.IO.Hashing;
 
 namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// In-memory polling service that tracks URLs (registered by the parser/host),
-/// periodically fetches them, and raises ContentUpdated when the XXHash64 changes.
+///     In-memory polling service that tracks URLs (registered by the parser/host),
+///     periodically fetches them, and raises ContentUpdated when the XXHash64 changes.
 /// </summary>
 public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdateService
 {
+    private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<MarkdownFetchUpdateService> _logger;
     private readonly FetchPollingOptions _options;
-
-    private class Entry
-    {
-        public required string Url { get; init; }
-        public int PollFrequencyHours { get; set; }
-        public string? LastHash { get; set; }
-        public string? LastContent { get; set; }
-        public DateTimeOffset? LastFetchedAt { get; set; }
-        public DateTimeOffset NextDue { get; set; } = DateTimeOffset.MinValue;
-        public int ConsecutiveFailures { get; set; }
-        public string? LastError { get; set; }
-    }
-
-    private readonly ConcurrentDictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
-
-    public event EventHandler<MarkdownContentUpdatedEventArgs>? ContentUpdated;
 
     public MarkdownFetchUpdateService(
         IHttpClientFactory httpClientFactory,
@@ -45,17 +28,19 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
         _options = options.Value;
     }
 
+    public event EventHandler<MarkdownContentUpdatedEventArgs>? ContentUpdated;
+
     public void Register(string url, int pollFrequencyHours)
     {
         var now = DateTimeOffset.UtcNow;
         _entries.AddOrUpdate(url,
-            addValueFactory: key => new Entry
+            key => new Entry
             {
                 Url = key,
                 PollFrequencyHours = Math.Max(1, pollFrequencyHours),
-                NextDue = now,
+                NextDue = now
             },
-            updateValueFactory: (key, existing) =>
+            (key, existing) =>
             {
                 existing.PollFrequencyHours = Math.Max(1, pollFrequencyHours);
                 // Keep next due unchanged if it's sooner, otherwise bring it forward
@@ -79,6 +64,7 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
             fetchedAt = entry.LastFetchedAt;
             return true;
         }
+
         content = null;
         hash = null;
         fetchedAt = null;
@@ -89,12 +75,10 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
     {
         if (!_options.Enabled)
         {
-            _logger.LogWarning("MarkdownFetchUpdateService is disabled (FetchPollingOptions.Enabled=false). Polling will not run.");
+            _logger.LogWarning(
+                "MarkdownFetchUpdateService is disabled (FetchPollingOptions.Enabled=false). Polling will not run.");
             // still keep the service alive until cancellation, but do nothing
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
-            }
+            while (!stoppingToken.IsCancellationRequested) await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
             return;
         }
 
@@ -111,10 +95,7 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
                 var now = DateTimeOffset.UtcNow;
                 var due = _entries.Values.Where(e => e.NextDue <= now).ToList();
 
-                if (due.Count > 0)
-                {
-                    _logger.LogDebug("Polling {Count} due URL(s)", due.Count);
-                }
+                if (due.Count > 0) _logger.LogDebug("Polling {Count} due URL(s)", due.Count);
 
                 var tasks = new List<Task>();
                 foreach (var entry in due)
@@ -137,10 +118,7 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
                     }, stoppingToken));
                 }
 
-                if (tasks.Count > 0)
-                {
-                    await Task.WhenAll(tasks);
-                }
+                if (tasks.Count > 0) await Task.WhenAll(tasks);
 
                 await Task.Delay(schedulerDelay, stoppingToken);
             }
@@ -240,5 +218,17 @@ public class MarkdownFetchUpdateService : BackgroundService, IMarkdownFetchUpdat
         {
             _logger.LogError(ex, "Error in ContentUpdated event handlers for {Url}", url);
         }
+    }
+
+    private class Entry
+    {
+        public required string Url { get; init; }
+        public int PollFrequencyHours { get; set; }
+        public string? LastHash { get; set; }
+        public string? LastContent { get; set; }
+        public DateTimeOffset? LastFetchedAt { get; set; }
+        public DateTimeOffset NextDue { get; set; } = DateTimeOffset.MinValue;
+        public int ConsecutiveFailures { get; set; }
+        public string? LastError { get; set; }
     }
 }

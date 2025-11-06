@@ -1,7 +1,7 @@
 ﻿namespace Mostlylucid.Markdig.FetchExtension;
 
 /// <summary>
-/// Result of fetching markdown
+///     Result of fetching markdown
 /// </summary>
 public class MarkdownFetchResult
 {
