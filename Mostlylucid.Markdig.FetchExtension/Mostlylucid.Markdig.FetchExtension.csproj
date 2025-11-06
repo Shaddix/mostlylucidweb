@@ -12,32 +12,35 @@
         <Description>Markdig extension that enables fetching remote Markdown via a &lt;fetch markdownurl="..." pollfrequency="..."/&gt; directive, with DI integration.</Description>
         <PackageTags>markdig;markdown;extension;fetch;mostlylucid</PackageTags>
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>
-        <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
 
+        <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+      
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <AssemblyName>mostlylucid.Markdig.FetchExtension</AssemblyName>
         <RootNamespace>mostlylucid.Markdig.FetchExtension</RootNamespace>
+
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Markdig" Version="0.42.0"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0"/>
-        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2"/>
-        <PackageReference Include="System.IO.Hashing" Version="8.0.0"/>
+        <PackageReference Include="Markdig" Version="0.43.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
+        <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
     </ItemGroup>
     <ItemGroup>
         <None Include=".\icon.png" Pack="true" PackagePath="">
             <Link>Properties\icon.png</Link>
         </None>
-        <None Include="..\README.md" Pack="true" PackagePath="">
+        <None Include=".\README.md" Pack="true" PackagePath="">
             <Link>Properties\README.md</Link>
         </None>
-        <None Include=".\release notes.txt" Pack="true" PackagePath="">
-            <Link>Properties\release notes.txt</Link>
+        <None Include=".\release-notes.txt" Pack="true" PackagePath="">
+            <Link>Properties\release-notes.txt</Link>
         </None>
     </ItemGroup>
 </Project>
