@@ -286,8 +286,9 @@ div.mermaid {
     }
 }
 
-/* Table of Contents Styling */
-nav.ml_toc {
+/* Table of Contents Styling - supports both nav.ml_toc and .prose nav */
+nav.ml_toc,
+.prose nav {
     @apply my-6 p-4 rounded-lg border-l-2;
     background: #f8f9fa;
     border-left-color: #cbd5e0;
@@ -296,36 +297,43 @@ nav.ml_toc {
     overflow-y: auto;
 }
 
-.dark nav.ml_toc {
+.dark nav.ml_toc,
+.dark .prose nav {
     background: rgba(255, 255, 255, 0.03);
     border-left-color: #4a5568;
 }
 
-.ml_toc .toc-title {
+.ml_toc .toc-title,
+.prose nav .toc-title {
     @apply font-semibold text-sm uppercase tracking-wide mb-3 pb-2 border-b;
     color: #4a5568;
     border-bottom-color: #e2e8f0;
 }
 
-.dark .ml_toc .toc-title {
+.dark .ml_toc .toc-title,
+.dark .prose nav .toc-title {
     color: #a0aec0;
     border-bottom-color: #2d3748;
 }
 
-.ml_toc ul {
+.ml_toc ul,
+.prose nav ul {
     @apply list-none m-0 p-0;
 }
 
-.ml_toc ul ul {
+.ml_toc ul ul,
+.prose nav ul ul {
     @apply pl-4 mt-1;
 }
 
-.ml_toc li {
+.ml_toc li,
+.prose nav li {
     @apply my-1;
     line-height: 1.2;
 }
 
-.ml_toc a {
+.ml_toc a,
+.prose nav a {
     @apply no-underline transition-colors duration-200;
     color: #718096;
     font-size: 0.95rem;
@@ -333,27 +341,32 @@ nav.ml_toc {
     padding: 0.125rem 0;
 }
 
-.ml_toc a:hover {
+.ml_toc a:hover,
+.prose nav a:hover {
     color: #2d3748;
     text-decoration: underline;
 }
 
-.dark .ml_toc a {
+.dark .ml_toc a,
+.dark .prose nav a {
     color: #a0aec0;
 }
 
-.dark .ml_toc a:hover {
+.dark .ml_toc a:hover,
+.dark .prose nav a:hover {
     color: #cbd5e0;
     text-decoration: underline;
 }
 
 /* Nested list styling for hierarchical display */
-.ml_toc ul ul a {
+.ml_toc ul ul a,
+.prose nav ul ul a {
     font-size: 0.9rem;
     opacity: 0.85;
 }
 
-.ml_toc ul ul ul a {
+.ml_toc ul ul ul a,
+.prose nav ul ul ul a {
     font-size: 0.85rem;
     opacity: 0.7;
 }

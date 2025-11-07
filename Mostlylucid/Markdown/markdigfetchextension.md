@@ -1,9 +1,9 @@
 # Building a Remote Markdown Fetcher for Markdig
 
 <!--category-- Markdown, AI-Article,  MarkDig, ASP.NET Core, C#, API, Nuget, FetchExtension-->
-<datetime class="hidden">2025-11-06T18:45</datetime>
-
-## Introduction
+<datetime class="hidden">2025-11-07T10:00</datetime>
+ 
+# Introduction
 
 
 
@@ -15,8 +15,10 @@ In this post, I'll walk you through how I built `Mostlylucid.Markdig.FetchExtens
 > NOTE: This is still prerelease but i wanted to get it out there. Have fun but it might not work yet.
 
 > This article is AI generated - using claude code which also helped me build the feature.
- 
-> **UPDATE**: Added `disable="true"` parameter so we can now demo the tags properly without them being processed! 
+
+> **UPDATE**: Added `disable="true"` parameter so we can now demo the tags properly without them being processed!
+
+> **UPDATE (Nov 7, 2025)**: Added Table of Contents (TOC) generation feature! Use `[TOC]` in your markdown to automatically generate a clickable table of contents from document headings. 
 
 
 See the source for it here [on the GitHub for this site](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension). 
@@ -26,7 +28,7 @@ See the source for it here [on the GitHub for this site](https://github.com/scot
 
 [TOC]
 
-## Why Build This?
+# Why Build This?
 
 Before diving into the technical details, let me explain the problem. I have several scenarios where I need to include external markdown content:
 
@@ -44,7 +46,7 @@ The naive approach would be to use an HTTP client to fetch markdown whenever you
 
 I needed something smarter: fetch once, cache intelligently, refresh automatically, and handle failures gracefully.
 
-## Architecture Overview
+# Architecture Overview
 
 The extension follows a preprocessing approach rather than being part of the Markdig parsing pipeline. This is crucial because it means fetched content flows through your entire Markdig pipeline, getting all your custom extensions, syntax highlighting, and styling.
 
@@ -77,7 +79,7 @@ The key insight here is **preprocessing**. Before your markdown hits the Markdig
 
 This ensures consistency - all markdown gets the same treatment regardless of its source.
 
-## The Basic Syntax
+# The Basic Syntax
 
 Using the extension is simple. In your markdown:
 
@@ -94,7 +96,7 @@ That's it! The extension will:
 - Return cached content on subsequent requests
 - Auto-refresh when the cache expires
 
-## Storage Provider Architecture
+# Storage Provider Architecture
 
 One of the design principles I followed was **flexibility**. Different applications have different needs. A small demo app doesn't need PostgreSQL, but a multi-server production deployment does. So I built a pluggable storage architecture:
 
@@ -116,7 +118,7 @@ graph LR
 
 ```
 
-### The Core Interface
+## The Core Interface
 
 Everything implements `IMarkdownFetchService`:
 
@@ -136,7 +138,7 @@ public interface IMarkdownFetchService
 
 Simple and clean. Each implementation handles storage its own way, but the interface remains consistent.
 
-### In-Memory Storage: Perfect for Demos
+## In-Memory Storage: Perfect for Demos
 
 The simplest implementation uses `ConcurrentDictionary`:
 
@@ -211,7 +213,7 @@ As you can see this does the following:
 
 This pattern - **stale-while-revalidate** - is crucial for reliability. Even if GitHub is down, your site keeps working with cached content.
 
-### File-Based Storage: Simple Persistence
+## File-Based Storage: Simple Persistence
 
 For single-server deployments, file-based storage works great:
 
@@ -299,7 +301,7 @@ Key points here:
 4. Persists across application restarts
 5. Same stale-while-revalidate pattern
 
-### Database Storage: Production-Ready
+## Database Storage: Production-Ready
 
 For production deployments, especially multi-server setups, you want a shared cache. That's where the database providers come in:
 
@@ -369,7 +371,7 @@ public class PostgresMarkdownFetchService : IMarkdownFetchService
 }
 ```
 
-The database schema is simple:
+The database schema is simple: 
 
 ```sql
 CREATE TABLE markdown_cache (
@@ -426,7 +428,7 @@ graph TB
 
 All servers share the same cache. When Server 1 fetches a README, Servers 2 and 3 immediately benefit from that cached content.
 
-## Setting Up the Extension
+# Setting Up the Extension
 
 Getting started is straightforward. First, install the base package:
 
@@ -453,7 +455,7 @@ dotnet add package mostlylucid.Markdig.FetchExtension.Sqlite
 dotnet add package mostlylucid.Markdig.FetchExtension.SqlServer
 ```
 
-### Configuration in ASP.NET Core
+## Configuration in ASP.NET Core
 
 In your `Program.cs`:
 
@@ -493,7 +495,7 @@ FetchMarkdownExtension.ConfigureServiceProvider(app.Services);
 app.Run();
 ```
 
-### Integration with Your Markdown Rendering
+## Integration with Your Markdown Rendering
 
 The key is the preprocessing step. Here's how I integrate it in my blog:
 
@@ -512,7 +514,7 @@ public class MarkdownRenderingService
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .UseSyntaxHighlighting()
-            .UseTableOfContents()
+            .UseToc()  // Add TOC support for [TOC] markers
             .UseYourCustomExtensions()
             .Build();
     }
@@ -534,9 +536,99 @@ The flow is:
 3. The combined markdown goes through Markdig
 4. Everything gets your custom extensions, styling, etc.
 
-## Advanced Features
+# Advanced Features
 
-### Link Transformation
+## Table of Contents Generation
+
+The package now includes a **separate** Table of Contents (TOC) extension! While it's packaged alongside the fetch extension, it's completely independent and can be used on its own. You can automatically generate a clickable table of contents from your document's headings.
+
+**Basic Usage:**
+
+Simply add `[TOC]` anywhere in your markdown:
+
+```markdown
+# My Document
+
+[TOC]
+
+# Introduction
+Content here...
+
+# Getting Started
+More content...
+
+## Installation
+Details...
+```
+
+This generates a nested list of all headings with anchor links:
+
+```html
+<nav class="ml_toc" aria-label="Table of Contents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+```
+
+**Custom CSS Classes:**
+
+You can specify a custom CSS class for styling:
+
+```markdown
+[TOC cssclass="my-custom-toc"]
+```
+
+This renders with your custom class:
+
+```html
+<nav class="my-custom-toc" aria-label="Table of Contents">
+  <!-- TOC content -->
+</nav>
+```
+
+**How It Works:**
+
+1. **Auto-Detection**: The TOC automatically detects the minimum heading level in your document and adjusts accordingly. If your document starts with H2, the TOC treats H2 as the top level.
+
+2. **ID Generation**: Headings are automatically given IDs for anchor linking:
+   - "Getting Started" → `id="getting-started"`
+   - "API Reference" → `id="api-reference"`
+
+3. **Nested Structure**: The renderer builds a properly nested `ul/li` structure that reflects your document hierarchy.
+
+**Enabling TOC Support:**
+
+When configuring your Markdig pipeline, add the TOC extension:
+
+```csharp
+var pipeline = new MarkdownPipelineBuilder()
+    .UseAdvancedExtensions()
+    .UseToc()  // Add TOC support - position in pipeline doesn't matter!
+    .Use<YourOtherExtensions>()
+    .Build();
+```
+
+**Pipeline Position:** Unlike some Markdig extensions, the TOC extension **doesn't care where you add it** in the pipeline. The extension automatically:
+- Inserts its parser at the beginning of the parser list (position 0)
+- Renders after all parsing is complete, collecting headings from the entire document
+
+So you can add `.UseToc()` anywhere - beginning, middle, or end of your pipeline configuration.
+
+**Important:** The TOC extension is completely independent of the fetch extension. They're just packaged together for convenience. You can:
+
+- Use TOC without fetch
+- Use fetch without TOC
+- Use both together
+
+**Note:** The TOC marker works in both your main markdown files and in fetched remote content. If you fetch a README from GitHub that contains `[TOC]`, it will automatically generate a table of contents from that document's headings (assuming you've added `.UseToc()` to your pipeline).
+
+## Link Transformation
 
 When fetching remote markdown (especially from GitHub), relative links break. The extension can automatically rewrite them:
 
@@ -586,7 +678,7 @@ public class MarkdownLinkRewriter
 }
 ```
 
-### Fetch Metadata Summary
+## Fetch Metadata Summary
 
 You can show readers when content was last fetched:
 
@@ -621,7 +713,7 @@ Available placeholders:
 - `{pollfrequency}` - Cache duration in hours
 - `{status}` - Cache status (fresh/cached/stale)
 
-### Disabling Processing for Documentation
+## Disabling Processing for Documentation
 
 When writing documentation about the fetch extension (like this article!), you need a way to show the tags without them being processed. Use the `disable="true"` attribute:
 
@@ -644,7 +736,7 @@ This works for both `<fetch>` and `<fetch-summary>` tags:
 <fetch-summary url="https://example.com/api/status.md" disable="true"/>
 ```
 
-### Event System for Monitoring
+## Event System for Monitoring
 
 The extension publishes events for all fetch operations:
 
@@ -713,7 +805,7 @@ sequenceDiagram
     Note over L: Listeners can be: Logging, Metrics, Telemetry, Webhooks
 ```
 
-## Caching Strategy in Detail
+# Caching Strategy in Detail
 
 The caching behavior follows a state machine pattern:
 
@@ -763,7 +855,7 @@ The key insights here:
 
 This pattern is called **stale-while-revalidate** and it's excellent for reliability. Even if your source goes down, your site keeps serving cached content.
 
-## Cache Removal and Management
+# Cache Removal and Management
 
 Sometimes you need to manually invalidate cache:
 
@@ -807,7 +899,7 @@ app.MapPost("/webhooks/github", async (
 });
 ```
 
-## Testing the Extension
+# Testing the Extension
 
 The extension includes comprehensive tests. Here's how I structure them:
 
@@ -867,7 +959,7 @@ public class MarkdownFetchServiceTests
 }
 ```
 
-## Performance Considerations
+# Performance Considerations
 
 The extension is designed for performance:
 
@@ -884,7 +976,7 @@ Typical performance numbers on my home server:
 - Database lookup: 2-5ms (PostgreSQL with proper indexes)
 - File system lookup: 1-3ms
 
-## Deployment with GitHub Actions
+# Deployment with GitHub Actions
 
 I publish all four packages to NuGet using GitHub Actions with OIDC authentication:
 
@@ -937,7 +1029,7 @@ jobs:
 
 The OIDC approach is more secure than storing API keys - GitHub generates short-lived tokens automatically.
 
-## Real-World Usage
+# Real-World Usage
 
 Here's how I use it in my blog posts:
 
@@ -952,14 +1044,14 @@ Here's the official README from GitHub:
        showsummary="true"
        summarytemplate="*Fetched {age} from GitHub*" disable="true"/>
 
-## Installation
+# Installation
 
 The package is available on NuGet...
 ```
 
 This keeps documentation synchronized automatically. When I update the README on GitHub, the blog post stays in sync (within 24 hours).
 
-## Conclusion
+# Conclusion
 
 Building this extension taught me several things:
 
@@ -968,6 +1060,7 @@ Building this extension taught me several things:
 3. **Pluggable Storage** - Different deployments need different solutions
 4. **Events for Observability** - Being able to monitor fetch operations is crucial
 5. **Thread Safety Matters** - Concurrent access needs careful handling
+6. **Bonus Features** - The package now includes a separate TOC extension for generating tables of contents
 
 The extension is open source and available on NuGet:
 

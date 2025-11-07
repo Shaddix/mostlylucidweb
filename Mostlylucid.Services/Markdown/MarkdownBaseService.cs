@@ -15,10 +15,9 @@ public class MarkdownBaseService
     {
         var builder = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
+            .UseToc() // Custom TOC extension - supports [TOC] markers
             .Use<ImgExtension>()
-            .Use<LinkRewriteExtension>()
-            .UseToc(); // Custom TOC extension - supports [TOC] markers - MUST be last
-
+            .Use<LinkRewriteExtension>();
 
         // Allow additional configuration
         configure?.Invoke(builder);
