@@ -439,18 +439,20 @@
 <body>
     <header>
         <h1>mostlylucid.Markdig.FetchExtension Demo</h1>
-        <p class="subtitle">Fetch remote Markdown and generate Table of Contents • Preprocessor + Extensions for Markdig</p>
+        <p class="subtitle">v1.1.0 • Fetch remote Markdown and generate Table of Contents • Preprocessor + Extensions for Markdig</p>
     </header>
 
     <div class="container">
         <div class="info-box">
-            <h2>Try it out</h2>
+            <h2>Try it out (v1.1.0 Features)</h2>
             <p>Edit the markdown below and click "Render Markdown" to see both features in action.</p>
             <ul>
-                <li><strong>Fetch Preprocessor:</strong> Use <code>&lt;fetch markdownurl="URL" pollfrequency="24"/&gt;</code> to embed remote content</li>
+                <li><strong>Fetch Preprocessor:</strong> Use <code>&lt;fetch markdownurl="URL" pollfrequency="24h"/&gt;</code> to embed remote content</li>
                 <li>Add <code>transformlinks="true"</code> to rewrite relative links</li>
                 <li>Add <code>showsummary="true"</code> to display fetch metadata</li>
-                <li><strong>TOC Extension:</strong> Use <code>[TOC]</code>, <code>[TOC:2-4]</code>, or <code>[TOC:2-4:my-class]</code> for table of contents</li>
+                <li><strong>TOC Extension (v1.1.0):</strong> Smart auto-detection! Now works with documents starting at H2</li>
+                <li><strong>Flexible Syntax:</strong> <code>[TOC cssclass="my-class"]</code>, <code>[TOC cssclass='my-class']</code>, or <code>[TOC cssclass=my-class]</code></li>
+                <li>Whitespace handling: Leading/trailing spaces and extra spaces around <code>=</code> now supported</li>
                 <li>Use <code>&lt;fetch-summary url="URL"/&gt;</code> to show metadata separately</li>
                 <li>Add <code>disable="true"</code> to prevent fetch processing (useful for documentation)</li>
             </ul>
@@ -509,60 +511,77 @@
 
     <script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js"></script>
     <script>
-        const defaultMarkdown = `# Markdig Fetch & TOC Demo
+        const defaultMarkdown = `# Markdig Fetch & TOC Demo (v1.1.0)
 
-This demonstrates both the **Fetch Preprocessor** and **TOC Extension** from mostlylucid.Markdig.FetchExtension.
+This demonstrates both the **Fetch Preprocessor** and **TOC Extension** with all the latest v1.1.0 enhancements!
 
-[TOC:2-3]
+  [TOC cssclass='demo-toc']
+
+## ✨ What's New in v1.1.0
+
+### Smart Heading Level Auto-Detection
+
+The TOC extension now automatically detects the lowest heading level in your document. No more empty TOCs when documents start at H2!
+
+### Flexible TOC Syntax
+
+All of these now work:
+- \`[TOC cssclass="my-class"]\` - Double quotes (original)
+- \`[TOC cssclass='my-class']\` - Single quotes (NEW!)
+- \`[TOC cssclass=my-class]\` - No quotes (NEW!)
+- \`  [TOC  cssclass = "my-class"  ]\` - Extra whitespace (NEW!)
+
+### Improved Error Handling
+
+The extension now provides helpful HTML comments when things don't work as expected, making debugging much easier.
 
 ## Fetch Preprocessor
 
-The fetch preprocessor runs **before** the Markdig pipeline, allowing you to embed remote Markdown content that then flows through all your other extensions.
+The fetch preprocessor runs **before** the Markdig pipeline, allowing you to embed remote Markdown content that flows through all your other extensions.
 
 ### Example: Fetch from GitHub
 
-Below we'll fetch a README from a GitHub repository:
+Below we'll fetch release notes from GitHub (try clicking "Render Markdown"):
 
-<fetch markdownurl="https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/Mostlylucid.Markdig.FetchExtension/README.md"
-       pollfrequency="24"
+<fetch markdownurl="https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/Mostlylucid.Markdig.FetchExtension/release-notes.txt"
+       pollfrequency="24h"
        transformlinks="true"
        showsummary="true"
-       summarytemplate="_Last updated {age} | Status: {status}_"/>
+       summarytemplate="_📦 Last updated {age} • Status: {status} • Size: {contentlength}_"/>
 
-### Fetch Features
+### Time Units
 
-- Fetching remote Markdown content
-- Smart caching with configurable poll frequency
-- Link transformation for relative URLs
-- Metadata summaries with custom templates
-- Thread-safe operations
+Poll frequency now supports: \`s\` (seconds), \`m\` (minutes), \`h\` (hours), \`d\` (days)
 
-## TOC Extension
+## TOC Auto-Adjustment Demo
 
-The TOC (Table of Contents) extension is a **Markdig pipeline extension** that generates navigation from your headers.
+This document starts at H1 (the title), but notice how the TOC still generates properly!
 
-### TOC Syntax
+In v1.1.0, if a document started at H2 (common in blog posts), the TOC would automatically adjust the minimum level from H1 to H2. Check the HTML source to see the debug comment!
 
-- \`[TOC]\` - All headings (H1-H6)
-- \`[TOC:2-4]\` - Only H2 through H4
-- \`[TOC:2-4:custom-class]\` - With custom CSS class
+### Third-Level Heading
 
-### TOC Features
+This is a subsection under "TOC Auto-Adjustment Demo".
 
-- Automatically extracts headers
-- Generates anchor links
-- Hierarchical nested lists
-- Custom styling support
+### Another Third-Level
+
+More nested content.
 
 ## Combined Power
 
-Because the fetch preprocessor runs first, you can:
+Because the fetch preprocessor runs first:
 1. Fetch remote Markdown with \`<fetch>\` tags
-2. The fetched content flows through the pipeline
-3. TOC extension picks up headers from both local and fetched content
-4. All other Markdig extensions work on the combined content
+2. Fetched content flows through the entire pipeline
+3. TOC extension sees headers from BOTH local AND fetched content
+4. All other Markdig extensions process the combined content
 
-Try it yourself - edit this markdown and click "Render Markdown"!`;
+## Try It Out!
+
+Edit this markdown and click "Render Markdown" to see the magic happen. Check the cache viewer below to see how caching works!
+
+---
+
+_**Pro Tip:** View the page source of the rendered output to see the HTML comments showing auto-adjustment and other debug info._`;
 
         const easyMDE = new EasyMDE({
             element: document.getElementById('markdown-editor'),

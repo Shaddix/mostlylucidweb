@@ -8,11 +8,11 @@ namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 
 /// <summary>
 /// Parser for [TOC] markers in markdown
-/// Supports: [TOC], [TOC cssclass="my-class"]
+/// Supports: [TOC], [TOC cssclass="my-class"], [TOC cssclass='my-class'], [TOC cssclass=my-class]
 /// </summary>
 public partial class TocBlockParser : BlockParser
 {
-    [GeneratedRegex(@"^\[TOC(?:\s+cssclass=""([a-zA-Z0-9_-]+)"")?\]$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\s*\[TOC(?:\s+cssclass\s*=\s*[""']?([a-zA-Z0-9_-]+)[""']?)?\s*\]\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex TocRegex();
 
     public TocBlockParser()
@@ -26,7 +26,7 @@ public partial class TocBlockParser : BlockParser
         {
             return BlockState.None;
         }
-
+    
         var line = processor.Line;
         var startPosition = line.Start;
 
@@ -43,7 +43,7 @@ public partial class TocBlockParser : BlockParser
 
         var match = TocRegex().Match(lineText);
         Console.WriteLine($"[TocBlockParser] Match success: {match.Success}");
-
+ 
         if (!match.Success)
             return BlockState.None;
 

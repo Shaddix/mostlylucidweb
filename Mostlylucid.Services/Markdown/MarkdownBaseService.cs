@@ -15,10 +15,9 @@ public class MarkdownBaseService
     {
         var builder = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
-            .Use<Mostlylucid.Markdig.FetchExtension.FetchMarkdownExtension>()
-            .UseToc() // Custom TOC extension - supports [TOC] markers
             .Use<ImgExtension>()
-            .Use<LinkRewriteExtension>();
+            .Use<LinkRewriteExtension>()
+            .UseToc(); // Custom TOC extension - supports [TOC] markers - MUST be last
 
 
         // Allow additional configuration

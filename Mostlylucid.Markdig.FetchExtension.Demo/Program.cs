@@ -20,9 +20,13 @@ app.MapPost("/render", ([FromBody] RenderRequest request, IServiceProvider sp) =
 {
     var preprocessor = new MarkdownFetchPreprocessor(sp);
     var processed = preprocessor.Preprocess(request.Markdown);
+
+    // v1.1.0: UseToc() MUST be last in the pipeline!
     var pipeline = new MarkdownPipelineBuilder()
-        .UseToc()
+        .UseAdvancedExtensions()
+        .UseToc()  // MUST be last!
         .Build();
+
     var html = Markdown.ToHtml(processed, pipeline);
     return Results.Json(new { html });
 });

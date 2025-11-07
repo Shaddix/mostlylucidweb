@@ -7,9 +7,11 @@ This repository contains the source code for mostlylucid — the personal site a
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.Markdig.FetchExtension.svg)](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.Markdig.FetchExtension.svg)](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)
 
-- [mostlylucid.Markdig.FetchExtension](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension/)
+- [mostlylucid.Markdig.FetchExtension](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension/) **v1.1.0**
 
 A complete solution for fetching and caching remote markdown content with support for multiple storage backends, automatic polling, and a stale-while-revalidate caching pattern.
+
+**Latest (v1.1.0):** Major TOC extension enhancements including smart heading level auto-detection, flexible syntax parsing (single quotes, no quotes, extra whitespace), improved error handling, and comprehensive test coverage. UseToc() extension must now be registered last in the pipeline for proper interaction with other Markdig extensions.
 
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)

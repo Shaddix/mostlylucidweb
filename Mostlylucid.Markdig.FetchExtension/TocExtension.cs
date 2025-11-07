@@ -13,39 +13,23 @@ public class TocExtension : IMarkdownExtension
 {
     public void Setup(MarkdownPipelineBuilder pipeline)
     {
-        Console.WriteLine("[TocExtension] Setup(MarkdownPipelineBuilder) called");
         // Add the TOC block parser
         if (!pipeline.BlockParsers.Contains<TocBlockParser>())
         {
             // Insert before paragraph parser to ensure TOC is parsed first
             pipeline.BlockParsers.Insert(0, new TocBlockParser());
-            Console.WriteLine("[TocExtension] TocBlockParser registered");
-        }
-        else
-        {
-            Console.WriteLine("[TocExtension] TocBlockParser already registered");
         }
     }
 
     public void Setup(MarkdownPipeline pipeline, IMarkdownRenderer renderer)
     {
-        Console.WriteLine($"[TocExtension] Setup(MarkdownPipeline, IMarkdownRenderer) called, renderer type: {renderer.GetType().Name}");
         if (renderer is HtmlRenderer htmlRenderer)
         {
             if (!htmlRenderer.ObjectRenderers.Contains<TocRenderer>())
             {
                 // Add the TOC renderer
                 htmlRenderer.ObjectRenderers.Add(new TocRenderer());
-                Console.WriteLine("[TocExtension] TocRenderer registered");
             }
-            else
-            {
-                Console.WriteLine("[TocExtension] TocRenderer already registered");
-            }
-        }
-        else
-        {
-            Console.WriteLine($"[TocExtension] WARNING: Renderer is not HtmlRenderer, is {renderer.GetType().Name}");
         }
     }
 }

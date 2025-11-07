@@ -22,35 +22,69 @@ public partial class TocRenderer : HtmlObjectRenderer<TocBlock>
 
     protected override void Write(HtmlRenderer renderer, TocBlock obj)
     {
-        Console.WriteLine("[TocRenderer] Write() called");
-        Console.WriteLine($"[TocRenderer] CSS Class: '{obj.CssClass}'");
-
         // Get the document - walk up from the TOC block
         var document = GetDocument(obj);
         if (document == null)
         {
-            Console.WriteLine("[TocRenderer] ERROR: Could not find document");
+            // Document not found - render a comment for debugging
+            renderer.WriteLine($"<!-- [TOC] ERROR: Could not find document -->");
             return;
         }
 
-        Console.WriteLine("[TocRenderer] Document found");
+        // Collect all headings in the document within the max level constraint
+        var allHeadings = document.Descendants()
+            .OfType<HeadingBlock>()
+            .Where(h => h.Level <= obj.MaxLevel)
+            .ToList();
 
-        // Find all headings in the document
-        var headings = CollectHeadings(document, obj.MinLevel, obj.MaxLevel);
-
-        Console.WriteLine($"[TocRenderer] Found {headings.Count} headings (levels {obj.MinLevel}-{obj.MaxLevel})");
-
-        if (headings.Count == 0)
+        if (allHeadings.Count == 0)
         {
-            // No headings found, render nothing
-            Console.WriteLine("[TocRenderer] No headings, rendering nothing");
+            // No headings found at all
+            renderer.WriteLine($"<!-- [TOC] No headings found (max level: {obj.MaxLevel}). Document has {document.Descendants().Count()} descendants, {document.Descendants().OfType<HeadingBlock>().Count()} are HeadingBlocks -->");
             return;
+        }
+
+        // Auto-detect the minimum heading level present in the document
+        var actualMinLevel = allHeadings.Min(h => h.Level);
+
+        // Use the detected minimum level if it's higher than configured
+        var effectiveMinLevel = Math.Max(obj.MinLevel, actualMinLevel);
+
+        // Filter headings by the effective level range
+        var filteredHeadings = allHeadings
+            .Where(h => h.Level >= effectiveMinLevel && h.Level <= obj.MaxLevel)
+            .ToList();
+
+        if (filteredHeadings.Count == 0)
+        {
+            // This shouldn't happen given our logic above, but just in case
+            renderer.WriteLine($"<!-- [TOC] No headings found after filtering (effective range: {effectiveMinLevel}-{obj.MaxLevel}) -->");
+            return;
+        }
+
+        // Log the auto-adjustment if it happened
+        if (actualMinLevel > obj.MinLevel)
+        {
+            renderer.WriteLine($"<!-- [TOC] Auto-adjusted minLevel from {obj.MinLevel} to {actualMinLevel} (document starts at H{actualMinLevel}) -->");
+        }
+
+        // Convert to our HeadingInfo structure
+        var headings = filteredHeadings.Select(h => new HeadingInfo
+        {
+            Level = h.Level,
+            Text = ExtractHeadingText(h),
+            Id = GenerateId(ExtractHeadingText(h)),
+            Heading = h
+        }).ToList();
+
+        // Ensure all headings have IDs
+        foreach (var heading in headings)
+        {
+            EnsureHeadingHasId(heading.Heading, heading.Id);
         }
 
         // Use provided CSS class or default to "ml_toc"
         var cssClass = !string.IsNullOrEmpty(obj.CssClass) ? obj.CssClass : "ml_toc";
-
-        Console.WriteLine($"[TocRenderer] Rendering TOC with class '{cssClass}'");
 
         // Start TOC container nav
         renderer.WriteLine($"<nav class=\"{cssClass}\" aria-label=\"Table of Contents\">");
@@ -60,12 +94,10 @@ public partial class TocRenderer : HtmlObjectRenderer<TocBlock>
             renderer.WriteLine($"<div class=\"toc-title\">{EscapeHtml(obj.Title)}</div>");
         }
 
-        // Build nested list
-        BuildNestedList(renderer, headings, 0, obj.MinLevel);
+        // Build nested list starting from the effective minimum level
+        BuildNestedList(renderer, headings, 0, effectiveMinLevel);
 
         renderer.WriteLine("</nav>");
-
-        Console.WriteLine("[TocRenderer] TOC rendering complete");
     }
 
     /// <summary>
@@ -85,37 +117,6 @@ public partial class TocRenderer : HtmlObjectRenderer<TocBlock>
         return null;
     }
 
-    /// <summary>
-    /// Collect all headings from the document
-    /// </summary>
-    private List<HeadingInfo> CollectHeadings(MarkdownObject root, int minLevel, int maxLevel)
-    {
-        var headings = new List<HeadingInfo>();
-
-        foreach (var descendant in root.Descendants())
-        {
-            if (descendant is HeadingBlock heading &&
-                heading.Level >= minLevel &&
-                heading.Level <= maxLevel)
-            {
-                var text = ExtractHeadingText(heading);
-                var id = GenerateId(text);
-
-                headings.Add(new HeadingInfo
-                {
-                    Level = heading.Level,
-                    Text = text,
-                    Id = id,
-                    Heading = heading
-                });
-
-                // Ensure the heading has an ID for linking
-                EnsureHeadingHasId(heading, id);
-            }
-        }
-
-        return headings;
-    }
 
     /// <summary>
     /// Extract plain text from a heading block

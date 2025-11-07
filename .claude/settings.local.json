@@ -10,7 +10,10 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet list:*)",
       "Bash(dotnet test:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(find:*)",
+      "Bash(dotnet run:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

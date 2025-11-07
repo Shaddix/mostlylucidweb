@@ -13,7 +13,7 @@ public class TocBlock : Block
     }
 
     /// <summary>
-    /// Minimum heading level to include (default: 1 = H1)
+    /// Minimum heading level to include (default: 1 = H1, but auto-adjusts to lowest heading found in document)
     /// </summary>
     public int MinLevel { get; set; } = 1;
 

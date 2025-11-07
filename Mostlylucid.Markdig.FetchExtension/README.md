@@ -1,9 +1,23 @@
-# Mostlylucid.Markdig.FetchExtension
+# mostlylucid.Markdig.FetchExtension
 
 A comprehensive Markdig toolkit providing:
 
 1. **Fetch Preprocessor** - Embed remote Markdown content before pipeline processing
 2. **Table of Contents Extension** - Automatically generate TOC from document headings
+
+See my blog [here for more details](https://www.mostlylucid.net/blog/markdigfetchextension).
+
+## Latest Updates
+
+**Version 1.1.0 (2025-11-07)** - Major TOC Extension Enhancements
+- 🎉 **Smart Heading Level Detection** - TOC now auto-adjusts to document structure (no more empty TOCs!)
+- 🎨 **Flexible Syntax** - Supports single quotes, no quotes, and extra whitespace in cssclass attribute
+- 🐛 **Improved Error Handling** - Better feedback for edge cases and empty documents
+- ⚡ **Performance** - Removed debug logging, more efficient heading processing
+- ⚠️ **Breaking Change** - UseToc() extension MUST now be registered last in the pipeline
+- ✅ **Comprehensive Tests** - Full test coverage for all new features
+
+See [TOC Enhancements Guide](./TOC_ENHANCEMENTS_v1.1.0.md) for detailed information and [release notes](./release-notes.txt) for version history. 
 
 ## Architecture Overview
 
@@ -68,11 +82,17 @@ var html = Markdown.ToHtml(markdown, pipeline);
 ### TOC Syntax
 
 ```markdown
-[TOC]              <!-- All headings H1-H6 -->
-[TOC:2-4]          <!-- Only H2-H4 -->
-[TOC::my-toc]      <!-- Custom CSS class -->
-[TOC:2-4:my-toc]   <!-- Range + custom class -->
+[TOC]                          <!-- All headings (auto-adjusts to lowest level in document) -->
+  [TOC]                        <!-- Leading whitespace OK (v1.1.0+) -->
+[TOC]                          <!-- Trailing whitespace OK (v1.1.0+) -->
+
+[TOC cssclass="my-toc"]        <!-- Custom CSS class with double quotes -->
+[TOC cssclass='my-toc']        <!-- Single quotes (v1.1.0+) -->
+[TOC cssclass=my-toc]          <!-- No quotes (v1.1.0+) -->
+[TOC  cssclass = "my-toc" ]    <!-- Extra spaces around equals (v1.1.0+) -->
 ```
+
+**v1.1.0 Enhancement**: If your document starts at H2 (common in blog posts), the TOC now automatically adjusts the minimum level. No more empty TOCs!
 
 ### TOC Output
 
@@ -190,7 +210,7 @@ var serviceProvider = services.BuildServiceProvider();
 // Create preprocessor and pipeline
 var preprocessor = new MarkdownFetchPreprocessor(serviceProvider);
 var pipeline = new MarkdownPipelineBuilder()
-    .UseToc()
+    .UseToc()  // MUST be last! (v1.1.0+)
     .Build();
 
 // Your markdown can use both features
@@ -405,8 +425,8 @@ public class MarkdownRenderingService
 
         // Create pipeline with extensions (runs AFTER preprocessing)
         _pipeline = new MarkdownPipelineBuilder()
-            .UseToc()
             // Add your other extensions here
+            .UseToc()  // MUST be last! (v1.1.0+)
             .Build();
     }
 

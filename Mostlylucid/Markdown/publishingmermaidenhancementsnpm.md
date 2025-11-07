@@ -1,11 +1,11 @@
 # Publishing Mermaid Enhancements as an npm Package
 
 <!--category-- JavaScript, TypeScript, Mermaid, npm -->
-<datetime class="hidden">2025-11-07T16:00</datetime>
+<datetime class="hidden">2025-11-07T16:00</datetime> 
+ 
+# Introduction
 
-## Introduction
-
-After building some really useful enhancements for Mermaid.js diagrams (interactive pan/zoom, fullscreen lightbox, export to PNG/SVG, and automatic theme switching), I decided it was time to package them up properly and share them with the community. This post walks through how I created `@mostlylucid/mermaid-enhancements` as a production-ready npm package.
+After building some really useful enhancements for Mermaid.js diagrams (interactive pan/zoom, fullscreen lightbox, export to PNG/SVG, and automatic theme switching), I decided it was time to package them up properly and share them with the community. This post walks through how I created `@mostlylucid/mermaid-enhancements` as a production-ready npm package. 
 
 > NOTE: Still working on the release. Stay tuned (my first npm package so taking a bit)
 
@@ -13,11 +13,11 @@ After building some really useful enhancements for Mermaid.js diagrams (interact
 
 [![npm version](https://img.shields.io/npm/v/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
 [![npm downloads](https://img.shields.io/npm/dm/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Unlicense](https://img.shields.io/badge/License-Unlicense-green.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/@mostlylucid/mermaid-enhancements)](https://bundlephobia.com/package/@mostlylucid/mermaid-enhancements)
 
-## Why Package It?
+# Why Package It?
 
 I've been using these enhancements across my blog for a while now, and they've become essential for working with complex Mermaid diagrams. The features include:
 
@@ -29,7 +29,7 @@ I've been using these enhancements across my blog for a while now, and they've b
 
 Since I was copying the same code between projects, it made sense to create a proper npm package that anyone could use.
 
-## Project Structure
+# Project Structure
 
 I set up a professional package structure with TypeScript support:
 
@@ -54,7 +54,7 @@ mostlylucid-mermaid/
 
 The package uses TypeScript for type safety and better developer experience, but compiles down to JavaScript for maximum compatibility.
 
-## The Architecture
+# The Architecture
 
 Here's how the components fit together:
 
@@ -98,9 +98,9 @@ graph TD
     style M fill:#8b5cf6,stroke:#7c3aed,color:#fff
 ```
 
-## Core Implementation
+# Core Implementation
 
-### Type Definitions
+## Type Definitions
 
 First, I defined comprehensive TypeScript types:
 
@@ -135,7 +135,7 @@ export interface EnhancementConfig {
 }
 ```
 
-### Main Entry Point
+## Main Entry Point
 
 The main entry point is dead simple:
 
@@ -161,7 +161,7 @@ export default {
 };
 ```
 
-### Pan/Zoom Implementation
+## Pan/Zoom Implementation
 
 The enhancement logic wraps each diagram with controls and initializes svg-pan-zoom:
 
@@ -242,7 +242,7 @@ function createControlButtons(container: HTMLElement, diagramId: string) {
 }
 ```
 
-### Export Functionality
+## Export Functionality
 
 The export implementation clones the SVG, preserves the viewBox, and uses html-to-image:
 
@@ -311,7 +311,7 @@ async function exportDiagram(
 }
 ```
 
-### Theme Switching
+## Theme Switching
 
 The theme switcher handles multiple detection methods:
 
@@ -366,9 +366,9 @@ export async function initMermaid() {
 }
 ```
 
-## Package Configuration
+# Package Configuration
 
-### package.json
+## package.json
 
 The package.json defines multiple entry points for different use cases:
 
@@ -412,7 +412,7 @@ The package.json defines multiple entry points for different use cases:
 }
 ```
 
-### TypeScript Configuration
+## TypeScript Configuration
 
 ```json
 {
@@ -435,9 +435,9 @@ The package.json defines multiple entry points for different use cases:
 }
 ```
 
-## Usage Examples
+# Usage Examples
 
-### Basic Usage
+## Basic Usage
 
 The simplest way to use the package:
 
@@ -491,9 +491,9 @@ function MermaidDiagram({ chart }: { chart: string }) {
 }
 ```
 
-### Vue Integration
+## Vue Integration
 
-```vue
+```html
 <template>
     <div class="mermaid">{{ chart }}</div>
 </template>
@@ -560,7 +560,7 @@ graph TD
 </html>
 ```
 
-## Publishing Process
+# Publishing Process
 
 Here's the publishing workflow:
 
@@ -591,7 +591,7 @@ sequenceDiagram
     CDN-->>User: Serve files
 ```
 
-### Step-by-Step
+## Step-by-Step
 
 1. **Build the package:**
 ```bash
@@ -669,7 +669,7 @@ Results:
 - Regular: 23.46 KB
 - Minified: 9.78 KB (58.3% reduction!)
 
-## Documentation
+# Documentation
 
 I created comprehensive documentation:
 
@@ -678,7 +678,7 @@ I created comprehensive documentation:
 - **PUBLISHING.md** - npm publishing instructions
 - **CHANGELOG.md** - Version history
 
-## Styling
+# Styling
 
 The CSS is fully responsive and supports dark mode:
 
@@ -730,13 +730,13 @@ The CSS is fully responsive and supports dark mode:
 }
 ```
 
-## Lessons Learned
+# Lessons Learned
 
-### 1. TypeScript is Worth It
+## 1. TypeScript is Worth It
 
 Even for a small library, TypeScript caught several bugs during development and provides excellent IDE support for users.
 
-### 2. Multiple Entry Points Matter
+## 2. Multiple Entry Points Matter
 
 Supporting both `import` and `require`, plus offering a minified version, makes the package more versatile:
 
@@ -753,11 +753,11 @@ Supporting both `import` and `require`, plus offering a minified version, makes 
 }
 ```
 
-### 3. Demo is Essential
+## 3. Demo is Essential
 
 The demo page helped me catch bugs and serves as living documentation. Users can see exactly how it works.
 
-### 4. Cleanup is Important
+## 4. Cleanup is Important
 
 Always provide cleanup functions for memory management:
 
@@ -774,7 +774,7 @@ export function cleanupMermaidEnhancements() {
 }
 ```
 
-### 5. Theme Detection Needs Fallbacks
+## 5. Theme Detection Needs Fallbacks
 
 Different sites handle themes differently, so I implemented multiple detection methods:
 
@@ -783,7 +783,7 @@ Different sites handle themes differently, so I implemented multiple detection m
 3. DOM class (`document.documentElement.classList`)
 4. OS preference (`prefers-color-scheme`)
 
-## Performance Considerations
+# Performance Considerations
 
 The package is optimized for performance:
 
@@ -793,7 +793,7 @@ The package is optimized for performance:
 - **Minimal Re-renders** - Diagrams only re-render on theme change
 - **Efficient DOM Operations** - Uses `requestAnimationFrame` for smooth animations
 
-## Browser Support
+# Browser Support
 
 Tested and working on:
 - Chrome/Edge (latest)
@@ -801,7 +801,7 @@ Tested and working on:
 - Safari (latest)
 - Mobile browsers (iOS Safari, Chrome Mobile)
 
-## Future Enhancements
+# Future Enhancements
 
 Ideas for future versions:
 
@@ -813,7 +813,7 @@ Ideas for future versions:
 - [ ] Diagram annotations
 - [ ] Multiple export formats (PDF, JPEG)
 
-## Conclusion
+# Conclusion
 
 Packaging the Mermaid enhancements as an npm module was a great learning experience. The package is now:
 
@@ -826,7 +826,7 @@ Packaging the Mermaid enhancements as an npm module was a great learning experie
 
 If you're using Mermaid.js in your projects, give it a try! The interactive pan/zoom and export features make working with complex diagrams so much better.
 
-## Resources
+# Resources
 
 - **GitHub Repository**: [mostlylucidweb/mostlylucid-mermaid](https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid-mermaid)
 - **npm Package**: [@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements) (coming soon)
