@@ -13,15 +13,26 @@
 
 export {
     enhanceMermaidDiagrams,
-    cleanupMermaidEnhancements
+    cleanupMermaidEnhancements,
+    configure
 } from './enhancements.js';
 
 export {
     initMermaid
 } from './theme-switcher.js';
 
+export type {
+    EnhancementConfig,
+    IconConfig,
+    PanZoomInstance,
+    Theme,
+    ExportFormat,
+    ControlAction,
+    ControlButton
+} from './types';
+
 // Re-export for convenience
-import { enhanceMermaidDiagrams } from './enhancements.js';
+import { enhanceMermaidDiagrams, configure } from './enhancements.js';
 import { initMermaid } from './theme-switcher.js';
 
 /**
@@ -45,4 +56,5 @@ export default {
     init,
     initMermaid,
     enhanceMermaidDiagrams,
+    configure,
 };

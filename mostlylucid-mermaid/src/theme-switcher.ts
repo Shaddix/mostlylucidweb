@@ -8,12 +8,13 @@
  */
 
 import { enhanceMermaidDiagrams } from './enhancements.js';
+import type { Theme } from './types';
 
 const elementSelector = 'div.mermaid, pre.mermaid';
-let mediaQueryList = null;
-let mediaChangeHandler = null;
-let darkThemeHandlerRef = null;
-let lightThemeHandlerRef = null;
+let mediaQueryList: MediaQueryList | null = null;
+let mediaChangeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+let darkThemeHandlerRef: (() => Promise<void>) | null = null;
+let lightThemeHandlerRef: (() => Promise<void>) | null = null;
 let listenersAttached = false;
 
 /**
@@ -40,7 +41,7 @@ const normalizeMermaidCodeFences = () => {
  * Load and render Mermaid diagrams with the specified theme
  * @param {string} theme - Theme name ('dark' or 'default')
  */
-const loadMermaid = async (theme) => {
+const loadMermaid = async (theme: Theme): Promise<void> => {
     if (!window.mermaid) {
         console.warn('Mermaid library not found. Make sure mermaid is loaded before calling initMermaid()');
         return;
@@ -62,7 +63,7 @@ const loadMermaid = async (theme) => {
 
         // Enhance diagrams with pan/zoom and export after rendering completes
         // Use requestAnimationFrame for better timing
-        await new Promise(resolve => {
+        await new Promise<void>(resolve => {
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     enhanceMermaidDiagrams();
@@ -78,28 +79,32 @@ const loadMermaid = async (theme) => {
 /**
  * Save original diagram source code for re-rendering
  */
-const saveOriginalData = async () => {
+const saveOriginalData = (): void => {
     const elements = document.querySelectorAll(elementSelector);
     if (elements.length === 0) return;
 
     elements.forEach((el) => {
         if (el.getAttribute('data-processed') != null) return;
         // Store the raw text content so special characters aren't HTML-escaped
-        el.setAttribute('data-original-code', el.textContent);
+        const textContent = el.textContent;
+        if (textContent) {
+            el.setAttribute('data-original-code', textContent);
+        }
     });
 };
 
 /**
  * Reset processed diagrams to their original source for re-rendering
  */
-const resetProcessed = async () => {
+const resetProcessed = (): void => {
     const elements = document.querySelectorAll(elementSelector);
     if (elements.length === 0) return;
 
     elements.forEach((el) => {
-        if (el.getAttribute('data-original-code') != null) {
+        const originalCode = el.getAttribute('data-original-code');
+        if (originalCode != null) {
             el.removeAttribute('data-processed');
-            el.innerHTML = el.getAttribute('data-original-code');
+            el.innerHTML = originalCode;
         }
     });
 };
@@ -142,24 +147,24 @@ export async function initMermaid() {
     if (mermaidElements.length === 0) return;
 
     try {
-        await saveOriginalData();
+        saveOriginalData();
     } catch (error) {
         console.error('Error saving original data:', error);
         return;
     }
 
-    const handleDarkThemeSet = async () => {
+    const handleDarkThemeSet = async (): Promise<void> => {
         try {
-            await resetProcessed();
+            resetProcessed();
             await loadMermaid('dark');
         } catch (error) {
             console.error('Error during dark theme set:', error);
         }
     };
 
-    const handleLightThemeSet = async () => {
+    const handleLightThemeSet = async (): Promise<void> => {
         try {
-            await resetProcessed();
+            resetProcessed();
             await loadMermaid('default');
         } catch (error) {
             console.error('Error during light theme set:', error);
@@ -188,9 +193,9 @@ export async function initMermaid() {
                 mediaQueryList.removeEventListener('change', mediaChangeHandler);
             }
             mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
-            mediaChangeHandler = async (e) => {
+            mediaChangeHandler = async (e: MediaQueryListEvent): Promise<void> => {
                 try {
-                    await resetProcessed();
+                    resetProcessed();
                     await loadMermaid(e.matches ? 'dark' : 'default');
                 } catch (err) {
                     console.error('Error handling OS theme change:', err);

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx http-server -p 3001)",
+      "Bash(npm install:*)",
+      "Bash(npm test)",
+      "Bash(chmod:*)",
+      "Bash(npm run build:all:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

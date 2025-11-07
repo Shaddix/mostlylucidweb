@@ -8,15 +8,83 @@
 
 import svgPanZoom from 'svg-pan-zoom';
 import { toPng, toSvg } from 'html-to-image';
+import type { PanZoomInstance, ExportFormat, EnhancementConfig, IconConfig } from './types';
 
-const panZoomInstances = new Map();
+const panZoomInstances = new Map<string, PanZoomInstance>();
+
+/**
+ * Default icon configuration (Boxicons)
+ */
+const defaultIcons: Required<IconConfig> = {
+    fullscreen: 'bx bx-fullscreen',
+    zoomIn: 'bx bx-zoom-in',
+    zoomOut: 'bx bx-zoom-out',
+    reset: 'bx bx-reset',
+    pan: 'bx bx-move',
+    exportPng: 'bx bx-image',
+    exportSvg: 'bx bx-code-alt'
+};
+
+/**
+ * Global configuration
+ */
+let globalConfig: EnhancementConfig = {
+    icons: defaultIcons,
+    controls: {
+        fullscreen: true,
+        zoom: true,
+        pan: true,
+        export: true
+    }
+};
+
+/**
+ * Configure mermaid enhancements
+ * @param config - Configuration options
+ *
+ * @example
+ * // Use Font Awesome icons
+ * configure({
+ *   icons: {
+ *     fullscreen: 'fas fa-expand',
+ *     zoomIn: 'fas fa-plus',
+ *     zoomOut: 'fas fa-minus',
+ *     reset: 'fas fa-undo',
+ *     pan: 'fas fa-hand-paper',
+ *     exportPng: 'fas fa-image',
+ *     exportSvg: 'fas fa-code'
+ *   }
+ * });
+ *
+ * @example
+ * // Disable some controls
+ * configure({
+ *   controls: {
+ *     export: false
+ *   }
+ * });
+ */
+export function configure(config: EnhancementConfig): void {
+    globalConfig = {
+        ...globalConfig,
+        ...config,
+        icons: {
+            ...defaultIcons,
+            ...config.icons
+        },
+        controls: {
+            ...globalConfig.controls,
+            ...config.controls
+        }
+    };
+}
 
 /**
  * Create control buttons for a Mermaid diagram
  * @param {HTMLElement} container - The container element for the diagram
  * @param {string} diagramId - Unique ID for the diagram
  */
-function createControlButtons(container, diagramId) {
+function createControlButtons(container: HTMLElement, diagramId: string): void {
     // Check if controls already exist
     if (container.querySelector('.mermaid-controls')) {
         return;
@@ -25,19 +93,24 @@ function createControlButtons(container, diagramId) {
     const controlsDiv = document.createElement('div');
     controlsDiv.className = 'mermaid-controls';
 
-    const buttons = [
-        { icon: 'bx-fullscreen', title: 'Fullscreen', action: 'fullscreen' },
-        { icon: 'bx-zoom-in', title: 'Zoom In', action: 'zoomIn' },
-        { icon: 'bx-zoom-out', title: 'Zoom Out', action: 'zoomOut' },
-        { icon: 'bx-reset', title: 'Reset View', action: 'reset' },
-        { icon: 'bx-move', title: 'Pan', action: 'pan' },
-        { icon: 'bx-image', title: 'Export as PNG', action: 'exportPng' },
-        { icon: 'bx-code-alt', title: 'Export as SVG', action: 'exportSvg' }
+    const icons = globalConfig.icons || defaultIcons;
+    const controls = globalConfig.controls || {};
+
+    const buttons: Array<{ icon: string; title: string; action: string; enabled?: boolean }> = [
+        { icon: icons.fullscreen!, title: 'Fullscreen', action: 'fullscreen', enabled: controls.fullscreen !== false },
+        { icon: icons.zoomIn!, title: 'Zoom In', action: 'zoomIn', enabled: controls.zoom !== false },
+        { icon: icons.zoomOut!, title: 'Zoom Out', action: 'zoomOut', enabled: controls.zoom !== false },
+        { icon: icons.reset!, title: 'Reset View', action: 'reset', enabled: controls.zoom !== false },
+        { icon: icons.pan!, title: 'Pan', action: 'pan', enabled: controls.pan !== false },
+        { icon: icons.exportPng!, title: 'Export as PNG', action: 'exportPng', enabled: controls.export !== false },
+        { icon: icons.exportSvg!, title: 'Export as SVG', action: 'exportSvg', enabled: controls.export !== false }
     ];
 
     buttons.forEach(btn => {
+        if (btn.enabled === false) return;
+
         const button = document.createElement('button');
-        button.className = `mermaid-control-btn bx ${btn.icon}`;
+        button.className = `mermaid-control-btn ${btn.icon}`;
         button.setAttribute('title', btn.title);
         button.setAttribute('aria-label', btn.title);
         button.setAttribute('data-action', btn.action);
@@ -54,11 +127,11 @@ function createControlButtons(container, diagramId) {
  * @param {string} diagramId - Unique ID for the diagram
  * @returns {Object|null} Pan-zoom instance or null on failure
  */
-function initPanZoom(svgElement, diagramId) {
+function initPanZoom(svgElement: SVGElement, diagramId: string): PanZoomInstance | null {
     // Clean up existing instance if present
     if (panZoomInstances.has(diagramId)) {
         try {
-            panZoomInstances.get(diagramId).destroy();
+            panZoomInstances.get(diagramId)?.destroy();
         } catch (e) {
             console.warn('Failed to destroy existing pan-zoom instance:', e);
         }
@@ -92,12 +165,13 @@ function initPanZoom(svgElement, diagramId) {
  * Handle control button clicks
  * @param {Event} event - Click event
  */
-function handleControlClick(event) {
-    const button = event.target.closest('.mermaid-control-btn');
+function handleControlClick(event: Event): void {
+    const button = (event.target as Element)?.closest('.mermaid-control-btn');
     if (!button) return;
 
     const action = button.getAttribute('data-action');
     const diagramId = button.getAttribute('data-diagram-id');
+    if (!diagramId) return;
     const panZoomInstance = panZoomInstances.get(diagramId);
 
     // Find container - could be .mermaid-wrapper (in-page) or .mermaid-lightbox-diagram-wrapper (lightbox)
@@ -107,7 +181,7 @@ function handleControlClick(event) {
         case 'fullscreen':
             // Fullscreen only works for in-page diagrams
             if (container?.classList.contains('mermaid-wrapper')) {
-                openFullscreenLightbox(container, diagramId);
+                openFullscreenLightbox(container as HTMLElement, diagramId);
             }
             break;
         case 'zoomIn':
@@ -131,10 +205,10 @@ function handleControlClick(event) {
             }
             break;
         case 'exportPng':
-            if (container) exportDiagram(container, 'png', diagramId);
+            if (container) exportDiagram(container as HTMLElement, 'png', diagramId);
             break;
         case 'exportSvg':
-            if (container) exportDiagram(container, 'svg', diagramId);
+            if (container) exportDiagram(container as HTMLElement, 'svg', diagramId);
             break;
     }
 }
@@ -144,7 +218,7 @@ function handleControlClick(event) {
  * @param {HTMLElement} container - The diagram container
  * @param {string} diagramId - Unique ID for the diagram
  */
-function openFullscreenLightbox(container, diagramId) {
+function openFullscreenLightbox(container: HTMLElement, diagramId: string): void {
     // Find the SVG element
     const svgElement = container.querySelector('svg');
     if (!svgElement) return;
@@ -162,7 +236,7 @@ function openFullscreenLightbox(container, diagramId) {
     `;
 
     // Clone the SVG
-    const clonedSvg = svgElement.cloneNode(true);
+    const clonedSvg = svgElement.cloneNode(true) as SVGElement;
 
     // Remove any inline size constraints
     clonedSvg.removeAttribute('width');
@@ -171,10 +245,12 @@ function openFullscreenLightbox(container, diagramId) {
     clonedSvg.style.height = '100%';
 
     const diagramContainer = lightbox.querySelector('.mermaid-lightbox-diagram');
+    if (!diagramContainer) return;
     diagramContainer.appendChild(clonedSvg);
 
     // Add controls to the lightbox wrapper
-    const wrapper = lightbox.querySelector('.mermaid-lightbox-diagram-wrapper');
+    const wrapper = lightbox.querySelector('.mermaid-lightbox-diagram-wrapper') as HTMLElement;
+    if (!wrapper) return;
     const lightboxDiagramId = `${diagramId}-lightbox`;
     createControlButtons(wrapper, lightboxDiagramId);
 
@@ -197,7 +273,7 @@ function openFullscreenLightbox(container, diagramId) {
         // Clean up pan-zoom instance
         if (panZoomInstances.has(lightboxDiagramId)) {
             try {
-                panZoomInstances.get(lightboxDiagramId).destroy();
+                panZoomInstances.get(lightboxDiagramId)?.destroy();
             } catch (e) {
                 console.warn('Failed to destroy lightbox pan-zoom instance:', e);
             }
@@ -207,13 +283,16 @@ function openFullscreenLightbox(container, diagramId) {
         lightbox.remove();
     };
 
-    lightbox.querySelector('.mermaid-lightbox-close').addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', (e) => {
+    const closeButton = lightbox.querySelector('.mermaid-lightbox-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', closeLightbox);
+    }
+    lightbox.addEventListener('click', (e: Event) => {
         if (e.target === lightbox) closeLightbox();
     });
 
     // ESC key to close
-    const escHandler = (e) => {
+    const escHandler = (e: KeyboardEvent): void => {
         if (e.key === 'Escape') {
             closeLightbox();
             document.removeEventListener('keydown', escHandler);
@@ -228,7 +307,7 @@ function openFullscreenLightbox(container, diagramId) {
  * @param {string} format - Export format ('png' or 'svg')
  * @param {string} diagramId - Unique ID for the diagram
  */
-async function exportDiagram(container, format, diagramId) {
+async function exportDiagram(container: HTMLElement, format: ExportFormat, diagramId: string): Promise<void> {
     try {
         // Find the SVG element
         const svgElement = container.querySelector('svg');
@@ -238,7 +317,7 @@ async function exportDiagram(container, format, diagramId) {
         }
 
         // Clone the SVG to avoid modifying the original
-        const clonedSvg = svgElement.cloneNode(true);
+        const clonedSvg = svgElement.cloneNode(true) as SVGElement;
 
         // Get the viewBox or calculate from bounding box
         let viewBox = clonedSvg.getAttribute('viewBox');
@@ -252,8 +331,8 @@ async function exportDiagram(container, format, diagramId) {
         const [, , vbWidth, vbHeight] = viewBox.split(' ').map(Number);
 
         // Set explicit dimensions based on viewBox for proper export
-        clonedSvg.setAttribute('width', vbWidth);
-        clonedSvg.setAttribute('height', vbHeight);
+        clonedSvg.setAttribute('width', String(vbWidth));
+        clonedSvg.setAttribute('height', String(vbHeight));
 
         // Remove inline styles (pan-zoom transforms) but keep viewBox
         clonedSvg.removeAttribute('style');
@@ -272,13 +351,13 @@ async function exportDiagram(container, format, diagramId) {
         const filename = `mermaid-diagram-${timestamp}`;
 
         if (format === 'png') {
-            dataUrl = await toPng(clonedSvg, {
+            dataUrl = await toPng(clonedSvg as unknown as HTMLElement, {
                 backgroundColor: 'white',
                 pixelRatio: 2 // Higher quality
             });
             downloadFile(dataUrl, `${filename}.png`);
         } else {
-            dataUrl = await toSvg(clonedSvg, {
+            dataUrl = await toSvg(clonedSvg as unknown as HTMLElement, {
                 backgroundColor: 'transparent'
             });
             downloadFile(dataUrl, `${filename}.svg`);
@@ -298,7 +377,7 @@ async function exportDiagram(container, format, diagramId) {
  * @param {string} dataUrl - Data URL
  * @param {string} filename - Download filename
  */
-function downloadFile(dataUrl, filename) {
+function downloadFile(dataUrl: string, filename: string): void {
     const link = document.createElement('a');
     link.download = filename;
     link.href = dataUrl;
@@ -312,10 +391,11 @@ function downloadFile(dataUrl, filename) {
  * @param {HTMLElement} diagramElement - The diagram element
  * @returns {string} Unique diagram ID
  */
-function wrapDiagramWithControls(diagramElement) {
+function wrapDiagramWithControls(diagramElement: HTMLElement): string {
     // Check if already wrapped
-    if (diagramElement.closest('.mermaid-wrapper')) {
-        return diagramElement.closest('.mermaid-wrapper').getAttribute('data-diagram-id');
+    const existingWrapper = diagramElement.closest('.mermaid-wrapper');
+    if (existingWrapper) {
+        return existingWrapper.getAttribute('data-diagram-id') || '';
     }
 
     const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -325,7 +405,9 @@ function wrapDiagramWithControls(diagramElement) {
     wrapper.setAttribute('data-diagram-id', diagramId);
 
     // Insert wrapper before the diagram
-    diagramElement.parentNode.insertBefore(wrapper, diagramElement);
+    const parentNode = diagramElement.parentNode;
+    if (!parentNode) return diagramId;
+    parentNode.insertBefore(wrapper, diagramElement);
 
     // Move diagram into wrapper
     wrapper.appendChild(diagramElement);
@@ -357,7 +439,7 @@ export function enhanceMermaidDiagrams() {
         svgElement.style.maxWidth = 'none';
 
         // Wrap diagram with controls
-        const diagramId = wrapDiagramWithControls(diagram);
+        const diagramId = wrapDiagramWithControls(diagram as HTMLElement);
 
         // Initialize pan/zoom and fit to view
         const panZoom = initPanZoom(svgElement, diagramId);

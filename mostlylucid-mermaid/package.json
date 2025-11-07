@@ -11,8 +11,15 @@
       "import": "./src/index.ts",
       "require": "./dist/index.js"
     },
+    "./min": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.min.js",
+      "require": "./dist/index.min.js"
+    },
     "./styles.css": "./src/styles.css"
   },
+  "unpkg": "dist/index.min.js",
+  "jsdelivr": "dist/index.min.js",
   "files": [
     "src/",
     "dist/",
@@ -21,8 +28,18 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "dev": "cd examples && npx http-server -p 3000 -o"
+    "minify": "node scripts/minify.js",
+    "build:all": "npm run build && npm run minify",
+    "prepublishOnly": "npm run build:all",
+    "dev": "cd examples && npx http-server -p 3000 -o",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "verify-cdn": "bash scripts/verify-cdn.sh",
+    "publish:patch": "bash scripts/publish.sh patch",
+    "publish:minor": "bash scripts/publish.sh minor",
+    "publish:major": "bash scripts/publish.sh major"
   },
   "keywords": [
     "mermaid",
@@ -59,9 +76,15 @@
     "svg-pan-zoom": "^3.6.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@testing-library/dom": "^10.4.1",
+    "@types/node": "^20.19.24",
+    "@vitest/ui": "^4.0.8",
+    "happy-dom": "^20.0.10",
+    "http-server": "^14.1.1",
+    "jsdom": "^27.1.0",
+    "terser": "^5.44.1",
     "typescript": "^5.0.0",
-    "http-server": "^14.1.1"
+    "vitest": "^4.0.8"
   },
   "engines": {
     "node": ">=14.0.0"

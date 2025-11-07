@@ -45,7 +45,22 @@ import '@mostlylucid/mermaid-enhancements/styles.css';
 await init();
 ```
 
-### HTML
+### Minified Version (Production)
+
+For production use, import the minified version (58% smaller):
+
+```typescript
+import { init } from '@mostlylucid/mermaid-enhancements/min';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+await init();
+```
+
+**Size comparison:**
+- Regular: 23.46 KB
+- Minified: 9.78 KB (58.3% smaller)
+
+### HTML (via CDN)
 
 ```html
 <!DOCTYPE html>
@@ -55,7 +70,7 @@ await init();
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
 
     <!-- Mermaid Enhancements CSS -->
-    <link rel="stylesheet" href="path/to/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/@mostlylucid/mermaid-enhancements/src/styles.css">
 </head>
 <body>
     <!-- Your Mermaid diagram -->
@@ -68,12 +83,29 @@ graph TD
 
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-        import { init } from '@mostlylucid/mermaid-enhancements';
+        // Use minified version for production
+        import { init } from 'https://unpkg.com/@mostlylucid/mermaid-enhancements/dist/index.min.js';
 
         await init();
     </script>
 </body>
 </html>
+```
+
+**CDN Options:**
+
+```html
+<!-- unpkg (minified, recommended) -->
+<script type="module" src="https://unpkg.com/@mostlylucid/mermaid-enhancements"></script>
+
+<!-- jsdelivr (minified, with version pinning) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@mostlylucid/mermaid-enhancements@1.0.0"></script>
+
+<!-- Direct import -->
+<script type="module">
+  import { init } from 'https://unpkg.com/@mostlylucid/mermaid-enhancements/dist/index.min.js';
+  await init();
+</script>
 ```
 
 ## 🎯 API Reference

@@ -43,6 +43,57 @@ export interface ControlButton {
 }
 
 /**
+ * Icon configuration for control buttons
+ * Allows customization of icon classes (e.g., Boxicons, Font Awesome, etc.)
+ */
+export interface IconConfig {
+    fullscreen?: string;
+    zoomIn?: string;
+    zoomOut?: string;
+    reset?: string;
+    pan?: string;
+    exportPng?: string;
+    exportSvg?: string;
+}
+
+/**
+ * Enhancement configuration options
+ */
+export interface EnhancementConfig {
+    /**
+     * Icon classes for control buttons
+     * Defaults to Boxicons (bx-*)
+     *
+     * @example
+     * // Using Font Awesome
+     * icons: {
+     *   fullscreen: 'fas fa-expand',
+     *   zoomIn: 'fas fa-plus',
+     *   // ...
+     * }
+     *
+     * @example
+     * // Using Material Icons
+     * icons: {
+     *   fullscreen: 'material-icons fullscreen',
+     *   zoomIn: 'material-icons zoom_in',
+     *   // ...
+     * }
+     */
+    icons?: IconConfig;
+
+    /**
+     * Enable/disable specific controls
+     */
+    controls?: {
+        fullscreen?: boolean;
+        zoom?: boolean;
+        pan?: boolean;
+        export?: boolean;
+    };
+}
+
+/**
  * Mermaid initialization options
  */
 export interface MermaidOptions {

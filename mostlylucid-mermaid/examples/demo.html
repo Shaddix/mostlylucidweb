@@ -326,7 +326,7 @@ stateDiagram-v2
 
     <!-- Load and initialize enhancements -->
     <script type="module">
-        import { init } from '../src/index.ts';
+        import { init } from '../dist/index.js';
 
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -336,16 +336,49 @@ stateDiagram-v2
         }
 
         async function initializeEnhancements() {
+            // Show loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'mermaid-loading';
+            loadingDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #3b82f6; color: white; padding: 1rem; border-radius: 0.5rem; z-index: 9999; display: flex; align-items: center; gap: 0.5rem;';
+            loadingDiv.innerHTML = `
+                <div style="width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <span>Loading Mermaid enhancements...</span>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+            document.body.appendChild(loadingDiv);
+
             try {
                 // Give Mermaid a moment to load
                 await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Verify Mermaid is loaded
+                if (!window.mermaid) {
+                    throw new Error('Mermaid library not found. Please check your internet connection.');
+                }
 
                 // Initialize with enhancements
                 await init();
 
                 console.log('✓ Mermaid enhancements loaded successfully!');
+
+                // Show success message briefly
+                loadingDiv.style.background = '#10b981';
+                loadingDiv.innerHTML = '<span>✓ Mermaid enhancements loaded!</span>';
+                setTimeout(() => loadingDiv.remove(), 2000);
             } catch (error) {
                 console.error('Failed to initialize enhancements:', error);
+
+                // Display error to user
+                loadingDiv.style.background = '#ef4444';
+                loadingDiv.innerHTML = `
+                    <strong>Error:</strong> ${error.message || 'Failed to load Mermaid enhancements'}
+                `;
+
+                setTimeout(() => loadingDiv.remove(), 5000);
             }
         }
     </script>
