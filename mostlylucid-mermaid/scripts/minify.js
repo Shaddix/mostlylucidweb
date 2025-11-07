@@ -25,7 +25,7 @@ const terserOptions = {
   },
   format: {
     comments: false, // Remove all comments
-    preamble: '/* @mostlylucid/mermaid-enhancements - MIT License */',
+    preamble: '/* @mostlylucid/mermaid-enhancements - Public Domain (Unlicense) */',
   },
   sourceMap: {
     filename: undefined,
