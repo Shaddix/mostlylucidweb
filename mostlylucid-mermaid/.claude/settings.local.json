@@ -8,7 +8,10 @@
       "Bash(npm test)",
       "Bash(chmod:*)",
       "Bash(npm run build:all:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "WebFetch(domain:unpkg.com)",
+      "Bash(curl:*)",
+      "Bash(npm run bundle:*)"
     ],
     "deny": [],
     "ask": []
