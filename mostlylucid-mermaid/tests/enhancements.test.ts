@@ -9,6 +9,25 @@ describe('enhancements', () => {
   beforeEach(() => {
     // Clear document body
     document.body.innerHTML = '';
+
+    // Reset configuration to defaults
+    configure({
+      icons: {
+        fullscreen: 'bx bx-fullscreen',
+        zoomIn: 'bx bx-zoom-in',
+        zoomOut: 'bx bx-zoom-out',
+        reset: 'bx bx-reset',
+        pan: 'bx bx-move',
+        exportPng: 'bx bx-image',
+        exportSvg: 'bx bx-code-alt'
+      },
+      controls: {
+        fullscreen: true,
+        zoom: true,
+        pan: true,
+        export: true
+      }
+    });
   });
 
   afterEach(() => {

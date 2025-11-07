@@ -22,9 +22,17 @@ This package is configured to automatically publish to npm when you create a Git
 1. Go to your GitHub repository
 2. Click **Settings** → **Secrets and variables** → **Actions**
 3. Click **New repository secret**
-4. Name: `NPM_TOKEN`
+4. Name: `NPM_TOKEN` (exactly this name)
 5. Value: Paste the npm token you copied
 6. Click **Add secret**
+
+**Important Notes:**
+- ✅ This is the **ONLY** secret you need to add manually
+- ✅ `GITHUB_TOKEN` is **automatic** - don't add it, it's already there!
+- ✅ GitHub Actions automatically provides `GITHUB_TOKEN` for every workflow
+- ✅ The workflow uses two tokens:
+  - `NPM_TOKEN` → for publishing to npm (you add this)
+  - `GITHUB_TOKEN` → for creating GitHub releases (automatic)
 
 ## Step 3: Publishing a New Version
 

@@ -128,6 +128,8 @@ jobs:
         if: github.ref_type == 'tag'
         uses: actions/create-release@v1
         env:
+          # GITHUB_TOKEN is automatically provided by GitHub Actions
+          # You don't need to add this to secrets - it's already there!
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
