@@ -2,6 +2,18 @@
 
 This package is configured to automatically publish to npm when you create a GitHub release. Here's how to set it up:
 
+## Monorepo Setup
+
+**Important:** This package is part of a monorepo. The GitHub Actions workflow is located at the repository root (`.github/workflows/publish-npm.yml`) and is configured to work in the `mostlylucid-mermaid` subdirectory using:
+
+```yaml
+defaults:
+  run:
+    working-directory: mostlylucid-mermaid
+```
+
+This means all npm commands (install, test, build, publish) run in the correct package directory automatically.
+
 ## Prerequisites
 
 1. An npm account (create one at [npmjs.com](https://www.npmjs.com/signup))

@@ -13,6 +13,10 @@ jobs:
       contents: write  # Need write to update package.json and create release
       id-token: write  # Required for provenance
 
+    defaults:
+      run:
+        working-directory: mostlylucid-mermaid
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

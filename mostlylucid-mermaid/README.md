@@ -3,20 +3,23 @@
 > Enhance Mermaid.js diagrams with interactive pan/zoom, fullscreen lightbox, export capabilities, and automatic theme switching.
 
 [![npm version](https://img.shields.io/npm/v/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
+[![npm downloads](https://img.shields.io/npm/dm/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@mostlylucid/mermaid-enhancements)](https://bundlephobia.com/package/@mostlylucid/mermaid-enhancements)
 
-## ✨ Features
+## Features
 
-- **🔍 Interactive Pan & Zoom** - Navigate large diagrams with smooth mouse wheel zooming and drag-to-pan
-- **🖼️ Fullscreen Lightbox** - View diagrams in an immersive fullscreen mode
-- **💾 Export to PNG/SVG** - Download high-quality diagrams with a single click
-- **🌓 Automatic Theme Switching** - Seamlessly adapts to light/dark mode changes
-- **📱 Responsive Design** - Works perfectly on mobile, tablet, and desktop
-- **⌨️ Keyboard Shortcuts** - Press ESC to close lightbox, double-click to zoom
-- **🎨 Customizable Styling** - Easy-to-override CSS variables
-- **♿ Accessible** - ARIA labels and keyboard navigation support
-- **📦 TypeScript Support** - Full type definitions included
-- **🚀 Zero Configuration** - Works out of the box
+- **Interactive Pan & Zoom** - Navigate large diagrams with smooth mouse wheel zooming and drag-to-pan
+- **Fullscreen Lightbox** - View diagrams in an immersive fullscreen mode
+- **Export to PNG/SVG** - Download high-quality diagrams with a single click
+- **Automatic Theme Switching** - Seamlessly adapts to light/dark mode changes
+- **Responsive Design** - Works perfectly on mobile, tablet, and desktop
+- **Keyboard Shortcuts** - Press ESC to close lightbox, double-click to zoom
+- **Customizable Styling** - Easy-to-override CSS variables
+- **Accessible** - ARIA labels and keyboard navigation support
+- **TypeScript Support** - Full type definitions included
+- **Zero Configuration** - Works out of the box
 
 ## 📦 Installation
 

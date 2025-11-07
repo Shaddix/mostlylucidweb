@@ -4,6 +4,9 @@
 <datetime class="hidden">2025-11-07T11:15</datetime>
 
 # Introduction
+
+> **npm Package Available:** This implementation is now available as [@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements) - a production-ready npm package. See [Publishing Mermaid Enhancements as an npm Package](/blog/publishingmermaidenhancementsnpm) for details on how to use it in your projects.
+
 Mermaid is a fantastic tool for creating diagrams from text, but the default rendering can be limiting for complex diagrams. Users can't easily zoom in to see details, pan around large diagrams, or export them for documentation. In this article, I'll show you how I enhanced Mermaid diagrams on this site with interactive pan/zoom controls, fullscreen lightbox viewing, and export functionality (both PNG and SVG formats).
 
 This implementation is production-ready, handles dark mode switching gracefully, and is resilient to Cloudflare Rocket Loader interference.
@@ -622,7 +625,24 @@ Key takeaways:
 - Provide multiple close methods for lightbox (button, click outside, ESC)
 - Use event delegation for performance with many diagrams
 
-The complete source code is available in this blog's repository at `Mostlylucid/src/js/mermaid_enhancements.js`.
+## Using the npm Package
+
+Rather than copying code, you can now install this functionality as an npm package:
+
+```bash
+npm install @mostlylucid/mermaid-enhancements
+```
+
+```typescript
+import { init } from '@mostlylucid/mermaid-enhancements';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+await init();
+```
+
+See [Publishing Mermaid Enhancements as an npm Package](/blog/publishingmermaidenhancementsnpm) for full documentation, framework integration examples, and advanced configuration options.
+
+The complete source code is also available in this blog's repository at `Mostlylucid/src/js/mermaid_enhancements.js` and as an open-source npm package at [mostlylucidweb/mostlylucid-mermaid](https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid-mermaid).
 
 ## Example Diagram
 Here's a complex example showing the architecture of this blog's content system:
