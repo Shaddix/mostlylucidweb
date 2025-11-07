@@ -13,7 +13,8 @@ This repository contains the source code for [mostlylucid.net](https://mostlyluc
 [![npm downloads](https://img.shields.io/npm/dm/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
 
 - [@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
-A markdig preprocessor which fetches and amanges updates for remote content for Markdown processors. Also includes a Table Of Contents extension which processes your TOC in page.
+
+An npm package which enhances the display of mermaid diagrams. Addin export, panning, zoom, an expanding lightbox and theme switching. 
 
 ##  NuGet Packages
 
