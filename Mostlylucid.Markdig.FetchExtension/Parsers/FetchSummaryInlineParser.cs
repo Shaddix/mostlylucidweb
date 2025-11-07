@@ -13,7 +13,7 @@ namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 /// </summary>
 public partial class FetchSummaryInlineParser : InlineParser
 {
-    [GeneratedRegex(@"<fetch-summary\s+[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<fetch-summary\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchSummaryTagRegex();
 
     private readonly ILogger<FetchSummaryInlineParser>? _logger;
@@ -58,12 +58,18 @@ public partial class FetchSummaryInlineParser : InlineParser
         if (!match.Success)
             return false;
 
-        var url = match.Groups[1].Value;
-        var template = match.Groups.Count > 2 && match.Groups[2].Success
-            ? match.Groups[2].Value
-            : null;
-        var cssClass = match.Groups.Count > 3 && match.Groups[3].Success
+        // Check if disabled
+        var disabled = match.Groups[1].Success &&
+                      match.Groups[1].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        if (disabled)
+            return false; // Don't process this tag, leave it as-is
+
+        var url = match.Groups[2].Value;
+        var template = match.Groups.Count > 3 && match.Groups[3].Success
             ? match.Groups[3].Value
+            : null;
+        var cssClass = match.Groups.Count > 4 && match.Groups[4].Success
+            ? match.Groups[4].Value
             : null;
 
         _logger?.LogInformation(

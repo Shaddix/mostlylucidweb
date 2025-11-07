@@ -3,12 +3,12 @@
 <!--category-- AI, LLM, ASP.NET Core, API, Nuget, mockllmapi, LLMApi, SignalR, AI-Article-->
 <datetime class="hidden">2025-11-05T15:15</datetime>
 
-> NOTE: This article is primarily AI generated as part of my nuget package as release documentation. It's pretty interesting so I put it here but if that's a problem for you please ignore it.
+> NOTE: This article is primarily AI generated as part of my nuget package as release documentation. It's pretty interesting so I put it here but if that's a problem for you please ignore it.  
 
 # Introduction
-Have you ever needed to test against an API that wasn't ready yet? Or wanted to develop offline without hitting rate limits? The OpenAPI Dynamic Mock Generator lets you load any OpenAPI specification and instantly creates a fully-functional mock API with realistic, LLM-generated data.
+Have you ever needed to test against an API that wasn't ready yet? Or wanted to develop offline without hitting rate limits? The OpenAPI Dynamic Mock Generator lets you load any OpenAPI specification and instantly creates a fully-functional mock API with realistic, LLM-generated data.  
 
-No configuration files. No manual endpoint creation. Just point it at an OpenAPI spec and start making requests.
+No configuration files. No manual endpoint creation. Just point it at an OpenAPI spec and start making requests.  
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)

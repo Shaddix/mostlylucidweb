@@ -1,6 +1,8 @@
 ﻿// Mermaid theme/initialization helper with theme-aware rendering and normalization
 'use strict';
 
+import { enhanceMermaidDiagrams } from './mermaid_enhancements';
+
 const elementSelector = 'div.mermaid, pre.mermaid';
 let mediaQueryList = null;
 let mediaChangeHandler = null;
@@ -38,6 +40,17 @@ const loadMermaid = async (theme) => {
         });
         await window.mermaid.run({
             querySelector: elementSelector,
+        });
+
+        // Enhance diagrams with pan/zoom and export after rendering completes
+        // Use requestAnimationFrame for better timing than arbitrary setTimeout
+        await new Promise(resolve => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    enhanceMermaidDiagrams();
+                    resolve();
+                });
+            });
         });
     } catch (err) {
         // Swallow errors to avoid breaking page/tests; log for debugging

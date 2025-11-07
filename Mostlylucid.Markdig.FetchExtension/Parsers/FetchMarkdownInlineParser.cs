@@ -14,7 +14,7 @@ namespace Mostlylucid.Markdig.FetchExtension.Parsers;
 /// </summary>
 public partial class FetchMarkdownInlineParser : InlineParser
 {
-    [GeneratedRegex(@"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<fetch\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchTagRegex();
 
     private static bool _warnedNoUpdateService;
@@ -53,19 +53,25 @@ public partial class FetchMarkdownInlineParser : InlineParser
         if (!match.Success)
             return false;
 
-        var url = match.Groups[1].Value;
-        var pollFrequencyHours = int.Parse(match.Groups[2].Value);
-        var transformLinks = match.Groups.Count > 3 &&
-                             match.Groups[3].Success &&
-                             match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
-        var showSummary = match.Groups.Count > 4 &&
-                          match.Groups[4].Success &&
-                          match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
-        var summaryTemplate = match.Groups.Count > 5 && match.Groups[5].Success
-            ? match.Groups[5].Value
-            : null;
-        var cssClass = match.Groups.Count > 6 && match.Groups[6].Success
+        // Check if disabled
+        var disabled = match.Groups[1].Success &&
+                      match.Groups[1].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        if (disabled)
+            return false; // Don't process this tag, leave it as-is
+
+        var url = match.Groups[2].Value;
+        var pollFrequencyHours = int.Parse(match.Groups[3].Value);
+        var transformLinks = match.Groups.Count > 4 &&
+                             match.Groups[4].Success &&
+                             match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var showSummary = match.Groups.Count > 5 &&
+                          match.Groups[5].Success &&
+                          match.Groups[5].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        var summaryTemplate = match.Groups.Count > 6 && match.Groups[6].Success
             ? match.Groups[6].Value
+            : null;
+        var cssClass = match.Groups.Count > 7 && match.Groups[7].Success
+            ? match.Groups[7].Value
             : null;
 
         // Try to fetch the content

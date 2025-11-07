@@ -35,6 +35,36 @@ window.mostlylucid.translations = {
 window.mostlylucid.simplemde = codeeditor(); // Assuming simplemde() returns the instance
 window.globalSetup = globalSetup;
 
+// Track Alpine initialization to prevent duplicate starts
+let alpineStarted = false;
+
+function startAlpine() {
+    if (alpineStarted) {
+        return false;
+    }
+
+    if (window.Alpine && typeof window.Alpine.start === 'function') {
+        try {
+            window.Alpine.start();
+            alpineStarted = true;
+            console.log('Alpine.js started');
+            return true;
+        } catch (err) {
+            console.log('Alpine start failed:', err.message);
+            return false;
+        }
+    }
+    return false;
+}
+
+// Start Alpine as soon as it's available (theme switcher needs it early)
+if (!startAlpine()) {
+    // If not ready yet, wait a bit and try again
+    setTimeout(() => {
+        startAlpine();
+    }, 100);
+}
+
 function setLogoutLink(container = document) {
     // Get the logout link - search within container for HTMX swaps
     var logoutLink = container.querySelector('a[data-logout-link]');
@@ -78,7 +108,28 @@ function highlightCodeBlocks(container = document) {
     // Only highlight code blocks that haven't been highlighted yet
     const codeBlocks = container.querySelectorAll('pre code:not(.hljs)');
     codeBlocks.forEach((block) => {
-        hljs.highlightElement(block);
+        try {
+            hljs.highlightElement(block);
+        } catch (err) {
+            console.error('Failed to highlight code block:', err);
+            // Ensure block has at least basic styling even if highlighting fails
+            block.classList.add('hljs');
+        }
+    });
+
+    // Also check for any code blocks that might have lost their highlighting
+    // (e.g., after DOM manipulation) and re-highlight them
+    const unhighlightedBlocks = container.querySelectorAll('pre code.hljs:not([data-highlighted])');
+    unhighlightedBlocks.forEach((block) => {
+        try {
+            // Remove hljs class first to force re-highlight
+            block.classList.remove('hljs');
+            hljs.highlightElement(block);
+        } catch (err) {
+            console.error('Failed to re-highlight code block:', err);
+            // Re-add hljs class for styling
+            block.classList.add('hljs');
+        }
     });
 }
 
@@ -101,24 +152,56 @@ function registerHTMXListener() {
 
         console.log('HTMX afterSettle triggered for:', targetId);
 
-        // Re-initialize Google Sign-In button if present in swapped content
-        initGoogleSignIn();
+        try {
+            // Re-initialize Google Sign-In button if present in swapped content
+            initGoogleSignIn();
+        } catch (err) {
+            console.error('Failed to re-initialize Google Sign-In:', err);
+        }
 
-        // Re-initialize Mermaid diagrams in the new content
-        await mermaidinit();
+        try {
+            // Highlight code blocks in swapped content BEFORE Mermaid (important!)
+            highlightCodeBlocks(evt.detail.target);
+            console.log('Highlight.js applied after HTMX swap');
+        } catch (err) {
+            console.error('Failed to highlight after HTMX swap:', err);
+        }
 
-        // Only highlight new code blocks in the swapped content
-        highlightCodeBlocks(evt.detail.target);
+        try {
+            // Re-initialize Mermaid diagrams in the new content
+            await mermaidinit();
+            console.log('Mermaid applied after HTMX swap');
+        } catch (err) {
+            console.error('Failed to initialize Mermaid after HTMX swap:', err);
+        }
 
-        // Update logout link in the swapped content (search entire document in case it's in nav)
-        setLogoutLink(document);
+        try {
+            // Double-check highlighting after Mermaid renders
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            highlightCodeBlocks(evt.detail.target);
+        } catch (err) {
+            console.error('Failed to re-highlight after Mermaid:', err);
+        }
+
+        try {
+            // Update logout link in the swapped content (search entire document in case it's in nav)
+            setLogoutLink(document);
+        } catch (err) {
+            console.error('Failed to set logout link:', err);
+        }
+
+        console.log('HTMX afterSettle complete for:', targetId);
     }, { once: false }); // Don't use once - we need this for all HTMX swaps
 
     console.log('HTMX event listener registered successfully');
 }
 
 async function initializePage() {
-    initGoogleSignIn();
+    try {
+        initGoogleSignIn();
+    } catch (err) {
+        console.error('Failed to initialize Google Sign-In:', err);
+    }
 
     // Wait for Alpine to be ready before initializing Mermaid
     // This ensures themeInit() has run and the theme event has been fired
@@ -130,34 +213,131 @@ async function initializePage() {
         }
     });
 
-    // Now initialize Mermaid after theme is set
-    await mermaidinit();
+    try {
+        // Register highlight.js copy button plugin
+        registerHljsPlugin();
+    } catch (err) {
+        console.error('Failed to register hljs plugin:', err);
+    }
 
-    const hljsRazor = require('highlightjs-cshtml-razor');
-    hljs.registerLanguage("cshtml-razor", hljsRazor);
-    highlightCodeBlocks();
-    setLogoutLink();
-    updateMetaUrls();
+    try {
+        // Register Razor syntax highlighting
+        const hljsRazor = require('highlightjs-cshtml-razor');
+        hljs.registerLanguage("cshtml-razor", hljsRazor);
+    } catch (err) {
+        console.error('Failed to register Razor language:', err);
+    }
 
-    console.log('Document is ready');
+    // Wait for a short delay to ensure all DOM elements are fully rendered
+    // This is especially important for server-side rendered content
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    // Initialize highlight.js first so code is styled correctly
+    try {
+        highlightCodeBlocks();
+        console.log('Highlight.js initialized on page load');
+    } catch (err) {
+        console.error('Failed to highlight code blocks:', err);
+    }
+
+    // Initialize Mermaid after theme is set and code is highlighted
+    try {
+        await mermaidinit();
+        console.log('Mermaid initialized on page load');
+    } catch (err) {
+        console.error('Failed to initialize Mermaid:', err);
+    }
+
+    // Double-check: retry highlighting after Mermaid initializes
+    // Sometimes code blocks in dynamic content need a second pass
+    try {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        highlightCodeBlocks();
+    } catch (err) {
+        console.error('Failed to re-highlight code blocks:', err);
+    }
+
+    try {
+        setLogoutLink();
+        updateMetaUrls();
+    } catch (err) {
+        console.error('Failed to set logout link or update meta URLs:', err);
+    }
+
+    console.log('Document is ready - all initializations complete');
 
     // Register HTMX listener with Cloudflare-safe retry mechanism
     registerHTMXListener();
 }
 
-// Handle both cases: module loaded before or after page load
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initializePage().catch(err => {
-            console.error('Failed to initialize page:', err);
-        });
-    });
-} else {
-    // DOM already loaded, run immediately
-    initializePage().catch(err => {
-        console.error('Failed to initialize page:', err);
+// Cloudflare Rocket Loader compatibility: ensure all dependencies are loaded
+function waitForDependencies(maxAttempts = 50) {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+
+        const checkDependencies = () => {
+            attempts++;
+
+            // Check if all critical dependencies are loaded
+            const depsReady =
+                typeof window.hljs !== 'undefined' &&
+                typeof window.mermaid !== 'undefined' &&
+                typeof window.Alpine !== 'undefined' &&
+                typeof window.htmx !== 'undefined';
+
+            if (depsReady) {
+                console.log('All dependencies loaded after', attempts, 'attempts');
+
+                // Try to start Alpine if not already started
+                startAlpine();
+
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                console.warn('Timeout waiting for dependencies. Missing:', {
+                    hljs: typeof window.hljs === 'undefined',
+                    mermaid: typeof window.mermaid === 'undefined',
+                    alpine: typeof window.Alpine === 'undefined',
+                    htmx: typeof window.htmx === 'undefined'
+                });
+                // Continue anyway - individual initializations have their own error handling
+                resolve();
+            } else {
+                // Retry with exponential backoff
+                const delay = Math.min(50 * Math.pow(1.2, attempts), 500);
+                setTimeout(checkDependencies, delay);
+            }
+        };
+
+        checkDependencies();
     });
 }
+
+// Robust initialization that handles Cloudflare Rocket Loader interference
+async function safeInitialize() {
+    try {
+        // Wait for dependencies to load (handles Rocket Loader delays)
+        await waitForDependencies();
+
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            });
+        }
+
+        // Now run initialization
+        await initializePage();
+    } catch (err) {
+        console.error('Failed to initialize page:', err);
+        // Retry once after a delay
+        setTimeout(() => {
+            initializePage().catch(e => console.error('Retry failed:', e));
+        }, 1000);
+    }
+}
+
+// Start initialization
+safeInitialize();
 
 
 
@@ -226,45 +406,62 @@ function handleCredentialResponse(response) {
 
 
 
-hljs.addPlugin({
-    "after:highlightElement": ({ el, text }) => {
-        const wrapper = el.parentElement;
-        if (wrapper == null) {
-            return;
-        }
+// Register highlight.js copy button plugin
+// Must be called after hljs is loaded (called from initializePage)
+let hljsPluginRegistered = false;
 
-        /**
-         * Make the parent relative so we can absolutely
-         * position the copy button
-         */
-        wrapper.classList.add("relative");
-        const copyButton = document.createElement("button");
-        copyButton.classList.add(
-            "absolute",
-            "top-2",
-            "right-1",
-            "p-2",
-            "text-gray-500",
-            "hover:text-gray-700",
-            "bx",
-            "bx-copy",
-            "text-xl",
-            "cursor-pointer"
-        );
-        copyButton.setAttribute("aria-label", "Copy code to clipboard");
-        copyButton.setAttribute("title", "Copy code to clipboard");
+function registerHljsPlugin() {
+    if (hljsPluginRegistered || typeof window.hljs === 'undefined') {
+        return;
+    }
 
-        copyButton.onclick = () => {
-            navigator.clipboard.writeText(text);
+    try {
+        hljs.addPlugin({
+            "after:highlightElement": ({ el, text }) => {
+                const wrapper = el.parentElement;
+                if (wrapper == null) {
+                    return;
+                }
 
-            // Notify user that the content has been copied
-            showToast("The code block content has been copied to the clipboard.", 3000, "success");
-        
-        };
-        // Append the copy button to the wrapper
-        wrapper.prepend(copyButton);
-    },
-});
+                /**
+                 * Make the parent relative so we can absolutely
+                 * position the copy button
+                 */
+                wrapper.classList.add("relative");
+                const copyButton = document.createElement("button");
+                copyButton.classList.add(
+                    "absolute",
+                    "top-2",
+                    "right-1",
+                    "p-2",
+                    "text-gray-500",
+                    "hover:text-gray-700",
+                    "bx",
+                    "bx-copy",
+                    "text-xl",
+                    "cursor-pointer"
+                );
+                copyButton.setAttribute("aria-label", "Copy code to clipboard");
+                copyButton.setAttribute("title", "Copy code to clipboard");
+
+                copyButton.onclick = () => {
+                    navigator.clipboard.writeText(text);
+
+                    // Notify user that the content has been copied
+                    showToast("The code block content has been copied to the clipboard.", 3000, "success");
+
+                };
+                // Append the copy button to the wrapper
+                wrapper.prepend(copyButton);
+            },
+        });
+
+        hljsPluginRegistered = true;
+        console.log('Highlight.js copy plugin registered');
+    } catch (err) {
+        console.error('Failed to register highlight.js plugin:', err);
+    }
+}
 
 window.showToast = function(message, duration = 3000, type = 'success') {
     const toast = document.getElementById('toast');
@@ -283,5 +480,3 @@ window.showToast = function(message, duration = 3000, type = 'success') {
         toast.classList.add('hidden');
     }, duration);
 }
-
-Alpine.start();

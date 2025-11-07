@@ -15,9 +15,11 @@ namespace Mostlylucid.Services.Blog;
 public class BlogService(
     IMostlylucidDBContext context,
     MarkdownRenderingService markdownRenderingService,
+    BlogPostProcessingContext processingContext,
     ILogger<BlogService> logger)
     : BaseService(context, logger), IBlogService
 {
+    private readonly BlogPostProcessingContext _processingContext = processingContext;
     private IQueryable<BlogPostEntity> NoTrackingQuery() => PostsQuery().AsNoTrackingWithIdentityResolution();
 
     public async Task<BasePagingModel<BlogPostDto>?> Get(PostListQueryModel model)
@@ -122,8 +124,31 @@ public class BlogService(
     {
         try
         {
-            var model = markdownRenderingService.GetPageFromMarkdown(markdown, DateTime.Now, slug);
-            return await SavePost(model);
+            // Look up existing post BEFORE rendering to get the ID for fetch metadata
+            var existingPost = await PostsQuery()
+                .FirstOrDefaultAsync(x => x.Slug == slug && x.LanguageEntity.Name == language);
+
+            // Set processing context so fetches can be saved with the correct blog post ID
+            if (existingPost != null)
+            {
+                _processingContext.SetContext(existingPost.Id, existingPost.Slug);
+                Logger.LogDebug(
+                    "Set processing context for existing post {Slug} with ID {Id}",
+                    existingPost.Slug,
+                    existingPost.Id);
+            }
+
+            try
+            {
+                var model = markdownRenderingService.GetPageFromMarkdown(markdown, DateTime.Now, slug);
+                model.Language = language;
+                return await SavePost(model);
+            }
+            finally
+            {
+                // Always clear context after processing
+                _processingContext.Clear();
+            }
         }
         catch (Exception e)
         {
@@ -141,8 +166,52 @@ public class BlogService(
         {
             var post = await PostsQuery()
                 .FirstOrDefaultAsync(x => x.Slug == model.Slug && x.LanguageEntity.Name == model.Language);
-            await base.SavePost(model, post, activity: activity.Activity);
-            await Context.SaveChangesAsync();
+
+            var isNewPost = post == null;
+
+            Logger.LogInformation("About to call base.SavePost for {Slug}, IsNewPost={IsNew}", model.Slug, isNewPost);
+            var savedPost = await base.SavePost(model, post, activity: activity.Activity);
+
+            if (savedPost == null)
+            {
+                Logger.LogError("SavePost returned null for {Slug}", model.Slug);
+                return model;
+            }
+
+            // Log entity details before save
+            Logger.LogInformation(
+                "BEFORE SaveChangesAsync: Slug={Slug}, Id={Id}, UpdatedDate={Updated}, ContentHash={Hash}, Title={Title}",
+                model.Slug, savedPost.Id, savedPost.UpdatedDate, savedPost.ContentHash, savedPost.Title);
+
+            Logger.LogInformation("Calling SaveChangesAsync for {Slug}, HtmlLength={Length}",
+                model.Slug, savedPost.HtmlContent?.Length ?? 0);
+
+            var changeCount = await Context.SaveChangesAsync();
+
+            // Log entity details after save
+            Logger.LogInformation(
+                "AFTER SaveChangesAsync: Slug={Slug}, Changes={Count}, Id={Id}, UpdatedDate={Updated}, Title={Title}",
+                model.Slug, changeCount, savedPost.Id, savedPost.UpdatedDate, savedPost.Title);
+
+            // For new posts, set context with the newly created ID and re-render to save fetch metadata
+            if (isNewPost && savedPost != null && !string.IsNullOrEmpty(model.Markdown))
+            {
+                Logger.LogInformation(
+                    "New post created {Slug}, re-rendering to save fetch metadata with ID {Id}",
+                    savedPost.Slug,
+                    savedPost.Id);
+
+                _processingContext.SetContext(savedPost.Id, savedPost.Slug);
+                try
+                {
+                    // Re-render just to trigger fetch saving with the correct blog post ID
+                    markdownRenderingService.GetPageFromMarkdown(model.Markdown, model.PublishedDate, model.Slug);
+                }
+                finally
+                {
+                    _processingContext.Clear();
+                }
+            }
         }
         catch (Exception e)
         {

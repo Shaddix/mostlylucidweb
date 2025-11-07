@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Markdig.FetchExtension.Models;
 using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Services.Blog;
 using Mostlylucid.Shared.Entities;
 using Polly;
 using Polly.Retry;
@@ -16,16 +17,19 @@ public class MarkdownFetchService : IMarkdownFetchService
     private readonly IMostlylucidDBContext _context;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<MarkdownFetchService> _logger;
+    private readonly BlogPostProcessingContext _processingContext;
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
 
     public MarkdownFetchService(
         IMostlylucidDBContext context,
         IHttpClientFactory httpClientFactory,
-        ILogger<MarkdownFetchService> logger)
+        ILogger<MarkdownFetchService> logger,
+        BlogPostProcessingContext processingContext)
     {
         _context = context;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _processingContext = processingContext;
 
         // Create retry policy with exponential backoff
         _retryPolicy = Policy
@@ -54,6 +58,16 @@ public class MarkdownFetchService : IMarkdownFetchService
     {
         try
         {
+            // Use processing context blog post ID if available and blogPostId parameter is 0
+            if (blogPostId == 0 && _processingContext.CurrentBlogPostId > 0)
+            {
+                blogPostId = _processingContext.CurrentBlogPostId;
+                _logger.LogDebug(
+                    "Using blog post ID {BlogPostId} from processing context for fetch {Url}",
+                    blogPostId,
+                    url);
+            }
+
             // Only check cache if we have a valid blogPostId
             MarkdownFetchEntity? fetchEntity = null;
             if (blogPostId > 0)

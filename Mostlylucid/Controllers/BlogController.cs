@@ -15,6 +15,7 @@ public class BlogController(BaseControllerService baseControllerService,
     CommentViewService commentViewService,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
+    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize" },
         Location = ResponseCacheLocation.Any)]
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
@@ -30,6 +31,7 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("{slug}")]
     [HttpGet]
+    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
@@ -86,6 +88,7 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("category/{category}")]
     [HttpGet]
+    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(category), nameof(page), nameof(pageSize) },
         Location = ResponseCacheLocation.Any)]
@@ -115,6 +118,7 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("{language}/{slug}")]
     [HttpGet]
+    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },

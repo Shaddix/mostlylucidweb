@@ -14,10 +14,10 @@ using Mostlylucid.Markdig.FetchExtension.Utilities;
 /// </summary>
 public partial class MarkdownFetchPreprocessor
 {
-    [GeneratedRegex(@"<fetch\s+[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<fetch\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchTagRegex();
 
-    [GeneratedRegex(@"<fetch-summary\s+[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<fetch-summary\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchSummaryTagRegex();
 
     private readonly ILogger<MarkdownFetchPreprocessor>? _logger;
@@ -53,19 +53,26 @@ public partial class MarkdownFetchPreprocessor
         for (var i = matches.Count - 1; i >= 0; i--)
         {
             var match = matches[i];
-            var url = match.Groups[1].Value;
-            var pollFrequencyHours = int.Parse(match.Groups[2].Value);
-            var transformLinks = match.Groups.Count > 3 &&
-                                 match.Groups[3].Success &&
-                                 match.Groups[3].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
-            var showSummary = match.Groups.Count > 4 &&
-                              match.Groups[4].Success &&
-                              match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
-            var summaryTemplate = match.Groups.Count > 5 && match.Groups[5].Success
-                ? match.Groups[5].Value
-                : null;
-            var cssClass = match.Groups.Count > 6 && match.Groups[6].Success
+
+            // Check if disabled
+            var disabled = match.Groups[1].Success &&
+                          match.Groups[1].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            if (disabled)
+                continue; // Skip this tag, leave it as-is
+
+            var url = match.Groups[2].Value;
+            var pollFrequencyHours = int.Parse(match.Groups[3].Value);
+            var transformLinks = match.Groups.Count > 4 &&
+                                 match.Groups[4].Success &&
+                                 match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            var showSummary = match.Groups.Count > 5 &&
+                              match.Groups[5].Success &&
+                              match.Groups[5].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            var summaryTemplate = match.Groups.Count > 6 && match.Groups[6].Success
                 ? match.Groups[6].Value
+                : null;
+            var cssClass = match.Groups.Count > 7 && match.Groups[7].Success
+                ? match.Groups[7].Value
                 : null;
 
             _logger?.LogInformation(
@@ -136,12 +143,19 @@ public partial class MarkdownFetchPreprocessor
         for (var i = summaryMatches.Count - 1; i >= 0; i--)
         {
             var match = summaryMatches[i];
-            var url = match.Groups[1].Value;
-            var template = match.Groups.Count > 2 && match.Groups[2].Success
-                ? match.Groups[2].Value
-                : null;
-            var cssClass = match.Groups.Count > 3 && match.Groups[3].Success
+
+            // Check if disabled
+            var disabled = match.Groups[1].Success &&
+                          match.Groups[1].Value.Equals("true", StringComparison.OrdinalIgnoreCase);
+            if (disabled)
+                continue; // Skip this tag, leave it as-is
+
+            var url = match.Groups[2].Value;
+            var template = match.Groups.Count > 3 && match.Groups[3].Success
                 ? match.Groups[3].Value
+                : null;
+            var cssClass = match.Groups.Count > 4 && match.Groups[4].Success
+                ? match.Groups[4].Value
                 : null;
 
             _logger?.LogInformation(

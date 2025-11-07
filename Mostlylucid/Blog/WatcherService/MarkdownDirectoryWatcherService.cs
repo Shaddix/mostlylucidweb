@@ -106,21 +106,31 @@ public class MarkdownDirectoryWatcherService(
             // Use the Polly retry policy for executing the operation
             await retryPolicy.ExecuteAsync(async () =>
             {
-                var blogModel = await markdownBlogService.GetPage(filePath);
-                activity?.Activity?.SetTag("Page Processed", blogModel.Slug);
-                blogModel.Language = language;
-
+                // Get the blog service first to potentially set processing context
                 var blogService = scope.ServiceProvider.GetRequiredService<IBlogService>();
-                await blogService.SavePost(blogModel);
-                if (language == MarkdownBaseService.EnglishLanguage)
+
+                // Get the markdown content first (before rendering)
+                var markdown = await File.ReadAllTextAsync(filePath);
+
+                // Extract slug from filename
+                var slug = Path.GetFileNameWithoutExtension(fileName);
+                if (isTranslated)
+                {
+                    slug = slug.Split('.').First();
+                }
+
+                // Use SavePost(slug, language, markdown) which handles processing context correctly
+                var savedModel = await blogService.SavePost(slug, language, markdown);
+                activity?.Activity?.SetTag("Page Processed", savedModel.Slug);
+                activity?.Activity?.SetTag("Page Saved", savedModel.Slug);
+
+                if (language == MarkdownBaseService.EnglishLanguage && !string.IsNullOrEmpty(savedModel.Markdown))
                 {
                     var translateService = scope.ServiceProvider.GetRequiredService<IBackgroundTranslateService>();
                     await translateService.TranslateForAllLanguages(
                         new PageTranslationModel()
-                            { OriginalFileName = filePath, OriginalMarkdown = blogModel.Markdown, Persist = true });
+                            { OriginalFileName = filePath, OriginalMarkdown = savedModel.Markdown, Persist = true });
                 }
-
-                activity?.Activity?.SetTag("Page Saved", blogModel.Slug);
             });
 
             activity?.Complete();

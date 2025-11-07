@@ -16,7 +16,7 @@ In this post, I'll walk you through how I built `Mostlylucid.Markdig.FetchExtens
 
 > This article is AI generated - using claude code which also helped me build the feature.
  
-> Also turns out demoing tags in a system which has the tag processing enabled is TRICKY. So you may see &gt; and &lt; instead. 
+> **UPDATE**: Added `disable="true"` parameter so we can now demo the tags properly without them being processed! 
 
 
 See the source for it here [on the GitHub for this site](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension). 
@@ -84,8 +84,8 @@ Using the extension is simple. In your markdown:
 ```markdown
 # My Documentation
 
-&lt; fetch markdownurl="https://raw.githubusercontent.com/user/repo/main/README.md"
-       pollfrequency="24"/&gt;
+<fetch markdownurl="https://raw.githubusercontent.com/user/repo/main/README.md"
+       pollfrequency="24" disable="true"/>
 ```
 
 That's it! The extension will:
@@ -541,9 +541,9 @@ The flow is:
 When fetching remote markdown (especially from GitHub), relative links break. The extension can automatically rewrite them:
 
 ```markdown
-&lt;fetch markdownurl="https://raw.githubusercontent.com/user/repo/main/docs/README.md"
+<fetch markdownurl="https://raw.githubusercontent.com/user/repo/main/docs/README.md"
        pollfrequency="24"
-       transformlinks="true"/&gt;
+       transformlinks="true" disable="true"/>
 ```
 
 This transforms:
@@ -591,9 +591,9 @@ public class MarkdownLinkRewriter
 You can show readers when content was last fetched:
 
 ```markdown
-&lt;fetch markdownurl="https://api.example.com/status.md"
+<fetch markdownurl="https://api.example.com/status.md"
        pollfrequency="1"
-       showsummary="true"/&gt;
+       showsummary="true" disable="true"/>
 ```
 
 This renders with a footer:
@@ -603,10 +603,10 @@ This renders with a footer:
 Or customize the template:
 
 ```markdown
-&lt;fetch markdownurl="https://example.com/docs.md"
+<fetch markdownurl="https://example.com/docs.md"
        pollfrequency="24"
        showsummary="true"
-       summarytemplate="Last updated: {retrieved:long} | Status: {status} | Next refresh: {nextrefresh:relative}"/&gt;
+       summarytemplate="Last updated: {retrieved:long} | Status: {status} | Next refresh: {nextrefresh:relative}" disable="true"/>
 ```
 
 Output:~~~~
@@ -620,6 +620,29 @@ Available placeholders:
 - `{nextrefresh:format}` - When content will be refreshed
 - `{pollfrequency}` - Cache duration in hours
 - `{status}` - Cache status (fresh/cached/stale)
+
+### Disabling Processing for Documentation
+
+When writing documentation about the fetch extension (like this article!), you need a way to show the tags without them being processed. Use the `disable="true"` attribute:
+
+```markdown
+<!-- This will be processed and fetch content -->
+<fetch markdownurl="https://example.com/README.md" pollfrequency="24"/>
+
+<!-- This will NOT be processed - useful for documentation -->
+<fetch markdownurl="https://example.com/README.md" pollfrequency="24" disable="true"/>
+```
+
+The disabled tag remains in the markdown as-is, perfect for:
+- Writing documentation about the extension itself
+- Creating examples in tutorials
+- Showing tag syntax without triggering fetches
+
+This works for both `<fetch>` and `<fetch-summary>` tags:
+
+```markdown
+<fetch-summary url="https://example.com/api/status.md" disable="true"/>
+```
 
 ### Event System for Monitoring
 
@@ -923,11 +946,11 @@ Here's how I use it in my blog posts:
 
 Here's the official README from GitHub:
 
-&lt;fetch markdownurl="https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/Umami.Net/README.md"
+<fetch markdownurl="https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/Umami.Net/README.md"
        pollfrequency="24"
        transformlinks="true"
        showsummary="true"
-       summarytemplate="*Fetched {age} from GitHub*"/&gt;
+       summarytemplate="*Fetched {age} from GitHub*" disable="true"/>
 
 ## Installation
 

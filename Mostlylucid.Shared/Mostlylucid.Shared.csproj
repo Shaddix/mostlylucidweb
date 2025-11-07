@@ -11,7 +11,7 @@
     <ItemGroup>
       <PackageReference Include="mostlylucid.pagingtaghelper" Version="0.9.4.1" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-      <PackageReference Include="System.IO.Hashing" Version="9.0.9" />
+      <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
     </ItemGroup>
 
 </Project>

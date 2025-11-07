@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Net;
+using System.Text.RegularExpressions;
 using Markdig;
 using Markdig.Helpers;
 using Markdig.Syntax;
@@ -128,7 +129,8 @@ public class MarkdownTranslatorService(
             // Handle service overload (403 Forbidden) explicitly
             if (response.StatusCode == HttpStatusCode.Forbidden)
             {
-                logger.LogWarning("Translation service at {IP} returned 403 (overloaded)", ip);
+                // Suppress noisy overload warnings - handled by retry logic
+                logger.LogDebug("Translation service at {IP} returned 403 (overloaded)", ip);
                 throw new HttpRequestException(
                     "Translation service is overloaded (403)",
                     null,
@@ -179,16 +181,22 @@ public class MarkdownTranslatorService(
             .Build();
         var document = global::Markdig.Markdown.Parse(markdown, pipeline);
         var textStrings = ExtractTextStrings(document);
-        var batchSize = 5;
-        var stringLength = textStrings.Count;
+
+        // Batch by character limit instead of fixed count for better EasyNMT optimization
+        var batches = BatchTextByCharLimit(textStrings);
         List<string> translatedStrings = new();
-        for (int i = 0; i < stringLength; i += batchSize)
+
+        logger.LogInformation(
+            "Translating {TotalStrings} text elements in {BatchCount} batches to {Language}",
+            textStrings.Count, batches.Count, targetLang);
+
+        foreach (var batch in batches)
         {
             try
             {
-                var batch = textStrings.Skip(i).Take(batchSize).ToArray();
                 var translatedBatch = await Post(batch, targetLang, cancellationToken);
                 activity?.SetTag("BatchSize", batch.Length);
+                activity?.SetTag("BatchChars", batch.Sum(s => s.Length));
                 activity?.SetTag("Starting time", DateTime.UtcNow);
                 translatedStrings.AddRange(translatedBatch);
                 activity?.SetTag("Ending time", DateTime.UtcNow);
@@ -200,24 +208,25 @@ public class MarkdownTranslatorService(
                 _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is temporarily unavailable due to overload. Circuit breaker is open.",
-                    textStrings.Skip(i).Take(batchSize).ToArray());
+                    batch);
             }
             catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Forbidden)
             {
-                logger.LogWarning("Translation service returned 403 (overloaded) for {Language}", targetLang);
+                // Suppress noisy overload warnings - handled by retry logic
+                logger.LogDebug("Translation service returned 403 (overloaded) for {Language}", targetLang);
                 activity?.SetTag("ServiceOverloaded", true);
                 _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is overloaded (403)",
-                    textStrings.Skip(i).Take(batchSize).ToArray());
+                    batch);
             }
             catch (Exception e)
             {
                 logger.LogError(e, "Error translating markdown to {Language}: {Message} for strings {Strings}",
                     targetLang, e.Message,
-                    string.Concat(Environment.NewLine, textStrings.Skip(i).Take(batchSize)));
+                    string.Concat(Environment.NewLine, batch));
                 _failureTracker.RecordFailure(targetLang);
-                throw new TranslateException(e.Message, textStrings.Skip(i).Take(batchSize).ToArray());
+                throw new TranslateException(e.Message, batch);
             }
         }
 
@@ -244,7 +253,9 @@ public class MarkdownTranslatorService(
                 if (content == null) continue;
                 if (!IsWord(content)) continue;
 
-                textStrings.Add(content);
+                // Split content into sentences for better translation quality
+                var sentences = SplitIntoSentences(content);
+                textStrings.AddRange(sentences);
             }
         }
 
@@ -300,6 +311,184 @@ public class MarkdownTranslatorService(
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Split text into sentences for better translation quality and batching.
+    /// Handles common abbreviations and edge cases.
+    /// </summary>
+    private List<string> SplitIntoSentences(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return new List<string>();
+
+        var sentences = new List<string>();
+
+        // Common abbreviations that shouldn't trigger sentence breaks
+        var abbreviations = new[]
+        {
+            "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr",
+            "etc", "i.e", "e.g", "vs", "Inc", "Ltd", "Corp",
+            "Fig", "Vol", "No", "Approx", "Dept"
+        };
+
+        // Replace abbreviations temporarily to avoid false sentence breaks
+        var tempText = text;
+        var abbrevReplacements = new Dictionary<string, string>();
+        for (int i = 0; i < abbreviations.Length; i++)
+        {
+            var abbrev = abbreviations[i];
+            var placeholder = $"<<ABBREV{i}>>";
+            abbrevReplacements[placeholder] = abbrev + ".";
+            tempText = tempText.Replace(abbrev + ".", placeholder);
+        }
+
+        // Split on sentence boundaries: . ! ? followed by space and capital letter
+        // or end of string
+        var sentencePattern = @"(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$";
+        var parts = Regex.Split(tempText, sentencePattern);
+
+        foreach (var part in parts)
+        {
+            if (string.IsNullOrWhiteSpace(part))
+                continue;
+
+            // Restore abbreviations
+            var restored = part;
+            foreach (var kvp in abbrevReplacements)
+            {
+                restored = restored.Replace(kvp.Key, kvp.Value);
+            }
+
+            sentences.Add(restored.Trim());
+        }
+
+        // If no sentences found, return the whole text as one sentence
+        if (sentences.Count == 0 && !string.IsNullOrWhiteSpace(text))
+        {
+            sentences.Add(text.Trim());
+        }
+
+        return sentences;
+    }
+
+    /// <summary>
+    /// Batch text strings by character limit and sentence count to optimize for EasyNMT input constraints.
+    /// This replaces the old fixed-count batching (batch size = 5) with dynamic batching
+    /// based on actual content length and sentence boundaries.
+    /// </summary>
+    private List<string[]> BatchTextByCharLimit(List<string> textStrings)
+    {
+        var batches = new List<string[]>();
+        var currentBatch = new List<string>();
+        var currentLength = 0;
+
+        foreach (var text in textStrings)
+        {
+            var textLength = text.Length;
+
+            // If adding this text would exceed character limit OR sentence limit, start a new batch
+            if (currentBatch.Count > 0 &&
+                (currentLength + textLength > translateServiceConfig.MaxBatchCharacters ||
+                 currentBatch.Count >= translateServiceConfig.MaxSentencesPerBatch))
+            {
+                batches.Add(currentBatch.ToArray());
+                currentBatch = new List<string>();
+                currentLength = 0;
+            }
+
+            // For very long single text elements, send alone (with warning)
+            if (textLength > translateServiceConfig.MaxBatchCharacters)
+            {
+                logger.LogWarning(
+                    "Single text element exceeds max batch size ({Length} > {Max}). Sending as single item.",
+                    textLength, translateServiceConfig.MaxBatchCharacters);
+
+                if (currentBatch.Count > 0)
+                {
+                    batches.Add(currentBatch.ToArray());
+                    currentBatch = new List<string>();
+                    currentLength = 0;
+                }
+
+                batches.Add(new[] { text });
+            }
+            else
+            {
+                currentBatch.Add(text);
+                currentLength += textLength;
+            }
+        }
+
+        // Add remaining text elements
+        if (currentBatch.Count > 0)
+        {
+            batches.Add(currentBatch.ToArray());
+        }
+
+        // If no batches created but we have text, create one batch
+        if (batches.Count == 0 && textStrings.Count > 0)
+        {
+            batches.Add(textStrings.ToArray());
+        }
+
+        return batches;
+    }
+
+    /// <summary>
+    /// Batch sentences into groups that respect character limits for EasyNMT.
+    /// </summary>
+    private List<string[]> BatchSentencesByCharLimit(List<string> sentences)
+    {
+        var batches = new List<string[]>();
+        var currentBatch = new List<string>();
+        var currentLength = 0;
+
+        foreach (var sentence in sentences)
+        {
+            var sentenceLength = sentence.Length;
+
+            // If adding this sentence would exceed limits, start a new batch
+            if (currentBatch.Count > 0 &&
+                (currentLength + sentenceLength > translateServiceConfig.MaxBatchCharacters ||
+                 currentBatch.Count >= translateServiceConfig.MaxSentencesPerBatch))
+            {
+                batches.Add(currentBatch.ToArray());
+                currentBatch = new List<string>();
+                currentLength = 0;
+            }
+
+            // If a single sentence exceeds the limit, split it further or add it alone
+            if (sentenceLength > translateServiceConfig.MaxBatchCharacters)
+            {
+                // Log warning for oversized sentence
+                logger.LogWarning(
+                    "Sentence exceeds max batch size ({Length} > {Max}). Sending as single item.",
+                    sentenceLength, translateServiceConfig.MaxBatchCharacters);
+
+                if (currentBatch.Count > 0)
+                {
+                    batches.Add(currentBatch.ToArray());
+                    currentBatch = new List<string>();
+                    currentLength = 0;
+                }
+
+                batches.Add(new[] { sentence });
+            }
+            else
+            {
+                currentBatch.Add(sentence);
+                currentLength += sentenceLength;
+            }
+        }
+
+        // Add remaining sentences
+        if (currentBatch.Count > 0)
+        {
+            batches.Add(currentBatch.ToArray());
+        }
+
+        return batches;
     }
 
     /// <summary>

@@ -273,7 +273,8 @@ public class BackgroundTranslateService(
                     {
                         activity?.Activity?.SetTag("Retry Attempt for ", retryCount);
                         activity?.Activity?.SetTag("For language", translateModel.Language);
-                        logger.LogWarning(exception,
+                        // Suppress noisy retry warnings - only log on final failure
+                        logger.LogDebug(exception,
                             "Translation error, retrying attempt {RetryCount}", retryCount);
                     }
                 });

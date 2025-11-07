@@ -18,6 +18,8 @@ KEY FEATURES
 * Thread-safe operations across all storage providers
 * Preprocessing architecture ensures fetched content flows through your entire
   Markdig pipeline with all custom extensions
+* Documentation mode: Add disable="true" to prevent tag processing, perfect for
+  writing documentation about the extension itself
 
 STORAGE OPTIONS
 ---------------

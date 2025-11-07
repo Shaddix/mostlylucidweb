@@ -69,6 +69,11 @@ public class BaseService(IMostlylucidDBContext context, ILogger<BaseService> log
                 return null;
             }
             var hashChanged = currentPost?.ContentHash != hash;
+
+            // Debug logging
+            Logger.LogInformation("Hash check for {Slug}: New={NewHash}, Old={OldHash}, Changed={Changed}, MarkdownLength={Length}",
+                post.Slug, hash, currentPost?.ContentHash ?? "NULL", hashChanged, post.Markdown?.Length ?? 0);
+
             //Add an inital check, if the current post is the same as the new post's hash, then we can skip the rest of the checks
             if (!hashChanged)
             {

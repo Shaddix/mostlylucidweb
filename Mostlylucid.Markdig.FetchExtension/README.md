@@ -1,6 +1,48 @@
 # Mostlylucid.Markdig.FetchExtension
 
-A Markdig extension that enables fetching remote Markdown at render time using a simple inline directive:
+A Markdig extension that provides two powerful features:
+
+1. **Table of Contents** - Automatically generate TOC from document headings
+2. **Fetch Remote Markdown** - Embed remote markdown content at render time
+
+## Table of Contents Extension
+
+Automatically generate a table of contents from your document headings using `[TOC]` markers.
+
+### Usage Examples
+
+```markdown
+# My Article
+
+[TOC]              <!-- All headings H1-H6 -->
+[TOC:2-4]          <!-- Only H2-H4 -->
+[TOC::my-toc]      <!-- Custom CSS class -->
+[TOC:2-4:my-toc]   <!-- Range + custom class -->
+
+## Introduction
+...
+```
+
+### Output
+
+Generates a semantic `<nav>` element:
+
+```html
+<nav class="ml_toc" aria-label="Table of Contents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    ...
+  </ul>
+</nav>
+```
+
+Headings automatically get IDs for anchor linking. Default CSS class is `ml_toc`.
+
+---
+
+## Fetch Extension
+
+Enables fetching remote Markdown at render time using a simple inline directive:
 
 ```markdown
 <fetch markdownurl="https://example.com/README.md" pollfrequency="12h"/>
@@ -13,7 +55,8 @@ A Markdig extension that enables fetching remote Markdown at render time using a
        transformlinks="true|false"
        showsummary="true|false"
        summarytemplate="TEMPLATE"
-       cssclass="CLASSNAME"/>
+       cssclass="CLASSNAME"
+       disable="true|false"/>
 ```
 
 - `markdownurl` (required): URL of the remote Markdown to fetch
@@ -22,6 +65,7 @@ A Markdig extension that enables fetching remote Markdown at render time using a
 - `showsummary` (optional): Display fetch metadata summary (default: `false`)
 - `summarytemplate` (optional): Custom template for metadata summary (see examples below)
 - `cssclass` (optional): CSS class for the summary wrapper div (default: `"ft_summary"`)
+- `disable` (optional): When `true`, the tag is left as-is and not processed (useful for documentation) (default: `false`)
 
 ## Features
 
@@ -748,6 +792,27 @@ services.AddMarkdownFetchPolling(options =>
 ```csharp
 services.AddFileBasedMarkdownFetch("/var/cache/markdown");
 ```
+
+### Disabling Processing for Documentation
+
+When writing documentation about the fetch extension (like this README!), you need a way to show the tags without them being processed. Use the `disable="true"` attribute:
+
+```markdown
+<!-- This will be processed and fetch content -->
+<fetch markdownurl="https://example.com/README.md" pollfrequency="24"/>
+
+<!-- This will NOT be processed - useful for documentation -->
+<fetch markdownurl="https://example.com/README.md" pollfrequency="24" disable="true"/>
+```
+
+This works for both `<fetch>` and `<fetch-summary>` tags:
+
+```markdown
+<!-- Won't be processed -->
+<fetch-summary url="https://example.com/README.md" disable="true"/>
+```
+
+The disabled tags remain in your markdown as-is, allowing you to document the syntax without triggering actual fetches.
 
 ## Database Storage Plugins
 

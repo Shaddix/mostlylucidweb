@@ -25,6 +25,9 @@ public static class BlogSetup
         // Register HttpClient factory for fetching remote markdown
         services.AddHttpClient();
 
+        // Register blog post processing context (scoped to track current blog post during rendering)
+        services.AddScoped<BlogPostProcessingContext>();
+
         // Register markdown fetch service
         services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
 

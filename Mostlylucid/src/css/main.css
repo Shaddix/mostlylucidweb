@@ -1,15 +1,23 @@
 @import "raleway.css";
 
 /*
- * Highlight.js themes - Simple cascade approach
- * Light theme loads first (default), dark theme overrides when .dark class present
- * No JavaScript timing issues, no FOUC, no disappearing code blocks
+ * Highlight.js themes - Scoped approach
+ * Light theme scoped to non-dark, dark theme scoped to .dark
+ * Prevents style bleeding and ensures proper cascading
  */
-@import "highlight.js/styles/default.css";
+@import "highlight.js/styles/default.css" layer(hljs-light);
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Ensure light theme only applies outside .dark context */
+@layer hljs-light {
+    :not(.dark) pre code.hljs,
+    :not(.dark) code.hljs {
+        /* Light theme from default.css will apply here */
+    }
+}
 
 
 .bg-red {
@@ -129,6 +137,227 @@ div.mermaid {
     background-color: transparent !important;
 }
 
+/* Mermaid diagram wrapper and controls */
+.mermaid-wrapper {
+    @apply relative rounded-lg overflow-hidden w-full;
+    margin: 1rem 0;
+}
+
+.mermaid-wrapper .mermaid {
+    @apply m-0 w-full;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.mermaid-wrapper .mermaid svg {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 450px;
+}
+
+.mermaid-controls {
+    @apply absolute top-2 right-2 flex gap-1 z-10;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .mermaid-controls {
+    background: rgba(31, 41, 55, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mermaid-control-btn {
+    @apply p-2 rounded cursor-pointer transition-all duration-200;
+    background: transparent;
+    border: none;
+    color: #4b5563;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.mermaid-control-btn:hover {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    transform: scale(1.1);
+}
+
+.dark .mermaid-control-btn {
+    color: #9ca3af;
+}
+
+.dark .mermaid-control-btn:hover {
+    background: rgba(55, 65, 81, 0.8);
+    color: #60a5fa;
+}
+
+.mermaid-control-btn.active {
+    background: #3b82f6;
+    color: white;
+}
+
+.dark .mermaid-control-btn.active {
+    background: #2563eb;
+    color: white;
+}
+
+/* SVG pan-zoom cursor states */
+.svg-pan-zoom-control-pan-enabled {
+    cursor: grab;
+}
+
+.svg-pan-zoom-control-pan-enabled:active {
+    cursor: grabbing;
+}
+
+/* Mermaid Lightbox */
+.mermaid-lightbox {
+    @apply fixed inset-0 z-50 flex items-center justify-center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.dark .mermaid-lightbox {
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.mermaid-lightbox-content {
+    @apply relative w-11/12 h-5/6 bg-white rounded-lg shadow-2xl;
+    max-width: 1400px;
+}
+
+.dark .mermaid-lightbox-content {
+    @apply bg-gray-800;
+}
+
+.mermaid-lightbox-close {
+    @apply absolute top-4 right-4 z-10 p-2 rounded-full cursor-pointer transition-all;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    font-size: 2rem;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-lightbox-close:hover {
+    background: rgba(220, 38, 38, 0.8);
+    transform: scale(1.1);
+}
+
+.mermaid-lightbox-diagram-wrapper {
+    @apply relative w-full h-full;
+    padding: 3rem;
+    box-sizing: border-box;
+}
+
+.mermaid-lightbox-diagram {
+    @apply w-full h-full;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-lightbox-diagram svg {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Table of Contents Styling */
+nav.ml_toc {
+    @apply my-6 p-4 rounded-lg border-l-2;
+    background: #f8f9fa;
+    border-left-color: #cbd5e0;
+    min-width: 280px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.dark nav.ml_toc {
+    background: rgba(255, 255, 255, 0.03);
+    border-left-color: #4a5568;
+}
+
+.ml_toc .toc-title {
+    @apply font-semibold text-sm uppercase tracking-wide mb-3 pb-2 border-b;
+    color: #4a5568;
+    border-bottom-color: #e2e8f0;
+}
+
+.dark .ml_toc .toc-title {
+    color: #a0aec0;
+    border-bottom-color: #2d3748;
+}
+
+.ml_toc ul {
+    @apply list-none m-0 p-0;
+}
+
+.ml_toc ul ul {
+    @apply pl-4 mt-1;
+}
+
+.ml_toc li {
+    @apply my-1;
+    line-height: 1.2;
+}
+
+.ml_toc a {
+    @apply no-underline transition-colors duration-200;
+    color: #718096;
+    font-size: 0.95rem;
+    display: inline-block;
+    padding: 0.125rem 0;
+}
+
+.ml_toc a:hover {
+    color: #2d3748;
+    text-decoration: underline;
+}
+
+.dark .ml_toc a {
+    color: #a0aec0;
+}
+
+.dark .ml_toc a:hover {
+    color: #cbd5e0;
+    text-decoration: underline;
+}
+
+/* Nested list styling for hierarchical display */
+.ml_toc ul ul a {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.ml_toc ul ul ul a {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
 
 .prose :where(blockquote):not(:where([class~=not-prose],[class~=not-prose] *)) {
     background-color: #cceeec;
@@ -167,55 +396,68 @@ div.mermaid {
 
 /*
  * Dark theme for code highlighting (Atom One Dark)
- * Scoped to .dark class - overrides light theme when dark mode active
- * Based on atom-one-dark-reasonable theme
+ * Scoped to .dark class - completely overrides light theme when dark mode active
+ * Based on atom-one-dark-reasonable theme with comprehensive coverage
  */
 .dark pre code.hljs {
     display: block;
     overflow-x: auto;
     padding: 1em;
-    color: #abb2bf;
-    background: #282c34;
+    color: #abb2bf !important;
+    background: #282c34 !important;
 }
 
 .dark code.hljs {
     padding: 3px 5px;
+    color: #abb2bf !important;
+    background: #282c34 !important;
+}
+
+/* Defensive default: ensure all code elements in dark mode have readable color */
+.dark pre code,
+.dark code {
     color: #abb2bf;
     background: #282c34;
 }
 
+/* Comments and documentation */
 .dark .hljs-comment,
 .dark .hljs-quote {
-    color: #5c6370;
+    color: #5c6370 !important;
     font-style: italic;
 }
 
+/* Keywords and special symbols */
 .dark .hljs-doctag,
 .dark .hljs-keyword,
 .dark .hljs-formula {
-    color: #c678dd;
+    color: #c678dd !important;
 }
 
+/* Tags, names, deletions */
 .dark .hljs-section,
 .dark .hljs-name,
 .dark .hljs-selector-tag,
 .dark .hljs-deletion,
 .dark .hljs-subst {
-    color: #e06c75;
+    color: #e06c75 !important;
 }
 
+/* Literals and constants */
 .dark .hljs-literal {
-    color: #56b6c2;
+    color: #56b6c2 !important;
 }
 
+/* Strings and additions */
 .dark .hljs-string,
 .dark .hljs-regexp,
 .dark .hljs-addition,
 .dark .hljs-attribute,
 .dark .hljs-meta .hljs-string {
-    color: #98c379;
+    color: #98c379 !important;
 }
 
+/* Attributes, variables, numbers */
 .dark .hljs-attr,
 .dark .hljs-variable,
 .dark .hljs-template-variable,
@@ -224,24 +466,47 @@ div.mermaid {
 .dark .hljs-selector-attr,
 .dark .hljs-selector-pseudo,
 .dark .hljs-number {
-    color: #d19a66;
+    color: #d19a66 !important;
 }
 
+/* Symbols, links, metadata */
 .dark .hljs-symbol,
 .dark .hljs-bullet,
 .dark .hljs-link,
 .dark .hljs-meta,
 .dark .hljs-selector-id,
 .dark .hljs-title {
-    color: #61aeee;
+    color: #61aeee !important;
 }
 
+/* Built-ins and class names */
 .dark .hljs-built_in,
 .dark .hljs-title.class_,
 .dark .hljs-class .hljs-title {
-    color: #e6c07b;
+    color: #e6c07b !important;
 }
 
+/* Additional coverage for commonly missed classes */
+.dark .hljs-tag,
+.dark .hljs-params,
+.dark .hljs-function {
+    color: #61aeee !important;
+}
+
+.dark .hljs-property,
+.dark .hljs-code {
+    color: #abb2bf !important;
+}
+
+.dark .hljs-operator {
+    color: #56b6c2 !important;
+}
+
+.dark .hljs-punctuation {
+    color: #abb2bf !important;
+}
+
+/* Formatting */
 .dark .hljs-emphasis {
     font-style: italic;
 }
@@ -252,4 +517,9 @@ div.mermaid {
 
 .dark .hljs-link {
     text-decoration: underline;
+}
+
+/* Catch-all for any unmapped hljs classes - ensures readability */
+.dark [class*="hljs-"]:not([class*="hljs-comment"]):not([class*="hljs-quote"]) {
+    color: #abb2bf;
 }

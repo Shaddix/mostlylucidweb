@@ -26,8 +26,18 @@ public class TranslateServiceConfig :IConfigSection
     }
 
     public string[] Languages { get; set; }
-    
+
     public AutoTranslateMode Mode { get; set; } = AutoTranslateMode.SaveToDisk;
+
+    /// <summary>
+    /// Maximum characters per batch sent to EasyNMT (default: 1500 to stay well under typical 5000 char limits)
+    /// </summary>
+    public int MaxBatchCharacters { get; set; } = 1500;
+
+    /// <summary>
+    /// Maximum number of sentences per batch (default: 10 for safety)
+    /// </summary>
+    public int MaxSentencesPerBatch { get; set; } = 10;
 }
 
 public enum AutoTranslateMode

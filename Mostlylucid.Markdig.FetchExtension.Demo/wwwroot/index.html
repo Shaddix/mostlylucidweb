@@ -451,6 +451,7 @@
                 <li>Add <code>transformlinks="true"</code> to rewrite relative links</li>
                 <li>Add <code>showsummary="true"</code> to display fetch metadata</li>
                 <li>Use <code>&lt;fetch-summary url="URL"/&gt;</code> to show metadata separately</li>
+                <li>Add <code>disable="true"</code> to prevent processing (useful for documentation)</li>
             </ul>
 
             <div class="stats-box">
@@ -528,7 +529,15 @@ Below we'll fetch a README from a GitHub repository:
 - Link transformation for relative URLs
 - Metadata summaries with custom templates
 
-Try changing the URL, poll frequency, or template!`;
+Try changing the URL, poll frequency, or template!
+
+## Documentation Mode
+
+When you need to show fetch tags without processing them (like in documentation), use the \`disable="true"\` attribute:
+
+<fetch markdownurl="https://example.com/docs.md" pollfrequency="24" disable="true"/>
+
+The tag above won't be processed - it will remain as-is in the output, perfect for writing documentation about the extension itself!`;
 
         const easyMDE = new EasyMDE({
             element: document.getElementById('markdown-editor'),
