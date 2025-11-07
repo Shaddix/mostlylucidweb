@@ -1,86 +1,17 @@
 # Mostlylucid.Markdig.FetchExtension
 
-A Markdig extension that provides two powerful features:
+A comprehensive Markdig toolkit providing:
 
-1. **Table of Contents** - Automatically generate TOC from document headings
-2. **Fetch Remote Markdown** - Embed remote markdown content at render time
-
-## Table of Contents Extension
-
-Automatically generate a table of contents from your document headings using `[TOC]` markers.
-
-### Usage Examples
-
-```markdown
-# My Article
-
-[TOC]              <!-- All headings H1-H6 -->
-[TOC:2-4]          <!-- Only H2-H4 -->
-[TOC::my-toc]      <!-- Custom CSS class -->
-[TOC:2-4:my-toc]   <!-- Range + custom class -->
-
-## Introduction
-...
-```
-
-### Output
-
-Generates a semantic `<nav>` element:
-
-```html
-<nav class="ml_toc" aria-label="Table of Contents">
-  <ul>
-    <li><a href="#introduction">Introduction</a></li>
-    ...
-  </ul>
-</nav>
-```
-
-Headings automatically get IDs for anchor linking. Default CSS class is `ml_toc`.
-
----
-
-## Fetch Extension
-
-Enables fetching remote Markdown at render time using a simple inline directive:
-
-```markdown
-<fetch markdownurl="https://example.com/README.md" pollfrequency="12h"/>
-```
-
-**Full syntax**:
-```markdown
-<fetch markdownurl="URL"
-       pollfrequency="HOURS"
-       transformlinks="true|false"
-       showsummary="true|false"
-       summarytemplate="TEMPLATE"
-       cssclass="CLASSNAME"
-       disable="true|false"/>
-```
-
-- `markdownurl` (required): URL of the remote Markdown to fetch
-- `pollfrequency` (required): Cache duration in hours (use `0` to always fetch fresh)
-- `transformlinks` (optional): Rewrite relative links to absolute URLs (default: `false`)
-- `showsummary` (optional): Display fetch metadata summary (default: `false`)
-- `summarytemplate` (optional): Custom template for metadata summary (see examples below)
-- `cssclass` (optional): CSS class for the summary wrapper div (default: `"ft_summary"`)
-- `disable` (optional): When `true`, the tag is left as-is and not processed (useful for documentation) (default: `false`)
-
-## Features
-
-- **Simple inline syntax** for embedding remote Markdown
-- **Multiple storage backends** - In-memory, file-based, or custom (e.g., database)
-- **Smart caching** with configurable poll frequency
-- **Stale-while-revalidate** - Returns cached content if fetch fails
-- **DI-friendly** - Full dependency injection support
-- **Error handling** - Gracefully handles failures with HTML comments
+1. **Fetch Preprocessor** - Embed remote Markdown content before pipeline processing
+2. **Table of Contents Extension** - Automatically generate TOC from document headings
 
 ## Architecture Overview
 
+This package provides two distinct but complementary features:
+
 ```mermaid
 graph TD
-    A[Markdown with &lt;fetch&gt; tags] --> B[MarkdownFetchPreprocessor]
+    A[Your Markdown with &lt;fetch&gt; tags and [TOC]] --> B[MarkdownFetchPreprocessor]
     B --> C{Check Cache}
     C -->|Fresh| D[Return Cached Content]
     C -->|Stale/Missing| E[Fetch from Remote URL]
@@ -92,107 +23,205 @@ graph TD
     D --> J
     H --> J
     I --> J
-    J --> K[Processed Markdown]
-    K --> L[Your Markdig Pipeline]
-    L --> M[Final HTML]
+    J --> K[Processed Markdown with [TOC] markers]
+    K --> L[Markdig Pipeline with TOC Extension]
+    L --> M[Final HTML with TOC and fetched content]
 
     style A fill:#e1f5ff
+    style B fill:#fff3cd
+    style K fill:#d4edda
+    style L fill:#d4edda
     style M fill:#c8e6c9
-    style E fill:#fff3cd
-    style G fill:#f8d7da
 ```
 
-## Quick Start
+**Key Concept**: The Fetch functionality is a **preprocessor** that runs *before* the Markdig pipeline, while TOC is a **pipeline extension** that runs *during* Markdig processing.
 
-### Option 1: In-Memory Storage (Simplest)
+## Table of Contents Extension
 
-Perfect for demos, testing, or apps that don't need persistence:
+A Markdig pipeline extension that generates a table of contents from your document headings.
+
+### Quick Start
 
 ```csharp
-using Mostlylucid.Markdig.FetchExtension;
-using Microsoft.Extensions.DependencyInjection;
 using Markdig;
+using Mostlylucid.Markdig.FetchExtension;
 
-// 1. Setup DI
-var services = new ServiceCollection();
-services.AddLogging();
-services.AddInMemoryMarkdownFetch();
-var serviceProvider = services.BuildServiceProvider();
-
-// 2. Configure extension
-FetchMarkdownExtension.ConfigureServiceProvider(serviceProvider);
-
-// 3. Create pipeline
 var pipeline = new MarkdownPipelineBuilder()
-    .UseAdvancedExtensions()
-    .Use<FetchMarkdownExtension>()
+    .UseToc()
     .Build();
 
-// 4. Use it!
 var markdown = @"
-# My Document
-<fetch markdownurl=""https://raw.githubusercontent.com/user/repo/main/README.md"" pollfrequency=""1""/>
+# My Article
+
+[TOC]
+
+## Introduction
+Content here...
+
+## Features
+More content...
 ";
 
 var html = Markdown.ToHtml(markdown, pipeline);
 ```
 
-### Option 2: File-Based Storage (Recommended)
+### TOC Syntax
 
-Persists cache to disk, survives restarts:
-
-```csharp
-services.AddFileBasedMarkdownFetch("./markdown-cache");
-// ... rest same as above
+```markdown
+[TOC]              <!-- All headings H1-H6 -->
+[TOC:2-4]          <!-- Only H2-H4 -->
+[TOC::my-toc]      <!-- Custom CSS class -->
+[TOC:2-4:my-toc]   <!-- Range + custom class -->
 ```
 
-### Option 3: Database Storage (Plugin)
+### TOC Output
 
-Use a database provider plugin for multi-server deployments:
+Generates semantic `<nav>` elements:
 
-#### SQLite
-```csharp
-// Add package: Mostlylucid.Markdig.FetchExtension.Sqlite
-services.AddSqliteMarkdownFetch("Data Source=markdown-cache.db");
-serviceProvider.EnsureMarkdownCacheDatabase();
+```html
+<nav class="ml_toc" aria-label="Table of Contents">
+  <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#features">Features</a></li>
+  </ul>
+</nav>
 ```
 
-#### PostgreSQL
+Headings automatically get IDs for anchor linking. Default CSS class is `ml_toc`.
+
+---
+
+## Fetch Preprocessor
+
+A **preprocessor** that fetches and embeds remote Markdown content *before* it flows through your Markdig pipeline.
+
+### Why a Preprocessor?
+
+The Fetch functionality runs **before** the Markdig pipeline to ensure:
+
+- ✅ Fetched content receives ALL your custom Markdig extensions
+- ✅ Consistent styling and processing for local and remote content
+- ✅ TOC extension can see headers from fetched content
+- ✅ All extensions work on the combined content
+- ✅ Simple integration - one preprocessing step
+
+### Quick Start
+
 ```csharp
-// Add package: Mostlylucid.Markdig.FetchExtension.Postgres
-services.AddPostgresMarkdownFetch("Host=localhost;Database=myapp;Username=user;Password=pass");
-serviceProvider.EnsureMarkdownCacheDatabase();
+using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Processors;
+using Microsoft.Extensions.DependencyInjection;
+using Markdig;
+
+// 1. Setup DI with a storage provider
+var services = new ServiceCollection();
+services.AddLogging();
+services.AddInMemoryMarkdownFetch();
+var serviceProvider = services.BuildServiceProvider();
+
+// 2. Create preprocessor
+var preprocessor = new MarkdownFetchPreprocessor(serviceProvider);
+
+// 3. Create your pipeline (can include any extensions)
+var pipeline = new MarkdownPipelineBuilder()
+    .UseToc()  // TOC will see fetched content!
+    .Build();
+
+// 4. Preprocess, then render
+var markdown = @"
+# My Document
+
+[TOC]
+
+## Local Content
+
+<fetch markdownurl=""https://raw.githubusercontent.com/scottgal/mostlylucidweb/main/README.md""
+       pollfrequency=""24""/>
+";
+
+var processedMarkdown = preprocessor.Preprocess(markdown);
+var html = Markdown.ToHtml(processedMarkdown, pipeline);
 ```
 
-#### SQL Server
-```csharp
-// Add package: Mostlylucid.Markdig.FetchExtension.SqlServer
-services.AddSqlServerMarkdownFetch("Server=localhost;Database=MyApp;Integrated Security=true");
-serviceProvider.EnsureMarkdownCacheDatabase();
+### Fetch Syntax
+
+```markdown
+<fetch markdownurl="https://example.com/README.md" pollfrequency="24h"/>
 ```
 
-See individual plugin READMEs for detailed configuration options.
-
-### Option 4: Custom Storage (Advanced)
-
-Implement `IMarkdownFetchService` for your own backend:
-
-```csharp
-public class MyCustomMarkdownFetchService : IMarkdownFetchService
-{
-    public async Task<MarkdownFetchResult> FetchMarkdownAsync(
-        string url,
-        int pollFrequencyHours,
-        int blogPostId)
-    {
-        // Your custom implementation
-    }
-}
-
-builder.Services.AddScoped<IMarkdownFetchService, MyCustomMarkdownFetchService>();
+**Full syntax**:
+```markdown
+<fetch markdownurl="URL"
+       pollfrequency="DURATION"
+       transformlinks="true|false"
+       showsummary="true|false"
+       summarytemplate="TEMPLATE"
+       cssclass="CLASSNAME"
+       disable="true|false"/>
 ```
 
-## Storage Comparison
+**Attributes**:
+- `markdownurl` (required): URL of the remote Markdown to fetch
+- `pollfrequency` (required): Cache duration with unit (s/m/h/d) or plain number (defaults to hours)
+  - Examples: `"30s"` (30 seconds), `"5m"` (5 minutes), `"12h"` (12 hours), `"7d"` (7 days), `"24"` (24 hours)
+  - Use `"0"` or `"0s"` to always fetch fresh content
+- `transformlinks` (optional): Rewrite relative links to absolute URLs (default: `false`)
+- `showsummary` (optional): Display fetch metadata summary (default: `false`)
+- `summarytemplate` (optional): Custom template for metadata summary
+- `cssclass` (optional): CSS class for the summary wrapper div (default: `"ft_summary"`)
+- `disable` (optional): When `true`, the tag is left as-is and not processed (useful for documentation) (default: `false`)
+
+## Combined Usage
+
+The real power comes from using both features together:
+
+```csharp
+using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Processors;
+using Microsoft.Extensions.DependencyInjection;
+using Markdig;
+
+// Setup DI
+var services = new ServiceCollection();
+services.AddLogging();
+services.AddInMemoryMarkdownFetch();
+var serviceProvider = services.BuildServiceProvider();
+
+// Create preprocessor and pipeline
+var preprocessor = new MarkdownFetchPreprocessor(serviceProvider);
+var pipeline = new MarkdownPipelineBuilder()
+    .UseToc()
+    .Build();
+
+// Your markdown can use both features
+var markdown = @"
+# Documentation Hub
+
+[TOC:2-3]
+
+## Local Section
+This is local content.
+
+## Remote Section
+<fetch markdownurl=""https://example.com/api-docs.md""
+       pollfrequency=""12""
+       transformlinks=""true""
+       showsummary=""true""/>
+
+## Another Local Section
+More local content.
+";
+
+// Process: Fetch first, then pipeline
+var processedMarkdown = preprocessor.Preprocess(markdown);
+var html = Markdown.ToHtml(processedMarkdown, pipeline);
+
+// Result: TOC includes headers from both local AND fetched content!
+```
+
+## Storage Options
+
+The Fetch preprocessor requires a storage backend for caching:
 
 | Storage Type | Persistence | Multi-Server | Use Case | Setup |
 |-------------|-------------|--------------|----------|-------|
@@ -230,27 +259,78 @@ graph LR
     style G fill:#fff3cd
 ```
 
-## Usage Examples
+### Option 1: In-Memory Storage
 
-### Basic Fetch
+Perfect for demos, testing, or apps that don't need persistence:
 
-```markdown
-<fetch markdownurl="https://example.com/docs.md" pollfrequency="24"/>
+```csharp
+services.AddInMemoryMarkdownFetch();
 ```
 
-### Multiple Sources
+### Option 2: File-Based Storage
 
-```markdown
-## API Documentation
-<fetch markdownurl="https://api.example.com/README.md" pollfrequency="1"/>
+Persists cache to disk, survives restarts:
 
-## Changelog
-<fetch markdownurl="https://github.com/user/repo/main/CHANGELOG.md" pollfrequency="6"/>
+```csharp
+services.AddFileBasedMarkdownFetch("./markdown-cache");
 ```
 
-### Link Rewriting for Remote Content
+### Option 3: Database Storage (Plugins)
 
-When fetching remote Markdown (especially from GitHub repositories), relative links in that content will break. Use `transformlinks="true"` to automatically rewrite relative links to absolute URLs pointing back to the source:
+#### SQLite
+```bash
+dotnet add package Mostlylucid.Markdig.FetchExtension.Sqlite
+```
+
+```csharp
+services.AddSqliteMarkdownFetch("Data Source=markdown-cache.db");
+serviceProvider.EnsureMarkdownCacheDatabase();
+```
+
+#### PostgreSQL
+```bash
+dotnet add package Mostlylucid.Markdig.FetchExtension.Postgres
+```
+
+```csharp
+services.AddPostgresMarkdownFetch("Host=localhost;Database=myapp;Username=user;Password=pass");
+serviceProvider.EnsureMarkdownCacheDatabase();
+```
+
+#### SQL Server
+```bash
+dotnet add package Mostlylucid.Markdig.FetchExtension.SqlServer
+```
+
+```csharp
+services.AddSqlServerMarkdownFetch("Server=localhost;Database=MyApp;Integrated Security=true");
+serviceProvider.EnsureMarkdownCacheDatabase();
+```
+
+### Option 4: Custom Storage
+
+Implement `IMarkdownFetchService` for your own backend:
+
+```csharp
+public class MyCustomMarkdownFetchService : IMarkdownFetchService
+{
+    public async Task<MarkdownFetchResult> FetchMarkdownAsync(
+        string url,
+        int pollFrequencyHours,
+        int blogPostId)
+    {
+        // Your custom implementation
+    }
+}
+
+services.AddScoped<IMarkdownFetchService, MyCustomMarkdownFetchService>();
+```
+
+## Fetch Features
+
+### Link Transformation
+
+When fetching remote Markdown (especially from GitHub repositories), relative links will break. Use `transformlinks="true"`:
 
 ```markdown
 <fetch markdownurl="https://raw.githubusercontent.com/user/repo/main/docs/README.md"
@@ -264,51 +344,16 @@ When fetching remote Markdown (especially from GitHub repositories), relative li
 - Special handling for GitHub raw URLs - converts to display URLs (blob view)
 - Example: `./file.md` becomes `https://github.com/user/repo/blob/main/docs/file.md`
 
-**When to use**:
-- Fetching documentation from GitHub repositories
-- Embedding content with internal cross-references
-- Remote content with relative image or doc links
-- Not needed for single-file content without links
-- Not needed if source uses only absolute URLs
+### Fetch Metadata Summaries
 
-### With Blog Post Context
+Show readers when content was last fetched:
 
-The `blogPostId` parameter allows multiple blog posts to fetch the same URL with separate caches:
-
-```csharp
-// In your blog rendering code
-var blogPostId = post.Id;
-var html = Markdown.ToHtml(post.Content, pipeline);
-// Each post maintains its own cache of fetched content
-```
-
-### Fetch Metadata Summary
-
-Show readers when content was last fetched and its cache status with customizable metadata summaries.
-
-#### Inline Summary (attached to fetched content)
-
-Add summary directly after the fetched content:
-
-```markdown
-<fetch markdownurl="https://api.example.com/status.md"
-       pollfrequency="1"
-       showsummary="true"/>
-```
-
-**Default output** (italicized at bottom of fetched content):
-> _Content fetched from [https://api.example.com/status.md](https://api.example.com/status.md) on 15 Nov 2024 (2 hours ago)_
-
-**Custom template**:
 ```markdown
 <fetch markdownurl="https://example.com/docs.md"
        pollfrequency="24"
        showsummary="true"
-       summarytemplate="Last updated: {retrieved:long} | Status: {status} | Refreshes {nextrefresh:relative}"/>
+       summarytemplate="_Last updated {age} | Status: {status}_"/>
 ```
-
-Output:
-> Last updated: 15 November 2024 14:30 | Status: cached | Refreshes in 22 hours
 
 **Available placeholders**:
 
@@ -317,75 +362,16 @@ Output:
 | `{retrieved:format}` | Last fetch date/time | See formats below |
 | `{age}` | Human-readable time since fetch | "2 hours ago", "3 days ago" |
 | `{url}` | Source URL | `https://example.com/file.md` |
-| `{nextrefresh:format}` | When content will be refreshed | "in 22 hours", "in 5 minutes" |
+| `{nextrefresh:format}` | When content will be refreshed | "in 22 hours" |
 | `{pollfrequency}` | Cache duration in hours | `24` |
 | `{status}` | Cache status | `fresh`, `cached`, or `stale` |
 
-**Date format options for `{retrieved:format}` and `{nextrefresh:format}`**:
+**Date format options**: `relative`, `short`, `long`, `date`, `time`, `iso`, `day`, `month`, `month-text`, `month-short`, `year`, or any .NET DateTime format string.
 
-| Format | Example Output |
-|--------|---------------|
-| `relative` | "2 hours ago" / "in 3 days" |
-| `short` | "15 Nov 2024" |
-| `long` | "15 November 2024 14:30" |
-| `date` | "2024-11-15" |
-| `time` | "14:30" |
-| `iso` | "2024-11-15T14:30:00.000Z" |
-| `day` | "15" |
-| `month` | "11" |
-| `month-text` | "November" |
-| `month-short` | "Nov" |
-| `year` | "2024" |
-| Custom | Any .NET DateTime format string |
+### Separate Summary Tag
 
-**Examples**:
+Display metadata separately from content:
 
-```markdown
-<!-- Minimal transparency -->
-<fetch markdownurl="https://github.com/user/repo/main/README.md"
-       pollfrequency="24"
-       showsummary="true"
-       summarytemplate="_Updated {age}_"/>
-```
-
-```markdown
-<!-- Detailed status for critical content -->
-<fetch markdownurl="https://status.example.com/uptime.md"
-       pollfrequency="1"
-       showsummary="true"
-       summarytemplate="**Status**: {status} | Last check: {retrieved:time} | Next: {nextrefresh:time}"/>
-```
-
-```markdown
-<!-- SEO-friendly with full dates -->
-<fetch markdownurl="https://api.example.com/changelog.md"
-       pollfrequency="6"
-       showsummary="true"
-       summarytemplate="*Content from [{url}]({url}) as of {retrieved:dd MMMM yyyy}*"/>
-```
-
-```markdown
-<!-- Custom CSS class for summary styling -->
-<fetch markdownurl="https://api.example.com/docs.md"
-       pollfrequency="12"
-       showsummary="true"
-       summarytemplate="Updated {age}"
-       cssclass="content-metadata"/>
-```
-
-**Output with custom CSS class**:
-```html
-<div class="content-metadata">Updated 2 hours ago</div>
-```
-
-#### Separate Summary Tag (place anywhere)
-
-Use `<fetch-summary>` to display metadata separately from the content. This is useful for:
-- Showing summary at the top of a section while content appears below
-- Creating a metadata footer in a different location
-- Building a status dashboard showing multiple fetch statuses
-
-**Basic usage**:
 ```markdown
 # External Documentation
 
@@ -395,505 +381,66 @@ Use `<fetch-summary>` to display metadata separately from the content. This is u
 
 ---
 
-<fetch-summary url="https://github.com/user/repo/main/README.md"/>
+<fetch-summary url="https://github.com/user/repo/main/README.md"
+               template="Last updated: {age}"/>
 ```
 
-**With custom template**:
-```markdown
-## Latest API Status
+**Important**: The `url` attribute must exactly match the `markdownurl` from the corresponding `<fetch>` tag.
 
-<fetch markdownurl="https://status.api.com/current.md" pollfrequency="1"/>
+## Real-World Integration Example
 
----
-
-**Metadata**: <fetch-summary url="https://status.api.com/current.md"
-              template="Last check: {retrieved:time} | Status: {status} | Next: {nextrefresh:relative}"/>
-```
-
-**With custom CSS class**:
-```markdown
-<fetch-summary url="https://api.example.com/status.md"
-               template="{status} - {age}"
-               cssclass="api-status-badge"/>
-```
-
-**Multiple summaries**:
-```markdown
-# Documentation Hub
-
-## Core Library
-<fetch markdownurl="https://example.com/core/README.md" pollfrequency="24"/>
-
-## API Reference
-<fetch markdownurl="https://example.com/api/README.md" pollfrequency="12"/>
-
-## Changelog
-<fetch markdownurl="https://example.com/CHANGELOG.md" pollfrequency="6"/>
-
----
-
-### Update Status
-- Core docs: <fetch-summary url="https://example.com/core/README.md" template="updated {age}"/>
-- API docs: <fetch-summary url="https://example.com/api/README.md" template="updated {age}"/>
-- Changelog: <fetch-summary url="https://example.com/CHANGELOG.md" template="updated {age}"/>
-```
-
-**Important**: The `url` attribute in `<fetch-summary>` must exactly match the `markdownurl` from the corresponding `<fetch>` tag. The fetch must appear earlier in the document.
-
-## Preprocessing Integration
-
-The FetchExtension uses a **preprocessing approach** to ensure fetched content flows through your existing Markdig pipeline seamlessly.
-
-### How It Works
-
-```
-Your Markdown → MarkdownFetchPreprocessor → Fetched Content Injected → Your Pipeline → Final HTML
-```
-
-1. **Before Parsing**: `MarkdownFetchPreprocessor` scans for `<fetch>` tags
-2. **Content Fetching**: Remote Markdown is fetched (with caching)
-3. **Tag Replacement**: `<fetch>` tags are replaced with actual Markdown content
-4. **Normal Processing**: The merged Markdown flows through your pipeline once
-5. **Consistent Output**: All content gets the same extensions, styling, and processing
-
-### Integration Example
-
-In your main application (like the Mostlylucid blog):
+Here's how to integrate into a typical ASP.NET Core application:
 
 ```csharp
+// Startup.cs or Program.cs
 public class MarkdownRenderingService
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly MarkdownFetchPreprocessor _preprocessor;
+    private readonly MarkdownPipeline _pipeline;
 
     public MarkdownRenderingService(IServiceProvider serviceProvider)
     {
-        _serviceProvider = serviceProvider;
+        // Create preprocessor (runs BEFORE pipeline)
         _preprocessor = new MarkdownFetchPreprocessor(serviceProvider);
+
+        // Create pipeline with extensions (runs AFTER preprocessing)
+        _pipeline = new MarkdownPipelineBuilder()
+            .UseToc()
+            // Add your other extensions here
+            .Build();
     }
 
     public string RenderMarkdown(string markdown)
     {
-        // Step 1: Preprocess to handle fetch tags
+        // Step 1: Preprocess to handle <fetch> tags
         var processedMarkdown = _preprocessor.Preprocess(markdown);
 
-        // Step 2: Run through your normal pipeline
-        var pipeline = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .UseYourCustomExtensions()  // Your ToC, syntax highlighting, etc.
-            .Build();
-
-        return Markdown.ToHtml(processedMarkdown, pipeline);
+        // Step 2: Run through pipeline (TOC and other extensions)
+        return Markdown.ToHtml(processedMarkdown, _pipeline);
     }
 }
+
+// Configure DI
+builder.Services.AddFileBasedMarkdownFetch("./cache");
+builder.Services.AddSingleton<MarkdownRenderingService>();
 ```
 
-### Why Preprocessing?
-
-**Benefits**:
-- Fetched content gets ALL your custom Markdig extensions
-- Consistent styling and processing everywhere
-- No special rendering path for remote content
-- Works with any Markdig extensions (ToC, syntax highlighting, etc.)
-- Simple to integrate - just one preprocessing step
-
-**Alternative Approach** (not used):
-- Parse fetch tags as inline/block elements during Markdig parsing
-- Would require separate rendering pipeline for fetched content
-- Inconsistent results between local and fetched Markdown
-- Complex integration with other extensions
-
-### Thread Safety
-
-`MarkdownFetchPreprocessor` is **thread-safe** and can be:
-- Registered as a Singleton in DI
-- Used concurrently across multiple requests
-- Shared across your application
-
-The underlying storage providers handle concurrent access:
-- **InMemory**: Uses `ConcurrentDictionary`
-- **File**: Uses `SemaphoreSlim` for file locking
-- **Database**: Relies on database transaction isolation
-
-## Events and Monitoring
-
-The FetchExtension publishes events for all fetch operations, allowing you to monitor, log, and respond to fetch activity in real-time.
-
-```mermaid
-sequenceDiagram
-    participant MD as Markdown Processor
-    participant EP as Event Publisher
-    participant FS as Fetch Service
-    participant ST as Storage Backend
-    participant L as Your Listeners
-
-    MD->>EP: FetchBeginning
-    EP->>L: Notify FetchBeginning
-    EP->>FS: FetchMarkdownAsync(url)
-    FS->>ST: Check Cache
-    alt Cache Fresh
-        ST-->>FS: Cached Content
-        FS->>EP: FetchCompleted (cached=true)
-    else Cache Stale/Missing
-        FS->>FS: HTTP GET
-        alt Success
-            FS->>ST: Update Cache
-            ST-->>FS: OK
-            FS->>EP: FetchCompleted (cached=false)
-        else Failure
-            FS->>EP: FetchFailed
-            EP->>L: Notify FetchFailed
-        end
-    end
-    EP->>L: Notify FetchCompleted
-    EP->>L: Notify ContentUpdated
-    FS-->>MD: MarkdownFetchResult
-
-    Note over L: Listeners can be: Logging, Metrics, Telemetry, Webhooks
-```
-
-### Available Events
-
-```csharp
-public interface IMarkdownFetchEventPublisher
-{
-    // Raised when a fetch begins
-    event EventHandler<FetchBeginningEventArgs> FetchBeginning;
-
-    // Raised when a fetch completes successfully
-    event EventHandler<FetchCompletedEventArgs> FetchCompleted;
-
-    // Raised when a fetch fails
-    event EventHandler<FetchFailedEventArgs> FetchFailed;
-
-    // Raised when cached content is updated from any source
-    event EventHandler<ContentUpdatedEventArgs> ContentUpdated;
-}
-```
-
-### Subscribe to Events
-
-```csharp
-public class Startup
-{
-    public void ConfigureServices(IServiceCollection services)
-    {
-        services.AddInMemoryMarkdownFetch();
-
-        // Get the event publisher after building service provider
-        var sp = services.BuildServiceProvider();
-        var eventPublisher = sp.GetRequiredService<IMarkdownFetchEventPublisher>();
-
-        // Subscribe to events
-        eventPublisher.FetchBeginning += (sender, args) =>
-        {
-            Console.WriteLine($"Fetching {args.Url}...");
-        };
-
-        eventPublisher.FetchCompleted += (sender, args) =>
-        {
-            var source = args.WasCached ? "cache" : "remote";
-            Console.WriteLine($"Fetched {args.Url} from {source} in {args.Duration.TotalMilliseconds}ms");
-        };
-
-        eventPublisher.FetchFailed += (sender, args) =>
-        {
-            Console.WriteLine($"Failed to fetch {args.Url}: {args.ErrorMessage}");
-        };
-    }
-}
-```
-
-### Monitoring and Telemetry
-
-Perfect for integrating with monitoring systems:
-
-```csharp
-// Application Insights / OpenTelemetry integration
-eventPublisher.FetchCompleted += (sender, args) =>
-{
-    telemetryClient.TrackDependency(
-        "HTTP",
-        args.Url,
-        "FetchMarkdown",
-        startTime,
-        args.Duration,
-        success: true);
-
-    telemetryClient.TrackMetric("MarkdownFetch.Duration", args.Duration.TotalMilliseconds);
-    telemetryClient.TrackMetric("MarkdownFetch.ContentLength", args.ContentLength);
-};
-
-// Prometheus metrics
-eventPublisher.FetchCompleted += (sender, args) =>
-{
-    fetchDurationHistogram.Observe(args.Duration.TotalSeconds);
-    fetchCounter.Inc();
-};
-```
-
-### External Cache Invalidation
-
-Trigger cache updates from external systems (webhooks, file watchers, etc.):
-
-```csharp
-// GitHub webhook notifies of README changes
-app.MapPost("/webhooks/github", async (IMarkdownFetchEventPublisher eventPublisher) =>
-{
-    var url = "https://raw.githubusercontent.com/user/repo/main/README.md";
-
-    // Invalidate cache - next request will fetch fresh content
-    await eventPublisher.InvalidateCacheAsync(url);
-
-    return Results.Ok();
-});
-
-// Or push updated content directly
-app.MapPost("/api/markdown/update", async (
-    UpdateRequest request,
-    IMarkdownFetchEventPublisher eventPublisher) =>
-{
-    await eventPublisher.UpdateCachedContentAsync(
-        request.Url,
-        request.Markdown,
-        blogPostId: request.PostId);
-
-    return Results.Ok();
-});
-```
-
-### Fetch Statistics
-
-Monitor fetch performance and cache effectiveness:
-
-```csharp
-var stats = eventPublisher.GetStatistics();
-
-Console.WriteLine($"Total Fetches: {stats.TotalFetches}");
-Console.WriteLine($"Successful: {stats.SuccessfulFetches}");
-Console.WriteLine($"Failed: {stats.FailedFetches}");
-Console.WriteLine($"Cache Hits: {stats.CachedResponses}");
-Console.WriteLine($"Cache Hit Rate: {(double)stats.CachedResponses / stats.TotalFetches:P1}");
-Console.WriteLine($"Avg Duration: {stats.AverageFetchDuration.TotalMilliseconds:F0}ms");
-```
-
-### Real-time Dashboard Example
-
-Display fetch status in a dashboard:
-
-```csharp
-// SignalR Hub for real-time updates
-public class FetchHub : Hub
-{
-    public FetchHub(IMarkdownFetchEventPublisher eventPublisher)
-    {
-        eventPublisher.FetchBeginning += async (sender, args) =>
-        {
-            await Clients.All.SendAsync("FetchStarted", new
-            {
-                args.Url,
-                Timestamp = args.Timestamp
-            });
-        };
-
-        eventPublisher.FetchCompleted += async (sender, args) =>
-        {
-            await Clients.All.SendAsync("FetchCompleted", new
-            {
-                args.Url,
-                args.Duration,
-                args.WasCached,
-                args.ContentLength
-            });
-        };
-    }
-}
-```
-
-## Standalone Processing
-
-Use the extension without Markdig pipeline for programmatic access:
-
-```csharp
-// Just process fetch tags, return markdown
-var markdown = @"
-# Documentation
-<fetch markdownurl=""https://example.com/README.md"" pollfrequency=""24""/>
-";
-
-var processedMarkdown = MarkdownFetchProcessor.ProcessFetchTags(
-    markdown,
-    serviceProvider);
-// processedMarkdown now contains fetched content instead of fetch tag
-
-// Or process and render to HTML in one step
-var html = MarkdownFetchProcessor.ProcessAndRender(
-    markdown,
-    serviceProvider,
-    pipeline: myCustomPipeline);  // Optional custom pipeline
-```
-
-### Async Processing
-
-```csharp
-// Async versions for better performance
-var processedMarkdown = await MarkdownFetchProcessor.ProcessFetchTagsAsync(
-    markdown,
-    serviceProvider);
-
-var html = await MarkdownFetchProcessor.ProcessAndRenderAsync(
-    markdown,
-    serviceProvider,
-    myCustomPipeline);
-```
-
-### Testing with Standalone Processor
-
-Perfect for unit testing:
-
-```csharp
-[Fact]
-public void TestMarkdownProcessing()
-{
-    // Arrange
-    var services = new ServiceCollection();
-    services.AddInMemoryMarkdownFetch();
-    var sp = services.BuildServiceProvider();
-
-    var markdown = "<fetch markdownurl=\"https://example.com/test.md\" pollfrequency=\"1\"/>";
-
-    // Act
-    var result = MarkdownFetchProcessor.ProcessFetchTags(markdown, sp);
-
-    // Assert
-    Assert.DoesNotContain("<fetch", result);
-    Assert.Contains("expected content", result);
-}
-```
-
-## Advanced Configuration
-
-### Background Polling
-
-Enable automatic background updates:
-
-```csharp
-services.AddMarkdownFetchPolling(options =>
-{
-    options.Enabled = true;
-    options.SchedulerTickInterval = TimeSpan.FromMinutes(5);
-    options.MaxConcurrentFetches = 10;
-    options.HttpTimeout = TimeSpan.FromSeconds(30);
-});
-```
-
-### Custom Cache Directory
-
-```csharp
-services.AddFileBasedMarkdownFetch("/var/cache/markdown");
-```
-
-### Disabling Processing for Documentation
-
-When writing documentation about the fetch extension (like this README!), you need a way to show the tags without them being processed. Use the `disable="true"` attribute:
-
-```markdown
-<!-- This will be processed and fetch content -->
-<fetch markdownurl="https://example.com/README.md" pollfrequency="24"/>
-
-<!-- This will NOT be processed - useful for documentation -->
-<fetch markdownurl="https://example.com/README.md" pollfrequency="24" disable="true"/>
-```
-
-This works for both `<fetch>` and `<fetch-summary>` tags:
-
-```markdown
-<!-- Won't be processed -->
-<fetch-summary url="https://example.com/README.md" disable="true"/>
-```
-
-The disabled tags remain in your markdown as-is, allowing you to document the syntax without triggering actual fetches.
-
-## Database Storage Plugins
-
-For production deployments requiring persistence and multi-server support, use one of the database provider plugins:
-
-### SQLite Plugin
-
-**Package**: `Mostlylucid.Markdig.FetchExtension.Sqlite`
-
-Perfect for single-server applications with simple database needs:
-
-```bash
-dotnet add package Mostlylucid.Markdig.FetchExtension.Sqlite
-```
-
-```csharp
-services.AddSqliteMarkdownFetch("Data Source=./Data/markdown-cache.db");
-```
-
-**Best for**: Single-server apps, development, testing
-
-### PostgreSQL Plugin
-
-**Package**: `Mostlylucid.Markdig.FetchExtension.Postgres`
-
-Enterprise-ready storage for multi-server deployments:
-
-```bash
-dotnet add package Mostlylucid.Markdig.FetchExtension.Postgres
-```
-
-```csharp
-services.AddPostgresMarkdownFetch(
-    "Host=localhost;Database=myapp;Username=user;Password=pass");
-```
-
-**Best for**: Multi-server deployments, cloud applications, Kubernetes
-
-### SQL Server Plugin
-
-**Package**: `Mostlylucid.Markdig.FetchExtension.SqlServer`
-
-Microsoft SQL Server and Azure SQL Database support:
-
-```bash
-dotnet add package Mostlylucid.Markdig.FetchExtension.SqlServer
-```
-
-```csharp
-services.AddSqlServerMarkdownFetch(
-    "Server=localhost;Database=MyApp;Integrated Security=true");
-```
-
-**Best for**: Microsoft-centric environments, Azure deployments, enterprise
-
-### Database Plugin Features
-
-All database plugins provide:
-- Persistent cache across restarts
-- Stale-while-revalidate pattern
-- Automatic schema creation
-- Thread-safe concurrent access
-- Multi-post cache isolation
-
-See individual plugin READMEs for detailed configuration, performance tuning, and deployment guidance.
-
-## How It Works
-
-1. **Parse**: Markdig parses `<fetch>` tags during Markdown processing
-2. **Resolve**: Extension resolves `IMarkdownFetchService` from DI
-3. **Check Cache**: Service checks if cached content exists and is fresh
-4. **Fetch**: If stale or missing, fetches from remote URL
-5. **Cache**: Stores content with timestamp for future requests
-6. **Render**: Returns content as HTML
-
-### Caching Behavior
-
-- `pollfrequency="0"` = Always fetch fresh (no cache)
-- `pollfrequency="24"` = Cache for 24 hours
-- Failed fetch with cache = Returns stale cached content
-- Failed fetch without cache = Returns error comment
+## Why Preprocessor + Extension Architecture?
+
+**Fetch is a Preprocessor** because:
+- ✅ Runs once before pipeline, not during parsing
+- ✅ Fetched content flows through the entire pipeline
+- ✅ All your extensions see the combined content
+- ✅ TOC can include headers from fetched content
+- ✅ Consistent processing everywhere
+
+**TOC is an Extension** because:
+- ✅ Needs to parse the document structure
+- ✅ Extracts headers after all content is assembled
+- ✅ Integrates with Markdig's rendering pipeline
+- ✅ Works on the final, preprocessed markdown
+
+## Caching Behavior
 
 ```mermaid
 stateDiagram-v2
@@ -932,9 +479,84 @@ stateDiagram-v2
     end note
 ```
 
+**Cache Rules**:
+- `pollfrequency="0"` = Always fetch fresh (no cache)
+- `pollfrequency="24"` = Cache for 24 hours
+- Failed fetch with cache = Returns stale cached content (graceful degradation)
+- Failed fetch without cache = Returns error comment
+
+## Events and Monitoring
+
+Monitor fetch operations in real-time:
+
+```mermaid
+sequenceDiagram
+    participant MD as Markdown Processor
+    participant EP as Event Publisher
+    participant FS as Fetch Service
+    participant ST as Storage Backend
+    participant L as Your Listeners
+
+    MD->>EP: FetchBeginning
+    EP->>L: Notify FetchBeginning
+    EP->>FS: FetchMarkdownAsync(url)
+    FS->>ST: Check Cache
+    alt Cache Fresh
+        ST-->>FS: Cached Content
+        FS->>EP: FetchCompleted (cached=true)
+    else Cache Stale/Missing
+        FS->>FS: HTTP GET
+        alt Success
+            FS->>ST: Update Cache
+            ST-->>FS: OK
+            FS->>EP: FetchCompleted (cached=false)
+        else Failure
+            FS->>EP: FetchFailed
+            EP->>L: Notify FetchFailed
+        end
+    end
+    EP->>L: Notify FetchCompleted
+    EP->>L: Notify ContentUpdated
+    FS-->>MD: MarkdownFetchResult
+
+    Note over L: Listeners can be: Logging, Metrics, Telemetry, Webhooks
+```
+
+### Subscribe to Events
+
+```csharp
+var eventPublisher = serviceProvider.GetRequiredService<IMarkdownFetchEventPublisher>();
+
+eventPublisher.FetchBeginning += (sender, args) =>
+{
+    Console.WriteLine($"Fetching {args.Url}...");
+};
+
+eventPublisher.FetchCompleted += (sender, args) =>
+{
+    var source = args.WasCached ? "cache" : "remote";
+    Console.WriteLine($"Fetched {args.Url} from {source} in {args.Duration.TotalMilliseconds}ms");
+};
+
+eventPublisher.FetchFailed += (sender, args) =>
+{
+    Console.WriteLine($"Failed to fetch {args.Url}: {args.ErrorMessage}");
+};
+```
+
+## Thread Safety
+
+- `MarkdownFetchPreprocessor` is **thread-safe**
+- Can be registered as Singleton in DI
+- Safe for concurrent use across multiple requests
+- All storage providers handle concurrent access:
+  - **InMemory**: Uses `ConcurrentDictionary`
+  - **File**: Uses `SemaphoreSlim` for file locking
+  - **Database**: Relies on database transaction isolation
+
 ## Error Handling
 
-If a fetch fails, the extension renders an HTML comment:
+If a fetch fails, the preprocessor renders an HTML comment:
 
 ```html
 <!-- Failed to fetch markdown from https://example.com/docs.md: HTTP 404 Not Found -->
@@ -944,16 +566,22 @@ Your page continues to render normally.
 
 ## Demo Application
 
-See the `Mostlylucid.Markdig.FetchExtension.Demo` project for a complete working example.
+See the `Mostlylucid.Markdig.FetchExtension.Demo` project for a complete working example:
 
 ```bash
 cd Mostlylucid.Markdig.FetchExtension.Demo
 dotnet run
 ```
 
+Open http://localhost:5000 to see an interactive demo with:
+- Live markdown editor
+- Real-time fetch and TOC rendering
+- Cache inspector
+- Event monitoring
+
 ## Testing
 
-Comprehensive tests included in `Mostlylucid.Markdig.FetchExtension.Tests`:
+Comprehensive tests included:
 
 ```bash
 dotnet test Mostlylucid.Markdig.FetchExtension.Tests
@@ -984,21 +612,42 @@ public class MarkdownFetchResult
 }
 ```
 
+### MarkdownFetchPreprocessor
+
+```csharp
+public class MarkdownFetchPreprocessor
+{
+    public MarkdownFetchPreprocessor(IServiceProvider serviceProvider);
+
+    // Synchronous preprocessing
+    public string Preprocess(string markdown, int blogPostId = 0);
+
+    // Async preprocessing
+    public Task<string> PreprocessAsync(string markdown, int blogPostId = 0);
+}
+```
+
 ## Requirements
 
 - .NET 9.0+
-- Markdig 0.42.0+
+- Markdig 0.43.0+
 
-## NuGet Package
+## Installation
 
 ```bash
+# Core package (includes TOC extension and Fetch preprocessor)
 dotnet add package Mostlylucid.Markdig.FetchExtension
+
+# Optional database plugins
+dotnet add package Mostlylucid.Markdig.FetchExtension.Sqlite
+dotnet add package Mostlylucid.Markdig.FetchExtension.Postgres
+dotnet add package Mostlylucid.Markdig.FetchExtension.SqlServer
 ```
 
 ## Contributing
 
-Issues and PRs welcome at [github.com/mostlylucid/mostlylucidweb](https://github.com/mostlylucid/mostlylucidweb)
+Issues and PRs welcome at [github.com/scottgal/mostlylucidweb](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension)
 
 ## License
 
-MIT
+Unlicense (public domain)

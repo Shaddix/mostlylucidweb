@@ -20,7 +20,9 @@ app.MapPost("/render", ([FromBody] RenderRequest request, IServiceProvider sp) =
 {
     var preprocessor = new MarkdownFetchPreprocessor(sp);
     var processed = preprocessor.Preprocess(request.Markdown);
-    var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+    var pipeline = new MarkdownPipelineBuilder()
+        .UseToc()
+        .Build();
     var html = Markdown.ToHtml(processed, pipeline);
     return Results.Json(new { html });
 });

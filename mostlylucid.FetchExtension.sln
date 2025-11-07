@@ -18,6 +18,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFolder", "SolutionF
 		.github\workflows\publish-fetchextension-postgres.yml = .github\workflows\publish-fetchextension-postgres.yml
 		.github\workflows\publish-fetchextension-sqlite.yml = .github\workflows\publish-fetchextension-sqlite.yml
 		.github\workflows\publish-fetchextension-sqlserver.yml = .github\workflows\publish-fetchextension-sqlserver.yml
+		Mostlylucid.Markdig.FetchExtension\INTEGRATION_GUIDE.md = Mostlylucid.Markdig.FetchExtension\INTEGRATION_GUIDE.md
+		Mostlylucid.Markdig.FetchExtension\README.md = Mostlylucid.Markdig.FetchExtension\README.md
+		Mostlylucid.Markdig.FetchExtension\readme.txt = Mostlylucid.Markdig.FetchExtension\readme.txt
+		Mostlylucid.Markdig.FetchExtension\release-notes.txt = Mostlylucid.Markdig.FetchExtension\release-notes.txt
 	EndProjectSection
 EndProject
 Global

@@ -1,12 +1,13 @@
 mostlylucid.Markdig.FetchExtension v1.0.0
 =========================================
 
-Initial release of the Markdig Fetch Extension - enables fetching and embedding remote
-Markdown content at render time with smart caching.
+Initial release of the Markdig Fetch Extension - a comprehensive solution for
+fetching remote Markdown content and generating table of contents.
 
 KEY FEATURES
 ------------
 
+FETCH EXTENSION:
 * Simple inline syntax: <fetch markdownurl="URL" pollfrequency="24h"/>
 * Multiple storage backends: In-Memory, File-based, and custom implementations
 * Smart caching with configurable poll frequency (hours)
@@ -21,6 +22,21 @@ KEY FEATURES
 * Documentation mode: Add disable="true" to prevent tag processing, perfect for
   writing documentation about the extension itself
 
+TABLE OF CONTENTS (TOC) EXTENSION:
+* Simple inline syntax: [TOC], [TOC:2-4], [TOC:2-4:my-class]
+* Automatically generates hierarchical table of contents from headers
+* Configurable heading level range (e.g., H2-H4)
+* Custom CSS class support for styling
+* Semantic HTML5 nav element output
+* Automatic anchor link generation for all headings
+* Integrates seamlessly with the fetch extension
+
+FLEXIBLE TIME UNITS:
+* Poll frequency now supports multiple time units: seconds (s), minutes (m), hours (h), days (d)
+* Examples: "30s", "5m", "12h", "7d"
+* Backwards compatible - plain numbers still default to hours
+* Prevents large numbers like "1000000000s" by using appropriate units
+
 STORAGE OPTIONS
 ---------------
 
@@ -29,15 +45,33 @@ STORAGE OPTIONS
 * Database Plugins: SQLite, PostgreSQL, SQL Server (separate packages)
 * Custom: Implement IMarkdownFetchService for specialized needs
 
-USAGE EXAMPLE
--------------
+USAGE EXAMPLES
+--------------
 
-services.AddInMemoryMarkdownFetch();
-FetchMarkdownExtension.ConfigureServiceProvider(serviceProvider);
-var pipeline = new MarkdownPipelineBuilder()
-    .UseAdvancedExtensions()
-    .Use<FetchMarkdownExtension>()
-    .Build();
+Fetch Extension:
+  services.AddInMemoryMarkdownFetch();
+  FetchMarkdownExtension.ConfigureServiceProvider(serviceProvider);
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .Use<FetchMarkdownExtension>()
+      .Build();
+
+  In markdown: <fetch markdownurl="https://example.com/doc.md" pollfrequency="24h"/>
+
+TOC Extension:
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .UseToc()
+      .Build();
+
+  In markdown: [TOC] or [TOC:2-4] or [TOC:2-4:my-toc-class]
+
+Combined Usage:
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .Use<FetchMarkdownExtension>()
+      .UseToc()
+      .Build();
 
 REQUIREMENTS
 ------------

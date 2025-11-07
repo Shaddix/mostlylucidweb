@@ -439,19 +439,20 @@
 <body>
     <header>
         <h1>mostlylucid.Markdig.FetchExtension Demo</h1>
-        <p class="subtitle">Fetch and embed remote Markdown at render time using <code>&lt;fetch&gt;</code> tags</p>
+        <p class="subtitle">Fetch remote Markdown and generate Table of Contents • Preprocessor + Extensions for Markdig</p>
     </header>
 
     <div class="container">
         <div class="info-box">
             <h2>Try it out</h2>
-            <p>Edit the markdown below and click "Render Markdown" to see the FetchExtension in action.</p>
+            <p>Edit the markdown below and click "Render Markdown" to see both features in action.</p>
             <ul>
-                <li>Use <code>&lt;fetch markdownurl="URL" pollfrequency="24"/&gt;</code> to embed remote content</li>
+                <li><strong>Fetch Preprocessor:</strong> Use <code>&lt;fetch markdownurl="URL" pollfrequency="24"/&gt;</code> to embed remote content</li>
                 <li>Add <code>transformlinks="true"</code> to rewrite relative links</li>
                 <li>Add <code>showsummary="true"</code> to display fetch metadata</li>
+                <li><strong>TOC Extension:</strong> Use <code>[TOC]</code>, <code>[TOC:2-4]</code>, or <code>[TOC:2-4:my-class]</code> for table of contents</li>
                 <li>Use <code>&lt;fetch-summary url="URL"/&gt;</code> to show metadata separately</li>
-                <li>Add <code>disable="true"</code> to prevent processing (useful for documentation)</li>
+                <li>Add <code>disable="true"</code> to prevent fetch processing (useful for documentation)</li>
             </ul>
 
             <div class="stats-box">
@@ -508,11 +509,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js"></script>
     <script>
-        const defaultMarkdown = `# Remote Content Demo
+        const defaultMarkdown = `# Markdig Fetch & TOC Demo
 
-This demonstrates the mostlylucid.Markdig.FetchExtension which can fetch and embed remote Markdown files.
+This demonstrates both the **Fetch Preprocessor** and **TOC Extension** from mostlylucid.Markdig.FetchExtension.
 
-## Example: Fetch from GitHub
+[TOC:2-3]
+
+## Fetch Preprocessor
+
+The fetch preprocessor runs **before** the Markdig pipeline, allowing you to embed remote Markdown content that then flows through all your other extensions.
+
+### Example: Fetch from GitHub
 
 Below we'll fetch a README from a GitHub repository:
 
@@ -522,22 +529,40 @@ Below we'll fetch a README from a GitHub repository:
        showsummary="true"
        summarytemplate="_Last updated {age} | Status: {status}_"/>
 
-## Features Demonstrated
+### Fetch Features
 
 - Fetching remote Markdown content
-- Caching with configurable poll frequency
+- Smart caching with configurable poll frequency
 - Link transformation for relative URLs
 - Metadata summaries with custom templates
+- Thread-safe operations
 
-Try changing the URL, poll frequency, or template!
+## TOC Extension
 
-## Documentation Mode
+The TOC (Table of Contents) extension is a **Markdig pipeline extension** that generates navigation from your headers.
 
-When you need to show fetch tags without processing them (like in documentation), use the \`disable="true"\` attribute:
+### TOC Syntax
 
-<fetch markdownurl="https://example.com/docs.md" pollfrequency="24" disable="true"/>
+- \`[TOC]\` - All headings (H1-H6)
+- \`[TOC:2-4]\` - Only H2 through H4
+- \`[TOC:2-4:custom-class]\` - With custom CSS class
 
-The tag above won't be processed - it will remain as-is in the output, perfect for writing documentation about the extension itself!`;
+### TOC Features
+
+- Automatically extracts headers
+- Generates anchor links
+- Hierarchical nested lists
+- Custom styling support
+
+## Combined Power
+
+Because the fetch preprocessor runs first, you can:
+1. Fetch remote Markdown with \`<fetch>\` tags
+2. The fetched content flows through the pipeline
+3. TOC extension picks up headers from both local and fetched content
+4. All other Markdig extensions work on the combined content
+
+Try it yourself - edit this markdown and click "Render Markdown"!`;
 
         const easyMDE = new EasyMDE({
             element: document.getElementById('markdown-editor'),

@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <PackageId>mostlylucid.Markdig.FetchExtension</PackageId>
-        <Version>0.0.1</Version>
+        <Version>1.0.0</Version>
         <Authors>mostlylucid</Authors>
         <Company>mostlylucid</Company>
         <Product>mostlylucid.Markdig.FetchExtension</Product>
@@ -14,7 +14,7 @@
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension</RepositoryUrl>
 
         <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
-      
+        <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>
         <IncludeSymbols>true</IncludeSymbols>

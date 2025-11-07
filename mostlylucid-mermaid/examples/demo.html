@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@mostlylucid/mermaid-enhancements Demo</title>
+
+    <!-- Boxicons for control button icons -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <!-- Mermaid Enhancements CSS -->
+    <link rel="stylesheet" href="../src/styles.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #f9fafb;
+            color: #111827;
+        }
+
+        body.dark {
+            background: #111827;
+            color: #f9fafb;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 1.125rem;
+        }
+
+        .dark .subtitle {
+            color: #9ca3af;
+        }
+
+        .controls {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .controls {
+            background: #1f2937;
+        }
+
+        .theme-toggle {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        section {
+            margin-bottom: 3rem;
+        }
+
+        h2 {
+            font-size: 1.875rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .dark h2 {
+            color: #f9fafb;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: #4b5563;
+        }
+
+        .dark p {
+            color: #9ca3af;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+        }
+
+        .feature-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        code {
+            background: #e5e7eb;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-family: "Monaco", "Courier New", monospace;
+            font-size: 0.875rem;
+        }
+
+        .dark code {
+            background: #374151;
+        }
+
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .diagram-container {
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>@mostlylucid/mermaid-enhancements</h1>
+        <p class="subtitle">Interactive pan/zoom, fullscreen, export, and theme switching for Mermaid.js</p>
+    </header>
+
+    <div class="controls">
+        <button class="theme-toggle" onclick="toggleTheme()">
+            Toggle Dark Mode
+        </button>
+    </div>
+
+    <section>
+        <h2>Features</h2>
+        <ul class="feature-list">
+            <li><strong>Interactive Pan & Zoom</strong> - Navigate large diagrams with mouse wheel and drag</li>
+            <li><strong>Fullscreen Lightbox</strong> - View diagrams in immersive fullscreen mode</li>
+            <li><strong>Export to PNG/SVG</strong> - Download diagrams in high quality</li>
+            <li><strong>Auto Theme Switching</strong> - Automatically adapts to light/dark mode</li>
+            <li><strong>Responsive Design</strong> - Works perfectly on mobile and desktop</li>
+            <li><strong>Keyboard Shortcuts</strong> - ESC to close lightbox</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Installation</h2>
+        <pre><code>npm install @mostlylucid/mermaid-enhancements</code></pre>
+    </section>
+
+    <section>
+        <h2>Usage</h2>
+        <pre><code>import { init } from '@mostlylucid/mermaid-enhancements';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+// After Mermaid is loaded
+await init();</code></pre>
+    </section>
+
+    <section class="diagram-container">
+        <h2>Example 1: Flowchart</h2>
+        <p>Try zooming in/out with mouse wheel, dragging to pan, or clicking fullscreen!</p>
+
+        <div class="mermaid">
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Check setup]
+    C --> E[Zoom & Pan]
+    D --> F[Read docs]
+    E --> G[Export to PNG/SVG]
+    F --> B
+    G --> H[Share diagram]
+    H --> I[End]
+
+    style A fill:#10b981,stroke:#059669,color:#fff
+    style C fill:#10b981,stroke:#059669,color:#fff
+    style E fill:#3b82f6,stroke:#2563eb,color:#fff
+    style G fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style I fill:#10b981,stroke:#059669,color:#fff
+        </div>
+    </section>
+
+    <section class="diagram-container">
+        <h2>Example 2: Sequence Diagram</h2>
+        <p>Complex diagrams benefit from pan/zoom capabilities</p>
+
+        <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Browser
+    participant Mermaid
+    participant Enhancements
+
+    User->>Browser: Load page
+    Browser->>Mermaid: Initialize
+    Mermaid->>Mermaid: Render diagram
+    Browser->>Enhancements: Apply enhancements
+    Enhancements->>Enhancements: Add pan/zoom
+    Enhancements->>Enhancements: Add controls
+    Enhancements->>Enhancements: Setup lightbox
+    Enhancements-->>User: Interactive diagram ready!
+
+    User->>Enhancements: Click fullscreen
+    Enhancements->>Browser: Open lightbox
+    Browser-->>User: Fullscreen view
+
+    User->>Enhancements: Export PNG
+    Enhancements->>Browser: Generate image
+    Browser-->>User: Download file
+        </div>
+    </section>
+
+    <section class="diagram-container">
+        <h2>Example 3: Class Diagram</h2>
+        <p>Theme switching works automatically</p>
+
+        <div class="mermaid">
+classDiagram
+    class MermaidEnhancements {
+        +enhanceMermaidDiagrams()
+        +cleanupMermaidEnhancements()
+        -initPanZoom()
+        -createControlButtons()
+        -handleControlClick()
+    }
+
+    class ThemeSwitcher {
+        +initMermaid()
+        -loadMermaid()
+        -saveOriginalData()
+        -resetProcessed()
+    }
+
+    class PanZoom {
+        +zoomIn()
+        +zoomOut()
+        +reset()
+        +fit()
+        +center()
+    }
+
+    class Exporter {
+        +exportDiagram()
+        -downloadFile()
+    }
+
+    MermaidEnhancements --> PanZoom : uses
+    MermaidEnhancements --> Exporter : uses
+    ThemeSwitcher --> MermaidEnhancements : calls
+        </div>
+    </section>
+
+    <section class="diagram-container">
+        <h2>Example 4: State Diagram</h2>
+        <p>All diagram types are supported</p>
+
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> NotEnhanced
+    NotEnhanced --> Loading : Load library
+    Loading --> Ready : Initialize
+    Ready --> Interactive : Enhance diagrams
+
+    Interactive --> Panning : User drags
+    Interactive --> Zooming : Mouse wheel
+    Interactive --> Fullscreen : Click fullscreen
+    Interactive --> Exporting : Click export
+
+    Panning --> Interactive : Release
+    Zooming --> Interactive : Stop
+
+    Fullscreen --> LightboxOpen
+    LightboxOpen --> Fullscreen : Close
+    Fullscreen --> Interactive : ESC key
+
+    Exporting --> Downloaded : Complete
+    Downloaded --> Interactive : Return
+        </div>
+    </section>
+
+    <footer style="text-align: center; margin-top: 4rem; padding: 2rem; color: #6b7280;">
+        <p>Built with ❤️ for the Mermaid.js community</p>
+        <p><a href="https://github.com/scottgal/mostlylucidweb" style="color: #3b82f6;">View on GitHub</a></p>
+    </footer>
+
+    <!-- Load Mermaid.js -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        window.mermaid = mermaid;
+    </script>
+
+    <!-- Load and initialize enhancements -->
+    <script type="module">
+        import { init } from '../src/index.ts';
+
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEnhancements);
+        } else {
+            initializeEnhancements();
+        }
+
+        async function initializeEnhancements() {
+            try {
+                // Give Mermaid a moment to load
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Initialize with enhancements
+                await init();
+
+                console.log('✓ Mermaid enhancements loaded successfully!');
+            } catch (error) {
+                console.error('Failed to initialize enhancements:', error);
+            }
+        }
+    </script>
+
+    <!-- Theme toggling -->
+    <script>
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark');
+            document.documentElement.classList.toggle('dark', isDark);
+
+            // Store preference
+            localStorage.theme = isDark ? 'dark' : 'light';
+
+            // Trigger theme change event for Mermaid
+            const event = new Event(isDark ? 'dark-theme-set' : 'light-theme-set');
+            document.body.dispatchEvent(event);
+        }
+
+        // Load saved theme preference
+        if (localStorage.theme === 'dark' || (!localStorage.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.classList.add('dark');
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+</body>
+</html>

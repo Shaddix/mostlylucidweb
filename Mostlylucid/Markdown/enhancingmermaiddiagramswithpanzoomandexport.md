@@ -1,11 +1,17 @@
 # Enhancing Mermaid Diagrams with Pan/Zoom and Export
+
 <!--category-- Mermaid, Javascript, SVG, DaisyUI, Tailwind -->
-<datetime class="hidden">2025-11-10T39:00</datetime>
+<datetime class="hidden">2025-11-07T11:15</datetime>
 
 # Introduction
 Mermaid is a fantastic tool for creating diagrams from text, but the default rendering can be limiting for complex diagrams. Users can't easily zoom in to see details, pan around large diagrams, or export them for documentation. In this article, I'll show you how I enhanced Mermaid diagrams on this site with interactive pan/zoom controls, fullscreen lightbox viewing, and export functionality (both PNG and SVG formats).
 
 This implementation is production-ready, handles dark mode switching gracefully, and is resilient to Cloudflare Rocket Loader interference.
+
+## What it looks like
+So what we're going for is this. A nice in page (and popout) mermaid.js display that's sorta like GitHub's but *better*. Means diagrams don't take up SCREENS but are still easuu to read.
+
+![mermaid_pan_zoom.png](mermaid_pan_zoom.png)
 
 [TOC]
 

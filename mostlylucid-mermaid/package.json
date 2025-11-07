@@ -1,0 +1,69 @@
+{
+  "name": "@mostlylucid/mermaid-enhancements",
+  "version": "1.0.0",
+  "description": "Enhance Mermaid.js diagrams with interactive pan/zoom, fullscreen lightbox, export to PNG/SVG, and automatic theme switching",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "src/types.ts",
+  "exports": {
+    ".": {
+      "types": "./src/types.ts",
+      "import": "./src/index.ts",
+      "require": "./dist/index.js"
+    },
+    "./styles.css": "./src/styles.css"
+  },
+  "files": [
+    "src/",
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "dev": "cd examples && npx http-server -p 3000 -o"
+  },
+  "keywords": [
+    "mermaid",
+    "mermaidjs",
+    "diagram",
+    "chart",
+    "visualization",
+    "pan",
+    "zoom",
+    "export",
+    "svg",
+    "png",
+    "lightbox",
+    "fullscreen",
+    "theme",
+    "dark-mode"
+  ],
+  "author": "Mostlylucid",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scottgal/mostlylucidweb.git",
+    "directory": "mostlylucid-mermaid"
+  },
+  "bugs": {
+    "url": "https://github.com/scottgal/mostlylucidweb/issues"
+  },
+  "homepage": "https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid-mermaid#readme",
+  "peerDependencies": {
+    "mermaid": "^10.0.0 || ^11.0.0"
+  },
+  "dependencies": {
+    "html-to-image": "^1.11.11",
+    "svg-pan-zoom": "^3.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

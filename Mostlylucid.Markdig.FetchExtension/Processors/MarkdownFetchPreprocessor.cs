@@ -14,7 +14,7 @@ using Mostlylucid.Markdig.FetchExtension.Utilities;
 /// </summary>
 public partial class MarkdownFetchPreprocessor
 {
-    [GeneratedRegex(@"<fetch\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+)h?[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"<fetch\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?markdownurl\s*=\s*[""']([^""']+)[""'][^>]*?pollfrequency\s*=\s*[""'](\d+(?:\.\d+)?\s*[smhd]?)[""'](?:[^>]*?transformlinks\s*=\s*[""'](true|false)[""'])?(?:[^>]*?showsummary\s*=\s*[""'](true|false)[""'])?(?:[^>]*?summarytemplate\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex FetchTagRegex();
 
     [GeneratedRegex(@"<fetch-summary\s+(?:[^>]*?disable\s*=\s*[""'](true|false)[""'][^>]*?)?[^>]*?url\s*=\s*[""']([^""']+)[""'](?:[^>]*?template\s*=\s*[""']([^""']+)[""'])?(?:[^>]*?cssclass\s*=\s*[""']([^""']+)[""'])?[^>]*?/\s*>", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
@@ -61,7 +61,7 @@ public partial class MarkdownFetchPreprocessor
                 continue; // Skip this tag, leave it as-is
 
             var url = match.Groups[2].Value;
-            var pollFrequencyHours = int.Parse(match.Groups[3].Value);
+            var pollFrequencyHours = TimeUnitParser.ParseToHours(match.Groups[3].Value);
             var transformLinks = match.Groups.Count > 4 &&
                                  match.Groups[4].Success &&
                                  match.Groups[4].Value.Equals("true", StringComparison.OrdinalIgnoreCase);

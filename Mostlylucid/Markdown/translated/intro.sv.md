@@ -17,7 +17,7 @@ antingen ditt huvud- eller dev / testsystem.
 ### Varför inte använda molnbaserade tjänster?
 
 1. Kostnad - när ditt system når ny typ av komplexitet dina kostnader kan börja skjuta i höjden. Även för enkla tjänster vad du betalar verus vad du får i form av prestanda är vilt överpriser i molnet till exempel
-   om du vill köra ett ASP.NET-system i molnet med 4 kärnor, 7GB RAM & 10GB(!) lagring (se senare, för detta pris kan du köpa en FULL Hetzner server för 5 månader!)
+   om du vill köra ett ASP.NET-system i molnet med 4 kärnor, 7GB RAM & 10GB(!) lagring (se senare, för detta pris kan du köpa en FULL Hetzner server för 5 månader!)    
 
 ![img.png](img.png?width=500&format=webp)
 
