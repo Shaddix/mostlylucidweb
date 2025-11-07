@@ -58,20 +58,20 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 Dive into some of the technical deep-dives and experiments from the blog:
 
 ### 📦 Package Development
-- **[Building a Remote Markdown Fetcher for Markdig](https://mostlylucid.net/blog/markdigfetchextension)** - A complete guide to building a Markdig extension with caching, remote content fetching, and TOC generation
-- **[Creating an LLM Mock API with Ollama](https://mostlylucid.net/blog/mockllmapi)** - Add intelligent mock endpoints to any project with just 2 lines of code
-- **[Umami.Net: Analytics Made Simple](https://mostlylucid.net/blog/umamianalyticspackage)** - Building a .NET client for privacy-focused web analytics
+- **[Building a Remote Markdown Fetcher for Markdig](https://www.mostlylucid.net/blog/markdigfetchextension)** - A complete guide to building a Markdig extension with caching, remote content fetching, and TOC generation
+- **[Creating an LLM Mock API with Ollama](https://www.mostlylucid.net/blog/llmapi)** - Add intelligent mock endpoints to any project with just 2 lines of code
+- **[Umami.Net: Analytics Made Simple](https://www.mostlylucid.net/blog/category/Umami** - Building a .NET client for privacy-focused web analytics
 
 ### 🎨 Frontend & HTMX
-- **[HTMX & Alpine.js Integration Patterns](https://mostlylucid.net/blog/htmxalpinejs)** - Building dynamic UIs without heavy JavaScript frameworks
-- **[Mermaid Diagrams with Interactive Controls](https://mostlylucid.net/blog/mermaidandmeraid)** - Pan, zoom, and fullscreen diagram support
+- **[HTMX & Alpine.js Integration Patterns](https://www.mostlylucid.net/blog/htmxandaspnetcore)** - Building dynamic UIs without heavy JavaScript frameworks
+- **[Mermaid Diagrams with Interactive Controls](https://www.mostlylucid.net/blog/enhancingmermaiddiagramswithpanzoomandexport)** - Pan, zoom, and fullscreen diagram support
 
 ### 🚀 DevOps & Infrastructure
-- **[Docker Multi-Stage Builds for .NET](https://mostlylucid.net/blog/dockercompose)** - Optimizing container images and deployment workflows
-- **[Monitoring with Prometheus & Grafana](https://mostlylucid.net/blog/monitoring)** - Setting up observability for ASP.NET Core applications
+- **[Docker Multi-Stage Builds for .NET](https://www.mostlylucid.net/blog/dockercomposedevdeps)** - Optimizing container images and deployment workflows
+- **[Monitoring with Prometheus & Grafana](https://www.mostlylucid.net/blog/usingprometheusandgrafanatomonitoraspnet)** - Setting up observability for ASP.NET Core applications
 
 ### 🤖 AI & Translation
-- **[Automated Blog Translation with EasyNMT](https://mostlylucid.net/blog/translationapi)** - Building a multilingual blog with automated translation to 12 languages
+- **[Automated Blog Translation with EasyNMT](https://www.mostlylucid.net/blog/autotranslatingmarkdownfiles)** - Building a multilingual blog with automated translation to 12 languages
 
 [**→ View all articles**](https://mostlylucid.net/blog)
 
