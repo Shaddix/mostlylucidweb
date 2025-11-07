@@ -43,10 +43,16 @@ public class BlogServiceSaveTests
         var blogPosts = BlogEntityExtensions.GetBlogPostEntities(1);
         _dbContextMock.SetupDbSet(blogPosts, x => x.BlogPosts);
 
-
         var languages = LanguageExtensions.GetLanguageEntities(1);
-
         _dbContextMock.SetupDbSet(languages, x => x.Languages);
+
+        // Setup Categories DbSet - required for SavePost
+        var categories = new List<Mostlylucid.Shared.Entities.CategoryEntity>();
+        _dbContextMock.SetupDbSet(categories, x => x.Categories);
+
+        // Setup SaveChangesAsync to return success
+        _dbContextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
 
         // Resolve the IBlogService from the service provider
         return _serviceProvider.GetRequiredService<IBlogViewService>();
@@ -61,8 +67,7 @@ public class BlogServiceSaveTests
         // Act
         await blogService.SavePost("Test Title", "en", "#Test Category");
 
-        var cancellationToken = CancellationToken.None;
-        // Assert
-        _dbContextMock.Verify(x => x.SaveChangesAsync(cancellationToken), Times.Once);
+        // Assert - Use It.IsAny<CancellationToken>() to match any token instance
+        _dbContextMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
