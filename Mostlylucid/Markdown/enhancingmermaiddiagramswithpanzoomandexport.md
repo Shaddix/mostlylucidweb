@@ -639,11 +639,11 @@ graph TB
     end
 
     subgraph Background["Background Services"]
-        N[File Watcher] -->|Change Detected| O[Save to DB]
+        N[File Watcher] -->|Change Detected| O[Saves to DB]
         O -->|Trigger| P[Translation Service]
         P -->|Batch| Q[EasyNMT API]
         Q -->|12 Languages| R[Translated Files]
-    end
+    end 
 
     style A fill:#4ade80
     style G fill:#60a5fa
