@@ -26,6 +26,12 @@ COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
 COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
 COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension/"]
+
+# Copy files needed by Mostlylucid.Markdig.FetchExtension project file at restore time
+COPY ["Mostlylucid.Markdig.FetchExtension/release-notes.txt", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.FetchExtension/README.md", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.FetchExtension/icon.png", "Mostlylucid.Markdig.FetchExtension/"]
+
 # Restore .NET dependencies
 RUN dotnet restore "./Mostlylucid/Mostlylucid.csproj"
 
