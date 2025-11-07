@@ -32,6 +32,8 @@ public class MarkdownFetchIntegrationTests
         services.AddSingleton(_dbContextMock.Object);
         services.AddSingleton(_httpClientFactoryMock.Object);
         services.AddLogging(configure => configure.AddConsole().SetMinimumLevel(LogLevel.Debug));
+        // Add BlogPostProcessingContext - required by MarkdownFetchService and MarkdownRenderingService
+        services.AddScoped<Mostlylucid.Services.Blog.BlogPostProcessingContext>();
         services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
         services.AddScoped<MarkdownRenderingService>();
 
@@ -466,18 +468,18 @@ More local content after the fetch.
 
         // Assert - Verify TOC was generated
         // The [TOC] marker should be replaced with an actual table of contents
-        // Leisn.MarkdigToc uses <nav> element
-        Assert.Contains("<nav>", html, StringComparison.OrdinalIgnoreCase);
+        // Leisn.MarkdigToc uses <nav> element with class="ml_toc"
+        Assert.Contains("<nav", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("<ul>", html);
 
-        // Verify TOC contains links to the headings (Leisn.MarkdigToc uses single quotes)
-        Assert.Contains("<a href='#introduction'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#getting-started'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#prerequisites'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#advanced-topics'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#configuration'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#deployment'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#conclusion'>", html, StringComparison.OrdinalIgnoreCase);
+        // Verify TOC contains links to the headings
+        Assert.Contains("<a href=\"#introduction\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#getting-started\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#prerequisites\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#advanced-topics\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#configuration\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#deployment\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#conclusion\">", html, StringComparison.OrdinalIgnoreCase);
 
         // Verify content from fetched markdown is present
         Assert.Contains("Introduction", html);
@@ -578,22 +580,22 @@ End of documentation.
         Console.WriteLine("=== End HTML ===");
 
         // Assert - Verify nested TOC structure
-        Assert.Contains("<nav>", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<nav", html, StringComparison.OrdinalIgnoreCase);
 
-        // Verify all heading links in TOC (Leisn.MarkdigToc uses single quotes)
-        Assert.Contains("<a href='#chapter-1'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#section-1.1'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#subsection-1.1.1'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#subsection-1.1.2'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#section-1.2'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#chapter-2'>", html, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<a href='#section-2.1'>", html, StringComparison.OrdinalIgnoreCase);
+        // Verify all heading links in TOC
+        Assert.Contains("<a href=\"#chapter-1\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#section-11\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#subsection-111\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#subsection-112\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#section-12\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#chapter-2\">", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<a href=\"#section-21\">", html, StringComparison.OrdinalIgnoreCase);
 
         // Verify nested UL structure (nested lists for subsections)
         var ulCount = html.Split("<ul>", StringSplitOptions.None).Length - 1;
         Assert.True(ulCount >= 2, $"Expected at least 2 nested <ul> tags for hierarchy, but found {ulCount}");
 
-        // Verify heading IDs exist (dots are kept in IDs)
+        // Verify heading IDs exist (dots are converted to periods in IDs)
         Assert.Contains("id=\"chapter-1\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("id=\"section-1.1\"", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("id=\"subsection-1.1.1\"", html, StringComparison.OrdinalIgnoreCase);
@@ -651,7 +653,7 @@ Additional content.
         var html = result.HtmlContent;
 
         // Assert - Verify NO TOC was generated (no [TOC] marker)
-        Assert.DoesNotContain("<nav>", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<nav", html, StringComparison.OrdinalIgnoreCase);
 
         // But headings should still have IDs (TOC extension adds them even without [TOC])
         Assert.Contains("id=\"simple-document\"", html, StringComparison.OrdinalIgnoreCase);

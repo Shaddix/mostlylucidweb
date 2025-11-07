@@ -30,6 +30,8 @@ public class BlogServiceFetchTests
         services.AddScoped<IBlogViewService, BlogPostViewService>();
         services.AddScoped<IBlogService, BlogService>();
         services.AddLogging(configure => configure.AddConsole());
+        // Add BlogPostProcessingContext - required by BlogService and MarkdownRenderingService
+        services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
         // 4. Build the service provider
         _serviceProvider = services.BuildServiceProvider();

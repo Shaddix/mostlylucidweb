@@ -31,6 +31,8 @@ public class BlogServiceSaveTests
         services.AddScoped<IBlogService, BlogService>();
         services.AddScoped<IBlogViewService, BlogPostViewService>(); // Example service that depends on IMostlylucidDbContext
         services.AddLogging(configure => configure.AddConsole());
+        // Add BlogPostProcessingContext - required by BlogService and MarkdownRenderingService
+        services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
         // 4. Build the service provider
         _serviceProvider = services.BuildServiceProvider();

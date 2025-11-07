@@ -31,6 +31,8 @@ public class MarkdownFetchServiceTests
         services.AddSingleton(_dbContextMock.Object);
         services.AddSingleton(_httpClientFactoryMock.Object);
         services.AddSingleton(_loggerMock.Object);
+        // Add BlogPostProcessingContext - required by MarkdownFetchService
+        services.AddScoped<Mostlylucid.Services.Blog.BlogPostProcessingContext>();
         services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
 
         _serviceProvider = services.BuildServiceProvider();
