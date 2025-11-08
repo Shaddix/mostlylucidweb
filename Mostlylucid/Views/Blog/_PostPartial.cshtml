@@ -6,8 +6,36 @@
 
         <h2 class="pb-1 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white">
             @Model.Title
-        </h2>
-        
+        </h2> 
+        <div class="flex flex-wrap border-b border-grey-lighter  border-b items-center gap-x-2 gap-y-1 pt-1 sm:pt-1">
+            <p class="pr-2 font-body font-light text-primary dark:text-white">
+                @Model.PublishedDate.ToString("D")
+            </p>
+            <span class="dark:text-white font-body text-grey">//</span>
+            <p class="pl-2 font-body font-light text-primary dark:text-white">
+                @Model.ReadingTime
+            </p>
+            <div class="pl-8 pb-2 flex flex-wrap gap-2 print:hidden">
+                <a href="#commentsection" class="btn btn-outline btn-sm">
+                    <i class="bx bx-mail-send text-2xl"></i> Comments
+                </a>
+
+                <a href="/api/raw/@Model.Slug?language=@Model.Language"
+                   target="_blank" rel="noopener"
+                   class="btn btn-outline btn-sm"
+                   title="View raw Markdown">
+                    <i class="bx bx-code-alt text-2xl"></i> View raw markdown
+                </a>
+
+                <a asp-action="Edit"
+                   asp-controller="Editor"
+                   asp-route-slug="@Model.Slug"
+                   asp-route-language="@Model.Language"
+                   class="btn btn-outline btn-sm btn-primary">
+                    <i class="bx bx-edit"></i> Edit
+                </a>
+            </div>
+        </div>
         @if (Model.PreviousPost != null || Model.NextPost != null)
         {
             <nav class="flex items-center justify-between text-sm text-primary dark:text-white mb-2 print:hidden" aria-label="Post navigation">
@@ -32,25 +60,20 @@
             </nav>
         }
         
-        <div>
-            <a href="#commentsection" class="btn btn-outline btn-sm my-2 print:hidden " > <i class="bx bx-mail-send text-2xl"></i> Comments</a>
-            <a href="/api/raw/@Model.Slug?language=@Model.Language" target="_blank" rel="noopener" class="btn btn-outline btn-sm my-2 ml-2 print:hidden" title="View raw Markdown">
-                <i class="bx bx-code-alt text-2xl"></i> View raw markdown
-            </a>
-        </div>
+       
         
         <div class="border-b border-grey-lighter pb-2 pt-2 sm:pb-2 print:hidden" >
             @foreach (var category in Model.Categories)
             {
                 <partial name="_Category" model="category"/>
             }
-            <a asp-action="Edit" class="ml-4 text-sm  btn-sm btn btn-outline btn-primary" asp-controller="Editor" asp-route-slug="@Model.Slug" asp-route-language="@Model.Language" ><i class=" bx bx-edit"></i> edit</a>
+          
         </div>
      
             @if (Model.Languages.Length > 1)
             {
                 var languageModel = (Model.Slug, Model.Languages, Model.Language);
-                <div class="border-b border-grey-lighter pb-2 pt-2 sm:pb-2 print:hidden">
+                <div class=" pb-2 pt-2 sm:pb-2 print:hidden">
                     <p class="font-body  text-primary dark:text-white">NOTE: Apart from  
                         <a hx-boost="true" hx-target="#contentcontainer" asp-action="Language" asp-controller="Blog" asp-route-slug="@Model.Slug" asp-route-language="en"  class=" inline-block">
                             <img src="~/img/flags/en.svg" width="24px" height="16px" alt="@("en".ConvertCodeToLanguage())" class="rounded outline outline-1  outline-green-dark dark:outline-white inline-block w-6 h-4" />
@@ -62,17 +85,9 @@
                     </div>
                 </div>
             }
-        <div class="flex items-center pt-1 sm:pt-1">
-            <p class="pr-2 font-body font-light text-primary dark:text-white">
-                @Model.PublishedDate.ToString("D")
-            </p>
-            <span class="vdark:text-white font-body text-grey">//</span>
-            <p class="pl-2 font-body font-light text-primary dark:text-white">
-                @Model.ReadingTime
-            </p>
-        </div>
+
     </div>
-    <div class="prose prose dark:text-white text-black  max-w-none border-b py-2  sm:py-2" >
+    <div class="prose  dark:text-white text-black  max-w-none  py-2 mt-4 sm:py-2" >
         @Html.Raw(Model.HtmlContent)
     </div>
     @if (Model.PreviousPost != null || Model.NextPost != null)

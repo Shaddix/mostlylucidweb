@@ -4,10 +4,15 @@
 
 A FastAPI implementation EXACTLY copying the API of EasyNMT  (https://github.com/UKPLab/EasyNMT) an excellent but abandoned neural-machine-translation project. But I've added SO MANY nice features to increase reliability and make it ready for use in a production system. Think fast translation self hosted...
 
-Since the start of this blog, a big passion has been auto-translating blog articles. I even [wrote a whole system](https://www.mostlylucid.net/blog/category/EasyNMT) to make that happen with an amazing project called EasyNMT. HOWEVER, if you just checked that repo you know there's an issue...it's not been touched for YEARS. It's a simple, quick way to get a translation API without the need to pay for some service or run a full-size LLM to get translation (slowly).
+Since the start of this blog, a big passion has been auto-translating blog articles. YES I do know that 'google does this' in browsers etc...etc...but that's not the point. I wanted to know HOW to do it! Plus it's nice to be welcoming to people who don't read English (even if they read English as a second language, it's FAR harder to parse). So I worked out how to do it; as well as sharing how to build this sort of system. Oh and it gave me ideas on how to use it in ASP.NET for automatic localization of text (including dynamic text) using SignalR & a slick realtime updating system. ([stay tuned!](https://github.com/scottgal/mostlylucid.activetranslatetag)).
+
+Essentially; humans write crap text which is SUPER noisy for machines to handle efficiently. So a lot was figuring out how to work around issues with EasyNMT (it was really ever a research project). Now `mostlylucid-nmt` is designed to be a battle tested (well translating the tens of thousands of words on here!) useful system for any translation. Kind of a BabelFish API. 
+
+It also has all the learnings i have from three decades of building production servers & systems. Ranging from 429 codes to tell the client to back off, returning metadata about translations to help clients, extra endpoints to get more data and OF COURSE [a demo page ](#interactive-demo-page) which lets both me while developing as well as you a way to have a play.
+
+I [wrote a whole system](https://www.mostlylucid.net/blog/category/EasyNMT) to make that happen with an amazing project called EasyNMT. HOWEVER, if you just checked that repo you know there's an issue...it's not been touched for YEARS. It's a simple, quick way to get a translation API without the need to pay for some service or run a full-size LLM to get translation (slowly).
 
 In our previous posts, we discussed how to integrate EasyNMT with ASP.NET applications for background translation. But as time went on, the cracks started to show. It was time for something better.
-
 
 
 
@@ -19,9 +24,16 @@ In our previous posts, we discussed how to integrate EasyNMT with ASP.NET applic
 [![gpu](https://img.shields.io/docker/v/scottgal/mostlylucid-nmt/gpu?label=gpu)](https://hub.docker.com/r/scottgal/mostlylucid-nmt)
 [![gpu-min](https://img.shields.io/docker/v/scottgal/mostlylucid-nmt/gpu-min?label=gpu-min)](https://hub.docker.com/r/scottgal/mostlylucid-nmt)
 
+## Demo...see later for the demo page!
+
+[A full featured (mostly) interactive demo page](#interactive-demo-page) (at `http://<server>:<port>/demo` or just the root)  
+
+<p>
+<img src="/articleimages/translatedemof.png?format=webp&height=450" alt="Demo">
+</p>
 
 [TOC]
-<!--category-- Translation, EasyNMT,  Neural Machine Translation, Python, FastAPI, Docker, CUDA, PyTorch, Transformers, Helsinki-NLP, Production, Microservices, API-->
+<!--category-- mostlylucid-nmt, EasyNMT,  Neural Machine Translation, Python, FastAPI, Docker, CUDA, PyTorch, Transformers, Helsinki-NLP,  API-->
 <datetime class="hidden">2025-11-08T12:30</datetime>
 
 ## 🚀 What's New?
@@ -179,6 +191,136 @@ curl http://localhost:8000/healthz
 
 That's the 5-minute quick start! For production deployment, configuration, and advanced features, keep reading.
 
+## Interactive Demo Page
+
+The service includes a full-featured **interactive demo page** that makes it easy to test translations without writing any code. Access it at:
+
+```
+http://localhost:8000/demo/
+```
+
+<p>
+<img src="/articleimages/translatedemof.png?format=webp&height=800" alt="Demo">
+</p>
+
+### Demo Features
+
+The demo page provides a complete translation testing environment with:
+
+**1. Language Selection**
+- Auto-populated language dropdowns from the live service
+- Swap source/target languages with one click
+- Supports all 100+ languages configured in the service
+
+**2. Smart Text Chunking**
+- Automatically handles large text inputs of any size
+- Intelligently splits by paragraphs, preserving document structure
+- Falls back to sentence splitting for very long paragraphs
+- Shows progress for multi-chunk translations ("Translating chunk 2/5...")
+- Seamlessly reassembles chunks with proper spacing
+
+**3. Language Detection**
+- Detect the source language with one click
+- Automatically populates source language dropdown
+- Works with text up to 5000 characters
+
+**4. Advanced Options**
+- **Beam Size**: Control translation quality (1-10)
+  - Higher values = better quality but slower
+  - Lower values = faster throughput
+- **Sentence Splitting**: Toggle automatic sentence splitting
+  - Enabled (default): Splits long texts into sentences for better quality
+  - Disabled: Translates entire text as one block (faster for short texts)
+
+**5. Real-Time Statistics**
+- **Translation time**: Shows actual server-side translation duration
+- **Character count**: Live count as you type
+- **Status indicator**: Idle → Translating → Done/Error
+
+**6. Model Family Discovery**
+- Explore available translation pairs for each model family:
+  - **Opus-MT**: 1200+ language pairs
+  - **mBART50**: 50 languages, 2,450 pairs
+  - **M2M100**: 100 languages, 9,900 pairs
+- See exactly which language pairs are available before translating
+
+### How Text Chunking Works
+
+The demo implements intelligent text chunking on the client side:
+
+```javascript
+// Example: Translating a 5000-word article
+Input: Long article with multiple paragraphs
+
+Step 1: Split by paragraphs (preserves structure)
+  → Paragraph 1 (800 chars)
+  → Paragraph 2 (1200 chars)
+  → Paragraph 3 (600 chars)
+  ...
+
+Step 2: Group into ~1000 character chunks
+  → Chunk 1: Paragraphs 1-2
+  → Chunk 2: Paragraph 3-4
+  → Chunk 3: Paragraphs 5-6
+
+Step 3: Translate each chunk sequentially
+  → Shows progress: "Translating chunk 1/3..."
+  → Shows progress: "Translating chunk 2/3..."
+  → Shows progress: "Translating chunk 3/3..."
+
+Step 4: Reassemble with paragraph breaks
+  → Final output: Complete translated article with preserved formatting
+```
+
+### Why Use the Demo?
+
+**Quick Testing**
+- Test translations without writing code
+- Validate language pair availability
+- Compare translation quality with different beam sizes
+- Test edge cases (emoji, symbols, special characters)
+
+**Development Aid**
+- See exact API request/response format
+- Verify service health before integrating
+- Test performance with different text sizes
+- Discover available model families
+
+**Client Reference**
+- Shows proper API usage patterns
+- Demonstrates error handling (429, language detection)
+- Example of chunking implementation
+- Real-world retry logic
+
+### Example Usage
+
+1. **Simple Translation**:
+   - Paste text: "Hello, how are you today?"
+   - Select target: German
+   - Click "Translate"
+   - Result: "Hallo, wie geht es Ihnen heute?"
+
+2. **Long Document Translation**:
+   - Paste entire blog post (5000+ words)
+   - Demo automatically chunks it into manageable pieces
+   - Shows progress as each chunk translates
+   - Returns fully translated document
+
+3. **Language Detection**:
+   - Paste text in unknown language
+   - Click "Detect language"
+   - Demo identifies language and updates dropdown
+   - Ready to translate immediately
+
+### Technical Details
+
+The demo page is:
+- **Self-contained**: Single HTML file with embedded JavaScript
+- **Zero dependencies**: No external libraries required
+- **Mobile friendly**: Responsive design works on all devices
+- **Production ready**: Same chunking logic can be used in your apps
+
+Access the live demo at `/demo/` on your running instance!
 
 ## The Problems with EasyNMT
 
