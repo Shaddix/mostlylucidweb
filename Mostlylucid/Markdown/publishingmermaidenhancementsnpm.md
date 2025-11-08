@@ -1,9 +1,12 @@
-# Publishing Mermaid Enhancements as an npm Package
+# I published an NPM package!!! Publishing Mermaid Enhancements as an npm Package
 
 <!--category-- JavaScript, TypeScript, Mermaid, npm -->
 <datetime class="hidden">2025-11-07T16:00</datetime> 
  
 # Introduction
+
+Me. a .net guy finally plucked up the courage to dip my toes into the world of npm packages!
+Mermaid.js is obscure enough and odd enough that I could actually deliver something useful! So enjoy.  
 
 After building some really useful enhancements for Mermaid.js diagrams (interactive pan/zoom, fullscreen lightbox, export to PNG/SVG, and automatic theme switching), I decided it was time to package them up properly and share them with the community. This post walks through how I created `@mostlylucid/mermaid-enhancements` as a production-ready npm package. 
 
@@ -56,7 +59,14 @@ The package uses TypeScript for type safety and better developer experience, but
 
 # The Architecture
 
+
 Here's how the components fit together:
+
+
+## THIS IS WHAT IT LOOKS LIKE!
+
+So you see it's pretty compact and has some useful functionality beyond just static diagrams. It always annoyed me how MASSIVE they were in the page so this seemed a sensible approach to reducng size whilst retaining usefulness. 
+
 
 ```mermaid
 graph TD

@@ -1,172 +1,146 @@
-# Resume | Scott Galloway | .NET Developer | Remote
+# About Me
 
 <!--category-- Resume , introduction -->
 <datetime class="hidden">2024-09-29T22:30</datetime>
 
-# Scott Galloway | .NET Developer | Remote
+# Scott Galloway | CTO | Head of Engineering | Systems Architect | Remote
 
-I’m a senior .NET developer, systems architect, and technical leader with a proven track record delivering scalable, high-impact platforms across startups and global tech firms like Microsoft and Dell. I specialize in ASP.NET Core, cloud-native systems, and AI-enhanced solutions, with deep expertise in modern frameworks, DevOps, and search technologies.
+I'm a technical leader with over 30 years building and scaling engineering teams and products. I've served as CTO, Head of Engineering, and Lead Architect across startups and enterprises — from pre-seed companies building their first MVP to scaling systems serving millions of users.
 
-In addition to hands-on development, I’ve led distributed engineering teams, served as interim CTO, and built developer training programs with 90% placement rates. I'm passionate about building high-performing teams, mentoring developers, and driving product strategy — turning complex problems into efficient, resilient solutions aligned with business goals.
+I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond campus, which gave me deep insights into how the .NET ecosystem works from the inside. Since 2012, I've run **mostlylucid limited**, working with companies at every stage: founding technical teams, architecting platforms from scratch, rescuing legacy systems, and leading departments through growth phases.
 
-Email: [scott.galloway@gmail.com](mailto:scott.galloway@gmail.com)
 
-Blog Site : <https://www.mostlylucid.net>
 
-## Skills
+## What I Bring
 
-### Languages & Frameworks
+**I scale with you.** I've bootstrapped startups as the solo technical founder, built and led teams of 20+ engineers, and served as interim CTO for companies raising their Series A. Whether you need someone to architect your MVP, build your first engineering team, or take over as Head of Engineering, I've done it.
 
-Server Side: C# JavaScript , ASP.NET to .NET 9. To a lesser extent: Python, Java, C++, PHP
+**I'm hands-on when it matters.** I can (and do) write production code, debug gnarly performance issues, and architect complex distributed systems. But I also know when to step back and let the team execute. I've hired, mentored, and managed engineers across multiple continents.
 
-Frontend: Vue.js, JQuery, HTMX, Alpine.js, React, Angular, Blazor (and many more)
+**I build teams that last.** I created a developer training program that placed 200+ junior developers into the industry (90%+ success rate). I believe in growing talent internally and creating engineering cultures where people do their best work.
 
-CSS Frameworks: Tailwind CSS, Bootstrap, Manual
+**My sweet spot:** Early to mid-stage startups that need someone who can architect the right solution, build or lead the team to deliver it, and scale both the system and the organization as the company grows. I'm equally comfortable leading a department or rolling up my sleeves as the technical co-founder on a small team.
 
-### Databases
+**Tech stack:** I've worked in everything from Perl CGI scripts to modern Go microservices, though my primary focus is .NET (ASP.NET Core through .NET 9). I'm language-agnostic and pragmatic about choosing the right tool for the job — whether that's modern frontend frameworks (HTMX, Alpine.js, React, Vue.js), databases (PostgreSQL, SQL Server, MongoDB), or infrastructure (Docker, Kubernetes, Azure). I build in public and contribute back to the dev community through open-source packages and detailed technical writing.
 
-SQL: SQL Server, PostgreSQL, MySQL, SQLite
+## Open Source & Packages
 
-NoSQL: Cosmos, MongoDB, RavenDB
+I believe in giving back to the dev community. Here's what I've published:
 
-### Cloud Computing & DevOps
+### NuGet Packages
 
-Azure, Docker, Kubernetes, CI & CD using GH Actions, Azure and Bicep etc
+- **[Umami.Net](https://www.nuget.org/packages/Umami.Net)** - A .NET client for Umami Web Analytics. Privacy-focused analytics made simple.
 
-### AI / ML
+- **[mostlylucid.Markdig.FetchExtension](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)** - Complete solution for fetching and caching remote markdown content with multiple storage backends and a stale-while-revalidate pattern.
 
-A wide range of experience from ML.NET through hand rolled python API sites using scikit managing embeddings, associations using ANNs for ecommerce data to OLLAMA and EasyNMT for translations and enhancing customer data to generate leads.
+- **[mostlylucid.mockllmapi](https://www.nuget.org/packages/mostlylucid.mockllmapi)** - Lightweight ASP.NET Core middleware for generating realistic mock API responses using local LLMs (via Ollama). Add intelligent mock endpoints to any project with just 2 lines of code.
 
-### Leadership & Software Development
+- **[mostlylucid.pagingtaghelper](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)** - HTMX-enabled ASP.NET Core Tag Helpers for paging.
 
-Roles: Lead Developer, Senior .NET Developer, Development Lead, Head of Engineering, CTO
+- **[MostlyLucid.EufySecurity](https://www.nuget.org/packages/MostlyLucid.EufySecurity)** - A **highly experimental** .NET client library for controlling Eufy Security devices. It works, but use at your own risk.
 
-Methodologies: Agile, Scrum, Kanban
+### NPM Packages
 
-Tools: Jira, Trello, Azure DevOps, GitHub, GitLab
+- **[@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)** - Enhances Mermaid diagrams with export, panning, zoom, expanding lightbox, and theme switching.
 
-Managing: Both as a hands-on lead as well as agile engineering management developed teams and products.
+All of these came out of real needs in projects I was working on. When I hit a problem that doesn't have a good solution, I build one and share it.
 
-Training: Developer training program with 90% employment success rate
+## Background & Experience
 
-Mentorship: Mentored junior developers and led geographically dispersed remote teams
+**Microsoft** (2005-2009): Started as an Application Developer Consultant in Reading, UK, focusing on performance analysis and tuning. Later moved to Redmond, WA as a Program Manager II on the ASP.NET team, where I managed release lifecycles and worked on security infrastructure for Project Server.
 
-## Professional Highlights
+**Dell** (2011): Built a custom machine image deployment platform using ASP.NET MVC.
 
-**Full-Stack Leadership**: Proven track record delivering full-stack solutions — from hands-on coding to executive roles — across startups and global enterprises.
+**Freelance** (2012-Present): I've worked with companies like GBG Plc (Loqate), where I built global search products using .NET 6 microservices and Kubernetes. At Seamcor Ltd, I directed teams to rearchitect ASP.NET Core systems using Docker Compose and OpenSearch. Most recently at ZenChef Limited, I led the transition from legacy Azure systems to .NET 8, substantially reducing hosting costs through profiling and optimization.
 
-**Industry Recognition**: Delivered impactful contributions at Microsoft, Dell, and high-growth startups, driving innovation across fintech, ecommerce, and SaaS.
+I've also built and run a **developer training program** that's helped over 400 junior developers break into the industry (90% placement rate). Teaching and mentoring is something I genuinely love.
 
-**Remote Team Building**: Led globally distributed teams, fostering collaboration and delivering results. Created a developer training program with a 90% placement rate.
+## This Site
 
-**Product-Focused Tech Leader**: Build and lead high-performing, distributed teams delivering modern, scalable systems aligned with business strategy
+**mostlylucid.net** is my playground — part blog, part portfolio, part experiment. It's where I write technical deep-dives about ASP.NET Core, HTMX, Docker, search technologies, and whatever else I'm working on. The site itself is open source and serves as a living example of modern .NET development.
 
-## Employment History
+The platform features:
+- Dual-mode blog system (file-based markdown or PostgreSQL)
+- Automated translation to 12 languages via EasyNMT
+- Full-text search using PostgreSQL tsvector/GIN indexes
+- Nested comments with closure table pattern
+- Comprehensive observability (Serilog + Seq, Prometheus, Grafana)
+- HTMX + Alpine.js + Tailwind CSS frontend
 
-### mostlylucid limited | Freelance Consultant / Lead Developer | Remote
+If you're curious about any of this, the [full source code is on GitHub](https://github.com/scottgal/mostlylucidweb).
 
-Jan 2012 – Present
+## Contact
 
-Delivered high-impact projects for diverse clients in roles including Lead Developer, Architect, and interim CTO.
+Email: [scott.galloway+ml@gmail.com](mailto:scott.galloway+ml@gmail.com)
 
-Designed and ran a developer training program that helped over 400 junior developers break into the industry (90% success rate).
+Blog: <https://www.mostlylucid.net>
 
-Modernized legacy platforms to improve scalability, performance, and user experience.
+GitHub: <https://github.com/scottgal>
 
-Rebuilt ecommerce systems to reduce tech debt and support rapid growth.
+LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway/)
 
-### ZenChef Limited | Lead Contract Developer | Remote
+**Looking for consulting help or a contract role?** I'm always open to interesting projects. Drop me a line.
 
-Oct 2024 – Present
+---
 
-Integrated delivery-focused strategies to manage development for a large legacy Azure-based Distributed System, optimizing efficiency and scalability.
+## The Details (If You Need Them)
 
-Transitioned the system to .NET 8, substantially reducing hosting costs and improving performance through meticulous profiling and testing.
+### Tech Stack
 
-### Very Jane Ltd | Senior Contract Developer | Remote
+**Languages:** From Perl CGI to Go microservices — C#/.NET (my primary focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++. I'm language-agnostic and choose based on the problem, not the hype.
+**Backend:** ASP.NET Core through .NET 9, Node.js, Python APIs, Go services
+**Frontend:** HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (whatever fits the use case)
+**CSS:** Tailwind CSS, Bootstrap, DaisyUI
+**Databases:** PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+**DevOps:** Docker, Kubernetes, GitHub Actions, Azure DevOps, CI/CD pipelines, Infrastructure-as-Code
+**Cloud:** Azure (though I increasingly prefer self-hosted solutions for cost and control)
+**AI/ML:** Ollama, EasyNMT, ML.NET, scikit-learn, embeddings, ANNs, RAG pipelines, Azure OpenAI
 
-Apr 2024 – Aug 2024
+### Career Highlights
 
-Led backend system integration for a large e-commerce application, ensuring robust payment systems like Stripe Connect and Hyperwallet were delivered on time.
+**Microsoft Corporation** (2005-2009): Started as Application Developer Consultant II in Reading, UK, focusing on performance analysis and enterprise consulting for FTSE 100 clients. Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifecycles and drove security infrastructure for Project Server.
 
-Streamlined product loading, payments, and promotions using ASP.NET 8 for higher operational efficiency.
+**mostlylucid limited** (2012-Present): Through my consultancy, I've delivered dozens of solutions across fintech, healthcare, ecommerce, and government sectors in both contract and full-time roles. Notable engagements include:
+- Lead Architect/Developer for a major Asian airline's booking system (Knockout & ASP.NET MVC)
+- R&D Developer for insurance company telemetry tracking (low-level socket systems on Azure)
+- Research Systems Architect on UK Government National Security distributed computing project
+- Technical consultant for 8 UK and international charities
 
-### Seamcor Ltd | Head of Engineering (Contract) | Remote
+**Recent Roles (Contract & Full-Time):**
 
-Dec 2022 – Apr 2024
+**ZenChef Limited** (Oct 2024 - Present): Lead the transition of a large legacy Azure-based distributed system to .NET 8, substantially reducing hosting costs through profiling and optimization. Continue to support the massive legacy system.
 
-Directed a team of developers to rearchitect an ASP.NET Core system, implementing Docker Compose and OpenSearch to meet deadlines and enhance reporting capabilities.
+**Very Jane Ltd** (Apr 2024 - Aug 2024): Backend integration for a large e-commerce application, implementing Stripe Connect and Hyperwallet payment systems.
 
-Delivered scalable system transitions aligned with customer demands and business goals.
+**Seamcor Ltd** (Dec 2022 - Apr 2024): Rearchitected an ASP.NET Core system as Head of Engineering, implementing Docker Compose and OpenSearch for enhanced reporting.
 
-### GBG Plc (Loqate) | Lead Engineer | Remote
+**GBG Plc (Loqate)** (Aug 2022 - Nov 2022) *[Full-Time]*: Built a global search product using .NET 6 microservices and Kubernetes for high-throughput, large-scale data processing.
 
-Aug 2022 – Nov 2022
+**H3Space Ltd** (Jun 2021 - Sep 2021) *[Full-Time]*: Designed backend cloud architecture for Unity-based SaaS platform with React and GraphQL. Hired and led a global dev team to MVP delivery within 90 days.
 
-Developed and delivered a global search product utilising .NET 6 microservices and Kubernetes, optimized for high throughput and large data sets.
+**Dell** (Jan 2011 - Jul 2011) *[Full-Time]*: Architected an internal machine provisioning platform with ASP.NET MVC and SQL Server, reducing setup time by 70%.
 
-Set technical benchmarks for CI/CD and testing to ensure the timely delivery of globally-scaled systems.
+### Education
 
-### WCOM AB | Lead Developer (Contract) | Remote
+**University of Stirling** - BSc (Hons) Psychology
+Stirling, Scotland, UK
 
-Oct 2021 – May 2022
+(Yes, psychology. It's actually been incredibly useful in understanding user behavior and leading teams.)
 
-Executed Azure DevOps-driven projects, delivering Azure Functions and Blazor Server applications with microservices architecture.
+---
 
-Designed SignalR-based IPC and screen mirroring solutions to enhance user interaction and project completion timelines.
+## Why Work With Me?
 
-### H3Space Ltd | Lead Engineer | Remote
+**From Perl CGI scripts to cloud platforms**, I've spent over two decades building and running software that holds up under pressure. I've worked across ASP, .NET, and today's Core/Azure/Kubernetes stack, leading teams and reworking legacy systems along the way.
 
-Jun 2021 – Sep 2021
+**I add AI when it's useful, not because it's trendy.** I've built ML-based recommendation systems, lead generation tools using Azure OpenAI and vector embeddings, and RAG pipelines. But I also know when simpler solutions are better.
 
-Delivered platform architecture and built a development team for a scalable online community supporting a Unity 3D Desktop tool.
+**I make things work properly and make them last.** I've migrated legacy monoliths to cloud-native architectures, cutting infrastructure costs by 50% and improving deployment times by 80%. I've reduced runtime errors by >90% in multiple systems through careful profiling and optimization.
 
-Implemented full-stack solutions using React JS, GraphQL, and Azure services within the allotted timeframe.
+**I've led developer bootcamps with 200+ graduates and a 90%+ placement rate.** Teaching and mentorship aren't side projects for me — they're core to how I work. I believe in building teams that outlast any single project.
 
-### Huozhi Limited | Technical Consultant / Dev Lead (Contract) | Remote
+**I deliver.** Whether it's architecting a global search product on Kubernetes, integrating payment systems for e-commerce platforms, or modernizing legacy systems under tight deadlines, I've done it across fintech, healthcare, government, and SaaS.
 
-Jun 2018 – Mar 2020
+The thread through it all is simple: **make things work properly and make them last**.
 
-Provided technical leadership and formed high-functioning teams for a startup, resolving development bottlenecks and ensuring product releases adhered to deadlines.
-
-### Interactive Reporting Limited | Lead Developer (Contract) | Remote
-
-Dec 2015 – Jun 2021
-
-Developed a web-based reporting platform using ASP.NET MVC, WPF, and WinForms, supporting multiple database backends while ensuring project deliverables.
-
-### Dell | Development Lead | Glasgow, UK
-
-Jan 2011 - July 2011
-
-Delivered a custom machine image deployment platform using ASP.NET MVC and SQL Server, driving operational improvements and meeting deadlines.
-
-### Microsoft Corp. | Program Manager II | Redmond, WA, USA
-
-Jan 2007 – Oct 2009
-
-Managed the ASP.NET release lifecycle to ensure delivery of core features and new security infrastructure for Project Server. Coordinated bug triage and integration with the broader .NET community.
-
-### Microsoft Ltd. | Application Developer Consultant II | Reading, UK
-
-Jun 2005 – Jan 2007
-
-Focused on performance analysis and tuning, leading several performance labs and delivering solutions across a wide range of customer systems.
-
-### StormID | Lead Developer | Edinburgh, UK
-
-Feb 2003 - Jun 2005
-
-Delivery of diverse solutions, from scalable mail merge systems to custom e-commerce applications, achieving significant performance improvements and meeting aggressive timelines.
-
-## Education
-
-University of Stirling | BSc (Hons) Psychology
-
-Location: Stirling, Scotland, UK
-
-## Links
-
-LinkedIn: Scott Galloway
-
-GitHub: <https://github.com/scottgal/mostlylucidweb> (my blog site / framework)
+If you're looking for someone who can architect, build, lead, and ship — someone who's been doing this since before "full-stack" was a term — let's talk.
