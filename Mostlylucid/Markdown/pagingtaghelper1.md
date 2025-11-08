@@ -592,7 +592,7 @@ Zero JavaScript required. Perfect for:
 - SEO-critical pages where you want crawler-friendly navigation
 
 The beauty of this system is that **all modes preserve your existing query parameters**. Whether you're filtering by category, searching, or sorting, the pagination maintains your state automatically.
-
+ 
 ### Migration from use-htmx {#migration-from-use-htmx}
 
 For backward compatibility, the old `use-htmx` attribute still works:
@@ -984,7 +984,7 @@ Version 1.0.0 represents a major milestone for the PagingTagHelper library. What
 - **Smart parameter preservation** across all navigation
 - **Full accessibility support** with ARIA labels and keyboard navigation
 
-The library has been battle-tested with 1.7k+ downloads and is ready for production use. All 106 unit tests pass, and the comprehensive demo application showcases real-world usage patterns.
+The library has been battle-tested with 1.7k+ downloads and is ready for production use. All 106 unit tests pass, and the comprehensive demo application showcases real-world usage patterns. 
 
 ### What's Next?
 
@@ -993,7 +993,7 @@ Future enhancements I'm considering:
 - More localization languages (community contributions welcome!)
 - Server-side Blazor components
 - Enhanced accessibility features
-- Performance optimizations for large datasets
+- Performance optimizations for large datasets 
 
 ### Get Started
 

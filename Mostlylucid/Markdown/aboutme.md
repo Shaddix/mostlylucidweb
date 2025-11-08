@@ -7,10 +7,10 @@
 
 I'm a technical leader with over 30 years building and scaling engineering teams and products. I've served as CTO, Head of Engineering, and Lead Architect across startups and enterprises — from pre-seed companies building their first MVP to scaling systems serving millions of users.
 
-I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond campus, which gave me deep insights into how the .NET ecosystem works from the inside. Since 2012, I've run **mostlylucid limited**, working with companies at every stage: founding technical teams, architecting platforms from scratch, rescuing legacy systems, and leading departments through growth phases.
+I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond campus, which gave me deep insights into how the .NET ecosystem works from the inside. Since 2012, I've run **mostlylucid limited**, working with companies at every stage: founding technical teams, architecting platforms from scratch, rescuing legacy systems, and leading departments through growth phases.         
 
-[TOC]
-
+[TOC]  
+  
 ## What I Bring
 
 **I scale with you.** I've bootstrapped startups as the solo technical founder, built and led teams of 20+ engineers, and served as interim CTO for companies raising their Series A. Whether you need someone to architect your MVP, build your first engineering team, or take over as Head of Engineering, I've done it.
@@ -109,14 +109,14 @@ LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 
 **Microsoft Corporation** (2005-2009): Started as Application Developer Consultant II in Reading, UK, focusing on performance analysis and enterprise consulting for FTSE 100 clients. Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifecycles and drove security infrastructure for Project Server.
 
-**mostlylucid limited** (2012-Present): Through my consultancy, I've delivered dozens of solutions across fintech, healthcare, ecommerce, and government sectors in both contract and full-time roles. Notable engagements include:
+**mostlylucid limited** (2012-Present): Through my consultancy, I've delivered dozens of solutions across fintech, healthcare, ecommerce, and government sectors in both contract and full-time roles. Notable engagements include: 
 - Lead Architect/Developer for a major Asian airline's booking system (Knockout & ASP.NET MVC)
 - R&D Developer for insurance company telemetry tracking (low-level socket systems on Azure)
 - Research Systems Architect on UK Government National Security distributed computing project
 - Technical consultant for 8 UK and international charities
 
 **Recent Roles (Contract & Full-Time):**
-
+ 
 **ZenChef Limited** (Oct 2024 - Present): Lead the transition of a large legacy Azure-based distributed system to .NET 8, substantially reducing hosting costs through profiling and optimization. Continue to support the massive legacy system.
 
 **Very Jane Ltd** (Apr 2024 - Aug 2024): Backend integration for a large e-commerce application, implementing Stripe Connect and Hyperwallet payment systems.

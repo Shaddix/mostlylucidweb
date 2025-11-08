@@ -1,101 +1,160 @@
 # Über mich
 
-## Scott Galloway.NET Entwickler & CTO führen
+<!--category-- Resume , introduction -->
+<datetime class="hidden">2025-12-31T22:30</datetime>
 
-<!--category-- resume , introduction -->
-Ich bin ein vielseitiger und kompetenter Entwickler und führen mit einem über 25-jährigen Track-Record-Building-Teams und Plattformen und revitalisierende Startups.
-Proficient in C#, ASP.NET und moderne Web-Frameworks, mit umfangreicher Erfahrung in Cloud Computing, DevOps, Datenbankmanagement und Suchtechnologien. Bewährte Erfolgsbilanz erfolgreicher Entwicklungsprojekte in verschiedenen Branchen, von Technologiegiganten bis hin zu innovativen Startups.
+# Scott Galloway, Leiter des Ingenieurwesens, Systems Architect, Remote
 
-Brauchen Sie Hilfe, um Ihr nächstes Projekt zu bauen? [Kontaktieren Sie mich](mailto:scott.galloway@gmail.com)
+Ich bin ein technischer Marktführer mit über 30 Jahren Aufbau und Skalierung von Engineering-Teams und Produkten.
+
+Ich habe als CTO, Head of Engineering und Lead Architect über Startups und Unternehmen hinweg gedient – von Vorkernfirmen, die ihren ersten MVP bauen, bis hin zu Skalierungssystemen, die Millionen von Nutzern bedienen.**Ich verbrachte mehrere Jahre bei Microsoft als ASP.NET Program Manager auf dem Redmond Campus, was mir tiefe Einblicke gab, wie das .NET Ökosystem von innen funktioniert.**Seit 2012 laufe ich
 
 [TOC]
 
-## Geschichte der Beschäftigung
+## meistluzid begrenzt
 
-### Beratung • Lead Developer / Architekt / Managing Director • Remote
+**, Zusammenarbeit mit Unternehmen in jeder Phase: Gründung technischer Teams, Planung von Plattformen von Grund auf, Rettung von Altsystemen und führende Abteilungen durch Wachstumsphasen.**Was ich mitbringe
 
-Jan 2012 – Gegenwart
+**Ich skaliere mit dir.**Ich habe Startups als Solo-Technical-Gründer, baute und führte Teams von 20+ Ingenieuren, und diente als Interim CTO für Unternehmen, die ihre Serie A.
 
-Leitung mehrerer Client-Projekte als Lead Developer, Architect und Interim CTO, um erfolgreiche Produkteinführungen und Projektabschlüsse zu gewährleisten.
-Entwickelt ein umfassendes Ausbildungsprogramm für über 200 Anfänger Entwickler, erreicht eine 90% Beschäftigung Erfolgsquote.
-Modernisierte Altsysteme, Verbesserung der operativen Effizienz und Benutzererfahrung durch fortschrittliche technologische Lösungen.
-Überholt eine E-Commerce-Plattform, Verbesserung der Leistung, Skalierbarkeit und Wartungsfähigkeit.
+**Ob Sie jemanden brauchen, der Ihren MVP plant, Ihr erstes Engineering-Team baut oder als Head of Engineering übernimmt, ich habe es getan.**Ich bin an der Reihe, wenn es darauf ankommt.
 
-### Sehr Jane Ltd... Senior Contract Developer... entfernt.
+**Ich kann (und tun) Produktionscode zu schreiben, Debug gnarly Performance-Probleme und Architekten komplexe verteilte Systeme.**Aber ich weiß auch, wann ich zurücktreten und das Team ausführen lassen soll.
 
-April 2024 – August 2024
+**Ich habe Ingenieure auf mehreren Kontinenten eingestellt, betreut und geleitet.**Ich baue die letzten Teams.
 
-Designierte Backend-Systeme für eine große E-Commerce-Anwendung, die Zahlungssysteme wie Stripe Connect und Hyperwallet integrieren.
-Implementierung von ASP.NET 8 Lösungen, um Produktladungen, Zahlungen und Werbeaktionen zu optimieren.
+## Ich erstellte ein Entwickler-Trainingsprogramm, das 200+ Junior-Entwickler in die Branche platzierte (90% + Erfolgsrate).
 
-### Seamcor Ltd., Leiter Engineering (Vertrag)
+Ich glaube daran, Talente intern zu entwickeln und Ingenieurskulturen zu schaffen, in denen die Menschen ihr Bestes tun.
 
-Dezember 2022 – April 2024
+### Mein süßer Fleck:
 
-Ein Team von 6 Entwicklern hat ein ASP.NET Core-System aufgebaut und neu entwickelt und Docker Compose und OpenSearch für einen verbesserten Datenzugriff und -berichterstattung integriert.
-Gesicherter nahtloser Übergang und Skalierbarkeit von Systemen, um den sich entwickelnden Kundenbedürfnissen gerecht zu werden.
+- **[Frühe bis mittlere Start-ups, die jemanden brauchen, der die richtige Lösung entwerfen, das Team bauen oder führen kann, um es zu liefern, und skalieren sowohl das System als auch die Organisation, während das Unternehmen wächst.](https://www.nuget.org/packages/Umami.Net)**Ich fühle mich genauso wohl, eine Abteilung zu führen oder als technischer Mitbegründer in einem kleinen Team meine Ärmel hochzurollen.
 
-### GBG Plc (Loqate)
+- **[Technischer Stack:](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)**Ich habe in allem von Perl CGI-Skripten bis zu modernen Go-Mikroservices gearbeitet, obwohl mein Hauptfokus .NET ist (ASP.NET Core bis .NET 9).
 
-Aug 2022 – Nov 2022
+- **[Ich bin sprachagnostisch und pragmatisch bei der Auswahl des richtigen Werkzeugs für den Job – ob es sich dabei um moderne Frontend-Frameworks (HTMX, Alpine.js, React, Vue.js), Datenbanken (PostgreSQL, SQL Server, MongoDB) oder Infrastruktur (Docker, Kubernetes, Azure) handelt.](https://www.nuget.org/packages/mostlylucid.mockllmapi)**Ich baue in der Öffentlichkeit auf und trage durch Open-Source-Pakete und detailliertes technisches Schreiben wieder zur Dev-Community bei.
 
-Spear hat die Entwicklung eines globalen Suchprodukts mit.NET 6 Microservices und Kubernetes geleitet, das für einen hohen Durchsatz und große Datensätze optimiert.
-Legen Sie die technische Richtung für CI/CD-, Test- und Systembetrieb im globalen Maßstab fest.
+- **[Open Source & Pakete](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)**Ich glaube, ich gebe die Dev-Gemeinschaft zurück.
 
-### WCOM AB- Lead-Entwickler (Vertrag)
+- **[Hier ist, was ich veröffentlicht habe:](https://www.nuget.org/packages/MostlyLucid.EufySecurity)**NuGet-Pakete**Umami.Net**- Ein .NET-Client für Umami Web Analytics.
 
-Oktober 2021 – Mai 2022
+### Privacy-focused analytics einfach gemacht.
 
-Durchführung verschiedener Projekte mit Azure DevOps, Azure Functions und Blazor Server für eine umfassende Reporting- und Microservice-Architektur.
-Entwickelte IPC- und Bildschirmspiegelungsanwendungen auf SignalR-Basis für eine verbesserte Benutzerinteraktion.
+- **[meistlucid.Markdig.FetchExtension](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)**- Komplette Lösung zum Abrufen und Caching von Remote-Markdown-Inhalten mit mehreren Speicher-Backends und einem veralteten, während-revalidierten Muster.
 
-### H3Space Begrenzt Lead Engineer Aus der Ferne
+meistlucid.mockllmapi
 
-Juni 2021 – September 2021
+## - Leichtgewichtige ASP.NET Core Middleware zur Generierung realistischer Mock API-Antworten mit lokalen LLMs (via Ollama).
 
-Errichtete ein Entwicklungsteam und eine definierte Plattformarchitektur für eine skalierbare Online-Community, die ein Unity 3D Desktop Tool unterstützt.
-Lieferte Komplettlösungen mit den Diensten React JS, GraphQL und Azure.
+**Fügen Sie intelligente Mock-Endpunkte zu jedem Projekt mit nur 2 Zeilen Code hinzu.**meistlucid.pagingtaghelper
 
-### Huozhi Begrenzt Technical Consultant / Dev Lead (Vertrag)
+**- HTMX-fähige ASP.NET Core Tag-Helpers für das Einspielen.**MeistensLucid.EufySecurity
 
-Juni 2018 – März 2020
+** hochexperimentell
 
-Bereitgestellte technische Führung und Teambildung für ein Start-up, Rückkehr, um die Entwicklung zu lösen und Freigabe Herausforderungen.
+.NET-Clientbibliothek zur Steuerung von Eufy Security-Geräten.**Es funktioniert, aber nutzen Sie es auf eigenes Risiko.**NPM-Pakete
 
-### Interaktives Reporting Begrenzt Lead Developer (Contract)
+## @Mostlylucid/Mermaid-Enhancements
 
-Dezember 2015 – Juni 2021
+**[- Verbessert Mermaid Diagramme mit Export, Schwenken, Zoom, Erweiterung Lightbox und Thema Schalten.](https://www.mostlylucid.net)**All dies kam aus wirklichen Bedürfnissen in Projekten, an denen ich arbeitete.[Wenn ich auf ein Problem stoße, das keine gute Lösung hat, baue ich eins und teile es.](https://github.com/scottgal/mostlylucidweb)Hintergrund & Erfahrung
 
-Entwickelte eine webbasierte Reporting-Plattform mit ASP.NET MVC, WPF und WinForms, die mehrere Datenbank-Backends unterstützt.
+**Microsoft**(2005-2009): Gestartet als Application Developer Consultant in Reading, UK, mit dem Schwerpunkt Performanceanalyse und Tuning.
 
-### Microsoft Corp... Programm Manager II. Redmond, WA, USA
+Später zog ich als Programmmanager II im ASP.NET-Team nach Redmond, WA, wo ich die Release-Lebenszyklen verwaltete und an der Sicherheitsinfrastruktur für Project Server arbeitete.
 
-Jan 2007 – Okt 2009
+- **Dell**(2011): Baute eine benutzerdefinierte Maschinenbild-Deployment-Plattform mit ASP.NET MVC.
+- **Freiberufliche Tätigkeit**(2012-Present): Ich habe mit Firmen wie GBG Plc (Loqate) gearbeitet, wo ich globale Suchprodukte mit .NET 6 Microservices und Kubernetes erstellt habe.
+- **Bei Seamcor Ltd leitete ich Teams, um ASP.NET Core-Systeme mit Docker Compose und OpenSearch zu rechitect.**Zuletzt bei ZenChef Limited führte ich den Übergang von alten Azure-Systemen zu .NET 8, was die Hosting-Kosten durch Profiling und Optimierung erheblich reduzierte.
+- **Ich habe auch gebaut und laufen ein**Entwickler-Schulungsprogramm
 
-Drove der ASP.NET Release-Lebenszyklus, Verwaltung von Bug-Triage und Integration mit der breiteren.NET-Gemeinschaft.
-Gelieferte Kernfunktionen und neue Sicherheitsinfrastruktur für Project Server.
+Das hat über 400 Junior-Entwicklern geholfen, in die Branche zu brechen (90% Vermittlungsrate).
 
-### Bildung
+- **Lehren und Mentoren ist etwas, das ich wirklich liebe.**Diese Seite
+- **meistlucid.net**ist mein verrücktes Labor — eine lebende Codebase, in der ich mit allem experimentiere, was mein Interesse an der Web-Entwicklung weckt.
+- **Die gesamte Plattform ist**Open Source auf GitHub
+- **, und es ist zu einem Nährboden für die NuGet und NPM Pakete geworden, die ich veröffentlicht habe.**Das Thema:
+- **Sehen Sie Problem, finden Sie Lösung, implementieren Sie es, dann extrahieren Sie es in ein wiederverwendbares Paket.**Die Infrastruktur selbst ist eine Fallstudie im effizienten Serverbetrieb:
+- **Docker Compose Orchestrierung**für den gesamten Stack (App, Datenbank, Analyse, Übersetzungsdienste, Monitoring)
+- **Vollständige CI/CD-Pipeline**mit GitHub Aktionen, automatisiertem Testen und Deployment
 
-Universität für Stirling-BSc (Hons) Psychologie
-Beginn: Sep 1992 - Ende: Jun 1996
-Ort: Stirling, Schottland, Großbritannien
+Umfassende Beobachtungsfähigkeit
 
-### Kompetenzen
+## (Serilog + Seq, Prometheus, Grafana) — weil man nicht reparieren kann, was man nicht sehen kann
 
-Sprachen & Frameworks: C# (25 Jahre), JavaScript (20 Jahre), ASP.NET bis.NET 8 (25 Jahre), Node.js, React, Vue
-Datenbanken: SQL (SQL Server, Postgres, MySQL, SQLite), NoSQL (MongoDB, RavenDb)
-Cloud Computing & DevOps: Azure, Docker, Kubernetes
-Softwareentwicklung & Führung: Entwicklungsleiter, Leiter Engineering, CTO
-Berufliche Höhepunkte
-Vielseitige Entwicklungsexpertise: Über 25 Jahre Software-Anwendungsentwicklung und -Strategie von der Codierung bis zur Führungsführung.
-Diverse Industry Impact: Beiträge zu Technologiegiganten wie Microsoft und Dell und Startups in verschiedenen Branchen.
-Remote Leadership & Education: Erfolgreich führte Remote-Teams und erstellte ein Entwickler-Trainingsprogramm mit einer Erfolgsquote von 90%.
-Neuer technologischer Fokus: Proficient in modernen Entwicklungsstacks und angepasst an Remote-Arbeit während der globalen Pandemie.
-Verknüpfungen
-LinkedIn: Scott Galloway
-Hobbies
-Wandern
-Lesen von Tech-Blogs
-Reisen
-Mentoring angehende Entwickler
+Selbstbewirtet alles[— Datenbank, Analyse (Umami), Übersetzung (EasyNMT), Reverse Proxy (Caddy)](mailto:scott.galloway+ml@gmail.com)
+
+Die Plattform verfügt über die Laichpakete:<https://www.mostlylucid.net>
+
+Dual-Mode-Blog-System<https://github.com/scottgal>
+
+(Dateibasiertes Markdown oder PostgreSQL) — führte zum Markdig.FetchExtension-Paket[Automatisierte Übersetzung](https://www.linkedin.com/in/scott-galloway-91608691/)
+
+**zu 12 Sprachen über EasyNMT**Volltextsuche
+
+---
+
+
+## Verwendung von PostgreSQL tsvector/GIN-Indizes
+
+### Interaktive Meerjungfrauen-Diagramme
+
+**mit pan/zoom/export — wurde zum @mostlylucid/mermaid-enhancements npm-Paket**HTMX-gestütztes Paging
+**— extrahiert in das Pagingtaghelper NuGet-Paket**Integration von Umami Analytics
+**— wurde das Umami.Net-Paket**LLM-powered-Mock-APIs
+**für die Entwicklung — wurde das Paket mollmapi**Es ist chaotisch, experimentell und sich ständig entwickelnd.
+**Darum geht es.**Ansprechpartner
+**E-Mail:**scott.galloway+ml@gmail.com
+**Blog:**GitHub:
+**LinkedIn:**Scott Galloway
+
+### Sie suchen Hilfe oder eine Vertragsrolle?
+
+**Ich bin immer offen für interessante Projekte.**Lass mir eine Schlange fallen.
+
+**Die Details (wenn Sie sie brauchen)**Tech Stack
+
+- Sprachen:
+- Von Perl CGI zu Go microservices — C#/.NET (mein Hauptfokus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
+- Ich bin sprachagnostisch und entscheide mich für das Problem, nicht für den Hype.
+- Hintergrund:
+
+**ASP.NET Core durch .NET 9, Node.js, Python APIs, Go-Dienste**
+
+**Frontend:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (was auch immer zum Anwendungsfall passt)
+
+**CSS:**Heckwind CSS, Bootstrap, DaisyUI
+
+** Datenbanken:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+
+**DevOps:**Docker, Kubernetes, GitHub Aktionen, Azure DevOps, CI/CD Pipelines, Infrastructure-as-Code*[Wolke:*Azure (aber ich bevorzuge zunehmend selbstgehostete Lösungen für Kosten und Kontrolle)
+
+**KI/ML:**Ollama, EasyNMT, ML.NET, scikit-learn, Einbettungen, ANNs, RAG-Pipelines, Azure OpenAI*[Höhepunkte der Karriere*Microsoft Corporation
+
+**(2005-2009): Gestartet als Application Developer Consultant II in Reading, Großbritannien, mit Schwerpunkt auf Performanceanalyse und Unternehmensberatung für FTSE 100 Kunden.**Gefördert zum Programmmanager II in Redmond, WA, wo ich ASP.NET-Release-Lebenszyklen verwaltete und Sicherheitsinfrastruktur für Project Server fuhr.*[meistluzid begrenzt*(2012-Present): Durch meine Beratung habe ich Dutzende von Lösungen in den Bereichen Fintech, Healthcare, E-Commerce und Regierung sowohl in Vertrags- als auch in Vollzeit-Rollen geliefert.
+
+### Zu den bemerkenswerten Verpflichtungen gehören:
+
+**Lead Architect/Developer für das Buchungssystem einer großen asiatischen Fluggesellschaft (Knockout & ASP.NET MVC)**FuE-Entwickler für Telemetrie-Tracking der Versicherungsgesellschaft (Low-Level-Socket-Systeme auf Azure)
+Research Systems Architect auf der britischen Regierung Nationale Sicherheit verteilte Computer-Projekt
+
+Technischer Berater für 8 britische und internationale Wohltätigkeitsorganisationen
+
+---
+
+
+## Neuere Rollen (Vertrag & Vollzeit):
+
+**ZenChef Limited**(Oct 2024 - Present): Führen Sie den Übergang eines großen alten Azure-basierten verteilten System auf .NET 8, deutlich reduzieren Hosting-Kosten durch Profiling und Optimierung.
+
+**Das massive Vermächtnissystem weiterhin unterstützen.**Sehr Jane Ltd
+
+**(Apr 2024 - Aug 2024): Backend-Integration für eine große E-Commerce-Anwendung, Implementierung von Stripe Connect- und Hyperwallet-Zahlungssystemen.**Diese Verordnung tritt am zwanzigsten Tag nach ihrer Veröffentlichung im Amtsblatt der Europäischen Union in Kraft.
+
+**(Dez 2022 - Apr 2024): Ein ASP.NET Core-System als Head of Engineering neu aufgebaut, Docker Compose und OpenSearch für ein verbessertes Reporting implementiert.**GBG Plc (Loqate)
+
+**(Aug 2022 - Nov 2022)**Vollzeit]
+
+: Errichtet ein globales Suchprodukt mit .NET 6 Microservices und Kubernetes für die hochdurchsatzfähige, großformatige Datenverarbeitung.**H3Space Ltd**.
+
+(Jun 2021 - Sep 2021)

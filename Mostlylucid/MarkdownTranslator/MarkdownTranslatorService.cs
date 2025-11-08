@@ -8,13 +8,15 @@ using Markdig.Syntax.Inlines;
 using Mostlylucid.Shared.Config;
 using Polly;
 using Polly.CircuitBreaker;
+using Polly.Retry;
 
 namespace Mostlylucid.MarkdownTranslator;
 
 public class MarkdownTranslatorService(
     TranslateServiceConfig translateServiceConfig,
     ILogger<IMarkdownTranslatorService> logger,
-    HttpClient client) : IMarkdownTranslatorService
+    HttpClient client,
+    IServiceProvider serviceProvider) : IMarkdownTranslatorService
 {
     private record PostRecord(
         string target_lang,
@@ -34,8 +36,41 @@ public class MarkdownTranslatorService(
         maxConsecutiveFailures: 3,
         resetInterval: TimeSpan.FromHours(24));
 
-    // Circuit breaker to handle service overload (403 responses)
-    private readonly ResiliencePipeline _circuitBreakerPolicy = new ResiliencePipelineBuilder()
+    // Resilience pipeline combining retry for 429s and circuit breaker for other failures
+    private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
+        // First: Retry policy for 429 (Too Many Requests) with Retry-After header support
+        .AddRetry(new RetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            ShouldHandle = new PredicateBuilder().Handle<HttpRequestException>(ex =>
+                ex.StatusCode == HttpStatusCode.TooManyRequests),
+            DelayGenerator = async args =>
+            {
+                // Extract Retry-After from the HttpRequestException if available
+                if (args.Outcome.Exception is HttpRequestException httpEx
+                    && httpEx.Data.Contains("RetryAfter")
+                    && httpEx.Data["RetryAfter"] is TimeSpan retryAfter)
+                {
+                    logger.LogWarning(
+                        "Translation service returned 429 (rate limited). Retrying after {RetryAfter} seconds (attempt {Attempt}/{MaxAttempts})",
+                        retryAfter.TotalSeconds, args.AttemptNumber, 3);
+                    return retryAfter;
+                }
+
+                // Default exponential backoff if no Retry-After header
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, args.AttemptNumber));
+                logger.LogWarning(
+                    "Translation service returned 429 (rate limited). Retrying after {Delay} seconds (attempt {Attempt}/{MaxAttempts})",
+                    delay.TotalSeconds, args.AttemptNumber, 3);
+                return delay;
+            },
+            OnRetry = args =>
+            {
+                logger.LogDebug("Retrying translation request after rate limit (attempt {Attempt})", args.AttemptNumber);
+                return ValueTask.CompletedTask;
+            }
+        })
+        // Second: Circuit breaker for persistent failures (403, 503, etc.)
         .AddCircuitBreaker(new CircuitBreakerStrategyOptions
         {
             FailureRatio = 1.0, // Break after all attempts fail
@@ -43,8 +78,7 @@ public class MarkdownTranslatorService(
             BreakDuration = TimeSpan.FromMinutes(2),
             ShouldHandle = new PredicateBuilder().Handle<HttpRequestException>(ex =>
                 ex.StatusCode == HttpStatusCode.Forbidden ||
-                ex.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                ex.StatusCode == HttpStatusCode.TooManyRequests),
+                ex.StatusCode == HttpStatusCode.ServiceUnavailable),
             OnOpened = args =>
             {
                 logger.LogWarning(
@@ -108,7 +142,7 @@ public class MarkdownTranslatorService(
 
     private async Task<string[]> Post(string[] elements, string targetLang, CancellationToken cancellationToken)
     {
-        return await _circuitBreakerPolicy.ExecuteAsync(async ct =>
+        return await _resiliencePipeline.ExecuteAsync(async ct =>
         {
             if (!IPs.Any())
             {
@@ -125,6 +159,24 @@ public class MarkdownTranslatorService(
             var postObject = new PostRecord(targetLang, elements);
 
             var response = await client.PostAsJsonAsync($"{ip}/translate", postObject, ct);
+
+            // Handle rate limiting (429 Too Many Requests) with Retry-After header
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var retryAfter = GetRetryAfterDelay(response);
+                logger.LogDebug(
+                    "Translation service at {IP} returned 429 (rate limited). Retry-After: {RetryAfter} seconds",
+                    ip, retryAfter.TotalSeconds);
+
+                var exception = new HttpRequestException(
+                    "Translation service is rate limited (429)",
+                    null,
+                    HttpStatusCode.TooManyRequests);
+
+                // Attach retry-after to exception data so Polly can use it
+                exception.Data["RetryAfter"] = retryAfter;
+                throw exception;
+            }
 
             // Handle service overload (403 Forbidden) explicitly
             if (response.StatusCode == HttpStatusCode.Forbidden)
@@ -155,6 +207,28 @@ public class MarkdownTranslatorService(
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// Extract Retry-After delay from HTTP response headers.
+    /// Supports both seconds (integer) and HTTP-date formats.
+    /// </summary>
+    private TimeSpan GetRetryAfterDelay(HttpResponseMessage response)
+    {
+        if (response.Headers.RetryAfter?.Delta != null)
+        {
+            return response.Headers.RetryAfter.Delta.Value;
+        }
+
+        if (response.Headers.RetryAfter?.Date != null)
+        {
+            var retryDate = response.Headers.RetryAfter.Date.Value;
+            var delay = retryDate - DateTimeOffset.UtcNow;
+            return delay > TimeSpan.Zero ? delay : TimeSpan.FromSeconds(1);
+        }
+
+        // Default to 2 seconds if no Retry-After header present
+        return TimeSpan.FromSeconds(2);
+    }
+
 
     public async Task<string> TranslateMarkdown(string markdown, string targetLang, CancellationToken cancellationToken,
         Activity? activity)
@@ -173,9 +247,14 @@ public class MarkdownTranslatorService(
                 Array.Empty<string>());
         }
 
-        // Note: We don't preprocess fetch tags here because we want to translate the original markdown
-        // The fetch preprocessing should only happen during rendering, not translation
-        // Translation works on the source markdown files, not the rendered/fetched content
+        // IMPORTANT: Preprocess fetch tags BEFORE translation
+        // This ensures fetched remote content is translated and stored in the translated markdown files
+        var preprocessor = new Mostlylucid.Markdig.FetchExtension.Processors.MarkdownFetchPreprocessor(
+            serviceProvider,
+            logger as ILogger<Mostlylucid.Markdig.FetchExtension.Processors.MarkdownFetchPreprocessor>);
+        markdown = preprocessor.Preprocess(markdown);
+
+        activity?.SetTag("PreprocessedMarkdown", true);
 
         var pipeline = new MarkdownPipelineBuilder().UsePreciseSourceLocation().ConfigureNewLine(Environment.NewLine)
             .Build();
@@ -201,13 +280,25 @@ public class MarkdownTranslatorService(
                 translatedStrings.AddRange(translatedBatch);
                 activity?.SetTag("Ending time", DateTime.UtcNow);
             }
-            catch (BrokenCircuitException e)
+            catch (BrokenCircuitException)
             {
                 logger.LogWarning("Circuit breaker is open - translation service is temporarily unavailable for {Language}", targetLang);
                 activity?.SetTag("CircuitBreakerOpen", true);
                 _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is temporarily unavailable due to overload. Circuit breaker is open.",
+                    batch);
+            }
+            catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                // 429 after all retries exhausted - this indicates sustained rate limiting
+                logger.LogWarning(
+                    "Translation service rate limiting persists after retries for {Language}. Service may be overloaded.",
+                    targetLang);
+                activity?.SetTag("RateLimitExhausted", true);
+                // Don't record as failure - this is rate limiting, not a service failure
+                throw new TranslateException(
+                    "Translation service rate limit exceeded after retries (429)",
                     batch);
             }
             catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Forbidden)

@@ -1,101 +1,160 @@
 # Minusta
 
-## Scott Galloway johtaa. NET Developer & CTO
+<!--category-- Resume , introduction -->
+<datetime class="hidden">2025-12-31T22:30</datetime>
 
-<!--category-- resume , introduction -->
-Olen monipuolinen ja taitava kehittäjä ja johtohahmo, jolla on yli 25 vuoden urakehitystiimit ja alustat sekä elvyttävät startup-yritykset.
-Taitavia C#-, ASP.NET- ja nykyaikaisissa verkkokehyksissä, joilla on laaja kokemus pilvipalveluista, DevOps-palveluista, tietokantojen hallinnasta ja hakutekniikoista. Menestyksekkäiden kehitysprojektien tulokset eri toimialoilla teknologiajätistä innovatiivisiin startup-yrityksiin on todistettu.
+# Scott Galloway, teknologiajohtaja, järjestelmäpäällikkö, arkkitehti, kauko-ohjain
 
-Tarvitsetko apua seuraavan projektin rakentamiseen? [Ota yhteyttä](mailto:scott.galloway@gmail.com)
+Olen tekninen johtaja, jolla on yli 30 vuotta aikaa rakentaa ja skaalata insinööriryhmiä ja -tuotteita.
 
-[TÄYTÄNTÖÖNPANO
+Olen toiminut teknologiapäällikkönä ja johtavana arkkitehtinä kaikissa startup-yrityksissä ja yrityksissä – esisiemenyhtiöistä, jotka rakentavat ensimmäistä MVP:tään, miljoonien käyttäjien skaalausjärjestelmiin.**Olin useita vuosia Microsoftilla ASP.NET-ohjelmapäällikkönä Redmondin kampuksella, mikä antoi syvällisiä tietoja siitä, miten .NET-ekosysteemi toimii sisältä käsin.**Vuodesta 2012 olen juossut
 
-## Työhistoria
+[TOC]
 
-### Consulting  Lead Developer / Arkkitehti / Toimitusjohtaja  Remote
+## enimmäkseen niukasti
 
-Tammi 2012 – Läsnä
+**, yhteistyötä yritysten kanssa kaikissa vaiheissa: teknisten tiimien perustaminen, alustan suunnittelu tyhjästä, perintöjärjestelmien pelastaminen ja johtavat osastot kasvuvaiheiden kautta.**Mitä minä tuon
 
-Ohjasi useita asiakasprojekteja Lead Developerina, Architectina ja väliaikaisena teknologiajohtajana, varmistaen onnistuneen tuotelanseerauksen ja projektin loppuunsaattamisen.
-Kehitti kattavan koulutusohjelman yli 200 aloittelijalle ja saavutti 90 prosentin työllisyysasteen.
-Nykyaikaistetut vanhat järjestelmät, jotka parantavat toiminnallista tehokkuutta ja käyttökokemusta kehittyneillä teknologisilla ratkaisuilla.
-Overhauled on e-commerce platform, joka parantaa suorituskykyä, skaalautuvuutta ja ylläpidettävyyttä.
+**Kurkistan kanssasi.**Olen pannut startup-yrityksiä ansaan teknisenä perustajana, rakentanut ja johtanut 20+-insinöörin tiimejä ja toiminut väliaikaisena teknologiajohtajana A-sarjaa nostaville yrityksille.
 
-### Very Jane Ltd Senior Contract Developer Remote
+**Olen tehnyt sen riippumatta siitä, tarvitsetko jonkun suunnittelemaan MVP:n, rakentamaan ensimmäisen insinööritiimisi tai ryhtymään insinööripäälliköksi.**Olen lähellä, kun sillä on merkitystä.
 
-Huhti 2024 – elokuu 2024
+**Osaan (ja teen) kirjoittaa tuotantokoodia, vianilmausvirheitä ja arkkitehtikompleksin hajautettuja järjestelmiä.**Mutta tiedän myös, milloin pitää perääntyä ja antaa joukkueen toimia.
 
-Arkkitehtoidut backend-järjestelmät laajaan verkkokauppasovellukseen, jossa yhdistetään maksujärjestelmät, kuten Stripe Connect ja Hyperwallet.
-Toteutettu ASP.NET 8 -ratkaisuja tuotteiden lastauksen, maksujen ja mainosten sujuvoittamiseksi.
+**Olen palkannut, ohjannut ja johtanut insinöörejä useilla mantereilla.**Rakennan joukkueita, jotka kestävät.
 
-### Semcor Ltd:n suunnittelupäällikkö (sopimus)
+## Loin kehittäjäkoulutusohjelman, joka sijoitti alalle 200+ juniorikehittäjää (90 %+ onnistumisprosentti).
 
-Joulu 2022 – huhti 2024
+Uskon kykyjen kasvattamiseen sisäisesti ja insinöörikulttuurien luomiseen, joissa ihmiset tekevät parasta työtään.
 
-Kuuden kehittäjän tiimi johti ASP.NET Core -järjestelmän rakentamiseen ja rekonstruoimiseen, Docker Compose -järjestelmän ja OpenSearchin yhdistämiseen paremman tiedonsaannin ja raportoinnin varmistamiseksi.
-Taattu saumaton siirtyminen ja järjestelmien skaalautuvuus asiakkaiden muuttuviin tarpeisiin.
+### Suloinen paikkani:
 
-### GBG Plc (Loqate) Johtava insinööri kauko-ohjauksessa
+- **[Varhais- ja keskivaiheen startupit, jotka tarvitsevat jonkun, joka osaa suunnitella oikean ratkaisun, rakentaa tai johtaa tiimiä toimittamaan sen, ja laajentavat sekä järjestelmää että organisaatiota yrityksen kasvaessa.](https://www.nuget.org/packages/Umami.Net)**Yhtä hyvin voin johtaa osastoa tai pyörittää hihojani pienen joukkueen teknisenä perustajana.
 
-elo 2022 – marras 2022
+- **[Tekniikkapino:](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)**Olen työskennellyt kaikessa Perl CGI -skripteistä moderneihin Go -mikropalveluihin, vaikka painopisteeni on .NET (ASP.NET Core Through .NET 9).
 
-Spearhead kehitti maailmanlaajuisen hakutuotteen käyttäen.NET 6 -mikropalveluita ja Kuberneteja, optimoiden korkeaa syöttömäärää ja suuria tietosarjoja.
-Aseta tekninen suunta CI/CD-, testaus- ja globaalin mittakaavan järjestelmätoiminnoille.
+- **[Olen kieliagnostikko ja pragmaattinen valitessani tehtävään oikean työkalun – olipa kyseessä sitten modernit etuosakehykset (HTMX, Alpine.js, React, Vue.js), tietokannat (PostgreSQL, SQL Server, MongoDB) tai infrastruktuuri (Docker, Kubernetes, Azure).](https://www.nuget.org/packages/mostlylucid.mockllmapi)**Rakennan julkisesti ja osallistun takaisin dev-yhteisöön avoimen lähdekoodin pakettien ja yksityiskohtaisen teknisen kirjoittamisen kautta.
 
-### WCOM AB:n johtava kehittäjä (sopimus)
+- **[Avaa lähdekoodin & paketit](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)**Uskon, että dev-yhteisölle annetaan takaisin.
 
-Loka 2021 – toukokuu 2022
+- **[Tämän olen julkaissut:](https://www.nuget.org/packages/MostlyLucid.EufySecurity)**NuGet-paketteja**Umami.net**.NET-asiakas Umami Web Analyticsille.
 
-Suoritti erilaisia projekteja kattavan raportointi- ja mikropalveluarkkitehtuurin Azure DevOpsin, Azure Functionsin ja Blazor Serverin avulla.
-Kehitetty SignalR-pohjainen IPC ja näytön peilaussovellukset parantaa käyttäjien vuorovaikutusta.
+### Yksityisyyteen keskittyvä analytiikka on yksinkertaista.
 
-### H3Space Limited, johtava insinööri, kauko-ohjain
+- **[Enimmäkseen lucid.Markdig.Extension](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)**- Täydellinen ratkaisu kauko-ohjattavan maaliviivan hakemiseen ja välimuistiin useilla säilytystallenteilla ja vanhentuneella vakiomallilla.
 
-Kesä 2021 – syyskuu 2021
+enimmäkseen lucid.mockllmapi
 
-Rakentanut kehitystiimin ja määritellyt alustaarkkitehtuurin skaalautuvalle verkkoyhteisölle, joka tukee Unity 3D Desktop -työkalua.
-Toimitettu täysreppuratkaisuja käyttäen React JS-, GraphQL- ja Azure-palveluita.
+## - Kevyt ASP.NET Core -kevytohjelma, jolla luodaan realistisia pilkullisia API-vastauksia paikallisilla LLM-laitteilla (Ollaman kautta).
 
-### Huozhi Limitedin tekninen konsultti / Dev Lead (sopimus)
+**Lisää älyllisiä valepäätteitä mihin tahansa projektiin, jossa on vain kaksi riviä koodia.**Enimmäkseen lucid.paggingtag-auttaja
 
-Kesä 2018 – maaliskuu 2020
+**HTMX-käyttöiset ASP.NET Core Tag Helpers -hakulaitteet.**EnimmäkseenLucid.EufySecurity
 
-Tarjosi teknistä johtajuutta ja tiimin muodostamista startup-yritykseksi, joka palasi ratkomaan kehitystä ja vapauttamaan haasteita.
+**- A**erittäin kokeellinen
 
-### Interactive Reporting Limited  Lead Developer (Contract)  Remote
+.NET-asiakaskirjasto Eufy Security -laitteiden hallintaan.**Se toimii, mutta käyttää omalla riskillään.**NPM-paketit
 
-Joulu 2015 – kesäkuu 2021
+## @mostlylucid/mermaid-enhancements
 
-Kehitti verkkopohjaisen raportointialustan ASP.NET MVC:n, WPF:n ja WinForms:n avulla.
+**[- Parantaa Merenneidon kaavioita viemällä, panemalla, zoomaamalla, laajentamalla valolaatikkoa ja vaihtamalla teemaa.](https://www.mostlylucid.net)**Kaikki nämä tulivat todellisista tarpeista projekteissa, joita tein.[Kun törmään ongelmaan, jolla ei ole hyvää ratkaisua, rakennan sellaisen ja jaan sen.](https://github.com/scottgal/mostlylucidweb)Taustaa ja kokemusta
 
-### Microsoft Corp.  ohjelmapäällikkö II  Redmond, WA, Yhdysvallat
+**Microsoft**(2005–2009): Aloitti Application Developer Consultantina Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja viritykseen.
 
-Tammi 2007 – lokakuu 2009
+Myöhemmin siirryin Redmondiin ASP.NET-tiimin ohjelmapäällikkönä II, jossa hoidin julkaisun elinkaarta ja työskentelin projektipalvelimen turvallisuusinfrastruktuurin parissa.
 
-Drive the ASP.NET release lifestyle, management bugitriage and integration with the large.NET community.
-Toimitettu ydinominaisuuksia ja uutta turvallisuusinfrastruktuuria Project Serverille.
+- **Dell**(2011): ASP.NET MVC:n avulla rakennettiin oma konekuva-alusta.
+- **Freelance**(2012-present): Olen työskennellyt GBG Plc:n (Loqate) kaltaisten yritysten kanssa, joihin rakensin maailmanlaajuisia hakutuotteita käyttäen .NET 6 -mikropalveluita ja Kuberneteja.
+- **Seamcor Oy:ssä ohjasin joukkueita ASP.NET Core -järjestelmien uudelleenjärjestämiseen käyttäen Docker Composea ja OpenSearchia.**Viimeisimpänä ZenChef Limitedissä olen johtanut siirtymistä vanhoista Azure-järjestelmistä .NET 8 -verkolle, mikä on vähentänyt merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
+- **Olen myös rakentanut ja pyörittänyt**kehittäjäkoulutusohjelma
 
-### Koulutus
+Se on auttanut yli 400:aa juniorikehittäjää murtautumaan alalle (90 % työharjoittelusta).
 
-Stirlingin yliopiston psykologian kandidaatti (Hons)
-Aloituspäivä: Syyskuu 1992 - Loppupäivä: Kesäkuu 1996
-Sijainti: Stirling, Skotlanti, Iso-Britannia
+- **Opetusta ja mentorointia rakastan aidosti.**Tämä sivusto
+- **enimmäkseen lucid.net**on hullu laboratorioni – elävä koodipohja, jossa kokeilen mitä tahansa, mikä herättää kiinnostukseni verkon kehittämiseen.
+- **Koko alusta on**avoin lähdekoodi GitHubissa
+- **Siitä on tullut kasvualusta julkaisemalleni NuGet- ja NPM-paketille.**Teema:
+- **Katso ongelma, etsi ratkaisu, toteuta se ja pura se uudelleenkäytettävään pakettiin.**Itse infrastruktuuri on tapaustutkimus tehokkaista palvelintoiminnoista:
+- **Dockerin sävellysorkesteri**koko pinon osalta (sovellus, tietokanta, analytiikka, käännöspalvelut, seuranta)
+- **Täysi CI/CD-putki**GitHub-toiminnoilla, automaattisella testauksella ja käyttöönotolla
 
-### Taidot
+Kattava havainnointikyky
 
-Languages & Frameworks: C# (25 vuotta), JavaScript (20 vuotta), ASP.NET to.NET 8 (25 vuotta), Node.js, React, Vue
-Tietokannat: SQL (SQL Server, Postgres, MySQL, SQLite), NoSQL (MongoDB, RavenDb)
-Cloud Computing & DevOps: Azure, Docker, Kubernetes
-Ohjelmistokehitys ja johtajuus: Development Lead, Engineering, CTO
-Ammattimaisia kohokohtia
-Monipuolinen kehitysosaaminen: Yli 25 vuotta ohjelmistosovellusten kehittämisessä ja strategiassa koodauksesta johtoportaaseen.
-Monipuolinen teollisuusvaikutus: Microsoftin ja Dellin kaltaisten teknologiajättien ja eri alojen startup-yritysten panos.
-Remote Leadership & Education: Ohjasi menestyksekkäästi etäryhmiä ja loi kehittäjäkoulutusohjelman, jonka onnistumisprosentti oli 90 prosenttia.
-Viimeaikainen teknologinen fokus: Taitavia modernin kehityksen pinoissa ja sopeutuneita etätyöhön maailmanlaajuisen pandemian aikana.
-Linkkejä
-LinkedIn: Scott Galloway
-Harrastukset
-Retkeily
-Tekniikan blogien lukeminen
-Matkustaminen
-Mentoroimaan pyrkiviä kehittäjiä
+## (Serilog + Seq, Prometheus, Grafana) – koska et pysty korjaamaan sitä, mitä et näe
+
+Omavaltainen kaiken[— tietokanta, analytiikka (Umami), käännös (EasyNMT), käänteinen valtakirja (Caddy)](mailto:scott.galloway+ml@gmail.com)
+
+Alustassa on kutevia paketteja:<https://www.mostlylucid.net>
+
+Kaksitilabloggausjärjestelmä<https://github.com/scottgal>
+
+(file-based markedown tai PostgreSQL) – johti Markdig.FetchExtension -pakettiin[Automaattikäännös](https://www.linkedin.com/in/scott-galloway-91608691/)
+
+**12 kielelle EasyNMT:n kautta**Kokotekstihaku
+
+---
+
+
+## PostgreSQL tsvector/GIN-indeksien avulla
+
+### Interaktiiviset merenneitokaaviot
+
+**Pan/zoom/export – tuli @mostlylucid/mermaid-enhancements npm-paketti**HTMX-käyttöinen haku
+**• uutettu hakutagien auttaja NuGet-pakettiin**Umamin analytiikkaintegraatio
+**– tuli Umami.net-paketti**LLM-käyttöiset pilkkarajapinnat
+**Kehitystä varten – tuli mockllmapi-paketti**Se on sotkuista, kokeellista ja jatkuvasti kehittyvää.
+**Se on tarkoituskin.**Yhteystiedot
+**Sähköposti:**Scott.galloway+ml@gmail.com
+**Blogi:**GitHub:
+**LinkedIn:**Scott Galloway
+
+### Etsitkö konsultointiapua vai sopimusroolia?
+
+**Olen aina avoin mielenkiintoisille projekteille.**Jätä minulle jono.
+
+**Yksityiskohdat (jos tarvitset niitä)**Tekninen pino
+
+- Kielet:
+- Perl CGI:stä Go -mikropalveluihin – C#/.NET (pääpainoni), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
+- Olen kieliagnostikko ja valitsen ongelman, en kohun, perusteella.
+- Tausta:
+
+**ASP.NET Core kautta .NET 9, Node.js, Python API, Go-palvelut**
+
+**Frontend:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (mikä tahansa sopii käyttökoteloon)
+
+**CSS:**Perätuuli CSS, Bootstrap, DaisyUI
+
+**Tietokannat:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+
+**DevOps:**Docker, Kubernetes, GitHub-toiminnot, Azure DevOps, CI/CD-putket, infrastruktuuri koodina*[Pilvi:*Azure (vaikka pidänkin yhä enemmän itseohjautuvista ratkaisuista kustannusten ja hallinnan kannalta)
+
+**AI/ML:**Ollama, EasyNMT, ML.NET, Scikit-oppi, upotukset, ANN:t, RAG-putket, Azure OpenAI*[Uran kohokohtia*Microsoft Corporation
+
+**(2005–2009): Aloitti Application Developer Consultant II:na Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja yrityskonsultointiin FTSE 100 -asiakkaille.**Edistetään ohjelmapäällikkö II:lle Redmondiin, WA:han, jossa hoidin ASP.NETin käyttöiät ja ajoin tietoturvainfrastruktuuria Project Serverille.*[enimmäkseen niukasti*(2012-Present): Konsultointini kautta olen toimittanut kymmeniä ratkaisuja fintechin, terveydenhuollon, verkkokaupan ja hallinnon aloille sekä sopimus- että päätoimisissa tehtävissä.
+
+### Merkittäviä tapaamisia ovat muun muassa seuraavat:
+
+**Merkittävän aasialaisen lentoyhtiön varausjärjestelmän johtava arkkitehti/kehittäjä (Knockout & ASP.NET MVC)**T&K-kehittäjä vakuutusyhtiön telemetriaseurantaan (Azuren matalatasoiset pistorasiajärjestelmät)
+Research Systems Architect on British Government National Security -jaettu tietojenkäsittelyhanke
+
+Tekninen konsultti 8 Britannialle ja kansainvälisille hyväntekeväisyysjärjestöille
+
+---
+
+
+## Viimeaikaiset roolit (sopimus ja kokoaikainen):
+
+**ZenChef Limited**(Octt 2024 - Present): Johda ison perinnön Azure-pohjainen hajautettu järjestelmä .NET 8 -järjestelmään, joka vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
+
+**Jatka massiivisen perintöjärjestelmän tukemista.**Very Jane Ltd
+
+**(Apr 2024 - elo 2024): Backend-integraatio laajaan verkkokauppasovellukseen, jossa otetaan käyttöön Stripe Connect ja Hyperwallet -maksujärjestelmät.**Semcor Ltd
+
+**(joulukuu 2022 – huhtikuu 2024): ASP.NET Core -järjestelmä otettiin käyttöön konetekniikan päällikkönä, ja Docker Compose ja OpenSearch havittelivat tehostettua raportointia.**GBG Plc (Loqate)
+
+**(Ug 2022 – marras 2022)**Kokoaikaiseksi]
+
+: Rakensi maailmanlaajuisen hakutuotteen .NET 6 -mikropalveluiden ja Kubernetesin avulla korkeatasoista, laajamittaista tietojenkäsittelyä varten.**H3Space Ltd**.
+
+(Kesä 2021 – syys 2021)
