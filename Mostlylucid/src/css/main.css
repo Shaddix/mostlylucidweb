@@ -436,7 +436,7 @@ nav.ml_toc,
 /* Comments and documentation */
 .dark .hljs-comment,
 .dark .hljs-quote {
-    color: #5c6370 !important;
+    color: #bbb !important;
     font-style: italic;
 }
 
