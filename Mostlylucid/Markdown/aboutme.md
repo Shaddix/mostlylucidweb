@@ -1,7 +1,7 @@
 # About Me
 
 <!--category-- Resume , introduction -->
-<datetime class="hidden">2025-11-12T22:30</datetime>
+<datetime class="hidden">2025-12-31T22:30</datetime>
 
 # Scott Galloway | CTO | Head of Engineering | Systems Architect | Remote
 
@@ -57,17 +57,26 @@ I've also built and run a **developer training program** that's helped over 400 
 
 ## This Site
 
-**mostlylucid.net** is my playground — part blog, part portfolio, part experiment. It's where I write technical deep-dives about ASP.NET Core, HTMX, Docker, search technologies, and whatever else I'm working on. The site itself is open source and serves as a living example of modern .NET development.
+**[mostlylucid.net](https://www.mostlylucid.net)** is my crazy lab — a living codebase where I experiment with whatever catches my interest in web development. The entire platform is [open source on GitHub](https://github.com/scottgal/mostlylucidweb), and it's become a breeding ground for the NuGet and NPM packages I've published.
 
-The platform features:
-- Dual-mode blog system (file-based markdown or PostgreSQL)
-- Automated translation to 12 languages via EasyNMT
-- Full-text search using PostgreSQL tsvector/GIN indexes
-- Nested comments with closure table pattern
-- Comprehensive observability (Serilog + Seq, Prometheus, Grafana)
-- HTMX + Alpine.js + Tailwind CSS frontend
+**The theme:** See problem, find solution, implement it, then extract it into a reusable package.
 
-If you're curious about any of this, the [full source code is on GitHub](https://github.com/scottgal/mostlylucidweb).
+The infrastructure itself is a case study in efficient server operations:
+- **Docker Compose orchestration** for the entire stack (app, database, analytics, translation services, monitoring)
+- **Full CI/CD pipeline** with GitHub Actions, automated testing, and deployment
+- **Comprehensive observability** (Serilog + Seq, Prometheus, Grafana) — because you can't fix what you can't see
+- **Self-hosted everything** — database, analytics (Umami), translation (EasyNMT), reverse proxy (Caddy)
+
+The platform features that spawned packages:
+- **Dual-mode blog system** (file-based markdown or PostgreSQL) — led to the Markdig.FetchExtension package
+- **Automated translation** to 12 languages via EasyNMT
+- **Full-text search** using PostgreSQL tsvector/GIN indexes
+- **Interactive Mermaid diagrams** with pan/zoom/export — became the @mostlylucid/mermaid-enhancements npm package
+- **HTMX-powered paging** — extracted into the pagingtaghelper NuGet package
+- **Umami analytics integration** — became the Umami.Net package
+- **LLM-powered mock APIs** for development — became the mockllmapi package
+
+It's messy, experimental, and constantly evolving. That's the point.
 
 ## Contact
 
@@ -77,7 +86,7 @@ Blog: <https://www.mostlylucid.net>
 
 GitHub: <https://github.com/scottgal>
 
-LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway/)
+LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 
 **Looking for consulting help or a contract role?** I'm always open to interesting projects. Drop me a line.
 
