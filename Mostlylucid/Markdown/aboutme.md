@@ -1,7 +1,7 @@
 # About Me
 
 <!--category-- Resume , introduction -->
-<datetime class="hidden">2024-09-29T22:30</datetime>
+<datetime class="hidden">2025-11-12T22:30</datetime>
 
 # Scott Galloway | CTO | Head of Engineering | Systems Architect | Remote
 
@@ -9,7 +9,7 @@ I'm a technical leader with over 30 years building and scaling engineering teams
 
 I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond campus, which gave me deep insights into how the .NET ecosystem works from the inside. Since 2012, I've run **mostlylucid limited**, working with companies at every stage: founding technical teams, architecting platforms from scratch, rescuing legacy systems, and leading departments through growth phases.
 
-
+[TOC]
 
 ## What I Bring
 
