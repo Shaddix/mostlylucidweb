@@ -579,13 +579,21 @@ services:
       - CUDA_VISIBLE_DEVICES=0,1  # Use GPUs 0 and 1
 ```
 
-### Real-World Example: Translation Service with GPU
+### Real-World Example: Translation Service with GPU and CPU Builds
 
-Here's a Docker Compose setup for a neural machine translation service (like the one used on this blog):
+Here's a real production example from [mostlylucid-nmt](https://github.com/scottgal/mostlylucid-nmt), a neural machine translation service I built that powers auto-translation on this blog.
+
+The project demonstrates:
+- **GPU and CPU variants** - Same codebase, different base images
+- **Multi-architecture builds** - Supports AMD64 and ARM64
+- **Optimized Docker images** - Both full and minimal variants
+- **Production-ready** - Health checks, volume persistence, proper logging
+
+#### GPU-Accelerated Translation Service
 
 ```yaml
 services:
-  easynmt:
+  translation:
     image: scottgal/mostlylucid-nmt:gpu
     container_name: translation-gpu
     deploy:
@@ -599,6 +607,7 @@ services:
       - MODEL_FAMILY=opus-mt
       - FALLBACK_MODELS=mbart50,m2m100
       - CUDA_VISIBLE_DEVICES=0
+      - LOG_LEVEL=info
     volumes:
       - model_cache:/app/cache  # Persistent model storage
     ports:
@@ -613,11 +622,43 @@ volumes:
   model_cache:
 ```
 
-This configuration:
-- Uses GPU acceleration for faster translation
-- Persists downloaded models in a volume
-- Includes health checks for reliability
-- Configures model fallbacks
+#### CPU-Only Alternative
+
+For environments without GPUs, the same service runs on CPU:
+
+```yaml
+services:
+  translation:
+    image: scottgal/mostlylucid-nmt:cpu
+    container_name: translation-cpu
+    environment:
+      - MODEL_FAMILY=opus-mt
+      - FALLBACK_MODELS=mbart50,m2m100
+    volumes:
+      - model_cache:/app/cache
+    ports:
+      - "8888:8888"
+    restart: unless-stopped
+
+volumes:
+  model_cache:
+```
+
+**Available image variants:**
+- `scottgal/mostlylucid-nmt:gpu` - CUDA 12.6 with PyTorch GPU support (~5GB)
+- `scottgal/mostlylucid-nmt:cpu` - CPU-only, smaller footprint (~2.5GB)
+- `scottgal/mostlylucid-nmt:gpu-min` - Minimal GPU build, no preloaded models (~4GB)
+- `scottgal/mostlylucid-nmt:cpu-min` - Minimal CPU build (~1.5GB)
+
+**Key features:**
+- **GPU Acceleration**: 10-15x faster translation with CUDA
+- **Model Auto-Download**: Downloads translation models on-demand
+- **Fallback Support**: Tries Opus-MT → mBART50 → M2M100 for maximum language coverage
+- **Volume Persistence**: Cache models across container restarts
+- **Health Endpoints**: `/health` and `/ready` for orchestrators
+- **Multi-Architecture**: Runs on x86_64 and ARM64 (Apple Silicon, Raspberry Pi)
+
+See the [full project on GitHub](https://github.com/scottgal/mostlylucid-nmt) for Dockerfile examples, build scripts, and API documentation.
 
 ## Multi-Architecture Builds with Docker Buildx
 
