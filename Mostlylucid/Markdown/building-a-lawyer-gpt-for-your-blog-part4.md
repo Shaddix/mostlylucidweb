@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 4: Building the Ingestion Pipeline
 
 <!--category-- AI, LLM, RAG, C#, Markdown, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">2025-11-09T18:00</datetime>
+<datetime class="hidden">1973-02-08T18:00</datetime>
 
 ## Introduction
 

@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 5: The Windows Client
 
 <!--category-- AI, LLM, WPF, Avalonia, C#, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">2025-11-09T20:00</datetime>
+<datetime class="hidden">1973-02-08T20:00</datetime>
 
 ## Introduction
 

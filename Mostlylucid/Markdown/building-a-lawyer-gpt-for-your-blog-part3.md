@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 3: Understanding Embeddings & Vector Databases
 
 <!--category-- AI, LLM, Embeddings, Vector Database, C#, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">2025-11-09T16:00</datetime>
+<datetime class="hidden">1973-02-08T16:00</datetime>
 
 ## Introduction
 

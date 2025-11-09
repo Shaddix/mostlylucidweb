@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 1: Introduction & Architecture
 
 <!--category-- AI, LLM, RAG, C#, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">2025-11-09T12:00</datetime>
+<datetime class="hidden">1973-02-08T12:00</datetime>
 
 ## Introduction
 

@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 2: GPU Setup & CUDA in C#
 
 <!--category-- AI, LLM, CUDA, C#, GPU, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">2025-11-09T14:00</datetime>
+<datetime class="hidden">1973-02-08T14:00</datetime>
 
 ## Introduction
 
