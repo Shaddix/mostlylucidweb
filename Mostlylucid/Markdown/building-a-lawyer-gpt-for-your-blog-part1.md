@@ -56,6 +56,26 @@ This is my specific setup, but you **don't need this hardware** to follow along.
 - **SSD**: Recommended for model loading
 - **Space**: ~20GB for models and vector database
 
+### What About Intel/AMD NPUs?
+
+Modern CPUs now include dedicated AI accelerators:
+- **Intel Core Ultra** (Meteor Lake+) - Intel AI Boost (NPU)
+- **AMD Ryzen AI** (7040/8040 series) - XDNA NPU
+- **AMD Ryzen AI Max** (Strix Point) - Up to 50 TOPS
+
+**Current Status (as of writing):**
+- ✅ Great for: On-device inference, battery efficiency (laptops)
+- ⚠️ Limited for our use: Immature .NET/ONNX Runtime support
+- ❌ Not ready for: This project's primary path
+
+**Why not NPUs for this series?**
+1. **Software ecosystem**: CUDA has 15+ years of maturity, NPU support in .NET is nascent
+2. **Model compatibility**: Most models target CUDA/CPU, NPU optimization is rare
+3. **Documentation**: Limited resources for NPU development in C#
+4. **Performance**: Currently slower than discrete GPUs for our workload
+
+**Future consideration**: Once [ONNX Runtime](https://onnxruntime.ai/) and [DirectML](https://github.com/microsoft/DirectML) mature their NPU support (likely 2024-2025), these will become viable alternatives!
+
 **Bottom line**: I'll show the GPU-accelerated path, but will note CPU-only alternatives throughout. You can start CPU-only and upgrade later!
 
 [TOC]

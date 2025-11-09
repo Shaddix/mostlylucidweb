@@ -84,6 +84,25 @@ Here's what various GPUs can handle:
 | A4000 (mine) | 16GB | 7B-13B | Workstation GPU |
 | GTX 1070 Ti | 8GB | 7B (tight) | Minimum viable |
 
+### What About Intel/AMD NPUs?
+
+You might have heard about Intel Core Ultra or AMD Ryzen AI chips with built-in NPUs (Neural Processing Units). **Can you use those instead of NVIDIA?**
+
+**Short answer**: Not yet, but maybe in 2024-2025!
+
+**Current limitations**:
+- **No CUDA**: NPUs don't support CUDA, which this tutorial uses
+- **Limited .NET support**: ONNX Runtime's NPU support is experimental
+- **Model compatibility**: Most GGUF models target CUDA/CPU
+- **DirectML support**: Still maturing for LLMs
+
+**If you have an NPU-equipped CPU**:
+- Use CPU-only mode for now (everything works, just slower)
+- Watch for [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) updates
+- Future parts will note when NPU support improves
+
+This series focuses on **NVIDIA CUDA** because it's mature and well-supported in .NET, but the concepts will translate to NPUs once the ecosystem catches up!
+
 ### Check Your GPU
 
 First, verify Windows sees your GPU:
