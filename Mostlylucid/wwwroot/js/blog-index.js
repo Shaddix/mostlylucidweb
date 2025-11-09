@@ -43,18 +43,31 @@
       const orderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
       const start = url.searchParams.get('startDate');
       const end = url.searchParams.get('endDate');
+
+      // Language code to name mapping
+      const langMap = {
+        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+        'it': 'Italian', 'nl': 'Dutch', 'sv': 'Swedish', 'fi': 'Finnish',
+        'ar': 'Arabic', 'hi': 'Hindi', 'zh': 'Chinese', 'jap': 'Japanese',
+        'el': 'Greek', 'uk': 'Ukrainian'
+      };
+
       const orderMap = {
         'date_desc':'Newest first',
         'date_asc':'Oldest first',
         'title_asc':'Title A–Z',
         'title_desc':'Title Z–A'
       };
+
       const ordKey = `${orderBy}_${orderDir}`;
       const parts = [];
-      parts.push(`Lang: ${language}`);
-      parts.push(orderMap[ordKey] || 'Custom order');
-      if(start && end){ parts.push(`${start} → ${end}`); }
-      summaryEl.textContent = parts.join(' • ');
+      const langName = langMap[language.toLowerCase()] || language.toUpperCase();
+      parts.push(`<span class="font-medium">${langName}</span>`);
+      parts.push(`<span class="text-gray-500 dark:text-gray-400">${orderMap[ordKey] || 'Custom order'}</span>`);
+      if(start && end){
+        parts.push(`<span class="text-blue-600 dark:text-blue-400">${start} → ${end}</span>`);
+      }
+      summaryEl.innerHTML = parts.join(' <span class="text-gray-400">•</span> ');
     }
 
     function hookThemeObserver(){
@@ -124,6 +137,7 @@
             const [ob,od] = ord.split('_');
             u.searchParams.set('orderBy', ob);
             u.searchParams.set('orderDir', od);
+            updateSummary();
             applyNavigation(u);
           }
         }
@@ -137,7 +151,10 @@
     }
 
     clearBtn && clearBtn.addEventListener('click', function(){
-      updateSummary();
+      // Clear the flatpickr input
+      if(input && input._flatpickr){
+        input._flatpickr.clear();
+      }
       const u = new URL(window.location.href);
       u.searchParams.delete('startDate');
       u.searchParams.delete('endDate');
@@ -146,6 +163,7 @@
       const [ob,od] = ord.split('_');
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
+      updateSummary();
       applyNavigation(u);
     });
 
@@ -156,6 +174,7 @@
       const [ob,od] = ord.split('_');
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
+      updateSummary();
       applyNavigation(u);
     });
 
@@ -165,6 +184,7 @@
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
       if(langSelect) u.searchParams.set('language', langSelect.value);
+      updateSummary();
       applyNavigation(u);
     });
   }
