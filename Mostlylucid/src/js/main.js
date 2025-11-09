@@ -8,8 +8,12 @@ import hljs from "highlight.js";
 import EasyMDE from "easymde";
 import 'easymde/dist/easymde.min.css';
 import '../css/easymde-overrides.css';
+import flatpickr from "flatpickr";
+import 'flatpickr/dist/flatpickr.min.css';
+import '../css/flatpickr-overrides.css';
 
 window.EasyMDE = EasyMDE;
+window.flatpickr = flatpickr;
 
 window.Alpine = Alpine;
 window.hljs=hljs;
