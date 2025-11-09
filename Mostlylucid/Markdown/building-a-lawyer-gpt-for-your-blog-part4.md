@@ -751,7 +751,7 @@ namespace Mostlylucid.BlogLLM.Core.Services
             return embeddings;
         }
 
-        private float[] GenerateEmbedding(string text)
+        public float[] GenerateEmbedding(string text)
         {
             // Tokenize
             var encoding = _tokenizer.Encode(text);
