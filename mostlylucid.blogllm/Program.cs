@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mostlylucid.BlogLLM.Models;
 using Mostlylucid.BlogLLM.Services;
+using Mostlylucid.Markdig.FetchExtension.Services;
 using Spectre.Console;
 using System.Diagnostics;
 
@@ -9,6 +12,7 @@ namespace Mostlylucid.BlogLLM;
 class Program
 {
     private static IConfiguration? _config;
+    private static IServiceProvider? _serviceProvider;
     private static string _modelPath = string.Empty;
     private static string _tokenizerPath = string.Empty;
     private static int _dimensions = 384;
@@ -84,6 +88,13 @@ class Program
         _maxChunkTokens = int.Parse(section["Chunking:MaxChunkTokens"] ?? "512");
         _minChunkTokens = int.Parse(section["Chunking:MinChunkTokens"] ?? "100");
         _overlapTokens = int.Parse(section["Chunking:OverlapTokens"] ?? "50");
+
+        // Setup dependency injection for markdown fetch service
+        var services = new ServiceCollection();
+        services.AddHttpClient();
+        services.AddLogging(builder => builder.AddConsole());
+        services.AddSingleton<IMarkdownFetchService, SimpleMarkdownFetchService>();
+        _serviceProvider = services.BuildServiceProvider();
     }
 
     static string ShowMainMenu()
@@ -148,7 +159,8 @@ class Program
 
                 // Initialize services
                 AnsiConsole.MarkupLine("[dim]Initializing services...[/]");
-                var parser = new MarkdownParserService();
+                var logger = _serviceProvider?.GetService<ILogger<MarkdownParserService>>();
+                var parser = new MarkdownParserService(_serviceProvider, logger);
                 var chunker = new ChunkingService(_tokenizerPath, _maxChunkTokens, _minChunkTokens, _overlapTokens);
 
                 using var embedder = new EmbeddingService(_modelPath, _tokenizerPath, _dimensions, _useGpu);
