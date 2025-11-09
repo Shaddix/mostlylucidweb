@@ -85,6 +85,8 @@ public partial class MarkdownRenderingService : MarkdownBaseService
 
         // Process the rest of the lines as either HTML or plain text
         var processed = global::Markdig.Markdown.ToHtml(restOfTheLines, pipeline);
+        // Post-process HTML to rewrite local Windows file paths in <img src> to web-served paths
+        processed = RewriteLocalImageSources(processed);
         var plainText = global::Markdig.Markdown.ToPlainText(restOfTheLines, pipeline);
 
         // Generate the slug from the page filename
@@ -102,6 +104,52 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             Slug = slug,
             Title = title
         };
+    }
+
+    private static bool LooksLikeWindowsAbsolutePath(string src)
+    {
+        if (string.IsNullOrWhiteSpace(src)) return false;
+        // file:/// or drive letter like C:\ or C:/ or UNC \\\\server\share
+        if (src.StartsWith("file://", StringComparison.OrdinalIgnoreCase)) return true;
+        if (src.Length >= 3 && char.IsLetter(src[0]) && src[1] == ':' && (src[2] == '/' || src[2] == '\\')) return true;
+        if (src.StartsWith("\\\\")) return true;
+        return false;
+    }
+
+    private static string RewriteLocalImageSources(string html)
+    {
+        if (string.IsNullOrEmpty(html)) return html;
+        // Find <img ... src="..." ...>
+        var imgRegex = new Regex("<img[^>]*?src=\"([^\"]+)\"[^>]*>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return imgRegex.Replace(html, match =>
+        {
+            var tag = match.Value;
+            var src = match.Groups[1].Value;
+            if (!LooksLikeWindowsAbsolutePath(src)) return tag;
+
+            try
+            {
+                // Extract filename and rewrite to /img/shots/{filename}
+                var fileName = System.IO.Path.GetFileName(src.Replace('\\', '/'));
+                if (string.IsNullOrEmpty(fileName)) return tag;
+                var newSrc = "/img/shots/" + Uri.EscapeDataString(fileName);
+                var replaced = Regex.Replace(tag, "src=\"[^\"]+\"", $"src=\"{newSrc}\"", RegexOptions.IgnoreCase);
+                if (!replaced.Contains("onerror=", StringComparison.OrdinalIgnoreCase))
+                {
+                    // insert onerror fallback before closing '>'
+                    var idx = replaced.LastIndexOf('>');
+                    if (idx >= 0)
+                    {
+                        replaced = replaced.Insert(idx, " onerror=\"this.onerror=null;this.src='/img/placeholder.svg'\"");
+                    }
+                }
+                return replaced;
+            }
+            catch
+            {
+                return tag;
+            }
+        });
     }
 
     private string GetSlug(string fileName)

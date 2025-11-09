@@ -16,17 +16,51 @@ public class BlogController(BaseControllerService baseControllerService,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
     // Temporarily disabled for development - re-enable for production
-    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize" },
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) },
         Location = ResponseCacheLocation.Any)]
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
-        VaryByQueryKeys = new[] { nameof(page), nameof(pageSize) })]
+        VaryByQueryKeys = new[] { nameof(page), nameof(pageSize), nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) })]
     [HttpGet]
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null, string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc")
     {
-        var posts = await blogViewService.GetPagedPosts(page, pageSize);
+        var posts = await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate);
+        // Apply ordering on the result set
+        if (posts?.Data != null)
+        {
+            bool asc = string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase);
+            switch ((orderBy ?? "date").ToLowerInvariant())
+            {
+                case "title":
+                    posts.Data = (asc ? posts.Data.OrderBy(p => p.Title) : posts.Data.OrderByDescending(p => p.Title)).ToList();
+                    break;
+                case "date":
+                default:
+                    posts.Data = (asc ? posts.Data.OrderBy(p => p.PublishedDate) : posts.Data.OrderByDescending(p => p.PublishedDate)).ToList();
+                    break;
+            }
+        }
+        // Set LinkUrl to preserve filters and options if present
+        posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir });
         if (Request.IsHtmx()) return PartialView("_BlogSummaryList", posts);
-        posts.LinkUrl = Url.Action("Index", "Blog");
         return View("Index", posts);
+    }
+
+    [HttpGet("calendar-days")]
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(year), nameof(month), nameof(language) }, Location = ResponseCacheLocation.Any)]
+    [OutputCache(Duration = 1800, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(year), nameof(month), nameof(language) })]
+    public async Task<IActionResult> CalendarDays(int year, int month, string language = MarkdownBaseService.EnglishLanguage)
+    {
+        if (year < 2000 || month < 1 || month > 12) return BadRequest("Invalid year or month");
+        var start = new DateTime(year, month, 1);
+        var end = start.AddMonths(1).AddDays(-1);
+        var posts = await blogViewService.GetPostsForRange(start, end, language: language);
+        var dates = posts
+            .Select(p => p.PublishedDate.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .Select(d => d.ToString("yyyy-MM-dd"))
+            .ToList();
+        return Json(new { dates });
     }
 
     [Route("{slug}")]

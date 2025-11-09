@@ -1,22 +1,53 @@
 ﻿@model Mostlylucid.Models.Blog.PostListViewModel
-<div class="pt-2" id="content">
+<div class="pt-4" id="content">
 
    
-    <div class="inline-flex w-full items-center justify-center print:!hidden">
- 
-        <paging 
-            hx-boost="true"
-            class="mt-4"
-                    hx-target="#content"
-                    hx-push-url="false"
-                    hx-swap="show:none"
-                    hx-headers='{"pagerequest": "true"}'
-                    model="@Model">
-            </paging>
-   </div>
+    <div class="flex w-full items-center gap-3 print:!hidden">
+    <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+        <input id="dateRange" type="text" placeholder="Filter by date range" class="input input-bordered input-sm w-52 bg-white text-gray-800 border-gray-300 placeholder-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400" />
+        <button id="clearDateFilter" class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600">Clear</button>
+    </div>
+    <div class="flex items-center gap-2 shrink-0 whitespace-nowrap">
+        @{
+            var langs = Model?.Data?.SelectMany(p => p.Languages ?? Array.Empty<string>()).Concat(new[]{"en"}).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>{"en"};
+        }
+        <partial name="_LanguageDropDown" model="langs" />
+        <select id="orderSelect" class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600">
+            <option value="date_desc">Newest first</option>
+            <option value="date_asc">Oldest first</option>
+            <option value="title_asc">Title A–Z</option>
+            <option value="title_desc">Title Z–A</option>
+        </select>
+    </div>
+    <div class="ml-2 text-xs text-gray-600 dark:text-gray-300 shrink-0" id="filterSummary" aria-live="polite"></div>
+    <paging 
+        hx-boost="true"
+        class="ml-auto shrink-0 whitespace-nowrap"
+        hx-target="#content"
+        hx-push-url="false"
+        hx-swap="show:none"
+        hx-headers='{"pagerequest": "true"}'
+        model="@Model">
+    </paging>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+/* Theme-aware overrides for Flatpickr in dark mode */
+html.dark .flatpickr-calendar { background-color: #1f2937 !important; color: #e5e7eb !important; border-color: #374151 !important; }
+html.dark .flatpickr-months, html.dark .flatpickr-weekdays { background-color: #111827 !important; border-color: #374151 !important; color: #e5e7eb !important; }
+html.dark .flatpickr-day { color: #e5e7eb !important; }
+html.dark .flatpickr-day:hover { background-color: #374151 !important; }
+html.dark .flatpickr-day.today { border-color: #60a5fa !important; }
+html.dark .flatpickr-day.selected, 
+html.dark .flatpickr-day.startRange, 
+html.dark .flatpickr-day.endRange, 
+html.dark .flatpickr-day.inRange { background-color: #2563eb !important; border-color: #2563eb !important; color: #ffffff !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     @if (ViewBag.Categories != null)
     {
-        <div class="mb-8 mt-6" x-data="{ openCategories: false }">
+        <div class="mb-8 mt-6" x-data="blogCategories()">
             <div class="collapse collapse-arrow border border-neutral-400 dark:border-neutral-600 rounded-lg bg-gray-200 dark:bg-gray-800">
                 <input 
                     type="checkbox" 

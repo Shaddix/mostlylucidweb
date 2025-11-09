@@ -15,7 +15,7 @@ public interface IBlogViewService : IMarkdownFileBlogService
         string[]? categories=null, string language = MarkdownBaseService.EnglishLanguage);
     Task<PostListViewModel> GetPostsByCategory(string category, int page = 1, int pageSize = 10, string language = MarkdownBaseService.EnglishLanguage);
     Task<BlogPostViewModel?> GetPost(string slug, string language = "");
-    Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10, string language = MarkdownBaseService.EnglishLanguage);
+    Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10, string language = MarkdownBaseService.EnglishLanguage, DateTime? startDate = null, DateTime? endDate = null);
     Task<List<PostListModel>> GetPostsForLanguage(DateTime? startDate = null, string category = "", string language = MarkdownBaseService.EnglishLanguage);
     
     

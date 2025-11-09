@@ -1,6 +1,6 @@
 ﻿@model Mostlylucid.Models.BaseViewModel
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
@@ -213,6 +213,7 @@ bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
     </style>
 </noscript>
 <script src="~/js/dist/main.js" type="module" asp-append-version="true"  data-cfasync="false"> </script>
+<script src="/js/blog-index.js" asp-append-version="true"></script>
 <script src="@(ViewBag.UmamiPath + "/" + ViewBag.UmamiScript)" data-website-id="@ViewBag.UmamiWebsiteId"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

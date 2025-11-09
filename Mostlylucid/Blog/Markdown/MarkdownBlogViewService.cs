@@ -104,7 +104,26 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
     public Task<List<PostListModel>> GetPostsForRange(DateTime? startDate = null, DateTime? endDate = null, string[]? categories = null,
         string language = Services.Markdown.MarkdownBaseService.EnglishLanguage)
     {
-        throw new NotImplementedException();
+        var query = PageCacheHelper.GetPageCache()
+            .Select(x => x.Value)
+            .Where(p => p.Language == language);
+
+        if (categories != null && categories.Length > 0)
+        {
+            var categorySet = new HashSet<string>(categories, StringComparer.OrdinalIgnoreCase);
+            query = query.Where(p => p.Categories.Any(c => categorySet.Contains(c)));
+        }
+        if (startDate.HasValue)
+            query = query.Where(p => p.PublishedDate.Date >= startDate.Value.Date);
+        if (endDate.HasValue)
+            query = query.Where(p => p.PublishedDate.Date <= endDate.Value.Date);
+
+        var list = query
+            .OrderByDescending(p => p.PublishedDate)
+            .Select(p => p.ToPostListModel())
+            .ToList();
+
+        return Task.FromResult(list);
     }
 
 
@@ -155,15 +174,24 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
 
 
     public async Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10,
-        string language = Constants.EnglishLanguage)
+        string language = Constants.EnglishLanguage, DateTime? startDate = null, DateTime? endDate = null)
     {
         var model = new PostListViewModel();
-        var posts = PageCacheHelper.GetPageCache().Where(x => x.Value.Language == language)
-            .Select(x =>(x.Value.ToPostListModel())).ToList();
-        model.Data = posts.OrderByDescending(x => x.PublishedDate).Skip((page - 1) * pageSize).Take(pageSize).ToList();
-        model.TotalItems = posts.Count();
+        var postsQuery = PageCacheHelper.GetPageCache()
+            .Where(x => x.Value.Language == language)
+            .Select(x => x.Value.ToPostListModel())
+            .AsEnumerable();
+
+        if (startDate.HasValue)
+            postsQuery = postsQuery.Where(p => p.PublishedDate.Date >= startDate.Value.Date);
+        if (endDate.HasValue)
+            postsQuery = postsQuery.Where(p => p.PublishedDate.Date <= endDate.Value.Date);
+
+        var posts = postsQuery.OrderByDescending(x => x.PublishedDate).ToList();
+        model.TotalItems = posts.Count;
         model.PageSize = pageSize;
         model.Page = page;
+        model.Data = posts.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return await Task.FromResult(model);
     }
 }

@@ -1,7 +1,7 @@
 ﻿# Keeping State Between Requests in ASP.NET Core: A Practical, No‑Nonsense Guide (MVC, Razor Pages, Minimal APIs)
 
 <!--category-- ASP.NET, ASP.NET Core, State, Web Development, AI-Article -->
-<datetime class="hidden">2025-11-09T11:33</datetime>
+<datetime class="hidden">2025-11-09T12:33</datetime>
 
 ## Introduction
 
@@ -371,6 +371,112 @@ app.MapGet("/feature/{name}", async (IDistributedCache cache, string name) =>
 ```
 
 Cache-as-state anti-pattern warning: if it must be durable or authoritative, store it in a database and optionally cache it.
+
+### Choosing between IMemoryCache and IDistributedCache
+- IMemoryCache:
+  - Blazing fast, in-process, objects stay as objects (no serialization).
+  - Eviction by memory pressure, size limit, absolute/sliding expiration, and priority.
+  - Not shared across nodes; cleared on app recycle/deploy.
+  - Great for per-node hotsets, computed lookups, short TTLs.
+- IDistributedCache (Redis/SQL/etc.):
+  - Shared across a farm; survives app restarts; requires serialization (strings/bytes).
+  - Slightly higher latency; throughput depends on network and backend.
+  - Supports absolute/sliding expiration (provider-dependent; Redis provider updates TTL on access for sliding).
+  - Ideal for cross-node consistency, large fan-out reads, feature flags, and session.
+
+### Common cache strategies
+- Cache-aside (most common):
+  1) Try cache; 2) if miss, load from source; 3) write to cache; 4) return.
+  - Pros: simple; source of truth remains the database.
+  - Cons: first request after expiry is slow; possible stampedes.
+- Read-through (via a library/provider): cache handles loading on misses.
+- Write-through: writes go to cache and backing store synchronously.
+- Write-behind: write to cache, flush to store asynchronously (risk: loss/inconsistency).
+- Refresh-ahead: refresh hot keys before they expire to avoid cold misses.
+
+### Expiration, eviction, and sizing
+- Absolute expiration: always expires after a fixed duration (good for external data freshness).
+- Sliding expiration: extends TTL on access (good for sessions/user-specific data).
+- Size-based eviction (IMemoryCache): set entry.Size and configure SizeLimit to bound memory.
+- Priority (IMemoryCache): CacheItemPriority.High/Normal/Low/NeverRemove affects eviction under pressure.
+- Jitter: add small random offsets to TTLs to avoid synchronized expiry (stampedes).
+
+### Preventing cache stampedes (thundering herd)
+- Use GetOrCreate/GetOrCreateAsync (IMemoryCache) to ensure single-thread population per node.
+- Distributed: use a short-lived lock key (SET NX EX) or library support; add TTL jitter; consider background refresh.
+- Serve stale-while-revalidate: keep a secondary key with stale value and short extension while new value is computed.
+
+### Key design and namespacing
+- Prefer lowercase, colon-delimited keys: app:entity:123 or tenant:us:users:42.
+- Include version segment to invalidate whole classes of keys without deletes: v2:products:123.
+- Tenant-aware: prefix keys with tenant or organization id to avoid collisions and ease purges.
+- Keep keys small but descriptive; avoid user-controlled raw input without normalization.
+
+### Expiring sets of keys (tags/groups)
+When you need to invalidate many related entries:
+- Versioned prefixes (soft invalidation): bump a global version in a small key and compose keys with it.
+  ```csharp
+  // version key: "v:products"; keys like $"{version}:product:{id}"
+  var version = await cache.GetStringAsync("v:products") ?? "1";
+  var key = $"{version}:product:{id}";
+  ```
+  To invalidate all products: increment v:products (clients will naturally miss old prefixed keys).
+- Tag set per group (Redis): keep a Set of keys per tag; on invalidation, fetch members and delete.
+  ```csharp
+  // using StackExchange.Redis directly for sets + efficient deletes
+  var mux = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+  var db = mux.GetDatabase();
+  var tag = "tag:category:42";
+  var key = $"prod:{prodId}";
+  await db.StringSetAsync(key, serialized, expiry: TimeSpan.FromMinutes(30));
+  await db.SetAddAsync(tag, key); // remember membership
+
+  // later, invalidate the whole tag
+  var members = await db.SetMembersAsync(tag);
+  if (members.Length > 0)
+  {
+      var keys = Array.ConvertAll(members, m => (RedisKey)m);
+      await db.KeyDeleteAsync(keys);
+  }
+  await db.KeyDeleteAsync(tag);
+  ```
+- Pub/Sub invalidation: publish an "invalidate:key" message; each node removes the key from its local IMemoryCache.
+- Scan with patterns: SCAN/KEYS should be avoided in prod hot paths; okay for admin tooling on small keyspaces.
+
+### Practical helpers
+- IMemoryCache get-or-set with options:
+  ```csharp
+  T GetOrAdd<T>(IMemoryCache cache, string key, Func<ICacheEntry, T> factory)
+    => cache.GetOrCreate(key, e =>
+    {
+        e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+        e.SlidingExpiration = TimeSpan.FromMinutes(2);
+        e.Priority = CacheItemPriority.Normal;
+        e.Size = 1;
+        return factory(e);
+    });
+  ```
+- IDistributedCache with JSON and expiration:
+  ```csharp
+  static async Task<T?> GetOrSetJsonAsync<T>(IDistributedCache cache, string key, Func<Task<T>> factory, TimeSpan ttl)
+  {
+      var json = await cache.GetStringAsync(key);
+      if (json is not null)
+          return System.Text.Json.JsonSerializer.Deserialize<T>(json);
+
+      var value = await factory();
+      var opts = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl };
+      await cache.SetStringAsync(key,
+          System.Text.Json.JsonSerializer.Serialize(value),
+          opts);
+      return value;
+  }
+  ```
+
+### Monitoring and visibility
+- Track hit/miss rates and average load time; expose metrics (Prometheus counters) per key group.
+- Add logging around cache population and eviction callbacks for IMemoryCache.
+- For Redis, watch keyspace hits/misses, latency, and memory fragmentation; set maxmemory policies as appropriate.
 
 ---
 
@@ -944,3 +1050,156 @@ app.MapPost("/promote", async (HttpContext ctx) =>
 ```
 
 That should cover the gaps: stronger security defaults, multi‑node readiness, and real‑world patterns for caches, tokens, and conditional requests.
+
+---
+
+## Deep Dive: HttpContext.Items (Practical Patterns and Helpers)
+
+HttpContext.Items is a per-request bag (IDictionary<object, object?>) that lives only for the lifetime of a single request. It’s perfect for passing computed values from middleware/filters to your endpoints, controllers, and Razor Pages handlers without touching global state or long‑lived stores.
+
+- Lifecycle: created at request start; discarded when the response completes.
+- Scope: current request only — never crosses redirects or background work.
+- Performance: O(1) lookups; ideal for per-request caching.
+- Safety: server-side only; not visible to the client.
+
+### Why Items instead of…
+- Session/TempData: Those cross requests and introduce distribution concerns. Items is ephemeral and scale‑friendly.
+- DI Scoped services: Use these for behavior and shared dependencies. Items is better for ad-hoc, computed values (tenant, user locale, feature flags) and per-request caches.
+- HttpContext.Features: For framework/transport-level features (IEndpointFeature, IHttpUpgradeFeature). Items is for app-level data.
+
+### Avoid key collisions: strongly-typed keys
+Because Items uses object keys, prefer private static object keys or a dedicated key type to avoid name collisions.
+
+```csharp
+public static class ItemKeys
+{
+    public static readonly object TenantId = new();
+    public static readonly object UserLocale = new();
+    public static readonly object PerRequestCache = new();
+}
+```
+
+Or create a typed wrapper with extensions:
+
+```csharp
+public static class HttpContextItemsExtensions
+{
+    public static void Set<T>(this HttpContext ctx, object key, T value)
+        => ctx.Items[key] = value!;
+
+    public static T? Get<T>(this HttpContext ctx, object key)
+        => ctx.Items.TryGetValue(key, out var v) ? (T?)v : default;
+
+    public static T GetOrCreate<T>(this HttpContext ctx, object key, Func<T> factory)
+    {
+        if (ctx.Items.TryGetValue(key, out var existing) && existing is T typed)
+            return typed;
+        var created = factory();
+        ctx.Items[key] = created!;
+        return created;
+    }
+}
+```
+
+### Pattern: Compute in middleware, consume in endpoints/controllers/pages
+
+```csharp
+// Program.cs
+app.Use(async (ctx, next) =>
+{
+    var tenant = ctx.Request.Headers["X-TenantId"].FirstOrDefault() ?? "public";
+    ctx.Set(ItemKeys.TenantId, tenant); // using extension above
+
+    // Per-request cache holder (optional)
+    ctx.Set(ItemKeys.PerRequestCache, new Dictionary<string, object?>());
+
+    await next(ctx);
+});
+
+// Minimal API
+app.MapGet("/whoami", (HttpContext ctx) => new
+{
+    Tenant = ctx.Get<string>(ItemKeys.TenantId),
+});
+
+// MVC Controller
+public IActionResult WhoAmI()
+    => Json(new { Tenant = HttpContext.Get<string>(ItemKeys.TenantId) });
+
+// Razor Page handler
+public IActionResult OnGet()
+    => new JsonResult(new { Tenant = HttpContext.Get<string>(ItemKeys.TenantId) });
+```
+
+### Pattern: Per-request cache to avoid repeated work
+Use Items as a tiny cache so repeated reads within the same request don’t re-hit databases/services.
+
+```csharp
+public static class PerRequestCacheExtensions
+{
+    public static async Task<T> GetOrAddAsync<T>(this HttpContext ctx, string key, Func<Task<T>> factory)
+    {
+        var bag = ctx.Get<Dictionary<string, object?>>(ItemKeys.PerRequestCache)
+                  ?? ctx.GetOrCreate(ItemKeys.PerRequestCache, () => new Dictionary<string, object?>());
+
+        if (bag.TryGetValue(key, out var val) && val is T hit)
+            return hit;
+
+        var created = await factory();
+        bag[key] = created!;
+        return created;
+    }
+}
+
+// Usage in endpoint
+app.MapGet("/profile", async (HttpContext ctx, IUserRepo repo) =>
+{
+    var userId = ctx.User.Identity?.Name ?? "anon";
+    var profile = await ctx.GetOrAddAsync($"profile:{userId}", () => repo.LoadAsync(userId));
+    return Results.Json(profile);
+});
+```
+
+Notes:
+- Threading: A single request typically executes on one logical path; Items isn’t thread-safe for parallel writes. If you start parallel tasks that share Items, add your own synchronization.
+- Size: Keep values small and cheap to compute/serialize. It’s in-memory per request.
+
+### Pattern: Filters that populate Items (MVC/Razor Pages)
+
+```csharp
+public class TenantFilter : IAsyncResourceFilter
+{
+    public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
+    {
+        var tenant = context.HttpContext.Request.Headers["X-TenantId"].FirstOrDefault() ?? "public";
+        context.HttpContext.Set(ItemKeys.TenantId, tenant);
+        await next();
+    }
+}
+
+// Register filter globally
+services.AddControllersWithViews(o => o.Filters.Add<TenantFilter>());
+```
+
+### Pattern: Enrich logs without allocations everywhere
+Compute once, then read in logging scopes or middleware.
+
+```csharp
+app.Use(async (ctx, next) =>
+{
+    var correlationId = ctx.Request.Headers["X-Correlation-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("n");
+    ctx.Items["CorrelationId"] = correlationId; // string key acceptable for app-local use
+
+    using (logger.BeginScope(new { CorrelationId = correlationId }))
+    {
+        await next(ctx);
+    }
+});
+```
+
+### When not to use Items
+- Data needed after redirect or across requests (use TempData/Session/DB instead).
+- App-wide singletons or cross-request caches (use IMemoryCache/IDistributedCache).
+- Values that belong in identity/authorization (use claims/policies).
+
+Quick rule: If it’s computed during this request and read within this request by your own code, Items is ideal.

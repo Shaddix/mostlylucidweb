@@ -74,7 +74,6 @@
       <Folder Include="Markdown\notmoderatedcomments\" />
       <Folder Include="wwwroot\css\dist\highlight\" />
       <Folder Include="wwwroot\css\highlight\" />
-      <Folder Include="wwwroot\js\" />
     </ItemGroup>
     <ItemGroup>
 
