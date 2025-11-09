@@ -213,10 +213,11 @@ graph TB
 
     F -->|Display| K[Editor with Suggestions]
 
-    style C fill:#f9f,stroke:#333,stroke-width:4px
-    style D fill:#bbf,stroke:#333,stroke-width:4px
-    style I fill:#f9f,stroke:#333,stroke-width:4px
-    style K fill:#bfb,stroke:#333,stroke-width:4px
+    class C,I embedding
+    class D,K output
+
+    classDef embedding stroke:#333,stroke-width:4px
+    classDef output stroke:#333,stroke-width:4px
 ```
 
 ### 1. Markdown Ingestion Pipeline

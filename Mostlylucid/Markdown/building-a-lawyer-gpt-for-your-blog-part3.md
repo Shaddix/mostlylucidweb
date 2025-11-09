@@ -34,14 +34,15 @@ graph TD
         H[SQL: 0.2, -0.8]
     end
 
-    style A fill:#f99,stroke:#333
-    style B fill:#f99,stroke:#333
-    style C fill:#9f9,stroke:#333
-    style D fill:#9f9,stroke:#333
-    style E fill:#99f,stroke:#333
-    style F fill:#99f,stroke:#333
-    style G fill:#ff9,stroke:#333
-    style H fill:#ff9,stroke:#333
+    class A,B cats
+    class C,D dogs
+    class E,F vehicles
+    class G,H tech
+
+    classDef cats stroke:#333
+    classDef dogs stroke:#333
+    classDef vehicles stroke:#333
+    classDef tech stroke:#333
 ```
 
 Similar concepts cluster together:
@@ -73,10 +74,13 @@ graph LR
 
     C -.Very Different.-> G
 
-    style B fill:#f9f,stroke:#333,stroke-width:4px
-    style C fill:#9f9,stroke:#333
-    style E fill:#9f9,stroke:#333
-    style G fill:#99f,stroke:#333
+    class B model
+    class C,E similar
+    class G different
+
+    classDef model stroke:#333,stroke-width:4px
+    classDef similar stroke:#333
+    classDef different stroke:#333
 ```
 
 ### Measuring Similarity
@@ -160,8 +164,9 @@ graph TB
         C2 --> F2[✅ Finds: 'Docker setup tutorial']
     end
 
-    style B2 fill:#f9f,stroke:#333,stroke-width:2px
-    style C2 fill:#9f9,stroke:#333,stroke-width:2px
+    class B2,C2 semantic
+
+    classDef semantic stroke:#333,stroke-width:2px
 ```
 
 ## Choosing an Embedding Model
@@ -305,8 +310,9 @@ graph LR
     E --> G[Feed to Model]
     F --> G
 
-    style B fill:#f9f,stroke:#333,stroke-width:2px
-    style G fill:#9f9,stroke:#333,stroke-width:2px
+    class B,G process
+
+    classDef process stroke:#333,stroke-width:2px
 ```
 
 ### Embedding Generator Class
@@ -441,21 +447,25 @@ public class EmbeddingGenerator : IDisposable
 
 ```mermaid
 graph TB
-    A[Model Output:<br/>Token Embeddings] --> B["Token 0 (CLS):<br/>[0.1, 0.5, -0.3, ...]"]
-    A --> C["Token 1 (Docker):<br/>[0.4, 0.2, -0.1, ...]"]
-    A --> D["Token 2 (setup):<br/>[0.3, 0.6, -0.2, ...]"]
-    A --> E["Token 3 (SEP):<br/>[0.2, 0.3, -0.4, ...]"]
+    A[Model Output:<br/>Token Embeddings] --> B["Token 0 (CLS):<br/>(0.1, 0.5, -0.3, ...)"]
+    A --> C["Token 1 (Docker):<br/>(0.4, 0.2, -0.1, ...)"]
+    A --> D["Token 2 (setup):<br/>(0.3, 0.6, -0.2, ...)"]
+    A --> E["Token 3 (SEP):<br/>(0.2, 0.3, -0.4, ...)"]
 
     B --> F[Average]
     C --> F
     D --> F
     E --> F
 
-    F --> G[Sentence Embedding:<br/>[0.25, 0.4, -0.25, ...]]
+    F --> G["Sentence Embedding:<br/>(0.25, 0.4, -0.25, ...)"]
 
-    style A fill:#f99,stroke:#333
-    style F fill:#f9f,stroke:#333,stroke-width:2px
-    style G fill:#9f9,stroke:#333,stroke-width:2px
+    class A input
+    class F process
+    class G output
+
+    classDef input stroke:#333
+    classDef process stroke:#333,stroke-width:2px
+    classDef output stroke:#333,stroke-width:2px
 ```
 
 We average because:
@@ -567,9 +577,13 @@ graph TB
 
     H[10,000 vectors] -.Indexed.-> C
 
-    style B fill:#f9f,stroke:#333,stroke-width:4px
-    style C fill:#9f9,stroke:#333,stroke-width:2px
-    style G fill:#bbf,stroke:#333,stroke-width:2px
+    class B db
+    class C index
+    class G results
+
+    classDef db stroke:#333,stroke-width:4px
+    classDef index stroke:#333,stroke-width:2px
+    classDef results stroke:#333,stroke-width:2px
 ```
 
 **Speed comparison**:

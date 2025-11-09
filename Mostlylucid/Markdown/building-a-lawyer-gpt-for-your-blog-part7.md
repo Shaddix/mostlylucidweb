@@ -38,11 +38,6 @@ sequenceDiagram
     PromptEngine->>LLM: Generate suggestion
     LLM-->>UI: Stream response
     UI->>User: Display suggestion
-
-    style Embedder fill:#f9f,stroke:#333,stroke-width:2px
-    style VectorDB fill:#bbf,stroke:#333,stroke-width:2px
-    style PromptEngine fill:#9f9,stroke:#333,stroke-width:4px
-    style LLM fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 ## Context Builder Service
