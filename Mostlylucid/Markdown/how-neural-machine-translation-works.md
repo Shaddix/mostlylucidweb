@@ -1,11 +1,13 @@
 # How Neural Machine Translation Actually Works: A Developer's Guide
 
 <datetime class="hidden">2025-11-09T14:30</datetime>
-<!--category-- Neural Machine Translation, Machine Learning, AI, EasyNMT, Deep Learning -->
+<!--category-- Neural Machine Translation, Machine Learning, AI, EasyNMT, Deep Learning, AI-Article -->
 
 ## Introduction
 
 If you've been following this blog, you know I'm a bit obsessed with machine translation. I've written about [using EasyNMT](/blog/autotranslatingmarkdownfiles), [building background translation services](/blog/backgroundtranslationspt1), and even [improving EasyNMT](/blog/mostlylucid-nmt-complete-guide). But I realized I've never actually explained *how* neural machine translation works under the hood.
+
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else. 
 
 So let's fix that! This post will take you from "translation is magic" to "translation is clever math" by explaining the key concepts behind neural machine translation in plain English (with lots of diagrams and some C# code to make it concrete).
 
@@ -17,6 +19,8 @@ By the end of this post, you'll understand:
 - Why transformers took over the world
 
 Don't worry if you're not a math person - I'll keep this as practical and visual as possible. Let's dive in!
+
+
 
 [TOC]
 
@@ -31,9 +35,6 @@ graph LR
     C --> D[Convert to Words]
     D --> E[Translated Sentence]
 
-    style B fill:#f9f,stroke:#333,stroke-width:2px
-    style C fill:#bbf,stroke:#333,stroke-width:2px
-    style D fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 But wait - how do you convert words to numbers? And how does math "understand" language? Let's start with the building blocks.
@@ -59,7 +60,7 @@ graph LR
     I3[Input 3] -->|weight: 0.5| N
     N --> O[Output]
 
-    style N fill:#f96,stroke:#333,stroke-width:4px
+    style N stroke-width:4px
 ```
 
 Let's make this concrete with some C# code:
@@ -151,8 +152,8 @@ graph TD
     D -->|Yes| G[Try Next Example]
     G --> B
 
-    style E fill:#f99,stroke:#333,stroke-width:2px
-    style F fill:#9f9,stroke:#333,stroke-width:2px
+    style E stroke-width:2px
+    style F stroke-width:2px
 ```
 
 This process is called **gradient descent**. For each wrong answer, the network figures out "which weights were most responsible for this error?" and tweaks them a tiny bit. After seeing millions of examples, the weights settle into values that work well.
@@ -302,9 +303,6 @@ graph LR
     B --> D["sat → [0.2, -0.1, 0.4, ...]"]
     B --> E["mat → [0.15, 0.45, -0.25, ...]"]
 
-    style C fill:#f9f,stroke:#333,stroke-width:2px
-    style D fill:#f9f,stroke:#333,stroke-width:2px
-    style E fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 After training on billions of sentences, words that appear in similar contexts end up with similar embeddings. "Cat" and "dog" both appear near "pet", "feed", "cute", so their embeddings end up close together.
@@ -333,11 +331,11 @@ graph TD
         F6[tapis]
     end
 
-    E2 -.focus 0.9.-> F2
-    E3 -.focus 0.7.-> F3
-    E4 -.focus 0.8.-> F4
-    E6 -.focus 0.85.-> F6
-    E1 -.focus 0.3.-> F1
+    E2 -. focus 90% .-> F2
+    E3 -. focus 70% .-> F3
+    E4 -. focus 80% .-> F4
+    E6 -. focus 85% .-> F6
+    E1 -. focus 30% .-> F1
 ```
 
 **Attention** is a mechanism that lets the network "focus" on different parts of the input when generating each output word.
@@ -454,8 +452,6 @@ graph TD
     E5 -->|0.85| G5
     E6 -->|0.7| G5
 
-    style E2 fill:#f96,stroke:#333,stroke-width:4px
-    style G2 fill:#f96,stroke:#333,stroke-width:4px
 ```
 
 When generating "Abkommen" (agreement), the network pays 90% attention to "agreement", 5% to "the", and 5% distributed among other words.
@@ -477,7 +473,6 @@ graph LR
     B -.high attention.-> W
     B -.medium attention.-> F
 
-    style B fill:#f96,stroke:#333,stroke-width:4px
 ```
 
 In "The fish swam near the river bank", the word "bank" attends strongly to "river", "fish", and "water", helping the network understand it means "riverbank" not "financial institution".
@@ -504,9 +499,6 @@ graph LR
 
     E5 -.provides context.-> D3
 
-    style E1 fill:#f9f,stroke:#333,stroke-width:2px
-    style E5 fill:#bbf,stroke:#333,stroke-width:2px
-    style D5 fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
 ### The Encoder: Understanding the Source
@@ -641,7 +633,7 @@ sequenceDiagram
     Encoder->>Decoder: Encoded states
 
     Decoder->>Decoder: Generate <START>
-    Decoder->>Output:
+    Decoder->>Output: Emit START token
 
     Decoder->>Decoder: Attend to "The" → Generate "Le"
     Decoder->>Output: "Le"
@@ -746,8 +738,8 @@ graph TD
     F --> G[Epoch 20: Loss = 0.3]
     G --> H[Trained Model!]
 
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style H fill:#9f9,stroke:#333,stroke-width:4px
+    style A stroke-width:2px
+    style H stroke-width:4px
 ```
 
 For a state-of-the-art model:
@@ -788,9 +780,7 @@ graph TD
         C3 -.attend.-> G3
     end
 
-    style E2 fill:#f96,stroke:#333,stroke-width:2px
-    style C2 fill:#bbf,stroke:#333,stroke-width:2px
-    style G2 fill:#9f9,stroke:#333,stroke-width:2px
+
 ```
 
 ### Step-by-Step Process:
@@ -880,10 +870,7 @@ graph LR
         T3 -.attend.-> T4
     end
 
-    style R1 fill:#faa,stroke:#333,stroke-width:2px
-    style R4 fill:#faa,stroke:#333,stroke-width:2px
-    style T1 fill:#afa,stroke:#333,stroke-width:2px
-    style T4 fill:#afa,stroke:#333,stroke-width:2px
+
 ```
 
 Recurrent networks process sequentially (slow!), while transformers process all words at once (fast!).
@@ -1134,8 +1121,8 @@ graph TD
     F -->|GPU| H[Fast: Baseline]
     F -->|TPU/Special AI chips| I[Very Fast: 2-3x faster]
 
-    style C fill:#9f9,stroke:#333,stroke-width:2px
-    style E fill:#f99,stroke:#333,stroke-width:2px
+    style C stroke-width:2px
+    style E stroke-width:2px
 ```
 
 Typical performance (per sentence on GPU):

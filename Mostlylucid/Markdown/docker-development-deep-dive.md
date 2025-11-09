@@ -25,10 +25,10 @@ Think of it this way:
 
 ```bash
 # The classic developer problem
-"It works on my machine!" 🤷‍♂️
+"It works on my machine!" 
 
 # The container solution
-"Ship your machine!" 📦
+"Ship your machine!" 
 ```
 
 Containers solve several critical problems:
