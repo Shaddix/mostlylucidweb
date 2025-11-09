@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchEx
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.SqlServer", "Mostlylucid.Markdig.FetchExtension.SqlServer\Mostlylucid.Markdig.FetchExtension.SqlServer.csproj", "{9FF2EA62-AAD0-4B96-BD25-BE6C8F65D979}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.BlogLLM.Api", "mostlylucid.blogllm.api\Mostlylucid.BlogLLM.Api.csproj", "{A8F9E6D2-1234-4567-89AB-CDEF01234567}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -252,6 +254,18 @@ Global
 		{9FF2EA62-AAD0-4B96-BD25-BE6C8F65D979}.Release|x64.Build.0 = Release|Any CPU
 		{9FF2EA62-AAD0-4B96-BD25-BE6C8F65D979}.Release|x86.ActiveCfg = Release|Any CPU
 		{9FF2EA62-AAD0-4B96-BD25-BE6C8F65D979}.Release|x86.Build.0 = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|x64.Build.0 = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Debug|x86.Build.0 = Debug|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|x64.ActiveCfg = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|x64.Build.0 = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|x86.ActiveCfg = Release|Any CPU
+		{A8F9E6D2-1234-4567-89AB-CDEF01234567}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
