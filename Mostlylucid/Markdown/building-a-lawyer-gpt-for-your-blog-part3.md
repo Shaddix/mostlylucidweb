@@ -5,7 +5,7 @@
 
 ## Introduction
 
-Welcome to Part 3! We've got our GPU stack working (Part 2), and we understand the architecture (Part 1). Now it's time to dive into the magic that makes semantic search possible: **embeddings** and **vector databases**.
+Welcome to Part 3! We've got our GPU stack working ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)), and we understand the architecture ([Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1)). Now it's time to dive into the magic that makes semantic search possible: **[embeddings](https://www.sbert.net/)** and **vector databases**.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
@@ -1109,16 +1109,27 @@ We now have the core technology to find semantically similar blog content!
 
 ## What's Next?
 
-In **Part 4**, we'll build the ingestion pipeline:
+In **[Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)**, we'll build the ingestion pipeline:
 
 - Reading and parsing markdown files (we already do this for the blog!)
 - Intelligent chunking strategies
 - Generating embeddings for all content
-- Bulk inserting into Qdrant
+- Bulk inserting into [Qdrant](https://qdrant.tech/)
 - Handling updates and deletions
 - Monitoring progress
 
 We'll process our entire blog corpus and have a searchable knowledge base!
+
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- **Part 3: Understanding Embeddings & Vector Databases** (this post)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
 
 ## Resources
 
@@ -1128,4 +1139,4 @@ We'll process our entire blog corpus and have a searchable knowledge base!
 - [ONNX Runtime](https://onnxruntime.ai/)
 - [Microsoft.ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers/)
 
-See you in Part 4!
+See you in [Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)!

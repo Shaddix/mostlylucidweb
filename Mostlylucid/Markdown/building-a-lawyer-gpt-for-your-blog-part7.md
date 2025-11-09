@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Welcome to Part 7! We've built everything needed for a working writing assistant - ingestion (Part 4), UI (Part 5), and local LLM integration (Part 6). Now it's time to bring it all together and focus on what matters most: generating actually useful writing suggestions.
+Welcome to Part 7! We've built everything needed for a working writing assistant - ingestion ([Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)), UI ([Part 5](/blog/building-a-lawyer-gpt-for-your-blog-part5)), and local LLM integration ([Part 6](/blog/building-a-lawyer-gpt-for-your-blog-part6)). Now it's time to bring it all together and focus on what matters most: generating actually useful writing suggestions.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
-This is where the rubber meets the road. We'll explore advanced prompt engineering techniques, context management strategies, and how to make the LLM generate suggestions that actually match your writing style.
+This is where the rubber meets the road. We'll explore advanced [prompt engineering](https://www.promptingguide.ai/) techniques, context management strategies, and how to make the LLM generate suggestions that actually match your writing style.
 
 [TOC]
 
@@ -903,7 +903,7 @@ We've built a complete content generation system:
 
 ## What's Next?
 
-In **Part 8** (final part!), we'll cover:
+In **[Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)** (final part!), we'll cover:
 
 - Auto-linking to related posts
 - Deployment strategies
@@ -915,10 +915,21 @@ In **Part 8** (final part!), we'll cover:
 
 We'll wrap up the series with deployment and making this production-ready!
 
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- **Part 7: Content Generation & Prompt Engineering** (this post)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
 - [Prompt Engineering Guide](https://www.promptingguide.ai/)
 - [OpenAI Best Practices](https://platform.openai.com/docs/guides/prompt-engineering)
 - [LangChain Prompts](https://python.langchain.com/docs/modules/model_io/prompts/)
 
-See you in the final part!
+See you in the [final part](/blog/building-a-lawyer-gpt-for-your-blog-part8)!

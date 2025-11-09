@@ -5,11 +5,13 @@
 
 ## Introduction
 
-Welcome to Part 2! In Part 1, we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
+Welcome to Part 2! In [Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1), we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
-This part might seem basic if you're already familiar with CUDA, but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect cuDNN installations. We'll do this right from the start.
+**About my hardware**: I'm using an NVIDIA RTX A4000 (16GB VRAM), AMD Ryzen 9 9950X, and 96GB DDR5 RAM. But you don't need this! As covered in Part 1, you can use any NVIDIA GPU with 8GB+ VRAM, or even run CPU-only (slower but functional). This part focuses on GPU setup, but I'll note CPU-only alternatives where relevant.
+
+This part might seem basic if you're already familiar with [CUDA](https://developer.nvidia.com/cuda-toolkit), but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect [cuDNN](https://developer.nvidia.com/cudnn) installations. We'll do this right from the start.
 
 [TOC]
 
@@ -45,23 +47,61 @@ graph LR
 3. **Memory Bandwidth** - GPUs move data much faster
 4. **Specialized Hardware** - Tensor cores accelerate AI-specific operations
 
-**Real-world example**: Generating embeddings for a blog post:
-- **CPU (i7-12700K)**: ~5 seconds per post
+**Real-world example** (on my hardware): Generating embeddings for a blog post:
+- **CPU (Ryzen 9 9950X)**: ~5 seconds per post
 - **GPU (A4000 16GB)**: ~0.3 seconds per post
 
 That's 16x faster, and it compounds when processing hundreds of posts!
+
+**Performance on other GPUs** (approximate):
+- **RTX 4090** (24GB): Fastest, ~0.2s per post
+- **RTX 3060** (12GB): ~0.5s per post
+- **GTX 1070 Ti** (8GB): ~0.8s per post
+- Still much faster than CPU!
 
 ## Understanding Your Hardware
 
 Before installing anything, let's understand what we're working with.
 
-### The NVIDIA A4000
+### My GPU: NVIDIA RTX A4000
 
-The RTX A4000 is a professional workstation GPU with:
+This is my specific GPU - a professional workstation card with:
 - **16GB GDDR6 VRAM** - Enough for 7B-13B parameter models
 - **6144 CUDA cores** - Parallel processing power
 - **256 Tensor cores** - Accelerated AI operations
 - **CUDA Compute Capability 8.6** - Important for compatibility
+
+### Common GPU Options
+
+Here's what various GPUs can handle:
+
+| GPU | VRAM | Max Model Size | Good For |
+|-----|------|----------------|----------|
+| RTX 4090 | 24GB | 13B-30B | Overkill for this project |
+| RTX 4070 Ti | 12GB | 7B-13B | Excellent choice |
+| RTX 3060 | 12GB | 7B | Budget-friendly |
+| RTX 4060 Ti | 16GB | 7B-13B | Great value |
+| A4000 (mine) | 16GB | 7B-13B | Workstation GPU |
+| GTX 1070 Ti | 8GB | 7B (tight) | Minimum viable |
+
+### What About Intel/AMD NPUs?
+
+You might have heard about Intel Core Ultra or AMD Ryzen AI chips with built-in NPUs (Neural Processing Units). **Can you use those instead of NVIDIA?**
+
+**Short answer**: Not yet, but maybe in 2024-2025!
+
+**Current limitations**:
+- **No CUDA**: NPUs don't support CUDA, which this tutorial uses
+- **Limited .NET support**: ONNX Runtime's NPU support is experimental
+- **Model compatibility**: Most GGUF models target CUDA/CPU
+- **DirectML support**: Still maturing for LLMs
+
+**If you have an NPU-equipped CPU**:
+- Use CPU-only mode for now (everything works, just slower)
+- Watch for [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) updates
+- Future parts will note when NPU support improves
+
+This series focuses on **NVIDIA CUDA** because it's mature and well-supported in .NET, but the concepts will translate to NPUs once the ecosystem catches up!
 
 ### Check Your GPU
 
@@ -183,9 +223,9 @@ CUDA provides the programming interface for GPU acceleration.
 
 ### Version Selection
 
-**Critical**: We need CUDA 12.x for modern models. Specifically:
-- **CUDA 12.1** - Good balance of compatibility and features
-- **CUDA 12.3** - Latest features but verify library support
+**Critical**: We need [CUDA](https://developer.nvidia.com/cuda-toolkit) 12.x for modern models. Specifically:
+- **CUDA 12.1+** - Good balance of compatibility and features (at the time of writing)
+- **Latest 12.x** - Check compatibility with your libraries
 - **NOT CUDA 11.x** - Missing features newer models need
 
 ### Download & Install
@@ -277,9 +317,9 @@ cuDNN provides optimized implementations of deep learning operations.
 
 ### Version Compatibility
 
-**Critical**: cuDNN version must match CUDA version!
+**Critical**: [cuDNN](https://developer.nvidia.com/cudnn) version must match CUDA version!
 
-For **CUDA 12.1**, we need **cuDNN 8.9.7 for CUDA 12.x**
+For **CUDA 12.x**, we need **cuDNN 8.9+** for CUDA 12.x (at the time of writing, 8.9.7 or later)
 
 ### Download cuDNN
 
@@ -439,10 +479,10 @@ cd CudaTest
 
 ### Add ONNX Runtime with CUDA
 
-ONNX Runtime is the easiest way to use CUDA from C#.
+[ONNX Runtime](https://onnxruntime.ai/) is the easiest way to use CUDA from C#.
 
 ```bash
-dotnet add package Microsoft.ML.OnnxRuntime.Gpu --version 1.16.3
+dotnet add package Microsoft.ML.OnnxRuntime.Gpu  # Latest version
 ```
 
 **Why this package?**
@@ -857,6 +897,17 @@ dotnet run
 | 12.3 | 9.0.0 | 1.17.x | 546.xx+ |
 | 11.8 | 8.9.2 | 1.15.x | 520.xx+ |
 
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- **Part 2: GPU Setup & CUDA in C#** (this post)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
 - [CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/)
@@ -864,4 +915,4 @@ dotnet run
 - [ONNX Runtime GPU Execution Provider](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html)
 - [NVIDIA Developer Zone](https://developer.nvidia.com/)
 
-See you in Part 3, where we finally start building the semantic search engine!
+See you in [Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3), where we finally start building the semantic search engine!

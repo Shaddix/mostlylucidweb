@@ -5,7 +5,7 @@
 
 ## Introduction
 
-Welcome to Part 8 - the final part! We've built a complete RAG-based writing assistant from scratch. Now let's add the polish that makes it production-ready: auto-linking, deployment, configuration management, and real-world usage patterns.
+Welcome to Part 8 - the final part! We've built a complete [RAG](https://www.anthropic.com/index/contextual-retrieval)-based writing assistant from scratch. Now let's add the polish that makes it production-ready: auto-linking, deployment, configuration management, and real-world usage patterns.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
@@ -391,6 +391,7 @@ dotnet publish Mostlylucid.BlogLLM.Client/Mostlylucid.BlogLLM.Client.csproj \
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Using WiX Toolset: https://wixtoolset.org/ -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Product Id="*" Name="Blog Writing Assistant" Language="1033"
              Version="1.0.0.0" Manufacturer="YourName" UpgradeCode="PUT-GUID-HERE">
@@ -839,10 +840,22 @@ Thank you for following along through this entire series. I hope you've learned:
 - [Part 7: Content Generation](/blog/building-a-lawyer-gpt-for-your-blog-part7)
 - [Part 8: Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
 
+### Series Complete!
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- **Part 8: Production Deployment** (this post)
+
 ### Tools & Libraries
 - [LLamaSharp](https://github.com/SciSharp/LLamaSharp)
 - [Qdrant](https://qdrant.tech/)
 - [Avalonia UI](https://avaloniaui.net/)
 - [ONNX Runtime](https://onnxruntime.ai/)
+- [WiX Toolset](https://wixtoolset.org/)
 
 Happy writing with your new AI assistant! 🚀

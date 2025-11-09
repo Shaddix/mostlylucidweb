@@ -5,7 +5,7 @@
 
 ## Introduction
 
-Welcome to Part 6! We've built the complete infrastructure - ingestion pipeline (Part 4), Windows client (Part 5), embeddings and vector search (Part 3), and GPU setup (Part 2). Now comes the exciting part: integrating a local LLM to actually generate writing suggestions.
+Welcome to Part 6! We've built the complete infrastructure - ingestion pipeline ([Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)), Windows client ([Part 5](/blog/building-a-lawyer-gpt-for-your-blog-part5)), embeddings and vector search ([Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3)), and GPU setup ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)). Now comes the exciting part: integrating a local LLM to actually generate writing suggestions.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
@@ -74,7 +74,7 @@ Why?
 
 ### GGUF Format
 
-GGUF (GPT-Generated Unified Format) is the standard for running LLMs efficiently.
+[GGUF](https://github.com/ggerganov/ggml/blob/master/docs/gguf.md) (GPT-Generated Unified Format) is the standard for running LLMs efficiently.
 
 ```mermaid
 graph LR
@@ -102,20 +102,26 @@ graph LR
 - Q5/Q6: Sweet spot for most use cases
 - Q8: Near-original quality, still 4x smaller
 
-### Which Models Fit on A4000 (16GB)?
+### Model Selection by Hardware
 
-| Model | Size (Q4_K_M) | VRAM Usage | Speed | Quality |
-|-------|---------------|------------|-------|---------|
-| **Llama 2 7B** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐ Good |
-| **Mistral 7B v0.2** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐⭐ Better |
-| **Phi-3 Mini (3.8B)** | 2.3GB | ~4GB | ⚡⚡⚡⚡ Very Fast | ⭐⭐⭐ Good |
-| **Gemma 7B** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐⭐ Better |
-| **Llama 3 8B** | 4.7GB | ~7GB | ⚡⚡ Medium | ⭐⭐⭐⭐⭐ Best |
-| **Llama 2 13B** | 7.4GB | ~10GB | ⚡ Slower | ⭐⭐⭐⭐ Better |
+| Model | Size (Q4_K_M) | VRAM Usage | Fits 8GB? | Fits 12GB? | Fits 16GB? | Quality |
+|-------|---------------|------------|-----------|------------|------------|---------|
+| **Phi-3 Mini (3.8B)** | 2.3GB | ~4GB | ✅ Easy | ✅ Easy | ✅ Easy | ⭐⭐⭐ Good |
+| **Llama 2 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐ Good |
+| **Mistral 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐ Better |
+| **Gemma 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐ Better |
+| **Llama 3 8B** | 4.7GB | ~7GB | ⚠️ Very Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐⭐ Best |
+| **Llama 2 13B** | 7.4GB | ~10GB | ❌ No | ⚠️ Tight | ✅ Good | ⭐⭐⭐⭐ Better |
 
-**My recommendation**: **Mistral 7B v0.2** or **Llama 3 8B**
+**Recommendations by GPU:**
+- **8GB VRAM**: Start with **Mistral 7B** or **Phi-3 Mini** (safest)
+- **12GB VRAM**: **Llama 3 8B** (best quality) or **Mistral 7B** (faster)
+- **16GB VRAM (my setup)**: **Llama 3 8B** or try **13B models**
+- **CPU-only**: Any model works, just much slower (start with Phi-3 Mini for speed)
+
+**My recommendation**: **[Mistral 7B](https://mistral.ai/)** (latest version) or **[Llama 3](https://ai.meta.com/llama/)** 8B
 - Excellent quality for technical writing
-- Fits comfortably on A4000
+- Works across all GPU sizes
 - Fast enough for interactive use
 - Good at following instructions
 
@@ -159,13 +165,13 @@ Or download manually:
 
 ```bash
 cd Mostlylucid.BlogLLM.Core
-dotnet add package LLamaSharp --version 0.11.1
-dotnet add package LLamaSharp.Backend.Cuda12 --version 0.11.1
+dotnet add package LLamaSharp  # Latest version
+dotnet add package LLamaSharp.Backend.Cuda12  # Latest, matching CUDA version
 ```
 
 **Why two packages?**
-- `LLamaSharp` - Core library
-- `LLamaSharp.Backend.Cuda12` - CUDA 12 binaries for GPU acceleration
+- `[LLamaSharp](https://github.com/SciSharp/LLamaSharp)` - Core library
+- `LLamaSharp.Backend.Cuda12` - [CUDA](https://developer.nvidia.com/cuda-toolkit) 12 binaries for GPU acceleration
 
 ### Verify CUDA Backend
 
@@ -796,9 +802,9 @@ public async Task<string> GenerateWithRetryAsync(string prompt, int maxRetries =
 
 We've successfully integrated local LLM inference:
 
-1. ✅ Chose LLamaSharp for C# integration
-2. ✅ Understood GGUF format and quantization
-3. ✅ Selected appropriate model (Mistral 7B / Llama 3 8B)
+1. ✅ Chose [LLamaSharp](https://github.com/SciSharp/LLamaSharp) for C# integration
+2. ✅ Understood [GGUF format](https://github.com/ggerganov/ggml/blob/master/docs/gguf.md) and quantization
+3. ✅ Selected appropriate model ([Mistral 7B](https://mistral.ai/) / [Llama 3](https://ai.meta.com/llama/) 8B)
 4. ✅ Implemented LlmService with CUDA acceleration
 5. ✅ Integrated with Windows client for suggestions
 6. ✅ Implemented prompt engineering for writing tasks
@@ -807,7 +813,7 @@ We've successfully integrated local LLM inference:
 
 ## What's Next?
 
-In **Part 7**, we'll focus on the complete content generation pipeline:
+In **[Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)**, we'll focus on the complete content generation pipeline:
 
 - Advanced prompt engineering techniques
 - Multi-turn conversation for iterative refinement
@@ -819,6 +825,17 @@ In **Part 7**, we'll focus on the complete content generation pipeline:
 
 We'll make the system actually useful for daily blog writing!
 
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- **Part 6: Local LLM Integration** (this post)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
 - [LLamaSharp Documentation](https://scisharp.github.io/LLamaSharp/)
@@ -826,4 +843,4 @@ We'll make the system actually useful for daily blog writing!
 - [TheBloke's Model Collection](https://huggingface.co/TheBloke)
 - [llama.cpp GitHub](https://github.com/ggerganov/llama.cpp)
 
-See you in Part 7!
+See you in [Part 7](/blog/building-a-lawyer-gpt-for-your-blog-part7)!
