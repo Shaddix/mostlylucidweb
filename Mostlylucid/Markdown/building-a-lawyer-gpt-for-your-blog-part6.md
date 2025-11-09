@@ -56,9 +56,11 @@ graph TB
     F --> M[External Process]
     M --> N[Ollama, LM Studio]
 
-    style C fill:#9f9,stroke:#333,stroke-width:4px
-    style G fill:#bbf,stroke:#333,stroke-width:2px
-    style H fill:#f9f,stroke:#333,stroke-width:2px
+    class C recommended
+    class G,H llamaSharp
+
+    classDef recommended stroke:#333,stroke-width:4px
+    classDef llamaSharp stroke:#333,stroke-width:2px
 ```
 
 **My choice: LLamaSharp**
@@ -90,10 +92,13 @@ graph LR
     E --> I[Higher Quality]
     F --> J[Near Original]
 
-    style A fill:#f99,stroke:#333,stroke-width:2px
-    style C fill:#9f9,stroke:#333,stroke-width:2px
-    style D fill:#9f9,stroke:#333,stroke-width:2px
-    style H fill:#bbf,stroke:#333,stroke-width:2px
+    class A original
+    class C,D quantized
+    class H recommended
+
+    classDef original stroke:#333,stroke-width:2px
+    classDef quantized stroke:#333,stroke-width:2px
+    classDef recommended stroke:#333,stroke-width:2px
 ```
 
 **Quantization explained**:

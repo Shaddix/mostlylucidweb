@@ -66,10 +66,13 @@ graph TB
     C --> L
     D --> L
 
-    style A fill:#f9f,stroke:#333,stroke-width:4px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#bfb,stroke:#333,stroke-width:2px
-    style L fill:#f99,stroke:#333,stroke-width:2px
+    class A mainWindow
+    class B,C ui
+    class L services
+
+    classDef mainWindow stroke:#333,stroke-width:4px
+    classDef ui stroke:#333,stroke-width:2px
+    classDef services stroke:#333,stroke-width:2px
 ```
 
 **Key components**:

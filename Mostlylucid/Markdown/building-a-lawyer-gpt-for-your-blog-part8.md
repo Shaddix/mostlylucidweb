@@ -773,12 +773,13 @@ graph TB
     F3 --> G1
     G3 --> H1
 
-    style A1 fill:#f9f,stroke:#333
-    style D4 fill:#bbf,stroke:#333
-    style E1 fill:#bfb,stroke:#333
-    style F3 fill:#f9f,stroke:#333
-    style G3 fill:#9f9,stroke:#333,stroke-width:4px
-    style H3 fill:#ff9,stroke:#333,stroke-width:4px
+    class A1,F3 architecture
+    class D4,E1 data
+    class G3,H3 production
+
+    classDef architecture stroke:#333
+    classDef data stroke:#333
+    classDef production stroke:#333,stroke-width:4px
 ```
 
 ## Conclusion

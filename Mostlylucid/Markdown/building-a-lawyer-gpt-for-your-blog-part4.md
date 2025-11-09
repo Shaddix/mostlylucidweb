@@ -31,10 +31,13 @@ graph TB
     J[Progress Tracking] --> F
     K[Error Handling] --> G
 
-    style C fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#9f9,stroke:#333,stroke-width:4px
-    style G fill:#f9f,stroke:#333,stroke-width:2px
-    style H fill:#bbf,stroke:#333,stroke-width:2px
+    class C,G processing
+    class F chunking
+    class H storage
+
+    classDef processing stroke:#333,stroke-width:2px
+    classDef chunking stroke:#333,stroke-width:4px
+    classDef storage stroke:#333,stroke-width:2px
 ```
 
 **Pipeline stages**:
@@ -399,10 +402,13 @@ graph TD
     I --> J[Add Code Blocks]
     J --> K[Final Chunk]
 
-    style A fill:#f99,stroke:#333
-    style D fill:#f9f,stroke:#333,stroke-width:2px
-    style H fill:#9f9,stroke:#333,stroke-width:2px
-    style K fill:#bbf,stroke:#333,stroke-width:2px
+    class A input
+    class D,H process
+    class K output
+
+    classDef input stroke:#333
+    classDef process stroke:#333,stroke-width:2px
+    classDef output stroke:#333,stroke-width:2px
 ```
 
 **Goals**:

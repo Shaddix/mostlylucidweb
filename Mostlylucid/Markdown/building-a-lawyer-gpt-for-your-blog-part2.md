@@ -34,10 +34,11 @@ graph LR
     D --> H[Application Logic]
     D --> I[File I/O]
 
-    style C fill:#9f9,stroke:#333,stroke-width:4px
-    style E fill:#bbf,stroke:#333
-    style F fill:#bbf,stroke:#333
-    style G fill:#bbf,stroke:#333
+    class C gpu
+    class E,F,G aiTasks
+
+    classDef gpu stroke:#333,stroke-width:4px
+    classDef aiTasks stroke:#333
 ```
 
 **Why GPUs dominate for AI**:
@@ -134,11 +135,11 @@ graph TB
 
     G[TensorRT] -.Optional.-> D
 
-    style A fill:#f9f,stroke:#333,stroke-width:4px
-    style C fill:#9f9,stroke:#333,stroke-width:2px
-    style D fill:#9f9,stroke:#333,stroke-width:2px
-    style E fill:#9f9,stroke:#333,stroke-width:2px
-    style F fill:#bbf,stroke:#333,stroke-width:4px
+    class A,F endpoints
+    class C,D,E install
+
+    classDef endpoints stroke:#333,stroke-width:4px
+    classDef install stroke:#333,stroke-width:2px
 
     subgraph "What We'll Install"
     C
@@ -165,11 +166,9 @@ graph LR
     C --> D[4. Verify Install]
     D --> E[5. Test from C#]
 
-    style A fill:#f99,stroke:#333,stroke-width:2px
-    style B fill:#9f9,stroke:#333,stroke-width:2px
-    style C fill:#99f,stroke:#333,stroke-width:2px
-    style D fill:#ff9,stroke:#333,stroke-width:2px
-    style E fill:#f9f,stroke:#333,stroke-width:2px
+    class A,B,C,D,E steps
+
+    classDef steps stroke:#333,stroke-width:2px
 ```
 
 ## Step 1: NVIDIA Driver
@@ -818,8 +817,9 @@ graph TD
     D --> F[10-100x Faster]
     E --> G[Lower Latency for Single]
 
-    style D fill:#9f9,stroke:#333,stroke-width:2px
-    style E fill:#99f,stroke:#333,stroke-width:2px
+    class D,E choice
+
+    classDef choice stroke:#333,stroke-width:2px
 ```
 
 **Rule of thumb**:
