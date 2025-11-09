@@ -447,17 +447,17 @@ public class EmbeddingGenerator : IDisposable
 
 ```mermaid
 graph TB
-    A[Model Output:<br/>Token Embeddings] --> B["Token 0 (CLS):<br/>[0.1, 0.5, -0.3, ...]"]
-    A --> C["Token 1 (Docker):<br/>[0.4, 0.2, -0.1, ...]"]
-    A --> D["Token 2 (setup):<br/>[0.3, 0.6, -0.2, ...]"]
-    A --> E["Token 3 (SEP):<br/>[0.2, 0.3, -0.4, ...]"]
+    A[Model Output:<br/>Token Embeddings] --> B["Token 0 (CLS):<br/>(0.1, 0.5, -0.3, ...)"]
+    A --> C["Token 1 (Docker):<br/>(0.4, 0.2, -0.1, ...)"]
+    A --> D["Token 2 (setup):<br/>(0.3, 0.6, -0.2, ...)"]
+    A --> E["Token 3 (SEP):<br/>(0.2, 0.3, -0.4, ...)"]
 
     B --> F[Average]
     C --> F
     D --> F
     E --> F
 
-    F --> G[Sentence Embedding:<br/>[0.25, 0.4, -0.25, ...]]
+    F --> G["Sentence Embedding:<br/>(0.25, 0.4, -0.25, ...)"]
 
     class A input
     class F process
