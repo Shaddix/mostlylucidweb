@@ -52,20 +52,6 @@
         </div>
     </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<style>
-/* Theme-aware overrides for Flatpickr in dark mode */
-html.dark .flatpickr-calendar { background-color: #1f2937 !important; color: #e5e7eb !important; border-color: #374151 !important; }
-html.dark .flatpickr-months, html.dark .flatpickr-weekdays { background-color: #111827 !important; border-color: #374151 !important; color: #e5e7eb !important; }
-html.dark .flatpickr-day { color: #e5e7eb !important; }
-html.dark .flatpickr-day:hover { background-color: #374151 !important; }
-html.dark .flatpickr-day.today { border-color: #60a5fa !important; }
-html.dark .flatpickr-day.selected, 
-html.dark .flatpickr-day.startRange, 
-html.dark .flatpickr-day.endRange, 
-html.dark .flatpickr-day.inRange { background-color: #2563eb !important; border-color: #2563eb !important; color: #ffffff !important; }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     @if (ViewBag.Categories != null)
     {
         <div class="mb-8 mt-6" x-data="blogCategories()">

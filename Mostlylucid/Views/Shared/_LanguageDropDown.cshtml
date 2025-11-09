@@ -42,35 +42,37 @@
 }
 
 <div id="LanguageDropDown"
+     data-languages='@Html.Raw(optsJson)'
+     data-language-map='@Html.Raw(langMapJson)'
      x-data="{
         open: false,
         selectedLanguage: 'Select Language',
         selectedFlag: '',
-        selectedShortCode: ''
+        selectedShortCode: '',
+        init() {
+            // Initialize from URL param or default to 'en'
+            const url = new URL(window.location.href);
+            const fromUrl = (url.searchParams.get('language') || 'en').toLowerCase();
+            const opts = JSON.parse(this.$el.dataset.languages || '[]');
+            const has = opts.includes(fromUrl) ? fromUrl : (opts.includes('en') ? 'en' : (opts[0] || 'en'));
+            this.selectedShortCode = has;
+            const labelMap = JSON.parse(this.$el.dataset.languageMap || '{}');
+            this.selectedLanguage = labelMap[has] || 'Select Language';
+            this.selectedFlag = `/img/flags/${has}.svg`;
+            // Set hidden input value only (don't navigate on init)
+            const hidden = document.getElementById('languageSelect');
+            if (hidden) { hidden.value = has; }
+            // Watch for changes and emit 'change' for external listeners
+            this.$watch('selectedShortCode', (val) => {
+                if (!val) return;
+                const el = document.getElementById('languageSelect');
+                if (el) {
+                    el.value = val;
+                    el.dispatchEvent(new Event('change'));
+                }
+            });
+        }
      }"
-     x-init="(() => {
-        // Initialize from URL param or default to 'en'
-        const url = new URL(window.location.href);
-        const fromUrl = (url.searchParams.get('language') || 'en').toLowerCase();
-        const opts = @Html.Raw(optsJson);
-        const has = opts.includes(fromUrl) ? fromUrl : (opts.includes('en') ? 'en' : (opts[0] || 'en'));
-        selectedShortCode = has;
-        const labelMap = @Html.Raw(langMapJson);
-        selectedLanguage = labelMap[has] || 'Select Language';
-        selectedFlag = `/img/flags/${has}.svg`;
-        // Set hidden input value only (don't navigate on init)
-        const hidden = document.getElementById('languageSelect');
-        if (hidden){ hidden.value = has; }
-        // Watch for changes and emit 'change' for external listeners
-        $watch('selectedShortCode', (val) => {
-          if (!val) return;
-          const el = document.getElementById('languageSelect');
-          if (el){
-            el.value = val;
-            el.dispatchEvent(new Event('change'));
-          }
-        });
-     })()"
      class="relative inline-block">
     <!-- Hidden input used by existing JS listeners -->
     <input type="hidden" id="languageSelect" />
