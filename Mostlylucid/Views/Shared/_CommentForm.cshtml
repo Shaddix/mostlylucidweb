@@ -30,5 +30,5 @@
     <textarea id="commenteditor" class="hidden w-full h-44 dark:bg-custom-dark-bg bg-white text-black dark:text-white"></textarea>
 
     <input type="hidden" asp-for="ParentId"></input>
-    <button class="btn btn-outline btn-sm mb-4" hx-action="Comment" hx-controller="Comment" hx-post hx-vals x-on:click.prevent="window.mostlylucid.comments.setValues($event)"  hx-swap="outerHTML" hx-target="#commentform">Comment</button>
+    <button class="btn btn-outline btn-sm mb-4" hx-action="Comment" hx-controller="Comment" hx-post hx-vals x-on:click.prevent="window.mostlylucid.comments.setValues($event)" hx-on="htmx:afterSwap: window.scrollTo({top: 0, behavior: 'smooth'})" hx-swap="outerHTML" hx-target="#commentform">Comment</button>
 </div>

@@ -632,7 +632,7 @@ sequenceDiagram
     Encoder->>Encoder: Build representations
     Encoder->>Decoder: Encoded states
 
-    Decoder->>Decoder: Generate <START>
+    Decoder->>Decoder: Generate [START]
     Decoder->>Output: Emit START token
 
     Decoder->>Decoder: Attend to "The" → Generate "Le"
@@ -644,7 +644,7 @@ sequenceDiagram
     Decoder->>Decoder: Attend to "sat" → Generate "s'est assis"
     Decoder->>Output: "s'est assis"
 
-    Decoder->>Decoder: Generate <END>
+    Decoder->>Decoder: Generate [END]
     Output->>Output: "Le chat s'est assis"
 ```
 
@@ -763,7 +763,12 @@ graph TD
     end
 
     subgraph "2. Self-Attention in Encoder"
-        E1 & E2 & E3 & E4 & E5 & E6 --> SA[Self-Attention]
+        E1 --> SA[Self-Attention]
+        E2 --> SA
+        E3 --> SA
+        E4 --> SA
+        E5 --> SA
+        E6 --> SA
         SA --> C1[ctx: 0.3, 0.1, ...]
         SA --> C2[ctx: 0.6, 0.4, ...]
         SA --> C3[ctx: -0.2, 0.5, ...]

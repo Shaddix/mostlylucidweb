@@ -123,10 +123,16 @@
         <!-- Button that will disappear once showNewElement is true -->
         <a x-show="!showNewElement"
            class="btn btm-sm btn-outline mb-6"
+           href="javascript:void(0)"
+           role="button"
+           x-on:click.prevent
+           hx-boost="false"
            hx-controller="Comment"
            hx-action="GetCommentForm"
            hx-route-postId="@(Int32.Parse(Model.Id))"
            hx-get
+           hx-push-url="false"
+           hx-swap="innerHTML"
            hx-target="#contentformarea">
             <i class='bx bx-message-rounded-add'></i> Add Comment
         </a>
