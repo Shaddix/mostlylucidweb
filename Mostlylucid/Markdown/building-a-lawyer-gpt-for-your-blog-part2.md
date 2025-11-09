@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Welcome to Part 2! In Part 1, we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
+Welcome to Part 2! In [Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1), we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
-This part might seem basic if you're already familiar with CUDA, but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect cuDNN installations. We'll do this right from the start.
+This part might seem basic if you're already familiar with [CUDA](https://developer.nvidia.com/cuda-toolkit), but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect [cuDNN](https://developer.nvidia.com/cudnn) installations. We'll do this right from the start.
 
 [TOC]
 
@@ -183,9 +183,9 @@ CUDA provides the programming interface for GPU acceleration.
 
 ### Version Selection
 
-**Critical**: We need CUDA 12.x for modern models. Specifically:
-- **CUDA 12.1** - Good balance of compatibility and features
-- **CUDA 12.3** - Latest features but verify library support
+**Critical**: We need [CUDA](https://developer.nvidia.com/cuda-toolkit) 12.x for modern models. Specifically:
+- **CUDA 12.1+** - Good balance of compatibility and features (at the time of writing)
+- **Latest 12.x** - Check compatibility with your libraries
 - **NOT CUDA 11.x** - Missing features newer models need
 
 ### Download & Install
@@ -277,9 +277,9 @@ cuDNN provides optimized implementations of deep learning operations.
 
 ### Version Compatibility
 
-**Critical**: cuDNN version must match CUDA version!
+**Critical**: [cuDNN](https://developer.nvidia.com/cudnn) version must match CUDA version!
 
-For **CUDA 12.1**, we need **cuDNN 8.9.7 for CUDA 12.x**
+For **CUDA 12.x**, we need **cuDNN 8.9+** for CUDA 12.x (at the time of writing, 8.9.7 or later)
 
 ### Download cuDNN
 
@@ -439,10 +439,10 @@ cd CudaTest
 
 ### Add ONNX Runtime with CUDA
 
-ONNX Runtime is the easiest way to use CUDA from C#.
+[ONNX Runtime](https://onnxruntime.ai/) is the easiest way to use CUDA from C#.
 
 ```bash
-dotnet add package Microsoft.ML.OnnxRuntime.Gpu --version 1.16.3
+dotnet add package Microsoft.ML.OnnxRuntime.Gpu  # Latest version
 ```
 
 **Why this package?**
@@ -857,6 +857,17 @@ dotnet run
 | 12.3 | 9.0.0 | 1.17.x | 546.xx+ |
 | 11.8 | 8.9.2 | 1.15.x | 520.xx+ |
 
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- **Part 2: GPU Setup & CUDA in C#** (this post)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
 - [CUDA Toolkit Documentation](https://docs.nvidia.com/cuda/)
@@ -864,4 +875,4 @@ dotnet run
 - [ONNX Runtime GPU Execution Provider](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html)
 - [NVIDIA Developer Zone](https://developer.nvidia.com/)
 
-See you in Part 3, where we finally start building the semantic search engine!
+See you in [Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3), where we finally start building the semantic search engine!

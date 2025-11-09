@@ -18,7 +18,7 @@ The goal is to create an AI-powered writing assistant that:
 - Auto-generates internal links to related articles
 - Acts like "GitHub Copilot for your blog"
 
-This series will cover building a complete Retrieval Augmented Generation (RAG) system in C# that runs on Windows, leveraging my NVIDIA A4000 16GB GPU for local inference. We'll use the latest approaches and frameworks, and I'll explain each new technology as we encounter it.
+This series will cover building a complete [Retrieval Augmented Generation (RAG)](https://www.anthropic.com/index/contextual-retrieval) system in C# that runs on Windows, leveraging my NVIDIA A4000 16GB GPU for local inference. We'll use the latest approaches and frameworks, and I'll explain each new technology as we encounter it.
 
 [TOC]
 
@@ -59,25 +59,25 @@ Here's what we'll cover over the coming weeks:
 ### Part 1 (This Post): Introduction & Architecture
 We'll establish what we're building and why, plus cover the architectural decisions.
 
-### Part 2: GPU Setup & CUDA in C#
-Getting Windows set up for GPU-accelerated AI workloads, installing CUDA, cuDNN, and testing that C# can actually see and use your GPU.
+### [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+Getting Windows set up for GPU-accelerated AI workloads, installing [CUDA](https://developer.nvidia.com/cuda-toolkit), [cuDNN](https://developer.nvidia.com/cudnn), and testing that C# can actually see and use your GPU.
 
-### Part 3: Understanding Embeddings & Vector Databases
-Deep dive into what embeddings actually are, how they enable semantic search, and choosing the right vector database (spoiler: we'll probably use Qdrant or pgvector).
+### [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+Deep dive into what embeddings actually are, how they enable semantic search, and choosing the right vector database (spoiler: we'll probably use [Qdrant](https://qdrant.tech/) or [pgvector](https://github.com/pgvector/pgvector)).
 
-### Part 4: Building the Ingestion Pipeline
+### [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
 Processing markdown files, intelligent chunking strategies (you can't just split on paragraphs!), and generating embeddings for all our content.
 
-### Part 5: The Windows Client
-Choosing the right framework (WPF, Avalonia, or MAUI?), building the UI, and making it actually pleasant to use.
+### [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+Choosing the right framework ([WPF](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/), [Avalonia](https://avaloniaui.net/), or [MAUI](https://dotnet.microsoft.com/en-us/apps/maui)?), building the UI, and making it actually pleasant to use.
 
-### Part 6: Local LLM Integration
-Running models locally using ONNX Runtime, llama.cpp bindings, or other approaches. Making full use of that A4000!
+### [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+Running models locally using [ONNX Runtime](https://onnxruntime.ai/), [llama.cpp](https://github.com/ggerganov/llama.cpp) bindings, or other approaches. Making full use of that A4000!
 
-### Part 7: Content Generation & Prompt Engineering
+### [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
 Bringing it all together - semantic search for relevant content, context window management, prompt engineering for writing assistance, and generating coherent suggestions.
 
-### Part 8: Advanced Features
+### [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
 Auto-linking to related posts, style consistency checking, code snippet suggestions, and making the system actually useful for daily writing.
 
 ## Why RAG?
@@ -163,19 +163,19 @@ For example:
 - "cat" and "kitten" would be closer than "cat" and "database"
 
 **Technology Choice**: We'll probably use either:
-- `sentence-transformers` models (can run via ONNX Runtime in C#)
+- [sentence-transformers](https://www.sbert.net/) models (can run via ONNX Runtime in C#)
 - OpenAI's embedding models (via API)
-- BGE models (state-of-the-art open source)
+- [BGE models](https://huggingface.co/BAAI/bge-base-en-v1.5) (state-of-the-art open source)
 
 ### 3. Vector Database
 
 The vector database stores embeddings and enables fast similarity search. When you're writing about "Docker compose", it finds the K most semantically similar past content - not just keyword matches, but conceptually related material.
 
 **Technology Choice**: We'll evaluate:
-- **Qdrant** - Modern, written in Rust, excellent C# client, Docker-friendly
-- **pgvector** - Extension for PostgreSQL (we're already using Postgres!)
-- **Weaviate** - Another solid option with good .NET support
-- **Chroma** - Popular in Python land, less so in C#
+- **[Qdrant](https://qdrant.tech/)** - Modern, written in Rust, excellent C# client, Docker-friendly
+- **[pgvector](https://github.com/pgvector/pgvector)** - Extension for PostgreSQL (we're already using Postgres!)
+- **[Weaviate](https://weaviate.io/)** - Another solid option with good .NET support
+- **[Chroma](https://www.trychroma.com/)** - Popular in Python land, less so in C#
 
 I'm leaning toward Qdrant for its simplicity and performance, or pgvector to keep everything in Postgres.
 
@@ -183,25 +183,25 @@ I'm leaning toward Qdrant for its simplicity and performance, or pgvector to kee
 
 We need a nice UI for writing with AI assistance. Think split-pane editor with suggestions. Options:
 
-**WPF (Windows Presentation Foundation)**
+**[WPF (Windows Presentation Foundation)](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)**
 - ✅ Mature, stable, lots of resources
 - ✅ Native Windows performance
 - ❌ Windows-only
 - ❌ Looks dated unless you invest in UI libraries
 
-**Avalonia**
+**[Avalonia](https://avaloniaui.net/)**
 - ✅ Cross-platform (XAML-based)
 - ✅ Modern, actively developed
 - ✅ Similar to WPF
 - ❌ Smaller ecosystem
 
-**MAUI (Multi-platform App UI)**
+**[MAUI (Multi-platform App UI)](https://dotnet.microsoft.com/en-us/apps/maui)**
 - ✅ Cross-platform
 - ✅ Microsoft-backed
 - ❌ Still maturing
 - ❌ More mobile-focused
 
-Since we're Windows-focused and I want something stable, I'm leaning toward **WPF with ModernWPF UI** or **Avalonia** for that cross-platform potential.
+Since we're Windows-focused and I want something stable, I'm leaning toward **WPF with [ModernWPF UI](https://github.com/Kinnara/ModernWpf)** or **Avalonia** for that cross-platform potential.
 
 ### 5. Local LLM Integration
 
@@ -213,19 +213,19 @@ This is where the A4000 GPU shines. We want to run the LLM locally for:
 
 **Technology Options**:
 
-**ONNX Runtime**
+**[ONNX Runtime](https://onnxruntime.ai/)**
 - Convert models to ONNX format
 - Excellent GPU acceleration
 - C# native support
 - Downside: Not all models convert well
 
-**llama.cpp bindings**
-- C++ library with C# bindings (LLamaSharp)
+**[llama.cpp](https://github.com/ggerganov/llama.cpp) bindings**
+- C++ library with C# bindings ([LLamaSharp](https://github.com/SciSharp/LLamaSharp))
 - Supports CUDA
 - Wide model support (Llama, Mistral, etc.)
 - Very active development
 
-**TorchSharp**
+**[TorchSharp](https://github.com/dotnet/TorchSharp)**
 - PyTorch bindings for .NET
 - Most flexibility
 - Steeper learning curve
@@ -272,28 +272,28 @@ There are lots of RAG tutorials out there, but this series will be different:
 Here's the tech stack I'm planning:
 
 ### Core Framework
-- **.NET 9.0** - Latest and greatest
+- **.NET 9** (latest at the time of writing)
 - **C# 13** - Modern language features
 
 ### AI/ML Libraries
-- **ONNX Runtime** or **LLamaSharp** - LLM inference
-- **Microsoft.ML** - Potentially for some tasks
+- **[ONNX Runtime](https://onnxruntime.ai/)** or **[LLamaSharp](https://github.com/SciSharp/LLamaSharp)** - LLM inference
+- **[Microsoft.ML](https://dotnet.microsoft.com/en-us/apps/machinelearning-ai/ml-dotnet)** - Potentially for some tasks
 - **SentenceTransformers via ONNX** - Embeddings
 
 ### Vector Database
-- **Qdrant** or **pgvector** - To be determined
+- **[Qdrant](https://qdrant.tech/)** or **[pgvector](https://github.com/pgvector/pgvector)** - To be determined
 
 ### UI Framework
-- **WPF** with **ModernWPF** or **Avalonia** - Modern desktop UI
+- **WPF** with **ModernWPF** or **[Avalonia](https://avaloniaui.net/)** - Modern desktop UI
 
 ### Supporting Tools
-- **MarkDig** - Already using this for markdown parsing
-- **Docker** - For running Qdrant or other services
-- **Entity Framework Core** - If we use pgvector
+- **[Markdig](https://github.com/xoofx/markdig)** - Already using this for markdown parsing
+- **[Docker](https://www.docker.com/)** - For running Qdrant or other services
+- **[Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/)** - If we use pgvector
 
 ### GPU Stack
-- **CUDA 12.x** - NVIDIA GPU acceleration
-- **cuDNN** - Deep learning primitives
+- **[CUDA](https://developer.nvidia.com/cuda-toolkit) 12.x** (latest at the time of writing)
+- **[cuDNN](https://developer.nvidia.com/cudnn)** - Deep learning primitives
 
 ## Performance Considerations
 
@@ -323,7 +323,7 @@ Each part will be deployable and testable on its own. No big-bang integration ni
 
 ## What's Next?
 
-In **Part 2**, we'll get hands-on with the GPU setup:
+In **[Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)**, we'll get hands-on with the GPU setup:
 
 - Installing CUDA and cuDNN on Windows
 - Setting up the development environment
@@ -355,6 +355,17 @@ In the next part, we'll get our hands dirty with CUDA, GPUs, and making sure our
 
 Stay tuned, and get ready to learn about embeddings, vector databases, chunking strategies, prompt engineering, and all the other delightful complexities of modern AI systems!
 
+## Series Navigation
+
+- **Part 1: Introduction & Architecture** (this post)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
 If you want to get a head start, here are some resources I'll be referencing throughout this series:
@@ -363,6 +374,6 @@ If you want to get a head start, here are some resources I'll be referencing thr
 - [LLamaSharp GitHub](https://github.com/SciSharp/LLamaSharp)
 - [Qdrant Documentation](https://qdrant.tech/documentation/)
 - [Sentence Transformers](https://www.sbert.net/)
-- [Understanding RAG Systems](https://www.anthropic.com/index/retrieval-augmented-generation)
+- [Understanding RAG Systems](https://www.anthropic.com/index/contextual-retrieval)
 
-See you in Part 2!
+See you in [Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)!

@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Welcome to Part 5! We've built the entire ingestion pipeline (Part 4), understand embeddings and vector search (Part 3), and have our GPU ready (Part 2). Now it's time to build the actual writing assistant interface - the Windows client where you'll write blog posts with AI-powered suggestions.
+Welcome to Part 5! We've built the entire ingestion pipeline ([Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)), understand embeddings and vector search ([Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3)), and have our GPU ready ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)). Now it's time to build the actual writing assistant interface - the Windows client where you'll write blog posts with AI-powered suggestions.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
-Think of GitHub Copilot or the new AI features in VS Code - but for blog writing. As you type, the system searches your past posts semantically and offers relevant suggestions, code snippets, and internal links.
+Think of [GitHub Copilot](https://github.com/features/copilot) or the new AI features in [VS Code](https://code.visualstudio.com/) - but for blog writing. As you type, the system searches your past posts semantically and offers relevant suggestions, code snippets, and internal links.
 
 [TOC]
 
@@ -29,12 +29,12 @@ We have three main options for building a modern Windows desktop app in C#:
 | **Learning Curve** | Moderate | Easy (if know WPF) | Moderate |
 | **Ecosystem** | Huge | Growing | Smallest |
 
-**My choice: Avalonia**
+**My choice: [Avalonia](https://avaloniaui.net/)**
 
 Why?
 - Cross-platform (can run on Linux/Mac if needed)
 - Modern, actively developed
-- WPF-compatible XAML (easy to learn)
+- [WPF](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/)-compatible XAML (easy to learn)
 - Good performance
 - Growing ecosystem
 
@@ -88,10 +88,10 @@ dotnet new avalonia.mvvm -n Mostlylucid.BlogLLM.Client
 
 cd Mostlylucid.BlogLLM.Client
 
-# Add necessary packages
-dotnet add package AvaloniaEdit --version 11.0.6
-dotnet add package Markdown.Avalonia --version 11.0.2
-dotnet add package CommunityToolkit.Mvvm --version 8.2.2
+# Add necessary packages (latest versions)
+dotnet add package AvaloniaEdit
+dotnet add package Markdown.Avalonia
+dotnet add package CommunityToolkit.Mvvm
 
 # Add references to our core library
 dotnet add reference ../Mostlylucid.BlogLLM.Core
@@ -325,7 +325,7 @@ Content here...
 
 ## Editor Component
 
-We'll use **AvalonEdit** - a powerful text editor component with syntax highlighting.
+We'll use **[AvalonEdit](https://github.com/AvaloniaUI/AvaloniaEdit)** - a powerful text editor component with syntax highlighting.
 
 ### EditorView.axaml
 
@@ -1012,8 +1012,8 @@ public class EmbeddingCache
 
 We've built a complete Windows client with:
 
-1. ✅ Avalonia UI framework with MVVM pattern
-2. ✅ Markdown editor with live preview (AvalonEdit)
+1. ✅ [Avalonia](https://avaloniaui.net/) UI framework with MVVM pattern
+2. ✅ Markdown editor with live preview ([AvalonEdit](https://github.com/AvaloniaUI/AvaloniaEdit))
 3. ✅ Real-time semantic search as you type
 4. ✅ Suggestions panel showing similar posts
 5. ✅ Code snippet extraction and insertion
@@ -1023,16 +1023,27 @@ We've built a complete Windows client with:
 
 ## What's Next?
 
-In **Part 6**, we'll integrate local LLM inference:
+In **[Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)**, we'll integrate local LLM inference:
 
-- Setting up LLamaSharp for local model execution
+- Setting up [LLamaSharp](https://github.com/SciSharp/LLamaSharp) for local model execution
 - Downloading and quantizing models (Llama 2, Mistral)
-- GGUF format and quantization explained
+- [GGUF format](https://github.com/ggerganov/ggml/blob/master/docs/gguf.md) and quantization explained
 - Running inference on A4000 GPU
 - Generating actual writing suggestions
 - Prompt engineering for blog writing
 
 We'll finally see AI-generated suggestions in the suggestions panel!
+
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- [Part 4: Building the Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4)
+- **Part 5: The Windows Client** (this post)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
 
 ## Resources
 
@@ -1041,4 +1052,4 @@ We'll finally see AI-generated suggestions in the suggestions panel!
 - [CommunityToolkit.Mvvm](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/)
 - [Markdown.Avalonia](https://github.com/whistyun/Markdown.Avalonia)
 
-See you in Part 6!
+See you in [Part 6](/blog/building-a-lawyer-gpt-for-your-blog-part6)!

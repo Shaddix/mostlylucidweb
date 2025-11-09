@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Welcome to Part 4! We've set up our GPU (Part 2), understand embeddings and vector databases (Part 3), and have the overall architecture (Part 1). Now it's time to build the ingestion pipeline - the system that processes all your blog posts and makes them searchable.
+Welcome to Part 4! We've set up our GPU ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)), understand embeddings and vector databases ([Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3)), and have the overall architecture ([Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1)). Now it's time to build the ingestion pipeline - the system that processes all your blog posts and makes them searchable.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
-This is where we take hundreds of markdown files and transform them into semantically searchable chunks. It's not as simple as "split by paragraph" - we need intelligent chunking that preserves context, code blocks, and maintains relationships between sections.
+This is where we take hundreds of [markdown](https://www.markdownguide.org/) files and transform them into semantically searchable chunks. It's not as simple as "split by paragraph" - we need intelligent chunking that preserves context, code blocks, and maintains relationships between sections.
 
 [TOC]
 
@@ -1443,9 +1443,9 @@ We've built a complete ingestion pipeline:
 
 ## What's Next?
 
-In **Part 5**, we'll build the Windows client application:
+In **[Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)**, we'll build the Windows client application:
 
-- Choosing between WPF and Avalonia
+- Choosing between [WPF](https://docs.microsoft.com/en-us/dotnet/desktop/wpf/) and [Avalonia](https://avaloniaui.net/)
 - Building a split-pane editor UI
 - Real-time semantic search as you type
 - Suggestion panel showing related content
@@ -1453,11 +1453,22 @@ In **Part 5**, we'll build the Windows client application:
 
 We'll create a writing assistant that actually helps you write!
 
+## Series Navigation
+
+- [Part 1: Introduction & Architecture](/blog/building-a-lawyer-gpt-for-your-blog-part1)
+- [Part 2: GPU Setup & CUDA in C#](/blog/building-a-lawyer-gpt-for-your-blog-part2)
+- [Part 3: Understanding Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3)
+- **Part 4: Building the Ingestion Pipeline** (this post)
+- [Part 5: The Windows Client](/blog/building-a-lawyer-gpt-for-your-blog-part5)
+- [Part 6: Local LLM Integration](/blog/building-a-lawyer-gpt-for-your-blog-part6)
+- [Part 7: Content Generation & Prompt Engineering](/blog/building-a-lawyer-gpt-for-your-blog-part7)
+- [Part 8: Advanced Features & Production Deployment](/blog/building-a-lawyer-gpt-for-your-blog-part8)
+
 ## Resources
 
-- [MarkDig Documentation](https://github.com/xoofx/markdig)
+- [Markdig Documentation](https://github.com/xoofx/markdig)
 - [Qdrant .NET Client](https://github.com/qdrant/qdrant-dotnet)
 - [ONNX Runtime](https://onnxruntime.ai/)
 - [FileSystemWatcher](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher)
 
-See you in Part 5!
+See you in [Part 5](/blog/building-a-lawyer-gpt-for-your-blog-part5)!
