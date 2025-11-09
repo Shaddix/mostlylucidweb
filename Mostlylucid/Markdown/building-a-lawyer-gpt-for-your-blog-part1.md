@@ -18,7 +18,45 @@ The goal is to create an AI-powered writing assistant that:
 - Auto-generates internal links to related articles
 - Acts like "GitHub Copilot for your blog"
 
-This series will cover building a complete [Retrieval Augmented Generation (RAG)](https://www.anthropic.com/index/contextual-retrieval) system in C# that runs on Windows, leveraging my NVIDIA A4000 16GB GPU for local inference. We'll use the latest approaches and frameworks, and I'll explain each new technology as we encounter it.
+This series will cover building a complete [Retrieval Augmented Generation (RAG)](https://www.anthropic.com/index/contextual-retrieval) system in C# that runs on Windows. We'll use the latest approaches and frameworks, and I'll explain each new technology as we encounter it.
+
+## My Hardware Setup (and Minimum Specs)
+
+**My Development Machine:**
+- **GPU**: NVIDIA RTX A4000 (16GB VRAM)
+- **CPU**: AMD Ryzen 9 9950X
+- **RAM**: 96GB DDR5
+
+This is my specific setup, but you **don't need this hardware** to follow along. Here are the minimum specs for different components:
+
+### GPU Acceleration (Recommended, not required)
+- **Minimum**: NVIDIA GPU with 8GB VRAM (e.g., RTX 3060, GTX 1070 Ti)
+  - Can run 7B parameter models with quantization
+  - Decent embedding generation speed
+- **Comfortable**: 12GB+ VRAM (e.g., RTX 3060 12GB, RTX 4060 Ti)
+  - Run larger models or higher quality quantizations
+- **My setup**: 16GB (A4000) - Can run 13B models comfortably
+
+### CPU-Only Alternative
+- **Minimum**: Modern quad-core CPU
+- **Recommended**: 8+ cores (for reasonable embedding generation)
+- Everything works on CPU-only, just slower:
+  - Embedding generation: ~5-10x slower
+  - LLM inference: ~10-50x slower
+  - Still totally usable for a writing assistant!
+
+### RAM Requirements
+- **Minimum**: 16GB system RAM
+  - CPU-only inference for 7B models
+- **Comfortable**: 32GB
+  - Better for larger models on CPU
+- **My setup**: 96GB - Overkill, 32GB is plenty
+
+### Storage
+- **SSD**: Recommended for model loading
+- **Space**: ~20GB for models and vector database
+
+**Bottom line**: I'll show the GPU-accelerated path, but will note CPU-only alternatives throughout. You can start CPU-only and upgrade later!
 
 [TOC]
 
@@ -297,16 +335,30 @@ Here's the tech stack I'm planning:
 
 ## Performance Considerations
 
-With a 16GB A4000, we have some constraints:
+Different hardware setups will have different capabilities:
 
-- **Model Size** - Can't run massive models like 70B parameter LLMs
-- **Batch Processing** - May need to process embeddings in batches
-- **Memory Management** - Must be careful with VRAM usage
+### With 8GB VRAM (Minimum)
+- **Model Size**: 7B parameter models with Q4 quantization
+- **Batch Processing**: Process embeddings in smaller batches
+- **Memory Management**: Careful VRAM monitoring required
+- **Works well for**: Writing assistant, embedding generation
 
-But we have plenty of power for:
-- 7B-13B parameter models (Llama 2, Mistral, etc.)
-- Efficient embedding models
-- Fast inference (sub-second response times)
+### With 12GB+ VRAM (Comfortable)
+- **Model Size**: 7B with higher quality quantization (Q5/Q6)
+- **Batch Processing**: Larger batches for faster throughput
+- **Can also run**: Some 13B models with aggressive quantization
+
+### With 16GB+ VRAM (My setup)
+- **Model Size**: 7B-13B parameter models comfortably
+- **Batch Processing**: Full batches, minimal constraints
+- **Fast inference**: Sub-second response times
+- **Headroom**: Can experiment with different models
+
+### CPU-Only (Fallback)
+- **Everything works**, just slower
+- **Embeddings**: 5-10x slower than GPU
+- **LLM inference**: 10-50x slower than GPU
+- **Still usable**: For a writing assistant with patience!
 
 ## Development Approach
 

@@ -9,6 +9,8 @@ Welcome to Part 2! In [Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1),
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
+**About my hardware**: I'm using an NVIDIA RTX A4000 (16GB VRAM), AMD Ryzen 9 9950X, and 96GB DDR5 RAM. But you don't need this! As covered in Part 1, you can use any NVIDIA GPU with 8GB+ VRAM, or even run CPU-only (slower but functional). This part focuses on GPU setup, but I'll note CPU-only alternatives where relevant.
+
 This part might seem basic if you're already familiar with [CUDA](https://developer.nvidia.com/cuda-toolkit), but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect [cuDNN](https://developer.nvidia.com/cudnn) installations. We'll do this right from the start.
 
 [TOC]
@@ -45,23 +47,42 @@ graph LR
 3. **Memory Bandwidth** - GPUs move data much faster
 4. **Specialized Hardware** - Tensor cores accelerate AI-specific operations
 
-**Real-world example**: Generating embeddings for a blog post:
-- **CPU (i7-12700K)**: ~5 seconds per post
+**Real-world example** (on my hardware): Generating embeddings for a blog post:
+- **CPU (Ryzen 9 9950X)**: ~5 seconds per post
 - **GPU (A4000 16GB)**: ~0.3 seconds per post
 
 That's 16x faster, and it compounds when processing hundreds of posts!
+
+**Performance on other GPUs** (approximate):
+- **RTX 4090** (24GB): Fastest, ~0.2s per post
+- **RTX 3060** (12GB): ~0.5s per post
+- **GTX 1070 Ti** (8GB): ~0.8s per post
+- Still much faster than CPU!
 
 ## Understanding Your Hardware
 
 Before installing anything, let's understand what we're working with.
 
-### The NVIDIA A4000
+### My GPU: NVIDIA RTX A4000
 
-The RTX A4000 is a professional workstation GPU with:
+This is my specific GPU - a professional workstation card with:
 - **16GB GDDR6 VRAM** - Enough for 7B-13B parameter models
 - **6144 CUDA cores** - Parallel processing power
 - **256 Tensor cores** - Accelerated AI operations
 - **CUDA Compute Capability 8.6** - Important for compatibility
+
+### Common GPU Options
+
+Here's what various GPUs can handle:
+
+| GPU | VRAM | Max Model Size | Good For |
+|-----|------|----------------|----------|
+| RTX 4090 | 24GB | 13B-30B | Overkill for this project |
+| RTX 4070 Ti | 12GB | 7B-13B | Excellent choice |
+| RTX 3060 | 12GB | 7B | Budget-friendly |
+| RTX 4060 Ti | 16GB | 7B-13B | Great value |
+| A4000 (mine) | 16GB | 7B-13B | Workstation GPU |
+| GTX 1070 Ti | 8GB | 7B (tight) | Minimum viable |
 
 ### Check Your GPU
 

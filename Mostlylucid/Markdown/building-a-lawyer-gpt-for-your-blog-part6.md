@@ -102,20 +102,26 @@ graph LR
 - Q5/Q6: Sweet spot for most use cases
 - Q8: Near-original quality, still 4x smaller
 
-### Which Models Fit on A4000 (16GB)?
+### Model Selection by Hardware
 
-| Model | Size (Q4_K_M) | VRAM Usage | Speed | Quality |
-|-------|---------------|------------|-------|---------|
-| **Llama 2 7B** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐ Good |
-| **Mistral 7B v0.2** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐⭐ Better |
-| **Phi-3 Mini (3.8B)** | 2.3GB | ~4GB | ⚡⚡⚡⚡ Very Fast | ⭐⭐⭐ Good |
-| **Gemma 7B** | 4.1GB | ~6GB | ⚡⚡⚡ Fast | ⭐⭐⭐⭐ Better |
-| **Llama 3 8B** | 4.7GB | ~7GB | ⚡⚡ Medium | ⭐⭐⭐⭐⭐ Best |
-| **Llama 2 13B** | 7.4GB | ~10GB | ⚡ Slower | ⭐⭐⭐⭐ Better |
+| Model | Size (Q4_K_M) | VRAM Usage | Fits 8GB? | Fits 12GB? | Fits 16GB? | Quality |
+|-------|---------------|------------|-----------|------------|------------|---------|
+| **Phi-3 Mini (3.8B)** | 2.3GB | ~4GB | ✅ Easy | ✅ Easy | ✅ Easy | ⭐⭐⭐ Good |
+| **Llama 2 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐ Good |
+| **Mistral 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐ Better |
+| **Gemma 7B** | 4.1GB | ~6GB | ✅ Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐ Better |
+| **Llama 3 8B** | 4.7GB | ~7GB | ⚠️ Very Tight | ✅ Good | ✅ Easy | ⭐⭐⭐⭐⭐ Best |
+| **Llama 2 13B** | 7.4GB | ~10GB | ❌ No | ⚠️ Tight | ✅ Good | ⭐⭐⭐⭐ Better |
+
+**Recommendations by GPU:**
+- **8GB VRAM**: Start with **Mistral 7B** or **Phi-3 Mini** (safest)
+- **12GB VRAM**: **Llama 3 8B** (best quality) or **Mistral 7B** (faster)
+- **16GB VRAM (my setup)**: **Llama 3 8B** or try **13B models**
+- **CPU-only**: Any model works, just much slower (start with Phi-3 Mini for speed)
 
 **My recommendation**: **[Mistral 7B](https://mistral.ai/)** (latest version) or **[Llama 3](https://ai.meta.com/llama/)** 8B
 - Excellent quality for technical writing
-- Fits comfortably on A4000
+- Works across all GPU sizes
 - Fast enough for interactive use
 - Good at following instructions
 
