@@ -379,6 +379,134 @@ namespace Mostlylucid.BlogLLM.Core.Services
 - Computes hash for change detection
 - Handles translated files (e.g., `slug.es.md`)
 
+### Markdown Fetch Preprocessing
+
+Before parsing, we use the **Markdown Fetch Extension** to process any `<fetch>` tags in the markdown. This allows blog posts to include remote content dynamically!
+
+For example, if your markdown contains:
+```markdown
+<fetch markdownurl="https://example.com/api-docs.md" pollfrequency="24h" />
+```
+
+The preprocessor will:
+1. Fetch the remote markdown from the URL
+2. Cache it in memory (for the duration of ingestion)
+3. Replace the tag with the actual content
+4. Then parse everything together
+
+**Updated Parser with Fetch Support**:
+
+```csharp
+using Mostlylucid.Markdig.FetchExtension.Processors;
+using Microsoft.Extensions.Logging;
+
+public class MarkdownParserService
+{
+    private readonly MarkdownPipeline _pipeline;
+    private readonly IServiceProvider? _serviceProvider;
+    private readonly ILogger<MarkdownParserService>? _logger;
+
+    public MarkdownParserService(
+        IServiceProvider? serviceProvider = null,
+        ILogger<MarkdownParserService>? logger = null)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+    }
+
+    public BlogPost ParseMarkdownFile(string filePath)
+    {
+        var markdown = File.ReadAllText(filePath);
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+
+        // Preprocess markdown to fetch remote content if there are <fetch> tags
+        if (_serviceProvider != null)
+        {
+            var preprocessor = new MarkdownFetchPreprocessor(_serviceProvider, _logger);
+            markdown = preprocessor.Preprocess(markdown);
+            _logger?.LogInformation("Preprocessed {File} for fetch tags", filePath);
+        }
+
+        // Now parse the (potentially expanded) markdown
+        var document = Markdown.Parse(markdown, _pipeline);
+        // ... rest of parsing logic
+    }
+}
+```
+
+**Simple Fetch Service for Ingestion**:
+
+Since the ingestion tool doesn't need database persistence, we use a simple in-memory implementation:
+
+```csharp
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Markdig.FetchExtension.Models;
+
+public class SimpleMarkdownFetchService : IMarkdownFetchService
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ConcurrentDictionary<string, (string content, DateTimeOffset fetchedAt)> _cache = new();
+
+    public SimpleMarkdownFetchService(IHttpClientFactory httpClientFactory)
+    {
+        _httpClientFactory = httpClientFactory;
+    }
+
+    public async Task<MarkdownFetchResult> FetchMarkdownAsync(
+        string url, int pollFrequencyHours, int blogPostId)
+    {
+        // Check cache first
+        if (_cache.TryGetValue(url, out var cached))
+        {
+            var age = DateTimeOffset.UtcNow - cached.fetchedAt;
+            if (age.TotalHours < pollFrequencyHours)
+            {
+                return new MarkdownFetchResult { Success = true, Content = cached.content };
+            }
+        }
+
+        // Fetch fresh content
+        var client = _httpClientFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(30);
+        var response = await client.GetAsync(url);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Return cached content if available
+            if (_cache.TryGetValue(url, out var staleCached))
+            {
+                return new MarkdownFetchResult { Success = true, Content = staleCached.content };
+            }
+            return new MarkdownFetchResult
+            {
+                Success = false,
+                ErrorMessage = $"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}"
+            };
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        _cache[url] = (content, DateTimeOffset.UtcNow);
+
+        return new MarkdownFetchResult { Success = true, Content = content };
+    }
+
+    public Task<bool> RemoveCachedMarkdownAsync(string url, int blogPostId = 0)
+    {
+        var removed = _cache.TryRemove(url, out _);
+        return Task.FromResult(removed);
+    }
+}
+```
+
+**Benefits**:
+- Blog posts can reference external API documentation, shared content, or other markdown files
+- Content is fetched once per ingestion run and cached
+- Falls back to cached content if remote fetch fails
+- Embeddings include both local and remote content
+
 ## Intelligent Chunking Strategy
 
 This is critical! Bad chunking = bad search results.
@@ -1267,7 +1395,11 @@ builder.Services.AddSerilog();
 // Configure settings
 builder.Services.Configure<IngestionConfig>(builder.Configuration.GetSection("Ingestion"));
 
-// Register services
+// Register markdown fetch service for preprocessing
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IMarkdownFetchService, SimpleMarkdownFetchService>();
+
+// Register services (MarkdownParserService now gets IServiceProvider injected)
 builder.Services.AddSingleton<MarkdownParserService>();
 builder.Services.AddSingleton(sp =>
 {

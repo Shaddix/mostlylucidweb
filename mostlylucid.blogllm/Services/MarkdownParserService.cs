@@ -1,7 +1,9 @@
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using Microsoft.Extensions.Logging;
 using Mostlylucid.BlogLLM.Models;
+using Mostlylucid.Markdig.FetchExtension.Processors;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -11,9 +13,13 @@ namespace Mostlylucid.BlogLLM.Services;
 public class MarkdownParserService
 {
     private readonly MarkdownPipeline _pipeline;
+    private readonly IServiceProvider? _serviceProvider;
+    private readonly ILogger<MarkdownParserService>? _logger;
 
-    public MarkdownParserService()
+    public MarkdownParserService(IServiceProvider? serviceProvider = null, ILogger<MarkdownParserService>? logger = null)
     {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
             .Build();
@@ -23,6 +29,14 @@ public class MarkdownParserService
     {
         var markdown = File.ReadAllText(filePath);
         var fileName = Path.GetFileNameWithoutExtension(filePath);
+
+        // Preprocess markdown to fetch remote content if there are <fetch> tags
+        if (_serviceProvider != null)
+        {
+            var preprocessor = new MarkdownFetchPreprocessor(_serviceProvider, _logger);
+            markdown = preprocessor.Preprocess(markdown);
+            _logger?.LogInformation("Preprocessed markdown file {FilePath} for fetch tags", filePath);
+        }
 
         var document = Markdown.Parse(markdown, _pipeline);
 
