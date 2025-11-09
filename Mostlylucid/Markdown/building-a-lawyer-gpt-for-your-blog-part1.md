@@ -1,11 +1,13 @@
 # Building a "Lawyer GPT" for Your Blog - Part 1: Introduction & Architecture
 
-<!--category-- AI, LLM, RAG, C# -->
+<!--category-- AI, LLM, RAG, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">2025-11-09T12:00</datetime>
 
 ## Introduction
 
 Buckle in because this is going to be a long series! If you've been following along with this blog, you'll know I'm a bit obsessed with finding interesting ways to use LLMs and AI in practical applications. Well, I've got a new project that combines my love of blogging, C#, and AI: building a writing assistant that helps me draft new blog posts using my existing content as a knowledge base.
+
+> NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
 Think of how modern legal practices use LLMs trained on case law to draft briefs, motions, and contracts. They don't start from scratch - the system references relevant precedents, suggests language based on successful past documents, and maintains consistency with established patterns. That's exactly what we're building here, but for blog content.
 

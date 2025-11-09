@@ -1,11 +1,13 @@
 # Building a "Lawyer GPT" for Your Blog - Part 2: GPU Setup & CUDA in C#
 
-<!--category-- AI, LLM, CUDA, C#, GPU -->
+<!--category-- AI, LLM, CUDA, C#, GPU, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">2025-11-09T14:00</datetime>
 
 ## Introduction
 
 Welcome to Part 2! In Part 1, we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
+
+> NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
 This part might seem basic if you're already familiar with CUDA, but trust me - I've wasted countless hours debugging mysterious errors that traced back to version mismatches, missing environment variables, or incorrect cuDNN installations. We'll do this right from the start.
 

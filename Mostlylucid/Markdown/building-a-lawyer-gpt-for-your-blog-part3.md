@@ -1,11 +1,13 @@
 # Building a "Lawyer GPT" for Your Blog - Part 3: Understanding Embeddings & Vector Databases
 
-<!--category-- AI, LLM, Embeddings, Vector Database, C# -->
+<!--category-- AI, LLM, Embeddings, Vector Database, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">2025-11-09T16:00</datetime>
 
 ## Introduction
 
 Welcome to Part 3! We've got our GPU stack working (Part 2), and we understand the architecture (Part 1). Now it's time to dive into the magic that makes semantic search possible: **embeddings** and **vector databases**.
+
+> NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
 This is where things get interesting. We're going to understand how to represent text as numbers in a way that captures meaning, not just keywords. It's the difference between finding posts that contain the word "docker" vs finding posts that are semantically about containerization concepts.
 
