@@ -63,18 +63,38 @@ Modern CPUs now include dedicated AI accelerators:
 - **AMD Ryzen AI** (7040/8040 series) - XDNA NPU
 - **AMD Ryzen AI Max** (Strix Point) - Up to 50 TOPS
 
-**Current Status (as of writing):**
+**Important: NPUs are for inference only!** You don't "build" or train models on NPUs - they're designed to *run* pre-trained models efficiently. Models are trained on cloud GPUs (or workstations), then downloaded and deployed to NPUs for inference.
+
+**Current Status for Running Models on NPUs (as of writing):**
 - ✅ Great for: On-device inference, battery efficiency (laptops)
 - ⚠️ Limited for our use: Immature .NET/ONNX Runtime support
 - ❌ Not ready for: This project's primary path
 
 **Why not NPUs for this series?**
 1. **Software ecosystem**: CUDA has 15+ years of maturity, NPU support in .NET is nascent
-2. **Model compatibility**: Most models target CUDA/CPU, NPU optimization is rare
+2. **Model compatibility**: Most GGUF models target CUDA/CPU, NPU-optimized models are rare
 3. **Documentation**: Limited resources for NPU development in C#
 4. **Performance**: Currently slower than discrete GPUs for our workload
+5. **DirectML support**: Still experimental for LLM inference
 
-**Future consideration**: Once [ONNX Runtime](https://onnxruntime.ai/) and [DirectML](https://github.com/microsoft/DirectML) mature their NPU support (likely 2024-2025), these will become viable alternatives!
+**Can you use NPUs for inference? Yes, but:**
+- Requires [DirectML](https://github.com/microsoft/DirectML) execution provider in ONNX Runtime
+- Models need to be in ONNX format (not GGUF)
+- C# support is experimental
+- Performance is currently underwhelming vs. CUDA
+
+**How to try NPU inference (advanced users):**
+```bash
+# Use DirectML execution provider (supports NPU)
+dotnet add package Microsoft.ML.OnnxRuntime.DirectML
+
+# In code:
+var sessionOptions = new SessionOptions();
+sessionOptions.AppendExecutionProvider("DML"); // DirectML
+var session = new InferenceSession("model.onnx", sessionOptions);
+```
+
+**Future consideration**: Once [ONNX Runtime](https://onnxruntime.ai/) and [DirectML](https://github.com/microsoft/DirectML) mature their NPU support (likely 2024-2025), these will become viable alternatives for inference!
 
 **Bottom line**: I'll show the GPU-accelerated path, but will note CPU-only alternatives throughout. You can start CPU-only and upgrade later!
 
