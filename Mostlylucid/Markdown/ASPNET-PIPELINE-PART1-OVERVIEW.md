@@ -1,7 +1,7 @@
 ﻿# Understanding the ASP.NET Core Request and Response Pipeline - Part 1: Overview and Foundation
 
 <!--category-- ASP.NET, ASP.NET Lifecycle, AI-Article -->
-<datetime class="hidden">2024-11-08T00:16</datetime>
+<datetime class="hidden">202g-11-09T00:16</datetime>
 
 ## Introduction
 
@@ -9,7 +9,7 @@ The ASP.NET Core request and response pipeline is the backbone of every web appl
 
 Whether you're building APIs, web applications, or microservices, the pipeline is always there, working behind the scenes. By understanding it deeply, you'll be able to optimize performance, implement cross-cutting concerns elegantly, and troubleshoot issues more effectively.
 
-> NOTE: This is part of a series of experimental articles (hence being dated in the past). It's a combination of AI and my own editing and tweaking.
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 [TOC]
 

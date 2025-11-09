@@ -1,7 +1,7 @@
 ﻿# Understanding the ASP.NET Core Request and Response Pipeline - Part 5: MVC, Razor Pages, and Minimal APIs
 
 <!--category-- ASP.NET, ASP.NET Lifecycle, AI-Article -->
-<datetime class="hidden">2024-11-08T00:12</datetime>
+<datetime class="hidden">2025-11-09T00:12</datetime>
 
 ## Introduction
 
@@ -13,7 +13,7 @@ We've journeyed through the hosting layer, middleware pipeline, and routing syst
 
 Each model sits atop the same routing and endpoint infrastructure we explored in Part 4, but they provide different developer experiences and are optimized for different scenarios. In this part, we'll explore how each model processes requests and generates responses.
 
-> NOTE: This is part of a series of experimental articles (hence being dated in the past). It's a combination of AI and my own editing and tweaking.
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 [TOC]
 

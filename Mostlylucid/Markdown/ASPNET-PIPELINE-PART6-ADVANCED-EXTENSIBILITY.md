@@ -1,7 +1,7 @@
 ﻿# Understanding the ASP.NET Core Request and Response Pipeline - Part 6: Advanced Pipeline Hooks and Extensibility
 
 <!--category-- ASP.NET, ASP.NET Lifecycle, AI-Article -->
-<datetime class="hidden">2024-11-08T00:11</datetime>
+<datetime class="hidden">2025-11-09T00:11</datetime>
 
 ## Introduction
 
@@ -16,7 +16,7 @@ These advanced techniques allow you to:
 
 Understanding these extension points transforms you from a consumer of the framework to someone who can extend it to meet unique requirements.
 
-> NOTE: This is part of a series of experimental articles (hence being dated in the past). It's a combination of AI and my own editing and tweaking.
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 [TOC]
 

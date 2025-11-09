@@ -2,7 +2,7 @@
 
 
 <!--category-- ASP.NET, ASP.NET Lifecycle, AI-Article -->
-<datetime class="hidden">2024-11-08T00:15</datetime>
+<datetime class="hidden">2025-11-09T09:15</datetime>
 
 ## Introduction
 
@@ -10,7 +10,7 @@ In Part 1, we explored the overall architecture of the ASP.NET Core request and 
 
 Understanding this layer is crucial because it controls how your application starts, how it's configured, and how it interacts with the underlying web server. Whether you're deploying to production, optimizing performance, or configuring HTTPS, the hosting layer is where these concerns are addressed.
 
-> NOTE: This is part of a series of experimental articles (hence being dated in the past). It's a combination of AI and my own editing and tweaking.
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 [TOC]
 

@@ -1,7 +1,7 @@
 ﻿# Understanding the ASP.NET Core Request and Response Pipeline - Part 4: Routing and Endpoints
 
 <!--category-- ASP.NET, ASP.NET Lifecycle, AI-Article -->
-<datetime class="hidden">2024-11-08T00:13</datetime>
+<datetime class="hidden">2025-11-09T00:13</datetime>
 
 
 ## Introduction
@@ -12,7 +12,7 @@ Routing is the mechanism that matches incoming HTTP requests to executable code.
 
 In this part, we'll explore how routing works, how endpoints are registered and executed, and how you can leverage this system to build sophisticated applications.
 
-> NOTE: This is part of a series of experimental articles (hence being dated in the past). It's a combination of AI and my own editing and tweaking.
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 [TOC]
 

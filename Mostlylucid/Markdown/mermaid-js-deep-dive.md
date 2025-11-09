@@ -1,9 +1,11 @@
 # Mermaid.js Deep Dive: How It Actually Works and How to Extend It
 
 <!--category-- Mermaid, JavaScript, SVG, Diagrams -->
-<datetime class="hidden">2025-01-09T16:00</datetime>
+<datetime class="hidden">2025-11-09T16:00</datetime>
 
 # Introduction
+
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 > **This post builds on previous articles:** If you haven't already, check out [Adding mermaid.js with htmx](/blog/mermaidandhtmx), [Switching Themes for Mermaid](/blog/switchingthemesformermaid), and [Enhancing Mermaid Diagrams with Pan/Zoom and Export](/blog/enhancingmermaiddiagramswithpanzoomandexport). This deep dive explains the internals behind those implementations.
 
@@ -319,7 +321,7 @@ function detectTheme() {
 }
 ```
 
-See [the full theme switcher code](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/src/js/mdeswitch.js) for details.
+See [the full theme switcher code](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/src/js/memmaid_theme_switch.js) for details.
 
 ## 3. Post-Render Enhancements
 

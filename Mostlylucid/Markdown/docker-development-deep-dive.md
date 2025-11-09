@@ -1,11 +1,13 @@
 # Docker Development Deep Dive: From Basics to Advanced .NET Containerization
 
-<datetime class="hidden">2025-01-09T14:00</datetime>
+<datetime class="hidden">2025-11-09T14:00</datetime>
 <!--category-- Docker, .NET, DevOps, Containers -->
 
 ## Introduction
 
 Docker has fundamentally transformed how we build, ship, and run applications. What started as a simple containerization tool has evolved into a complete ecosystem for modern application development and deployment. In this comprehensive guide, we'll explore Docker from the ground up, dive into Docker Compose orchestration, tackle advanced topics like GPU support and multi-architecture builds, and examine the exciting new container features in .NET 9.
+
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
 Whether you're deploying a simple web app or orchestrating a complex microservices architecture with GPU-accelerated machine learning models, this guide will take you from Docker basics to production-ready containerized applications.
 
@@ -1136,44 +1138,44 @@ builder.AddProject<Projects.MyService>("service")
 ## Best Practices Summary
 
 ### Dockerfile Best Practices
-1. ✅ Use multi-stage builds
-2. ✅ Run as non-root user
-3. ✅ Order instructions for optimal caching
-4. ✅ Use specific base image tags (not `latest`)
-5. ✅ Include health checks
-6. ✅ Use `.dockerignore` to exclude unnecessary files
-7. ✅ Minimize layers (combine RUN commands)
-8. ✅ Use build arguments for flexibility
+1.  Use multi-stage builds
+2.  Run as non-root user
+3.  Order instructions for optimal caching
+4.  Use specific base image tags (not `latest`)
+5.  Include health checks
+6.  Use `.dockerignore` to exclude unnecessary files
+7.  Minimize layers (combine RUN commands)
+8.  Use build arguments for flexibility
 
 ### Docker Compose Best Practices
-1. ✅ Use named volumes for data
-2. ✅ Implement health checks
-3. ✅ Use `.env` for secrets (never commit)
-4. ✅ Define explicit networks
-5. ✅ Use `depends_on` with health conditions
-6. ✅ Set restart policies
-7. ✅ Separate dev/prod configurations
-8. ✅ Resource limits in production
+1.  Use named volumes for data
+2.  Implement health checks
+3.  Use `.env` for secrets (never commit)
+4.  Define explicit networks
+5.  Use `depends_on` with health conditions
+6.  Set restart policies
+7.  Separate dev/prod configurations
+8.  Resource limits in production
 
 ### Security Best Practices
-1. ✅ Run as non-root user
-2. ✅ Use chiseled/minimal base images
-3. ✅ Scan images for vulnerabilities
-4. ✅ Keep base images updated
-5. ✅ Don't include secrets in images
-6. ✅ Use read-only filesystems where possible
-7. ✅ Limit container capabilities
-8. ✅ Use Docker secrets or external secret managers
+1.  Run as non-root user
+2.  Use chiseled/minimal base images
+3.  Scan images for vulnerabilities
+4.  Keep base images updated
+5.  Don't include secrets in images
+6.  Use read-only filesystems where possible
+7.  Limit container capabilities
+8.  Use Docker secrets or external secret managers
 
 ### Performance Best Practices
-1. ✅ Use BuildKit for faster builds
-2. ✅ Leverage layer caching
-3. ✅ Multi-stage builds to reduce image size
-4. ✅ Use `.dockerignore` generously
-5. ✅ Alpine/chiseled images for smaller size
-6. ✅ Use volume mounts for development
-7. ✅ Configure appropriate resource limits
-8. ✅ Use health checks for orchestration
+1.  Use BuildKit for faster builds
+2.  Leverage layer caching
+3.  Multi-stage builds to reduce image size
+4.  Use `.dockerignore` generously
+5.  Alpine/chiseled images for smaller size
+6.  Use volume mounts for development
+7.  Configure appropriate resource limits
+8.  Use health checks for orchestration
 
 ## Troubleshooting Common Issues
 
