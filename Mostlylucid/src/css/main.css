@@ -542,17 +542,17 @@ nav.ml_toc,
 /* Apply styles only in light mode */
 @media (prefers-color-scheme: light) {
     .join-item {
-        color: #000000;              /* black text */
-        background-color: #f0f0f0;   /* light grey background */
-        border: 1px solid #555555;   /* dark grey outline */
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
+        color: #000000  !important;           /* black text */
+        background-color: #f0f0f0 !important;    /* light grey background */
+        border: 1px solid #555555 !important;    /* dark grey outline */
+        padding: 0.5rem 1rem !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
     }
 
     .join-item:hover,
     .join-item:focus {
-        background-color: #e0e0e0;   /* slightly darker grey on hover */
-        border-color: #333333;       /* darker outline */
+        background-color: #e0e0e0 !important;   /* slightly darker grey on hover */
+        border-color: #333333 !important;       /* darker outline */
     }
 }

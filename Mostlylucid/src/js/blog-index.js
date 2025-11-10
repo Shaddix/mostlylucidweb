@@ -193,7 +193,13 @@
         // Preload month highlights after init
         (async ()=>{
           highlightDates = await initMonthHighlights(fp, (langSelect && langSelect.value) || existingLang);
-          fp.redraw();
+          try {
+              fp.redraw();
+          }
+          catch
+          {
+              /* LAZY SWALLOW THE ERROR */
+          }
         })();
 
         console.log('Flatpickr instance created successfully:', !!fp, 'on input:', input.id);
