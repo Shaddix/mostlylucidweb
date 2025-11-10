@@ -9,9 +9,9 @@ Docker has fundamentally transformed how we build, ship, and run applications. W
 
 This is the fourth and most comprehensive article in my Docker series for .NET developers. If you're new to Docker, you might want to start with:
 
-1. **[Docker Compose](/dockercompose)** - Getting started with basic multi-container setups (July 2024)
-2. **[Development Dependencies with Docker Compose](/dockercomposedevdeps)** - Setting up local dev environments (August 2024)
-3. **[ImageSharp with Docker](/imagesharpwithdocker)** - Solving volume permission issues (August 2024)
+1. **[Docker Compose](/blog/dockercompose)** - Getting started with basic multi-container setups (July 2024)
+2. **[Development Dependencies with Docker Compose](/blog/dockercomposedevdeps)** - Setting up local dev environments (August 2024)
+3. **[ImageSharp with Docker](/blog/imagesharpwithdocker)** - Solving volume permission issues (August 2024)
 
 In this deep dive, we'll build on those foundations to explore:
 - **Production-ready Docker Compose**: The actual stack running this blog
@@ -787,7 +787,7 @@ services:
 
 ### Real-World Example: Translation Service with GPU and CPU Builds
 
-Here's a real production example from [mostlylucid-nmt](https://github.com/scottgal/mostlylucid-nmt), a neural machine translation service I built that powers auto-translation on this blog.
+Here's a real production example from [mostlylucid-nmt](https://github.com/scottgal/mostlyucid-nmt), a neural machine translation service I built that powers auto-translation on this blog.
 
 The project demonstrates:
 - **GPU and CPU variants** - Same codebase, different base images
@@ -864,7 +864,7 @@ volumes:
 - **Health Endpoints**: `/health` and `/ready` for orchestrators
 - **Multi-Architecture**: Runs on x86_64 and ARM64 (Apple Silicon, Raspberry Pi)
 
-See the [full project on GitHub](https://github.com/scottgal/mostlylucid-nmt) for Dockerfile examples, build scripts, and API documentation.
+See the [full project on GitHub](https://github.com/scottgal/mostlyucid-nmt/blob/main/README.md) for Dockerfile examples, build scripts, and API documentation.
 
 ## Multi-Architecture Builds with Docker Buildx
 
@@ -2251,10 +2251,10 @@ services:
 
 This blog's Docker journey shows typical progression:
 
-1. **[July 2024 - Simple Start](/dockercompose)**: Just the app, Cloudflared, and Watchtower
-2. **[August 2024 - Dev Dependencies](/dockercomposedevdeps)**: Added development-only services
-3. **[August 2024 - ImageSharp Fix](/imagesharpwithdocker)**: Solved volume permissions for caching
-4. **[November 2024 - Full Stack](/dockercompose)**: Complete observability with Prometheus, Grafana, Seq
+1. **[July 2024 - Simple Start](/blog/dockercompose)**: Just the app, Cloudflared, and Watchtower
+2. **[August 2024 - Dev Dependencies](/blog/dockercomposedevdeps)**: Added development-only services
+3. **[August 2024 - ImageSharp Fix](/blog/imagesharpwithdocker)**: Solved volume permissions for caching
+4. **[November 2024 - Full Stack](/blog/usingprometheusandgrafanatomonitoraspnet)**: Complete observability with Prometheus, Grafana, Seq
 5. **Today**: Aspire option for .NET-first development
 
 **Lessons learned:**
@@ -2370,9 +2370,9 @@ Docker has evolved from a simple containerization tool to a comprehensive platfo
 ### Key Takeaways
 
 **For Beginners:**
-- Start with the [basic Docker Compose setup](/dockercompose) - just 3 services
-- Use [development-only dependencies](/dockercomposedevdeps) for local work
-- Solve common issues like [volume permissions](/imagesharpwithdocker) early
+- Start with the [basic Docker Compose setup](/blog/dockercompose) - just 3 services
+- Use [development-only dependencies](/blog/usingprometheusandgrafanatomonitoraspnet) for local work
+- Solve common issues like [volume permissions](/blog/imagesharpwithdocker) early
 
 **For Self-Hosters on Budget VPS:**
 - Start minimal: App + Database + Reverse Proxy (~800MB RAM)
@@ -2420,7 +2420,7 @@ This blog's Docker evolution mirrors typical progression:
 
 Depending on your path:
 
-- **Learning Docker**: Start with [Docker Compose basics](/dockercompose)
+- **Learning Docker**: Start with [Docker Compose basics](/blog/dockercompose)
 - **Self-Hosting**: Try the minimal VPS setup from this article
 - **Building Microservices**: Explore .NET Aspire
 - **Running ML Workloads**: Check out the [mostlylucid-nmt translation service](https://github.com/scottgal/mostlylucid-nmt)
