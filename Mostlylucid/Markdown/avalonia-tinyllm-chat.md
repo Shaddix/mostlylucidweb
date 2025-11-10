@@ -1,7 +1,7 @@
 # Building a Cross-Platform AI Chat Application with Avalonia and LLamaSharp
 
 <datetime class="hidden">2025-11-10T14:00</datetime>
-<!-- category -- Avalonia, LLamaSharp, AI, Desktop Development, .NET -->
+<!-- category -- Avalonia, LLamaSharp, llamacpp, AI, Desktop Development, .NET -->
 
 # Introduction
 
@@ -25,7 +25,7 @@ You might be wondering why I've chosen Avalonia over the more traditional WPF or
 - **Performant**: No Chromium bloat like Electron. It's native UI all the way down.
 - **Open Source**: Proper MIT license, unlike WPF's reference-source-only approach
 
-Avalonia represents the future of .NET desktop development. It's what WPF should have become if Microsoft hadn't been so focused on web technologies for a decade.
+Avalonia represents the future of .NET desktop development. It's what WPF should have become if Microsoft hadn't been so focused on web technologies for a decade (and even then wasting effort on Silverlight, abandoning Winforms, WPF being quitely sidelined etc..Microsft SUCKS for .NET Windows Clients - partly because they rarely use them for apps, even the start menu in Windows is React Native now!).
 
 # Why LLamaSharp?
 
@@ -37,7 +37,7 @@ Avalonia represents the future of .NET desktop development. It's what WPF should
 - **Battle-Tested**: Used by thousands of projects worldwide
 - **Active Development**: Regular updates to match llama.cpp improvements
 
-The alternative would be running models via Python and Flask, but that's rather inelegant when we can keep it all in .NET, isn't it?
+The alternative would be running models via Python and Flask (or spinning and external service like ollama / LMStudio / cloud) , but that's rather inelegant when we can keep it all in .NET, isn't it?
 
 # Architecture Overview
 
@@ -68,12 +68,7 @@ graph TB
 
     F --> I
 
-    style A fill:#e1f5ff
-    style B fill:#b3e5fc
-    style C fill:#81d4fa
-    style D fill:#4fc3f7
-    style E fill:#29b6f6
-    style F fill:#039be5
+
 ```
 
 The architecture follows classic MVVM principles:

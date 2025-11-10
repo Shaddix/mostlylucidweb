@@ -23,7 +23,7 @@ In this deep dive, we'll build on those foundations to explore:
 
 > NOTE: This is part of my experiments with AI / a way to spend $1000 Claude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
 
-Whether you're deploying a simple web app or orchestrating a complex microservices architecture with GPU-accelerated machine learning models, this guide takes you from Docker basics to production-ready containerized applications - with real examples from running mostlylucid.com.
+Whether you're deploying a simple web app or orchestrating a complex microservices architecture with GPU-accelerated machine learning models, this guide takes you from Docker basics to production-ready containerized applications - with real examples from running mostlylucid.net.
 
 [TOC]
 
@@ -312,7 +312,7 @@ Managing these individually with `docker run` commands becomes unwieldy. Docker 
 
 ### Complete Real-World Example: Production Blog Platform
 
-Here's the **actual production `docker-compose.yml`** that runs this very site (mostlylucid.com):
+Here's the **actual production `docker-compose.yml`** that runs this very site (mostlylucid.net):
 
 ```yaml
 services:
@@ -2024,7 +2024,7 @@ USER appuser
 
 ## Conclusion
 
-Docker has evolved from a simple containerization tool to a comprehensive platform for building, shipping, and running modern applications. This guide has taken you from fundamentals to production-ready deployments, with real-world examples from running mostlylucid.com.
+Docker has evolved from a simple containerization tool to a comprehensive platform for building, shipping, and running modern applications. This guide has taken you from fundamentals to production-ready deployments, with real-world examples from running mostlylucid.net.
 
 ### Key Takeaways
 
