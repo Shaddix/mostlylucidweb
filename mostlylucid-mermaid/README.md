@@ -116,6 +116,82 @@ graph TD
 </script>
 ```
 
+## Easy Path
+
+If you just want it to work with the fewest moving parts, use one of these two copy‑paste setups.
+
+### Option A — Single HTML file (CDN, no build tools)
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Icons for the toolbar buttons (required unless you override icons) -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <!-- Enhancements styles (toolbar, lightbox, etc.) -->
+    <link rel="stylesheet" href="https://unpkg.com/@mostlylucid/mermaid-enhancements/src/styles.css">
+  </head>
+  <body>
+    <div class="mermaid">
+      graph TD
+        A[Start] --> B{Decision}
+        B -->|Yes| C[Result 1]
+        B -->|No| D[Result 2]
+    </div>
+
+    <script type="module">
+      // 1) Load Mermaid (v11 or newer)
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      // 2) Load the enhancements (minified build for production)
+      import { init } from 'https://unpkg.com/@mostlylucid/mermaid-enhancements/dist/index.min.js';
+
+      // 3) Initialize once the DOM is ready
+      window.addEventListener('DOMContentLoaded', async () => {
+        // Optional: configure before init()
+        // import { configure } from 'https://unpkg.com/@mostlylucid/mermaid-enhancements/dist/index.min.js';
+        // configure({ controls: { zoomOut: false } });
+
+        await init();
+      });
+    </script>
+  </body>
+</html>
+```
+
+Notes:
+- Include the Boxicons CSS link or provide your own icon classes via `configure({ icons: { ... } })`.
+- Use the minified build (`dist/index.min.js`) in production.
+- Call `init()` once after Mermaid is available and the DOM is ready.
+
+### Option B — NPM + bundler (Vite/Next/Nuxt/SvelteKit)
+
+```ts
+// main.ts (or app entry)
+import { init } from '@mostlylucid/mermaid-enhancements';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+// If Mermaid is installed locally
+// import mermaid from 'mermaid';
+
+// Call once on the client after the page mounts
+(async () => {
+  // Optional: configure before init()
+  // import { configure } from '@mostlylucid/mermaid-enhancements';
+  // configure({ controls: { exportSvg: false } });
+
+  await init();
+})();
+```
+
+Framework hints:
+- Next.js/Nuxt: ensure `init()` runs client‑side only (e.g., inside `useEffect` or mounted hook). Avoid running during SSR.
+- Astro/MDX/Markdown: your diagram containers should have the `mermaid` class. You can call `init()` once per page.
+- Re‑rendering: if your framework rehydrates or replaces the diagram nodes, call `cleanupMermaidEnhancements()` before re‑initializing to avoid duplicate toolbars.
+
 ## API Reference
 
 ### `init()`
@@ -534,6 +610,107 @@ Built with:
 - Firefox (latest)
 - Safari (latest)
 - Mobile browsers (iOS Safari, Chrome Mobile)
+
+## Known Issues & Workarounds
+
+These are the most common integration issues and how to fix them quickly.
+
+### 1) Toolbar icons are missing
+- Symptom: buttons show empty squares or no icons.
+- Cause: Boxicons CSS not loaded, or you use a different icon set.
+- Fix:
+  - Add Boxicons to the page:
+    ```html
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    ```
+  - Or provide your own icon classes before `init()`:
+    ```ts
+    import { configure } from '@mostlylucid/mermaid-enhancements';
+    configure({
+      icons: {
+        fullscreen: 'fas fa-expand',
+        zoomIn: 'fas fa-plus',
+        zoomOut: 'fas fa-minus',
+        reset: 'fas fa-undo',
+        exportPng: 'fas fa-file-image',
+        exportSvg: 'fas fa-file-code'
+      }
+    });
+    ```
+
+### 2) Styles look off or toolbar overlaps
+- Ensure you import the library CSS once:
+  ```ts
+  import '@mostlylucid/mermaid-enhancements/styles.css';
+  ```
+- If you have strict CSS resets, ensure `.mermaid-lightbox`, `.mermaid-controls`, and `.mermaid-container` aren’t unintentionally overridden.
+
+### 3) Nothing happens after calling `init()`
+- Verify Mermaid v11+ is present before `init()`.
+- Run client-side only (SSR frameworks):
+  - Next.js: call inside `useEffect` or a dynamic component with `ssr: false`.
+  - Nuxt: call in `onMounted`.
+- If your framework replaces DOM nodes post-mount, call:
+  ```ts
+  import { cleanupMermaidEnhancements } from '@mostlylucid/mermaid-enhancements';
+  cleanupMermaidEnhancements();
+  await init();
+  ```
+
+### 4) Double toolbars or duplicated pan/zoom
+- Cause: re-initializing without cleanup.
+- Fix: call `cleanupMermaidEnhancements()` before re-rendering/re-initializing.
+
+### 5) Theme doesn’t switch with OS / site toggle
+- Ensure you’re not re-initializing Mermaid on every theme change manually; the library listens to `prefers-color-scheme`.
+- If you have a custom theme toggle that changes a `data-theme` or class, call a debounced re-render:
+  ```ts
+  // Example: after your site theme toggles
+  await init(); // library re-renders diagrams respecting the new theme
+  ```
+
+### 6) Export to PNG/SVG fails
+- Check the browser console for CORS errors. Cross-origin images/fonts in your diagram labels can block canvas export.
+- Try same-origin fonts and images, or set permissive CORS headers.
+- Very large diagrams may run out of memory; zoom in before exporting, or prefer SVG export which is lighter.
+
+### 7) Mobile pinch/zoom is jumpy
+- Some mobile layouts add nested transform/scroll containers. Ensure the `.mermaid-container` is not inside an element that intercepts touch actions. Add:
+  ```css
+  .mermaid-container, .mermaid-container * { touch-action: pinch-zoom; }
+  ```
+
+### 8) Performance on extremely large diagrams
+- Pan/zoom is enabled, but massive SVGs can be heavy.
+- Tips:
+  - Prefer `flowchart` over `graph` where possible.
+  - Collapse subgraphs.
+  - Use the lightbox to view fullscreen (less layout thrash).
+
+### 9) Mermaid version mismatch
+- Ensure you’re using Mermaid 11 or newer. Pin versions when using a CDN:
+  ```html
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  </script>
+  ```
+
+### 10) Shadow DOM or MDX/Markdown renderers
+- If your diagrams render inside Shadow DOM or are injected after page load, call `init()` after they appear.
+- For MDX/Markdown engines that hydrate, use cleanup + init as shown above.
+
+### 11) Content Security Policy (CSP)
+- If your site blocks inline styles or data URLs, exporting may fail. Ensure your CSP allows:
+  - `img-src 'self' data:`
+  - `style-src` permitting necessary inline styles or add a nonce that your bundler/framework applies to injected styles.
+
+### 12) Controlling the toolbar programmatically
+- You can show/hide at runtime:
+  ```ts
+  import { hideToolbar, showToolbar, toggleToolbar } from '@mostlylucid/mermaid-enhancements';
+  hideToolbar(); // all diagrams
+  // hideToolbar('my-diagram-id'); // specific diagram if you provided ids
+  ```
 
 ## Troubleshooting
 
