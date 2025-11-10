@@ -46,7 +46,6 @@ module.exports = (env, argv) => {
             ],
         },
         resolve: {
-            extensions: ['.js'],
             extensions: ['.js', '.mjs'],
             alias: {
                 '@mostlylucid/mermaid-enhancements$': path.resolve(__dirname, 'node_modules/@mostlylucid/mermaid-enhancements/dist/index.min.js')
@@ -68,7 +67,7 @@ module.exports = (env, argv) => {
                     terserOptions: {
                         ecma: 2020,
                         compress: {
-                            drop_console: false,
+                            drop_console: true,
                             passes: 3,
                             toplevel: true,
                             pure_funcs: ['console.info', 'console.debug'],
@@ -80,7 +79,7 @@ module.exports = (env, argv) => {
                             comments: false,
                         },
                     },
-                    extractComments: false,
+                    extractComments: true,
                 }),
             ] : [],
         },
