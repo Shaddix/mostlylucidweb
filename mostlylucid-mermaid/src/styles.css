@@ -41,15 +41,18 @@
     display: flex;
     gap: 0.25rem;
     z-index: 10;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 0.5rem;
     padding: 0.25rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    backdrop-filter: blur(8px);
 }
 
 .dark .mermaid-controls {
     background: rgba(31, 41, 55, 0.95);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(75, 85, 99, 0.6);
 }
 
 /* Individual control button */
@@ -128,17 +131,19 @@
     border-radius: 0.5rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     max-width: 1400px;
+    border: 2px solid rgba(229, 231, 235, 0.8); /* Light gray outline */
 }
 
 .dark .mermaid-lightbox-content {
     background: #1f2937;
+    border: 2px solid rgba(75, 85, 99, 0.6); /* Dark gray outline */
 }
 
 .mermaid-lightbox-close {
     position: absolute;
     top: 1rem;
     right: 1rem;
-    z-index: 10;
+    z-index: 20;
     padding: 0.5rem;
     border-radius: 9999px;
     cursor: pointer;

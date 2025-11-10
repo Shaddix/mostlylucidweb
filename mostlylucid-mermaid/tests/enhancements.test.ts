@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { enhanceMermaidDiagrams, cleanupMermaidEnhancements, configure } from '../src/enhancements';
+import { enhanceMermaidDiagrams, cleanupMermaidEnhancements, configure, hideToolbar, showToolbar, toggleToolbar } from '../src/enhancements';
 
 describe('enhancements', () => {
   beforeEach(() => {
@@ -17,15 +17,16 @@ describe('enhancements', () => {
         zoomIn: 'bx bx-zoom-in',
         zoomOut: 'bx bx-zoom-out',
         reset: 'bx bx-reset',
-        pan: 'bx bx-move',
         exportPng: 'bx bx-image',
         exportSvg: 'bx bx-code-alt'
       },
       controls: {
         fullscreen: true,
-        zoom: true,
-        pan: true,
-        export: true
+        zoomIn: true,
+        zoomOut: true,
+        reset: true,
+        exportPng: true,
+        exportSvg: true
       }
     });
   });
@@ -50,8 +51,8 @@ describe('enhancements', () => {
       expect(() => {
         configure({
           controls: {
-            export: false,
-            pan: false,
+            exportPng: false,
+            exportSvg: false,
           },
         });
       }).not.toThrow();
@@ -129,7 +130,8 @@ describe('enhancements', () => {
     it('should hide controls when disabled', () => {
       configure({
         controls: {
-          export: false,
+          exportPng: false,
+          exportSvg: false,
         },
       });
 
@@ -220,18 +222,128 @@ describe('enhancements', () => {
       expect(reset).toBeTruthy();
     });
 
-    it('should have pan button', () => {
-      const btn = document.querySelector('[data-action="pan"]');
-      expect(btn).toBeTruthy();
-      expect(btn?.getAttribute('aria-label')).toBe('Pan');
-    });
-
     it('should have export buttons', () => {
       const exportPng = document.querySelector('[data-action="exportPng"]');
       const exportSvg = document.querySelector('[data-action="exportSvg"]');
 
       expect(exportPng).toBeTruthy();
       expect(exportSvg).toBeTruthy();
+    });
+  });
+
+  describe('toolbar visibility functions', () => {
+    beforeEach(() => {
+      // Create two diagrams for testing
+      for (let i = 0; i < 2; i++) {
+        const diagram = document.createElement('div');
+        diagram.className = 'mermaid';
+        diagram.setAttribute('data-processed', 'true');
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        diagram.appendChild(svg);
+        document.body.appendChild(diagram);
+      }
+
+      enhanceMermaidDiagrams();
+    });
+
+    describe('hideToolbar', () => {
+      it('should hide all toolbars when no diagram ID specified', () => {
+        hideToolbar();
+
+        const toolbars = document.querySelectorAll('.mermaid-controls');
+        toolbars.forEach((toolbar) => {
+          expect((toolbar as HTMLElement).style.display).toBe('none');
+        });
+      });
+
+      it('should hide only specific diagram toolbar when ID provided', () => {
+        const wrappers = document.querySelectorAll('.mermaid-wrapper');
+        const firstId = wrappers[0].getAttribute('data-diagram-id');
+
+        if (firstId) {
+          hideToolbar(firstId);
+
+          const firstControls = wrappers[0].querySelector('.mermaid-controls') as HTMLElement;
+          const secondControls = wrappers[1].querySelector('.mermaid-controls') as HTMLElement;
+
+          expect(firstControls.style.display).toBe('none');
+          expect(secondControls.style.display).not.toBe('none');
+        }
+      });
+
+      it('should not throw when called with non-existent ID', () => {
+        expect(() => hideToolbar('non-existent-id')).not.toThrow();
+      });
+    });
+
+    describe('showToolbar', () => {
+      it('should show all toolbars when no diagram ID specified', () => {
+        hideToolbar(); // Hide first
+        showToolbar(); // Then show
+
+        const toolbars = document.querySelectorAll('.mermaid-controls');
+        toolbars.forEach((toolbar) => {
+          expect((toolbar as HTMLElement).style.display).toBe('flex');
+        });
+      });
+
+      it('should show only specific diagram toolbar when ID provided', () => {
+        const wrappers = document.querySelectorAll('.mermaid-wrapper');
+        const firstId = wrappers[0].getAttribute('data-diagram-id');
+
+        hideToolbar(); // Hide all first
+
+        if (firstId) {
+          showToolbar(firstId); // Show only first
+
+          const firstControls = wrappers[0].querySelector('.mermaid-controls') as HTMLElement;
+          const secondControls = wrappers[1].querySelector('.mermaid-controls') as HTMLElement;
+
+          expect(firstControls.style.display).toBe('flex');
+          expect(secondControls.style.display).toBe('none');
+        }
+      });
+
+      it('should not throw when called with non-existent ID', () => {
+        expect(() => showToolbar('non-existent-id')).not.toThrow();
+      });
+    });
+
+    describe('toggleToolbar', () => {
+      it('should toggle all toolbars when no diagram ID specified', () => {
+        const toolbars = document.querySelectorAll('.mermaid-controls');
+        const initialDisplay = (toolbars[0] as HTMLElement).style.display;
+
+        toggleToolbar();
+
+        toolbars.forEach((toolbar) => {
+          const newDisplay = (toolbar as HTMLElement).style.display;
+          expect(newDisplay).not.toBe(initialDisplay);
+        });
+      });
+
+      it('should toggle only specific diagram toolbar when ID provided', () => {
+        const wrappers = document.querySelectorAll('.mermaid-wrapper');
+        const firstId = wrappers[0].getAttribute('data-diagram-id');
+
+        if (firstId) {
+          const firstControls = wrappers[0].querySelector('.mermaid-controls') as HTMLElement;
+          const secondControls = wrappers[1].querySelector('.mermaid-controls') as HTMLElement;
+
+          const initialFirst = firstControls.style.display;
+          const initialSecond = secondControls.style.display;
+
+          toggleToolbar(firstId);
+
+          expect(firstControls.style.display).not.toBe(initialFirst);
+          expect(secondControls.style.display).toBe(initialSecond);
+        }
+      });
+
+      it('should not throw when called with non-existent ID', () => {
+        expect(() => toggleToolbar('non-existent-id')).not.toThrow();
+      });
     });
   });
 });

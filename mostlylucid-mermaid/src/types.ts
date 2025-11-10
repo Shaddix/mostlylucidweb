@@ -84,12 +84,61 @@ export interface EnhancementConfig {
 
     /**
      * Enable/disable specific controls
+     * Set to false to hide a control, or provide granular settings
+     *
+     * @example
+     * // Hide entire toolbar
+     * controls: {
+     *   showControls: false
+     * }
+     *
+     * @example
+     * // Simple enable/disable
+     * controls: {
+     *   fullscreen: false,  // Hide fullscreen button
+     *   export: false       // Hide export buttons
+     * }
+     *
+     * @example
+     * // Granular control
+     * controls: {
+     *   fullscreen: true,
+     *   zoomIn: true,
+     *   zoomOut: true,
+     *   reset: false,        // Hide reset button
+     *   exportPng: true,
+     *   exportSvg: false     // Hide SVG export
+     * }
      */
     controls?: {
+        showControls?: boolean;  // Show/hide entire toolbar
         fullscreen?: boolean;
         zoom?: boolean;
         pan?: boolean;
         export?: boolean;
+        // Granular button controls
+        zoomIn?: boolean;
+        zoomOut?: boolean;
+        reset?: boolean;
+        exportPng?: boolean;
+        exportSvg?: boolean;
+    };
+
+    /**
+     * Enable automatic HTMX integration
+     * When enabled, automatically re-initializes diagrams after HTMX content swaps
+     * Default: false (manual re-initialization required)
+     *
+     * @example
+     * // Enable HTMX auto-enhancement
+     * configure({
+     *   htmx: {
+     *     enabled: true
+     *   }
+     * });
+     */
+    htmx?: {
+        enabled?: boolean;
     };
 }
 
@@ -113,7 +162,7 @@ declare global {
     interface Window {
         mermaid?: {
             initialize(options: MermaidOptions): void;
-            run(options?: { querySelector?: string }): Promise<void>;
+            run(options?: { querySelector?: string; nodes?: Element[] }): Promise<void>;
         };
         __themeState?: 'dark' | 'light';
         enhanceMermaidDiagrams?: () => void;

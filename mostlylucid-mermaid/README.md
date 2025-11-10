@@ -13,17 +13,20 @@
 ## Features
 
 - **Interactive Pan & Zoom** - Navigate large diagrams with smooth mouse wheel zooming and drag-to-pan
-- **Fullscreen Lightbox** - View diagrams in an immersive fullscreen mode
-- **Export to PNG/SVG** - Download high-quality diagrams with a single click
+- **Touch Support** - Full touch gesture support (pinch-to-zoom, swipe-to-pan) for mobile devices
+- **Fullscreen Lightbox** - View diagrams in immersive fullscreen mode with integrated toolbar
+- **Export to PNG/SVG** - Download high-quality diagrams (2x pixel ratio for PNG)
 - **Automatic Theme Switching** - Seamlessly adapts to light/dark mode changes
+- **Customizable Toolbar** - Show/hide/toggle individual toolbars or all toolbars at once
+- **Enhanced Styling** - Theme-appropriate borders, drop shadows, and backdrop blur
+- **Mobile/Cloudflare Optimized** - Uses direct DOM node references for better compatibility
 - **Responsive Design** - Works perfectly on mobile, tablet, and desktop
 - **Keyboard Shortcuts** - Press ESC to close lightbox, double-click to zoom
-- **Customizable Styling** - Easy-to-override CSS variables
 - **Accessible** - ARIA labels and keyboard navigation support
 - **TypeScript Support** - Full type definitions included
 - **Zero Configuration** - Works out of the box
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install @mostlylucid/mermaid-enhancements
@@ -37,7 +40,7 @@ This package requires Mermaid.js:
 npm install mermaid
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Basic Usage
 
@@ -113,7 +116,7 @@ graph TD
 </script>
 ```
 
-## 🎯 API Reference
+## API Reference
 
 ### `init()`
 
@@ -169,7 +172,95 @@ cleanupMermaidEnhancements();
 
 **Returns:** `void`
 
-## 🎨 Styling
+### `configure(config)`
+
+Configure toolbar buttons and icons globally. Must be called before `init()`.
+
+```typescript
+import { configure } from '@mostlylucid/mermaid-enhancements';
+
+configure({
+  controls: {
+    showControls: false,  // Hide entire toolbar
+    fullscreen: true,
+    zoomIn: true,
+    zoomOut: false,       // Hide zoom out button
+    reset: true,
+    exportPng: true,
+    exportSvg: false      // Hide SVG export
+  },
+  icons: {
+    fullscreen: 'fas fa-expand',  // Use Font Awesome instead of Boxicons
+    zoomIn: 'fas fa-plus'
+  }
+});
+```
+
+**Parameters:**
+- `config` (EnhancementConfig): Configuration object
+
+**Returns:** `void`
+
+### `hideToolbar(diagramId?)`
+
+Hide the toolbar for a specific diagram or all diagrams. Can be called at any time after initialization.
+
+```typescript
+import { hideToolbar } from '@mostlylucid/mermaid-enhancements';
+
+// Hide toolbar for a specific diagram
+hideToolbar('diagram-1');
+
+// Hide toolbars for all diagrams
+hideToolbar();
+```
+
+**Parameters:**
+- `diagramId` (string, optional): The ID of the diagram wrapper. If omitted, hides all toolbars.
+
+**Returns:** `void`
+
+### `showToolbar(diagramId?)`
+
+Show the toolbar for a specific diagram or all diagrams. Can be called at any time after initialization.
+
+```typescript
+import { showToolbar } from '@mostlylucid/mermaid-enhancements';
+
+// Show toolbar for a specific diagram
+showToolbar('diagram-1');
+
+// Show toolbars for all diagrams
+showToolbar();
+```
+
+**Parameters:**
+- `diagramId` (string, optional): The ID of the diagram wrapper. If omitted, shows all toolbars.
+
+**Returns:** `void`
+
+### `toggleToolbar(diagramId?)`
+
+Toggle the toolbar visibility for a specific diagram or all diagrams. Can be called at any time after initialization.
+
+```typescript
+import { toggleToolbar } from '@mostlylucid/mermaid-enhancements';
+
+// Toggle toolbar for a specific diagram
+toggleToolbar('diagram-1');
+
+// Toggle toolbars for all diagrams
+toggleToolbar();
+```
+
+**Parameters:**
+- `diagramId` (string, optional): The ID of the diagram wrapper. If omitted, toggles all toolbars.
+
+**Returns:** `void`
+
+**Note:** To get the diagram ID, inspect the `data-diagram-id` attribute on the `.mermaid-wrapper` element, or capture the return value from `enhanceMermaidDiagrams()` which returns the generated diagram IDs.
+
+## Styling
 
 The package includes a complete CSS file with sensible defaults. Import it in your project:
 
@@ -197,7 +288,7 @@ Override CSS variables or classes to customize the appearance:
 }
 ```
 
-## 🌓 Theme Switching
+## Theme Switching
 
 The package automatically detects and responds to theme changes through multiple methods:
 
@@ -242,21 +333,85 @@ document.documentElement.classList.add('dark');
 
 Automatically detects system-level dark mode preference via `prefers-color-scheme`.
 
-## 🎮 Control Buttons
+## Toolbar Customization
 
-Each diagram gets the following controls:
+Configure which buttons appear in the toolbar. All configurations are **global** and affect all diagrams on the page.
 
-| Icon | Action | Description |
-|------|--------|-------------|
-| 🖼️ | Fullscreen | Open diagram in lightbox |
-| ➕ | Zoom In | Increase zoom level |
-| ➖ | Zoom Out | Decrease zoom level |
-| 🔄 | Reset | Reset zoom and position |
-| ✋ | Pan | Toggle pan mode |
-| 📷 | Export PNG | Download as PNG image |
-| 📄 | Export SVG | Download as SVG file |
+### Hide Entire Toolbar
 
-## 🔌 Framework Integration
+```typescript
+import { configure, init } from '@mostlylucid/mermaid-enhancements';
+
+configure({
+  controls: {
+    showControls: false  // Hide all toolbars
+  }
+});
+
+await init();
+```
+
+### Hide Button Groups
+
+```typescript
+configure({
+  controls: {
+    export: false,      // Hide both PNG and SVG export buttons
+    fullscreen: false   // Hide fullscreen button
+  }
+});
+```
+
+### Granular Button Control
+
+```typescript
+configure({
+  controls: {
+    fullscreen: true,
+    zoomIn: true,
+    zoomOut: true,
+    reset: false,        // Hide reset button
+    exportPng: true,
+    exportSvg: false     // Hide SVG export, keep PNG
+  }
+});
+
+await init();
+```
+
+### Custom Icon Library
+
+By default, Boxicons are used. You can configure different icon classes:
+
+```typescript
+configure({
+  icons: {
+    fullscreen: 'fas fa-expand',
+    zoomIn: 'fas fa-plus',
+    zoomOut: 'fas fa-minus',
+    reset: 'fas fa-undo',
+    exportPng: 'fas fa-image',
+    exportSvg: 'fas fa-code'
+  }
+});
+```
+
+## Control Buttons
+
+Each diagram gets the following controls (when enabled):
+
+| Action | Description |
+|--------|-------------|
+| Fullscreen | Open diagram in lightbox with close button on far right |
+| Zoom In | Increase zoom level |
+| Zoom Out | Decrease zoom level |
+| Reset | Reset zoom and position to default |
+| Export PNG | Download as high-quality PNG (2x pixel ratio) |
+| Export SVG | Download as vector SVG file |
+
+**Note:** Panning is always enabled by default (drag to pan). In lightbox mode, a close button (✕) appears on the far right of the toolbar.
+
+## Framework Integration
 
 ### React
 
@@ -330,7 +485,7 @@ onUnmounted(() => {
 </div>
 ```
 
-## 🛠️ Development
+## Development
 
 ### Run Demo
 
@@ -347,7 +502,7 @@ This will start a local server and open the demo page at `http://localhost:3000`
 npm run build
 ```
 
-## 📝 TypeScript
+## TypeScript
 
 Full TypeScript support is included:
 
@@ -357,15 +512,15 @@ import type { PanZoomInstance, Theme, ExportFormat } from '@mostlylucid/mermaid-
 // Types are automatically available
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
+## License
 
 This is free and unencumbered software released into the public domain. See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built with:
 - [Mermaid.js](https://mermaid.js.org/) - Diagram generation
@@ -373,14 +528,14 @@ Built with:
 - [html-to-image](https://github.com/bubkoo/html-to-image) - Export capabilities
 - [Boxicons](https://boxicons.com/) - Icon library
 
-## 📊 Browser Support
+## Browser Support
 
 - Chrome/Edge (latest)
 - Firefox (latest)
 - Safari (latest)
 - Mobile browsers (iOS Safari, Chrome Mobile)
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Controls not appearing
 
@@ -404,11 +559,11 @@ await init();
 
 The export feature requires modern browsers with Canvas API support. Check browser console for errors.
 
-## 📮 Support
+## Support
 
 - [GitHub Issues](https://github.com/scottgal/mostlylucidweb/issues)
 - [Documentation](https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid-mermaid)
 
 ---
 
-Made with ❤️ for the Mermaid.js community
+Made with love for the Mermaid.js community

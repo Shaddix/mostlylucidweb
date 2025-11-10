@@ -11,7 +11,14 @@
       "Bash(npm audit:*)",
       "WebFetch(domain:unpkg.com)",
       "Bash(curl:*)",
-      "Bash(npm run bundle:*)"
+      "Bash(npm run bundle:*)",
+      "Bash(npx http-server:*)",
+      "Bash(taskkill:*)",
+      "Bash(nul)",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(start http://127.0.0.1:4000/examples/demo.html)",
+      "Bash(start http://127.0.0.1:5000/examples/demo.html)",
+      "Bash(start http://127.0.0.1:8000/examples/demo.html)"
     ],
     "deny": [],
     "ask": []

@@ -75,36 +75,79 @@ export function configure(config: EnhancementConfig): void {
         controls: {
             ...globalConfig.controls,
             ...config.controls
+        },
+        htmx: {
+            ...globalConfig.htmx,
+            ...config.htmx
         }
     };
+}
+
+/**
+ * Get current configuration
+ * @returns Current enhancement configuration
+ * @private
+ */
+export function getConfig(): EnhancementConfig {
+    return globalConfig;
 }
 
 /**
  * Create control buttons for a Mermaid diagram
  * @param {HTMLElement} container - The container element for the diagram
  * @param {string} diagramId - Unique ID for the diagram
+ * @param {boolean} isLightbox - Whether this is for a lightbox (adds close button)
  */
-function createControlButtons(container: HTMLElement, diagramId: string): void {
-    // Check if controls already exist
-    if (container.querySelector('.mermaid-controls')) {
-        return;
+function createControlButtons(container: HTMLElement, diagramId: string, isLightbox: boolean = false): void {
+    // Remove existing controls if they exist (for reconfiguration)
+    const existingControls = container.querySelector('.mermaid-controls');
+    if (existingControls) {
+        existingControls.remove();
+    }
+
+    const controls = globalConfig.controls || {};
+
+    // Check if controls should be hidden entirely
+    if (controls.showControls === false) {
+        return; // Don't create any controls
     }
 
     const controlsDiv = document.createElement('div');
     controlsDiv.className = 'mermaid-controls';
 
     const icons = globalConfig.icons || defaultIcons;
-    const controls = globalConfig.controls || {};
 
-    const buttons: Array<{ icon: string; title: string; action: string; enabled?: boolean }> = [
-        { icon: icons.fullscreen!, title: 'Fullscreen', action: 'fullscreen', enabled: controls.fullscreen !== false },
-        { icon: icons.zoomIn!, title: 'Zoom In', action: 'zoomIn', enabled: controls.zoom !== false },
-        { icon: icons.zoomOut!, title: 'Zoom Out', action: 'zoomOut', enabled: controls.zoom !== false },
-        { icon: icons.reset!, title: 'Reset View', action: 'reset', enabled: controls.zoom !== false },
-        { icon: icons.pan!, title: 'Pan', action: 'pan', enabled: controls.pan !== false },
-        { icon: icons.exportPng!, title: 'Export as PNG', action: 'exportPng', enabled: controls.export !== false },
-        { icon: icons.exportSvg!, title: 'Export as SVG', action: 'exportSvg', enabled: controls.export !== false }
-    ];
+    // Helper to check if a button is enabled (supports both grouped and granular config)
+    const isEnabled = (action: string, groupKey?: string): boolean => {
+        // Check granular control first
+        const granularKey = action as keyof typeof controls;
+        if (controls[granularKey] !== undefined) {
+            return controls[granularKey] === true;
+        }
+        // Fall back to grouped control
+        if (groupKey && controls[groupKey as keyof typeof controls] !== undefined) {
+            return controls[groupKey as keyof typeof controls] !== false;
+        }
+        // Default to enabled
+        return true;
+    };
+
+    const buttons: Array<{ icon: string; title: string; action: string; enabled?: boolean }> = [];
+
+    // Add buttons (close button will be added last to be on far right)
+    buttons.push(
+        { icon: icons.fullscreen!, title: 'Fullscreen', action: 'fullscreen', enabled: isEnabled('fullscreen') && !isLightbox },
+        { icon: icons.zoomIn!, title: 'Zoom In', action: 'zoomIn', enabled: isEnabled('zoomIn', 'zoom') },
+        { icon: icons.zoomOut!, title: 'Zoom Out', action: 'zoomOut', enabled: isEnabled('zoomOut', 'zoom') },
+        { icon: icons.reset!, title: 'Reset View', action: 'reset', enabled: isEnabled('reset', 'zoom') },
+        { icon: icons.exportPng!, title: 'Export as PNG', action: 'exportPng', enabled: isEnabled('exportPng', 'export') },
+        { icon: icons.exportSvg!, title: 'Export as SVG', action: 'exportSvg', enabled: isEnabled('exportSvg', 'export') }
+    );
+
+    // Add close button last if this is a lightbox (so it appears on far right)
+    if (isLightbox) {
+        buttons.push({ icon: 'bx bx-x', title: 'Close', action: 'close', enabled: true });
+    }
 
     buttons.forEach(btn => {
         if (btn.enabled === false) return;
@@ -150,7 +193,10 @@ function initPanZoom(svgElement: SVGElement, diagramId: string): PanZoomInstance
             dblClickZoomEnabled: true,
             mouseWheelZoomEnabled: true,
             preventMouseEventsDefault: true,
-            contain: false
+            contain: false,
+            // Enable touch support for mobile devices
+            panEnabled: true,
+            eventsListenerElement: svgElement
         });
 
         panZoomInstances.set(diagramId, panZoomInstance);
@@ -178,6 +224,22 @@ function handleControlClick(event: Event): void {
     const container = button.closest('.mermaid-wrapper') || button.closest('.mermaid-lightbox-diagram-wrapper');
 
     switch (action) {
+        case 'close':
+            // Close lightbox
+            const lightbox = button.closest('.mermaid-lightbox');
+            if (lightbox) {
+                // Clean up pan-zoom instance
+                if (panZoomInstances.has(diagramId)) {
+                    try {
+                        panZoomInstances.get(diagramId)?.destroy();
+                    } catch (e) {
+                        console.warn('Failed to destroy lightbox pan-zoom instance:', e);
+                    }
+                    panZoomInstances.delete(diagramId);
+                }
+                lightbox.remove();
+            }
+            break;
         case 'fullscreen':
             // Fullscreen only works for in-page diagrams
             if (container?.classList.contains('mermaid-wrapper')) {
@@ -195,13 +257,6 @@ function handleControlClick(event: Event): void {
                 panZoomInstance.reset();
                 panZoomInstance.center();
                 panZoomInstance.fit();
-            }
-            break;
-        case 'pan':
-            if (panZoomInstance) {
-                const isPanEnabled = panZoomInstance.isPanEnabled();
-                panZoomInstance.enablePan(!isPanEnabled);
-                button.classList.toggle('active', !isPanEnabled);
             }
             break;
         case 'exportPng':
@@ -228,7 +283,6 @@ function openFullscreenLightbox(container: HTMLElement, diagramId: string): void
     lightbox.className = 'mermaid-lightbox';
     lightbox.innerHTML = `
         <div class="mermaid-lightbox-content">
-            <button class="mermaid-lightbox-close bx bx-x" aria-label="Close"></button>
             <div class="mermaid-lightbox-diagram-wrapper">
                 <div class="mermaid-lightbox-diagram"></div>
             </div>
@@ -248,11 +302,11 @@ function openFullscreenLightbox(container: HTMLElement, diagramId: string): void
     if (!diagramContainer) return;
     diagramContainer.appendChild(clonedSvg);
 
-    // Add controls to the lightbox wrapper
+    // Add controls to the lightbox wrapper (with close button)
     const wrapper = lightbox.querySelector('.mermaid-lightbox-diagram-wrapper') as HTMLElement;
     if (!wrapper) return;
     const lightboxDiagramId = `${diagramId}-lightbox`;
-    createControlButtons(wrapper, lightboxDiagramId);
+    createControlButtons(wrapper, lightboxDiagramId, true);
 
     // Add to body
     document.body.appendChild(lightbox);
@@ -268,33 +322,35 @@ function openFullscreenLightbox(container: HTMLElement, diagramId: string): void
         }
     }, 100);
 
-    // Close handlers
-    const closeLightbox = () => {
-        // Clean up pan-zoom instance
-        if (panZoomInstances.has(lightboxDiagramId)) {
-            try {
-                panZoomInstances.get(lightboxDiagramId)?.destroy();
-            } catch (e) {
-                console.warn('Failed to destroy lightbox pan-zoom instance:', e);
-            }
-            panZoomInstances.delete(lightboxDiagramId);
-        }
-
-        lightbox.remove();
-    };
-
-    const closeButton = lightbox.querySelector('.mermaid-lightbox-close');
-    if (closeButton) {
-        closeButton.addEventListener('click', closeLightbox);
-    }
+    // Close on background click
     lightbox.addEventListener('click', (e: Event) => {
-        if (e.target === lightbox) closeLightbox();
+        if (e.target === lightbox) {
+            // Clean up pan-zoom instance
+            if (panZoomInstances.has(lightboxDiagramId)) {
+                try {
+                    panZoomInstances.get(lightboxDiagramId)?.destroy();
+                } catch (e) {
+                    console.warn('Failed to destroy lightbox pan-zoom instance:', e);
+                }
+                panZoomInstances.delete(lightboxDiagramId);
+            }
+            lightbox.remove();
+        }
     });
 
     // ESC key to close
     const escHandler = (e: KeyboardEvent): void => {
         if (e.key === 'Escape') {
-            closeLightbox();
+            // Clean up pan-zoom instance
+            if (panZoomInstances.has(lightboxDiagramId)) {
+                try {
+                    panZoomInstances.get(lightboxDiagramId)?.destroy();
+                } catch (e) {
+                    console.warn('Failed to destroy lightbox pan-zoom instance:', e);
+                }
+                panZoomInstances.delete(lightboxDiagramId);
+            }
+            lightbox.remove();
             document.removeEventListener('keydown', escHandler);
         }
     };
@@ -395,7 +451,10 @@ function wrapDiagramWithControls(diagramElement: HTMLElement): string {
     // Check if already wrapped
     const existingWrapper = diagramElement.closest('.mermaid-wrapper');
     if (existingWrapper) {
-        return existingWrapper.getAttribute('data-diagram-id') || '';
+        const diagramId = existingWrapper.getAttribute('data-diagram-id') || '';
+        // Recreate controls with new configuration
+        createControlButtons(existingWrapper as HTMLElement, diagramId);
+        return diagramId;
     }
 
     const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -479,4 +538,83 @@ export function cleanupMermaidEnhancements() {
         }
     });
     panZoomInstances.clear();
+}
+
+/**
+ * Hide toolbar for a specific diagram or all diagrams
+ * @param diagramId - Optional diagram ID. If omitted, hides all toolbars
+ *
+ * @example
+ * // Hide specific diagram's toolbar
+ * hideToolbar('mermaid-123');
+ *
+ * @example
+ * // Hide all toolbars
+ * hideToolbar();
+ */
+export function hideToolbar(diagramId?: string): void {
+    if (diagramId) {
+        const wrapper = document.querySelector(`[data-diagram-id="${diagramId}"]`);
+        const controls = wrapper?.querySelector('.mermaid-controls');
+        if (controls) {
+            (controls as HTMLElement).style.display = 'none';
+        }
+    } else {
+        document.querySelectorAll('.mermaid-controls').forEach(controls => {
+            (controls as HTMLElement).style.display = 'none';
+        });
+    }
+}
+
+/**
+ * Show toolbar for a specific diagram or all diagrams
+ * @param diagramId - Optional diagram ID. If omitted, shows all toolbars
+ *
+ * @example
+ * // Show specific diagram's toolbar
+ * showToolbar('mermaid-123');
+ *
+ * @example
+ * // Show all toolbars
+ * showToolbar();
+ */
+export function showToolbar(diagramId?: string): void {
+    if (diagramId) {
+        const wrapper = document.querySelector(`[data-diagram-id="${diagramId}"]`);
+        const controls = wrapper?.querySelector('.mermaid-controls');
+        if (controls) {
+            (controls as HTMLElement).style.display = 'flex';
+        }
+    } else {
+        document.querySelectorAll('.mermaid-controls').forEach(controls => {
+            (controls as HTMLElement).style.display = 'flex';
+        });
+    }
+}
+
+/**
+ * Toggle toolbar visibility for a specific diagram or all diagrams
+ * @param diagramId - Optional diagram ID. If omitted, toggles all toolbars
+ *
+ * @example
+ * // Toggle specific diagram's toolbar
+ * toggleToolbar('mermaid-123');
+ *
+ * @example
+ * // Toggle all toolbars
+ * toggleToolbar();
+ */
+export function toggleToolbar(diagramId?: string): void {
+    if (diagramId) {
+        const wrapper = document.querySelector(`[data-diagram-id="${diagramId}"]`);
+        const controls = wrapper?.querySelector('.mermaid-controls') as HTMLElement;
+        if (controls) {
+            controls.style.display = controls.style.display === 'none' ? 'flex' : 'none';
+        }
+    } else {
+        document.querySelectorAll('.mermaid-controls').forEach(controls => {
+            const el = controls as HTMLElement;
+            el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+        });
+    }
 }

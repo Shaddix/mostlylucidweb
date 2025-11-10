@@ -140,16 +140,34 @@
         }
 
         pre {
-            background: #1f2937;
-            color: #f9fafb;
+            background: #f3f4f6;
+            color: #1f2937;
             padding: 1rem;
             border-radius: 0.5rem;
             overflow-x: auto;
             margin: 1rem 0;
+            border: 1px solid #e5e7eb;
+        }
+
+        .dark pre {
+            background: #1f2937;
+            color: #f9fafb;
+            border: 1px solid #374151;
         }
 
         .diagram-container {
             margin: 2rem 0;
+        }
+
+        /* Ensure Mermaid diagrams have proper backgrounds */
+        .mermaid-wrapper {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+
+        .dark .mermaid-wrapper {
+            background: #1f2937;
+            border: 1px solid #374151;
         }
     </style>
 </head>
@@ -169,7 +187,8 @@
         <h2>Features</h2>
         <ul class="feature-list">
             <li><strong>Interactive Pan & Zoom</strong> - Navigate large diagrams with mouse wheel and drag</li>
-            <li><strong>Fullscreen Lightbox</strong> - View diagrams in immersive fullscreen mode</li>
+            <li><strong>Touch Support</strong> - Full touch gesture support for mobile devices</li>
+            <li><strong>Fullscreen Lightbox</strong> - View diagrams in immersive fullscreen mode with integrated toolbar</li>
             <li><strong>Export to PNG/SVG</strong> - Download diagrams in high quality</li>
             <li><strong>Auto Theme Switching</strong> - Automatically adapts to light/dark mode</li>
             <li><strong>Responsive Design</strong> - Works perfectly on mobile and desktop</li>
@@ -191,9 +210,43 @@ import '@mostlylucid/mermaid-enhancements/styles.css';
 await init();</code></pre>
     </section>
 
+    <section>
+        <h2>Toolbar Customization</h2>
+        <p><strong>Global Configuration:</strong> These settings apply to all diagrams on the page.</p>
+        <pre><code>import { configure, init } from '@mostlylucid/mermaid-enhancements';
+
+// Hide entire toolbar
+configure({
+  controls: {
+    showControls: false
+  }
+});
+
+// Hide export buttons
+configure({
+  controls: {
+    export: false
+  }
+});
+
+// Control individual buttons
+configure({
+  controls: {
+    fullscreen: true,
+    zoomIn: true,
+    zoomOut: true,
+    reset: false,       // Hide reset button
+    exportPng: true,
+    exportSvg: false    // Hide SVG export
+  }
+});
+
+await init();</code></pre>
+    </section>
+
     <section class="diagram-container">
         <h2>Example 1: Flowchart</h2>
-        <p>Try zooming in/out with mouse wheel, dragging to pan, or clicking fullscreen!</p>
+        <p>Try zooming in/out with mouse wheel or pinch gesture, dragging to pan, or clicking fullscreen!</p>
 
         <div class="mermaid">
 graph TD
@@ -206,12 +259,6 @@ graph TD
     F --> B
     G --> H[Share diagram]
     H --> I[End]
-
-    style A fill:#10b981,stroke:#059669,color:#fff
-    style C fill:#10b981,stroke:#059669,color:#fff
-    style E fill:#3b82f6,stroke:#2563eb,color:#fff
-    style G fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style I fill:#10b981,stroke:#059669,color:#fff
         </div>
     </section>
 
@@ -286,7 +333,48 @@ classDiagram
     </section>
 
     <section class="diagram-container">
-        <h2>Example 4: State Diagram</h2>
+        <h2>Example 4: Toolbar Configuration Demos</h2>
+        <p><strong>Note:</strong> These configurations apply to <em>all</em> diagrams on the page (global configuration).</p>
+        <p>Click the buttons below to see different toolbar configurations:</p>
+
+        <div style="margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="theme-toggle" onclick="resetConfig()" style="background: #10b981;">
+                Default (All Buttons)
+            </button>
+            <button class="theme-toggle" onclick="configMinimal()" style="background: #f59e0b;">
+                Minimal (Zoom Only)
+            </button>
+            <button class="theme-toggle" onclick="configNoExport()" style="background: #ef4444;">
+                No Export
+            </button>
+            <button class="theme-toggle" onclick="configCustom()" style="background: #8b5cf6;">
+                Custom Mix
+            </button>
+        </div>
+
+        <p style="margin-top: 1.5rem;"><strong>Runtime Visibility Control:</strong> Toggle toolbar visibility without reconfiguration</p>
+        <div style="margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button id="toggleAllBtn" class="theme-toggle" onclick="toggleAllToolbarsDemo()" style="background: #64748b;">
+                Hide All Toolbars
+            </button>
+        </div>
+
+        <div class="mermaid">
+graph LR
+    A[Configure Toolbar] --> B{Choose Buttons}
+    B --> C[All Buttons]
+    B --> D[Minimal Set]
+    B --> E[No Export]
+    B --> F[Custom Mix]
+    C --> G[Full Control]
+    D --> H[Simple UI]
+    E --> I[View Only]
+    F --> J[Your Choice]
+        </div>
+    </section>
+
+    <section class="diagram-container">
+        <h2>Example 5: State Diagram</h2>
         <p>All diagram types are supported</p>
 
         <div class="mermaid">
@@ -313,10 +401,66 @@ stateDiagram-v2
         </div>
     </section>
 
+    <section class="diagram-container">
+        <h2>Example 6: Runtime Toolbar Visibility Control</h2>
+        <p><strong>New in v1.0.0:</strong> Control toolbar visibility at runtime with <code>hideToolbar()</code>, <code>showToolbar()</code>, and <code>toggleToolbar()</code></p>
+        <p>These functions can target a specific diagram by ID or affect all diagrams when called without parameters.</p>
+
+        <div style="margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="theme-toggle" onclick="hideAllToolbars()" style="background: #ef4444;">
+                Hide All Toolbars
+            </button>
+            <button class="theme-toggle" onclick="showAllToolbars()" style="background: #10b981;">
+                Show All Toolbars
+            </button>
+            <button class="theme-toggle" onclick="toggleAllToolbars()" style="background: #3b82f6;">
+                Toggle All Toolbars
+            </button>
+        </div>
+
+        <p><strong>Target specific diagram:</strong></p>
+        <div style="margin: 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="theme-toggle" onclick="hideFirstDiagram()" style="background: #f59e0b;">
+                Hide First Diagram Toolbar
+            </button>
+            <button class="theme-toggle" onclick="showFirstDiagram()" style="background: #8b5cf6;">
+                Show First Diagram Toolbar
+            </button>
+            <button class="theme-toggle" onclick="toggleFirstDiagram()" style="background: #06b6d4;">
+                Toggle First Diagram Toolbar
+            </button>
+        </div>
+
+        <div class="mermaid">
+graph LR
+    A[Runtime Control] --> B{Choose Function}
+    B --> C[hideToolbar]
+    B --> D[showToolbar]
+    B --> E[toggleToolbar]
+    C --> F[Target All]
+    C --> G[Target Specific]
+    D --> F
+    D --> G
+    E --> F
+    E --> G
+    F --> H[User Friendly]
+    G --> H
+        </div>
+    </section>
+
     <footer style="text-align: center; margin-top: 4rem; padding: 2rem; color: #6b7280;">
-        <p>Built with ❤️ for the Mermaid.js community</p>
+        <p>Built with love for the Mermaid.js community</p>
         <p><a href="https://github.com/scottgal/mostlylucidweb" style="color: #3b82f6;">View on GitHub</a></p>
     </footer>
+
+    <!-- Set theme FIRST before any other scripts -->
+    <script>
+        // Load saved theme preference IMMEDIATELY
+        if (localStorage.theme === 'dark' || (!localStorage.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.classList.add('dark');
+            document.documentElement.classList.add('dark');
+        }
+    </script>
 
     <!-- Load Mermaid.js -->
     <script type="module">
@@ -326,7 +470,132 @@ stateDiagram-v2
 
     <!-- Load and initialize enhancements -->
     <script type="module">
-        import { init } from '../dist/index.js';
+        import { init, configure, cleanupMermaidEnhancements, initMermaid, hideToolbar, showToolbar, toggleToolbar } from '../dist/index.bundle.min.js';
+
+        // Make configure available globally for demo buttons
+        window.reconfigureAndReload = async (config) => {
+            configure(config);
+            cleanupMermaidEnhancements();
+            await initMermaid();
+            // Reset toolbar visibility state after reconfiguration
+            toolbarsVisible = true;
+            const btn = document.getElementById('toggleAllBtn');
+            if (btn) {
+                btn.textContent = 'Hide All Toolbars';
+                btn.style.background = '#64748b';
+            }
+        };
+
+        // Toolbar configuration demos - expose globally
+        window.resetConfig = async function() {
+            await window.reconfigureAndReload({
+                controls: {
+                    fullscreen: true,
+                    zoomIn: true,
+                    zoomOut: true,
+                    reset: true,
+                    exportPng: true,
+                    exportSvg: true
+                }
+            });
+        }
+
+        window.configMinimal = async function() {
+            await window.reconfigureAndReload({
+                controls: {
+                    fullscreen: false,
+                    zoomIn: true,
+                    zoomOut: true,
+                    reset: true,
+                    exportPng: false,
+                    exportSvg: false
+                }
+            });
+        }
+
+        window.configNoExport = async function() {
+            await window.reconfigureAndReload({
+                controls: {
+                    export: false
+                }
+            });
+        }
+
+        window.configCustom = async function() {
+            await window.reconfigureAndReload({
+                controls: {
+                    fullscreen: true,
+                    zoomIn: true,
+                    zoomOut: false,
+                    reset: true,
+                    exportPng: true,
+                    exportSvg: false
+                }
+            });
+        }
+
+        // Runtime toolbar visibility demos - expose globally
+        let toolbarsVisible = true;  // Track state
+
+        window.toggleAllToolbarsDemo = function() {
+            const btn = document.getElementById('toggleAllBtn');
+            if (toolbarsVisible) {
+                hideToolbar();  // Hide all toolbars
+                btn.textContent = 'Show All Toolbars';
+                btn.style.background = '#10b981';
+                toolbarsVisible = false;
+            } else {
+                showToolbar();  // Show all toolbars
+                btn.textContent = 'Hide All Toolbars';
+                btn.style.background = '#64748b';
+                toolbarsVisible = true;
+            }
+        }
+
+        window.hideAllToolbars = function() {
+            hideToolbar();  // No parameter = all diagrams
+        }
+
+        window.showAllToolbars = function() {
+            showToolbar();  // No parameter = all diagrams
+        }
+
+        window.toggleAllToolbars = function() {
+            toggleToolbar();  // No parameter = all diagrams
+        }
+
+        window.hideFirstDiagram = function() {
+            // Get the first diagram's ID
+            const firstWrapper = document.querySelector('.mermaid-wrapper');
+            if (firstWrapper) {
+                const diagramId = firstWrapper.getAttribute('data-diagram-id');
+                if (diagramId) {
+                    hideToolbar(diagramId);
+                }
+            }
+        }
+
+        window.showFirstDiagram = function() {
+            // Get the first diagram's ID
+            const firstWrapper = document.querySelector('.mermaid-wrapper');
+            if (firstWrapper) {
+                const diagramId = firstWrapper.getAttribute('data-diagram-id');
+                if (diagramId) {
+                    showToolbar(diagramId);
+                }
+            }
+        }
+
+        window.toggleFirstDiagram = function() {
+            // Get the first diagram's ID
+            const firstWrapper = document.querySelector('.mermaid-wrapper');
+            if (firstWrapper) {
+                const diagramId = firstWrapper.getAttribute('data-diagram-id');
+                if (diagramId) {
+                    toggleToolbar(diagramId);
+                }
+            }
+        }
 
         // Wait for DOM to be ready
         if (document.readyState === 'loading') {
@@ -385,7 +654,7 @@ stateDiagram-v2
 
     <!-- Theme toggling -->
     <script>
-        function toggleTheme() {
+        window.toggleTheme = function() {
             const isDark = document.body.classList.toggle('dark');
             document.documentElement.classList.toggle('dark', isDark);
 
@@ -395,12 +664,6 @@ stateDiagram-v2
             // Trigger theme change event for Mermaid
             const event = new Event(isDark ? 'dark-theme-set' : 'light-theme-set');
             document.body.dispatchEvent(event);
-        }
-
-        // Load saved theme preference
-        if (localStorage.theme === 'dark' || (!localStorage.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.body.classList.add('dark');
-            document.documentElement.classList.add('dark');
         }
     </script>
 </body>

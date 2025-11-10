@@ -16,6 +16,7 @@ let mediaChangeHandler: ((e: MediaQueryListEvent) => void) | null = null;
 let darkThemeHandlerRef: (() => Promise<void>) | null = null;
 let lightThemeHandlerRef: (() => Promise<void>) | null = null;
 let listenersAttached = false;
+let htmxIntegrationSetup = false;
 
 /**
  * Normalize code fence blocks to Mermaid-compatible format
@@ -57,8 +58,10 @@ const loadMermaid = async (theme: Theme): Promise<void> => {
             }
         });
 
+        // Use nodes array instead of querySelector for better mobile/Cloudflare compatibility
+        const elements = document.querySelectorAll(elementSelector);
         await window.mermaid.run({
-            querySelector: elementSelector,
+            nodes: Array.from(elements),
         });
 
         // Enhance diagrams with pan/zoom and export after rendering completes
@@ -140,6 +143,9 @@ const resetProcessed = (): void => {
  * document.body.dispatchEvent(new Event('light-theme-set'));
  */
 export async function initMermaid() {
+    // Small delay to ensure DOM classes are fully applied
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
     // Normalize any code fences first so they get picked up
     normalizeMermaidCodeFences();
 
@@ -209,23 +215,62 @@ export async function initMermaid() {
 
     // Detect current theme with multiple fallbacks
     let isDarkMode = false;
+    let detectionMethod = 'default';
 
     // Check global state (if set by your theme system)
     if (typeof window.__themeState !== 'undefined') {
         isDarkMode = window.__themeState === 'dark';
+        detectionMethod = 'window.__themeState';
     }
     // Check localStorage
     else if (typeof localStorage !== 'undefined' && localStorage.theme) {
         isDarkMode = localStorage.theme === 'dark';
+        detectionMethod = 'localStorage.theme';
     }
-    // Check DOM class
-    else if (document.documentElement.classList.contains('dark')) {
+    // Check DOM class on documentElement or body
+    else if (document.documentElement.classList.contains('dark') || document.body.classList.contains('dark')) {
         isDarkMode = true;
+        detectionMethod = document.documentElement.classList.contains('dark') ? 'documentElement.classList' : 'body.classList';
     }
     // Check OS preference
     else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         isDarkMode = true;
+        detectionMethod = 'prefers-color-scheme';
     }
 
+    console.log(`[Mermaid Theme] Detected ${isDarkMode ? 'dark' : 'light'} mode via ${detectionMethod}`);
     await loadMermaid(isDarkMode ? 'dark' : 'default');
+
+    // Setup HTMX integration if HTMX is available
+    setupHtmxIntegration();
+}
+
+/**
+ * Setup HTMX integration to automatically enhance diagrams after content swaps
+ * @private
+ */
+function setupHtmxIntegration(): void {
+    // Only set up once
+    if (htmxIntegrationSetup) return;
+
+    // Check if HTMX is available
+    if (typeof document.body.addEventListener === 'undefined') return;
+
+    // Listen for HTMX afterSettle event
+    document.body.addEventListener('htmx:afterSettle', async (event: Event) => {
+        console.log('[Mermaid Theme] HTMX afterSettle detected, re-initializing diagrams');
+
+        // Re-initialize Mermaid for any new diagrams in the swapped content
+        const detail = (event as CustomEvent).detail;
+        const target = detail?.target || document.body;
+
+        // Check if there are new Mermaid diagrams in the swapped content
+        const newDiagrams = target.querySelectorAll?.(elementSelector);
+        if (newDiagrams && newDiagrams.length > 0) {
+            await initMermaid();
+        }
+    });
+
+    htmxIntegrationSetup = true;
+    console.log('[Mermaid Theme] HTMX integration enabled');
 }

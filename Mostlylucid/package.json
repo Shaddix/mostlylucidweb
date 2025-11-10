@@ -49,6 +49,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@mostlylucid/mermaid-enhancements": "^0.0.4-rc1",
     "alpinejs": "^3.14.1",
     "codemirror": "5.65.13",
     "core-js": "^3.39.0",

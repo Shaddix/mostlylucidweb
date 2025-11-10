@@ -108,6 +108,23 @@ describe('theme-switcher', () => {
       document.documentElement.classList.remove('dark');
     });
 
+    it('should detect dark mode from body class', async () => {
+      document.body.classList.add('dark');
+
+      const diagram = document.createElement('div');
+      diagram.className = 'mermaid';
+      diagram.textContent = 'graph TD\n  A --> B';
+      document.body.appendChild(diagram);
+
+      await initMermaid();
+
+      expect(window.mermaid?.initialize).toHaveBeenCalledWith(
+        expect.objectContaining({ theme: 'dark' })
+      );
+
+      document.body.classList.remove('dark');
+    });
+
     it('should add theme change event listeners', async () => {
       const diagram = document.createElement('div');
       diagram.className = 'mermaid';

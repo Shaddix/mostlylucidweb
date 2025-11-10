@@ -24,15 +24,22 @@
 
   function applyNavigation(u){
     const target = document.querySelector('#content');
+    console.log('=== APPLYING NAVIGATION ===');
+    console.log('URL:', u.toString());
+    console.log('All params:', Object.fromEntries(u.searchParams.entries()));
+
     // Always push the URL so user can navigate back/forward
     try{ window.history.pushState({}, '', u.toString()); }catch{}
+
     if(window.htmx && target){
+      console.log('Making HTMX request to:', u.toString());
       window.htmx.ajax('GET', u.toString(), {
         target: '#content',
         swap: 'outerHTML show:none',
         headers: {'pagerequest': 'true'}
       });
     } else {
+      console.log('HTMX not available, doing full page load');
       window.location.href = u.toString();
     }
   }
@@ -92,21 +99,55 @@
     const langSelect = root.querySelector('#languageSelect');
     const orderSelect = root.querySelector('#orderSelect');
 
+    console.log('initFromRoot - Found elements:', {
+      input: !!input,
+      clearBtn: !!clearBtn,
+      langSelect: !!langSelect,
+      orderSelect: !!orderSelect,
+      rootId: root.id
+    });
+
     const url = new URL(window.location.href);
     const existingStart = url.searchParams.get('startDate');
     const existingEnd = url.searchParams.get('endDate');
     const existingLang = url.searchParams.get('language') || 'en';
     const existingOrderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
     const existingOrderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
-    if (langSelect) langSelect.value = existingLang;
-    if (orderSelect) orderSelect.value = `${existingOrderBy}_${existingOrderDir}`;
+
+    console.log('Initializing filters from URL:', {
+      lang: existingLang,
+      orderBy: existingOrderBy,
+      orderDir: existingOrderDir,
+      fullOrder: `${existingOrderBy}_${existingOrderDir}`
+    });
+
+    if (langSelect) {
+      langSelect.value = existingLang;
+      console.log('Set language select to:', langSelect.value);
+    }
+    if (orderSelect) {
+      orderSelect.value = `${existingOrderBy}_${existingOrderDir}`;
+      console.log('Set order select to:', orderSelect.value);
+    }
     updateSummary();
     hookThemeObserver();
 
     let highlightDates = new Set();
 
     if (input && window.flatpickr){
-      const fp = window.flatpickr(input, {
+      // Destroy existing flatpickr instance if it exists
+      if (input._flatpickr) {
+        console.log('Destroying existing flatpickr instance');
+        try {
+          input._flatpickr.destroy();
+        } catch(e) {
+          console.warn('Error destroying flatpickr:', e);
+        }
+      }
+
+      console.log('Creating new flatpickr instance with dates:', existingStart, existingEnd);
+      try {
+        const fp = window.flatpickr(input, {
         mode: 'range',
         dateFormat: 'Y-m-d',
         defaultDate: [existingStart, existingEnd].filter(Boolean),
@@ -133,6 +174,7 @@
             const [start,end] = selectedDates;
             const startStr = formatYMD(start);
             const endStr = formatYMD(end);
+            console.log('Date range selected:', startStr, 'to', endStr);
             const u = new URL(window.location.href);
             u.searchParams.set('startDate', startStr);
             u.searchParams.set('endDate', endStr);
@@ -148,14 +190,36 @@
         }
       });
 
-      // Preload month highlights after init
-      (async ()=>{
-        highlightDates = await initMonthHighlights(fp, (langSelect && langSelect.value) || existingLang);
-        fp.redraw();
-      })();
+        // Preload month highlights after init
+        (async ()=>{
+          highlightDates = await initMonthHighlights(fp, (langSelect && langSelect.value) || existingLang);
+          fp.redraw();
+        })();
+
+        console.log('Flatpickr instance created successfully:', !!fp, 'on input:', input.id);
+
+        // Verify the instance is actually attached
+        setTimeout(() => {
+          console.log('Flatpickr verification after 100ms:', {
+            hasInstance: !!input._flatpickr,
+            instanceType: typeof input._flatpickr,
+            inputValue: input.value,
+            selectedDates: input._flatpickr?.selectedDates?.length
+          });
+        }, 100);
+      } catch(e) {
+        console.error('Error creating flatpickr instance:', e);
+      }
+    } else {
+      console.warn('Cannot create flatpickr:', {
+        hasInput: !!input,
+        hasFlatpickr: !!window.flatpickr,
+        inputId: input?.id
+      });
     }
 
     clearBtn && clearBtn.addEventListener('click', function(){
+      console.log('Clearing date filter');
       // Clear the flatpickr input
       if(input && input._flatpickr){
         input._flatpickr.clear();
@@ -174,24 +238,52 @@
     });
 
     langSelect && langSelect.addEventListener('change', function(){
+      console.log('Language changed to:', langSelect.value);
+      // Start with current URL - this preserves ALL existing parameters including dates
       const u = new URL(window.location.href);
+      // Only modify what's changing
       u.searchParams.set('language', langSelect.value);
       u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
+      // Make sure order is set from dropdown
       const ord = (orderSelect && orderSelect.value) || 'date_desc';
       const [ob,od] = ord.split('_');
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
+
+      // IMPORTANT: Also check flatpickr for selected dates and preserve them
+      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
+        const [start, end] = input._flatpickr.selectedDates;
+        u.searchParams.set('startDate', formatYMD(start));
+        u.searchParams.set('endDate', formatYMD(end));
+        console.log('Preserving dates from flatpickr:', formatYMD(start), formatYMD(end));
+      }
+
+      console.log('Language change - URL params:', Object.fromEntries(u.searchParams.entries()));
       updateSummary();
       applyNavigation(u);
     });
 
     orderSelect && orderSelect.addEventListener('change', function(){
+      console.log('Order changed to:', orderSelect.value);
+      // Start with current URL - this preserves ALL existing parameters including dates
       const u = new URL(window.location.href);
+      // Only modify what's changing
       const [ob,od] = orderSelect.value.split('_');
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
       u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
+      // Make sure language is set from dropdown
       if(langSelect) u.searchParams.set('language', langSelect.value);
+
+      // IMPORTANT: Also check flatpickr for selected dates and preserve them
+      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
+        const [start, end] = input._flatpickr.selectedDates;
+        u.searchParams.set('startDate', formatYMD(start));
+        u.searchParams.set('endDate', formatYMD(end));
+        console.log('Preserving dates from flatpickr:', formatYMD(start), formatYMD(end));
+      }
+
+      console.log('Order change - URL params:', Object.fromEntries(u.searchParams.entries()));
       updateSummary();
       applyNavigation(u);
     });
@@ -208,15 +300,39 @@
     initFromRoot(root);
   });
 
-  // Reinitialize after HTMX swaps when #content is replaced
-  document.body.addEventListener('htmx:afterSwap', function(evt){
+  // Reinitialize after HTMX settles (DOM is ready for manipulation)
+  document.body.addEventListener('htmx:afterSettle', function(evt){
     try{
       const target = evt && evt.detail && evt.detail.target;
-      if (!target) return;
-      // if the blog content region was swapped or contains the dateRange input, re-init
-      if (target.id === 'content' || target.querySelector?.('#dateRange')){
-        initFromRoot(target);
+      if (!target) {
+        console.log('HTMX afterSettle - no target');
+        return;
       }
-    }catch{}
+
+      console.log('HTMX afterSettle - target:', target.id, target);
+
+      // Check if this is the #content element or contains it
+      if (target.id === 'content') {
+        console.log('Re-initializing blog filters - target IS content');
+        // Target IS the content div, use it directly
+        // Give DOM a bit more time to fully settle before initializing flatpickr
+        setTimeout(() => {
+          console.log('Running initFromRoot after delay');
+          initFromRoot(target);
+        }, 50);
+      } else if (target.querySelector?.('#content')) {
+        console.log('Re-initializing blog filters - target CONTAINS content');
+        // Target contains the content div, find it
+        const contentDiv = target.querySelector('#content');
+        setTimeout(() => {
+          console.log('Running initFromRoot after delay');
+          initFromRoot(contentDiv);
+        }, 50);
+      } else {
+        console.log('Skipping reinitialization - not blog content');
+      }
+    }catch(err){
+      console.error('Error reinitializing blog filters:', err);
+    }
   });
 })();

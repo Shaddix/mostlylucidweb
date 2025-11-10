@@ -37,7 +37,7 @@
     "bundle": "rollup -c",
     "build:all": "npm run build && npm run minify && npm run bundle",
     "prepublishOnly": "npm run build:all",
-    "dev": "cd examples && npx http-server -p 3000 -o",
+    "dev": "cd examples && npx http-server -p 2000 -o",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

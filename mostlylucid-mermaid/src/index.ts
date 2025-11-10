@@ -14,7 +14,10 @@
 export {
     enhanceMermaidDiagrams,
     cleanupMermaidEnhancements,
-    configure
+    configure,
+    hideToolbar,
+    showToolbar,
+    toggleToolbar
 } from './enhancements.js';
 
 export {
@@ -32,7 +35,7 @@ export type {
 } from './types';
 
 // Re-export for convenience
-import { enhanceMermaidDiagrams, configure } from './enhancements.js';
+import { enhanceMermaidDiagrams, configure, hideToolbar, showToolbar, toggleToolbar } from './enhancements.js';
 import { initMermaid } from './theme-switcher.js';
 
 /**
@@ -57,4 +60,7 @@ export default {
     initMermaid,
     enhanceMermaidDiagrams,
     configure,
+    hideToolbar,
+    showToolbar,
+    toggleToolbar,
 };
