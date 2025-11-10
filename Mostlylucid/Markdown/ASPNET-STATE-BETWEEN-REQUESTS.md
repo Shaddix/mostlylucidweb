@@ -60,13 +60,14 @@ flowchart LR
 
 ## Golden Rules (before we dive into APIs)
 
-1. Prefer “stateless server” patterns when you need to scale horizontally (push state to client tokens, durable stores, or distributed caches).
-2. Never trust client-controlled state. Validate, sign, and/or encrypt.
-3. Keep large data out of cookies and headers; they bloat every request.
-4. Use TempData only for Post-Redirect-Get (PRG) one-shots like flash messages.
-5. Use Session only when you must maintain server-side conversational state and you’ve planned distribution.
-6. Claims are for identity and coarse-grained authorization, not general app state.
-7. Cache is not a source of truth. Back it with a durable store if the data matters.
+1. **Security first: State leakage is a real threat.** Server-side state (Session, in-memory caches) can leak between users through coding errors, race conditions, or incorrect lifecycle management. Stateless patterns aren't just more scalable—they're more secure.
+2. Prefer "stateless server" patterns when you need to scale horizontally (push state to client tokens, durable stores, or distributed caches).
+3. Never trust client-controlled state. Validate, sign, and/or encrypt.
+4. Keep large data out of cookies and headers; they bloat every request.
+5. Use TempData only for Post-Redirect-Get (PRG) one-shots like flash messages.
+6. Use Session only when you must maintain server-side conversational state and you've planned distribution—and be paranoid about security.
+7. Claims are for identity and coarse-grained authorization, not general app state.
+8. Cache is not a source of truth. Back it with a durable store if the data matters.
 
 ---
 
