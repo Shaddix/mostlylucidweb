@@ -65,13 +65,13 @@ Senare flyttade jag till Redmond, WA som programchef II på ASP.NET-teamet, där
 
 - **Dell Dell Ordförande**(2011): Byggt en anpassad maskin bild distribution plattform med hjälp av ASP.NET MVC.
 - **Frilans**(2012-närvarande): Jag har arbetat med företag som GBG Plc (Loqate), där jag byggde globala sökprodukter med hjälp av .NET 6 microservices och Kubernetes.
-- **På Seamcor Ltd instruerade jag team att rehabilitera ASP.NET Core-system med Docker Compose och OpenSearch.**Senast på ZenChef Limited, Jag ledde övergången från äldre Azure system till .NET 8, avsevärt minska hosting kostnader genom profilering och optimering.
+- **På Seamcor Ltd gav jag teamen i uppdrag att rehabilitera ASP.NET Core-system med hjälp av Docker Compose och OpenSearch.**Senast på ZenChef Limited, Jag ledde övergången från äldre Azure system till .NET 8, avsevärt minska hosting kostnader genom profilering och optimering.
 - **Jag har också byggt och driver en**utbildningsprogram för utvecklare
 
 som har hjälpt över 400 junior utvecklare bryta sig in i branschen (90% placeringsgrad).
 
 - **Undervisning och mentorskap är något jag verkligen älskar.**Denna webbplats
-- **mestadels lucid.net**är mitt galna labb — en levande kodbas där jag experimenterar med vad som fångar mitt intresse för webbutveckling.
+- **[mestadels lucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**är mitt galna labb — en levande kodbas där jag experimenterar med vad som fångar mitt intresse för webbutveckling.
 - **Hela plattformen är**öppen källkod på GitHub
 - **, och det har blivit en grogrund för NuGet- och NPM-paketen jag har publicerat.**Temat:
 - **Se problem, hitta lösning, implementera den, sedan extrahera den i ett återanvändbart paket.**Själva infrastrukturen är en fallstudie i effektiv serverdrift:
@@ -88,73 +88,73 @@ Plattformen har som lekte paket:<https://www.mostlylucid.net>
 
 Blogsystem med dubbla lägen<https://github.com/scottgal>
 
-(filbaserad markering eller PostgreSQL) — ledde till paketet Markdig.FetchExtension[Automatisk översättning](https://www.linkedin.com/in/scott-galloway-91608691/)
+(filbaserad markering eller PostgreSQL) — ledde till paketet Markdig.FetchExtension[Automatiskt översättningssystem](https://www.linkedin.com/in/scott-galloway-91608691/)
 
-**till 12 språk via EasyNMT**Fulltextsökning
+**— komplett Python / Pytorch / FastAPI skriva om EasyNMT stödja 100 + språk med automatisk fall tillbaka mellan neural maskin översättning modell familjer.**Produktionsklar med intelligent cachelagring, GPU-optimering och robust felhantering.
 
 ---
 
 
-## Använda PostgreSQL tsvector/GIN-index
+## Översätter hela bloggen till 12+ språk automatiskt.
 
-### Interaktiva sjöjungfrudiagram
+### Det här är precis mitt hjulhus: ny teknik som löser ett verkligt problem (övergivet EasyNMT-projekt) med en fantastisk lösning som hanterar rörig real-world-input i skala.
 
-**med pan/zoom/export — blev @meestlylucid/mermaid-enhancements npm-paketet**HTMX-driven personsökning
-**— extraheras till personsökarhjälpen NuGet-paketet**Umamianalysintegration
-**— blev Ummami.Net paketet**LLM-drivna prototypa API:er
-**för utveckling – blev mockllmapi-paketet**Det är rörigt, experimentellt och utvecklas ständigt.
-**Det är poängen.**Kontaktuppgifter
-**E-post:**Scott.galloway+ml@gmail.com
-**Blogg:**- Vad är det med dig?
+**Fulltextsökning**Använda PostgreSQL tsvector/GIN-index
+**Interaktiva sjöjungfrudiagram**med pan/zoom/export — blev @meestlylucid/mermaid-enhancements npm-paketet
+**HTMX-driven personsökning**— extraheras till personsökarhjälpen NuGet-paketet
+**Umamianalysintegration**— blev Ummami.Net paketet
+**LLM-drivna prototypa API:er**för utveckling – blev mockllmapi-paketet
+**Det är rörigt, experimentellt och utvecklas ständigt.**Det är poängen.
+**Kontaktuppgifter**E-post:
+**Scott.galloway+ml@gmail.com**Blogg:
+
+### - Vad är det med dig?
+
 **- Jag vet inte vad du pratar om.**Scott Galloway Ordförande
 
-### Letar du efter konsulthjälp eller en kontraktsroll?
+**Letar du efter konsulthjälp eller en kontraktsroll?**Jag är alltid öppen för intressanta projekt.
 
-**Jag är alltid öppen för intressanta projekt.**Släpp en lina.
-
-**Detaljerna (om du behöver dem)**Teknologstacken
-
+- Släpp en lina.
+- Detaljerna (om du behöver dem)
+- Teknologstacken
 - Språk:
-- Från Perl CGI till Go microservices — C#/.NET (mitt primära fokus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
-- Jag är språkagnostiker och väljer utifrån problemet, inte hype.
-- Bakgrund:
 
-**ASP.NET Core genom .NET 9, Node.js, Python API:er, Go tjänster**
+**Från Perl CGI till Go microservices — C#/.NET (mitt primära fokus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
 
-**Gränssnitt:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (vad som än passar till användningsfodralet)
+**Jag är språkagnostiker och väljer utifrån problemet, inte hype.**Bakgrund:
 
-**Det är därför det är nödvändigt att ta hänsyn till det faktum att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att en sådan risk kan uppstå en allvarlig risk för att en sådan risk kan uppstå en allvarlig risk för en allvarlig störning.**Medvind CSS, Bootstrap, DaisyUI
+**ASP.NET Core genom .NET 9, Node.js, Python API:er, Go tjänster**Gränssnitt:
 
-**Databaser:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (vad som än passar till användningsfodralet)**Det är därför det är nödvändigt att ta hänsyn till det faktum att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att det finns en risk för att en sådan risk kan uppstå en allvarlig risk för att en sådan risk kan uppstå en allvarlig risk för en allvarlig störning.
 
-**DevOps:**Docker, Kubernetes, GitHub Åtgärder, Azure DevOps, CI/CD rörledningar, Infrastruktur-som-kod*[Moln:*Azure (även om jag i allt högre grad föredrar självvärdiga lösningar för kostnader och kontroll)
+**Medvind CSS, Bootstrap, DaisyUI**Databaser:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch*DevOps:
 
-**Al/ML:**Ollama, EasyNMT, ML.NET, scikit-lära, inbäddningar, ANN, RAG rörledningar, Azure OpenAI*[Höjdpunkter i karriären*Microsoft Corporation Ordförande
+**Docker, Kubernetes, GitHub Åtgärder, Azure DevOps, CI/CD rörledningar, Infrastruktur-som-kod**Moln:*[Azure (även om jag i allt högre grad föredrar självvärdiga lösningar för kostnader och kontroll)*Al/ML:
 
-**(2005-2009): Började som Application Developer Consultant II i Reading, Storbritannien, med fokus på prestandaanalys och företagskonsultering för FTSE 100 klienter.**Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifetimes and drived security infrastructure for Project Server.*[För det mesta begränsad lucid*(2012-Present): Genom min konsultverksamhet har jag levererat dussintals lösningar inom fintech, hälso- och sjukvård, e-handel och statliga sektorer i både kontrakts- och heltidsroller.
+**Ollama, EasyNMT, ML.NET, scikit-lära, inbäddningar, ANN, RAG rörledningar, Azure OpenAI**Höjdpunkter i karriären*[Microsoft Corporation Ordförande*(2005-2009): Började som Application Developer Consultant II i Reading, Storbritannien, med fokus på prestandaanalys och företagskonsultering för FTSE 100 klienter.
 
-### Bland de anmärkningsvärda uppdragen kan nämnas följande:
+### Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifetimes and drived security infrastructure for Project Server.
 
-**Lead Architect/Developer för ett stort asiatiskt flygbolags bokningssystem (Knockout & ASP.NET MVC)**FoU-utvecklare för telemetrispårning av försäkringsbolag (lågnivåuttagssystem på Azure)
-Research Systems Architect on UK Government National Security distribuerat datorprojekt
+**För det mesta begränsad lucid**(2012-Present): Genom min konsultverksamhet har jag levererat dussintals lösningar inom fintech, hälso- och sjukvård, e-handel och statliga sektorer i både kontrakts- och heltidsroller.
+Bland de anmärkningsvärda uppdragen kan nämnas följande:
 
-Teknisk konsult för 8 brittiska och internationella välgörenhetsorganisationer
+Lead Architect/Developer för ett stort asiatiskt flygbolags bokningssystem (Knockout & ASP.NET MVC)
 
 ---
 
 
-## Senaste rollerna (avtal och heltid):
+## FoU-utvecklare för telemetrispårning av försäkringsbolag (lågnivåuttagssystem på Azure)
 
-**ZenChef begränsad**(Oct 2024 - Present): Led övergången av ett stort äldre Azure-baserat distribuerat system till .NET 8, avsevärt minska hosting kostnader genom profilering och optimering.
+**Research Systems Architect on UK Government National Security distribuerat datorprojekt**Teknisk konsult för 8 brittiska och internationella välgörenhetsorganisationer
 
-**Fortsätt att stödja det massiva äldre systemet.**Mycket Jane Ltd
+**Senaste rollerna (avtal och heltid):**ZenChef begränsad
 
-**(Apr 2024 - Aug 2024): Backend integration för en stor e-handelsprogram, genomförande Stripe Connect och Hyperwallet betalningssystem.**De åtgärder som föreskrivs i denna förordning är förenliga med yttrandet från ständiga kommittén för växter, djur, livsmedel och foder.
+**(Oct 2024 - Present): Led övergången av ett stort äldre Azure-baserat distribuerat system till .NET 8, avsevärt minska hosting kostnader genom profilering och optimering.**Fortsätt att stödja det massiva äldre systemet.
 
-**(Dec 2022 - Apr 2024): Rearchitected en ASP.NET Core system som chef för Engineering, implementera Docker Compose och OpenSearch för förbättrad rapportering.**GBG Plc (Loqate)
+**Mycket Jane Ltd**(Apr 2024 - Aug 2024): Backend integration för en stor e-handelsprogram, genomförande Stripe Connect och Hyperwallet betalningssystem.
 
-**(Aug 2022 - Nov 2022)**Heltid]
+**De åtgärder som föreskrivs i denna förordning är förenliga med yttrandet från ständiga kommittén för växter, djur, livsmedel och foder.**(Dec 2022 - Apr 2024): Rearchitected en ASP.NET Core system som chef för Engineering, implementera Docker Compose och OpenSearch för förbättrad rapportering.
 
-: Byggt en global sökprodukt med hjälp av .NET 6 microservices och Kubernetes för höggenomströmning, storskalig databehandling.**H3Space Ltd**.
+GBG Plc (Loqate)**(Aug 2022 - Nov 2022)**.
 
-Europaparlamentets och rådets förordning (EU, Euratom) nr 966/2012 av den 25 oktober 2012 om finansiella regler för unionens allmänna budget och om upphävande av rådets förordning (EG, Euratom) nr 1605/2002 (EUT L 298, 26.10.2012, s. 1).
+Heltid]

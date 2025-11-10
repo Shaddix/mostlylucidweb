@@ -71,7 +71,7 @@ Successivamente si è trasferito a Redmond, WA come Program Manager II nel team 
 che ha aiutato oltre 400 sviluppatori junior entrare nel settore (90% tasso di collocamento).
 
 - **L'insegnamento e il tutoraggio sono qualcosa che amo davvero.**Questo sito
-- **per lo piùlucid.net**E' il mio laboratorio pazzo... una base di codice vivente dove faccio esperimenti su qualsiasi cosa catturi il mio interesse nello sviluppo del web.
+- **[per lo piùlucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**E' il mio laboratorio pazzo... una base di codice vivente dove faccio esperimenti su qualsiasi cosa catturi il mio interesse nello sviluppo del web.
 - **L'intera piattaforma è**open source su GitHub
 - **E' diventato un terreno fertile per i pacchetti NuGet e NPM che ho pubblicato.**Tema:
 - **Vedere problema, trovare soluzione, implementarlo, poi estrarlo in un pacchetto riutilizzabile.**L'infrastruttura stessa è un caso di studio in operazioni server efficienti:
@@ -88,73 +88,73 @@ La piattaforma presenta i pacchetti generati:<https://www.mostlylucid.net>
 
 Sistema blog dual-mode<https://github.com/scottgal>
 
-(markdown basato su file o PostgreSQL) ha portato al pacchetto Markdig.FetchExtension[Traduzione automatica](https://www.linkedin.com/in/scott-galloway-91608691/)
+(markdown basato su file o PostgreSQL) ha portato al pacchetto Markdig.FetchExtension[Sistema automatico di traduzione](https://www.linkedin.com/in/scott-galloway-91608691/)
 
-**fino a 12 lingue tramite EasyNMT**Ricerca full-text
+**Python completo / Pytorch / FastAPI riscrittura di EasyNMT supporto 100+ lingue con ripiego automatico tra le famiglie modello di traduzione automatica neurale.**Pronta alla produzione con cache intelligenti, ottimizzazione GPU e robusta gestione degli errori.
 
 ---
 
 
-## utilizzando gli indici PostgreSQL tsvector/GIN
+## Traduce automaticamente l'intero blog in 12+ lingue.
 
-### Diagrammi interattivi della sirena
+### Questo è esattamente il mio punto di riferimento: la nuova tecnologia che risolve un problema reale (progetto EasyNMT abbandonato) con una soluzione incredibile che gestisce l'introito disordinato del mondo reale in scala.
 
-**con pan/zoom/export è diventato il pacchetto @mostlylucid/mermaid-enhancements npm**Paging alimentato da HTMX
-**Estratti nel pacchetto Pagingtaghelper NuGet**Integrazione Umami analytics
-**Divenne il pacchetto Umami.Net**API simulate a potenza LLM
-**per lo sviluppo è diventato il pacchetto mockllmapi**E' disordinato, sperimentale e in continua evoluzione.
-**E' questo il punto.**Contatto
-**Email:**Scott.galloway+ml@gmail.com
-**Blog:**GitHub:
+**Ricerca full-text**utilizzando gli indici PostgreSQL tsvector/GIN
+**Diagrammi interattivi della sirena**con pan/zoom/export è diventato il pacchetto @mostlylucid/mermaid-enhancements npm
+**HTMX-powered paging**Estratti nel pacchetto Pagingtaghelper NuGet
+**Integrazione Umami analytics**Divenne il pacchetto Umami.Net
+**API simulate a potenza LLM**per lo sviluppo è diventato il pacchetto mockllmapi
+**E' disordinato, sperimentale e in continua evoluzione.**E' questo il punto.
+**Contatto**Email:
+**Scott.galloway+ml@gmail.com**Blog:
+
+### GitHub:
+
 **LinkedIn:**Scott Galloway
 
-### Cerchi aiuto di consulenza o un ruolo contrattuale?
+**Cerchi aiuto di consulenza o un ruolo contrattuale?**Sono sempre aperto a progetti interessanti.
 
-**Sono sempre aperto a progetti interessanti.**Lasciami una battuta.
-
-**I dettagli (se ne hai bisogno)**Stack tecnologico
-
+- Lasciami una battuta.
+- I dettagli (se ne hai bisogno)
+- Stack tecnologico
 - Lingue:
-- Da Perl CGI a Go microservices C#/.NET (il mio obiettivo primario), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
-- Sono agnostico e scelgo in base al problema, non all'hype.
-- Backend:
 
-**ASP.NET Core attraverso .NET 9, Node.js, Python API, Go servizi**
+**Da Perl CGI a Go microservices C#/.NET (il mio obiettivo primario), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
 
-**Frontend:**HTMX, Alpine.js, Vue.js, React, Angolar, Blazor, jQuery (qualunque sia il caso d'uso)
+**Sono agnostico e scelgo in base al problema, non all'hype.**Backend:
 
-**CSS:**CSS del vento di coda, Bootstrap, DaisyUI
+**ASP.NET Core attraverso .NET 9, Node.js, Python API, Go servizi**Frontend:
 
-**Database:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+**HTMX, Alpine.js, Vue.js, React, Angolar, Blazor, jQuery (qualunque sia il caso d'uso)**CSS:
 
-**DevOps:**Docker, Kubernetes, GitHub Actions, Azure DevOps, CI/CD Pipelines, Infrastructure-as-Code*[Nuvola:*Azure (anche se preferisco sempre più soluzioni auto-ospitali per il costo e il controllo)
+**CSS del vento di coda, Bootstrap, DaisyUI**Database:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch*DevOps:
 
-**AI/ML:**Ollama, EasyNMT, ML.NET, scikit-learn, embeddings, ANNs, RAG Pipelines, Azure OpenAI*[Primo piano della carriera*Microsoft Corporation
+**Docker, Kubernetes, GitHub Actions, Azure DevOps, CI/CD Pipelines, Infrastructure-as-Code**Nuvola:*[Azure (anche se preferisco sempre più soluzioni auto-ospitali per il costo e il controllo)*AI/ML:
 
-**(2005-2009): Iniziato come Application Developer Consultant II a Reading, Regno Unito, focalizzato sull'analisi delle prestazioni e sulla consulenza aziendale per i clienti FTSE 100.**Promosso a Program Manager II in Redmond, WA, dove ho gestito i cicli di vita di rilascio ASP.NET e guidato l'infrastruttura di sicurezza per Project Server.*[per lo più limitatalucid*(2012-Present): Attraverso la mia consulenza, ho fornito decine di soluzioni nei settori fintech, sanitario, e-commerce e governo in ruoli sia contrattuali che a tempo pieno.
+**Ollama, EasyNMT, ML.NET, scikit-learn, embeddings, ANNs, RAG Pipelines, Azure OpenAI**Primo piano della carriera*[Microsoft Corporation*(2005-2009): Iniziato come Application Developer Consultant II a Reading, Regno Unito, focalizzato sull'analisi delle prestazioni e sulla consulenza aziendale per i clienti FTSE 100.
 
-### Gli impegni importanti includono:
+### Promosso a Program Manager II in Redmond, WA, dove ho gestito i cicli di vita di rilascio ASP.NET e guidato l'infrastruttura di sicurezza per Project Server.
 
-**Lead Architect/Developer per il sistema di prenotazione di una delle principali compagnie aeree asiatiche (Knockout & ASP.NET MVC)**Sviluppatore di ricerca e sviluppo per il monitoraggio telemetrico delle compagnie di assicurazione (sistemi a socket a basso livello su Azure)
-Research Systems Architect on UK Government National Security distributed computing project
+**per lo più limitatalucid**(2012-Present): Attraverso la mia consulenza, ho fornito decine di soluzioni nei settori fintech, sanitario, e-commerce e governo in ruoli sia contrattuali che a tempo pieno.
+Gli impegni importanti includono:
 
-Consulente tecnico per 8 enti di beneficenza del Regno Unito e internazionali
+Lead Architect/Developer per il sistema di prenotazione di una delle principali compagnie aeree asiatiche (Knockout & ASP.NET MVC)
 
 ---
 
 
-## Ruoli recenti (Contract & Full-Time):
+## Sviluppatore di ricerca e sviluppo per il monitoraggio telemetrico delle compagnie di assicurazione (sistemi a socket a basso livello su Azure)
 
-**ZenChef Limited**(Ott 2024 - Presente): Guidare la transizione di un grande sistema distribuito legacy basato su Azure a .NET 8, riducendo sostanzialmente i costi di hosting attraverso la profilazione e l'ottimizzazione.
+**Research Systems Architect on UK Government National Security distributed computing project**Consulente tecnico per 8 enti di beneficenza del Regno Unito e internazionali
 
-**Continuare a sostenere il sistema enorme legacy.**Very Jane Ltd.
+**Ruoli recenti (Contract & Full-Time):**ZenChef Limited
 
-**(Apr 2024 - Aug 2024): Integrazione backend per una grande applicazione di e-commerce, implementando sistemi di pagamento Stripe Connect e Hyperwallet.**Seamcor Ltd.
+**(Ott 2024 - Presente): Guidare la transizione di un grande sistema distribuito legacy basato su Azure a .NET 8, riducendo sostanzialmente i costi di hosting attraverso la profilazione e l'ottimizzazione.**Continuare a sostenere il sistema enorme legacy.
 
-**(Dic 2022 - Apr 2024): Riarchitettato un sistema ASP.NET Core come Head of Engineering, implementando Docker Compose e OpenSearch per un reporting migliorato.**GBG Plc (Loqate)
+**Very Jane Ltd.**(Apr 2024 - Aug 2024): Integrazione backend per una grande applicazione di e-commerce, implementando sistemi di pagamento Stripe Connect e Hyperwallet.
 
-**(Ago 2022 - Nov 2022)**Tempo pieno]
+**Seamcor Ltd.**(Dic 2022 - Apr 2024): Riarchitettato un sistema ASP.NET Core come Head of Engineering, implementando Docker Compose e OpenSearch per un reporting migliorato.
 
-: Costruito un prodotto di ricerca globale utilizzando .NET 6 microservizi e Kubernetes per l'alta produttività, l'elaborazione di dati su larga scala.**H3Space Ltd.**.
+GBG Plc (Loqate)**(Ago 2022 - Nov 2022)**.
 
-(Giugno 2021 - Set 2021)
+Tempo pieno]

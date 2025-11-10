@@ -6,6 +6,8 @@ A FastAPI implementation EXACTLY copying the API of EasyNMT  (https://github.com
 
 Since the start of this blog, a big passion has been auto-translating blog articles. YES I do know that 'google does this' in browsers etc...etc...but that's not the point. I wanted to know HOW to do it! Plus it's nice to be welcoming to people who don't read English (even if they read English as a second language, it's FAR harder to parse). So I worked out how to do it; as well as sharing how to build this sort of system. Oh and it gave me ideas on how to use it in ASP.NET for automatic localization of text (including dynamic text) using SignalR & a slick realtime updating system. ([stay tuned!](https://github.com/scottgal/mostlylucid.activetranslatetag)).
 
+Oh and I've made a demo available here; https://nmtdemo.mostlylucid.net/demo/ it's only running in an old laptop with no GPU but gives you the idea (and lets me test lengevity). 
+
 Essentially; humans write crap text which is SUPER noisy for machines to handle efficiently. So a lot was figuring out how to work around issues with EasyNMT (it was really ever a research project). Now `mostlylucid-nmt` is designed to be a battle tested (well translating the tens of thousands of words on here!) useful system for any translation. Kind of a BabelFish API. 
 
 It also has all the learnings i have from three decades of building production servers & systems. Ranging from 429 codes to tell the client to back off, returning metadata about translations to help clients, extra endpoints to get more data and OF COURSE [a demo page ](#interactive-demo-page) which lets both me while developing as well as you a way to have a play.
@@ -14,7 +16,7 @@ I [wrote a whole system](https://www.mostlylucid.net/blog/category/EasyNMT) to m
 
 In our previous posts, we discussed how to integrate EasyNMT with ASP.NET applications for background translation. But as time went on, the cracks started to show. It was time for something better.
 
-
+ 
 
 [As usual it's all on GitHub and all free for use etc...](https://github.com/scottgal/mostlylucid-nmt)
 
@@ -36,48 +38,163 @@ In our previous posts, we discussed how to integrate EasyNMT with ASP.NET applic
 <!--category-- mostlylucid-nmt, EasyNMT,  Neural Machine Translation, Python, FastAPI, Docker, CUDA, PyTorch, Transformers, Helsinki-NLP,  API-->
 <datetime class="hidden">2025-11-08T12:30</datetime>
 
-## 🚀 What's New?
+## What's New?
 
 Before we dive into the quick start, here's what makes this version game-changing:
 
-### Major Updates
+### Major Updates (v3.1) - Intelligence & Visibility
 
-**1. Three Model Families** - Choose the best for your needs:
+**New in v3.1:** The latest version brings massive improvements to reliability, performance visibility, and intelligent model selection!
+
+**1. Smart Model Caching with Visibility** - See exactly what's happening:
+- ✓ **Cache HIT logging**: `Reusing loaded model for en->de (3/10 models in cache)`
+- ✗ **Cache MISS logging**: `Need to load model for en->fr (3/10 models in cache)`
+-  **Cache status tracking**: Shows utilization percentage and loaded models
+- **Eviction warnings**: Clear alerts when cache is full and models are evicted
+- **Increased capacity**: Default cache size bumped to 10 models (from 6)
+- **Per-model device logging**: See exactly which GPU/CPU each model uses
+
+**2. Enhanced Download Progress** - No more wondering if it's stuck:
+-  **Size before download**: Shows total download size (e.g., "Total Size: 2.46 GB")
+- **File count**: Displays number of files to download
+- **Device display**: Shows target device (GPU/CPU) in banner
+- **Progress bars**: Beautiful tqdm progress for each file (when on TTY)
+- **Completion banner**: Clear success message when model is ready
+- **Example output**:
+  ```
+  ====================================================================================================
+    🚀 DOWNLOADING MODEL
+    Model: facebook/mbart-large-50-many-to-many-mmt
+    Family: mbart50
+    Direction: en → bn
+    Device: GPU (cuda:0)
+    Total Size: 2.46 GB
+    Files: 6 main files
+  ====================================================================================================
+  [Progress bars for each file...]
+  ====================================================================================================
+    ✅ MODEL READY
+    Model: facebook/mbart-large-50-many-to-many-mmt
+    Translation: en → bn is now available
+  ====================================================================================================
+  ```
+
+**3. Data-Driven Intelligent Pivot Selection** - No more blind attempts:
+- **Smart intersection logic**: Finds languages where BOTH pivot legs exist
+- **Avoids failed attempts**: Won't try en→es→bn if es→bn doesn't exist
+- **Example for en→bn**:
+  ```
+  [Pivot] Languages reachable from en: 85 languages
+  [Pivot] Languages that can reach bn: 42 languages
+  [Pivot] Found 38 possible pivot languages
+  [Pivot] Selected pivot: en → hi → bn (both legs verified)
+  ```
+- **Fallback priority**: English → Spanish → French → German → Chinese → Russian
+- **Transparent logging**: See exactly why each pivot was chosen or skipped
+
+**4. Fixed Automatic Fallback** - No more double-tries:
+- **Always tries fallbacks**: Even if preferred family "should" support the pair
+- **Single attempt per family**: No more retrying the same model twice
+- **Example flow**:
+  ```
+  Request: en→bn with opus-mt
+  Trying families: ['opus-mt', 'mbart50', 'm2m100']  ✓ All three!
+  opus-mt: Failed (model doesn't exist)
+  mbart50: Success! (auto-fallback worked)
+  ```
+
+**5. GPU Clarity** - Always know where your models are:
+- Every model load shows: `Loading mbart50 model on GPU (cuda:0)`
+- After load confirms: `Model loaded on device: cuda:0`
+- Success message includes: `Successfully loaded... on GPU (cuda:0)`
+
+**6. Pivot Model Caching** - Efficient pivot reuse:
+- Both legs of pivot cached separately: `en->hi`, `hi->bn`
+- Next time en→hi or hi→bn needed, instant cache hit!
+- Clear logging: `[Pivot] Both legs loaded and cached. Ready to translate.`
+
+**7. Per-Request Model Selection** - Already works in demo:
+- Demo dropdown allows selecting opus-mt, mbart50, or m2m100
+- Backend respects `model_family` parameter per request
+- Models cached separately by family for instant switching
+
+### Major Updates (v3.0)
+
+**1. Enhanced Demo Page** - Production-ready interactive interface:
+- Full viewport layout (100vw/100vh) for immersive translation experience
+- Proper themed select dropdowns (no more clunky input/datalist)
+- Live model family switching (Opus-MT, mBART50, M2M100)
+- Dynamic language loading based on selected model
+- Scrollable output areas for large translations
+
+**2. Performance-Optimised Defaults** - "Fast as possible" out of the box:
+- **GPU**: FP16 enabled, BATCH_SIZE=64, MAX_INFLIGHT=1 (optimal for single GPU)
+- **CPU**: WEB_CONCURRENCY=4, MAX_INFLIGHT=4, BATCH_SIZE=16 (utilise all cores)
+- **Fast shutdown**: 5-second graceful timeout (no more 20-second hangs)
+- Containers stop cleanly without scary SIGKILL messages
+
+**3. Production Build Optimisation** - Smaller, faster images:
+- Removed test dependencies (pytest, pytest-cov) from production builds
+- Saves ~200MB per image
+- CPU images: ~8-10GB (full), ~3-4GB (min)
+- GPU images: ~12-15GB (full), ~6-8GB (min)
+- All use `requirements-prod.txt` for minimal footprint
+
+**4. Comprehensive Testing & Load Testing** - Validate everything:
+- **Live API test suite** (30+ tests) for health, translation, detection, discovery
+- **k6 load testing** with realistic traffic patterns
+- **Cross-platform validation scripts** (PowerShell + Bash)
+- Tests for model downloads and pivot translation fallback
+- Automated smoke tests for quick validation
+
+**5. Deployment Documentation** - Production-ready from day one:
+- 4 tuning scenarios: Max Throughput, Low Latency, High Concurrency, Memory-Constrained
+- Docker Compose examples with GPU/CPU configurations
+- Kubernetes manifests with PVC, resource limits, health checks
+- Azure Container Instances examples
+- Load testing guidance and monitoring recommendations
+- Concurrency vs throughput trade-offs explained
+
+**6. Three Model Families** - Choose the best for your needs:
 - **Opus-MT**: 1200+ pairs, best quality (separate models)
 - **mBART50**: 50 languages, single 2.4GB model, 2,450 pairs
 - **M2M100**: 100 languages, single 2.2GB model, 9,900 pairs
 
-**2. Auto-Fallback** - Intelligently selects best available model:
+**7. Auto-Fallback** - Intelligently selects best available model:
 - Set primary family (e.g., Opus-MT for quality)
 - Automatically tries mBART50/M2M100 if pair unavailable
-- **Maximum coverage without sacrificing quality!**
+- Maximum coverage without sacrificing quality
 
-**3. Model Discovery** - Dynamically query available models:
+**8. Model Discovery** - Dynamically query available models:
 - `/discover/opus-mt` - All 1200+ pairs from Hugging Face
 - `/discover/mbart50` - All mBART50 pairs
 - `/discover/m2m100` - All M2M100 pairs
 
-**4. Minimal Images** - Smaller, flexible deployments:
+**9. Minimal Images** - Smaller, flexible deployments:
 - No preloaded models (download on-demand)
 - Volume-mapped persistent cache
 - Switch model families without rebuilding
 
-**5. Single Docker Repository** - All variants in one place:
-- `scottgal/mostlylucid-nmt:cpu` (or `:latest`) - CPU (~2.5GB)
-- `scottgal/mostlylucid-nmt:cpu-min` - CPU minimal (~1.5GB)
-- `scottgal/mostlylucid-nmt:gpu` - GPU (~5GB)
-- `scottgal/mostlylucid-nmt:gpu-min` - GPU minimal (~4GB)
+**10. Single Docker Repository** - All variants in one place:
+- `scottgal/mostlylucid-nmt:cpu` (or `:latest`) - CPU
+- `scottgal/mostlylucid-nmt:cpu-min` - CPU minimal
+- `scottgal/mostlylucid-nmt:gpu` - GPU with CUDA 12.6
+- `scottgal/mostlylucid-nmt:gpu-min` - GPU minimal
 
-**6. Proper Versioning** - All images include datetime versioning:
+**11. Proper Versioning** - All images include datetime versioning:
 - Named tags (`latest`, `min`, `gpu`, `gpu-min`) always point to most recent build
 - Immutable version tags (e.g., `20250108.143022`) for pinning specific builds
 - Full OCI labels for tracking versions, build dates, and git commits
 
-**7. Latest Base Images** - Security and performance improvements:
-- **Python 3.13-slim** for CPU images (addresses Python 3.11 vulnerabilities)
+**12. Latest Base Images** - Security and performance improvements:
+- **Python 3.12-slim** for CPU images (addresses Python 3.11 vulnerabilities)
 - **CUDA 12.6** with Ubuntu 24.04 for GPU images (latest NVIDIA stack)
 - **PyTorch with CUDA 12.4** (compatible with CUDA 12.6 runtime)
 - All dependencies updated to latest secure versions
+
+**13. Fixed Deprecation Warnings** - Future-proof:
+- Removed deprecated TRANSFORMERS_CACHE (now using HF_HOME)
+- Compatible with Transformers v5
 
 ---
 
@@ -384,7 +501,7 @@ MODEL_FAMILY=m2m100
 
 ### Automatic Model Family Fallback - NEW!
 
-One of the most powerful new features is **automatic fallback between model families**. This ensures maximum language pair coverage while prioritizing translation quality.
+One of the most powerful new features is **automatic fallback between model families**. This ensures maximum language pair coverage whilst prioritising translation quality.
 
 **How it works:**
 
@@ -430,7 +547,7 @@ This feature is perfect for production environments where you want maximum cover
 
 1. **Multi-model family support** - Choose from Opus-MT (1200+ pairs), mBART50 (50 languages), or M2M100 (100 languages).
 2. **Model discovery endpoints** - Dynamically query available models from Hugging Face for each family.
-3. **Robust input handling** - Emoji? Numbers? Symbols? Bring it on. The service now includes comprehensive input sanitization and symbol masking.
+3. **Robust input handling** - Emoji? Numbers? Symbols? Bring it on. The service now includes comprehensive input sanitisation and symbol masking.
 4. **Request queueing and backpressure** - Built-in semaphore-based queueing with intelligent retry-after estimates.
 5. **LRU model caching** - Automatically manages VRAM by evicting old models when cache is full.
 6. **Modern CUDA support** - Uses PyTorch with CUDA 12.6, supports FP16/BF16 for 2x speed improvements.
@@ -515,11 +632,11 @@ du -sh llama-models/
 ### Quality: Purpose-Built vs General-Purpose
 
 **NMT strengths:**
-- ✅ Trained specifically for translation
-- ✅ Consistent quality (same input = same output)
-- ✅ No "hallucinations" - pure translation
-- ✅ Handles technical content, code, formatting well
-- ✅ No prompt engineering needed
+- Trained specifically for translation
+- Consistent quality (same input = same output)
+- No "hallucinations" - pure translation
+- Handles technical content, code, formatting well
+- No prompt engineering needed
 
 **LLM challenges:**
 - ⚠️ Sometimes adds interpretations not in original
@@ -542,19 +659,19 @@ LLM (might do): "Die API sendet den Fehlercode 429, wenn zu viele Anfragen geste
 ### When to Use Each
 
 **Use NMT (mostlylucid-nmt) when:**
-- ✅ You need consistent, fast translation at scale
-- ✅ Budget matters (self-hosting or high volume)
-- ✅ You're translating technical content, code, structured data
-- ✅ You need deterministic output (same input = same output)
-- ✅ You want to run on CPU or modest hardware
-- ✅ You're building automated translation pipelines
+- You need consistent, fast translation at scale
+- Budget matters (self-hosting or high volume)
+- You're translating technical content, code, structured data
+- You need deterministic output (same input = same output)
+- You want to run on CPU or modest hardware
+- You're building automated translation pipelines
 
 **Use LLMs when:**
-- ✅ You need creative adaptation, not literal translation
-- ✅ Context and cultural nuance matter more than speed
-- ✅ You're doing low-volume, one-off translations
-- ✅ You need to translate + summarize + rewrite in one step
-- ✅ You're okay with variable costs and slower processing
+- You need creative adaptation, not literal translation
+- Context and cultural nuance matter more than speed
+- You're doing low-volume, one-off translations
+- You need to translate + summarize + rewrite in one step
+- You're okay with variable costs and slower processing
 
 ### The Bottom Line
 
@@ -593,7 +710,7 @@ The request flow is straightforward:
    - **Yes** → Request goes to Translation Service immediately
    - **No** → Request queued, client receives HTTP 429 with `Retry-After` header
 4. **Translation Service** processes the request through the pipeline:
-   - Input sanitization and sentence splitting
+   - Input sanitisation and sentence splitting
    - Symbol masking (emojis, special chars)
    - Translation using cached models
    - Symbol unmasking and post-processing
@@ -1274,7 +1391,7 @@ device_manager = DeviceManager()
 
 **What's happening here?**
 - **GPU detection**: Uses PyTorch to check if CUDA is available
-- **Auto-configuration**: Sets `max_inflight=1` on GPU (avoid VRAM fragmentation) vs `max_inflight=4` on CPU (maximize parallelism)
+- **Auto-configuration**: Sets `max_inflight=1` on GPU (avoid VRAM fragmentation) vs `max_inflight=4` on CPU (maximise parallelism)
 - **Device selection**: Can target specific GPU with `DEVICE=cuda:1`
 - **Logging**: Shows GPU name and VRAM at startup for debugging
 - **Singleton pattern**: One instance shared across the entire application
@@ -1330,7 +1447,7 @@ new_avg = 0.2 * 3.0 + 0.8 * 6.0
 - **Graceful degradation**: Automatic fallback between model providers
 - **Backpressure handling**: Queue + HTTP 429 instead of crashes
 - **Data integrity**: Symbol masking preserves special characters
-- **Performance optimization**: Smart caching, chunking, and parallel processing
+- **Performance optimisation**: Smart caching, chunking, and parallel processing
 - **Observability**: Detailed logging and metrics tracking
 
 Each of these features solves a real production problem that would cause crashes, errors, or poor user experience without them!
@@ -1925,9 +2042,9 @@ spec:
   type: LoadBalancer
 ```
 
-## Performance Optimization
+## Performance Optimisation
 
-### GPU Optimization Checklist
+### GPU Optimisation Checklist
 
 1. **Use FP16 precision**
    ```bash
@@ -1966,7 +2083,7 @@ spec:
    curl -X POST ... -d '{"beam_size": 1, ...}'
    ```
 
-### CPU Optimization Checklist
+### CPU Optimisation Checklist
 
 1. **Lower batch size**
    ```bash
@@ -2043,7 +2160,7 @@ spec:
 3. **Queue depth** (current waiting count)
 4. **Cache hit rate** (% of requests hitting cache)
 5. **Error rate** (5xx responses)
-6. **GPU utilization** (if applicable)
+6. **GPU utilisation** (if applicable)
 7. **Memory usage** (VRAM for GPU, RAM for CPU)
 
 ### Example Prometheus Metrics
@@ -2089,7 +2206,7 @@ You can pipe this to Elasticsearch, CloudWatch, or any log aggregator.
 | Feature | EasyNMT | MostlyLucid-NMT |
 |---------|---------|-----------------|
 | **Stability** | Crashes frequently | Production-ready, graceful error handling |
-| **Input Handling** | Fails on emoji/symbols | Robust sanitization + symbol masking |
+| **Input Handling** | Fails on emoji/symbols | Robust sanitisation + symbol masking |
 | **Backpressure** | None, OOMs under load | Semaphore + queue with retry-after |
 | **Observability** | Minimal | Health/ready/cache endpoints, structured logs |
 | **GPU Support** | CUDA 10.x (ancient) | CUDA 12.6, FP16/BF16 support |
@@ -2267,7 +2384,7 @@ MostlyLucid-NMT is a complete rewrite of the EasyNMT concept with production rel
 - Single deployment handles 9,900+ translation pairs
 
 **2. Quality-First Approach**
-- Prioritizes best available model for each pair
+- Prioritises best available model for each pair
 - Opus-MT (best quality) → mBART50 → M2M100 fallback order
 - Transparent logging shows which model was used
 
@@ -2278,11 +2395,11 @@ MostlyLucid-NMT is a complete rewrite of the EasyNMT concept with production rel
 - Switch model families without rebuilding
 
 **4. Production-Ready**
-- ✅ Messy real-world input (emoji, symbols, edge cases)
-- ✅ Production load (queueing, backpressure, graceful degradation)
-- ✅ GPU efficiency (FP16, LRU cache, VRAM management)
-- ✅ Operational visibility (health checks, metrics, structured logs)
-- ✅ Developer experience (100% EasyNMT API compatible, comprehensive docs)
+- Messy real-world input (emoji, symbols, edge cases)
+- Production load (queueing, backpressure, graceful degradation)
+- GPU efficiency (FP16, LRU cache, VRAM management)
+- Operational visibility (health checks, metrics, structured logs)
+- Developer experience (100% EasyNMT API compatible, comprehensive docs)
 
 ### Real-World Usage
 
@@ -2291,8 +2408,8 @@ The service has been battle-tested translating thousands of blog posts across **
 ### Key Takeaways
 
 - **Maximum coverage:** 100+ languages, 9,900+ pairs, automatic fallback
-- **Quality first:** Prioritizes best available model, transparent selection
-- **Robustness:** Input sanitization, error handling, graceful shutdown
+- **Quality first:** Prioritises best available model, transparent selection
+- **Robustness:** Input sanitisation, error handling, graceful shutdown
 - **Smart resources:** LRU caching, backpressure, VRAM auto-eviction
 - **Observability:** Health checks, cache status, model discovery, structured logs
 - **Performance:** FP16, batching, preloading, multi-family support
@@ -2329,7 +2446,7 @@ The entire service is a single Docker container. No complex setup, no external d
 
 **Just pull, run, and translate 100+ languages with the best available models!**
 
-Happy translating! 🌍🚀
+Happy translating!
 
 ---
 
@@ -2338,7 +2455,7 @@ Happy translating! 🌍🚀
 - [Helsinki-NLP Opus-MT Models](https://huggingface.co/Helsinki-NLP)
 - [Hugging Face Transformers Documentation](https://huggingface.co/docs/transformers)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [PyTorch CUDA Optimization](https://pytorch.org/docs/stable/notes/cuda.html)
+- [PyTorch CUDA Optimisation](https://pytorch.org/docs/stable/notes/cuda.html)
 
 ## Source Code
 

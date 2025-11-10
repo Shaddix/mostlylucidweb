@@ -13,7 +13,7 @@ Ich habe als CTO, Head of Engineering und Lead Architect über Startups und Unte
 
 ## meistluzid begrenzt
 
-**, Zusammenarbeit mit Unternehmen in jeder Phase: Gründung technischer Teams, Planung von Plattformen von Grund auf, Rettung von Altsystemen und führende Abteilungen durch Wachstumsphasen.**Was ich mitbringe
+**, Zusammenarbeit mit Unternehmen in jeder Phase: Gründung von technischen Teams, Planung von Plattformen von Grund auf, Rettung von Altsystemen und führende Abteilungen durch Wachstumsphasen.**Was ich mitbringe
 
 **Ich skaliere mit dir.**Ich habe Startups als Solo-Technical-Gründer, baute und führte Teams von 20+ Ingenieuren, und diente als Interim CTO für Unternehmen, die ihre Serie A.
 
@@ -51,7 +51,7 @@ meistlucid.mockllmapi
 
 **- HTMX-fähige ASP.NET Core Tag-Helpers für das Einspielen.**MeistensLucid.EufySecurity
 
-** hochexperimentell
+**- A. RECHTSPRECHUNG DES GERICHTSHOFES UND DES GERICHTSHOFES UND DES GERICHTSHOFES UND DES GERICHTSHOFES UND DES GERICHTSHOFES UND DES GERICHTSHOFES**hochexperimentell
 
 .NET-Clientbibliothek zur Steuerung von Eufy Security-Geräten.**Es funktioniert, aber nutzen Sie es auf eigenes Risiko.**NPM-Pakete
 
@@ -71,7 +71,7 @@ Später zog ich als Programmmanager II im ASP.NET-Team nach Redmond, WA, wo ich 
 Das hat über 400 Junior-Entwicklern geholfen, in die Branche zu brechen (90% Vermittlungsrate).
 
 - **Lehren und Mentoren ist etwas, das ich wirklich liebe.**Diese Seite
-- **meistlucid.net**ist mein verrücktes Labor — eine lebende Codebase, in der ich mit allem experimentiere, was mein Interesse an der Web-Entwicklung weckt.
+- **[meistlucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**ist mein verrücktes Labor — eine lebende Codebase, in der ich mit allem experimentiere, was mein Interesse an der Web-Entwicklung weckt.
 - **Die gesamte Plattform ist**Open Source auf GitHub
 - **, und es ist zu einem Nährboden für die NuGet und NPM Pakete geworden, die ich veröffentlicht habe.**Das Thema:
 - **Sehen Sie Problem, finden Sie Lösung, implementieren Sie es, dann extrahieren Sie es in ein wiederverwendbares Paket.**Die Infrastruktur selbst ist eine Fallstudie im effizienten Serverbetrieb:
@@ -88,73 +88,73 @@ Die Plattform verfügt über die Laichpakete:<https://www.mostlylucid.net>
 
 Dual-Mode-Blog-System<https://github.com/scottgal>
 
-(Dateibasiertes Markdown oder PostgreSQL) — führte zum Markdig.FetchExtension-Paket[Automatisierte Übersetzung](https://www.linkedin.com/in/scott-galloway-91608691/)
+(Dateibasiertes Markdown oder PostgreSQL) — führte zum Markdig.FetchExtension-Paket[Automatisiertes Übersetzungssystem](https://www.linkedin.com/in/scott-galloway-91608691/)
 
-**zu 12 Sprachen über EasyNMT**Volltextsuche
+**— komplettes Python / Pytorch / FastAPI-Rewrite von EasyNMT unterstützt 100+ Sprachen mit automatischem Fallback zwischen neuronalen maschinellen Übersetzungsmodellfamilien.**Produktionsbereit mit intelligentem Caching, GPU-Optimierung und robustem Fehlerhandling.
 
 ---
 
 
-## Verwendung von PostgreSQL tsvector/GIN-Indizes
+## Übersetzt den gesamten Blog automatisch in 12+ Sprachen.
 
-### Interaktive Meerjungfrauen-Diagramme
+### Das ist genau mein Wheelhouse: neuartige Technologie, die ein echtes Problem löst (abgegebenes EasyNMT-Projekt) mit einer erstaunlichen Lösung, die chaotischen Input der realen Welt im Maßstab verarbeitet.
 
-**mit pan/zoom/export — wurde zum @mostlylucid/mermaid-enhancements npm-Paket**HTMX-gestütztes Paging
-**— extrahiert in das Pagingtaghelper NuGet-Paket**Integration von Umami Analytics
-**— wurde das Umami.Net-Paket**LLM-powered-Mock-APIs
-**für die Entwicklung — wurde das Paket mollmapi**Es ist chaotisch, experimentell und sich ständig entwickelnd.
-**Darum geht es.**Ansprechpartner
-**E-Mail:**scott.galloway+ml@gmail.com
-**Blog:**GitHub:
+**Volltextsuche**Verwendung von PostgreSQL tsvector/GIN-Indizes
+**Interaktive Meerjungfrauen-Diagramme**mit pan/zoom/export — wurde zum @mostlylucid/mermaid-enhancements npm-Paket
+**HTMX-gestütztes Paging**— extrahiert in das Pagingtaghelper NuGet-Paket
+**Integration von Umami Analytics**— wurde das Umami.Net-Paket
+**LLM-powered-Mock-APIs**für die Entwicklung — wurde das Paket mollmapi
+**Es ist chaotisch, experimentell und sich ständig entwickelnd.**Darum geht es.
+**Ansprechpartner**E-Mail:
+**scott.galloway+ml@gmail.com**Blog:
+
+### GitHub:
+
 **LinkedIn:**Scott Galloway
 
-### Sie suchen Hilfe oder eine Vertragsrolle?
+**Sie suchen Hilfe oder eine Vertragsrolle?**Ich bin immer offen für interessante Projekte.
 
-**Ich bin immer offen für interessante Projekte.**Lass mir eine Schlange fallen.
-
-**Die Details (wenn Sie sie brauchen)**Tech Stack
-
+- Lass mir eine Schlange fallen.
+- Die Details (wenn Sie sie brauchen)
+- Tech Stack
 - Sprachen:
-- Von Perl CGI zu Go microservices — C#/.NET (mein Hauptfokus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
-- Ich bin sprachagnostisch und entscheide mich für das Problem, nicht für den Hype.
-- Hintergrund:
 
-**ASP.NET Core durch .NET 9, Node.js, Python APIs, Go-Dienste**
+**Von Perl CGI zu Go microservices — C#/.NET (mein Hauptfokus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
 
-**Frontend:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (was auch immer zum Anwendungsfall passt)
+**Ich bin sprachagnostisch und entscheide mich für das Problem, nicht für den Hype.**Hintergrund:
 
-**CSS:**Heckwind CSS, Bootstrap, DaisyUI
+**ASP.NET Core durch .NET 9, Node.js, Python APIs, Go-Dienste**Frontend:
 
-** Datenbanken:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (was auch immer zum Anwendungsfall passt)**CSS:
 
-**DevOps:**Docker, Kubernetes, GitHub Aktionen, Azure DevOps, CI/CD Pipelines, Infrastructure-as-Code*[Wolke:*Azure (aber ich bevorzuge zunehmend selbstgehostete Lösungen für Kosten und Kontrolle)
+**Heckwind CSS, Bootstrap, DaisyUI**Datenbanken:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch*DevOps:
 
-**KI/ML:**Ollama, EasyNMT, ML.NET, scikit-learn, Einbettungen, ANNs, RAG-Pipelines, Azure OpenAI*[Höhepunkte der Karriere*Microsoft Corporation
+**Docker, Kubernetes, GitHub Aktionen, Azure DevOps, CI/CD Pipelines, Infrastructure-as-Code**Wolke:*[Azure (aber ich bevorzuge zunehmend selbstgehostete Lösungen für Kosten und Kontrolle)*KI/ML:
 
-**(2005-2009): Gestartet als Application Developer Consultant II in Reading, Großbritannien, mit Schwerpunkt auf Performanceanalyse und Unternehmensberatung für FTSE 100 Kunden.**Gefördert zum Programmmanager II in Redmond, WA, wo ich ASP.NET-Release-Lebenszyklen verwaltete und Sicherheitsinfrastruktur für Project Server fuhr.*[meistluzid begrenzt*(2012-Present): Durch meine Beratung habe ich Dutzende von Lösungen in den Bereichen Fintech, Healthcare, E-Commerce und Regierung sowohl in Vertrags- als auch in Vollzeit-Rollen geliefert.
+**Ollama, EasyNMT, ML.NET, scikit-learn, Einbettungen, ANNs, RAG-Pipelines, Azure OpenAI**Höhepunkte der Karriere*[Microsoft Corporation*(2005-2009): Gestartet als Application Developer Consultant II in Reading, Großbritannien, mit Schwerpunkt auf Performanceanalyse und Unternehmensberatung für FTSE 100 Kunden.
 
-### Zu den bemerkenswerten Verpflichtungen gehören:
+### Gefördert zum Programmmanager II in Redmond, WA, wo ich ASP.NET-Release-Lebenszyklen verwaltete und Sicherheitsinfrastruktur für Project Server fuhr.
 
-**Lead Architect/Developer für das Buchungssystem einer großen asiatischen Fluggesellschaft (Knockout & ASP.NET MVC)**FuE-Entwickler für Telemetrie-Tracking der Versicherungsgesellschaft (Low-Level-Socket-Systeme auf Azure)
-Research Systems Architect auf der britischen Regierung Nationale Sicherheit verteilte Computer-Projekt
+**meistluzid begrenzt**(2012-Present): Durch meine Beratung habe ich Dutzende von Lösungen in den Bereichen Fintech, Healthcare, E-Commerce und Regierung sowohl in Vertrags- als auch in Vollzeit-Rollen geliefert.
+Zu den bemerkenswerten Verpflichtungen gehören:
 
-Technischer Berater für 8 britische und internationale Wohltätigkeitsorganisationen
+Lead Architect/Developer für das Buchungssystem einer großen asiatischen Fluggesellschaft (Knockout & ASP.NET MVC)
 
 ---
 
 
-## Neuere Rollen (Vertrag & Vollzeit):
+## FuE-Entwickler für Telemetrie-Tracking der Versicherungsgesellschaft (Low-Level-Socket-Systeme auf Azure)
 
-**ZenChef Limited**(Oct 2024 - Present): Führen Sie den Übergang eines großen alten Azure-basierten verteilten System auf .NET 8, deutlich reduzieren Hosting-Kosten durch Profiling und Optimierung.
+**Research Systems Architect auf der britischen Regierung Nationale Sicherheit verteilte Computer-Projekt**Technischer Berater für 8 britische und internationale Wohltätigkeitsorganisationen
 
-**Das massive Vermächtnissystem weiterhin unterstützen.**Sehr Jane Ltd
+**Neuere Rollen (Vertrag & Vollzeit):**ZenChef Limited
 
-**(Apr 2024 - Aug 2024): Backend-Integration für eine große E-Commerce-Anwendung, Implementierung von Stripe Connect- und Hyperwallet-Zahlungssystemen.**Diese Verordnung tritt am zwanzigsten Tag nach ihrer Veröffentlichung im Amtsblatt der Europäischen Union in Kraft.
+**(Oct 2024 - Present): Führen Sie den Übergang eines großen alten Azure-basierten verteilten System auf .NET 8, deutlich reduzieren Hosting-Kosten durch Profiling und Optimierung.**Das massive Vermächtnissystem weiterhin unterstützen.
 
-**(Dez 2022 - Apr 2024): Ein ASP.NET Core-System als Head of Engineering neu aufgebaut, Docker Compose und OpenSearch für ein verbessertes Reporting implementiert.**GBG Plc (Loqate)
+**Sehr Jane Ltd**(Apr 2024 - Aug 2024): Backend-Integration für eine große E-Commerce-Anwendung, Implementierung von Stripe Connect- und Hyperwallet-Zahlungssystemen.
 
-**(Aug 2022 - Nov 2022)**Vollzeit]
+**Diese Verordnung tritt am zwanzigsten Tag nach ihrer Veröffentlichung im Amtsblatt der Europäischen Union in Kraft.**(Dez 2022 - Apr 2024): Ein ASP.NET Core-System als Head of Engineering neu aufgebaut, Docker Compose und OpenSearch für ein verbessertes Reporting implementiert.
 
-: Errichtet ein globales Suchprodukt mit .NET 6 Microservices und Kubernetes für die hochdurchsatzfähige, großformatige Datenverarbeitung.**H3Space Ltd**.
+GBG Plc (Loqate)**(Aug 2022 - Nov 2022)**.
 
-(Jun 2021 - Sep 2021)
+Vollzeit]

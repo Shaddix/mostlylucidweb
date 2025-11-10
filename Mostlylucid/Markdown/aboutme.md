@@ -66,11 +66,11 @@ The infrastructure itself is a case study in efficient server operations:
 - **Full CI/CD pipeline** with GitHub Actions, automated testing, and deployment
 - **Comprehensive observability** (Serilog + Seq, Prometheus, Grafana) — because you can't fix what you can't see
 - **Self-hosted everything** — database, analytics (Umami), translation (EasyNMT), reverse proxy (Caddy)
-
+   
 The platform features that spawned packages:
 - **Dual-mode blog system** (file-based markdown or PostgreSQL) — led to the Markdig.FetchExtension package
-- **Automated translation** to 12 languages via EasyNMT
-- **Full-text search** using PostgreSQL tsvector/GIN indexes
+- **[Automated translation system](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** — complete Python / Pytorch / FastAPI rewrite of EasyNMT supporting 100+ languages with automatic fallback between neural machine translation model families. Production-ready with intelligent caching, GPU optimization, and robust error handling. Translates the entire blog to 12+ languages automatically. This is exactly my wheelhouse: novel technology solving a real problem (abandoned EasyNMT project) with an amazing solution that handles messy real-world input at scale.  
+- **Full-text search** using PostgreSQL tsvector/GIN indexes 
 - **Interactive Mermaid diagrams** with pan/zoom/export — became the @mostlylucid/mermaid-enhancements npm package
 - **HTMX-powered paging** — extracted into the pagingtaghelper NuGet package
 - **Umami analytics integration** — became the Umami.Net package

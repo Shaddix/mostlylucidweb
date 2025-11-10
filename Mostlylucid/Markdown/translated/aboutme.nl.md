@@ -71,7 +71,7 @@ Later verhuisde hij naar Redmond, WA als Program Manager II in het ASP.NET team,
 Dat heeft meer dan 400 junior ontwikkelaars geholpen om in te breken in de industrie (90% plaatsingspercentage).
 
 - **Lesgeven en mentorschap is iets waar ik echt van hou.**Deze site
-- **voornamelijk lucid.net**is mijn gekke lab een levende codebase waar ik experimenteer met wat mijn interesse in webontwikkeling vangt.
+- **[voornamelijk lucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**is mijn gekke lab een levende codebase waar ik experimenteer met wat mijn interesse in webontwikkeling vangt.
 - **Het hele platform is**open source op GitHub
 - **, en het is een broedplaats geworden voor de NuGet en NPM pakketten die ik heb gepubliceerd.**Het thema:
 - **Zie probleem, vind oplossing, implementeer het en haal het vervolgens uit in een herbruikbaar pakket.**De infrastructuur zelf is een casestudy in efficiënte serveractiviteiten:
@@ -88,73 +88,73 @@ Het platform beschikt over de volgende pakketten:<https://www.mostlylucid.net>
 
 Dual-mode blogsysteem<https://github.com/scottgal>
 
-(bestandsgebaseerde markdown of PostgreSQL) leidde tot het Markdig.FetchExtension pakket[Geautomatiseerde vertaling](https://www.linkedin.com/in/scott-galloway-91608691/)
+(bestandsgebaseerde markdown of PostgreSQL) leidde tot het Markdig.FetchExtension pakket[Geautomatiseerd vertaalsysteem](https://www.linkedin.com/in/scott-galloway-91608691/)
 
-**naar 12 talen via EasyNMT**Full-text zoeken
+**Complete Python / Pytorch / FastAPI herschrijven van EasyNMT ondersteunen 100+ talen met automatische terugval tussen neurale machine vertaling model families.**Productie-klaar met intelligente caching, GPU optimalisatie en robuuste foutafhandeling.
 
 ---
 
 
-## PostgreSQL tsvector/GIN-indexen gebruiken
+## Vertaalt de volledige blog automatisch naar 12+ talen.
 
-### Interactieve zeemeermindiagrammen
+### Dit is precies mijn stuurhuis: nieuwe technologie die een echt probleem (verlaten EasyNMT project) oplost met een verbazingwekkende oplossing die rommelige input in de echte wereld op schaal behandelt.
 
-**met pan/zoom/export werd @mostlylucid/mermaid-enhancements npm pakket**Pagina's met HTMX-aangedreven
-**Uitgepakt in de pagingtaghelper NuGet pakket**Umami analytics integratie
-**Werd het Umami.Net pakket**LLM-aangedreven spot-API's
-**voor ontwikkeling werd de mockllmapi pakket**Het is rommelig, experimenteel, en constant evoluerend.
-**Dat is het punt.**Contactpersoon
-**E-mail:**scott.galway+ml@gmail.com
-**Blog:**GitHub:
+**Full-text zoeken**PostgreSQL tsvector/GIN-indexen gebruiken
+**Interactieve zeemeermindiagrammen**met pan/zoom/export werd @mostlylucid/mermaid-enhancements npm pakket
+**Pagina's met HTMX-aangedreven**Uitgepakt in de pagingtaghelper NuGet pakket
+**Umami analytics integratie**Werd het Umami.Net pakket
+**LLM-aangedreven spot-API's**voor ontwikkeling werd de mockllmapi pakket
+**Het is rommelig, experimenteel, en constant evoluerend.**Dat is het punt.
+**Contactpersoon**E-mail:
+**scott.galway+ml@gmail.com**Blog:
+
+### GitHub:
+
 **LinkedIn:**Scott Galloway
 
-### Op zoek naar advies of een contractrol?
+**Op zoek naar advies of een contractrol?**Ik sta altijd open voor interessante projecten.
 
-**Ik sta altijd open voor interessante projecten.**Geef me een lijn.
-
-**De details (als je ze nodig hebt)**Tech Stack
-
+- Geef me een lijn.
+- De details (als je ze nodig hebt)
+- Tech Stack
 - Talen:
-- Van Perl CGI naar Go microservices C#/.NET (mijn primaire focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
-- Ik ben taal-agnosticus en kies op basis van het probleem, niet de hype.
-- Backend:
 
-**ASP.NET Core via .NET 9, Node.js, Python API's, Go diensten**
+**Van Perl CGI naar Go microservices C#/.NET (mijn primaire focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
 
-**Frontend:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (wat ook past in de use case)
+**Ik ben taal-agnosticus en kies op basis van het probleem, niet de hype.**Backend:
 
-**CSS:**Tailwind CSS, Bootstrap, DaisyUI
+**ASP.NET Core via .NET 9, Node.js, Python API's, Go diensten**Frontend:
 
-**Databanken:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenZoeken
+**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (wat ook past in de use case)**CSS:
 
-**DevOps:**Docker, Kubernetes, GitHub Acties, Azure DevOps, CI/CD pijpleidingen, Infrastructure-as-Code*[Wolk:*Azure (hoewel ik steeds meer de voorkeur geef aan zelf-gehoste oplossingen voor kosten en controle)
+**Tailwind CSS, Bootstrap, DaisyUI**Databanken:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenZoeken*DevOps:
 
-**AI/ML:**Ollama, EasyNMT, ML.NET, scikit-leer, inbeddingen, ANNs, RAG-pijpleidingen, Azure OpenAI*[Career highlights*Microsoft Corporation
+**Docker, Kubernetes, GitHub Acties, Azure DevOps, CI/CD pijpleidingen, Infrastructure-as-Code**Wolk:*[Azure (hoewel ik steeds meer de voorkeur geef aan zelf-gehoste oplossingen voor kosten en controle)*AI/ML:
 
-**(2005-2009): Begonnen als Application Developer Consultant II in Reading, UK, gericht op prestatieanalyse en bedrijfsconsultatie voor FTSE 100 klanten.**Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifecycles and drive security infrastructure for Project Server.*[meestal lucid gelimiteerd*(2012-Present): Via mijn consultancy heb ik tientallen oplossingen geleverd over fintech, gezondheidszorg, e-commerce en overheidssectoren in zowel contract- als full-time rollen.
+**Ollama, EasyNMT, ML.NET, scikit-leer, inbeddingen, ANNs, RAG-pijpleidingen, Azure OpenAI**Career highlights*[Microsoft Corporation*(2005-2009): Begonnen als Application Developer Consultant II in Reading, UK, gericht op prestatieanalyse en bedrijfsconsultatie voor FTSE 100 klanten.
 
-### Opvallende afspraken zijn onder meer:
+### Promoted to Program Manager II in Redmond, WA, where I managed ASP.NET release lifecycles and drive security infrastructure for Project Server.
 
-**Lead Architect/Developer voor het boekingssysteem van een grote Aziatische luchtvaartmaatschappij (Knockout & ASP.NET MVC)**O&O-ontwikkelaar voor telemetrietracking van verzekeringsmaatschappijen (low-level socket systems on Azure)
-Research Systems Architect on UK Government National Security distributed computing project
+**meestal lucid gelimiteerd**(2012-Present): Via mijn consultancy heb ik tientallen oplossingen geleverd over fintech, gezondheidszorg, e-commerce en overheidssectoren in zowel contract- als full-time rollen.
+Opvallende afspraken zijn onder meer:
 
-Technisch adviseur voor 8 Britse en internationale liefdadigheidsinstellingen
+Lead Architect/Developer voor het boekingssysteem van een grote Aziatische luchtvaartmaatschappij (Knockout & ASP.NET MVC)
 
 ---
 
 
-## Recente rollen (contract en volledige tijd):
+## O&O-ontwikkelaar voor telemetrietracking van verzekeringsmaatschappijen (low-level socket systems on Azure)
 
-**ZenChef Limited**(Oct 2024 - Present): Leid de overgang van een groot op Azure gebaseerd gedistribueerd systeem naar .NET 8, waardoor de hostingkosten aanzienlijk worden verlaagd door profilering en optimalisatie.
+**Research Systems Architect on UK Government National Security distributed computing project**Technisch adviseur voor 8 Britse en internationale liefdadigheidsinstellingen
 
-**Ga door met het ondersteunen van het enorme legacy systeem.**Very Jane Ltd.
+**Recente rollen (contract en volledige tijd):**ZenChef Limited
 
-**(2024 Apr - 2024 aug): Backend integratie voor een grote e-commerce applicatie, het implementeren van Stripe Connect en Hyperwallet betaalsystemen.**Seamcor Ltd.
+**(Oct 2024 - Present): Leid de overgang van een groot op Azure gebaseerd gedistribueerd systeem naar .NET 8, waardoor de hostingkosten aanzienlijk worden verlaagd door profilering en optimalisatie.**Ga door met het ondersteunen van het enorme legacy systeem.
 
-**(Dec 2022 - Apr 2024): Herschikte een ASP.NET Core-systeem als hoofd Engineering, implementeren van Docker Compose en OpenSearch voor verbeterde rapportage.**GBG Plc (Loqate)
+**Very Jane Ltd.**(2024 Apr - 2024 aug): Backend integratie voor een grote e-commerce applicatie, het implementeren van Stripe Connect en Hyperwallet betaalsystemen.
 
-**(aug 2022 - nov 2022)**Full-time]
+**Seamcor Ltd.**(Dec 2022 - Apr 2024): Herschikte een ASP.NET Core-systeem als hoofd Engineering, implementeren van Docker Compose en OpenSearch voor verbeterde rapportage.
 
-: Build a global search product using .NET 6 microservices and Kubernetes for high-throughput, large-scale data processing.**H3Space Ltd.**.
+GBG Plc (Loqate)**(aug 2022 - nov 2022)**.
 
-(Jun 2021 - sep 2021)
+Full-time]

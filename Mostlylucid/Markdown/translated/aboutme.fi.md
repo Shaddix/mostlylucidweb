@@ -65,13 +65,13 @@ Myöhemmin siirryin Redmondiin ASP.NET-tiimin ohjelmapäällikkönä II, jossa h
 
 - **Dell**(2011): ASP.NET MVC:n avulla rakennettiin oma konekuva-alusta.
 - **Freelance**(2012-present): Olen työskennellyt GBG Plc:n (Loqate) kaltaisten yritysten kanssa, joihin rakensin maailmanlaajuisia hakutuotteita käyttäen .NET 6 -mikropalveluita ja Kuberneteja.
-- **Seamcor Oy:ssä ohjasin joukkueita ASP.NET Core -järjestelmien uudelleenjärjestämiseen käyttäen Docker Composea ja OpenSearchia.**Viimeisimpänä ZenChef Limitedissä olen johtanut siirtymistä vanhoista Azure-järjestelmistä .NET 8 -verkolle, mikä on vähentänyt merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
+- **Seamcor Oy:ssä ohjasin joukkueita ASP.NET Core -järjestelmien uudelleenjärjestämiseen käyttäen Docker Composea ja OpenSearchia.**Viimeisimpänä ZenChef Limitedissä olen johtanut siirtymistä vanhoista Azure-järjestelmistä .NET 8 -verkolle, mikä vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
 - **Olen myös rakentanut ja pyörittänyt**kehittäjäkoulutusohjelma
 
 Se on auttanut yli 400:aa juniorikehittäjää murtautumaan alalle (90 % työharjoittelusta).
 
 - **Opetusta ja mentorointia rakastan aidosti.**Tämä sivusto
-- **enimmäkseen lucid.net**on hullu laboratorioni – elävä koodipohja, jossa kokeilen mitä tahansa, mikä herättää kiinnostukseni verkon kehittämiseen.
+- **[enimmäkseen lucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**on hullu laboratorioni – elävä koodipohja, jossa kokeilen mitä tahansa, mikä herättää kiinnostukseni verkon kehittämiseen.
 - **Koko alusta on**avoin lähdekoodi GitHubissa
 - **Siitä on tullut kasvualusta julkaisemalleni NuGet- ja NPM-paketille.**Teema:
 - **Katso ongelma, etsi ratkaisu, toteuta se ja pura se uudelleenkäytettävään pakettiin.**Itse infrastruktuuri on tapaustutkimus tehokkaista palvelintoiminnoista:
@@ -88,73 +88,73 @@ Alustassa on kutevia paketteja:<https://www.mostlylucid.net>
 
 Kaksitilabloggausjärjestelmä<https://github.com/scottgal>
 
-(file-based markedown tai PostgreSQL) – johti Markdig.FetchExtension -pakettiin[Automaattikäännös](https://www.linkedin.com/in/scott-galloway-91608691/)
+(file-based markedown tai PostgreSQL) – johti Markdig.FetchExtension -pakettiin[Automaattinen käännösjärjestelmä](https://www.linkedin.com/in/scott-galloway-91608691/)
 
-**12 kielelle EasyNMT:n kautta**Kokotekstihaku
+**– täydellinen Python / Pytorch / FastAPI uudelleenkirjoittaminen EasyNMT tukee 100+ kieltä automaattisella varalla hermokoneiden käännösmalliperheiden välillä.**Tuotanto valmiina älykkäällä välilyönnillä, GPU:n optimoinnilla ja vahvalla virheidenkäsittelyllä.
 
 ---
 
 
-## PostgreSQL tsvector/GIN-indeksien avulla
+## Kääntää koko blogin 12+ kielelle automaattisesti.
 
-### Interaktiiviset merenneitokaaviot
+### Tämä on juuri minun vehkeilyni: uusi teknologia ratkaisee todellisen ongelman (hylätty EasyNMT-projekti) hämmästyttävällä ratkaisulla, joka käsittelee sotkuista tosimaailman panosta mittakaavassa.
 
-**Pan/zoom/export – tuli @mostlylucid/mermaid-enhancements npm-paketti**HTMX-käyttöinen haku
-**• uutettu hakutagien auttaja NuGet-pakettiin**Umamin analytiikkaintegraatio
-**– tuli Umami.net-paketti**LLM-käyttöiset pilkkarajapinnat
-**Kehitystä varten – tuli mockllmapi-paketti**Se on sotkuista, kokeellista ja jatkuvasti kehittyvää.
-**Se on tarkoituskin.**Yhteystiedot
-**Sähköposti:**Scott.galloway+ml@gmail.com
-**Blogi:**GitHub:
+**Kokotekstihaku**PostgreSQL tsvector/GIN-indeksien avulla
+**Interaktiiviset merenneitokaaviot**Pan/zoom/export – tuli @mostlylucid/mermaid-enhancements npm-paketti
+**HTMX-käyttöinen haku**• uutettu hakutagien auttaja NuGet-pakettiin
+**Umamin analytiikkaintegraatio**– tuli Umami.net-paketti
+**LLM-käyttöiset pilkkarajapinnat**Kehitystä varten – tuli mockllmapi-paketti
+**Se on sotkuista, kokeellista ja jatkuvasti kehittyvää.**Se on tarkoituskin.
+**Yhteystiedot**Sähköposti:
+**Scott.galloway+ml@gmail.com**Blogi:
+
+### GitHub:
+
 **LinkedIn:**Scott Galloway
 
-### Etsitkö konsultointiapua vai sopimusroolia?
+**Etsitkö konsultointiapua vai sopimusroolia?**Olen aina avoin mielenkiintoisille projekteille.
 
-**Olen aina avoin mielenkiintoisille projekteille.**Jätä minulle jono.
-
-**Yksityiskohdat (jos tarvitset niitä)**Tekninen pino
-
+- Jätä minulle jono.
+- Yksityiskohdat (jos tarvitset niitä)
+- Tekninen pino
 - Kielet:
-- Perl CGI:stä Go -mikropalveluihin – C#/.NET (pääpainoni), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.
-- Olen kieliagnostikko ja valitsen ongelman, en kohun, perusteella.
-- Tausta:
 
-**ASP.NET Core kautta .NET 9, Node.js, Python API, Go-palvelut**
+**Perl CGI:stä Go -mikropalveluihin – C#/.NET (pääpainoni), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
 
-**Frontend:**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (mikä tahansa sopii käyttökoteloon)
+**Olen kieliagnostikko ja valitsen ongelman, en kohun, perusteella.**Tausta:
 
-**CSS:**Perätuuli CSS, Bootstrap, DaisyUI
+**ASP.NET Core kautta .NET 9, Node.js, Python API, Go-palvelut**Frontend:
 
-**Tietokannat:**PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
+**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (mikä tahansa sopii käyttökoteloon)**CSS:
 
-**DevOps:**Docker, Kubernetes, GitHub-toiminnot, Azure DevOps, CI/CD-putket, infrastruktuuri koodina*[Pilvi:*Azure (vaikka pidänkin yhä enemmän itseohjautuvista ratkaisuista kustannusten ja hallinnan kannalta)
+**Perätuuli CSS, Bootstrap, DaisyUI**Tietokannat:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch*DevOps:
 
-**AI/ML:**Ollama, EasyNMT, ML.NET, Scikit-oppi, upotukset, ANN:t, RAG-putket, Azure OpenAI*[Uran kohokohtia*Microsoft Corporation
+**Docker, Kubernetes, GitHub-toiminnot, Azure DevOps, CI/CD-putket, infrastruktuuri koodina**Pilvi:*[Azure (vaikka pidänkin yhä enemmän itseohjautuvista ratkaisuista kustannusten ja hallinnan kannalta)*AI/ML:
 
-**(2005–2009): Aloitti Application Developer Consultant II:na Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja yrityskonsultointiin FTSE 100 -asiakkaille.**Edistetään ohjelmapäällikkö II:lle Redmondiin, WA:han, jossa hoidin ASP.NETin käyttöiät ja ajoin tietoturvainfrastruktuuria Project Serverille.*[enimmäkseen niukasti*(2012-Present): Konsultointini kautta olen toimittanut kymmeniä ratkaisuja fintechin, terveydenhuollon, verkkokaupan ja hallinnon aloille sekä sopimus- että päätoimisissa tehtävissä.
+**Ollama, EasyNMT, ML.NET, Scikit-oppi, upotukset, ANN:t, RAG-putket, Azure OpenAI**Uran kohokohtia*[Microsoft Corporation*(2005–2009): Aloitti Application Developer Consultant II:na Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja yrityskonsultointiin FTSE 100 -asiakkaille.
 
-### Merkittäviä tapaamisia ovat muun muassa seuraavat:
+### Mainostin ohjelmapäällikkö II:ta Redmondissa, WA:ssa, jossa hoidin ASP.NETin käyttöiät ja ajoin tietoturvainfrastruktuuria Project Serverille.
 
-**Merkittävän aasialaisen lentoyhtiön varausjärjestelmän johtava arkkitehti/kehittäjä (Knockout & ASP.NET MVC)**T&K-kehittäjä vakuutusyhtiön telemetriaseurantaan (Azuren matalatasoiset pistorasiajärjestelmät)
-Research Systems Architect on British Government National Security -jaettu tietojenkäsittelyhanke
+**enimmäkseen niukasti**(2012-Present): Konsultointini kautta olen toimittanut kymmeniä ratkaisuja fintechin, terveydenhuollon, verkkokaupan ja hallinnon aloille sekä sopimus- että päätoimisissa tehtävissä.
+Merkittäviä tapaamisia ovat muun muassa seuraavat:
 
-Tekninen konsultti 8 Britannialle ja kansainvälisille hyväntekeväisyysjärjestöille
+Merkittävän aasialaisen lentoyhtiön varausjärjestelmän johtava arkkitehti/kehittäjä (Knockout & ASP.NET MVC)
 
 ---
 
 
-## Viimeaikaiset roolit (sopimus ja kokoaikainen):
+## T&K-kehittäjä vakuutusyhtiön telemetriaseurantaan (Azuren matalatasoiset pistorasiajärjestelmät)
 
-**ZenChef Limited**(Octt 2024 - Present): Johda ison perinnön Azure-pohjainen hajautettu järjestelmä .NET 8 -järjestelmään, joka vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
+**Research Systems Architect on British Government National Security -jaettu tietojenkäsittelyhanke**Tekninen konsultti 8 Britannialle ja kansainvälisille hyväntekeväisyysjärjestöille
 
-**Jatka massiivisen perintöjärjestelmän tukemista.**Very Jane Ltd
+**Viimeaikaiset roolit (sopimus ja kokoaikainen):**ZenChef Limited
 
-**(Apr 2024 - elo 2024): Backend-integraatio laajaan verkkokauppasovellukseen, jossa otetaan käyttöön Stripe Connect ja Hyperwallet -maksujärjestelmät.**Semcor Ltd
+**(Octt 2024 - Present): Johda ison perinnön Azure-pohjainen hajautettu järjestelmä .NET 8 -järjestelmään, joka vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.**Jatka massiivisen perintöjärjestelmän tukemista.
 
-**(joulukuu 2022 – huhtikuu 2024): ASP.NET Core -järjestelmä otettiin käyttöön konetekniikan päällikkönä, ja Docker Compose ja OpenSearch havittelivat tehostettua raportointia.**GBG Plc (Loqate)
+**Very Jane Ltd**(Apr 2024 - elo 2024): Backend-integraatio laajaan verkkokauppasovellukseen, jossa otetaan käyttöön Stripe Connect ja Hyperwallet -maksujärjestelmät.
 
-**(Ug 2022 – marras 2022)**Kokoaikaiseksi]
+**Semcor Ltd**(joulukuu 2022 – huhtikuu 2024): ASP.NET Core -järjestelmä otettiin käyttöön konetekniikan päällikkönä, ja Docker Compose ja OpenSearch havittelivat tehostettua raportointia.
 
-: Rakensi maailmanlaajuisen hakutuotteen .NET 6 -mikropalveluiden ja Kubernetesin avulla korkeatasoista, laajamittaista tietojenkäsittelyä varten.**H3Space Ltd**.
+GBG Plc (Loqate)**(Ug 2022 – marras 2022)**.
 
-(Kesä 2021 – syys 2021)
+Kokoaikaiseksi]

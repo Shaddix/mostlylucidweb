@@ -1,10 +1,24 @@
 ﻿const defaultTheme = require("tailwindcss/defaultTheme");
 const colors = require("tailwindcss/colors");
 
+// Remove deprecated color names to silence warnings
+delete colors['lightBlue'];
+delete colors['warmGray'];
+delete colors['trueGray'];
+delete colors['coolGray'];
+delete colors['blueGray'];
+
 module.exports = {
     content: ["./Views/**/*.cshtml", "./EmailSubscription/**/*.cshtml"],
     safelist: ["dark", "light"],
     darkMode: "class", // Using class strategy for dark mode
+
+    future: {
+        removeDeprecatedGapUtilities: true,
+        purgeLayersByDefault: true,
+        defaultLineHeights: true,
+        standardFontWeights: true,
+    },
 
     theme: {
         fontFamily: {
@@ -24,7 +38,8 @@ module.exports = {
 
         extend: {
             colors: {
-                ...colors, // bring back all Tailwind default colors including gray-800
+                // Spread all Tailwind colors (deprecated ones already removed above)
+                ...colors,
 
                 // Your custom colors
                 "custom-light-bg": "#ffffff",

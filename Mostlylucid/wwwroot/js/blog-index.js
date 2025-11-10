@@ -27,7 +27,11 @@
     // Always push the URL so user can navigate back/forward
     try{ window.history.pushState({}, '', u.toString()); }catch{}
     if(window.htmx && target){
-      window.htmx.ajax('GET', u.toString(), {target: '#content', swap:'show:none', headers:{pagerequest:'true'}});
+      window.htmx.ajax('GET', u.toString(), {
+        target: '#content',
+        swap: 'outerHTML show:none',
+        headers: {'pagerequest': 'true'}
+      });
     } else {
       window.location.href = u.toString();
     }
@@ -132,6 +136,7 @@
             const u = new URL(window.location.href);
             u.searchParams.set('startDate', startStr);
             u.searchParams.set('endDate', endStr);
+            u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
             if(langSelect) u.searchParams.set('language', langSelect.value);
             const ord = (orderSelect && orderSelect.value) || 'date_desc';
             const [ob,od] = ord.split('_');
@@ -158,6 +163,7 @@
       const u = new URL(window.location.href);
       u.searchParams.delete('startDate');
       u.searchParams.delete('endDate');
+      u.searchParams.set('page', '1'); // Reset to page 1 when clearing filters
       if(langSelect) u.searchParams.set('language', langSelect.value);
       const ord = (orderSelect && orderSelect.value) || 'date_desc';
       const [ob,od] = ord.split('_');
@@ -170,6 +176,7 @@
     langSelect && langSelect.addEventListener('change', function(){
       const u = new URL(window.location.href);
       u.searchParams.set('language', langSelect.value);
+      u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
       const ord = (orderSelect && orderSelect.value) || 'date_desc';
       const [ob,od] = ord.split('_');
       u.searchParams.set('orderBy', ob);
@@ -183,6 +190,7 @@
       const [ob,od] = orderSelect.value.split('_');
       u.searchParams.set('orderBy', ob);
       u.searchParams.set('orderDir', od);
+      u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
       if(langSelect) u.searchParams.set('language', langSelect.value);
       updateSummary();
       applyNavigation(u);
