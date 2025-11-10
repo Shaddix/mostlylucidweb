@@ -337,6 +337,27 @@ public static class SessionExtensions
 }
 ```
 
+### A cautionary tale: When session state becomes the bottleneck
+
+I once worked on a massive UK government IT project where session state misuse (among many other architectural sins) became a performance-killing bottleneck. The team had stuffed **everything** into session: user preferences, multi-step form data, search results, temporary calculations, even cached lookups that should have been in a proper cache or database.
+
+**The problem:** Session state was stored in-process (ASP.NET session state in web.config, this was pre-Core days). Every request had to deserialize massive session objects. As load increased, session state ballooned to tens of megabytes per user. With thousands of concurrent users, the servers ran out of memory.
+
+**The desperate solution:** We flew to HP's facility in Stuttgart to run load tests on their Superdome—at the time, **Europe's most powerful Windows machine**. It was a beast: dozens of Itanium processors, hundreds of gigabytes of RAM. The idea was to prove that with enough hardware, the system could meet requirements.
+
+**The result:** Even on the Superdome, we couldn't hit the required concurrent user targets. The session state architecture was fundamentally broken. Vertical scaling couldn't save bad design. The session serialization/deserialization overhead, combined with memory pressure from massive session objects, meant the system simply couldn't scale—not at any reasonable cost.
+
+**What should have happened:**
+1. **Stateless by default**: Most of that session data should never have existed
+2. **Database for durable state**: Multi-step form progress should have been in the database with a workflow ID
+3. **Cache for lookups**: Shared lookups belonged in IMemoryCache or a distributed cache
+4. **Client-side for preferences**: User preferences could have been in cookies or local storage
+5. **Distributed session if needed**: If session was truly required, Redis-backed session would have shared the load
+
+**The lesson:** Session state doesn't scale vertically and barely scales horizontally (even with sticky sessions or distributed stores, you're still serializing/deserializing on every request). The Superdome experiment proved that throwing hardware at architectural problems is expensive and often futile.
+
+**Modern advice:** If you find yourself needing more than a few KB of session data, you've probably got a design problem. Rethink your state management strategy before you need to fly to Stuttgart.
+
 ---
 
 ## Caching: IMemoryCache and IDistributedCache
