@@ -539,20 +539,84 @@ nav.ml_toc,
 }
 
 
-/* Apply styles only in light mode */
-@media (prefers-color-scheme: light) {
-    .join-item {
-        color: #000000  !important;           /* black text */
-        background-color: #f0f0f0 !important;    /* light grey background */
-        border: 1px solid #555555 !important;    /* dark grey outline */
-        padding: 0.5rem 1rem !important;
-        border-radius: 4px !important;
-        cursor: pointer !important;
-    }
+/* ===== Pager base ===== */
+.pager-container {
+    @apply flex flex-col items-center justify-center gap-3;
+}
 
-    .join-item:hover,
-    .join-item:focus {
-        background-color: #e0e0e0 !important;   /* slightly darker grey on hover */
-        border-color: #333333 !important;       /* darker outline */
-    }
+.page-size-container label {
+    @apply text-sm font-medium text-gray-700;
+}
+
+.select#pageSize-pager {
+    @apply border-gray-300   select-bordered select-sm  !important;
+}
+
+/* Pagination buttons */
+.join-item.btn {
+    @apply  btn-sm border border-gray-300 text-gray-700 bg-white hover:bg-gray-100;
+}
+
+.join-item.btn-active {
+    @apply bg-indigo-600 text-white border-indigo-600;
+}
+
+.join-item.btn-disabled {
+    @apply bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed;
+}
+
+/* Info badge */
+.badge {
+    @apply  badge-ghost badge-sm text-gray-600 bg-gray-100 border border-gray-200;
+}
+
+/* ===== Dark mode ===== */
+.dark .page-size-container label {
+    @apply text-gray-300;
+}
+
+.dark .join-item.btn {
+    @apply border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700;
+}
+
+.dark .join-item.btn-active {
+    @apply bg-indigo-500 border-indigo-500 text-white;
+}
+
+.dark .join-item.btn-disabled {
+    @apply bg-gray-800 text-gray-600 border-gray-700;
+}
+
+.dark .badge {
+    @apply bg-gray-800 border-gray-700 text-gray-300;
+}
+
+/* Light mode */
+select[name="pageSize"] {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;   /* gray-800 */
+    color-scheme: light;          /* prevents OS dark rendering */
+}
+
+/* Dark mode */
+.dark select[name="pageSize"] {
+    background-color: #1f2937 !important; /* gray-800 */
+    color: #f3f4f6 !important;            /* gray-100 */
+    border: 1px solid #374151 !important; /* gray-700 */
+    color-scheme: dark;
+}
+
+/* Optional: consistent hover/focus ring */
+select[name="pageSize"]:focus {
+    outline: 2px solid #4f46e5; /* indigo-600 */
+    outline-offset: 1px;
+}
+
+.dark select[name="pageSize"]:focus {
+    outline: 2px solid #4f46e5; /* indigo-600 */
+    outline-offset: 1px;
+}
+
+.dark select[name="pageSize"]:focus {
+    outline: 2px solid #818cf8; /* indigo-400 */
 }
