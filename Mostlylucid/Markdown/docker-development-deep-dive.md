@@ -250,20 +250,6 @@ graph TB
     M --> N
     N --> O
     O --> P
-
-    style A fill:#e1f5ff
-    style B fill:#e1f5ff
-    style C fill:#e1f5ff
-    style D fill:#e1f5ff
-    style E fill:#fff4e1
-    style M fill:#e8f5e9
-    style P fill:#c8e6c9
-    style T fill:#f3e5f5
-
-    classDef source fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef build fill:#fff4e1,stroke:#f57f17,stroke-width:2px
-    classDef runtime fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    classDef final fill:#c8e6c9,stroke:#1b5e20,stroke-width:3px
 ```
 
 **Key insights from this flow:**
