@@ -75,7 +75,7 @@ builder.Services.AddScoped<RagService>();
 // Health checks
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
-    .AddCheck("vector_store", async () =>
+    .AddCheck("vector_store",  async () =>
     {
         try
         {

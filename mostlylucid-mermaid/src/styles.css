@@ -8,6 +8,10 @@
  * Or customize the button styles to use your preferred icon library.
  */
 
+/* Hide diagrams until rendered to avoid wrong-theme flash */
+.mermaid { visibility: hidden; }
+.mermaid[data-processed="true"] { visibility: visible; }
+
 /* Diagram wrapper - contains diagram and controls */
 .mermaid-wrapper {
     position: relative;

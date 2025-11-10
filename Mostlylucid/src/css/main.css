@@ -18,7 +18,8 @@
         /* Light theme from default.css will apply here */
     }
 }
-
+.mermaid { visibility: hidden; }
+.mermaid[data-processed="true"] { visibility: visible; }
 
 .bg-red {
     --tw-bg-opacity: 1;

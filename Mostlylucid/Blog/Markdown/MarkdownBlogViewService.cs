@@ -39,6 +39,8 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
         return Task.FromResult(posts);
     }
 
+
+
     public async Task<List<PostListModel>> GetPostsForLanguage(DateTime? startDate = null, string category = "",
         string language = Constants.EnglishLanguage)
     {
@@ -174,7 +176,7 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
 
 
     public async Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10,
-        string language = Constants.EnglishLanguage, DateTime? startDate = null, DateTime? endDate = null)
+        string language = Constants.EnglishLanguage, DateTime? startDate = null, DateTime? endDate = null, string? orderBy = null, string? orderDir = null)
     {
         var model = new PostListViewModel();
         var postsQuery = PageCacheHelper.GetPageCache()
@@ -186,7 +188,19 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
             postsQuery = postsQuery.Where(p => p.PublishedDate.Date >= startDate.Value.Date);
         if (endDate.HasValue)
             postsQuery = postsQuery.Where(p => p.PublishedDate.Date <= endDate.Value.Date);
-
+        switch (orderBy?.ToLower())
+        {
+            case "title":
+                postsQuery = orderBy?.ToLower() == "asc"
+                    ? postsQuery.OrderBy(x => x.Title)
+                    : postsQuery.OrderByDescending(x => x.Title);
+                break;
+            case "date":
+                postsQuery = orderDir?.ToLower() == "asc"
+                    ? postsQuery.OrderBy(x => x.PublishedDate)
+                    : postsQuery.OrderByDescending(x => x.PublishedDate);
+                break;
+        }
         var posts = postsQuery.OrderByDescending(x => x.PublishedDate).ToList();
         model.TotalItems = posts.Count;
         model.PageSize = pageSize;

@@ -55,3 +55,12 @@ const localStorageMock = {
   clear: vi.fn(),
 };
 global.localStorage = localStorageMock as any;
+
+// Ensure theme state does not leak across tests
+beforeEach(() => {
+  document.body.classList.remove('dark');
+  document.documentElement.classList.remove('dark');
+  delete (window as any).__themeState;
+  // clear any direct property set by tests
+  delete (global as any).localStorage?.theme;
+});

@@ -143,21 +143,29 @@ const resetProcessed = (): void => {
  * document.body.dispatchEvent(new Event('light-theme-set'));
  */
 export async function initMermaid() {
-    // Small delay to ensure DOM classes are fully applied
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-    // Normalize any code fences first so they get picked up
+    // Normalize any code fences first so they get picked up ASAP
     normalizeMermaidCodeFences();
 
     const mermaidElements = document.querySelectorAll(elementSelector);
     if (mermaidElements.length === 0) return;
 
+    // Save original source early to avoid losing raw content if anything else touches the DOM
     try {
         saveOriginalData();
     } catch (error) {
         console.error('Error saving original data:', error);
         return;
     }
+
+    // If something else pre-processed diagrams before our init, reset them to original code
+    const preProcessedExists = Array.from(mermaidElements).some(el => el.getAttribute('data-processed') != null);
+    if (preProcessedExists) {
+        resetProcessed();
+    }
+
+    // Always give the page a tiny chance to apply theme classes before we detect theme
+    // This ensures correct initial theme even when classes are toggled very early in page load
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
     const handleDarkThemeSet = async (): Promise<void> => {
         try {

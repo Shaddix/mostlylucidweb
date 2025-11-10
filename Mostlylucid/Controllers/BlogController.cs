@@ -21,24 +21,10 @@ public class BlogController(BaseControllerService baseControllerService,
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
         VaryByQueryKeys = new[] { nameof(page), nameof(pageSize), nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) })]
     [HttpGet]
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null, string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc")
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
+        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc")
     {
         var posts = await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate);
-        // Apply ordering on the result set
-        if (posts?.Data != null)
-        {
-            bool asc = string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase);
-            switch ((orderBy ?? "date").ToLowerInvariant())
-            {
-                case "title":
-                    posts.Data = (asc ? posts.Data.OrderBy(p => p.Title) : posts.Data.OrderByDescending(p => p.Title)).ToList();
-                    break;
-                case "date":
-                default:
-                    posts.Data = (asc ? posts.Data.OrderBy(p => p.PublishedDate) : posts.Data.OrderByDescending(p => p.PublishedDate)).ToList();
-                    break;
-            }
-        }
         // Set LinkUrl to preserve filters and options if present
         posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir });
         if (Request.IsHtmx()) return PartialView("_BlogSummaryList", posts);

@@ -237,7 +237,7 @@
       applyNavigation(u);
     });
 
-    langSelect && langSelect.addEventListener('change', function(){
+    langSelect && langSelect.addEventListener('change', async function(){
       console.log('Language changed to:', langSelect.value);
       // Start with current URL - this preserves ALL existing parameters including dates
       const u = new URL(window.location.href);
@@ -260,6 +260,19 @@
 
       console.log('Language change - URL params:', Object.fromEntries(u.searchParams.entries()));
       updateSummary();
+
+      // Refresh calendar highlights for the new language if flatpickr exists
+      if(input && input._flatpickr){
+        try{
+          const fp = input._flatpickr;
+          // Fetch highlights for current visible month
+          highlightDates = await initMonthHighlights(fp, langSelect.value);
+           fp.redraw();
+        }catch(err){
+          console.warn('Unable to refresh calendar highlights on language change', err);
+        }
+      }
+
       applyNavigation(u);
     });
 
@@ -287,6 +300,60 @@
       updateSummary();
       applyNavigation(u);
     });
+
+    // Helper: read published dates from posts in the content area and return sorted array of Date objects
+    function getPostDates(){
+      const posts = Array.from(root.querySelectorAll('[data-published-date]'));
+      return posts.map(el => {
+        const v = el.getAttribute('data-published-date');
+        return v ? new Date(v + 'T00:00:00') : null;
+      }).filter(Boolean).sort((a,b) => a - b);
+    }
+
+    // Ensure selected range covers returned posts; if not, set selected to last post date in range
+    function ensureSelectionCoversPosts(){
+      if(!(input && input._flatpickr)) return;
+      const fp = input._flatpickr;
+      const selected = fp.selectedDates || [];
+      if(selected.length === 2){
+        const [s,e] = selected;
+        const posts = getPostDates();
+        if(posts.length === 0) return;
+        const lastPost = posts[posts.length-1];
+        // If lastPost is outside the selected range, set selection to that date
+        if(lastPost < s || lastPost > e){
+          console.log('Adjusting selection to include last post date:', formatYMD(lastPost));
+          fp.setDate([formatYMD(lastPost), formatYMD(lastPost)], true);
+          updateSummary();
+        }
+      }
+    }
+
+    // Re-run checks after HTMX swaps content into #content
+    document.body.addEventListener('htmx:afterSettle', function(){
+      try{
+        console.log('Global HTMX afterSettle - checking for content update');
+        const target = document.querySelector('#content');
+        if(!target) return;
+
+        // Re-init date picker if needed
+        if(typeof window.blogIndexInit === 'function'){
+          // Only re-init the content area
+          setTimeout(() => {
+            try{ initFromRoot(target); }catch(e){ console.warn('Re-init failed', e); }
+          }, 30);
+        }
+
+        // After a short delay, ensure selection covers posts
+        setTimeout(() => {
+          try{ ensureSelectionCoversPosts(); }catch(e){ console.warn('ensureSelectionCoversPosts failed', e); }
+        }, 150);
+
+      }catch(err){
+        console.error('Error in global htmx:afterSettle', err);
+      }
+    });
+
   }
 
   // Expose Alpine component for categories panel
@@ -294,45 +361,53 @@
     return { openCategories: false };
   };
 
-  // Initialize on DOM ready
-  document.addEventListener('DOMContentLoaded', function(){
-    const root = document.querySelector('#content') || document;
-    initFromRoot(root);
-  });
+  // Expose init function globally for manual or external calls
+  window.blogIndexInit = initFromRoot;
 
-  // Reinitialize after HTMX settles (DOM is ready for manipulation)
-  document.body.addEventListener('htmx:afterSettle', function(evt){
-    try{
-      const target = evt && evt.detail && evt.detail.target;
-      if (!target) {
-        console.log('HTMX afterSettle - no target');
-        return;
+  // Bind listeners once
+  if (!window.__blogIndexBound) {
+    window.__blogIndexBound = true;
+
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', function(){
+        console.log('DOMContent Loaded');
+      const root = document.querySelector('#content') || document;
+      initFromRoot(root);
+    });
+
+    // Reinitialize after HTMX settles (DOM is ready for manipulation)
+    document.body.addEventListener('htmx:afterSettle', function(){
+      try{
+          console.log('HTMX afterSettle fired');
+        const target = document.querySelector("#content")
+        if (!target) {
+          console.log('HTMX afterSettle - no target');
+          return;
+        }
+
+        console.log('HTMX afterSettle - target:', target.id, target);
+
+        // Check if this is the #content element or contains it
+        if (target.id === 'content') {
+          console.log('Re-initializing blog filters - target IS content');
+          // Give DOM a bit more time to fully settle before initializing flatpickr
+          setTimeout(() => {
+            console.log('Running initFromRoot after delay');
+            initFromRoot(target);
+          }, 50);
+        } else if (target.querySelector?.('#content')) {
+          console.log('Re-initializing blog filters - target CONTAINS content');
+          const contentDiv = target.querySelector('#content');
+          setTimeout(() => {
+            console.log('Running initFromRoot after delay');
+            initFromRoot(contentDiv);
+          }, 50);
+        } else {
+          console.log('Skipping reinitialization - not blog content');
+        }
+      }catch(err){
+        console.error('Error reinitializing blog filters:', err);
       }
-
-      console.log('HTMX afterSettle - target:', target.id, target);
-
-      // Check if this is the #content element or contains it
-      if (target.id === 'content') {
-        console.log('Re-initializing blog filters - target IS content');
-        // Target IS the content div, use it directly
-        // Give DOM a bit more time to fully settle before initializing flatpickr
-        setTimeout(() => {
-          console.log('Running initFromRoot after delay');
-          initFromRoot(target);
-        }, 50);
-      } else if (target.querySelector?.('#content')) {
-        console.log('Re-initializing blog filters - target CONTAINS content');
-        // Target contains the content div, find it
-        const contentDiv = target.querySelector('#content');
-        setTimeout(() => {
-          console.log('Running initFromRoot after delay');
-          initFromRoot(contentDiv);
-        }, 50);
-      } else {
-        console.log('Skipping reinitialization - not blog content');
-      }
-    }catch(err){
-      console.error('Error reinitializing blog filters:', err);
-    }
-  });
+    });
+  }
 })();

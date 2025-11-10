@@ -15,10 +15,11 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" },
         VaryByQueryKeys = new[] { "page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir" })]
     [HttpGet]
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", [FromHeader] bool pagerequest = false)
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null,
+        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", [FromHeader] bool pagerequest = false)
     {
         var authenticateResult = await GetUserInfo();
-        var posts = await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate);
+        var posts = await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate,orderBy, orderDir);
 
         // Apply ordering on the result set
         if (posts?.Data != null)

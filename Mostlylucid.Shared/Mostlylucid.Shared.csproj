@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="mostlylucid.pagingtaghelper" Version="0.9.4.1" />
+      <PackageReference Include="mostlylucid.pagingtaghelper" Version="1.0.0-rc4" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
       <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
     </ItemGroup>

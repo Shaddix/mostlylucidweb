@@ -33,14 +33,7 @@ public class BlogService(
             var pageSize = model.PageSize;
             var language = model.Language;
 
-            var countQuery = NoTrackingQuery();
-                
-                if(model.Language != null) 
-                    countQuery= countQuery.Where(x=>x.LanguageEntity.Name == language);
-            if (categories?.Any(x=>!string.IsNullOrEmpty(x)) == true)
-                countQuery = countQuery.Where(x =>
-                    x.Categories.Any(c => categories.Contains(c.Name)));
-                      var count =await  countQuery.CountAsync();
+
             var postQuery = PostsQuery();
 
             if (model.StartDate != null)
@@ -63,7 +56,23 @@ public class BlogService(
                 postQuery = postQuery.Where(x => x.LanguageEntity.Name == language);
             }
 
-            postQuery = postQuery.OrderByDescending(x => x.PublishedDate.DateTime);
+           switch (model.orderBy?.ToLower())
+            {
+                case "title":
+                    postQuery = model.orderDir?.ToLower() == "asc"
+                        ? postQuery.OrderBy(x => x.Title)
+                        : postQuery.OrderByDescending(x => x.Title);
+                    break;
+                case "date":
+                    postQuery = model.orderDir?.ToLower() == "asc"
+                        ? postQuery.OrderBy(x => x.PublishedDate.DateTime)
+                        : postQuery.OrderByDescending(x => x.PublishedDate.DateTime);
+                    break;
+            }
+
+        
+            var count =await  postQuery.CountAsync();
+           
             if (page != null)
             {
                 if (pageSize == null) pageSize = Constants.DefaultPageSize;

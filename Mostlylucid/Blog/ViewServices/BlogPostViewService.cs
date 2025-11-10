@@ -83,9 +83,10 @@ public class BlogPostViewService(IBlogService blogPostService) : IBlogViewServic
         return post?.ToViewModel() ?? null;
     }
 
-    public async Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10, string language = Constants.EnglishLanguage, DateTime? startDate = null, DateTime? endDate = null)
+    public async Task<PostListViewModel> GetPagedPosts(int page = 1, int pageSize = 10, string language = Constants.EnglishLanguage,
+        DateTime? startDate = null, DateTime? endDate = null , string? orderBy =null , string? orderDir = null)
     {
-        var queryModel = new PostListQueryModel(Page:page,PageSize:pageSize, Language:language, StartDate:startDate, EndDate:endDate);
+        var queryModel = new PostListQueryModel(Page:page,PageSize:pageSize, Language:language, StartDate:startDate, EndDate:endDate, orderBy:orderBy, orderDir:orderDir);
         return await GetListPostsViewModel(queryModel);
     }
 

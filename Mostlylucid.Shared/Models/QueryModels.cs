@@ -8,4 +8,6 @@ public record PostListQueryModel(
     int? PageSize = null,
     DateTime? StartDate = null,
     DateTime? EndDate = null,
-    string[]? Categories = null);
+    string[]? Categories = null,
+    string? orderBy = null,
+    string? orderDir = null);

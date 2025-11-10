@@ -470,13 +470,12 @@ graph LR
 
     <!-- Load and initialize enhancements -->
     <script type="module">
-        import { init, configure, cleanupMermaidEnhancements, initMermaid, hideToolbar, showToolbar, toggleToolbar } from '../dist/index.bundle.min.js';
+        import { initMermaidToolbar, configure, cleanupMermaidEnhancements, initMermaidThemeSwitcher, hideToolbar, showToolbar, toggleToolbar } from '../dist/index.bundle.min.js';
 
         // Make configure available globally for demo buttons
         window.reconfigureAndReload = async (config) => {
             configure(config);
             cleanupMermaidEnhancements();
-            await initMermaid();
             // Reset toolbar visibility state after reconfiguration
             toolbarsVisible = true;
             const btn = document.getElementById('toggleAllBtn');
@@ -629,8 +628,9 @@ graph LR
                     throw new Error('Mermaid library not found. Please check your internet connection.');
                 }
 
+                await initMermaidThemeSwitcher();
                 // Initialize with enhancements
-                await init();
+                await initMermaidToolbar();
 
                 console.log('✓ Mermaid enhancements loaded successfully!');
 
