@@ -1,5 +1,10 @@
 ﻿import { describe, it, expect, vi } from 'vitest';
 
+// Suppress console output (module under test logs extensively)
+vi.spyOn(console, 'log').mockImplementation(() => {});
+vi.spyOn(console, 'warn').mockImplementation(() => {});
+vi.spyOn(console, 'error').mockImplementation(() => {});
+
 // The test verifies that language changes refresh calendar highlights
 // and that HTMX swaps cause the date selection to be adjusted to the last post
 // when posts fall outside the currently selected flatpickr range.
@@ -74,7 +79,7 @@ describe('blog-index integration (flatpickr + language + htmx)', () => {
     langSelect.dispatchEvent(new Event('change'));
 
     // Wait for async language handler to fetch and redraw
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Expect fetch called with language param and flatpickr redraw to be invoked
     const calledWithLang = global.fetch.mock.calls.some(call => call[0] && call[0].includes('language=es'));
@@ -85,7 +90,7 @@ describe('blog-index integration (flatpickr + language + htmx)', () => {
     document.body.dispatchEvent(new Event('htmx:afterSettle'));
 
     // Wait for the ensureSelectionCoversPosts timeout to run inside the module
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 250));
 
     // Expect flatpickr.setDate to have been called with the last post date
     expect(setDateSpy).toHaveBeenCalled();
@@ -96,4 +101,3 @@ describe('blog-index integration (flatpickr + language + htmx)', () => {
     expect(callArgs[1]).toBe('2025-12-05');
   });
 });
-

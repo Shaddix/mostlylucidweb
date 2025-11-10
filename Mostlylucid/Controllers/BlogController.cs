@@ -40,6 +40,7 @@ public class BlogController(BaseControllerService baseControllerService,
         var start = new DateTime(year, month, 1);
         var end = start.AddMonths(1).AddDays(-1);
         var posts = await blogViewService.GetPostsForRange(start, end, language: language);
+        if (posts is null) return Json("");
         var dates = posts
             .Select(p => p.PublishedDate.Date)
             .Distinct()

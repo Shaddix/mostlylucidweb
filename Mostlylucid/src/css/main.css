@@ -537,3 +537,22 @@ nav.ml_toc,
 .dark [class*="hljs-"]:not([class*="hljs-comment"]):not([class*="hljs-quote"]) {
     color: #abb2bf;
 }
+
+
+/* Apply styles only in light mode */
+@media (prefers-color-scheme: light) {
+    .join-item {
+        color: #000000;              /* black text */
+        background-color: #f0f0f0;   /* light grey background */
+        border: 1px solid #555555;   /* dark grey outline */
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .join-item:hover,
+    .join-item:focus {
+        background-color: #e0e0e0;   /* slightly darker grey on hover */
+        border-color: #333333;       /* darker outline */
+    }
+}

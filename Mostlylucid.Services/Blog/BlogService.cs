@@ -107,7 +107,7 @@ public class BlogService(
             activity.Complete(LogEventLevel.Error, e);
         }
 
-        return null;
+        return  new BasePagingModel<BlogPostDto>();
     }
 
 

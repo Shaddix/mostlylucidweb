@@ -15,7 +15,7 @@
       return new Set(j.dates || []);
     }catch{ return new Set(); }
   }
-
+    
   async function initMonthHighlights(fp, language){
     const y = fp.currentYear;
     const m = fp.currentMonth + 1; // 0-based in flatpickr
