@@ -186,6 +186,81 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["dotnet", "MyApp.dll"]
 ```
 
+#### Understanding the Build Flow
+
+Here's what actually happens during a multi-stage Docker build - where files come from and where they end up:
+
+```mermaid
+graph TB
+    subgraph "Your Machine"
+        A[Source Code<br/>*.cs, *.csproj]
+        B[Frontend Assets<br/>*.js, *.css]
+        C[Configuration<br/>appsettings.json]
+        D[Static Files<br/>wwwroot/]
+    end
+
+    subgraph "Stage 1: Build Container (SDK Image)"
+        E[dotnet/sdk:9.0<br/>~1.5GB]
+        F[Copy .csproj files]
+        G[dotnet restore<br/>Download NuGet packages]
+        H[Copy source code]
+        I[dotnet build<br/>Compile to DLLs]
+        J[Build artifacts<br/>/app/build/]
+    end
+
+    subgraph "Stage 2: Publish Container"
+        K[dotnet publish<br/>Optimize & trim]
+        L[Published output<br/>/app/publish/]
+    end
+
+    subgraph "Stage 3: Final Runtime Container (ASPNET Image)"
+        M[dotnet/aspnet:9.0<br/>~220MB]
+        N[Create app user<br/>Security]
+        O[Copy published files<br/>ONLY production artifacts]
+        P[Final image<br/>~250MB total]
+    end
+
+    subgraph "Frontend Build Pipeline (Parallel)"
+        Q[npm install<br/>node_modules/]
+        R[Webpack bundling<br/>*.js → dist/]
+        S[TailwindCSS + PostCSS<br/>*.css → dist/]
+        T[Optimized assets<br/>wwwroot/js/dist/<br/>wwwroot/css/dist/]
+    end
+
+    A --> F
+    A --> H
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+    K --> L
+
+    B --> Q
+    Q --> R
+    Q --> S
+    R --> T
+    S --> T
+
+    L --> O
+    T --> O
+    C --> O
+    D --> O
+
+    M --> N
+    N --> O
+    O --> P
+```
+
+**Key insights from this flow:**
+
+1. **SDK Image discarded**: The 1.5GB SDK container is thrown away after publishing - only ~50MB of compiled output moves forward
+2. **Layer caching**: Copying `.csproj` before source code means dependency restore is cached unless dependencies change
+3. **Frontend assets**: Built separately (often via `npm run build`) and copied into the final image
+4. **Configuration files**: `appsettings.json` and `wwwroot/` content copied from your machine, not built
+5. **Final image**: Starts from minimal runtime image (~220MB) + your app (~30MB) + assets (~5MB) = ~255MB total
+6. **Only production files**: Source code, obj/, bin/, node_modules/ never make it to the final image
+
 **Key principles illustrated:**
 
 1. **Multi-stage builds**: Separate build/publish stages reduce final image size dramatically
