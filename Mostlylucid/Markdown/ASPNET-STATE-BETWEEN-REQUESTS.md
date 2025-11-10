@@ -347,6 +347,8 @@ I once worked on a massive UK government IT project where session state misuse (
 
 **The result:** Even on the Superdome, we couldn't hit the required concurrent user targets. The session state architecture was fundamentally broken. Vertical scaling couldn't save bad design. The session serialization/deserialization overhead, combined with memory pressure from massive session objects, meant the system simply couldn't scale—not at any reasonable cost.
 
+**The security nightmare:** Worse than the performance issues, we discovered a coding error that caused session state to **leak between users**. User A's session data would occasionally appear in User B's session. This wasn't just embarrassing—it was catastrophic. The users were **NHS staff** accessing patient records and clinical systems. We had accidentally created a data protection breach mechanism that could expose sensitive medical information across different healthcare professionals' sessions.
+
 **What should have happened:**
 1. **Stateless by default**: Most of that session data should never have existed
 2. **Database for durable state**: Multi-step form progress should have been in the database with a workflow ID
@@ -356,7 +358,13 @@ I once worked on a massive UK government IT project where session state misuse (
 
 **The lesson:** Session state doesn't scale vertically and barely scales horizontally (even with sticky sessions or distributed stores, you're still serializing/deserializing on every request). The Superdome experiment proved that throwing hardware at architectural problems is expensive and often futile.
 
-**Modern advice:** If you find yourself needing more than a few KB of session data, you've probably got a design problem. Rethink your state management strategy before you need to fly to Stuttgart.
+But more importantly: **session state bugs become security vulnerabilities**. Thread-safety issues, race conditions, incorrect session ID handling—these don't just cause performance problems, they can leak sensitive data between users. In a healthcare context (or banking, or any regulated industry), this is a compliance nightmare and potential criminal liability.
+
+**Modern advice:**
+- If you find yourself needing more than a few KB of session data, you've probably got a design problem
+- If you're storing sensitive data in session, you're creating a security attack surface
+- Stateless architectures don't just scale better—they're inherently more secure because there's no server-side state to leak
+- Rethink your state management strategy before you need to fly to Stuttgart (or explain a data breach to the Information Commissioner)
 
 ---
 
