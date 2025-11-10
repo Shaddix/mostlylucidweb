@@ -46,7 +46,10 @@ module.exports = (env, argv) => {
             ],
         },
         resolve: {
-            extensions: ['.js'],
+            extensions: ['.js', '.mjs'],
+            alias: {
+                '@mostlylucid/mermaid-enhancements$': path.resolve(__dirname, 'node_modules/@mostlylucid/mermaid-enhancements/dist/index.min.js')
+            }
         },
         optimization: {
             splitChunks: {

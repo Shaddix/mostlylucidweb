@@ -13,6 +13,7 @@ import 'flatpickr/dist/flatpickr.min.css';
 import '../css/flatpickr-overrides.css';
 import "./blog-index";
 
+
 window.EasyMDE = EasyMDE;
 window.flatpickr = flatpickr;
 
@@ -21,13 +22,17 @@ window.hljs=hljs;
 window.htmx = htmx;
 window.mermaid=mermaid;
 window.mermaid.initialize({startOnLoad : false});
+import { init } from '@mostlylucid/mermaid-enhancements/min';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+
 // Importing modules
 import { typeahead } from "./typeahead";
 import { submitTranslation, viewTranslation } from "./translations";
 import { codeeditor } from "./simplemde_editor";
 import { globalSetup } from "./global";
-import  {comments} from  "./comments"; 
-import { initMermaid } from "./memmaid_theme_switch";
+import  {comments} from  "./comments";
+// removed bare import of package to avoid TS source resolution
 
 window.mostlylucid.comments = comments();
 
@@ -101,7 +106,7 @@ window.setLogoutLink = setLogoutLink;
 window.mermaidinit =async  function() {
 
     try {
-      await  window.initMermaid().then(r => console.log('Mermaid initialized'));
+      await  init().then(r => console.log('Mermaid initialized'));
     } catch (e) {
         console.error('Failed to initialize Mermaid:', e);
     }
