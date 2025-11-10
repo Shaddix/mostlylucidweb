@@ -5,11 +5,25 @@
 
 ## Introduction
 
-Docker has fundamentally transformed how we build, ship, and run applications. What started as a simple containerization tool has evolved into a complete ecosystem for modern application development and deployment. In this comprehensive guide, we'll explore Docker from the ground up, dive into Docker Compose orchestration, tackle advanced topics like GPU support and multi-architecture builds, and examine the exciting new container features in .NET 9.
+Docker has fundamentally transformed how we build, ship, and run applications. What started as a simple containerization tool has evolved into a complete ecosystem for modern application development and deployment.
 
-> NOTE: This is part of my experiments with AI / a way to spend $1000 Calude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
+This is the fourth and most comprehensive article in my Docker series for .NET developers. If you're new to Docker, you might want to start with:
 
-Whether you're deploying a simple web app or orchestrating a complex microservices architecture with GPU-accelerated machine learning models, this guide will take you from Docker basics to production-ready containerized applications.
+1. **[Docker Compose](/dockercompose)** - Getting started with basic multi-container setups (July 2024)
+2. **[Development Dependencies with Docker Compose](/dockercomposedevdeps)** - Setting up local dev environments (August 2024)
+3. **[ImageSharp with Docker](/imagesharpwithdocker)** - Solving volume permission issues (August 2024)
+
+In this deep dive, we'll build on those foundations to explore:
+- **Production-ready Docker Compose**: The actual stack running this blog
+- **Self-hosting on limited resources**: Practical optimization techniques for budget VPS deployments
+- **GPU support**: Running ML workloads in containers
+- **Multi-architecture builds**: Supporting ARM64 and AMD64
+- **.NET 9 container features**: Built-in container publishing without Dockerfiles
+- **.NET Aspire**: The modern .NET approach to container orchestration
+
+> NOTE: This is part of my experiments with AI / a way to spend $1000 Claude Code Web credits. I've fed this a BUNCH of papers, my understanding, questions I had to generate this article. It's fun and fills a gap I haven't seen filled anywhere else.
+
+Whether you're deploying a simple web app or orchestrating a complex microservices architecture with GPU-accelerated machine learning models, this guide takes you from Docker basics to production-ready containerized applications - with real examples from running mostlylucid.com.
 
 [TOC]
 
@@ -172,141 +186,207 @@ Consider a typical .NET web application:
 
 Managing these individually with `docker run` commands becomes unwieldy. Docker Compose solves this.
 
-### Complete Example: .NET Blog Platform
+### Complete Real-World Example: Production Blog Platform
 
-Here's a real-world `docker-compose.yml` for a blog platform (similar to this site):
+Here's the **actual production `docker-compose.yml`** that runs this very site (mostlylucid.com):
 
 ```yaml
-version: '3.8'
-
 services:
-  # Main web application
-  web:
-    build:
-      context: .
-      dockerfile: Mostlylucid/Dockerfile
-    image: mostlylucid:latest
-    container_name: mostlylucid-web
-    ports:
-      - "8080:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=db;Database=mostlylucid;Username=postgres;Password=${DB_PASSWORD}
-      - Redis__ConnectionString=redis:6379
-      - Serilog__WriteTo__1__Args__serverUrl=http://seq:5341
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    volumes:
-      - ./data/markdown:/app/Markdown
-      - ./data/wwwroot:/app/wwwroot
-    restart: unless-stopped
-    networks:
-      - backend
-      - frontend
+  # Main ASP.NET Core application
+  mostlylucid:
+    image: scottgal/mostlylucid:latest
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "-f -K", "https://mostlylucid:7240/healthy" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    env_file:
+      - .env
+    environment:
+      - Auth__GoogleClientId=${AUTH_GOOGLECLIENTID}
+      - Auth__GoogleClientSecret=${AUTH_GOOGLECLIENTSECRET}
+      - Auth__AdminUserGoogleId=${AUTH_ADMINUSERGOOGLEID}
+      - SmtpSettings__UserName=${SMTPSETTINGS_USERNAME}
+      - SmtpSettings__Password=${SMTPSETTINGS_PASSWORD}
+      - Analytics__UmamiPath=${ANALYTICS_UMAMIPATH}
+      - Analytics__WebsiteId=${ANALYTICS_WEBSITEID}
+      - ConnectionStrings__DefaultConnection=${POSTGRES_CONNECTIONSTRING}
+      - TranslateService__ServiceIPs=${EASYNMT_IPS}
+      - Serilog__WriteTo__0__Args__apiKey=${SEQ_API_KEY}
+      - Markdown__MarkdownPath=${MARKDOWN_MARKDOWNPATH}
+    volumes:
+      - /mnt/imagecache:/app/wwwroot/cache
+      - /mnt/logs:/app/logs
+      - /mnt/markdown:/app/markdown
+      - ./mostlylucid.pfx:/app/mostlylucid.pfx
+      - /mnt/articleimages:/app/wwwroot/articleimages
+      - /mnt/mostlylucid/uploads:/app/wwwroot/uploads
+    networks:
+      - app_network
+    depends_on:
+      - db
 
   # PostgreSQL database
   db:
     image: postgres:16-alpine
-    container_name: mostlylucid-db
-    environment:
-      - POSTGRES_DB=mostlylucid
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-    restart: unless-stopped
+      - 5266:5432  # Custom external port to avoid conflicts
+    env_file:
+      - .env
     networks:
-      - backend
+      - app_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-
-  # Redis cache
-  redis:
-    image: redis:7-alpine
-    container_name: mostlylucid-redis
-    command: redis-server --appendonly yes
     volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      - /mnt/umami/postgres:/var/lib/postgresql/data
+    restart: always
 
-  # Seq logging
-  seq:
-    image: datalust/seq:latest
-    container_name: mostlylucid-seq
-    environment:
-      - ACCEPT_EULA=Y
-    volumes:
-      - seq_data:/data
-    ports:
-      - "5341:80"
-    restart: unless-stopped
+  # Cloudflare tunnel for secure external access
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    env_file:
+      - .env
+    restart: always
     networks:
-      - backend
+      - app_network
 
-  # Background worker (Hangfire)
-  worker:
-    build:
-      context: .
-      dockerfile: Mostlylucid.SchedulerService/Dockerfile
-    image: mostlylucid-worker:latest
-    container_name: mostlylucid-worker
+  # Umami analytics
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    env_file: .env
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=db;Database=mostlylucid;Username=postgres;Password=${DB_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_TYPE: ${DATABASE_TYPE}
+      HASH_SALT: ${HASH_SALT}
+      APP_SECRET: ${APP_SECRET}
+      TRACKER_SCRIPT_NAME: getinfo
+      API_COLLECT_ENDPOINT: all
     depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
+      - db
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     networks:
-      - backend
+      - app_network
+    restart: always
 
-  # Watchtower for automatic updates
+  # Translation service (CPU-limited for resource management)
+  easynmt:
+    image: easynmt/api:2.0.2-cpu
+    volumes:
+      - /mnt/easynmt:/cache/
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"  # Prevent translation service from consuming all CPU
+    networks:
+      - app_network
+
+  # Caddy reverse proxy with automatic HTTPS
+  caddy:
+    image: caddy:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - app_network
+    restart: always
+
+  # Seq centralized logging
+  seq:
+    image: datalust/seq
+    container_name: seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: ${SEQ_DEFAULT_HASH}
+    volumes:
+      - /mnt/seq:/data
+    networks:
+      - app_network
+
+  # Prometheus metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - app_network
+
+  # Grafana visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - app_network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+
+  # Host metrics exporter
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    networks:
+      - app_network
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  # Automatic container updates
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
+    restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_LABEL_ENABLE=true
-      - WATCHTOWER_INCLUDE_RESTARTING=true
-    command: --interval 300
-    restart: unless-stopped
+    command: --interval 300  # Check every 5 minutes
 
 volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  seq_data:
-    driver: local
+  grafana-data:
+  caddy_data:
+  caddy_config:
+  prometheus-data:
 
 networks:
-  frontend:
-    driver: bridge
-  backend:
+  app_network:
     driver: bridge
 ```
+
+**Key Production Patterns:**
+
+1. **Single Network**: All services on `app_network` for simplicity
+2. **Bind Mounts**: Host paths (`/mnt/*`) for persistent data you need to backup/access
+3. **Named Volumes**: Docker-managed storage for data you don't need direct access to
+4. **Watchtower Labels**: Only update services explicitly labeled for auto-update
+5. **Resource Limits**: CPU constraints on translation service prevent resource starvation
+6. **External Port Mapping**: PostgreSQL on 5266 instead of 5432 to avoid conflicts with other instances
+7. **Environment Files**: Secrets in `.env` file (never committed to git)
 
 ### Docker Compose Key Features
 
@@ -1135,6 +1215,591 @@ builder.AddProject<Projects.MyService>("service")
        .WithReference(rabbitmq);
 ```
 
+## Self-Hosting on Limited Resources: Practical Optimization
+
+Running a full observability stack like the one above requires significant resources. If you're self-hosting on a VPS with 4GB RAM or an old laptop, here are practical strategies to reduce resource consumption while maintaining functionality.
+
+### Development Dependencies Only
+
+For local development, you don't need the full production stack. The [devdeps-docker-compose.yml](/dockercomposedevdeps) approach runs only what you need:
+
+```yaml
+services:
+  smtp4dev:
+    image: rnwood/smtp4dev
+    ports:
+      - "3002:80"
+      - "2525:25"
+    volumes:
+      - e:/smtp4dev-data:/smtp4dev
+    restart: always
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - e:/data:/var/lib/postgresql/data
+    restart: always
+```
+
+**Why this works for development:**
+- **SMTP4Dev**: Test email functionality without a real SMTP server
+- **PostgreSQL**: Matches production database
+- **Total footprint**: ~200MB RAM vs 2-4GB for full stack
+
+See the [full development dependencies guide](/dockercomposedevdeps) for setup instructions.
+
+### Resource-Constrained Production Setup
+
+For a budget VPS (2-4GB RAM), prioritize essential services:
+
+```yaml
+services:
+  # Core application
+  mostlylucid:
+    image: scottgal/mostlylucid:latest
+    restart: always
+    env_file: .env
+    volumes:
+      - ./markdown:/app/markdown
+      - ./logs:/app/logs
+    networks:
+      - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+
+  # Database only
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Caddy for HTTPS
+  caddy:
+    image: caddy:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    networks:
+      - app_network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  db_data:
+  caddy_data:
+
+networks:
+  app_network:
+```
+
+**What's removed and alternatives:**
+- **No Prometheus/Grafana**: Use external monitoring (UptimeRobot, BetterStack free tier)
+- **No Seq**: Use file-based logging + `docker logs`, or Seq Cloud free tier
+- **No Watchtower**: Manual updates with GitHub Actions notifications
+- **No Translation Service**: Run on-demand in a separate container you start/stop manually
+- **Resource limits**: Prevent any single service from consuming all memory
+
+### Progressive Enhancement Strategy
+
+Start minimal, add services as needed:
+
+**Stage 1: Core (512MB-1GB VPS)**
+```bash
+# Just app + database + reverse proxy
+docker-compose up -d mostlylucid db caddy
+```
+
+**Stage 2: Add Observability (2GB VPS)**
+```bash
+# Add lightweight monitoring
+docker-compose up -d mostlylucid db caddy seq
+# Use Seq free 10GB/month
+```
+
+**Stage 3: Full Stack (4GB+ VPS)**
+```bash
+# Add everything
+docker-compose up -d
+```
+
+### Resource Optimization Techniques
+
+#### 1. Use Alpine Images
+
+```yaml
+services:
+  myapp:
+    image: postgres:16-alpine     # 50% smaller than postgres:16
+    # vs
+    image: postgres:16            # Full Debian base
+```
+
+**Savings**: Alpine images are 50-70% smaller
+
+#### 2. Shared Database Instance
+
+Instead of one database per service, use one PostgreSQL instance with multiple databases:
+
+```yaml
+db:
+  image: postgres:16-alpine
+  # One instance, multiple databases
+  # Umami, Mostlylucid, etc. all share this PostgreSQL
+```
+
+**Savings**: 400MB RAM per additional database you consolidate
+
+#### 3. Limit CPU for Background Services
+
+```yaml
+easynmt:
+  deploy:
+    resources:
+      limits:
+        cpus: "2.0"      # Don't let translation consume all CPU
+      reservations:
+        cpus: "0.5"      # Guarantee minimum
+```
+
+This prevents background jobs from starving your web application.
+
+#### 4. Persistent Cache Volumes
+
+As covered in [ImageSharp with Docker](/imagesharpwithdocker), mounting cache directories prevents unnecessary reprocessing:
+
+```yaml
+mostlylucid:
+  volumes:
+    - /mnt/imagecache:/app/wwwroot/cache  # ImageSharp cache persists across restarts
+```
+
+**Why it matters**: Without this, every container restart regenerates all thumbnails/processed images.
+
+#### 5. Use External Services (Free Tiers)
+
+| Service | Self-Hosted RAM | External Alternative |
+|---------|-----------------|---------------------|
+| Seq | ~500MB | Seq Cloud (10GB/month free) |
+| Prometheus + Grafana | ~600MB | Grafana Cloud (free tier) |
+| Umami | ~200MB | Plausible (paid) or self-host elsewhere |
+
+**Strategy**: Offload observability to free tiers, keep core application on your VPS.
+
+#### 6. On-Demand Services
+
+For infrequently used services like translation:
+
+```bash
+# Create a separate compose file
+# translation-compose.yml
+services:
+  easynmt:
+    image: easynmt/api:2.0.2-cpu
+    ports:
+      - "8888:8888"
+    volumes:
+      - /mnt/easynmt:/cache/
+
+# Only run when needed
+docker-compose -f translation-compose.yml up -d
+
+# Translate your content
+# ...
+
+# Shut down when done
+docker-compose -f translation-compose.yml down
+```
+
+**Savings**: 1-2GB RAM when translation service isn't running
+
+### Real-World Budget Hosting Example
+
+Here's what runs on a $6/month Hetzner VPS (2 vCPU, 4GB RAM):
+
+```yaml
+# Minimal production compose
+services:
+  mostlylucid:
+    image: scottgal/mostlylucid:latest
+    restart: always
+    env_file: .env
+    volumes:
+      - /mnt/markdown:/app/markdown
+      - /mnt/logs:/app/logs
+      - /mnt/imagecache:/app/wwwroot/cache
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - /mnt/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run --token ${CLOUDFLARED_TOKEN}
+    restart: always
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_LABEL_ENABLE: "true"
+    command: --interval 3600  # Check once per hour, not every 5 minutes
+```
+
+**Total resource usage:**
+- RAM: ~800MB (leaves 3.2GB free)
+- Disk: ~2GB
+- CPU: <10% idle, <50% under load
+
+**What's different:**
+- No Prometheus/Grafana (use UptimeRobot + Cloudflare Analytics)
+- No Seq (use `docker logs` + occasional grep)
+- No Umami (use Cloudflare Web Analytics - free)
+- Watchtower checks hourly instead of every 5 minutes
+- No translation service (run manually when needed)
+
+### Monitoring on a Budget
+
+Without Prometheus/Grafana, use these free alternatives:
+
+**Health monitoring:**
+```bash
+# Simple health check script
+#!/bin/bash
+while true; do
+  curl -f http://localhost/healthz || echo "Health check failed!" | mail -s "Alert" you@example.com
+  sleep 300
+done
+```
+
+**Log monitoring:**
+```bash
+# Watch for errors
+docker-compose logs -f --tail=100 | grep -i error
+
+# Email on critical errors
+docker-compose logs -f | grep -i "critical" | while read line; do
+  echo "$line" | mail -s "Critical Error" you@example.com
+done
+```
+
+**Resource usage:**
+```bash
+# Quick resource check
+docker stats --no-stream
+
+# Pretty output
+docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+```
+
+## Aspire Version: The .NET Way
+
+Now let's reimagine the entire stack using .NET Aspire. This gives you all the orchestration benefits with better .NET integration and an amazing developer experience.
+
+### Setting Up Aspire for Mostlylucid
+
+First, create the Aspire App Host:
+
+```bash
+# Add Aspire to your solution
+dotnet new aspire-apphost -n Mostlylucid.AppHost
+cd Mostlylucid.AppHost
+```
+
+**Mostlylucid.AppHost/Program.cs:**
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+// PostgreSQL with persistent data
+var postgres = builder.AddPostgres("postgres")
+    .WithDataVolume()  // Persistent storage
+    .WithPgAdmin();     // Optional: PgAdmin for database management
+
+var mostlylucidDb = postgres.AddDatabase("mostlylucid");
+var umamiDb = postgres.AddDatabase("umami");
+
+// Seq for centralized logging
+var seq = builder.AddSeq("seq")
+    .WithDataVolume();
+
+// Redis for caching (if needed)
+var redis = builder.AddRedis("cache")
+    .WithDataVolume()
+    .WithRedisCommander();  // Optional: Redis Commander UI
+
+// Main blog application
+var mostlylucid = builder.AddProject<Projects.Mostlylucid>("web")
+    .WithReference(mostlylucidDb)
+    .WithReference(seq)
+    .WithReference(redis)
+    .WithEnvironment("TranslateService__Enabled", "false")  // Disable for dev
+    .WithHttpsEndpoint(port: 7240, name: "https");
+
+// Umami analytics
+var umami = builder.AddContainer("umami", "ghcr.io/umami-software/umami", "postgresql-latest")
+    .WithReference(umamiDb)
+    .WithEnvironment("DATABASE_TYPE", "postgresql")
+    .WithEnvironment("TRACKER_SCRIPT_NAME", "getinfo")
+    .WithEnvironment("API_COLLECT_ENDPOINT", "all")
+    .WithHttpEndpoint(port: 3000, name: "http");
+
+// Translation service (CPU version, with resource limits)
+var translation = builder.AddContainer("easynmt", "easynmt/api", "2.0.2-cpu")
+    .WithDataVolume("/cache")
+    .WithHttpEndpoint(port: 8888, name: "http")
+    .WithEnvironment("MODEL_FAMILY", "opus-mt");
+
+// Scheduler service (Hangfire background jobs)
+var scheduler = builder.AddProject<Projects.Mostlylucid_SchedulerService>("scheduler")
+    .WithReference(mostlylucidDb)
+    .WithReference(seq);
+
+// Prometheus for metrics
+var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "latest")
+    .WithDataVolume()
+    .WithBindMount("./prometheus.yml", "/etc/prometheus/prometheus.yml")
+    .WithHttpEndpoint(port: 9090);
+
+// Grafana for visualization
+var grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
+    .WithDataVolume()
+    .WithHttpEndpoint(port: 3001)
+    .WithEnvironment("GF_SECURITY_ADMIN_PASSWORD", builder.Configuration["Grafana:AdminPassword"] ?? "admin");
+
+builder.Build().Run();
+```
+
+### Aspire Service Defaults
+
+Create **Mostlylucid.ServiceDefaults** project:
+
+```csharp
+// Extensions.cs
+public static class Extensions
+{
+    public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
+    {
+        // OpenTelemetry
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics =>
+            {
+                metrics.AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddRuntimeInstrumentation();
+            })
+            .WithTracing(tracing =>
+            {
+                if (builder.Environment.IsDevelopment())
+                {
+                    tracing.SetSampler(new AlwaysOnSampler());
+                }
+
+                tracing.AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddEntityFrameworkCoreInstrumentation();
+            });
+
+        // Health checks
+        builder.Services.AddHealthChecks()
+            .AddCheck("self", () => HealthCheckResult.Healthy(), tags: new[] { "live" });
+
+        return builder;
+    }
+
+    public static IApplicationBuilder MapDefaultEndpoints(this WebApplication app)
+    {
+        app.MapHealthChecks("/healthz");
+        app.MapHealthChecks("/ready", new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready")
+        });
+
+        return app;
+    }
+}
+```
+
+### Update Mostlylucid/Program.cs
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Aspire service defaults (telemetry, health checks)
+builder.AddServiceDefaults();
+
+// Add services
+builder.AddNpgsqlDbContext<MostlylucidDbContext>("mostlylucid");
+builder.AddRedisClient("cache");
+
+// Existing service registrations...
+// builder.Services.AddControllersWithViews();
+// etc...
+
+var app = builder.Build();
+
+// Map Aspire default endpoints
+app.MapDefaultEndpoints();
+
+// Existing middleware...
+app.Run();
+```
+
+### Benefits of Aspire Approach
+
+**Development Experience:**
+1. **Single Command**: `dotnet run --project Mostlylucid.AppHost` starts everything
+2. **Dashboard**: Beautiful UI at http://localhost:15888 showing:
+   - All services with live status
+   - Logs from all services in one place
+   - Distributed traces across services
+   - Metrics and health checks
+3. **Service Discovery**: Services find each other automatically via names
+4. **Configuration**: Centralized in AppHost, no more `.env` juggling
+
+**Production Deployment:**
+
+Generate deployment manifests from Aspire:
+
+```bash
+# Generate Docker Compose
+dotnet run --project Mostlylucid.AppHost -- \
+  --publisher compose \
+  --output-path ./deploy
+
+# This creates a production-ready docker-compose.yml
+cd deploy
+docker-compose up -d
+```
+
+**Generated docker-compose.yml** (simplified):
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mostlylucid-db:
+    image: postgres:16
+    # Database initialization
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: Y
+    volumes:
+      - seq-data:/data
+
+  web:
+    image: scottgal/mostlylucid:latest
+    environment:
+      ConnectionStrings__mostlylucid: Host=postgres;Database=mostlylucid;Username=postgres;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__cache: cache:6379
+    depends_on:
+      - postgres
+      - cache
+      - seq
+
+  cache:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+
+  # ... other services
+```
+
+### Aspire vs Traditional Docker Compose
+
+| Feature | Docker Compose | .NET Aspire |
+|---------|---------------|-------------|
+| **Setup** | Manual YAML | C# code with IntelliSense |
+| **Service Discovery** | Manual env vars | Automatic |
+| **Observability** | Bring your own | Built-in (OpenTelemetry) |
+| **Development** | `docker-compose up` | `dotnet run` + Dashboard |
+| **Debugging** | Attach to container | F5 in Visual Studio |
+| **Logs** | `docker logs` | Centralized dashboard |
+| **Tracing** | Setup manually | Automatic distributed tracing |
+| **Production** | Use YAML directly | Generate manifests |
+| **Learning Curve** | YAML syntax | C# you already know |
+
+### When to Use Aspire vs Docker Compose
+
+**Use Aspire when:**
+- Building .NET microservices
+- You want integrated debugging
+- Team is comfortable with C#
+- You need distributed tracing out-of-the-box
+- You're deploying to Azure Container Apps (native support)
+
+**Use Docker Compose when:**
+- Polyglot services (Node.js, Python, Go, etc.)
+- Team prefers infrastructure-as-code YAML
+- Deploying to any Docker-compatible host
+- You need maximum control over container configuration
+- Simple single-service deployments
+
+**Use Both:**
+- Aspire for local development
+- Generate Docker Compose for production deployment
+- Best of both worlds!
+
+### Evolution of This Blog's Docker Setup
+
+This blog's Docker journey shows typical progression:
+
+1. **[July 2024 - Simple Start](/dockercompose)**: Just the app, Cloudflared, and Watchtower
+2. **[August 2024 - Dev Dependencies](/dockercomposedevdeps)**: Added development-only services
+3. **[August 2024 - ImageSharp Fix](/imagesharpwithdocker)**: Solved volume permissions for caching
+4. **[November 2024 - Full Stack](/dockercompose)**: Complete observability with Prometheus, Grafana, Seq
+5. **Today**: Aspire option for .NET-first development
+
+**Lessons learned:**
+- Start simple, add complexity only when needed
+- Separate dev and production configurations
+- Resource limits prevent one service from killing others
+- Volume mounts for caches save significant reprocessing time
+- Watchtower enables zero-downtime auto-updates
+- Observability is worth the resource cost in production
+
 ## Best Practices Summary
 
 ### Dockerfile Best Practices
@@ -1235,24 +1900,87 @@ USER appuser
 
 ## Conclusion
 
-Docker has evolved from a simple containerization tool to a comprehensive platform for building, shipping, and running modern applications. Whether you're:
+Docker has evolved from a simple containerization tool to a comprehensive platform for building, shipping, and running modern applications. This guide has taken you from fundamentals to production-ready deployments, with real-world examples from running mostlylucid.com.
 
-- **Getting Started**: Master Dockerfile basics and container fundamentals
-- **Building Apps**: Leverage Docker Compose for multi-service orchestration
-- **Accelerating ML**: Harness GPU support for compute-intensive workloads
-- **Going Multi-Platform**: Use buildx for ARM and AMD64 compatibility
-- **Simplifying .NET**: Embrace built-in container publishing
-- **Building Microservices**: Explore .NET Aspire for distributed applications
+### Key Takeaways
 
-The container ecosystem provides tools for every scenario. Start simple, iterate, and gradually adopt advanced features as your needs grow.
+**For Beginners:**
+- Start with the [basic Docker Compose setup](/dockercompose) - just 3 services
+- Use [development-only dependencies](/dockercomposedevdeps) for local work
+- Solve common issues like [volume permissions](/imagesharpwithdocker) early
 
-### Further Resources
+**For Self-Hosters on Budget VPS:**
+- Start minimal: App + Database + Reverse Proxy (~800MB RAM)
+- Use Alpine images and resource limits
+- Offload observability to free tiers (Seq Cloud, Grafana Cloud, UptimeRobot)
+- Run expensive services (translation, ML) on-demand only
+- A $6/month VPS can run a production blog with room to spare
 
+**For Production Deployments:**
+- Health checks enable zero-downtime updates with Watchtower
+- Separate networks provide security (frontend/backend isolation)
+- Bind mounts for data you need to backup/access
+- Named volumes for Docker-managed storage
+- CPU/memory limits prevent resource starvation
+- Cloudflare Tunnel eliminates need for public IP addresses
+
+**For .NET Developers:**
+- Built-in container publishing in .NET 9 eliminates Dockerfiles for simple apps
+- Chiseled Ubuntu images provide minimal attack surface
+- .NET Aspire offers best-in-class local development experience
+- Aspire can generate Docker Compose for production deployment
+- OpenTelemetry integration comes free with Aspire
+
+**For Advanced Use Cases:**
+- GPU containers enable ML/AI workloads with 10-15x speedup
+- Multi-architecture builds support ARM64 and AMD64 from single source
+- GitHub Actions automates multi-platform builds
+- Layer caching dramatically speeds up repeated builds
+
+### The Journey
+
+This blog's Docker evolution mirrors typical progression:
+
+| Stage | Services | RAM Usage | Complexity |
+|-------|----------|-----------|------------|
+| **Stage 1** (July 2024) | App + Tunnel | ~300MB | Simple |
+| **Stage 2** (Aug 2024) | + Dev dependencies | ~500MB | Learning |
+| **Stage 3** (Aug 2024) | + Volume fixes | ~500MB | Debugging |
+| **Stage 4** (Nov 2024) | Full observability | ~3.5GB | Production |
+| **Stage 5** (Today) | + Aspire option | Variable | Modern |
+
+**The pattern**: Start simple, solve problems as they arise, add complexity only when needed.
+
+### What's Next?
+
+Depending on your path:
+
+- **Learning Docker**: Start with [Docker Compose basics](/dockercompose)
+- **Self-Hosting**: Try the minimal VPS setup from this article
+- **Building Microservices**: Explore .NET Aspire
+- **Running ML Workloads**: Check out the [mostlylucid-nmt translation service](https://github.com/scottgal/mostlylucid-nmt)
+- **Multi-platform**: Set up buildx for ARM64 + AMD64 builds
+
+### Resources
+
+**Official Documentation:**
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Reference](https://docs.docker.com/compose/compose-file/)
 - [.NET Container Images](https://github.com/dotnet/dotnet-docker)
 - [.NET Aspire Documentation](https://learn.microsoft.com/en-us/dotnet/aspire/)
 - [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
 - [Docker Buildx](https://github.com/docker/buildx)
+
+**This Blog's Docker Series:**
+1. [Docker Compose](/dockercompose) - Getting started
+2. [Development Dependencies](/dockercomposedevdeps) - Local dev setup
+3. [ImageSharp with Docker](/imagesharpwithdocker) - Volume permissions
+4. This article - Deep dive into production
+
+**Related Projects:**
+- [mostlylucid-nmt](https://github.com/scottgal/mostlylucid-nmt) - GPU/CPU translation service with multi-arch builds
+- [Mostlylucid Blog Source](https://github.com/scottgal/mostlylucidweb) - See the actual code and compose files
+
+Remember: The best architecture is the one that meets your needs without unnecessary complexity. Start simple, measure, optimize when you hit actual bottlenecks - not imagined ones.
 
 Happy containerizing! 🐳
