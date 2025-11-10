@@ -81,6 +81,55 @@ This layering is powerful:
 - **Sharing**: Multiple images can share base layers
 - **Efficiency**: Only changed layers need to be downloaded/uploaded
 
+#### Understanding Dockerfile Execution: Not Your Machine!
+
+A common source of confusion for Docker beginners: **Commands in a Dockerfile don't run on your machine - they run inside the build container's OS.**
+
+Here's what actually happens:
+
+```
+Your Machine (Windows/Mac/Linux)
+    ↓ (reads Dockerfile)
+Build Image (usually Linux)
+    ↓ (executes RUN commands here)
+Output Image (contains results)
+```
+
+**Why this matters:**
+
+```dockerfile
+# You're on Windows, writing this Dockerfile
+FROM ubuntu:24.04
+
+# This RUN command executes in Ubuntu, NOT on your Windows machine!
+RUN apt-get update && apt-get install -y curl
+
+# This copies FROM your Windows filesystem
+COPY myapp.exe /app/
+
+# This executes IN the Ubuntu container
+RUN chmod +x /app/myapp.exe
+```
+
+**Key insights:**
+1. **Local filesystem**: Your `COPY` and `ADD` commands read from your machine
+2. **Build image**: Your `RUN` commands execute in the container's OS (not your machine)
+3. **Output image**: The final image contains all the layers created during build
+4. **Cross-platform**: You can be on Windows, building a Linux image, using Linux commands
+
+This is why you can write `apt-get` commands in a Dockerfile on Windows - they're not running on Windows! They're running inside the Linux-based build container.
+
+**Example confusion scenario:**
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:9.0  # This is Linux-based
+
+# You might think: "But I'm on Windows, how can I use these Linux commands?"
+RUN apt-get update  # ← Executes in the Linux build container, not your Windows machine
+RUN dotnet restore  # ← Executes in the Linux build container
+```
+
+The Docker daemon handles the translation between your local filesystem and the containerized build environment.
+
 #### Dockerfile Best Practices
 
 Here's a production-ready .NET Dockerfile with commentary:
