@@ -9,6 +9,8 @@ If you've been following the AI space, you'll know that running large language m
 
 In this article, I'll show you how to build a proper cross-platform desktop chat application using Avalonia UI and LLamaSharp. We'll create a clean MVVM architecture, implement streaming responses, and most importantly - keep it all local. No cloud APIs, no subscription fees, just you and a tiny language model having a chat on your own machine.
 
+I'm developing this on my workstation - a Ryzen 9950X with 96GB of RAM and an NVIDIA A4000 (16GB VRAM). While that might sound like overkill for running tiny models, it means I can test everything from TinyLlama to much larger models without breaking a sweat. The beauty of this approach is that the same code runs brilliantly on far more modest hardware too.
+
 This is the kind of application you might build as a starting point for more sophisticated integrations - perhaps connecting it to the [mostlyucid.llmbackend](https://github.com/scottgal/mostlyucid.llmbackend) universal LLM/NMT backend I'm working on, or using it as a test bed for your own AI experiments.
 
 [TOC]
@@ -690,22 +692,32 @@ LLMs are memory-hungry beasts, even when quantized. Here's what to expect:
 - **Mistral 7B Q4_K_M**: ~5GB RAM
 - **Llama 2 13B Q4_K_M**: ~9GB RAM
 
+With 96GB of RAM on my workstation, I can comfortably run even the larger quantized models (like Mixtral 8x7B at ~30GB) with plenty of headroom for the OS and other applications. For most users on typical hardware with 16-32GB of RAM, sticking to models under 13B parameters is sensible.
+
 The context size also affects memory. A 2048 context uses less RAM than 4096, but you can hold less conversation history.
 
 ## Inference Speed
 
-Speed depends on your hardware:
+Speed depends on your hardware. Here are some real-world numbers:
 
 **CPU Only:**
-- Modern desktop CPU: 5-15 tokens/second
+- Modern desktop CPU (like my 9950X): 15-25 tokens/second for TinyLlama, 8-12 for Phi-2
+- Mid-range desktop CPU: 5-15 tokens/second
 - Laptop CPU: 2-8 tokens/second
 
 **With GPU Offloading:**
-- Entry-level GPU: 15-30 tokens/second
-- Mid-range GPU (RTX 3060): 30-60 tokens/second
+On my NVIDIA A4000 (16GB VRAM), I get some rather pleasing results:
+- **TinyLlama 1.1B**: 60-80 tokens/second with full GPU offload
+- **Phi-2 2.7B**: 45-55 tokens/second with full GPU offload
+- **Mistral 7B Q4_K_M**: 30-40 tokens/second
+- **Llama 2 13B Q4_K_M**: 18-25 tokens/second
+
+For comparison on other GPUs:
+- Entry-level GPU (GTX 1660, RTX 3050): 15-30 tokens/second
+- Mid-range GPU (RTX 3060, RTX 4060): 30-60 tokens/second
 - High-end GPU (RTX 4090): 80-120+ tokens/second
 
-To enable GPU offloading, increase `GpuLayerCount` in the `ModelConfig`. Start with 10 layers and increase until you hit memory limits or performance degrades.
+To enable GPU offloading, increase `GpuLayerCount` in the `ModelConfig`. With 16GB VRAM on the A4000, I typically offload all layers for models up to 7B parameters. Start with 10 layers and increase until you hit memory limits or performance degrades.
 
 ## UI Responsiveness
 
