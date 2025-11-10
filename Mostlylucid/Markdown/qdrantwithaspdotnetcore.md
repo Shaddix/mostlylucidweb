@@ -1,13 +1,15 @@
-# Building a Semantic Search Engine with Qdrant and ASP.NET Core
+# Building a Self-Hosted Semantic Search Engine with Qdrant and ASP.NET Core
 
 <datetime class="hidden">2025-11-10T12:00</datetime>
-<!-- category -- ASP.NET, Qdrant, Vector Search, Semantic Search, Docker -->
+<!-- category -- ASP.NET, Qdrant, Vector Search, Semantic Search, Docker, Self-Hosting -->
 
 # Introduction
 
 If you've been following the AI space, you've probably heard about vector databases and semantic search. Unlike traditional full-text search that matches keywords, semantic search understands the *meaning* behind your queries. This means searching for "feline pets" can return results about "cats" - rather clever stuff.
 
-In this post, I'll show you how to build a self-hosted semantic search engine using Qdrant (a high-performance vector database) and ASP.NET Core. We'll cover everything from setting up Qdrant in Docker to integrating it into your ASP.NET application.
+**Why self-hosting matters:** Most vector database solutions push you toward expensive managed services. But here's the thing - with Qdrant, you can run a production-grade semantic search engine on a $5/month VPS. You get complete control over your data, no vendor lock-in, and significant cost savings. Perfect for indie developers, startups, and anyone who values privacy and control.
+
+In this post, I'll show you how to build a **fully self-hosted** semantic search engine using Qdrant (a high-performance vector database) and ASP.NET Core. We'll cover everything from setting up Qdrant in Docker to integrating it into your ASP.NET application. I've included a complete sample application in the repository that demonstrates a minimal but complete implementation.
 
 [TOC]
 
@@ -15,12 +17,15 @@ In this post, I'll show you how to build a self-hosted semantic search engine us
 
 [Qdrant](https://qdrant.tech/) (pronounced "quadrant") is an open-source vector database and vector search engine written in Rust. It's designed to store and search high-dimensional vectors efficiently, making it perfect for semantic search, recommendation systems, and AI applications.
 
-What makes Qdrant special:
-- **Fast**: Built in Rust for maximum performance
-- **Scalable**: Handles millions of vectors with ease
-- **Self-hostable**: No vendor lock-in, run it yourself
-- **Feature-rich**: Filtering, payload storage, and sophisticated search options
+What makes Qdrant special for self-hosting:
+- **Truly Open Source**: Apache 2.0 license - no "open core" tricks, no enterprise-only features
+- **Fast**: Built in Rust for maximum performance with minimal resource usage
+- **Scalable**: Handles millions of vectors with ease on modest hardware
+- **Self-hostable**: Runs perfectly on a single Docker container - no complex infrastructure needed
+- **Zero External Dependencies**: Unlike managed services, your data never leaves your server
+- **Feature-rich**: Filtering, payload storage, and sophisticated search options out of the box
 - **Easy to use**: Clean REST API and multiple client libraries
+- **Low Resource Requirements**: Can run on as little as 512MB RAM for small collections
 
 ```mermaid
 graph LR
@@ -889,24 +894,45 @@ public async Task<CollectionInfo> GetCollectionStatsAsync(CancellationToken ct =
 }
 ```
 
-# Cost Analysis
+# Cost Analysis: Why Self-Hosting Wins
 
-Running Qdrant self-hosted is remarkably cost-effective compared to managed services:
+Running Qdrant self-hosted is remarkably cost-effective compared to managed services. Let's break down the numbers:
 
-**OpenAI Embeddings Cost:**
-- text-embedding-3-small: $0.02 per 1M tokens
-- Average blog post: ~1000 tokens
-- 1000 blog posts: ~$0.02 for one-time indexing
+**Self-Hosted Setup (Annual Costs):**
+- Small VPS (2GB RAM, 1 CPU): $60-120/year (e.g., Hetzner, DigitalOcean)
+- OpenAI embeddings (one-time indexing):
+  - text-embedding-3-small: $0.02 per 1M tokens
+  - 1000 blog posts (~1000 tokens each): ~$0.02 one-time
+  - Re-indexing occasionally: ~$0.10/year
+- **Total Year 1: ~$60-120**
+- **Ongoing: $60-120/year** (just server costs)
 
-**Server Costs:**
-- Small VPS for Qdrant: $5-10/month
-- Can handle millions of vectors
+**Managed Vector Database Services (Annual Costs):**
+- Pinecone:
+  - Starter: $70/month = **$840/year**
+  - Standard: $250/month = **$3,000/year**
+- Weaviate Cloud:
+  - Sandbox: Free (limited, not production)
+  - Standard: $25/month = **$300/year**
+  - Business: $100+/month = **$1,200+/year**
+- Milvus Cloud: Similar pricing to Weaviate
 
-**Managed Alternatives:**
-- Pinecone: Starts at $70/month
-- Weaviate Cloud: Starts at $25/month
+**The Self-Hosting Advantage:**
+- **10-50x cheaper** for small to medium projects
+- Complete data ownership and privacy
+- No usage limits or throttling
+- Full control over infrastructure
+- Can scale vertically (upgrade your VPS) without vendor permission
+- No surprise bills if traffic spikes
+- Works completely offline if needed
 
-Self-hosting wins by a landslide for small to medium projects!
+**When Managed Services Make Sense:**
+- Your team has no DevOps experience
+- You need global distribution from day one
+- You're processing millions of queries per day
+- Enterprise support requirements
+
+For most indie developers, startups, and side projects? **Self-hosting Qdrant is a no-brainer.**
 
 # Common Gotchas
 
@@ -915,6 +941,35 @@ Self-hosting wins by a landslide for small to medium projects!
 - **Persistence**: Always mount a volume for `/qdrant/storage` or you'll lose data on container restart
 - **Memory usage**: Qdrant keeps vectors in memory for speed. Plan accordingly (roughly 4 bytes per dimension per vector)
 - **Concurrent requests**: The gRPC client is more efficient than REST for high-throughput scenarios
+
+# Try It Yourself: Sample Application
+
+I've created a minimal but complete sample application that demonstrates self-hosted Qdrant with markdown document indexing. It's perfect for getting started without wading through the complexity of a full blog platform.
+
+The sample app includes:
+- A simple ASP.NET Core 9.0 application
+- Qdrant running in Docker
+- Local Ollama embeddings (no external API calls!)
+- Markdown file indexing
+- Basic search API
+- Complete docker-compose setup
+
+**Find it in the repository:** `samples/QdrantMarkdownSearch/`
+
+The sample is designed to be:
+- **Self-contained**: Everything runs locally, no cloud services required
+- **Educational**: Clean code with comments explaining each step
+- **Practical**: A working foundation you can build upon
+- **Free**: Uses Ollama for embeddings, so zero API costs
+
+Run it with:
+```bash
+cd samples/QdrantMarkdownSearch
+docker-compose up -d
+dotnet run
+```
+
+Within minutes, you'll have a working semantic search engine indexing markdown files!
 
 # In Conclusion
 
