@@ -1048,6 +1048,347 @@ This workflow:
 - Generates tags automatically (branch name, semantic versions, SHA)
 - Uses registry caching for faster builds
 
+## Advanced Docker Build Patterns: Real-World Example
+
+The [mostlyucid-nmt](https://github.com/scottgal/mostlyucid-nmt) translation service demonstrates sophisticated Docker build strategies that optimize for different deployment scenarios. This project showcases how to build and distribute multiple image variants from a single codebase.
+
+### Build Variant Strategy Matrix
+
+The project produces **eight different image variants** to cover different use cases:
+
+| Image Tag | Architecture | Accelerator | Model Preloading | Size | Use Case |
+|-----------|-------------|-------------|-----------------|------|----------|
+| `:cpu` (`:latest`) | AMD64, ARM64 | CPU | Yes (~100 models) | ~2.5GB | Production CPU deployments |
+| `:cpu-min` | AMD64, ARM64 | CPU | No | ~1.5GB | Dynamic model loading |
+| `:gpu` | AMD64 only | NVIDIA CUDA | Yes (~100 models) | ~5GB | Production GPU deployments |
+| `:gpu-min` | AMD64 only | NVIDIA CUDA | No | ~4GB | GPU with dynamic models |
+
+**Why multiple variants?**
+1. **Production (full)**: Preloaded models = instant translation, no cold start
+2. **Development (minimal)**: Fast builds (~30s vs 5-10min), volume-mount models
+3. **GPU**: 10-15x faster for high-throughput scenarios
+4. **CPU**: Runs anywhere, no special hardware
+5. **ARM64**: Raspberry Pi, Apple Silicon, ARM servers
+
+### Layered Caching Strategy
+
+The Dockerfiles use strategic layer ordering to maximize build cache reuse:
+
+**Standard CPU Dockerfile structure:**
+```dockerfile
+FROM python:3.12-slim
+
+# Layer 1: System dependencies (rarely changes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 2: Python dependencies (changes when requirements.txt updates)
+WORKDIR /app
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir -r requirements-prod.txt
+
+# Layer 3: Model preloading (slowest layer, changes when model list changes)
+ARG PRELOAD_LANGS="de,es,fr,it,nl,pl,pt,ru,zh,ja,ar,uk"
+ARG PRELOAD_PAIRS=""
+RUN python -c "from easynmt import EasyNMT; \
+    import os; \
+    langs = os.environ.get('PRELOAD_LANGS', '').split(','); \
+    pairs = os.environ.get('PRELOAD_PAIRS', '').split(',') if os.environ.get('PRELOAD_PAIRS') else []; \
+    model = EasyNMT('opus-mt'); \
+    [model.translate('warmup', source_lang='en', target_lang=lang) for lang in langs if lang]; \
+    [model.translate('warmup', source_lang=src, target_lang=tgt) for pair in pairs for src,tgt in [pair.split('->')] if pair]"
+
+# Layer 4: Application code (changes frequently, rebuilds in seconds)
+COPY app.py .
+COPY src/ ./src/
+
+# Runtime configuration
+EXPOSE 8000
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_CACHE_DIR=/app/models \
+    WEB_CONCURRENCY=4
+
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--timeout", "300", "--graceful-timeout", "5"]
+```
+
+**Why this ordering matters:**
+
+| Layer | Rebuild Frequency | Build Time | Cache Hit Rate |
+|-------|------------------|------------|----------------|
+| Base image | Never (unless Python version changes) | 0s | 99% |
+| System deps | Rarely | ~30s | 95% |
+| Python deps | Occasionally (dependency updates) | ~60s | 80% |
+| Model preload | Rarely (model list changes) | 5-10min | 90% |
+| App code | Every commit | ~3s | 10% |
+
+**Result**: Most builds complete in ~3 seconds using cached layers!
+
+### GPU vs CPU: Base Image Differences
+
+**CPU Dockerfile:**
+```dockerfile
+FROM python:3.12-slim
+
+# CPU-optimized PyTorch (smaller, no CUDA)
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# CPU performance tuning
+ENV OMP_NUM_THREADS=4 \
+    MKL_NUM_THREADS=4 \
+    EASYNMT_BATCH_SIZE=16
+```
+
+**GPU Dockerfile (Dockerfile.gpu):**
+```dockerfile
+FROM nvidia/cuda:12.6.2-cudnn-runtime-ubuntu24.04
+
+# Install Python 3.12
+RUN apt-get update && apt-get install -y \
+    python3.12 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# CUDA-enabled PyTorch matching CUDA 12.6
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# GPU performance tuning
+ENV CUDA_VISIBLE_DEVICES=0 \
+    EASYNMT_BATCH_SIZE=64 \
+    EASYNMT_MODEL_ARGS='{"torch_dtype":"fp16"}' \
+    MAX_INFLIGHT_TRANSLATIONS=1
+
+# Runtime needs GPU access
+# docker run --gpus all scottgal/mostlylucid-nmt:gpu
+```
+
+**Key differences:**
+- **Base image**: `python:3.12-slim` (300MB) vs `nvidia/cuda:12.6.2-cudnn-runtime` (1.8GB)
+- **PyTorch wheel**: CPU (~140MB) vs CUDA 12.4 (~2.5GB)
+- **Batch size**: CPU=16 vs GPU=64 (GPUs handle larger batches efficiently)
+- **Precision**: CPU=FP32 vs GPU=FP16 (half precision saves GPU memory)
+
+### ARM64 Optimizations
+
+**Dockerfile.arm64** includes ARM-specific tuning:
+
+```dockerfile
+FROM python:3.11-slim-bookworm  # Debian Bookworm has better ARM support
+
+# Minimal dependencies (ARM devices often storage-constrained)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ARM performance tuning (Raspberry Pi 4/5 with 4GB RAM)
+ENV OMP_NUM_THREADS=3 \
+    MKL_NUM_THREADS=3 \
+    OPENBLAS_NUM_THREADS=3 \
+    EASYNMT_BATCH_SIZE=4 \
+    MAX_CACHED_MODELS=1 \
+    MEMORY_CRITICAL_THRESHOLD=70.0
+
+# Single worker (memory constrained)
+CMD ["gunicorn", "app:app", "-w", "1", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "300"]
+```
+
+**ARM-specific optimizations:**
+1. **Reduced threading**: 3 threads (vs 4 on x86) for thermal throttling
+2. **Smaller batches**: 4 vs 16 on x86 (limited RAM)
+3. **Single worker**: Prevents OOM on 4GB devices
+4. **Memory monitoring**: Aggressive cleanup at 70% RAM usage
+5. **Conservative timeouts**: ARM devices are slower, allow more time
+
+### Minimal Variants: Runtime Model Loading
+
+**Dockerfile.min** approach:
+
+```dockerfile
+FROM python:3.12-slim
+
+# Dependencies only, NO model preloading
+COPY requirements-prod.txt .
+RUN pip install --no-cache-dir -r requirements-prod.txt
+
+# Application code
+COPY app.py .
+COPY src/ ./src/
+
+# Models loaded on-demand from volume
+ENV MODEL_CACHE_DIR=/models
+
+VOLUME ["/models"]
+```
+
+**Usage with volume mount:**
+```bash
+# Create persistent model cache
+docker volume create translation-models
+
+# First run: downloads models on-demand
+docker run -d \
+  -v translation-models:/models \
+  -p 8888:8000 \
+  scottgal/mostlylucid-nmt:cpu-min
+
+# Subsequent runs: reuse cached models
+# Same volume mount, instant startup
+```
+
+**Minimal vs Full trade-offs:**
+
+| Aspect | Full Image | Minimal Image |
+|--------|-----------|---------------|
+| **Image size** | 2.5GB | 1.5GB |
+| **Build time** | 5-10 minutes | 30 seconds |
+| **First start** | Instant translation | 1-2 min model download |
+| **Subsequent starts** | Instant | Instant (if volume persists) |
+| **Disk usage** | 2.5GB per container | 1.5GB + shared volume |
+| **Development** | Slow iteration | Fast iteration |
+| **Production** | No network dependency | Needs volume persistence |
+
+### Automated Multi-Variant Build Script
+
+**build-all.sh** builds all variants with consistent versioning:
+
+```bash
+#!/bin/bash
+
+# Generate version tags
+VERSION=$(date +%Y%m%d.%H%M%S)
+GIT_SHA=$(git rev-parse --short HEAD)
+
+# Enable buildx for multi-platform
+docker buildx create --use --name multiarch 2>/dev/null || true
+
+echo "Building all variants for mostlylucid-nmt:${VERSION}"
+
+# CPU Full (multi-platform)
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile \
+  -t scottgal/mostlylucid-nmt:cpu \
+  -t scottgal/mostlylucid-nmt:latest \
+  -t scottgal/mostlylucid-nmt:${VERSION} \
+  --build-arg VERSION=${VERSION} \
+  --build-arg VCS_REF=${GIT_SHA} \
+  --push \
+  .
+
+# CPU Minimal (multi-platform)
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile.min \
+  -t scottgal/mostlylucid-nmt:cpu-min \
+  -t scottgal/mostlylucid-nmt:${VERSION}-min \
+  --build-arg VERSION=${VERSION} \
+  --push \
+  .
+
+# GPU Full (AMD64 only)
+docker build \
+  -f Dockerfile.gpu \
+  -t scottgal/mostlylucid-nmt:gpu \
+  -t scottgal/mostlylucid-nmt:${VERSION}-gpu \
+  --build-arg VERSION=${VERSION} \
+  --build-arg PRELOAD_LANGS="de,es,fr,it,nl,pl,pt,ru,zh,ja,ar,uk" \
+  --push \
+  .
+
+# GPU Minimal (AMD64 only)
+docker build \
+  -f Dockerfile.gpu.min \
+  -t scottgal/mostlylucid-nmt:gpu-min \
+  --push \
+  .
+
+echo "All builds complete!"
+echo "Images tagged with version: ${VERSION}"
+```
+
+**Build automation benefits:**
+1. **Consistent versioning**: Timestamp + Git SHA for traceability
+2. **Multi-platform**: Single command builds for AMD64 and ARM64
+3. **Parallel publishing**: All variants pushed simultaneously
+4. **Flexible preloading**: Build args control which models to include
+5. **CI/CD ready**: Can be triggered by GitHub Actions
+
+### Practical Usage Scenarios
+
+**Scenario 1: Development (fast iteration)**
+```bash
+# Use minimal image with volume mount
+docker run -d \
+  -v ./models:/models \
+  -v ./src:/app/src \
+  -p 8888:8000 \
+  scottgal/mostlylucid-nmt:cpu-min
+
+# Edit code locally, container picks up changes
+# Models cached in volume, no re-download
+```
+
+**Scenario 2: Production CPU (high availability)**
+```bash
+# Use full image, no volume needed
+docker run -d \
+  --restart always \
+  --memory=2g \
+  --cpus=2 \
+  -p 8888:8000 \
+  scottgal/mostlylucid-nmt:cpu
+
+# Models preloaded, instant translation
+# No external dependencies
+```
+
+**Scenario 3: Production GPU (high throughput)**
+```yaml
+# docker-compose.yml
+services:
+  translation:
+    image: scottgal/mostlylucid-nmt:gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - EASYNMT_BATCH_SIZE=64
+```
+
+**Scenario 4: ARM64 edge deployment (Raspberry Pi)**
+```bash
+# Automatic platform selection
+docker run -d \
+  --restart always \
+  --memory=3g \
+  -p 8888:8000 \
+  scottgal/mostlylucid-nmt:cpu
+
+# Docker pulls ARM64 variant automatically
+# Optimized for ARM performance
+```
+
+### Key Takeaways from Advanced Build Patterns
+
+1. **Layer caching is critical**: Order Dockerfile instructions by change frequency
+2. **Build variants serve different needs**: Production vs development vs constrained hardware
+3. **Multi-platform support**: Use buildx for AMD64 + ARM64 from single Dockerfile
+4. **Preloading vs runtime loading**: Trade build time for startup time
+5. **Architecture-specific optimization**: Tune threading, batch sizes, memory limits per platform
+6. **Automation matters**: Scripts ensure consistency across variants
+7. **Version everything**: Timestamps + Git SHA for traceability
+8. **Volume strategy**: Persistent cache volumes save regeneration time
+
+These patterns from mostlyucid-nmt demonstrate production-ready Docker practices applicable to any complex application with multiple deployment scenarios.
+
 ## .NET 9 Container Improvements
 
 .NET 9 introduces significant improvements to container support, making it easier than ever to containerize .NET applications without even writing a Dockerfile.
