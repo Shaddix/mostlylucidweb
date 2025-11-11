@@ -696,6 +696,189 @@ This spec followed the principles discussed:
 
 The result: a feature that's been running in production for months, automatically translating every blog post with minimal intervention.
 
+# Common Questions About Agile Specs
+
+Based on what we've covered, here are questions that come up frequently:
+
+## "Do I really need a spec for a small feature?"
+
+It depends on "small." If it's truly trivial (changing button text, fixing a typo), no. But if you need to:
+- Estimate how long it'll take
+- Get agreement from stakeholders
+- Ensure QA knows what to test
+- Document what you built for future reference
+
+Then yes, even a quick spec helps. It doesn't need to be formal. A few bullet points in a ticket covering Problem, Solution, and Done criteria is often enough.
+
+The test: if you can't explain what "done" looks like in two sentences, you need a spec.
+
+## "How do I handle stakeholders who want everything in scope?"
+
+Point to the Out of Scope section. Explain that:
+1. **Adding more increases timeline** - Do they want feature A in 2 weeks or features A, B, C, and D in 3 months?
+2. **We can do it next** - "That's a great idea. Let's get the core working first, then tackle that as a separate spec."
+3. **Time-box forces priorities** - "We have 2 weeks. Which of these is most important?"
+
+If they insist everything is equally critical, suggest they choose which other work to delay instead. That usually clarifies priorities quickly.
+
+## "What if the spec changes so much it's unrecognizable from the start?"
+
+That's fine, as long as:
+- Changes are documented (update the spec, don't just change the code)
+- Changes are communicated (stakeholders know what shifted and why)
+- You learned something (the changes reflect learning, not chaos)
+
+If the spec is unrecognizable because you completely misunderstood the problem initially, that's a sign to do more discovery before starting next time. But iteration and learning are expected.
+
+The spec's version history should tell the story of what you learned.
+
+## "Should I write specs for bug fixes?"
+
+For critical bugs: no, just fix them.
+
+For complex bugs that affect multiple systems or require architectural changes: yes. Treat it like a feature. What's broken (problem), how you'll fix it (solution), how you'll know it's fixed (done criteria), what you're not changing (out of scope).
+
+For everything in between: use your judgement. If the fix isn't obvious or might have side effects, a quick spec helps.
+
+## "How formal should the spec be?"
+
+As formal as your team needs. Some teams are fine with detailed JIRA tickets. Others want proper documents in version control.
+
+The formality matters less than the content:
+- Clear problem statement
+- Proposed solution
+- Definition of done
+- Clear scope boundaries
+
+You can write that in Markdown, Confluence, Word, or scrawled on a napkin. The format doesn't matter; the thinking does.
+
+## "What if I'm the only developer on the project?"
+
+You still need specs, maybe more so. In six months when you need to extend this feature, you won't remember why you made certain decisions. The spec is your past self talking to your future self.
+
+Plus you still need to:
+- Estimate work for whoever's paying you
+- Define what "done" means so you can finish
+- Document what you built for others who might join later
+
+Writing specs for yourself is like writing unit tests: it feels slower now but saves time later.
+
+## "How do I deal with scope creep disguised as 'requirements clarification'?"
+
+Call it out. When someone says "Oh, I forgot to mention it should also do X," that's not clarification; it's new scope.
+
+Response: "That's a good requirement, but it's not what we agreed in the spec. Let's add it to the Out of Scope section for now and discuss whether to include it or save it for version 2."
+
+If it really is a requirement (not a nice-to-have), then:
+1. Update the spec to include it
+2. Update the estimate
+3. Get agreement on the new timeline or what to cut to fit the original timeline
+
+Never silently absorb scope creep. It'll destroy your estimates and credibility.
+
+## "Can I start coding before the spec is complete?"
+
+Yes, if you're prototyping to answer open questions. No, if you're building for production.
+
+Prototyping to learn is good: "We have three approaches. Let me spike each one to see which works best." That informs the spec.
+
+Building production code before the spec is ready means you're guessing at requirements. You'll probably build the wrong thing.
+
+Exception: if you're the product owner and developer (solo project), you can spec and code simultaneously. But still document your decisions as you go.
+
+## "What if my team doesn't read specs?"
+
+Find out why:
+- **Too long?** Make them shorter, more scannable
+- **Too formal?** Use a lighter format
+- **Not relevant?** Make sure they actually need the detail you're providing
+- **Bad habit?** Start requiring spec review before development starts
+
+If people skip spec reviews and then build the wrong thing, make the pain visible. "This wasn't in the spec, so we'll need to rework it" is a lesson learned.
+
+Also: make specs easy to find. If they're buried in some obscure wiki, nobody will read them.
+
+## "How much time should I spend on a spec?"
+
+Rule of thumb: 5-10% of development time.
+
+For a 2-week feature: 1-2 days on the spec.
+For a 1-week feature: half a day on the spec.
+For a 2-day feature: an hour or two on the spec.
+
+But don't be religious about it. Some features need more up-front thinking. Others are obvious and the spec takes 20 minutes.
+
+If you're spending more time on the spec than on implementation, you're overthinking it. Remember: specs are tools to help you work, not artworks.
+
+## "What about specs for research or exploration tasks?"
+
+These need different "done" criteria. Instead of "feature X works," it's "we've answered question Y."
+
+Example spec for exploration:
+- **Problem**: We don't know if approach A or approach B is better for the recommendation engine
+- **Solution**: Spend 1 week prototyping both approaches
+- **Done criteria**: We have working prototypes of each, performance metrics for both, and a recommendation on which to pursue
+- **Out of scope**: Production implementation (comes after we decide)
+
+Time-boxing is critical for exploration. Without it, research tasks never end.
+
+## "How do I write specs for features I don't fully understand yet?"
+
+Start with what you know:
+- Problem statement (you should know this)
+- Proposed approach (your best guess)
+- Open questions (everything you don't know)
+- Done criteria (even if rough)
+
+Mark sections as "TBD." Be honest about uncertainty.
+
+Then use the spec review process to fill gaps. The conversations during review often clarify what you didn't understand.
+
+Remember: incomplete-but-honest beats complete-but-wrong.
+
+## "Can GitHub issues/JIRA tickets be the spec?"
+
+Absolutely. The spec doesn't need to be a separate document. A well-written GitHub issue or JIRA ticket can serve as the spec perfectly well.
+
+What matters is the content, not the container. A good issue-as-spec should have:
+- **Clear problem statement** - What are we solving and why?
+- **Proposed solution** - How we'll approach it
+- **Done criteria** - Specific, testable acceptance criteria
+- **Scope boundaries** - What's in and out of scope (use labels like "out-of-scope" for items you're explicitly not doing)
+- **Open questions** - Mark these with a "question" label or similar
+
+The advantages of using issues:
+- **Everything in one place** - Code, spec, discussion, and task tracking together
+- **Easy linking** - Reference related issues, PRs, commits
+- **Built-in versioning** - Issue edit history shows how requirements evolved
+- **Familiar workflow** - Team already knows how to use it
+
+Tips for using issues as specs:
+- Use the issue description for the spec, not buried in comments (people read the description)
+- Update the description as the spec evolves (add "Edit:" sections to show changes)
+- Use labels to indicate state: "needs-spec," "spec-ready," "spec-changed," etc.
+- Pin important spec discussions so they don't get lost in 100 comments
+- Link to supporting documents (diagrams, mockups) if needed
+
+The test: could someone read the issue and know what to build, what "done" means, and what's out of scope? If yes, it's a good spec regardless of format.
+
+## "What about specs in regulated industries?"
+
+If you're in healthcare, finance, aerospace, or other regulated fields, you might need more formal specs for compliance. The principles still apply:
+- Start with the problem
+- Define done clearly
+- Evolve as you learn
+- Keep specs current
+
+But you'll also need to:
+- Follow your industry's documentation standards
+- Include required sections (safety analysis, regulatory compliance, audit trails)
+- Get formal sign-offs where required
+- Maintain more detailed version history
+- Keep specs after the project ends (for audits)
+
+Even in regulated environments, agile speccing works. You just have more hoops to jump through. The spec is still a tool; it's just a tool that needs to satisfy regulators as well as developers.
+
 # In Conclusion
 
 Writing good feature specs in an agile environment is a skill that improves with practice. The goal isn't to write perfect specs up front (they don't exist); it's to write specs that help your team get started and evolve as you learn.
