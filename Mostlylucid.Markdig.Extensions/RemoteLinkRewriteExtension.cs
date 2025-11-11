@@ -3,7 +3,7 @@ using Markdig.Renderers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
-namespace Mostlylucid.Services.Markdown.MarkDigExtensions;
+namespace Mostlylucid.Markdig.Extensions;
 
 /// <summary>
 /// Markdig extension that rewrites relative links in fetched markdown to point back to the source

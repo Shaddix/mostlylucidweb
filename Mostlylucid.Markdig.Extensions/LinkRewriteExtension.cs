@@ -3,7 +3,7 @@ using Markdig.Renderers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
-namespace Mostlylucid.Services.Markdown.MarkDigExtensions;
+namespace Mostlylucid.Markdig.Extensions;
 
 /// <summary>
 /// Markdig extension that rewrites markdown links (.md files) to proper blog URLs
@@ -44,24 +44,36 @@ public class LinkRewriteExtension : IMarkdownExtension
             if (url.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
             {
                 // Remove .md extension
-                var slug = url[..^3];
+                var path = url[..^3];
 
-                // Remove any leading path separators
-                slug = slug.TrimStart('/', '\\');
+                // Split path into parts
+                var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-                // Normalize slug: convert underscores/spaces to hyphens and lowercase
-                slug = slug.Replace('_', '-')
-                          .Replace(' ', '-')
-                          .ToLowerInvariant();
-
-                // Ensure it starts with /blog/
-                if (!slug.StartsWith("blog/", StringComparison.OrdinalIgnoreCase))
+                // Process only the last part (the slug)
+                if (parts.Length > 0)
                 {
-                    link.Url = $"/blog/{slug}";
-                }
-                else
-                {
-                    link.Url = $"/{slug}";
+                    var slug = parts[^1];
+
+                    // Normalize slug: convert underscores/spaces to hyphens and lowercase
+                    slug = slug.Replace('_', '-')
+                              .Replace(' ', '-')
+                              .ToLowerInvariant();
+
+                    // Replace last part with normalized slug
+                    parts[^1] = slug;
+
+                    // Rebuild path
+                    var normalizedPath = string.Join("/", parts);
+
+                    // Ensure it starts with /blog/ if it doesn't already have a path prefix
+                    if (!normalizedPath.StartsWith("blog/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        link.Url = $"/blog/{normalizedPath}";
+                    }
+                    else
+                    {
+                        link.Url = $"/{normalizedPath}";
+                    }
                 }
             }
         }

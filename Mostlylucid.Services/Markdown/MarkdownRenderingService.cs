@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.Markdig.Extensions;
 using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Shared.Helpers;
 using Mostlylucid.Shared.Models;
@@ -13,12 +14,12 @@ public partial class MarkdownRenderingService : MarkdownBaseService
     private readonly IServiceProvider? _serviceProvider;
     private readonly ILogger<MarkdownRenderingService>? _logger;
 
-    public MarkdownRenderingService()
+    public MarkdownRenderingService() : base()
     {
         // Parameterless constructor for when DI is not available
     }
 
-    public MarkdownRenderingService(IServiceProvider serviceProvider, ILogger<MarkdownRenderingService> logger)
+    public MarkdownRenderingService(IServiceProvider serviceProvider, ILogger<MarkdownRenderingService> logger) : base(serviceProvider)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -68,7 +69,7 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             ? Pipeline()
             : Pipeline(builder =>
             {
-                var extension = new MarkDigExtensions.RemoteLinkRewriteExtension(sourceUrl);
+                var extension = new RemoteLinkRewriteExtension(sourceUrl);
                 builder.Extensions.Add(extension);
             });
 

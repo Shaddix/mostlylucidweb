@@ -33,7 +33,7 @@ public class MarkdownParserService
         // Preprocess markdown to fetch remote content if there are <fetch> tags
         if (_serviceProvider != null)
         {
-            var preprocessor = new MarkdownFetchPreprocessor(_serviceProvider, _logger);
+            var preprocessor = new MarkdownFetchPreprocessor(_serviceProvider);
             markdown = preprocessor.Preprocess(markdown);
             _logger?.LogInformation("Preprocessed markdown file {FilePath} for fetch tags", filePath);
         }
@@ -183,7 +183,7 @@ public class MarkdownParserService
             {
                 if (block is FencedCodeBlock codeBlock)
                 {
-                    currentSection.CodeBlocks.Add(new CodeBlock
+                    currentSection.CodeBlocks.Add(new Models.CodeBlock
                     {
                         Language = codeBlock.Info ?? "text",
                         Code = ExtractCodeContent(codeBlock, lines),

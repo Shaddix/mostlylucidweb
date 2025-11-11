@@ -2,15 +2,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Mostlylucid.TinyLlm.Chat.ViewModels"
         xmlns:models="using:Mostlylucid.TinyLlm.Chat.Models"
+        xmlns:views="using:Mostlylucid.TinyLlm.Chat.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="650"
         x:Class="Mostlylucid.TinyLlm.Chat.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="TinyLLM Chat - Local AI Assistant"
+        Title="TinyLlm Chat - Local AI Assistant"
         Width="900" Height="650"
-        MinWidth="600" MinHeight="400">
+        MinWidth="600" MinHeight="400"
+        x:CompileBindings="False">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -63,7 +64,7 @@
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" Margin="10,0">
                     <TextBlock Text="●"
-                               Foreground="{Binding IsModelLoaded, Converter={x:Static BoolConverters.SuccessColor}}"
+                               Foreground="{Binding IsModelLoaded, Converter={x:Static views:BoolConverters.SuccessColor}}"
                                FontSize="16" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
                 </StackPanel>
@@ -77,10 +78,12 @@
             <ItemsControl ItemsSource="{Binding Messages}" Margin="10">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="models:ChatMessage">
-                        <Border Classes="{Binding IsUser, Converter={x:Static MessageStyleConverter.Instance}}">
+                        <Border Classes.user-message="{Binding IsUser}"
+                                Classes.assistant-message="{Binding !IsUser}">
                             <StackPanel>
                                 <TextBlock Text="{Binding Content}"
-                                           Classes="{Binding IsUser, Converter={x:Static MessageTextStyleConverter.Instance}}"/>
+                                           Classes.user-message-text="{Binding IsUser}"
+                                           Classes.assistant-message-text="{Binding !IsUser}"/>
                                 <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}"
                                            FontSize="10"
                                            Opacity="0.7"

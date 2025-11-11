@@ -337,7 +337,7 @@ This is why the spec must stay current. It's not just about the initial implemen
 
 At Microsoft, we treated spec updates with the same importance as code updates. Spec changes went through review. They were versioned alongside code. When a feature changed, updating the spec wasn't optional; it was part of the definition of "done."
 
-If you change the code but don't update the spec, you've created TECHNICAL DEBY. Future work will be slower because nobody knows what the current state actually is.
+If you change the code but don't update the spec, you've created TECHNICAL DEBT. Future work will be slower because nobody knows what the current state actually is.
 
 <img src="https://media1.tenor.com/m/3T1hzop89-kAAAAC/debt-credit-card.gif" height="250"/>
 

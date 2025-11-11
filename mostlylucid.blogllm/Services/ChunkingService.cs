@@ -1,19 +1,20 @@
-using Microsoft.ML.Tokenizers;
 using Mostlylucid.BlogLLM.Models;
 using System.Text;
+using TiktokenSharp;
 
 namespace Mostlylucid.BlogLLM.Services;
 
 public class ChunkingService
 {
-    private readonly Tokenizer _tokenizer;
+    private readonly TikToken _tokenizer;
     private readonly int _maxChunkTokens;
     private readonly int _minChunkTokens;
     private readonly int _overlapTokens;
 
     public ChunkingService(string tokenizerPath, int maxChunkTokens = 512, int minChunkTokens = 100, int overlapTokens = 50)
     {
-        _tokenizer = Tokenizer.CreateTokenizer(tokenizerPath);
+        // Load tokenizer - using TikToken for BGE models
+        _tokenizer = TikToken.GetEncoding("cl100k_base");
         _maxChunkTokens = maxChunkTokens;
         _minChunkTokens = minChunkTokens;
         _overlapTokens = overlapTokens;
@@ -192,7 +193,7 @@ public class ChunkingService
 
     public int CountTokens(string text)
     {
-        var encoding = _tokenizer.Encode(text);
-        return encoding.Ids.Count;
+        var encoded = _tokenizer.Encode(text);
+        return encoded.Count;
     }
 }

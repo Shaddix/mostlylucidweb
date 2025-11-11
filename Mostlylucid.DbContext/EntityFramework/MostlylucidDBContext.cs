@@ -24,6 +24,8 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     public DbSet<MarkdownFetchEntity> MarkdownFetches { get; set; }
 
+    public DbSet<DownloadedImageEntity> DownloadedImages { get; set; }
+
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -76,6 +78,27 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
             entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(x => x.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<DownloadedImageEntity>(entity =>
+        {
+            entity.ToTable("DownloadedImages");
+            entity.HasKey(x => x.Id);
+
+            // Unique constraint on original URL per post slug
+            entity.HasIndex(x => new { x.PostSlug, x.OriginalUrl }).IsUnique();
+
+            // Index for finding images by post slug
+            entity.HasIndex(x => x.PostSlug);
+
+            // Index for finding images by original URL
+            entity.HasIndex(x => x.OriginalUrl);
+
+            // Index for cleanup queries (old unverified images)
+            entity.HasIndex(x => x.LastVerifiedDate);
+
+            entity.Property(x => x.DownloadedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(x => x.LastVerifiedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
 

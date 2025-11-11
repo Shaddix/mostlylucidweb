@@ -20,7 +20,7 @@ public class VectorStoreService
         try
         {
             var collections = await _client.ListCollectionsAsync();
-            return collections.Any(c => c.Name == _collectionName);
+            return collections.Any(c => c == _collectionName);
         }
         catch
         {
@@ -32,7 +32,7 @@ public class VectorStoreService
     {
         var collections = await _client.ListCollectionsAsync();
 
-        if (collections.Any(c => c.Name == _collectionName))
+        if (collections.Any(c => c == _collectionName))
         {
             Console.WriteLine($"Collection '{_collectionName}' already exists");
             return;

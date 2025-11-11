@@ -1,4 +1,4 @@
-# TinyLLM Chat - Local AI Assistant
+# TinyLlm Chat - Local AI Assistant
 
 A cross-platform desktop chat application built with Avalonia UI that runs small language models locally using LLamaSharp.
 

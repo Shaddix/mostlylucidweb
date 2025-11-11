@@ -1,9 +1,13 @@
 # Hidden in Plain Sight: A History of Covert Communication Systems
 
 <!--category-- Security, History, JavaScript -->
-<datetime class="hidden">2025-01-15T14:30</datetime>
+<datetime class="hidden">2025-11-11T18:00</datetime>
 
 ## Introduction
+
+While in this current 'manic' article writing stage I thought I'd share a **sensitive** project I build for a charity during COVID. This is a very sensitive topic so I have gotten all applicable permissions and agreed tp ONLY share the **concepts** which diverge and are a lot more trivial than the real system.
+
+It's part of a long history of **hiding messages in plain sight** and it's still as critical as ever from passing messages in school to massive multinational corporate espionage and world powers spying on each other. 
 
 Throughout human history, the need to communicate secretly has driven remarkable innovations. From ancient tyrants to Cold War spymasters to modern developers solving safety challenges, hiding information in plain sight has been both an art and a science. This post explores the fascinating evolution of covert communication systems, from messages tattooed on scalps to a JavaScript-based secure chat system I built that was so subtle, even active monitoring wouldn't reveal its existence.
 
@@ -17,7 +21,11 @@ He selected his most trusted slave, shaved the man's head, and tattooed a messag
 
 The message, urging rebellion against Persian rule, was literally hidden beneath the surface. The Persians, accustomed to intercepting conventional messages, never suspected that the messenger himself carried the intelligence. This triggered the Ionian Revolt, a pivotal moment in Greek-Persian relations.
 
-**The key principle**: The communication channel itself appeared completely innocuous. The slave was just... a traveling slave. No suspicious scrolls, no coded letters, nothing to intercept.
+**The key principle**: The communication channel itself appeared completely innocuous. The slave was just... a travelling slave. No suspicious scrolls, no coded letters, nothing to intercept.
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/The_Greeks_preserve_the_bridge_of_Darius.jpg" width="25%">
+
+By <a href="https://www.wikidata.org/wiki/Q41149756" class="extiw" title="d:Q41149756"><span title="American illustrator of books (1841-1917)">John Steeple Davis</span></a> - <a rel="nofollow" class="external text" href="https://archive.org/details/storygreatestna05horngoog/page/n387">The story of the greatest nations, from the dawn of history to the twentieth century</a> (published in 1900), Public Domain, <a href="https://commons.wikimedia.org/w/index.php?curid=75078737">Link</a>
 
 ## Steganography Through the Ages
 
@@ -25,15 +33,23 @@ Histiaeus's technique exemplifies **steganography** - the practice of concealing
 
 ### Invisible Inks and Chemical Secrets
 
-During the Revolutionary War, the Continental Army used invisible inks extensively. The most sophisticated was "Agent 711's" stain, developed by physician and spymaster James Jay. Written with a chemical reagent and revealed only with a specific counteragent, these messages appeared as blank pages - perfect for sending through British checkpoints.
+During the Revolutionary War, the Continental Army used invisible inks extensively. The most sophisticated was "Agent 711's" (aka George Washington) stain, developed by physician and spymaster James Jay. Written with a chemical reagent and revealed only with a specific counteragent, these messages appeared as blank pages - perfect for sending through British checkpoints.
 
-In World War II, invisible inks evolved further. The British used everything from lemon juice (heat-activated) to sophisticated chemical compounds. The Germans developed microdots - photographs reduced to the size of a printed period that could be hidden in plain correspondence.
+<img src="https://mtv-drupal-assets.s3.amazonaws.com/files/resources/large_di-0321-1_m-4853-web.jpg?VersionId=J0Yc2ux01pWRSwMy9uzmqB5PMcN6XQfk" width="200px" />
+
+In World War II, [invisible inks ](https://books.google.co.uk/books?id=soYmDwAAQBAJ&pg=PA297&redir_esc=y#v=onepage&q&f=false)evolved further. The British used everything from lemon juice (heat-activated) to sophisticated chemical compounds and yes, human (I presume!) semen... The Germans developed microdots - photographs reduced to the size of a printed period that could be hidden in plain correspondence. The British even smuggled maps into POW camps to aid escape in everythign from playing cards, buttons (which were also often magnetised for use in compasses)  and even Red Cross chocolate wrappers. 
 
 ### The Art of the Dead Drop
 
-Cold War espionage perfected the "dead drop" - a location where materials can be left by one party and retrieved by another without direct contact. A loose brick in a wall, a hollowed-out coin, a fake rock in a park - each concealed messages, film, or money.
+Cold War espionage perfected the ["dead drop"](https://en.wikipedia.org/wiki/Dead_drop) - a location where materials can be left by one party and retrieved by another without direct contact. A loose brick in a wall, a hollowed-out coin, a fake rock in a park - each concealed messages, film, or money.
 
-The genius wasn't just the physical concealment, but the **signaling system**. A chalk mark on a mailbox, a specific flower pot position on a windowsill - these indicated that a dead drop was ready. To observers, these were meaningless details in the urban landscape.
+The genius wasn't just the physical concealment, but the **signaling system**. A chalk mark on a mailbox, a specific flower pot position on a windowsill - these indicated that a dead drop was ready. To observers, these were meaningless details in the urban landscape. 
+
+There were even special devices like a spike that could be concealed under the soil until the message was retrieved (also great for wet conditions / open areas). 
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/%E2%80%9CDead%E2%80%9D_Drop_Spike_-_Flickr_-_The_Central_Intelligence_Agency.jpg/2560px-%E2%80%9CDead%E2%80%9D_Drop_Spike_-_Flickr_-_The_Central_Intelligence_Agency.jpg" width="200px"/>
+
+By The Central Intelligence Agency - “Dead” Drop Spike, Public Domain, https://commons.wikimedia.org/w/index.php?curid=29197364
 
 ```mermaid
 sequenceDiagram
@@ -54,7 +70,7 @@ sequenceDiagram
 
 ### Numbers Stations: Broadcasting Secrets
 
-From the Cold War through today, mysterious radio broadcasts have fascinated listeners worldwide. These "numbers stations" transmit strings of numbers, words, or tones - apparent gibberish to casual listeners.
+From the Cold War through today, mysterious radio broadcasts have fascinated listeners worldwide. These ["numbers stations"](https://en.wikipedia.org/wiki/Numbers_station) transmit strings of numbers, words, or tones - apparent gibberish to casual listeners.
 
 But to the agent with the proper one-time pad? These are instructions, intelligence updates, or mission-critical data. The broadcasts are:
 
@@ -82,20 +98,33 @@ Modified pixel: RGB(11010111, 10110100, 01011011)
 
 To the eye, these pixels are identical. To someone with the extraction algorithm, it's a hidden message.
 
+Here's an exampel (not GREAT [but from here ](https://incoherency.co.uk/image-steganography/#unhide))
+
+![steganopng](stegano.png?height=200) 
+
+which has:
+
+![message.png](message.png?height=200)
+
+Hidden in it...kinda...sorta. Extra compression makes it useless. 
+
+In reality this image would be an encrypted message / other encrypted data up to about 10% of the image's size (modern neural techniques can even [get 50% or more without it beign detectable](https://arxiv.org/pdf/1909.01496)). 
+
+ 
 ### Linguistic Steganography
 
 The ability to hide messages in seemingly normal text. Techniques include:
 
 - **Acrostic codes**: First letters of sentences spell a message
 - **Word substitution**: Using synonyms in patterns to encode bits
-- **Whitespace encoding**: Extra spaces, tabs, or line breaks carry data
+- **Whitespace encoding**: Extra spaces, tabs, or line breaks carry data - also commonly used to detect corporate leaks where a 'signature' of each copy is subtly encoded in whitespace changes. (Why commonly journalists will physically re-type documents before publication; to protect their sources from steganography based unmasking).
 
 ### Network Steganography
 
 Hiding data in network traffic patterns:
 - **Timing channels**: Varying packet timing to encode information
 - **Protocol manipulation**: Using unused header fields
-- **Traffic mimicry**: Making covert data look like legitimate traffic (Netflix streaming, gaming, etc.)
+- **Traffic mimicry**: Mak~~~~ing covert data look like legitimate traffic (Netflix streaming, gaming, etc.)
 
 ## The Modern Challenge: Digital Safety in Hostile Environments
 
@@ -110,11 +139,17 @@ During COVID-19 lockdowns, this wasn't a theoretical problem. For victims of dom
 
 Even if the victim could communicate, any record of that communication - even the knowledge that communication occurred - could trigger violence.
 
-What was needed was something that would leave **absolutely no trace** that anything unusual had happened, even to someone actively monitoring the computer.
+What was needed was something that would leave **absolutely no trace** that anything unusual had happened, even to someone actively monitoring the computer (even if they then visited the same url).
 
 ## Building the Invisible Door: Technical Implementation
 
-The solution I developed drew on every principle of historical steganography, adapted for the web era. Here's how it worked:
+The solution I developed drew on every principle of historical steganography, adapted for the web era. Here's how it **might have** worked.
+
+> NOTE: This isn't the greatest stealth-support app in the world, this is just  a tribute.
+
+The real one was built for a very real few charities and is still there for any similar siutuations, however it's been MASSIVELY modified and works in an **even sneakier way** I came up with; for that one even screen snapshotting won't detect it (using a form of temporal steganography...you can have a guess what that means 😜 ). 
+
+## Overview
 
 ### Phase 1: The Innocuous Payload
 
@@ -128,7 +163,7 @@ To anyone inspecting the page source, this looked like one of dozens of helper l
 
 - **Minified**: Unreadable but expected for production JavaScript
 - **Small**: 3-4KB, typical for a utility library
-- **Legitimate-looking**: Included actual compatibility checks and minor polyfills
+- **Legitimate-looking**: Included actual compatibility checks and other information which made it look legit
 - **Cached**: Normal browser caching behavior, no special flags
 
 ### Phase 2: The Trigger Mechanism
@@ -141,7 +176,7 @@ The script monitored for a specific URL query parameter - something like `?ref=n
 - No special characters, nothing suspicious in URL history
 
 ```javascript
-// Heavily simplified example - actual implementation was obfuscated
+// Heavily simplified example - actual implementation was obfuscated and encrypted
 const params = new URLSearchParams(window.location.search);
 if (params.has('ref') && params.get('ref').match(/newsletter_\d{4}_[a-z]+/)) {
     // Trigger secure chat initialization
@@ -150,7 +185,7 @@ if (params.has('ref') && params.get('ref').match(/newsletter_\d{4}_[a-z]+/)) {
 
 ### Phase 3: The Authentication Challenge
 
-When triggered, a chat window would appear - looking identical to the standard support chat many websites have. But it would prompt for a "verification code" or "service reference number."
+When triggered, a chat window would appear - looking identical to the standard support chat many websites have. But it would prompt for a "verification code" or "service reference number." (again and I won't keep repeating it but NOT ACTUALLY it was and is a LOT sneakier than this)
 
 This is where the elegance emerged:
 
@@ -172,7 +207,7 @@ The actual secure chat traffic was disguised:
 
 - **Protocol**: Standard WebSocket over HTTPS, indistinguishable from normal chat widgets
 - **Timing**: Random delays added to avoid pattern recognition
-- **Volume**: Padded with noise data to prevent message length analysis
+- **Volume**: Padded with noise data to prevent message length analysis - this include various techniques, adding *legit looking* elements where the actual content was cryptographically secure interleaved with real data (a kind of one time pad) etc. 'Message steganography'. I even made it site specific, each site which itegrated had groups of real support messages (about products, locations etc).
 - **Endpoint**: CDN-hosted endpoint shared with legitimate services
 
 ```mermaid
@@ -325,7 +360,7 @@ This system was deployed for a support organization during COVID-19 lockdowns. T
 - **Zero trust assumptions**: Assume all traffic monitored, all devices compromised
 - **Graceful degradation**: System failure must be safe
 
-The system handled hundreds of secure sessions. For some users, it was literally a lifeline - enabling them to coordinate safety plans, access resources, and maintain contact with support services without alerting their abuser.
+The system handled hundreds of secure sessions (and a very advanced version still does). For some users, it was literally a lifeline - enabling them to coordinate safety plans, access resources, and maintain contact with support services without alerting their abuser.
 
 ## Lessons from History, Applied to Modern Problems
 
@@ -468,7 +503,7 @@ class SecureSession {
 
 ### Performance
 
-Steganographic systems must not degrade performance noticeably:
+Steganographic systems must not degrade performance noticeably, both for adoption (these are big companies, screw up their site at your peril) and security. You don't want some JS dev  noticing oddness.
 
 ```javascript
 // Lazy loading of secure components
@@ -488,7 +523,7 @@ async function initializeSecureChat() {
 
 ### Maintainability
 
-Hidden systems require careful documentation (stored securely, separately):
+Hidden systems require careful documentation (stored securely, separately). Transmission of the 'keys' has to be done very carefully - and like data, not stored with the 'codeword'. I won't go into the mechanisms of how that's done but again it's **hidden** in plain sight.
 
 ```markdown
 ## Secure Chat System - Operator Manual
@@ -527,489 +562,6 @@ The next time you see an innocuous-looking script on a website or a seemingly me
 
 ---
 
-## Demo Implementation: A Trivial Proof of Concept
-
-To illustrate these concepts in action, I've created a demonstration project that shows how such a system might work. **This is a trivial implementation for educational purposes only** and deliberately includes minimal security to keep the code readable and understandable.
-
-### ⚠️ Critical Warning About the Demo
-
-**The demo code has MANY security weaknesses and is NOT suitable for any real-world use.** It's designed to demonstrate concepts, not to be deployed. See the complete list of security issues in the demo's README.
-
-### Demo Project Structure
-
-The demo is a separate ASP.NET Core 9.0 project in the repository at `Mostlylucid.SecureChat.Demo/` with the following components:
-
-```
-Mostlylucid.SecureChat.Demo/
-├── Controllers/DemoController.cs       # Routes for demo pages
-├── Hubs/SecureChatHub.cs              # SignalR for real-time chat
-├── Views/
-│   ├── Demo/Company.cshtml            # Fake company site (client)
-│   └── Demo/Support.cshtml            # Support staff interface
-└── wwwroot/js/
-    ├── compatibility-shim1.js         # Tiny trigger (1KB)
-    └── secure-chat.js                 # Chat application
-```
-
-### How to Run the Demo
-
-1. Clone the repository and navigate to `Mostlylucid.SecureChat.Demo`
-2. Run `dotnet build && dotnet run`
-3. Open browser to `http://localhost:5000/Demo/Company`
-4. Add trigger parameter: `?ref=newsletter_2025_jan`
-5. Enter codeword when prompted: `SAFE2025`
-6. In another tab, open `/Demo/Support` to respond as support staff
-
-### The Tiny Trigger Script
-
-Here's the actual code from `compatibility-shim1.js` - note how small and innocuous it is:
-
-```javascript
-(function() {
-    'use strict';
-
-    // Actual compatibility checks (makes it look legitimate)
-    if (!window.Promise) {
-        console.warn('Browser does not support Promises');
-    }
-    if (!window.fetch) {
-        console.warn('Browser does not support Fetch API');
-    }
-
-    // Check for special trigger in URL
-    function checkTrigger() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const ref = urlParams.get('ref');
-
-        // Pattern that looks like a marketing tracking parameter
-        // e.g., ?ref=newsletter_2025_jan
-        if (ref && ref.match(/^newsletter_\d{4}_[a-z]+$/i)) {
-            console.log('Loading enhanced support features...');
-            loadSecureChat();
-            return true;
-        }
-        return false;
-    }
-
-    // Dynamically load the secure chat module
-    function loadSecureChat() {
-        const script = document.createElement('script');
-        script.src = '/js/secure-chat.js';
-        script.onload = function() {
-            if (window.SecureChat) {
-                window.SecureChat.init();
-            }
-        };
-        document.head.appendChild(script);
-    }
-
-    // Check on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', checkTrigger);
-    } else {
-        checkTrigger();
-    }
-})();
-```
-
-This script is only ~1KB and does two legitimate things (browser compatibility checks) before checking for the trigger. To anyone inspecting the code, it looks like a standard polyfill helper.
-
-### The SignalR Hub
-
-The backend uses SignalR for real-time bidirectional communication. Here's the simplified hub structure:
-
-```csharp
-public class SecureChatHub : Hub
-{
-    private static readonly ConcurrentDictionary<string, ChatSession> Sessions = new();
-
-    public async Task<AuthResult> AuthenticateClient(string codeword)
-    {
-        // In demo: hardcoded. Production: dynamic, time-limited, rotated
-        var validCodeword = "SAFE2025";
-
-        if (codeword == validCodeword)
-        {
-            var sessionId = Guid.NewGuid().ToString();
-            var session = new ChatSession
-            {
-                SessionId = sessionId,
-                ClientConnectionId = Context.ConnectionId,
-                StartTime = DateTime.UtcNow,
-                IsAuthenticated = true
-            };
-
-            Sessions.TryAdd(Context.ConnectionId, session);
-            await Groups.AddToGroupAsync(Context.ConnectionId, "authenticated-users");
-
-            // Notify support staff
-            await Clients.Group("support-staff")
-                .SendAsync("NewSessionAvailable", sessionId, DateTime.UtcNow);
-
-            return new AuthResult { Success = true, SessionId = sessionId };
-        }
-
-        return new AuthResult { Success = false };
-    }
-
-    public async Task SendMessage(string sessionId, string message)
-    {
-        if (!Sessions.TryGetValue(Context.ConnectionId, out var session)
-            || !session.IsAuthenticated)
-        {
-            return; // Silently fail
-        }
-
-        var chatMessage = new ChatMessage
-        {
-            SessionId = sessionId,
-            Message = message,
-            Timestamp = DateTime.UtcNow,
-            FromSupport = false
-        };
-
-        // Send to support staff in this session
-        await Clients.Group($"session-{sessionId}")
-            .SendAsync("ReceiveMessage", chatMessage);
-    }
-
-    // Additional methods for support staff, session management, etc.
-}
-```
-
-### The Client-Side Chat
-
-When triggered, the chat module creates a modal window with a 30-second authentication countdown:
-
-```javascript
-function showAuthPrompt() {
-    const chatBody = document.getElementById('chat-body');
-    const countdown = { seconds: 30 };
-
-    chatBody.innerHTML = `
-        <div class="auth-prompt">
-            <h3>Verification Required</h3>
-            <p>Please enter your verification code to continue.</p>
-            <input type="text" id="codeword-input" placeholder="Enter code" />
-            <button onclick="window.SecureChat.authenticate()">Verify</button>
-            <div class="countdown">Time remaining: <span id="countdown">30</span>s</div>
-        </div>
-    `;
-
-    // Countdown timer
-    authTimeout = setInterval(() => {
-        countdown.seconds--;
-        document.getElementById('countdown').textContent = countdown.seconds;
-        if (countdown.seconds <= 0) {
-            clearInterval(authTimeout);
-            handleAuthTimeout(); // Redirect to fallback
-        }
-    }, 1000);
-}
-```
-
-If authentication fails or times out, the system redirects to a fallback URL (stored in a hidden meta tag on the page):
-
-```javascript
-function handleAuthFailure() {
-    const fallbackMeta = document.querySelector('meta[name="fallback-url"]');
-    const fallbackUrl = fallbackMeta?.getAttribute('content')
-        ?? 'https://www.example.com/support';
-
-    // Show "service unavailable" briefly
-    chatBody.innerHTML = `
-        <div class="message system">
-            Service temporarily unavailable.<br/>
-            Redirecting to standard support...
-        </div>
-    `;
-
-    setTimeout(() => {
-        closeChat();
-        // In production, would actually redirect and strip query params
-    }, 2000);
-}
-```
-
-### What the Demo Shows
-
-**Core Concepts Illustrated:**
-
-1. **Hidden Trigger**: URL parameter `?ref=newsletter_2025_jan` looks like marketing tracking
-2. **Dynamic Loading**: Chat module only loads when triggered, keeping initial payload tiny
-3. **Time-Limited Auth**: 30-second window prevents indefinite probing
-4. **Plausible Failure**: Failed auth looks like a broken support widget
-5. **Real-Time Communication**: SignalR enables bidirectional chat
-6. **Separation of Concerns**: Support staff interface is completely separate
-
-**What the Demo DOESN'T Show:**
-
-The production system had vastly more sophisticated features not included in the demo:
-- Actual encryption (messages sent in plaintext in demo)
-- Obfuscated/minified code (demo code is readable)
-- Traffic padding and timing randomization
-- Secure key exchange protocols
-- Session token rotation
-- Rate limiting and abuse prevention
-- Comprehensive audit logging
-- Anti-forensics measures
-- And dozens of other security layers...
-
-### The Build System: Obfuscation and Minification
-
-One critical aspect of steganographic systems is making the code difficult to analyze. The demo includes a simple build system that demonstrates basic obfuscation techniques.
-
-#### From Source to Deployed Script
-
-Here's the transformation process:
-
-```mermaid
-flowchart LR
-    A[Source Code<br/>compatibility-shim1.src.js<br/>~1KB readable] --> B[String Obfuscation<br/>Convert to CharCodes]
-    B --> C[Minification<br/>Remove whitespace]
-    C --> D[Dead Code Injection<br/>Add junk functions]
-    D --> E[Deployed Script<br/>~400 bytes minified]
-
-    style A fill:#e1f5ff
-    style E fill:#ffe1e1
-```
-
-#### Source Code (Readable)
-
-The source is clean and understandable:
-
-```javascript
-// Check for trigger pattern
-const params = new URLSearchParams(window.location.search);
-const ref = params.get('ref');
-
-if (ref && /^newsletter_\d{4}_[a-z]+$/i.test(ref)) {
-    // Load the secure chat module
-    const script = document.createElement('script');
-    script.src = '/js/secure-chat.js';
-    document.head.appendChild(script);
-}
-```
-
-#### Obfuscated Version (Deployed)
-
-After obfuscation, strings are split and encoded:
-
-```javascript
-!function(){if(new URLSearchParams(window.location.search).get(String.fromCharCode(114,101,102))?.match(new RegExp(String.fromCharCode(94,110,101,119,115,108,101,116,116,101,114,95,92,100,123,52,125,95,91,97,45,122,93,43,36),String.fromCharCode(105)))){const e=document.createElement(String.fromCharCode(115,99,114,105,112,116));e.src=String.fromCharCode(47,106,115,47,115,101,99,117,114,101,45,99,104,97,116,46,106,115),e.async=!0,document.head.appendChild(e)}}();
-```
-
-Notice:
-- `'ref'` becomes `String.fromCharCode(114,101,102)`
-- `/^newsletter_\d{4}_[a-z]+$/i` becomes a character array
-- `'script'` becomes `String.fromCharCode(115,99,114,105,112,116)`
-- All whitespace removed, variable names shortened
-
-#### Build Process Flow
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant Src as Source Files<br/>(wwwroot/js/dev/)
-    participant Build as Build Tool
-    participant Prod as Production Files<br/>(wwwroot/js/)
-
-    Dev->>Src: Write readable source code
-    Dev->>Build: Run ./build.sh
-    Build->>Src: Read source files
-
-    Build->>Build: 1. Extract string literals
-    Build->>Build: 2. Convert to CharCode arrays
-    Build->>Build: 3. Minify (remove whitespace)
-    Build->>Build: 4. Rename variables
-    Build->>Build: 5. Add dead code
-
-    Build->>Prod: Write obfuscated files
-    Prod-->>Dev: Ready for deployment
-```
-
-#### Obfuscation Techniques Demonstrated
-
-**1. String Encoding**
-
-```csharp
-// C# build tool helper
-public static string StringToCharCodes(string input)
-{
-    var codes = input.Select(c => ((int)c).ToString());
-    return $"String.fromCharCode({string.Join(",", codes)})";
-}
-
-// "ref" becomes "String.fromCharCode(114,101,102)"
-```
-
-**2. String Splitting**
-
-```csharp
-public static string SplitString(string input)
-{
-    var chunks = new List<string>();
-    for (int i = 0; i < input.Length; i += 3)
-    {
-        var chunk = input.Substring(i, Math.Min(3, input.Length - i));
-        chunks.Add($"\"{chunk}\"");
-    }
-    return $"[{string.Join(",", chunks)}].join('')";
-}
-
-// "newsletter" becomes ["new","sle","tte","r"].join('')
-```
-
-**3. XOR Encoding (Simple)**
-
-```csharp
-public static string XorEncode(string input, int key)
-{
-    var encoded = input.Select(c => (char)(c ^ key)).ToArray();
-    var codes = encoded.Select(c => ((int)c).ToString());
-    return $"String.fromCharCode({string.Join(",", codes)})";
-}
-```
-
-#### What Production Would Add
-
-Real production systems would include:
-
-1. **Custom Encryption Schemes**
-   - Domain-locked decryption keys
-   - Time-based key derivation
-   - Environment-specific encryption
-
-2. **Control Flow Obfuscation**
-   - Flatten control structures
-   - Replace if/else with lookup tables
-   - Add bogus conditional branches
-
-3. **AST Manipulation**
-   - Restructure code at syntax tree level
-   - Transform expressions to equivalent forms
-   - Inject dead code that looks legitimate
-
-4. **Anti-Debugging**
-   - Detect debugger presence
-   - Timing checks to detect single-stepping
-   - Self-modifying code
-   - Environment fingerprinting
-
-5. **Traffic Obfuscation**
-   - Pad messages to fixed sizes
-   - Random timing delays
-   - Dummy traffic generation
-   - Protocol mimicry
-
-#### Configuration and Flexibility
-
-The demo is designed to be configurable for different backends:
-
-```javascript
-// Configuration via meta tag (looks like analytics config)
-const config = {
-    hubUrl: document.querySelector('meta[name="chat-hub-url"]')
-        ?.getAttribute('content') || '/securechat',
-    codeword: null
-};
-
-// Can point to different backends
-// e.g., LLMApi (https://github.com/scottgal/LLMApi)
-```
-
-In the HTML (looks like standard metadata):
-
-```html
-<meta name="chat-hub-url" content="/securechat" data-hidden />
-```
-
-This allows the same client code to work with different backend implementations without modification.
-
-### Complete Flow Diagram
-
-Here's how all the pieces work together:
-
-```mermaid
-sequenceDiagram
-    participant U as User Browser
-    participant S as Company Site
-    participant T as Tiny Shim<br/>(400 bytes)
-    participant C as Chat Module<br/>(5KB)
-    participant H as SignalR Hub
-    participant Support as Support Staff
-
-    U->>S: Visit site normally
-    S->>U: Page loads with shim
-    T->>T: Check URL params
-
-    Note over U,S: User receives special URL via separate channel
-
-    U->>S: Visit ?ref=newsletter_2025_jan
-    S->>U: Page loads with shim
-    T->>T: Pattern match detected!
-    T->>C: Dynamically load chat module
-    C->>U: Show chat modal
-    C->>U: 30 second countdown
-
-    alt Correct Codeword
-        U->>C: Enter "SAFE2025"
-        C->>H: Authenticate
-        H->>H: Validate codeword
-        H->>C: Session created
-        H->>Support: Notify new session
-        Support->>H: Join session
-        H->>C: Support joined
-
-        loop Chat Session
-            U->>C: Type message
-            C->>H: Send via SignalR
-            H->>Support: Relay message
-            Support->>H: Reply
-            H->>C: Relay reply
-            C->>U: Display message
-        end
-
-        Support->>H: End session
-        H->>C: Session ended
-        C->>U: Close gracefully
-    else Wrong/No Codeword
-        U->>C: Wrong code or timeout
-        C->>U: "Service unavailable"
-        C->>U: Close after 2s
-        Note over U,C: Looks like technical error<br/>No evidence of secure system
-    end
-```
-
-### Try It Yourself
-
-The complete demo code is in the repository. Read the README carefully for the full list of security warnings. The code is heavily commented to explain each concept.
-
-**Key files to examine:**
-
-JavaScript (Source vs. Obfuscated):
-- `wwwroot/js/dev/compatibility-shim1.src.js` - Readable trigger script
-- `wwwroot/js/compatibility-shim1.js` - Obfuscated trigger (~400 bytes)
-- `wwwroot/js/dev/secure-chat.src.js` - Readable chat application
-- `wwwroot/js/secure-chat.js` - Minified chat application (~5KB)
-
-Backend:
-- `Hubs/SecureChatHub.cs` - SignalR hub for real-time chat
-- `Controllers/DemoController.cs` - Page routing
-
-Frontend:
-- `Views/Demo/Company.cshtml` - The "company website" with hidden config
-- `Views/Demo/Support.cshtml` - Support staff interface
-
-Build System:
-- `Build/JsObfuscator.cs` - String obfuscation utilities
-- `Build/BuildObfuscated.cs` - Build tool for creating minified versions
-- `build.sh` - Shell script for building
-
-Remember: This is a **trivial implementation of the concept**. It demonstrates ideas, not production-ready security.
-
----
-
 ## Important Disclaimer
 
 **This post describes the concepts and principles behind the system, but this is NOT the actual implementation used in production.**
@@ -1025,7 +577,10 @@ The real system deployed for safety-critical use had significantly more sophisti
 
 The code examples in this post are simplified illustrations of the concepts and do not share any code with the production system. They demonstrate the principles of steganographic communication but lack the hardening, redundancy, and defense-in-depth approaches necessary for protecting vulnerable individuals.
 
+This was done with the full knowledge of the technical team at the charity I built this for (I own the IP, the charity got this for free). They agree that the CONCEPT is useful to share for similarly purposed systems.
+
 **If you're building a similar system for safety-critical applications:**
+- TALK TO PROFESSIONAL SECURITY PEOPLE / IF YOU CAN GOVERNMENT RESOURCES
 - Engage professional security consultants
 - Conduct thorough threat modeling
 - Implement defense-in-depth strategies

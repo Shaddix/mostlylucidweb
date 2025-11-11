@@ -31,4 +31,14 @@ public class ChatMessage
     /// Token count for this message (useful for tracking context usage)
     /// </summary>
     public int TokenCount { get; init; }
+
+    /// <summary>
+    /// Gets the CSS class for the message container based on the sender
+    /// </summary>
+    public string MessageStyleClass => IsUser ? "user-message" : "assistant-message";
+
+    /// <summary>
+    /// Gets the CSS class for the message text based on the sender
+    /// </summary>
+    public string MessageTextStyleClass => IsUser ? "user-message-text" : "assistant-message-text";
 }

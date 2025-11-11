@@ -5,7 +5,7 @@
 
 ## Introduction
 
-So you've been running your blog on a single server (perhaps a Hetzner auction box) with Docker Compose, and now you've got 8 mini PCs and SBCs gathering dust (rescued from eBay for under £100 each, all destined for e-waste). What do you do? Build a proper Docker Swarm cluster, of course!
+So you've been running your blog on a single server (perhaps a Hetzner auction box) with Docker Compose, and now you've got 8 mini PCs and SBCs gathering dust (rescued from eBay for under £100 each, all destined for e-waste) and a GB fibre line (but no static IP). What do you do? Build a proper Docker Swarm cluster, of course!
 
 This article details how to convert the [Docker Compose setup](/blog/dockercompose) I've been running into a highly available Docker Swarm cluster. We'll cover everything from initial cluster setup to running PostgreSQL with replication, setting up monitoring with Prometheus and Grafana across multiple nodes, and managing the whole thing without losing your sanity.
 

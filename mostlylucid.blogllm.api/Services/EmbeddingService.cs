@@ -1,13 +1,13 @@
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using Microsoft.ML.Tokenizers;
+using TiktokenSharp;
 
 namespace Mostlylucid.BlogLLM.Api.Services;
 
 public class EmbeddingService : IDisposable
 {
     private readonly InferenceSession _session;
-    private readonly Tokenizer _tokenizer;
+    private readonly TikToken _tokenizer;
     private readonly int _embeddingDimension;
     private readonly bool _useGpu;
 
@@ -16,22 +16,22 @@ public class EmbeddingService : IDisposable
         _embeddingDimension = dimensions;
         _useGpu = useGpu;
 
-        var options = new SessionOptions();
+        var options = new Microsoft.ML.OnnxRuntime.SessionOptions();
         if (useGpu)
         {
             options.AppendExecutionProvider_CUDA(0);
         }
 
         _session = new InferenceSession(modelPath, options);
-        _tokenizer = Tokenizer.CreateTokenizer(tokenizerPath);
+        _tokenizer = TikToken.GetEncoding("cl100k_base");
     }
 
     public float[] GenerateEmbedding(string text)
     {
         // Tokenize
-        var encoding = _tokenizer.Encode(text);
-        var inputIds = encoding.Ids.Select(id => (long)id).ToArray();
-        var attentionMask = Enumerable.Repeat(1L, inputIds.Length).ToArray();
+        var encoded = _tokenizer.Encode(text);
+        var inputIds = encoded.Select(id => (long)id).ToArray();
+        var attentionMask = Enumerable.Repeat(1L, encoded.Count).ToArray();
 
         // Pad/truncate to 512
         const int maxLength = 512;

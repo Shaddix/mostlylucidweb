@@ -19,7 +19,7 @@ public class VectorStoreService
         try
         {
             var collections = await _client.ListCollectionsAsync();
-            return collections.Any(c => c.Name == _collectionName);
+            return collections.Any(c => c == _collectionName);
         }
         catch
         {

@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LLama;
 using LLama.Common;
+using LLama.Sampling;
 using Mostlylucid.TinyLlm.Chat.Models;
 
 namespace Mostlylucid.TinyLlm.Chat.Services;
@@ -40,8 +41,7 @@ public class LlamaService : ILlamaService
                 var parameters = new ModelParams(config.ModelPath)
                 {
                     ContextSize = config.ContextSize,
-                    GpuLayerCount = config.GpuLayerCount,
-                    Seed = (uint)(config.Seed < 0 ? Random.Shared.Next() : config.Seed)
+                    GpuLayerCount = config.GpuLayerCount
                 };
 
                 // Load the model
@@ -81,12 +81,15 @@ public class LlamaService : ILlamaService
         // Build the prompt from conversation history
         var prompt = BuildPrompt(history);
 
-        // Inference parameters
+        // Inference parameters with sampling pipeline
         var inferenceParams = new InferenceParams
         {
-            Temperature = _currentConfig.Temperature,
-            TopP = _currentConfig.TopP,
-            RepeatPenalty = _currentConfig.RepeatPenalty,
+            SamplingPipeline = new DefaultSamplingPipeline
+            {
+                Temperature = _currentConfig.Temperature,
+                TopP = _currentConfig.TopP,
+                RepeatPenalty = _currentConfig.RepeatPenalty
+            },
             MaxTokens = _currentConfig.MaxTokens,
             AntiPrompts = new List<string> { "User:", "\nUser:" } // Stop generation on user prompt
         };

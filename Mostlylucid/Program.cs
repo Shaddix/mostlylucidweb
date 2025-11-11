@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services;
+using Mostlylucid.Services.Images;
 using OpenTelemetry.Metrics;
 using Scalar.AspNetCore;
 using Serilog.Debugging;
@@ -63,6 +64,7 @@ try
     builder.Configure<AnalyticsSettings>();
     var auth = builder.Configure<AuthSettings>();
     var translateServiceConfig = builder.Configure<TranslateServiceConfig>();
+    builder.Configure<Mostlylucid.Shared.Config.Markdown.ImageConfig>();
     var services = builder.Services;
     services.AddOpenTelemetry()
         .WithMetrics(builder =>
@@ -87,6 +89,11 @@ try
     services.AddScoped<IUmamiDataSortService, UmamiDataSortService>();
     services.AddScoped<IUmamiUserInfoService, UmamiUserInfoService>();
     services.AddScoped<BaseControllerService>();
+
+    // External image download service
+    services.AddScoped<ExternalImageDownloadService>();
+    services.AddHostedService<ImageDownloadBackgroundService>();
+
     services.AddImageSharp().Configure<PhysicalFileSystemCacheOptions>(options => options.CacheFolder = "cache");
     services.SetupEmail(config);
     services.SetupRSS();

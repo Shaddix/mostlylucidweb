@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Mostlylucid.BlogLLM.Api.Models;
 using Mostlylucid.BlogLLM.Api.Services;
 
@@ -75,11 +76,12 @@ builder.Services.AddScoped<RagService>();
 // Health checks
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
-    .AddCheck("vector_store",  async () =>
+    .AddAsyncCheck("vector_store",  async () =>
     {
         try
         {
-            var vectorStore = builder.Services.BuildServiceProvider().GetRequiredService<VectorStoreService>();
+            var sp = builder.Services.BuildServiceProvider();
+            var vectorStore = sp.GetRequiredService<VectorStoreService>();
             var exists = await vectorStore.CollectionExistsAsync();
             return exists
                 ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("Vector store is accessible")
