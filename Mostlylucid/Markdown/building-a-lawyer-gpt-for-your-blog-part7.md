@@ -3,6 +3,12 @@
 <!--category-- AI, LLM, Prompt Engineering, RAG, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T23:00</datetime>
 
+WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 7! We've built everything needed for a working writing assistant - ingestion ([Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)), UI ([Part 5](/blog/building-a-lawyer-gpt-for-your-blog-part5)), and local LLM integration ([Part 6](/blog/building-a-lawyer-gpt-for-your-blog-part6)). Now it's time to bring it all together and focus on what matters most: generating actually useful writing suggestions.

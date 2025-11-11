@@ -3,6 +3,13 @@
 <!--category-- AI, LLM, RAG, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T12:00</datetime>
 
+> WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
+
 ## Introduction
 
 Buckle in because this is going to be a long series! If you've been following along with this blog, you'll know I'm a bit obsessed with finding interesting ways to use LLMs and AI in practical applications. Well, I've got a new project that combines my love of blogging, C#, and AI: building a writing assistant that helps me draft new blog posts using my existing content as a knowledge base.

@@ -3,6 +3,13 @@
 <!--category-- AI, LLM, RAG, C#, Markdown, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T18:00</datetime>
 
+
+> WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 4! We've set up our GPU ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)), understand embeddings and vector databases ([Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3)), and have the overall architecture ([Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1)). Now it's time to build the ingestion pipeline - the system that processes all your blog posts and makes them searchable.

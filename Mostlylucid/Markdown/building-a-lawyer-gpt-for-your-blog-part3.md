@@ -3,6 +3,13 @@
 <!--category-- AI, LLM, Embeddings, Vector Database, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T16:00</datetime>
 
+
+> WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 3! We've got our GPU stack working ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)), and we understand the architecture ([Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1)). Now it's time to dive into the magic that makes semantic search possible: **[embeddings](https://www.sbert.net/)** and **vector databases**.

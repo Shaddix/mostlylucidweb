@@ -1,18 +1,46 @@
 # Agile Speccing: Writing Feature Specs That Actually Work
 
 <!--category-- Software Development, Documentation, Agile -->
-<datetime class="hidden">2025-11-11T10:00</datetime>
+<datetime class="hidden">2025-11-11T11:30</datetime>
 
 # Introduction
-Over the years I've read hundreds of feature specifications. Some were brilliant; most were bloody awful. The difference between a good spec and a bad one isn't about length or formality; it's about whether it actually helps developers build the right thing without driving them mad in the process.
+Over the years I've read / written hundreds of feature specifications. Some were brilliant; most were bloody awful. The difference between a good spec and a bad one isn't about length or formality; it's about whether it actually helps developers build the right thing without driving them mad in the process.
 
 Here's something I learned at Microsoft that changed how I think about specs: **A spec is not a bible; it's a tool.** Like any tool, you use it to get a job done. You add as much detail as you, the stakeholders, and the developers need to get going. Then you adapt it, change it, and update it as the feature develops.
 
-Treat a spec as a sacred, unchangeable document and you're building the wrong thing perfectly. Treat it as a living tool and you're building something that actually solves problems.
+Treat a spec as a sacred, unchangeable document and you're building the wrong thing perfectly ('running very very fast in the wrong direction'). Treat it as a living tool and you're building something that actually solves problems.
 
 This agile approach to specs creates a particular challenge: if the feature can evolve as you learn, how the hell do you estimate it? How do you know when you're done? That's what this article is about.
 
+**Fundamentally; a Feature Spec is a conversation NOT a dogmatic, unchanging LAW.
+
 [TOC]
+
+## Why Agile (and What That Actually Means)
+
+Agile isn’t stand-ups and sticky notes. It’s an **economic strategy for building the right thing under uncertainty**. Specs live inside that uncertainty, so they have to be agile too. Read the [Agile Manifesto](https://agilemanifesto.org/), let it become how you think about building ANYTHING. Think of it as a design pattern for product development. It's not a process; it's a mindset.
+
+### First principles
+
+* **Change is the default, not the exception.** Markets move, users surprise you, dependencies slip. A spec that can’t flex becomes fiction.
+* **Learning beats predicting.** You discover the real requirements only after humans touch the thing. Agile makes learning *cheap and fast*.
+* **Flow over heroics.** Small, continuous moves beat large, infrequent “big bang” drops.
+
+### The economics (why this saves you money)
+
+* **Minimise the cost of being wrong.** Short cycles + lightweight specs mean bad ideas die quickly instead of after a six-week build.
+* **Delay irreversible decisions.** Keep options open until the last responsible moment; commit when information is highest and risk is lowest.
+* **Reduce inventory.** Half-written epics and massive “future” sections are work-in-progress debt. Ship thin slices, bank the value.
+
+### Feedback loops are the product
+
+Every loop shortens the distance between “idea” and “useful”:
+
+* **Spec ⇄ Dev:** catch impossibilities before code cements them.
+* **Dev ⇄ QA:** turn acceptance criteria into executable checks.
+* **Internal dogfood ⇄ Users:** prove it solves a real problem, not an imagined one.
+
+> Update the spec after each loop. The change log is the *story of what you learned*.
 
 # What Makes a Good Feature Spec
 
@@ -20,12 +48,27 @@ This agile approach to specs creates a particular challenge: if the feature can 
 The single most important principle for writing specs: **Always start with the problem, not the solution.**
 
 This pattern is simple:
-1. **Problem** - What's actually broken? What pain are users experiencing?
-2. **Solution** - Here's how we propose to fix it
+1. **Problem** - What's actually broken? What pain are users experiencing? What opportunity would the feature create?
+2. **Solution** - Here's how we propose to fix it / exploit that opportunity
 3. **In Scope** - What we're doing in this spec
-4. **Out of Scope** - What we're explicitly NOT doing (equally important)
+4. **Out of Scope** - What we're explicitly NOT doing (equally important; feeds into future planning and stops the 'why aren't we doing x' questions)
 
 I've seen countless specs that jump straight into "User clicks button X which calls API Y" without ever explaining what the user is actually trying to achieve. This is arse-backwards. The implementation details should flow naturally from understanding the problem.
+
+Remember developers are feature building machines REALLY (code is the tool to deliver features); tell them what *needs doing* NOT how to do it. if you have a UX person whp's responsible for the UX spec then the dev and them should work together. The point is making the best feature *for the user* that can change and anyone is empowered to push for the change (in the spec) and have that review process tes the idea.
+
+```mermaid
+flowchart TD
+    A[Feature Idea] --> B[Spec / Proposal]
+    B --> C[Visuals: Flowcharts, Figma, UI Mockups]
+    C --> D[Implementation]
+    D --> E[Internal Testing]
+    E --> F[Feedback Loop]
+    F -->|Refine| B
+    F -->|Ship| G[Release to Users]
+    G --> H[User Feedback]
+    H -->|Iterate| B
+```
 
 ## Clarity of Purpose
 Before you write a single word about implementation, you need to answer one question: **WHY?**
@@ -47,10 +90,31 @@ The trick is to specify **WHAT** needs to happen without prescribing **HOW** it 
 
 **Bad**: "On form submission, the submit button's onClick handler should call validateForm() which iterates through formFields array checking each field.value against its validation.regex property and if any fail should call showError() with the field.name and validation.message parameters."
 
-The first tells me what the user experience should be; I can implement it in React, Vue, vanilla JavaScript, or carrier pigeon for all it matters. The second assumes implementation details that might be completely wrong for the tech stack or introduce unnecessary constraints.
+The first tells me what the user experience should be; I can implement it in React, Vue, vanilla JavaScript, or carrier pigeon for all it matters. The second assumes implementation details that might be completely wrong for the tech stack or introduce unnecessary constraints. Different people have different strengths often the person writing the spec isn't technical / isn't the one writign the code. Imagine being a cab driver and not being told the destination but every gear change, mirror look etc..etc..makes you all stabby. 
+
+<img src="https://media.tenor.com/la1K-_RBV0cAAAAi/chick-stab-chick.gif" />
+
+## Use Pictures / flowcharts; Get The Point Across
+Remember you're trying to get people to unserstand what you're suggesting. Some teams include Figma documents (a storyboard / ux 'spec') or images of the UI the designer built. Like everythign else though these are 'until we try it' suggedtions until they've been through a feedback loop. It's all about *ensuring you're being understood*. Use whatever tools you need.
+
+[In a Wiki mermaid.js diagrams are GREAT for this! ](https://www.mostlylucid.net/blog/category/Mermaid); remember AI is GREAT at generating these too given a textual description.
+
+Some people can parse written descriptions, some need pictures and movies!
+
+```mermaid
+flowchart LR
+A[User on Profile Page] --> B[Click 'Add Profile Picture']
+B --> C[Upload Dialog Opens]
+C --> D[Select Image File]
+D --> E[Preview + Crop Options]
+E --> F{User Confirms?}
+F -->|Yes| G[Profile Updated with New Picture]
+F -->|No| C
+G --> H[User Sees Updated Profile]
+```
 
 ## Edge Cases and Error Handling
-If there's one thing I've learned it's this: **Users will find ways to break your software that you never imagined.**
+If there's one thing I've learned it's this: **Users will find ways to break your shit that you never imagined.**
 
 A good spec doesn't just describe the happy path; it considers:
 - What happens when the network fails mid-operation?
@@ -59,6 +123,8 @@ A good spec doesn't just describe the happy path; it considers:
 - How do we handle partial failures in distributed operations?
 
 You don't need to solve all these in the spec, but you need to acknowledge they exist. Nothing irritates developers more than discovering halfway through implementation that nobody thought about what happens when the external API is down.
+
+For MANY it's likely they're outn of scope for THIS spec. You may have 'technical specs' which DO detail the implemntation details and technical spolutions to 'technical issues' 
 
 ## Security and Performance Considerations
 These shouldn't be afterthoughts shoehorned in during code review. If there are specific security requirements (authentication levels, data encryption, audit logging) spell them out in the spec.
@@ -73,16 +139,53 @@ Here's the template I use for feature specs. It's not gospel, but it's served me
 A paragraph or two summarising what we're building and why it matters. Your CEO should be able to read just this section and understand the value.
 
 ## 2. Background/Context
-What's the current state of affairs? What prompted this feature? What have users been asking for? This helps developers understand the problem space without having been in every product meeting.
+What's the current state of affairs? What prompted this feature? What have users been asking for? What would help us make more money? This helps developers understand the problem space without having been in every product meeting.
 
-## 3. User Stories
-These aren't just formality; they force you to think through actual usage patterns. Format them properly:
+Got it—let’s expand your section on **User Stories** with personas woven in, so it’s not just a checklist but a living map of how different kinds of users interact with the system.
 
-**As a** [type of user]
-**I want** [to do something]
-**So that** [I achieve some goal]
+---
 
-The "so that" bit is crucial; it stops you from writing features nobody needs.
+## 3. User Stories (with Personas)
+
+User stories aren’t just a box-ticking exercise—they’re a way to **embody real people** and their goals. You know, your users **the whole point of building this shit**.
+By anchoring each story to a persona, you force yourself to think about actual usage patterns, motivations, and constraints. The format is simple but powerful:
+
+In the end personas are a greeat way of identifying HOW your software can serve different TYPES of users. Maybe  Alex needs a dashboard to view security issues in your feature, maybe Morgan needs his permissions restricted to stop him breaking shit etc.
+
+**As a [persona / type of user] I want [to do something] So that [I achieve some goal].**
+
+The **“so that”** clause is the safeguard against building features nobody needs—it ties every function back to a real-world outcome.
+
+---
+
+### Example Personas
+- **Alex the Administrator** – cares about control, oversight, and efficiency.
+- **Jamie the Casual User** – values simplicity and quick wins.
+- **Priya the Power User** – pushes the system to its limits, wants advanced customization.
+- **Morgan the Newcomer** – needs guidance, onboarding, and reassurance.
+- **Taylor the Stakeholder** – doesn’t use the system daily but needs visibility into outcomes.
+
+---
+
+### Sample User Stories
+
+| Persona | Story | Why it matters |
+|---------|-------|----------------|
+| Alex (Administrator) | As an **Administrator**, I want to assign roles and permissions **so that** I can ensure data security and compliance. | Prevents unauthorized access and keeps the system trustworthy. |
+| Jamie (Casual User) | As a **Casual User**, I want a simple dashboard **so that** I can quickly see the most important information without being overwhelmed. | Reduces friction and increases adoption. |
+| Priya (Power User) | As a **Power User**, I want to create custom workflows **so that** I can automate repetitive tasks and save time. | Unlocks efficiency and advanced use cases. |
+| Morgan (Newcomer) | As a **Newcomer**, I want guided tutorials and tooltips **so that** I can learn the system without feeling lost. | Improves onboarding and retention. |
+| Taylor (Stakeholder) | As a **Stakeholder**, I want regular reports emailed to me **so that** I can track progress without logging in. | Keeps decision-makers informed and engaged. |
+
+---
+
+### Why Personas + Stories Work Together
+-  **Personas humanize the abstract.** Instead of “users,” you’re thinking about Alex, Jamie, Priya, Morgan, and Taylor.
+-  **Stories tie features to goals.** The “so that” clause forces clarity: every feature must serve a purpose.
+-  **Patterns emerge.** When you line up multiple stories, you see overlaps, conflicts, and priorities across personas.
+
+
+
 
 ## 4. Detailed Requirements
 This is your meat and potatoes. Break it down by functional area. Use subheadings liberally. Include mockups or wireframes if you have them; a picture is worth a thousand words of description.
@@ -94,14 +197,14 @@ For each requirement, specify:
 - How it interacts with existing features
 
 ## 5. Non-Functional Requirements
-Performance targets, security requirements, accessibility standards, browser/device support. Don't assume these are obvious.
+Performance targets, security requirements, accessibility standards, browser/device support. Don't assume these are obvious. But in some teams these may be WHOLE OTHER TEAMS...but don't lose focus. If one part of your cycle becomes a waterfall then you've lost agility by definition.
 
 ## 6. Out of Scope
 This section is just as important as what's IN scope. Be explicit about what you're NOT doing in THIS spec.
 
 Why this matters:
 - **Prevents Scope Creep** - "But couldn't we just..." conversations die quickly when you can point to the Out of Scope section
-- **Sets Expectations** - Stakeholders know what won't be delivered
+- **Sets Expectations** - Stakeholders know what **won't** be delivered (this time)
 - **Enables Future Work** - Items here might become their own specs later
 - **Focuses the Team** - Everyone knows the boundaries of this work
 
@@ -126,7 +229,7 @@ How will QA test this? These should be concrete, testable statements. Bonus poin
 
 Here's something that doesn't get talked about enough: **Specs can have bugs too.**
 
-A spec bug is when the specification itself is wrong. Maybe it contradicts itself, or it specifies behaviour that's technically impossible, or it solves the wrong problem entirely. These are insidious because developers might implement exactly what's written and still end up with a product that doesn't work properly.
+A spec bug is when the specification itself is wrong. Maybe it contradicts itself, or it specifies behaviour that's technically impossible, or it solves the wrong problem entirely. These are insidious because developers might implement exactly what's written and still end up with a product that doesn't work properly (in Agile the main focus is making this 'feedback lopp' as short as possible for exactly thids reason).
 
 ## How Spec Bugs Happen
 
@@ -166,9 +269,10 @@ Never silently change requirements. That's how you end up building features nobo
 The best approach is to prevent spec bugs in the first place:
 
 1. **Involve Developers Early** - Get technical review of specs before they're finalised. We'll spot impossibilities and edge cases that product people might miss.
-2. **Use Examples Liberally** - Abstract descriptions are easy to misinterpret. Concrete examples ("User John has permission X, tries to do Y, and sees Z") are much clearer.
-3. **Validate Against Existing System** - Does the spec make assumptions about how things currently work? Double-check those assumptions.
-4. **Iterate on Specs** - Treat the spec as a living document. As you learn more during implementation, update it. Future developers will thank you.
+2. **Involve QA Early** - If it can't be tested it can't be built, your job is making something that makes it to users, QA is CRITICAL here.
+3. **Use Examples Liberally** - Abstract descriptions are easy to misinterpret. Concrete examples ("User John has permission X, tries to do Y, and sees Z") are much clearer.
+4. **Validate Against Existing System** - Does the spec make assumptions about how things currently work? Double-check those assumptions.
+5. **Iterate on Specs** - Treat the spec as a living document. As you learn more during implementation, update it. Future developers will thank you.
 
 # Common Spec Pitfalls
 
@@ -186,7 +290,7 @@ The opposite problem: "Build a reporting system." Right, cheers for that. I'll j
 If your spec can be fully captured in a single sentence, it's not a spec; it's a vague wish.
 
 ## The Solution-First Spec
-"We need a dashboard" isn't a requirement; it's a preconceived solution. Maybe you do need a dashboard, but maybe you need something completely different. Start with the problem.
+"We need a dashboard" isn't a requirement; it's a preconceived solution. Maybe you do need a dashboard, but maybe you need something completely different. Start with the problem. "Bob the system admin can't see when there's issues in the system quickly and easily"
 
 ## The Moving Target
 Requirements that change daily aren't requirements; they're chaos. If things are changing that fast, you don't understand the problem well enough yet. Stop and do more discovery before writing specs.
@@ -201,7 +305,7 @@ This is the mindset shift that changed how I write specs: **Treat your spec exac
 ## Version Control
 Your specs should live in version control alongside your code. Check them in. Track changes. Write meaningful commit messages when you update them. This creates a history of how requirements evolved.
 
-At Microsoft, we kept specs in the same repositories as code. When a spec changed, it went through the same review process as code. This wasn't bureaucracy; it was ensuring everyone understood what was changing and why.
+At Microsoft, we kept specs in the same repositories as code. When a spec changed, it went through the same review process as code. This wasn't bureaucracy; it was ensuring everyone understood what was changing and why. Even revision tracking in Word is better than nothing (you can have a 'revisions' section but don't let this get out of control; TOO MANY revisions after dev starts means the spec wasn't cooked when you started building). 
 
 ## Refactoring Specs
 Just as code needs refactoring, so do specs. As you learn more during implementation, the spec should evolve to reflect that learning.
@@ -211,7 +315,7 @@ Found a better way to solve the problem? Update the spec to reflect the new appr
 The spec after development should be more refined than the spec before development. If it's not, you've missed an opportunity to document what you learned.
 
 ## The Living Document Principle
-A spec isn't "done" when development starts. It's done when the feature ships and becomes maintenance mode. Until then, it's a living document that evolves with your understanding of the problem.
+A spec isn't "done" when development starts, it's just 'ready' for that stage . It's done when the feature ships and becomes maintenance mode. Until then, it's a living document that evolves with your understanding of the problem.
 
 This doesn't mean the spec should change daily. Major changes to requirements need discussion and agreement. But clarifications, additional examples, newly discovered edge cases should all be folded back into the spec as you find them.
 
@@ -223,7 +327,7 @@ Here's something that doesn't get discussed enough: **your spec becomes the foun
 
 **Test Plans**: QA writes test cases based on the spec. If the spec is outdated, tests are testing the wrong thing. You get false positives (tests pass but feature is broken) or false negatives (tests fail but feature works fine).
 
-**Documentation**: User documentation, API docs, help systems - they all start from the spec. If the spec describes features that don't exist or misses features that do, your docs are wrong from day one.
+**Documentation**: User documentation, API docs, help systems, your fancy RAG AI support agent - they all start from the spec. If the spec describes features that don't exist or misses features that do, your docs are wrong from day one.
 
 **Future Development**: When someone needs to extend the feature six months later, they'll read the spec to understand how it works. If it doesn't match reality, they're starting with incorrect assumptions.
 
@@ -233,18 +337,20 @@ This is why the spec must stay current. It's not just about the initial implemen
 
 At Microsoft, we treated spec updates with the same importance as code updates. Spec changes went through review. They were versioned alongside code. When a feature changed, updating the spec wasn't optional; it was part of the definition of "done."
 
-If you change the code but don't update the spec, you've created technical debt. Future work will be slower because nobody knows what the current state actually is.
+If you change the code but don't update the spec, you've created TECHNICAL DEBY. Future work will be slower because nobody knows what the current state actually is.
+
+<img src="https://media1.tenor.com/m/3T1hzop89-kAAAAC/debt-credit-card.gif" height="250"/>
 
 # The Relationship Between Spec and Implementation
 
 Here's something junior developers often don't grasp: **The spec is not the source of truth; the code is.**
 
-The spec tells you what you're trying to build. The code is what you actually built. These two things should align, but when they don't, the code wins. You can't run a spec; you can run code.
+The spec tells you what you're trying to build. The code is what you actually built. These two things should align, but when they don't, the code wins. You can't run a spec; you can run code (BDD not withstanding...future topic!).
 
 This means:
 
 1. **Specs Should Evolve** - As you discover things during implementation, update the spec. It's documentation of what you're building, not a sacred text.
-2. **Implementation Details Don't Belong in Specs** - Once you've started implementing, the code itself documents the how. The spec should document the why.
+2. **Implementation Details Don't Belong in Specs** - Once you've started implementing, the code itself documents the how (in some places a 'Technical Spec' but these are rare and often a product of nasty 'Agile Frameworks'  - a pet hate. Proscribing an inherently adaptive practice like Agile makes me barf a little). The spec should document the why.
 3. **Tests Bridge the Gap** - Good tests verify that the implementation matches the requirements. They're the executable form of the spec.
 
 # Writing Specs for Different Audiences
@@ -259,7 +365,7 @@ Different people need different things from specs:
 
 **QA** - Need to know how to verify it works. Give them the acceptance criteria.
 
-**Designers** - Need to know what the user experience should be. Give them the user stories and interaction flows.
+**Designers** - Need to know what the user experience should be. Give them the user stories and interaction flows. Even better have them develop a UX spec / storyboards in parallel while working with the dev & spec writer; be that PM, BA etc. Who writes the spec is less important than it making the end feature BETTER.
 
 A good spec serves all these audiences without being bloated. Use sections and structure so people can read what matters to them.
 
@@ -267,7 +373,7 @@ A good spec serves all these audiences without being bloated. Use sections and s
 
 Before you call a spec done, ask yourself:
 
-1. **Could a developer who's never seen this feature build it from this spec?** If not, you're missing details.
+1. **Could a developer who's never seen this feature build it from this spec?** If not, you're missing details. NEVER have pieces like 'this works like feature x in the currrent system'. First that's lazy AF, second, that feature could change or be hard to understand edge cases.
 2. **Could QA write test cases from this spec?** If not, your acceptance criteria aren't clear enough.
 3. **Could you build something completely useless that still matches this spec?** If so, you haven't captured the actual requirements properly.
 4. **Does this spec describe HOW to implement or WHAT to achieve?** If it's the former, you're micromanaging.
@@ -276,7 +382,7 @@ Before you call a spec done, ask yourself:
 
 "But we're agile! We don't need specs!" I hear this a lot. It's nonsense.
 
-Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. The key insight: **specs are tools, not contracts.** You create them with just enough detail to get started, then evolve them as you learn.
+Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. The key insight: **specs are tools, not contracts.** You create them with just enough detail to get started, then evolve them as you learn. My 'Agile journey' was even more extreme; as you get super good at specs even those become more Agile, you wil ladapt and improve based on what your team wants / needs. 
 
 ## How Agile Specs Differ from Waterfall
 
@@ -298,13 +404,15 @@ The fundamental difference isn't format or length; it's mindset and process.
 - Assumption: we'll learn as we build
 - Cyclical: Draft → Build → Learn → Update Spec → Build More → Learn More
 
-The waterfall approach assumes you can specify everything perfectly before writing a line of code. That's a lovely fantasy. In reality, you discover half the requirements once users actually try the feature.
+The waterfall approach assumes you can specify everything perfectly before writing a line of code. That's a lovely fantasy. In reality, you discover half the requirements once users actually try the feature. Plan for that, embrace it. Users are the ULTIMATE testers. They can break shit you didn't even know you'd made at a pace that seems to violate causality. Expect it, plan it, log it and fix it (and add it to a future spec / this one if you're still in the spec's 'lifespan'). 
+
+<img src="https://media.tenor.com/RSp2ieJayNsAAAAM/panda-destroy.gif" height="250"/>
 
 ## Feedback Loops Are Everything
 
 In agile speccing, feedback loops are your best friend. You're constantly gathering input and updating the spec:
 
-**Developer Feedback**: "The initial approach won't work because of X. I'm proposing Y instead." → Update spec to reflect new approach and why it changed.
+**Developer Feedback**: "The initial approach won't work because of X. I'm proposing Y instead." → Update spec to reflect new approach and why it changed. In the end you're ALWAYS the first 'user' of a feature. If it looks shit...sepc bug and get it sorted (even if you stop whatever sprint / spike etc to do it...don't wait!)
 
 **User Feedback**: Try the feature with real users (even internally). "This doesn't actually solve my problem because..." → Pivot the spec based on what you learn.
 
@@ -315,6 +423,8 @@ In agile speccing, feedback loops are your best friend. You're constantly gather
 Each of these feedback loops makes the spec better. The spec after a sprint of development should be more accurate than the spec before, because you've learned things you couldn't have known at the start.
 
 This is why waterfall specs often fail: they skip the feedback loops. By the time you discover the spec was wrong, you've built the wrong thing and "changing the spec" means massive rework.
+
+**Big thing, feedback AS EARLY AS FEASIBLE. It's why I built [LLMApi](https://www.mostlylucid.net/blog/llmapi)  it helps you build a BIT then use fake data to get useful feedback.** 
 
 ## Embrace Incompleteness (At First)
 
@@ -357,7 +467,7 @@ The agile approach can fail if you forget one critical thing: **"will change" do
 Bad agile speccing:
 - Spec changes daily with no clear reason
 - No definition of "done" so feature keeps growing
-- Changes aren't communicated, people work off different understandings
+- Changes aren't communicated (spec updates are expected to jump straight to your colleagues brains), people work off different understandings
 - "Agile" used as excuse for not thinking things through
 - Stakeholders surprised by scope changes because nobody told them
 
@@ -369,6 +479,16 @@ Good agile speccing:
 - Stakeholders are part of the feedback loop
 
 The spec is a living document, but it's not chaos. It evolves based on learning, not on whims.
+
+AGILE IS NEVER DOING WHATEVER THE FUCK YOU WANT AND CALLING IT AGILE.
+
+It's a dynamic process that has the SOLE GOAL of building the best stuff as quickly as possible.  As the [Agile Manifesto ](https://agilemanifesto.org/principles.html) says as it's first principle. 
+
+> "Our highest priority is to satisfy the customer
+through early and continuous delivery
+of valuable software."
+
+It's not to faff around spunking out code because you like the feeling.
 
 ## Just Enough Detail to Start
 
@@ -385,6 +505,10 @@ For others it might be:
 - Integration specifications for multiple systems
 
 **Add detail where uncertainty exists.** If everyone agrees on how something should work, you don't need to write it down in excruciating detail. If there's disagreement or confusion, that's where you need specifics.
+
+But in the end it's 'is there enough detail to start the feedback loop'. 
+
+<img src="https://media.tenor.com/5q0fppfYcLAAAAAM/push-loop-infinite.gif" height="250"/>
 
 ## Templates and AI: Getting Started Quickly
 
@@ -480,6 +604,8 @@ Agile estimation acknowledges you don't know everything up front. The feature mi
 
 But all of these approaches have one critical requirement: **you need to know what "done" means.** Without a clear definition of done, a feature can keep metastasising forever.
 
+It's acommon criticism of Agile compared to Waterfall approaches 'without a concrete spec thare can be no good estimates'. Dunno I'd rathe rhave a floppy estimate which leads to a good feature than a dead on one for crap. 
+
 # Defining "Done" (Or How to Stop Feature Metastasis)
 
 This is where many agile specs fall apart. Everyone's excited about flexibility and iteration, but nobody wants to be the one who says "right, that's it, we're done."
@@ -526,13 +652,22 @@ For every feature, there are dozens of things you could add. The Out of Scope se
 
 Now when someone suggests "shouldn't comments have upvotes?" you can point to the spec and say "that's out of scope for this iteration. Let's discuss it as a separate feature once basic comments are working."
 
+Oh and the NEXT spec? Well you have a bunch of unused good ideas already captured! Way easier to start!
+
 ## Time-Boxing as a Last Resort
 
-Sometimes you genuinely don't know exactly what "done" looks like when you start. The problem space is too uncertain. In these cases, time-boxing can work:
+Sometimes you genuinely don't know exactly what "done" looks like when you start. The problem space is too uncertain, entirely novel or even some back end system is having to be built simultaneously. In these cases, time-boxing can work:
 
-"We'll spend 2 weeks prototyping different approaches to the recommendation algorithm. At the end of 2 weeks we'll evaluate what we've learned and decide whether to productionise one approach, try something different, or abandon the feature."
+"We'll spend 2 weeks (or until backend is ready) prototyping different approaches to the recommendation algorithm. At the end of 2 weeks we'll evaluate what we've learned and decide whether to productionise one approach, try something different, or abandon the feature."
 
-But notice: you still have a concrete "done" condition (2 weeks, then evaluate). You're not just building indefinitely.
+But notice: you still have a concrete "done" condition (2 weeks, then evaluate). You're not just building indefinitely. These explorations are often doing in a condect like a 'Sprint in SCRUM called a 'Spike'
+
+### Spikes & Sprints. 
+A Spike is one of these 'go have a play and figure out this tech' it can last as long as a Sprint (or longer) but it typically just a few days.  When I have devs do these I typically ask for a mail at the end (or a wiki post etc) with the findings, is it worth it, should we adopt it etc. 
+
+A Sprint is expected to have deliverables at the end (something someone other than the person engaged in it can test for the loop). A Spike MIGHT have but probably the only deliverable is the knowledge for the team.
+
+They're also FUN for devs and help the team I often collect Spike ideas during a project and when there's a lull I let devs pick one to explore (USUALLY for some future dev but often just to stop Jim the junior dev KEEP GOING ON ABOUT IT).
 
 ## Preventing Scope Creep During Development
 
@@ -558,13 +693,17 @@ If no, you're not done yet, regardless of what your spec says.
 
 The hardest part of agile isn't starting work; it's stopping work. Clear "done" criteria make stopping possible.
 
+But remember that you have to weight up whethern you release it to everyone, have a close group for A/B / UAT (user acceptance testing) .That's  often a business decision around risk. Sometimes the public is FUCKING DUMB and sees a partially cokppleted preview feature as the GOSPEL FOR YOUR SYSTEM QUALITY. If that's an issue a controlled group is safer.
+
+<img src="https://media1.tenor.com/m/hl4H1KOXEMcAAAAC/bongo-cat-keyboard-smash.gif" height="300"/>
+
 # The Spec Review Process
 
 A spec isn't done when you finish writing it; it's done when it's been reviewed by the people who'll use it.
 
 ## Treat Spec Reviews Like Code Reviews
 
-The best practice I learned at Microsoft: **spec reviews work exactly like code reviews.** They're collaborative, not adversarial. The goal isn't to catch you out; it's to make the spec better.
+The best practice I learned at Microsoft: **spec reviews work exactly like code reviews.** They're collaborative, not adversarial (though the Microsoft 'boys club' often made the spec reviews feel like gladiatorial combat if someone was a dick; hey Simon!). The goal isn't to catch you out; it's to make the spec better.
 
 When reviewing specs:
 - **Ask questions** - "What happens if X occurs?" isn't criticism; it's identifying a gap
@@ -663,24 +802,24 @@ Notice these are specific and testable. We can verify each one. When all are met
 - Automatic quality assessment of translations (manual review required initially)
 
 ## Technical Constraints
-- EasyNMT has a ~500 word limit per request; must batch accordingly
-- Translation service can be slow (~15 second timeout per batch)
-- Multiple EasyNMT instances needed for reasonable performance
+- EasyNMT has a ~500 word limit per request (NOT true for [mostlylucid-nmt](/blog/mostlylucid-nmt-complete-guide) which can take fucking BOOKS) ; must batch accordingly
+- Translation service can be slow (~15 second timeout per batch) (mostlylucid-nmt is aroudn 3 seconds)
+- Multiple EasyNMT instances needed for reasonable performance (nope mostlylucid-nmt 😜)
 - File system I/O must not block main application
 
 ## Open Questions at Spec Time
 - ~~Should we cache translations to avoid re-translating unchanged files?~~ **Resolved: Yes, using file hash comparison**
-- ~~How do we handle EasyNMT service failures?~~ **Resolved: Log error and skip file; will retry on next service restart**
+- ~~How do we handle EasyNMT service failures?~~ **Resolved: Log error and skip file; will retry on next service restart / a circuit breaker (maybe a spike?)**
 - What quality issues might we see with technical content? **Decision: Ship and evaluate; manual review catches issues**
 
-## What We Learned During Implementation
+## What We Learned Duith 20-line batches, but found 10 lines more reliable for staying under EasyNring Implementation
 Several things emerged during development that refined the spec:
 
 **Image Detection**: Initially, image filenames in markdown were being sent to the translation service, breaking sentence parsing. Added file extension detection to skip image paths.
 
 **Service Availability**: EasyNMT can be temperamental on startup. Added health check that queries the `/model_name` endpoint before attempting translations.
 
-**Batch Size Tuning**: Started with 20-line batches, but found 10 lines more reliable for staying under EasyNMT's word limit while maintaining context.
+**Batch Size Tuning**: Started wMT's word limit while maintaining context.
 
 **Hash Storage**: Originally planned database storage for file hashes, but filesystem-based `.hash` files proved simpler and avoided database dependency for this service.
 
@@ -732,6 +871,10 @@ If the spec is unrecognizable because you completely misunderstood the problem i
 
 The spec's version history should tell the story of what you learned.
 
+In Startups this is called a 'Pivot' where you start buildign a game and end up building an amazing messaging system instead..you haven't heard of mobile game Glitch, you likely HAVE heard of the messaging bit; 'Slack'.
+
+Don't get too locked in. If there's opportunities by pivoting TAKE THEM. 
+
 ## "Should I write specs for bug fixes?"
 
 For critical bugs: no, just fix them.
@@ -739,6 +882,8 @@ For critical bugs: no, just fix them.
 For complex bugs that affect multiple systems or require architectural changes: yes. Treat it like a feature. What's broken (problem), how you'll fix it (solution), how you'll know it's fixed (done criteria), what you're not changing (out of scope).
 
 For everything in between: use your judgement. If the fix isn't obvious or might have side effects, a quick spec helps.
+
+This is ESPECIALLY true for security bugs. You need to know EXACTLY what you're fixing and how you'll verify it & share the fixes WIDELY.
 
 ## "How formal should the spec be?"
 
@@ -752,6 +897,14 @@ The formality matters less than the content:
 
 You can write that in Markdown, Confluence, Word, or scrawled on a napkin. The format doesn't matter; the thinking does.
 
+This is the often unmentioned KEY to Agile development; and why I hate Agile Frameworks (and SCRUM). The WHOLE POINT is that like an agile spec your process needs to be adaptive too. If writing a little doesn't work for one team but a lot does, do that. If no docs works for a tiny team but full docs work for a big one, do that. 
+If 5 day cycles work for one team but 2 week sprints for another, do that.
+The WHOLE IDEA is to make the best product; your team is the machine MAKING that product. Make the machine work as smoothly as possible. 
+
+As a manager look at what your outputs are; if the board needs a burn down graph then how can YOU use the current data to build one. If you have to use the risible 'story points' does THAT get the data you need?
+
+In the end you team outputs features AND what stakeholders need. If YOU can reduce the impact on the team then  that's YOUR PART.
+
 ## "What if I'm the only developer on the project?"
 
 You still need specs, maybe more so. In six months when you need to extend this feature, you won't remember why you made certain decisions. The spec is your past self talking to your future self.
@@ -761,7 +914,8 @@ Plus you still need to:
 - Define what "done" means so you can finish
 - Document what you built for others who might join later
 
-Writing specs for yourself is like writing unit tests: it feels slower now but saves time later.
+Writing specs for yourself is like writing unit tests: it feels slower now but saves time later (like me, I'm in my 50s, I FORGET SHIT nowadays, write it down so it gets done, even if it's only a github issues list).
+
 
 ## "How do I deal with scope creep disguised as 'requirements clarification'?"
 
@@ -785,6 +939,8 @@ Prototyping to learn is good: "We have three approaches. Let me spike each one t
 Building production code before the spec is ready means you're guessing at requirements. You'll probably build the wrong thing.
 
 Exception: if you're the product owner and developer (solo project), you can spec and code simultaneously. But still document your decisions as you go.
+
+The 'until the spec is ready' is a GREAT way to get the devs charged up to begin. Evaluating technology approaches, writing common boilerplate etc.
 
 ## "What if my team doesn't read specs?"
 
@@ -818,18 +974,23 @@ Which almost never happens.
 
 Every time you estimate, you're dealing with:
 - **Unknown unknowns** - Problems you don't know exist yet
-- **Changing requirements** - The spec evolves as you build
-- **Environment differences** - That library worked in your last project, but this one has different dependencies
+- **Known unknowns** - Problems you know exist but have NO IDEA how to solve
+- **Changing requirements** - The spec evolves as you build (the CEO has a crazy idea in the shower..it happens; I once got a 3am call from my HUGELY DRUNK customer in the shower with a stupid ides)
+- **Environment differences** - That library worked in your last project, but this one has different dependencies. You've run it all in IIS but this one needs to run on Linux & Kestrel.
 - **Tooling issues** - The build system, deployment pipeline, or test environment behaves differently
 - **Integration surprises** - That API you're calling doesn't quite work as documented
 - **Human factors** - You're interrupted, sick, or dealing with production issues
+- **Finances** - sometimes a smaller version is needed sooner because *otherwise we're out of money^ that's COMMON in startups. (I'll have an article on 'Startup dev' and how it differs from 'normal dev' in future)
 
 This is why:
 - **Ranges beat point estimates** - "2-5 days" acknowledges uncertainty
-- **Spikes help** - Spend a day investigating before estimating the full work
+- **Spikes help** - Spend a day investigating before estimating the full work; is this tech harder or easier than I estimated, where can it save time etc.
 - **Time-boxing works** - "We'll spend 2 weeks and see what we get" sets expectations
 - **Historical data matters** - Track how long similar tasks actually took
-- **Padding is honest** - If you think 3 days, say 5. You'll be right more often.
+- **Padding is honest** - If you think 3 days, say 5. You'll be right more often. The 'Scotty' approach.
+
+
+<img src="https://media1.tenor.com/m/vrpp1cfR6XgAAAAd/star-trek-star-trek-tos.gif" height="300" />
 
 The more novel the work, the worse your estimates. Building the same CRUD form you've built 50 times? You'll be close. Integrating with a new service using an unfamiliar protocol? Your estimate is a guess wrapped in hope.
 
@@ -902,7 +1063,7 @@ But you'll also need to:
 - Maintain more detailed version history
 - Keep specs after the project ends (for audits)
 
-Even in regulated environments, agile speccing works. You just have more hoops to jump through. The spec is still a tool; it's just a tool that needs to satisfy regulators as well as developers.
+Even in regulated environments, agile speccing works. You just have more hoops to jump through. The spec is still a tool; it's ju~~~~st a tool that needs to satisfy regulators as well as developers.
 
 # In Conclusion
 

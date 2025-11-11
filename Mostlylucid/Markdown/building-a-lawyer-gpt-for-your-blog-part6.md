@@ -3,6 +3,12 @@
 <!--category-- AI, LLM, LLamaSharp, GGUF, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T22:00</datetime>
 
+WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 6! We've built the complete infrastructure - ingestion pipeline ([Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4)), Windows client ([Part 5](/blog/building-a-lawyer-gpt-for-your-blog-part5)), embeddings and vector search ([Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3)), and GPU setup ([Part 2](/blog/building-a-lawyer-gpt-for-your-blog-part2)). Now comes the exciting part: integrating a local LLM to actually generate writing suggestions.

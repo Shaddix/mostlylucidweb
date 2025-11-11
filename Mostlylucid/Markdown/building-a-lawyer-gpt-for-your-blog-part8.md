@@ -3,6 +3,12 @@
 <!--category-- AI, LLM, Deployment, Production, C#, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T23:30</datetime>
 
+WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 8 - the final part! We've built a complete [RAG](https://www.anthropic.com/index/contextual-retrieval)-based writing assistant from scratch. Now let's add the polish that makes it production-ready: auto-linking, deployment, configuration management, and real-world usage patterns.

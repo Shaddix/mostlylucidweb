@@ -1,6 +1,6 @@
 # Modernising Your Frontend Build Pipeline: From CDNs to Bundling
 
-<datetime class="hidden">2025-11-11T10:00</datetime>
+<datetime class="hidden">2025-11-11T02:15</datetime>
 <!-- category -- ASP.NET, Tailwind, Webpack, Frontend -->
 
 ## Introduction
@@ -12,6 +12,16 @@ I'm not a frontend guru or a Webpack wizard. I'm a .NET developer who got frustr
 I made plenty of mistakes along the way (which I'll document), spent hours debugging cryptic Webpack errors, and probably reinstalled `node_modules` more times than I care to admit. But persistence paid off, and I learned a tremendous amount through sheer determination to get this right.
 
 If you're a .NET developer staring at Webpack configuration files wondering what on earth you've gotten yourself into—this article is for you.
+
+I'm an old web performance nutter, in the early days of dial-up the first site I built for money (that wasn't a porn backend in Perl...a story for another time) was a Snow Conditions site that spun off from an automated phone line.
+
+In those days the concerns were quite different. JavaScript was practically unknown. I think even divs were RARE (in those days IE was `div` and Netscape was `layer`) and you'd be LUCKY if your users had a 56K connection. So I learned to optimise (even things like tiled image backgrounds for menu items) etc...
+
+Later at Microsoft I even worked on an automated image sprite tool in Web Forms - it was awesome: it extracted small images from a page, generated CSS and a sprite image automatically. But alas, like my time at Microsoft, it was not to be.
+
+In short, it's an obsession that I've carried my entire career. Nobody likes a slow website! 
+
+**To be fair**, CDNs aren't inherently evil.
 
 **Full disclosure**: This blog is deliberately overengineered. It doesn't *need* all this complexity. But building it this way let me learn modern frontend tooling properly and, crucially, gave me something real to write about and teach. Sometimes the best way to learn is to build something slightly ridiculous and document the journey.
 
@@ -39,13 +49,13 @@ Whilst this works, it has several drawbacks that became increasingly frustrating
 - **Limited optimisation**: Can't minify across boundaries or remove dead code
 - **Offline development**: Requires internet connectivity, which is annoying when working on trains or planes
 
-The final straw for me was when a CDN went down for 20 minutes and took my entire blog with it. That's when I decided: never again.
+So I wanted control...control of exactly what my site used and NEEDED to work. I wanted to bundle only what I needed, ensure reliable loading order, and optimise for performance. This meant moving away from CDNs and towards a bundling approach.
 
-**To be fair**, CDNs aren't inherently evil. They're simpler to set up, and with HTTP/2 and HTTP/3 multiplexing, the multiple request overhead is much less critical than it used to be. For many projects, especially small ones or prototypes, CDNs remain a perfectly sensible choice. But for a production site where I wanted control, reliability, and optimisation, bundling made more sense.
+They're simpler to set up, and with HTTP/2 and HTTP/3 multiplexing, the multiple request overhead is much less critical than it used to be. For many projects, especially small ones or prototypes, CDNs remain a perfectly sensible choice. But for a production site where I wanted control, reliability, and optimisation, bundling made more sense.
 
 ## The Modern Bundling Approach
 
-My current setup bundles all JavaScript dependencies through Webpack and processes CSS through PostCSS. Here's what that looks like.
+My current setup bundles all JavaScript dependencies through Webpack and processes CSS through PostCSS. 
 
 ### Why Webpack Instead of Vite?
 
@@ -63,17 +73,20 @@ Adding "learn an entirely new build tool" on top of that seemed unnecessary. Web
 
 **Do I regret using Webpack?** Not at all. It got me to where I needed to be. The lessons I learned about bundling, code splitting, and optimisation are transferable to any build tool. And honestly, for this blog's scale, the performance difference between Webpack and Vite is negligible—we're talking milliseconds in development rebuild times.
 
+It's a key aspect of how I build stuff; start with what's EASY and build from that foundation. 
+
 The broader lesson here is that **progress beats perfection**. I could have spent weeks researching the "best" bundler, comparing benchmarks, reading comparison articles, and agonising over the decision. Instead, I picked the tool I knew, got it working, and moved forward. That pragmatism kept me shipping rather than endlessly deliberating.
 
-Maybe one day I'll migrate to Vite. Maybe I won't. Either way, this blog has a modern, optimised build pipeline that works reliably—and that's what matters.
+Maybe one day I might migrate to Vite. Maybe I won't. Either way, this blog has a modern, optimised build pipeline that works reliably—and that's what matters.
 
 ### Package Structure
 
-The [`package.json`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/package.json) now maintains two distinct dependency groups. This structure took me several attempts to get right—initially, I had everything in `dependencies`, which meant development tools were being deployed to production. Not ideal.
+The [`package.json`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/package.json) now maintains two distinct dependency groups. This structure took me several attempts to get right—initially, Nuget and npm are KINDA similar but nppm is a lot less friendly when adding pacakges. 
 
 ```json
 {
   "dependencies": {
+    //NOTE - This is a pre-release of these enhancements, the 1.0.0 release is OUT NOW!
     "@mostlylucid/mermaid-enhancements": "^1.0.0-alpha0",
     "alpinejs": "^3.14.1",
     "codemirror": "5.65.13",
@@ -88,6 +101,7 @@ The [`package.json`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostly
     "regenerator-runtime": "^0.14.1",
     "svg-pan-zoom": "^3.6.2"
   },
+  //These are just used for build; not needed to RUN the app so we have a separate place for 'em
   "devDependencies": {
     "@babel/core": "7.26.9",
     "@babel/preset-env": "7.26.9",
@@ -144,12 +158,42 @@ The `package.json` scripts have evolved significantly:
 
 This setup separates concerns:
 - **clean**: Removes previous build outputs using `rimraf`
-- **copy:*** tasks: Copies static CSS files that don't need processing
+- **copy:*** tasks: Copies static CSS files that don't need processing (these are either  'imports') for a special purpose like loading my funky Raleway font or adaptive ones like theme switching enhancements.
 - **tw:*** tasks: Processes Tailwind CSS through PostCSS
 - **js:*** tasks: Bundles JavaScript through Webpack
 - **dev/watch/build**: Orchestrates the entire pipeline
 
 The `npm-run-all` package enables parallel execution for faster builds.
+
+You can set `npm run build` to auto run during your local build but it's a bit of a pain for CI (you need to ensure it's disabled etc).  
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <SpaRoot>ClientApp\</SpaRoot>
+  </PropertyGroup>
+
+  <!-- Run npm install only when package.json changes -->
+  <Target Name="NpmInstall" Inputs="$(SpaRoot)package.json" Outputs="$(SpaRoot)node_modules" BeforeTargets="Build">
+    <Message Importance="high" Text="Running npm install in $(SpaRoot)" />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" />
+  </Target>
+
+  <!-- Run npm build before the .NET build -->
+  <Target Name="NpmBuild" DependsOnTargets="NpmInstall" BeforeTargets="Build">
+    <Message Importance="high" Text="Running npm run build in $(SpaRoot)" />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build" />
+  </Target>
+
+</Project>
+
+```
+
+To do it just add this to your csproj...You can even say only run during debug' etc...but I find it messy. I prefer just to manually run it. So `npm run watch` does just that, when any css / js file changes it auto-runs the build. 
+
+NOTE: In the JS world they almost use hot-reload dev runs which is pretty slick and makes you kinda hate ASP.NET Core's weak attempt.
 
 ## Webpack Configuration Deep Dive
 
@@ -460,22 +504,6 @@ This approach offers several benefits:
 4. **Global exposure**: Libraries available to Razor views via `window`
 5. **Custom modules**: Application-specific code organised into importable modules
 
-## Integration with ASP.NET Core
-
-The final piece connects the frontend build to the .NET build process. In the `.csproj` file:
-
-```xml
-<Target Name="BuildCss" BeforeTargets="Compile">
-    <Exec Command="npm run dev" Condition=" '$(Configuration)' == 'Debug' " />
-    <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Release' " EnvironmentVariables="NODE_ENV=production" />
-</Target>
-```
-
-This ensures:
-- **Development builds** (`dotnet build` in Debug): Runs `npm run dev` for fast, unminified builds with source maps
-- **Production builds** (`dotnet build` in Release): Runs `npm run build` for optimised, minified assets
-
-The compiled assets are written to `wwwroot/js/dist/` and `wwwroot/css/dist/`, which are served as static files by ASP.NET Core.
 
 ### Layout Template Integration
 
@@ -491,10 +519,12 @@ In `_Layout.cshtml`, I now reference only bundled assets:
 </body>
 ```
 
+Note I specify `module` to let the browser know what type of JS file this is & `asp-append-version` a neat little ASP.NET tag helper that appends a hashed version of the file contents to the querystring; effectively cache-busting when the file changes.
+
 The only remaining CDN dependencies are:
 - **Google Sign-In**: Requires external CDN for OAuth functionality
 - **Boxicons**: Icon font (could be bundled, but minimal benefit)
-- **Umami Analytics**: Third-party analytics script
+- **Umami Analytics**: Third-party analytics script - self hosted so I get to see your visit not Google ??
 
 ## Build Pipeline Visualisation
 
@@ -544,38 +574,12 @@ graph TD
     style AA fill:#e8f5e9
 ```
 
+It looks pretty complex but really that's what WebPack does, it handles most of this itself (in a complicated way that the likes of Vite don't need but.. )
+
 ## Performance Improvements
 
-The migration from CDNs to bundling has delivered measurable performance improvements:
+Again, not really the POINT. But it does load like an absolute bullet now. You can still get issues with Cloudflare's 'Rocket Loader' (which mangles page load events somewhat) but it's TIGHT. 
 
-### Before (CDN-based)
-
-- **12 separate HTTP requests** for JavaScript libraries
-- **Total JavaScript: ~450KB** (uncompressed)
-- **No tree-shaking**: Entire libraries downloaded regardless of usage
-- **No code splitting**: Everything loaded upfront
-- **Waterfall loading**: Sequential script loading delayed page interactivity
-
-### After (Bundled)
-
-- **3 HTTP requests** for JavaScript (main.js, runtime.js, vendor chunk)
-- **Total JavaScript: ~180KB** (compressed with Brotli)
-- **Tree-shaking enabled**: Only code you use is included
-- **Automatic code splitting**: Large dependencies split into async chunks
-- **Parallel loading**: Browser loads chunks concurrently
-
-This represents a **60% reduction** in JavaScript payload and **75% fewer HTTP requests**.
-
-### Real-World Impact
-
-Using Lighthouse performance testing on the blog homepage:
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| First Contentful Paint | 1.8s | 1.2s | 33% faster |
-| Time to Interactive | 3.2s | 2.1s | 34% faster |
-| Total Blocking Time | 420ms | 180ms | 57% reduction |
-| Lighthouse Score | 78 | 94 | +16 points |
 
 ## Developer Experience Benefits
 
@@ -588,6 +592,8 @@ Bundling through Webpack enables proper JavaScript module resolution, which mean
 - **IntelliSense in VS Code**: Auto-completion for imported modules
 - **Jump to definition**: Navigate directly to library source code
 - **Inline documentation**: JSDoc comments from libraries appear in IDE
+
+WHEN the build breaks (with `npm run watch`) I know INSTANTLY, combined with the (few but growing) JS unit tests it means tighter feedback loops.
 
 ### Hot Module Replacement
 
@@ -611,6 +617,8 @@ npm ci  # Clean install from lock file
 ```
 
 This guarantees the same dependency versions in development, CI/CD, and production environments.
+
+These are referred to as 'pinning' in the JS world, where the dependencies are set in stone. You CAN do without a package lock but then you're depending on pacakge authors; often HUNDREDS of differen tpeople not screwing up some minor release..s
 
 ### Build Scripts
 
@@ -781,7 +789,7 @@ The solution came from reading through GitHub issues on the Webpack repository a
 
 ### Mistake #3: Over-Aggressive Code Splitting
 
-At one point, my configuration was generating chunks for everything. I had `minSize: 1000` (1KB) which meant Webpack was creating separate files for tiny utility functions. Page load became a waterfall of 50+ tiny chunk requests. I learned that code splitting is good, but you need sensible thresholds. That's why my current config uses `minSize: 20000` (20KB).
+At one point, my configuration was generating chunks for everything. I had `minSize: 10000` (10KB) which meant Webpack was creating separate files for tiny utility functions. The over-corrected and went to 2MB... Page load became a waterfall of 50+ tiny chunk requests or hung waiting for huge chunks to download. I learned that code splitting is good, but you need sensible thresholds. That's why my current config uses `minSize: 20000` (20KB).
 
 ### Mistake #4: Forgetting About the `.mjs` Extension
 
@@ -796,6 +804,44 @@ Early builds took 30-60 seconds because I hadn't enabled Webpack's filesystem ca
 ### Mistake #6: Tailwind Purging Classes I Actually Used
 
 My favourite debugging experience: CSS classes that worked fine in development suddenly disappeared in production. Tailwind was purging them because they were generated dynamically in JavaScript. The solution was the `safelist` configuration, but only after I'd wasted hours wondering if I was going mad.
+I ALSO (for example in the `mostlylucid.pagingtaghelper` project) use 'dummy blocks' where I simplify my Tailwind config changes by just having a hidden block.
+
+
+
+```html
+
+<!--
+    Preserve Tailwind & DaisyUI classes used in embedded pager views.
+    Without this, TailwindCSS tree-shaking removes classes from the embedded library views.
+-->
+<span class="hidden
+    btn btn-sm btn-active btn-disabled join join-item badge badge-sm select select-bordered select-sm label label-text
+    px-3 py-2 py-1 text-sm font-medium border rounded whitespace-nowrap cursor-not-allowed
+    text-gray-700 text-gray-600 text-gray-400 text-white bg-white bg-gray-100 bg-blue-600 border-gray-300 border-blue-600
+    hover:bg-gray-50 hover:bg-blue-700
+    dark:bg-gray-800 dark:bg-gray-700 dark:bg-blue-500 dark:text-gray-300 dark:text-gray-500 dark:text-gray-200
+    dark:border-gray-600 dark:border-blue-500 dark:hover:bg-gray-700 dark:hover:bg-blue-600">
+</span>
+
+```
+When Tailwind builds it scans the cshtml files for classes; if it doesn't see them it removes them. So having this hidden block ensures it sees the classes I need even if they're only used in embedded library views. JS developers commonly also scan JS/TS files to allow using CSS styles that Tailwind would otherwise miss. 
+
+```json
+
+module.exports = {
+content: ["./Views/**/*.cshtml", "./EmailSubscription/**/*.cshtml"],
+-//^^^^ This is what Tailwing knows where to look for classes duritng the tree Shake. 
++//^^^^ This is what Tailwind knows where to look for classes during the tree-shake.
+  
+  ...
+
+future: {...}
+
+}
+
+```
+
+As mentioned, the 'Tailwind Approved' approach is to add the classes to a safelist... but I'm an ASP.NET guy, so HTML won.
 
 ### What I Got Right: Persistence
 
@@ -825,7 +871,7 @@ If you're still relying on CDNs for your frontend dependencies, I encourage you 
 ## Further Reading
 
 - [Webpack Documentation](https://webpack.js.org/)
-- [Tailwind CSS: Optimizing for Production](https://tailwindcss.com/docs/optimizing-for-production)
+- [Tailwind CSS: Optimising for Production](https://tailwindcss.com/docs/optimizing-for-production)
 - [Babel: Usage Guide](https://babeljs.io/docs/en/usage)
 - [PostCSS Documentation](https://postcss.org/)
-- [My Previous Article: Webpack for ASP.NET Core Developers](/blog/webpackforaspnetcoredevs)
+- [My Previous Article: Tailwind for ASP.NET Core Developers](/blog/tailwind)

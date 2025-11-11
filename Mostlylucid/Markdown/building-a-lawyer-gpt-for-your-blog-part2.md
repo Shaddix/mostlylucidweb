@@ -3,6 +3,13 @@
 <!--category-- AI, LLM, CUDA, C#, GPU, AI-Article, mostlylucid.blogllm -->
 <datetime class="hidden">1973-02-08T14:00</datetime>
 
+
+> WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
+
+It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
+
+<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+
 ## Introduction
 
 Welcome to Part 2! In [Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1), we laid out the vision for building a writing assistant that uses your blog as a knowledge base - like how lawyers use LLMs trained on case law to draft documents. Now it's time to get our hands dirty with the foundation: making sure your GPU is ready for AI workloads.
