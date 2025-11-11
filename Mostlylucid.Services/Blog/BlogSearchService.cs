@@ -40,14 +40,18 @@ public class BlogSearchService(MostlylucidDbContext context)
 
     private IQueryable<BlogPostEntity> QueryForSpaces(string processedQuery)
     {
+        var now = DateTimeOffset.UtcNow;
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
             .AsNoTracking()
             //.AsSplitQuery()
             .Where(x =>
+                // Filter out hidden and scheduled posts
+                !x.IsHidden
+                && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
                 // Search using the precomputed SearchVector
-                (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english",
+                && (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english",
                      processedQuery)) // Use precomputed SearchVector for title and content
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
@@ -61,14 +65,18 @@ public class BlogSearchService(MostlylucidDbContext context)
 
     private IQueryable<BlogPostEntity> QueryForWildCard(string query)
     {
+        var now = DateTimeOffset.UtcNow;
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
             .AsNoTracking()
             //.AsSplitQuery()
             .Where(x =>
+                // Filter out hidden and scheduled posts
+                !x.IsHidden
+                && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
                 // Search using the precomputed SearchVector
-                (x.SearchVector.Matches(EF.Functions.ToTsQuery("english",
+                && (x.SearchVector.Matches(EF.Functions.ToTsQuery("english",
                      query + ":*")) // Use precomputed SearchVector for title and content
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)

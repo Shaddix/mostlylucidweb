@@ -3,6 +3,7 @@ using Htmx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.Models;
+using mostlylucid.pagingtaghelper.Helpers;
 using Mostlylucid.Services;
 using Mostlylucidblog.Models;
 using MarkdownBaseService = Mostlylucid.Services.Markdown.MarkdownBaseService;
@@ -44,6 +45,10 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
             Posts = posts, Authenticated = authenticateResult.LoggedIn, Name = authenticateResult.Name,
             AvatarUrl = authenticateResult.AvatarUrl
         };
+        if (Request.IsHtmxNonBoosted()  ||  Request.IsPageRequest())
+        {
+            return PartialView("_BlogSummaryList", indexPageViewModel.Posts);
+        }
         if (Request.IsHtmx())
         {
            return PartialView("_HomePartial", indexPageViewModel);

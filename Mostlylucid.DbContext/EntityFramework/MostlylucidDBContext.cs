@@ -85,6 +85,10 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
             entity.HasIndex(x => x.ContentHash).IsUnique();
             entity.HasIndex(x => x.PublishedDate);
 
+            // Indexes for new visibility features
+            entity.HasIndex(x => new { x.IsHidden, x.ScheduledPublishDate }); // For filtering in WHERE clauses
+            entity.HasIndex(x => new { x.IsPinned, x.PublishedDate }); // For ordering on page 1
+
             entity.Property(b=>b.UpdatedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(b => b.SearchVector)
                 .HasComputedColumnSql("to_tsvector('english', coalesce(\"Title\", '') || ' ' || coalesce(\"PlainTextContent\", ''))", stored: true);

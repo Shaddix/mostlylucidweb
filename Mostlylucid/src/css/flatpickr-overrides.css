@@ -1,6 +1,18 @@
 /* Flatpickr Dark Mode Overrides */
 /* Ensures proper contrast and readability in dark mode */
 
+/* Style the alternate input (the visible one) */
+.flatpickr-input[readonly] {
+    cursor: pointer;
+}
+
+/* Make sure the alt input inherits styling from the original input */
+input.flatpickr-input.flatpickr-mobile {
+    background-color: inherit;
+    color: inherit;
+    border-color: inherit;
+}
+
 /* Dark mode calendar container */
 html.dark .flatpickr-calendar {
     background-color: #1f2937 !important;
@@ -49,6 +61,23 @@ html.dark .flatpickr-current-month .numInputWrapper input {
 html.dark .flatpickr-weekday {
     color: #9ca3af !important;
     font-weight: 600;
+}
+
+/* Ensure weekday names have proper spacing */
+.flatpickr-weekday {
+    font-size: 90%;
+    font-weight: 600;
+}
+
+.flatpickr-weekdays {
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+span.flatpickr-weekday {
+    flex: 1;
+    text-align: center;
 }
 
 /* Dark mode day cells */

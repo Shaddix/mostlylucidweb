@@ -32,6 +32,7 @@ import { submitTranslation, viewTranslation } from "./translations";
 import { codeeditor } from "./simplemde_editor";
 import { globalSetup } from "./global";
 import  {comments} from  "./comments";
+import { queryParamClearer, queryParamToggler } from "./query-params";
 // removed bare import of package to avoid TS source resolution
 
 window.mostlylucid.comments = comments();
@@ -44,6 +45,14 @@ window.mostlylucid.translations = {
 };
 window.mostlylucid.simplemde = codeeditor(); // Assuming simplemde() returns the instance
 window.globalSetup = globalSetup;
+
+// Expose query param utilities on window for Alpine.js
+window.queryParamClearer = queryParamClearer;
+window.queryParamToggler = queryParamToggler;
+
+// Also expose on mostlylucid namespace for backwards compatibility
+window.mostlylucid.queryParamClearer = queryParamClearer;
+window.mostlylucid.queryParamToggler = queryParamToggler;
 
 // Track Alpine initialization to prevent duplicate starts
 let alpineStarted = false;

@@ -50,6 +50,45 @@ public class BlogController(BaseControllerService baseControllerService,
         return Json(new { dates });
     }
 
+    [HttpGet("date-range")]
+    [ResponseCache(Duration = 3600, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Any)]
+    [OutputCache(Duration = 7200, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(language) })]
+    public async Task<IActionResult> DateRange(string language = MarkdownBaseService.EnglishLanguage)
+    {
+        var allPosts = await blogViewService.GetAllPosts();
+        if (allPosts is null || !allPosts.Any())
+        {
+            // Return default range if no posts
+            return Json(new
+            {
+                minDate = DateTime.UtcNow.AddYears(-1).ToString("yyyy-MM-dd"),
+                maxDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
+            });
+        }
+
+        // Filter by language if specified
+        var posts = allPosts;
+        if (!string.IsNullOrEmpty(language) && language != MarkdownBaseService.EnglishLanguage)
+        {
+            posts = allPosts.Where(p => p.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        // If no posts in that language, fall back to all posts
+        if (!posts.Any())
+        {
+            posts = allPosts;
+        }
+
+        var minDate = posts.Min(p => p.PublishedDate.Date);
+        var maxDate = posts.Max(p => p.PublishedDate.Date);
+
+        return Json(new
+        {
+            minDate = minDate.ToString("yyyy-MM-dd"),
+            maxDate = maxDate.ToString("yyyy-MM-dd")
+        });
+    }
+
     [Route("{slug}")]
     [HttpGet]
     // Temporarily disabled for development - re-enable for production

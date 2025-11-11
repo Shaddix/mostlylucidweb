@@ -12,9 +12,19 @@ namespace Mostlylucid.Blog.Markdown;
 public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlogViewService> logger) : IBlogViewService
 {
     protected MarkdownConfig MarkdownConfig => config;
-        
 
-    
+    /// <summary>
+    /// Filters posts to exclude hidden posts and posts scheduled for the future
+    /// </summary>
+    private static IEnumerable<BlogPostDto> ApplyVisibilityFilters(IEnumerable<BlogPostDto> posts)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return posts.Where(x =>
+            !x.IsHidden &&
+            (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
+    }
+
+
 
     public async Task<List<string>> GetCategories(bool noTracking = false)
     {
@@ -35,8 +45,13 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
     }
     public Task<List<BlogPostViewModel>> GetAllPosts()
     {
-        var posts = PageCacheHelper.GetPageCache().Select(x => x.Value.ToViewModel()).ToList();
-        return Task.FromResult(posts);
+        var posts = PageCacheHelper.GetPageCache().Select(x => x.Value);
+
+        // Apply visibility filters
+        posts = ApplyVisibilityFilters(posts);
+
+        var result = posts.Select(x => x.ToViewModel()).ToList();
+        return Task.FromResult(result);
     }
 
 
@@ -45,6 +60,9 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
         string language = Constants.EnglishLanguage)
     {
         var pageCache = PageCacheHelper.GetPageCache().Select(x => x.Value).Where(x => x.Language == language);
+
+        // Apply visibility filters
+        pageCache = ApplyVisibilityFilters(pageCache);
 
         if (!string.IsNullOrEmpty(category)) pageCache = pageCache.Where(x => x.Categories.Contains(category));
 
@@ -95,11 +113,14 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
     {
         var pageCache = PageCacheHelper.GetPageCache().Select(x => x.Value);
 
+        // Apply visibility filters
+        pageCache = ApplyVisibilityFilters(pageCache);
+
         if (!string.IsNullOrEmpty(category)) pageCache = pageCache.Where(x => x.Categories.Contains(category));
 
         if (startDate != null) pageCache = pageCache.Where(x => x.PublishedDate >= startDate);
-var result = pageCache.Select(x => x.ToViewModel()).ToList();
-        
+        var result = pageCache.Select(x => x.ToViewModel()).ToList();
+
         return await Task.FromResult(result);
     }
 
@@ -109,6 +130,9 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
         var query = PageCacheHelper.GetPageCache()
             .Select(x => x.Value)
             .Where(p => p.Language == language);
+
+        // Apply visibility filters
+        query = ApplyVisibilityFilters(query);
 
         if (categories != null && categories.Length > 0)
         {
@@ -134,12 +158,19 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
     {
         var postsQuery = PageCacheHelper.GetPageCache()
             .Where(x => x.Key.lang == language && x.Value.Categories.Contains(category))
-            .Select(x => x.Value.ToPostListModel())
-            .OrderByDescending(x => x.PublishedDate).ToList();
+            .Select(x => x.Value);
 
-        var totalItems = postsQuery.Count();
+        // Apply visibility filters
+        postsQuery = ApplyVisibilityFilters(postsQuery);
 
-        var posts = postsQuery
+        // For page 1, prioritize pinned posts
+        var postsList = page == 1
+            ? postsQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.PublishedDate).Select(x => x.ToPostListModel()).ToList()
+            : postsQuery.OrderByDescending(x => x.PublishedDate).Select(x => x.ToPostListModel()).ToList();
+
+        var totalItems = postsList.Count;
+
+        var posts = postsList
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
@@ -181,27 +212,58 @@ var result = pageCache.Select(x => x.ToViewModel()).ToList();
         var model = new PostListViewModel();
         var postsQuery = PageCacheHelper.GetPageCache()
             .Where(x => x.Value.Language == language)
-            .Select(x => x.Value.ToPostListModel())
-            .AsEnumerable();
+            .Select(x => x.Value);
+
+        // Apply visibility filters (hidden and scheduled)
+        postsQuery = ApplyVisibilityFilters(postsQuery);
 
         if (startDate.HasValue)
             postsQuery = postsQuery.Where(p => p.PublishedDate.Date >= startDate.Value.Date);
         if (endDate.HasValue)
             postsQuery = postsQuery.Where(p => p.PublishedDate.Date <= endDate.Value.Date);
-        switch (orderBy?.ToLower())
+
+        // For page 1, prioritize pinned posts
+        var isFirstPage = page == 1;
+        if (isFirstPage)
         {
-            case "title":
-                postsQuery = orderBy?.ToLower() == "asc"
-                    ? postsQuery.OrderBy(x => x.Title)
-                    : postsQuery.OrderByDescending(x => x.Title);
-                break;
-            case "date":
-                postsQuery = orderDir?.ToLower() == "asc"
-                    ? postsQuery.OrderBy(x => x.PublishedDate)
-                    : postsQuery.OrderByDescending(x => x.PublishedDate);
-                break;
+            switch (orderBy?.ToLower())
+            {
+                case "title":
+                    postsQuery = orderDir?.ToLower() == "asc"
+                        ? postsQuery.OrderByDescending(x => x.IsPinned).ThenBy(x => x.Title)
+                        : postsQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.Title);
+                    break;
+                case "date":
+                    postsQuery = orderDir?.ToLower() == "asc"
+                        ? postsQuery.OrderByDescending(x => x.IsPinned).ThenBy(x => x.PublishedDate)
+                        : postsQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.PublishedDate);
+                    break;
+                default:
+                    postsQuery = postsQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.PublishedDate);
+                    break;
+            }
         }
-        var posts = postsQuery.OrderByDescending(x => x.PublishedDate).ToList();
+        else
+        {
+            switch (orderBy?.ToLower())
+            {
+                case "title":
+                    postsQuery = orderDir?.ToLower() == "asc"
+                        ? postsQuery.OrderBy(x => x.Title)
+                        : postsQuery.OrderByDescending(x => x.Title);
+                    break;
+                case "date":
+                    postsQuery = orderDir?.ToLower() == "asc"
+                        ? postsQuery.OrderBy(x => x.PublishedDate)
+                        : postsQuery.OrderByDescending(x => x.PublishedDate);
+                    break;
+                default:
+                    postsQuery = postsQuery.OrderByDescending(x => x.PublishedDate);
+                    break;
+            }
+        }
+
+        var posts = postsQuery.Select(x => x.ToPostListModel()).ToList();
         model.TotalItems = posts.Count;
         model.PageSize = pageSize;
         model.Page = page;

@@ -24,6 +24,12 @@ public class BlogPostDto
     public string Slug { get; set; }= string.Empty;
     
     public int WordCount { get; set; }
-    
+
     public DateTime PublishedDate { get; set; }
+
+    public bool IsPinned { get; set; }
+
+    public bool IsHidden { get; set; }
+
+    public DateTimeOffset? ScheduledPublishDate { get; set; }
 }

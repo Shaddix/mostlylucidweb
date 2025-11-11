@@ -414,7 +414,9 @@ In agile speccing, feedback loops are your best friend. You're constantly gather
 
 **Developer Feedback**: "The initial approach won't work because of X. I'm proposing Y instead." → Update spec to reflect new approach and why it changed. In the end you're ALWAYS the first 'user' of a feature. If it looks shit...sepc bug and get it sorted (even if you stop whatever sprint / spike etc to do it...don't wait!)
 
-**User Feedback**: Try the feature with real users (even internally). "This doesn't actually solve my problem because..." → Pivot the spec based on what you learn.
+**User Feedback**: Try the feature with real users (even internally). "This doesn't actually solve my problem because..." → **Pivot** the spec based on what you learn.
+
+
 
 **Implementation Feedback**: As you build, you discover edge cases, technical constraints, or better approaches. → Fold these learnings back into the spec.
 
@@ -872,6 +874,9 @@ If the spec is unrecognizable because you completely misunderstood the problem i
 The spec's version history should tell the story of what you learned.
 
 In Startups this is called a 'Pivot' where you start buildign a game and end up building an amazing messaging system instead..you haven't heard of mobile game Glitch, you likely HAVE heard of the messaging bit; 'Slack'.
+
+
+<img src="https://media1.tenor.com/m/8DRynH5nEE8AAAAC/if-you.gif" height="200px" />
 
 Don't get too locked in. If there's opportunities by pivoting TAKE THEM. 
 

@@ -36,6 +36,12 @@ public class BlogService(
 
             var postQuery = PostsQuery();
 
+            // Filter out hidden posts and posts scheduled for the future
+            var now = DateTimeOffset.UtcNow;
+            postQuery = postQuery.Where(x =>
+                !x.IsHidden &&
+                (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
+
             if (model.StartDate != null)
             {
                 postQuery = postQuery.Where(x => x.PublishedDate.DateTime >= model.StartDate);
@@ -56,18 +62,42 @@ public class BlogService(
                 postQuery = postQuery.Where(x => x.LanguageEntity.Name == language);
             }
 
-           switch (model.orderBy?.ToLower())
+            // For page 1, prioritize pinned posts
+            var isFirstPage = page == null || page.Value == 1;
+            if (isFirstPage)
             {
-                case "title":
-                    postQuery = model.orderDir?.ToLower() == "asc"
-                        ? postQuery.OrderBy(x => x.Title)
-                        : postQuery.OrderByDescending(x => x.Title);
-                    break;
-                case "date":
-                    postQuery = model.orderDir?.ToLower() == "asc"
-                        ? postQuery.OrderBy(x => x.PublishedDate.DateTime)
-                        : postQuery.OrderByDescending(x => x.PublishedDate.DateTime);
-                    break;
+                switch (model.orderBy?.ToLower())
+                {
+                    case "title":
+                        postQuery = model.orderDir?.ToLower() == "asc"
+                            ? postQuery.OrderByDescending(x => x.IsPinned).ThenBy(x => x.Title)
+                            : postQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.Title);
+                        break;
+                    case "date":
+                        postQuery = model.orderDir?.ToLower() == "asc"
+                            ? postQuery.OrderByDescending(x => x.IsPinned).ThenBy(x => x.PublishedDate.DateTime)
+                            : postQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.PublishedDate.DateTime);
+                        break;
+                    default:
+                        postQuery = postQuery.OrderByDescending(x => x.IsPinned).ThenByDescending(x => x.PublishedDate.DateTime);
+                        break;
+                }
+            }
+            else
+            {
+                switch (model.orderBy?.ToLower())
+                {
+                    case "title":
+                        postQuery = model.orderDir?.ToLower() == "asc"
+                            ? postQuery.OrderBy(x => x.Title)
+                            : postQuery.OrderByDescending(x => x.Title);
+                        break;
+                    case "date":
+                        postQuery = model.orderDir?.ToLower() == "asc"
+                            ? postQuery.OrderBy(x => x.PublishedDate.DateTime)
+                            : postQuery.OrderByDescending(x => x.PublishedDate.DateTime);
+                        break;
+                }
             }
 
         

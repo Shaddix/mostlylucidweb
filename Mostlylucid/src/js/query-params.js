@@ -1,6 +1,8 @@
 // Query parameter utilities for Alpine.js and HTMX integration
 
-export function queryParamClearer({ path = window.location.pathname }) {
+export function queryParamClearer(config = {}) {
+    const path = config.path || window.location.pathname;
+
     return {
         clearParam(e) {
             const el = e.target.closest('[x-param],[x-all]');
@@ -28,7 +30,7 @@ export function queryParamClearer({ path = window.location.pathname }) {
                     .split(',')
                     .map(p => p.trim().toLowerCase())
                     .filter(Boolean)
-                    .filter(target => !excludedParams.includes(target)); // Exclude any targets that are in excludedParams
+                    .filter(target => !excludedParams.includes(target));
 
                 // For each existing key, if its lowercase matches one of the targets, delete it
                 Array.from(url.searchParams.keys())
@@ -45,11 +47,21 @@ export function queryParamClearer({ path = window.location.pathname }) {
 
             console.log('Query param clearer - navigating to:', newUrl);
 
+            // Push URL to history first
+            try {
+                window.history.pushState({}, '', newUrl);
+            } catch(err) {
+                console.error('Failed to push URL:', err);
+            }
+
+            // Get target from data-target or hx-target
+            const target = el.dataset.target || el.getAttribute('hx-target') || '#content';
+
             if (window.htmx) {
                 window.htmx.ajax('GET', newUrl, {
-                    target: el.dataset.target || el.getAttribute('hx-target') || '#content',
+                    target: target,
                     swap: 'outerHTML',
-                    pushUrl: true
+                    pushUrl: false
                 });
             } else {
                 window.location.href = newUrl;
@@ -58,7 +70,11 @@ export function queryParamClearer({ path = window.location.pathname }) {
     };
 }
 
-export function queryParamToggler({ param, target = null, path = window.location.pathname }) {
+export function queryParamToggler(config = {}) {
+    const param = config.param || '';
+    const target = config.target || null;
+    const path = config.path || window.location.pathname;
+
     return {
         param,
         target,

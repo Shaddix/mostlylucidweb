@@ -28,6 +28,12 @@ public partial class MarkdownRenderingService : MarkdownBaseService
     private static partial Regex DateRegex();
     [System.Text.RegularExpressions.GeneratedRegex(@"<!--\s*category\s*--\s*(.+?)\s*-->")]
     private static partial Regex CategoryRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"<pinned\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    private static partial Regex PinnedRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"<hidden\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    private static partial Regex HiddenRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"<scheduled\s+datetime=""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})""\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    private static partial Regex ScheduledRegex();
 
     private static string[] GetCategories(string markdownText)
     {
@@ -79,9 +85,28 @@ public partial class MarkdownRenderingService : MarkdownBaseService
         if (!string.IsNullOrWhiteSpace(publishDate))
             publishedDate = DateTime.ParseExact(publishDate, "yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
 
-        // Remove category tags from the text
+        // Extract pinned, hidden, and scheduled flags
+        var isPinned = PinnedRegex().IsMatch(restOfTheLines);
+        var isHidden = HiddenRegex().IsMatch(restOfTheLines);
+
+        DateTimeOffset? scheduledPublishDate = null;
+        var scheduledMatch = ScheduledRegex().Match(restOfTheLines);
+        if (scheduledMatch.Success)
+        {
+            var scheduledDateString = scheduledMatch.Groups[1].Value;
+            if (!string.IsNullOrWhiteSpace(scheduledDateString))
+            {
+                var scheduledDateTime = DateTime.ParseExact(scheduledDateString, "yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+                scheduledPublishDate = new DateTimeOffset(scheduledDateTime);
+            }
+        }
+
+        // Remove category tags and metadata from the text
         restOfTheLines = CategoryRegex().Replace(restOfTheLines, "");
         restOfTheLines = DateRegex().Replace(restOfTheLines, "");
+        restOfTheLines = PinnedRegex().Replace(restOfTheLines, "");
+        restOfTheLines = HiddenRegex().Replace(restOfTheLines, "");
+        restOfTheLines = ScheduledRegex().Replace(restOfTheLines, "");
 
         // Process the rest of the lines as either HTML or plain text
         var processed = global::Markdig.Markdown.ToHtml(restOfTheLines, pipeline);
@@ -102,7 +127,10 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             PlainTextContent = plainText,
             PublishedDate = publishedDate,
             Slug = slug,
-            Title = title
+            Title = title,
+            IsPinned = isPinned,
+            IsHidden = isHidden,
+            ScheduledPublishDate = scheduledPublishDate
         };
     }
 

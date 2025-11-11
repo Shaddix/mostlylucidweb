@@ -43,10 +43,16 @@ public class BlogPostEntity
     
 
     public DateTimeOffset PublishedDate { get; set; }
-    
+
+    public bool IsPinned { get; set; }
+
+    public bool IsHidden { get; set; }
+
+    public DateTimeOffset? ScheduledPublishDate { get; set; }
+
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    
+
     public NpgsqlTsVector SearchVector { get; set; }
-  
-    
+
+
 }

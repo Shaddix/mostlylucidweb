@@ -55,6 +55,12 @@ namespace Mostlylucid.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPinned")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("LanguageId")
                         .HasColumnType("integer");
 
@@ -67,6 +73,9 @@ namespace Mostlylucid.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("PublishedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ScheduledPublishDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<NpgsqlTsVector>("SearchVector")
@@ -103,6 +112,10 @@ namespace Mostlylucid.Migrations
                     b.HasIndex("SearchVector");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
+
+                    b.HasIndex("IsHidden", "ScheduledPublishDate");
+
+                    b.HasIndex("IsPinned", "PublishedDate");
 
                     b.HasIndex("Slug", "LanguageId");
 

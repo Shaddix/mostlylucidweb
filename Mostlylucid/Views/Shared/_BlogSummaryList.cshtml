@@ -5,13 +5,18 @@
     <!-- Filter Controls Bar -->
     <div class=" rounded-lg p-4 mb-6 print:!hidden border border-gray-200 dark:border-gray-700">
         <div class="flex flex-col w-full gap-3">
-            <!-- Top row: Filters -->
-            <div class="flex flex-col lg:flex-row w-full gap-3 items-center justify-center">
+            <!-- Top row: Filters (hidden on mobile, shown on lg+) -->
+            <div class="hidden lg:flex flex-row w-full gap-3 items-center justify-center">
+                <!-- Clear All Button (far left) -->
+                <div class="shrink-0">
+                    <clear-param all="true" target="#content">Clear All</clear-param>
+                </div>
+
                 <!-- Date Range Filter -->
                 <div class="flex items-center gap-2 shrink-0">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:block">Date:</label>
                     <input id="dateRange" type="text" placeholder="Filter by date range"
-                           class="input input-bordered input-sm w-52 bg-white text-gray-800 border-gray-300 placeholder-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors" />
+                           class="input input-bordered input-sm w-64 bg-white text-gray-800 border-gray-300 placeholder-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors" />
                     <button id="clearDateFilter"
                             class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
                         Clear
@@ -42,8 +47,8 @@
                 <div class="flex items-center text-sm text-gray-700 dark:text-gray-300 lg:ml-4 px-3 py-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600" id="filterSummary" aria-live="polite"></div>
             </div>
 
-            <!-- Bottom row: Pagination -->
-            <div class="flex items-center justify-center w-full pt-2 border-t border-gray-200 dark:border-gray-700">
+            <!-- Bottom row: Pagination (border-top only on lg+ when filters are visible) -->
+            <div class="flex items-center justify-center w-full pt-2 lg:border-t border-gray-200 dark:border-gray-700">
                 <paging
                     hx-boost="true"
                     class="shrink-0"
