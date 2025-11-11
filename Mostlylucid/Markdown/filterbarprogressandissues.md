@@ -18,7 +18,12 @@ Here's the high‑level: I added a proper filter bar to the blog index which inc
 - URL state is always kept in sync (back/forward works, deep links work)
 - Server caching now varies correctly by the filter parameters
 
-Along the way I had a few bugs: date ranges being lost on language/order change, calendar highlights not refreshing on swap, and a fun one where dark mode styles made the calendar look broken because Flatpickr wasn’t re‑drawing.
+### New in this update (The Big Fix!)
+- **Visibility filters**: Posts can now be hidden, scheduled for future publication, or pinned to the top
+- **Date range endpoint**: New `/blog/date-range` API returns min/max dates for sensible picker bounds
+- **Clear param tag helper**: Easy way to clear filters using `<clear-param>` tag helper with Alpine.js
+
+Along the way I had a few bugs: date ranges being lost on language/order change, calendar highlights not refreshing on swap, and a fun one where dark mode styles made the calendar look broken because Flatpickr wasn't re‑drawing.
 
 ## The Filter Bar in the DOM
 This is the rough structure the script expects:
@@ -160,10 +165,11 @@ obs.observe(document.documentElement, { attributes:true, attributeFilter:['class
 ```
 
 ## Server: endpoints and caching
-Two endpoints power the page:
+Three endpoints power the page:
 
 - The index itself, which accepts page, pageSize, startDate/endDate, language, and order*
 - A `calendar-days` endpoint that returns the set of days in a given month that have posts (for highlights)
+- A `date-range` endpoint that returns the min/max dates across all posts (language-aware)
 
 ```csharp
 // GET /blog
@@ -195,6 +201,40 @@ public async Task<IActionResult> CalendarDays(int year, int month, string langua
     if (posts is null) return Json("");
     var dates = posts.Select(p => p.PublishedDate.Date).Distinct().OrderBy(d => d).Select(d => d.ToString("yyyy-MM-dd")).ToList();
     return Json(new { dates });
+}
+
+// GET /blog/date-range?language=en
+[HttpGet("date-range")]
+[ResponseCache(Duration = 3600, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Any)]
+[OutputCache(Duration = 7200, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(language) })]
+public async Task<IActionResult> DateRange(string language = MarkdownBaseService.EnglishLanguage)
+{
+    var allPosts = await blogViewService.GetAllPosts();
+    if (allPosts is null || !allPosts.Any())
+    {
+        return Json(new
+        {
+            minDate = DateTime.UtcNow.AddYears(-1).ToString("yyyy-MM-dd"),
+            maxDate = DateTime.UtcNow.ToString("yyyy-MM-dd")
+        });
+    }
+
+    var posts = allPosts;
+    if (!string.IsNullOrEmpty(language) && language != MarkdownBaseService.EnglishLanguage)
+    {
+        posts = allPosts.Where(p => p.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    if (!posts.Any()) posts = allPosts;
+
+    var minDate = posts.Min(p => p.PublishedDate.Date);
+    var maxDate = posts.Max(p => p.PublishedDate.Date);
+
+    return Json(new
+    {
+        minDate = minDate.ToString("yyyy-MM-dd"),
+        maxDate = maxDate.ToString("yyyy-MM-dd")
+    });
 }
 ```
 
@@ -239,6 +279,77 @@ flowchart TD
   C --> D[flatpickr redraw]
   D --> E[onDayCreate adds .has-post]
 ```
+
+## New Features: Visibility and Content Control
+
+### Post Visibility Filters
+The biggest improvement in this update is proper post visibility management. Three new fields were added to `BlogPostEntity`:
+
+```csharp
+public class BlogPostEntity
+{
+    // ... existing fields ...
+
+    public bool IsPinned { get; set; }
+    public bool IsHidden { get; set; }
+    public DateTimeOffset? ScheduledPublishDate { get; set; }
+}
+```
+
+The `BlogService` now filters posts appropriately:
+
+```csharp
+// Filter out hidden posts and posts scheduled for the future
+var now = DateTimeOffset.UtcNow;
+postQuery = postQuery.Where(x =>
+    !x.IsHidden &&
+    (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
+
+// For page 1, prioritize pinned posts
+var isFirstPage = page == null || page.Value == 1;
+if (isFirstPage)
+{
+    postQuery = postQuery.OrderByDescending(x => x.IsPinned)
+                         .ThenByDescending(x => x.PublishedDate.DateTime);
+}
+```
+
+This means:
+- **Hidden posts** (`IsHidden = true`) never appear in listings
+- **Scheduled posts** only appear after their `ScheduledPublishDate`
+- **Pinned posts** (`IsPinned = true`) always appear first on page 1, perfect for announcements or featured content
+
+### Clear Param Tag Helper
+A new ASP.NET Core tag helper makes it easy to clear query parameters:
+
+```csharp
+[HtmlTargetElement("clear-param")]
+public class ClearParamTagHelper : TagHelper
+{
+    [HtmlAttributeName("name")]
+    public string? Name { get; set; }
+
+    [HtmlAttributeName("all")]
+    public bool All { get; set; } = false;
+
+    [HtmlAttributeName("exclude")]
+    public string Exclude { get; set; } = "";
+
+    // ... styling and Alpine.js integration ...
+}
+```
+
+Usage in Razor views:
+
+```cshtml
+<!-- Clear a specific parameter -->
+<clear-param name="startDate">Clear Date</clear-param>
+
+<!-- Clear all parameters except language -->
+<clear-param all="true" exclude="language">Clear All Filters</clear-param>
+```
+
+The tag helper integrates with Alpine.js's `window.queryParamClearer` component to handle the URL manipulation and HTMX swaps.
 
 ## Bugs I hit (and the fixes)
 - Date range lost on language/order change

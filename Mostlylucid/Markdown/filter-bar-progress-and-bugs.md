@@ -42,7 +42,39 @@ public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime
 }
 ```
 
-## The bugs I fixed
+## The bugs I fixed (and new features!)
+
+### Visibility and Content Control
+The biggest addition: proper post visibility management:
+- **Hidden posts**: Posts can now be marked as hidden (`IsHidden` flag) and won't appear in listings
+- **Scheduled publishing**: Posts can have a `ScheduledPublishDate` and only appear after that time
+- **Pinned posts**: Posts marked with `IsPinned` always appear first on page 1 (great for announcements)
+
+```csharp
+// BlogService now filters appropriately
+var now = DateTimeOffset.UtcNow;
+postQuery = postQuery.Where(x =>
+    !x.IsHidden &&
+    (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
+
+// Pinned posts sorted first on page 1
+if (isFirstPage)
+{
+    postQuery = postQuery.OrderByDescending(x => x.IsPinned)
+                         .ThenByDescending(x => x.PublishedDate.DateTime);
+}
+```
+
+### Date Range Improvements
+- **New `/blog/date-range` endpoint**: Returns the min/max dates across all posts (language-aware) so the date picker can set sensible bounds
+- **Clear param tag helper**: Added `<clear-param>` tag helper to easily clear query parameters
+
+```cshtml
+<clear-param name="startDate">Clear Date</clear-param>
+<clear-param all="true" exclude="language">Clear All Filters</clear-param>
+```
+
+### Bug Fixes
 - Losing the date range when switching language or order
   - Fix: Start from `new URL(window.location.href)` and only override the changing params; if Flatpickr has a selection, re-apply it.
 
@@ -84,6 +116,19 @@ sequenceDiagram
   S-->>HT: HTML partial (_BlogSummaryList)
   HT-->>User: Swap #content
 ```
+
+## HTMX Page Request Detection
+The filter bar uses a custom `pagerequest` header to help the server distinguish between full page loads and partial HTMX swaps:
+
+```csharp
+public static bool IsPageRequest(this HttpRequest request)
+{
+    return request.Headers.ContainsKey("pagerequest") &&
+           request.Headers["pagerequest"] == "true";
+}
+```
+
+This allows the controller to return just the partial view for HTMX requests and full page views for direct navigation.
 
 ## Still to do
 - Quick date presets (Last 7/30 days, This year)
