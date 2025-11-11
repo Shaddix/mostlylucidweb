@@ -36,7 +36,9 @@ public class BlogPostViewModel : BaseViewModel
             PlainTextContent = PlainTextContent,
             Slug = Slug,
             WordCount = WordCount,
-            PublishedDate = PublishedDate
+            PublishedDate = PublishedDate,
+            ShowUpdatedDate = ShowUpdatedDate,
+            UpdatedTemplate = UpdatedTemplate
         };
     }
     public string? Id { get; set; }
@@ -73,10 +75,13 @@ public class BlogPostViewModel : BaseViewModel
     }
     
     public int WordCount { get; set; }
-    
+
     public DateTime PublishedDate { get; set; }
-    
-    
+
+    public bool ShowUpdatedDate { get; set; }
+
+    public string? UpdatedTemplate { get; set; }
+
 
 }
 

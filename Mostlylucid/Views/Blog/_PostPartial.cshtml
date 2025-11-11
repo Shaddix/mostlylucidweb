@@ -11,6 +11,13 @@
             <p class="pr-2 font-body font-light text-primary dark:text-white">
                 @Model.PublishedDate.ToString("D")
             </p>
+            @if (Model.ShowUpdatedDate && Model.UpdatedDate.HasValue)
+            {
+                <span class="dark:text-white font-body text-grey">//</span>
+                <p class="px-2 font-body font-light text-primary dark:text-white italic">
+                    @UpdatedDateFormatter.Format(Model.UpdatedDate, Model.UpdatedTemplate)
+                </p>
+            }
             <span class="dark:text-white font-body text-grey">//</span>
             <p class="pl-2 font-body font-light text-primary dark:text-white">
                 @Model.ReadingTime

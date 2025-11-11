@@ -38,7 +38,9 @@ public static class BlogViewMapperExtensions
             Slug = dto.Slug,
             WordCount = wordCount,
             PublishedDate = dto.PublishedDate,
-            Languages = dto.Languages
+            Languages = dto.Languages,
+            ShowUpdatedDate = dto.ShowUpdatedDate,
+            UpdatedTemplate = dto.UpdatedTemplate
         };
     }
     

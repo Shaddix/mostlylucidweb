@@ -20,7 +20,12 @@ public static class BlogPostEntityMapper
             Slug = entity.Slug,
             WordCount = entity.WordCount,
             PublishedDate = entity.PublishedDate.DateTime,
-            Languages = languages ?? Array.Empty<string>()
+            Languages = languages ?? Array.Empty<string>(),
+            IsPinned = entity.IsPinned,
+            IsHidden = entity.IsHidden,
+            ScheduledPublishDate = entity.ScheduledPublishDate,
+            ShowUpdatedDate = entity.ShowUpdatedDate,
+            UpdatedTemplate = entity.UpdatedTemplate
         };
     }
 }

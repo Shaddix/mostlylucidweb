@@ -50,6 +50,10 @@ public class BlogPostEntity
 
     public DateTimeOffset? ScheduledPublishDate { get; set; }
 
+    public bool ShowUpdatedDate { get; set; }
+
+    public string? UpdatedTemplate { get; set; }
+
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
 
     public NpgsqlTsVector SearchVector { get; set; }

@@ -34,6 +34,8 @@ public partial class MarkdownRenderingService : MarkdownBaseService
     private static partial Regex HiddenRegex();
     [System.Text.RegularExpressions.GeneratedRegex(@"<scheduled\s+datetime=""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})""\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex ScheduledRegex();
+    [System.Text.RegularExpressions.GeneratedRegex(@"<updated(?:\s+template=""([^""]+)"")?\s*/?>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    private static partial Regex UpdatedRegex();
 
     private static string[] GetCategories(string markdownText)
     {
@@ -101,12 +103,27 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             }
         }
 
+        // Extract updated tag and template
+        bool showUpdatedDate = false;
+        string? updatedTemplate = null;
+        var updatedMatch = UpdatedRegex().Match(restOfTheLines);
+        if (updatedMatch.Success)
+        {
+            showUpdatedDate = true;
+            // Group 1 contains the template if present
+            if (updatedMatch.Groups[1].Success && !string.IsNullOrWhiteSpace(updatedMatch.Groups[1].Value))
+            {
+                updatedTemplate = updatedMatch.Groups[1].Value;
+            }
+        }
+
         // Remove category tags and metadata from the text
         restOfTheLines = CategoryRegex().Replace(restOfTheLines, "");
         restOfTheLines = DateRegex().Replace(restOfTheLines, "");
         restOfTheLines = PinnedRegex().Replace(restOfTheLines, "");
         restOfTheLines = HiddenRegex().Replace(restOfTheLines, "");
         restOfTheLines = ScheduledRegex().Replace(restOfTheLines, "");
+        restOfTheLines = UpdatedRegex().Replace(restOfTheLines, "");
 
         // Process the rest of the lines as either HTML or plain text
         var processed = global::Markdig.Markdown.ToHtml(restOfTheLines, pipeline);
@@ -130,7 +147,9 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             Title = title,
             IsPinned = isPinned,
             IsHidden = isHidden,
-            ScheduledPublishDate = scheduledPublishDate
+            ScheduledPublishDate = scheduledPublishDate,
+            ShowUpdatedDate = showUpdatedDate,
+            UpdatedTemplate = updatedTemplate
         };
     }
 

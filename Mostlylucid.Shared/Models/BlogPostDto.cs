@@ -32,4 +32,8 @@ public class BlogPostDto
     public bool IsHidden { get; set; }
 
     public DateTimeOffset? ScheduledPublishDate { get; set; }
+
+    public bool ShowUpdatedDate { get; set; }
+
+    public string? UpdatedTemplate { get; set; }
 }
