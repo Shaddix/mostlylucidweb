@@ -217,6 +217,24 @@ This doesn't mean the spec should change daily. Major changes to requirements ne
 
 Think of it this way: if you wouldn't leave outdated comments in code, don't leave outdated information in specs.
 
+## Why Specs Need to Stay Current
+
+Here's something that doesn't get discussed enough: **your spec becomes the foundation for everything that comes after.**
+
+**Test Plans**: QA writes test cases based on the spec. If the spec is outdated, tests are testing the wrong thing. You get false positives (tests pass but feature is broken) or false negatives (tests fail but feature works fine).
+
+**Documentation**: User documentation, API docs, help systems - they all start from the spec. If the spec describes features that don't exist or misses features that do, your docs are wrong from day one.
+
+**Future Development**: When someone needs to extend the feature six months later, they'll read the spec to understand how it works. If it doesn't match reality, they're starting with incorrect assumptions.
+
+**Onboarding**: New team members learn the system partly by reading specs. Outdated specs teach them the wrong mental model of how features work.
+
+This is why the spec must stay current. It's not just about the initial implementation; it's foundational to everything else.
+
+At Microsoft, we treated spec updates with the same importance as code updates. Spec changes went through review. They were versioned alongside code. When a feature changed, updating the spec wasn't optional; it was part of the definition of "done."
+
+If you change the code but don't update the spec, you've created technical debt. Future work will be slower because nobody knows what the current state actually is.
+
 # The Relationship Between Spec and Implementation
 
 Here's something junior developers often don't grasp: **The spec is not the source of truth; the code is.**
@@ -498,6 +516,7 @@ The key principles:
 - **Define "done" clearly** - Prevent feature metastasis with concrete, testable criteria
 - **Out of scope matters** - What you're NOT doing is as important as what you are
 - **Expect evolution** - Features change as you build them; capture that learning
+- **Keep specs current** - They become the foundation for tests, docs, and future development
 
 The hardest part isn't writing the initial spec. It's knowing when to stop working on a feature. Without clear "done" criteria, features grow forever and never ship.
 
