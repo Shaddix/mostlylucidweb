@@ -1,0 +1,185 @@
+@{
+    ViewData["Title"] = "Acme Corporation";
+}
+
+<!-- Hidden redirect URL - where failed auth redirects to -->
+<meta name="fallback-url" content="https://www.example.com/support" data-hidden />
+
+<header>
+    <div class="container">
+        <h1>Acme Corporation</h1>
+        <p>Leading provider of enterprise solutions since 1985</p>
+    </div>
+</header>
+
+<main class="container">
+    <section style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 15px;">About Us</h2>
+        <p style="margin-bottom: 15px;">
+            At Acme Corporation, we pride ourselves on delivering cutting-edge enterprise solutions
+            that drive business value and operational excellence. Our team of experienced professionals
+            is committed to helping organizations achieve their strategic objectives.
+        </p>
+        <p style="margin-bottom: 15px;">
+            With over three decades of industry leadership, we continue to innovate and adapt to
+            the changing needs of modern businesses. Our comprehensive suite of services includes
+            consulting, implementation, and ongoing support.
+        </p>
+    </section>
+
+    <section style="margin-bottom: 30px;">
+        <h2 style="margin-bottom: 15px;">Our Services</h2>
+        <ul style="margin-left: 20px; margin-bottom: 15px;">
+            <li>Strategic Consulting</li>
+            <li>Digital Transformation</li>
+            <li>Cloud Solutions</li>
+            <li>Data Analytics</li>
+            <li>Cybersecurity</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2 style="margin-bottom: 15px;">Contact Us</h2>
+        <p>
+            Email: <a href="mailto:info@acmecorp.example">info@acmecorp.example</a><br />
+            Phone: +1 (555) 123-4567<br />
+            Address: 123 Business Park Drive, Suite 456<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Enterprise City, ST 12345
+        </p>
+    </section>
+</main>
+
+<style>
+    /* Chat modal - initially hidden */
+    .chat-modal {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        flex-direction: column;
+        z-index: 1000;
+    }
+    .chat-modal.active {
+        display: flex;
+    }
+    .chat-header {
+        background: #0066cc;
+        color: white;
+        padding: 15px;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .chat-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        line-height: 1;
+    }
+    .chat-body {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-input-area {
+        padding: 15px;
+        border-top: 1px solid #ddd;
+    }
+    .chat-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .chat-send-btn {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .chat-send-btn:hover {
+        background: #0052a3;
+    }
+    .chat-send-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .message {
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    .message.user {
+        background: #0066cc;
+        color: white;
+        align-self: flex-end;
+    }
+    .message.support {
+        background: #f0f0f0;
+        color: #333;
+        align-self: flex-start;
+    }
+    .message.system {
+        background: #fff3cd;
+        color: #856404;
+        align-self: center;
+        font-style: italic;
+        font-size: 0.9em;
+    }
+    .auth-prompt {
+        text-align: center;
+        padding: 20px;
+    }
+    .auth-prompt input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .auth-prompt button {
+        width: 100%;
+        padding: 10px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .countdown {
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 10px;
+    }
+</style>
+
+<!-- The tiny compatibility shim -->
+<script src="/js/compatibility-shim1.js"></script>
+
+@section Scripts {
+<script>
+    // This gets loaded with the page but does nothing unless triggered
+    console.log('Page loaded normally');
+</script>
+}
