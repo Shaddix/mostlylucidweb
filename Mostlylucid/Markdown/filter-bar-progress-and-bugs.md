@@ -130,6 +130,8 @@ public static bool IsPageRequest(this HttpRequest request)
 
 This allows the controller to return just the partial view for HTMX requests and full page views for direct navigation.
 
+> **Note**: The paging tag helper extension and query parameter clearer Alpine.js component deserve their own deep dive—I'll cover these in detail in a future post about building reusable HTMX/Alpine components.
+
 ## Still to do
 - Quick date presets (Last 7/30 days, This year)
 - LocalStorage seed for language

@@ -351,6 +351,8 @@ Usage in Razor views:
 
 The tag helper integrates with Alpine.js's `window.queryParamClearer` component to handle the URL manipulation and HTMX swaps.
 
+> **Note**: Both the paging tag helper and the query parameter clearer deserve deeper exploration. I'll cover the full implementation details, including the Alpine.js component and tag helper patterns, in a future post about building reusable HTMX/Alpine components.
+
 ## Bugs I hit (and the fixes)
 - Date range lost on language/order change
   - Cause: I built the new URL from scratch, not from the current one; lost `startDate`/`endDate`.
