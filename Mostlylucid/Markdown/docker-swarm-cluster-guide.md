@@ -5,7 +5,7 @@
 
 ## Introduction
 
-So you've been running your blog on a single VPS with Docker Compose, and now you've got 8 mini PCs gathering dust (or perhaps you've just impulse-bought them because they were cheap). What do you do? Build a proper Docker Swarm cluster, of course!
+So you've been running your blog on a single server (perhaps a Hetzner auction box) with Docker Compose, and now you've got 8 mini PCs gathering dust (or perhaps you've just impulse-bought them because they were cheap). What do you do? Build a proper Docker Swarm cluster, of course!
 
 This article details how to convert the [Docker Compose setup](/blog/dockercompose) I've been running into a highly available Docker Swarm cluster. We'll cover everything from initial cluster setup to running PostgreSQL with replication, setting up monitoring with Prometheus and Grafana across multiple nodes, and managing the whole thing without losing your sanity.
 
@@ -61,24 +61,197 @@ Stacks:        Groups of services (like docker-compose.yml)
 | **Volume Driver** | Local only | Distributed options |
 | **Configuration** | `docker-compose.yml` | `docker-stack.yml` (similar) |
 
-### When to Use Swarm vs Kubernetes
+### The Three-Way Decision: Compose vs Swarm vs Kubernetes
 
-**Use Docker Swarm when:**
-- You want something simpler than Kubernetes
-- Your cluster is <50 nodes
-- You're already comfortable with Docker Compose
-- You need quick setup (Swarm is ready in minutes)
-- You're running on limited resources
-- You don't need the entire K8s ecosystem
+Choosing the right orchestration solution depends on your scale, complexity, and team capabilities. Here's how they compare:
 
-**Use Kubernetes when:**
-- You need advanced features (custom controllers, operators)
-- You're running at serious scale (100+ nodes)
-- You need the ecosystem (Helm, Operators, etc.)
-- You have dedicated DevOps staff
-- You're willing to pay the complexity cost
+#### Docker Compose: The Simple Single-Node Solution
 
-For 8 mini PCs running a blog? Swarm is perfect.
+**Best for:**
+- Development environments
+- Small applications (<5 services)
+- Single-server deployments
+- When you can tolerate downtime for updates
+- Learning Docker fundamentals
+
+**Pros:**
+- Dead simple to understand and use
+- YAML is straightforward
+- Fast iteration (edit file, `docker-compose up`)
+- Minimal resource overhead
+- Perfect for a $40/month Hetzner auction box
+- Great debugging experience
+
+**Cons:**
+- No high availability
+- No built-in load balancing
+- Manual scaling
+- Updates require downtime
+- Single point of failure
+
+**Example use cases:**
+- Personal blog on one server (what I was running before)
+- Development environment
+- Small business app with low traffic
+- Proof of concept
+
+**Cost:** $40-80/month (single Hetzner auction box or similar VPS)
+
+#### Docker Swarm: The Sweet Spot for Small Clusters
+
+**Best for:**
+- 3-50 node clusters
+- Teams comfortable with Docker Compose
+- When you need HA without K8s complexity
+- Self-hosted infrastructure
+- Budget-conscious setups using recycled hardware
+
+**Pros:**
+- Built into Docker (zero additional installation)
+- If you know Compose, you mostly know Swarm
+- High availability out of the box
+- Rolling updates with zero downtime
+- Built-in load balancing and service discovery
+- Secrets management
+- Simple to troubleshoot
+- Low resource overhead (runs fine on old mini PCs)
+
+**Cons:**
+- Limited ecosystem compared to K8s
+- No advanced scheduling (node affinity is basic)
+- Storage orchestration is manual (NFS, etc.)
+- Smaller community than Kubernetes
+- Docker, Inc. has de-emphasised it (though still supported)
+- No Helm-equivalent package manager
+- Advanced networking requires workarounds
+
+**Example use cases:**
+- Multi-node blog with HA (what I'm running now)
+- Small SaaS with <100k users
+- Internal company tools
+- Homelab projects
+- Learning orchestration without K8s complexity
+
+**Cost:** $0 if using old hardware, or $120-200/month for 3-5 cloud VMs
+
+#### Kubernetes: The Enterprise-Grade Orchestrator
+
+**Best for:**
+- Large-scale deployments (50+ nodes)
+- Complex microservices architectures
+- When you need the ecosystem (Istio, Helm, Operators)
+- Teams with dedicated DevOps engineers
+- When you need advanced scheduling and autoscaling
+- Multi-cloud or hybrid cloud deployments
+
+**Pros:**
+- Industry standard (huge community, tons of tools)
+- Extremely powerful and flexible
+- Advanced scheduling and autoscaling
+- Rich ecosystem (Helm, Operators, Istio, Knative, etc.)
+- Declarative configuration with powerful primitives
+- StatefulSets for databases
+- Multiple storage backends (Rook, Longhorn, etc.)
+- RBAC and security policies
+- Federation across clusters
+
+**Cons:**
+- Steep learning curve (3-6 months to proficiency)
+- Complex to set up and maintain
+- Requires significant resources (minimum 3 control plane nodes)
+- Overkill for simple applications
+- YAML hell (manifests are verbose)
+- Breaking changes between versions
+- Need dedicated staff or managed service ($$$$)
+
+**Example use cases:**
+- Netflix-scale microservices
+- Multi-tenant SaaS platforms
+- Enterprise applications
+- When you need auto-scaling based on custom metrics
+- When you have a team of DevOps engineers
+
+**Cost:** $300-500/month minimum (managed K8s like GKE, EKS, AKS), or significant DevOps salary if self-managed
+
+#### Direct Comparison Table
+
+| Feature | Docker Compose | Docker Swarm | Kubernetes |
+|---------|---------------|--------------|------------|
+| **Setup Time** | 10 minutes | 1-2 hours | 1-2 days (or weeks to master) |
+| **Learning Curve** | Easy | Medium | Steep |
+| **Nodes Supported** | 1 | 1-50 | 1-5000+ |
+| **High Availability** | ❌ No | ✅ Yes | ✅ Yes |
+| **Auto-Scaling** | ❌ No | ⚠️ Manual | ✅ Yes (HPA, VPA, Cluster Autoscaler) |
+| **Rolling Updates** | ❌ No | ✅ Yes | ✅ Yes |
+| **Rollback** | ❌ Manual | ✅ One command | ✅ One command |
+| **Load Balancing** | ❌ Manual | ✅ Built-in | ✅ Built-in |
+| **Service Discovery** | ❌ Manual links | ✅ Built-in DNS | ✅ Built-in DNS + Service Mesh options |
+| **Secrets Management** | `.env` files | Docker Secrets | Kubernetes Secrets + external (Vault) |
+| **Config Management** | `.env` files | Docker Configs | ConfigMaps |
+| **Storage Orchestration** | Local volumes | Limited (NFS, plugins) | Advanced (CSI, StatefulSets) |
+| **Monitoring** | DIY | DIY | Rich ecosystem (Prometheus Operator) |
+| **Package Manager** | ❌ No | ❌ No | ✅ Helm |
+| **Operators/Extensions** | ❌ No | ❌ No | ✅ Yes (CRDs, Operators) |
+| **Resource Requirements** | ~500MB RAM | ~1GB RAM | ~4GB RAM (control plane) |
+| **Community Size** | Large | Medium | Massive |
+| **Job Stability** | Good for devs | Niche | Hot job market skill |
+| **Complexity** | ⭐ Simple | ⭐⭐ Moderate | ⭐⭐⭐⭐⭐ Complex |
+
+#### When to Choose Each
+
+**Choose Docker Compose when:**
+- You're running on a single Hetzner auction box ($40/month)
+- Your app is a monolith or <5 microservices
+- You can afford occasional downtime for updates
+- You value simplicity over all else
+- You're a solo developer or small team
+- You're learning Docker
+
+**Choose Docker Swarm when:**
+- You have 3-8 mini PCs or 3-5 VMs you want to utilise
+- You need HA but don't want K8s complexity
+- You know Docker Compose and want to scale up
+- You're self-hosting on budget hardware
+- Your team is 1-5 people without dedicated DevOps
+- You want zero-downtime deployments without the learning curve
+- You value operational simplicity
+
+**Choose Kubernetes when:**
+- You're running 10+ microservices
+- You have dedicated DevOps team or budget for managed K8s
+- You need advanced features (autoscaling, StatefulSets, Operators)
+- You're deploying across multiple cloud providers
+- You need the ecosystem (Istio, Knative, etc.)
+- You have >50 nodes or plan to scale there
+- You need sophisticated scheduling (GPU workloads, etc.)
+- "Resume-driven development" (K8s looks great on CVs)
+
+#### My Decision: Swarm for 8 Mini PCs
+
+For my setup (8 mini PCs running Mostlylucid blog), Swarm was the obvious choice:
+
+✅ **Swarm advantages for me:**
+- Learned it in one weekend vs months for K8s
+- Runs great on 4GB RAM mini PCs
+- Zero-downtime deployments for free
+- Built into Docker (no separate installation)
+- Can troubleshoot without Googling cryptic K8s errors
+- Feels like Compose but with superpowers
+
+❌ **Why not K8s:**
+- Overkill for a blog (even with ML translation service)
+- Control plane alone would consume 2-3 mini PCs
+- Would spend more time managing K8s than writing content
+- Don't need Helm, Operators, or service meshes
+- Wanted to learn orchestration, not become a full-time K8s admin
+
+❌ **Why not stay on Compose:**
+- Wanted zero-downtime updates
+- Wanted to utilise all 8 mini PCs
+- Wanted high availability (node failures shouldn't take site down)
+- Wanted to learn clustering without K8s commitment
+
+**The result:** Production-grade HA blog cluster, manageable by one person, running on recycled hardware. Perfect.
 
 ## Planning Your Cluster Architecture
 
@@ -1426,7 +1599,7 @@ docker stack deploy -c stack.yml myapp
 | **Complexity** | Low | Medium |
 | **Setup Time** | 30 minutes | 4 hours |
 | **Troubleshooting** | Easy (`docker logs`) | Harder (distributed) |
-| **Cost** | $6/month VPS | $0 (using old hardware) |
+| **Cost** | $40/month (Hetzner auction box) | $0 (using old hardware) or power costs |
 
 ## When Swarm Isn't Worth It
 
@@ -1434,8 +1607,9 @@ docker stack deploy -c stack.yml myapp
 - You have <3 nodes
 - Your app is simple (blog, small site)
 - You can tolerate downtime for updates
-- You're on a single VPS
+- You're on a single server (Hetzner auction box, VPS, etc.)
 - You value simplicity over HA
+- You don't have spare hardware lying about
 
 **Use Swarm if:**
 - You have 3+ nodes
@@ -1475,11 +1649,12 @@ After 6 months running Mostlylucid on an 8-node Swarm cluster built from cheap m
 **Cons:**
 - Took a weekend to set up properly
 - NFS hiccups caused headaches twice
-- Power consumption is higher than a VPS
+- Power consumption is higher than a single Hetzner box (8 mini PCs drawing ~80W total vs 15W for one server)
+- More hardware to maintain physically
 - Overkill for a personal blog
 
 **Would I do it again?**
-Absolutely - but for learning and fun, not because a blog *needs* this much infrastructure. For production work? Swarm hits the sweet spot between Compose simplicity and Kubernetes power.
+Absolutely - but for learning and fun, not because a blog *needs* this much infrastructure. If you're running on a single Hetzner auction box ($40/month) with Docker Compose and it works fine, there's no compelling reason to migrate unless you want to learn clustering or need true HA. For production work at scale? Swarm hits the sweet spot between Compose simplicity and Kubernetes power.
 
 **Next Steps:**
 
