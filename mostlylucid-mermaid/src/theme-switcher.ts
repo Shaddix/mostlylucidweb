@@ -17,6 +17,8 @@ let darkThemeHandlerRef: (() => Promise<void>) | null = null;
 let lightThemeHandlerRef: (() => Promise<void>) | null = null;
 let listenersAttached = false;
 let htmxIntegrationSetup = false;
+let printHandlersSetup = false;
+let currentTheme: Theme = 'default';
 
 /**
  * Normalize code fence blocks to Mermaid-compatible format
@@ -169,6 +171,7 @@ export async function initMermaid() {
 
     const handleDarkThemeSet = async (): Promise<void> => {
         try {
+            currentTheme = 'dark';
             resetProcessed();
             await loadMermaid('dark');
         } catch (error) {
@@ -178,6 +181,7 @@ export async function initMermaid() {
 
     const handleLightThemeSet = async (): Promise<void> => {
         try {
+            currentTheme = 'default';
             resetProcessed();
             await loadMermaid('default');
         } catch (error) {
@@ -247,10 +251,14 @@ export async function initMermaid() {
     }
 
     console.log(`[Mermaid Theme] Detected ${isDarkMode ? 'dark' : 'light'} mode via ${detectionMethod}`);
-    await loadMermaid(isDarkMode ? 'dark' : 'default');
+    currentTheme = isDarkMode ? 'dark' : 'default';
+    await loadMermaid(currentTheme);
 
     // Setup HTMX integration if HTMX is available
     setupHtmxIntegration();
+
+    // Setup print handlers to force light theme when printing
+    setupPrintHandlers();
 }
 
 /**
@@ -281,4 +289,57 @@ function setupHtmxIntegration(): void {
 
     htmxIntegrationSetup = true;
     console.log('[Mermaid Theme] HTMX integration enabled');
+}
+
+/**
+ * Setup print handlers to force light theme when printing
+ * @private
+ */
+function setupPrintHandlers(): void {
+    // Only set up once
+    if (printHandlersSetup) return;
+
+    // Check if print events are available
+    if (typeof window === 'undefined') return;
+
+    // Handle before print - switch to light theme
+    const handleBeforePrint = async (): Promise<void> => {
+        console.log('[Mermaid Theme] Print mode detected, switching to light theme');
+        try {
+            resetProcessed();
+            await loadMermaid('default');
+        } catch (error) {
+            console.error('Error switching to light theme for print:', error);
+        }
+    };
+
+    // Handle after print - restore original theme
+    const handleAfterPrint = async (): Promise<void> => {
+        console.log('[Mermaid Theme] Print complete, restoring original theme');
+        try {
+            resetProcessed();
+            await loadMermaid(currentTheme);
+        } catch (error) {
+            console.error('Error restoring theme after print:', error);
+        }
+    };
+
+    // Add print event listeners
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Handle CSS-based print media query for browsers that don't fire print events
+    if (typeof window.matchMedia === 'function') {
+        const printMediaQuery = window.matchMedia('print');
+        printMediaQuery.addEventListener('change', async (e: MediaQueryListEvent) => {
+            if (e.matches) {
+                await handleBeforePrint();
+            } else {
+                await handleAfterPrint();
+            }
+        });
+    }
+
+    printHandlersSetup = true;
+    console.log('[Mermaid Theme] Print handlers enabled');
 }

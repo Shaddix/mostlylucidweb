@@ -18,7 +18,10 @@
       "Bash(timeout /t 2 /nobreak)",
       "Bash(start http://127.0.0.1:4000/examples/demo.html)",
       "Bash(start http://127.0.0.1:5000/examples/demo.html)",
-      "Bash(start http://127.0.0.1:8000/examples/demo.html)"
+      "Bash(start http://127.0.0.1:8000/examples/demo.html)",
+      "Bash(npm run publish:minor:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

@@ -229,3 +229,53 @@
         font-size: 1.5rem;
     }
 }
+
+/* Print mode adjustments */
+@media print {
+    /* Hide all control buttons when printing */
+    .mermaid-controls {
+        display: none !important;
+    }
+
+    /* Ensure wrapper has white background for printing */
+    .mermaid-wrapper {
+        background: white !important;
+        border: 1px solid #e5e7eb;
+    }
+
+    /* Force light theme colors for Mermaid diagrams when printing */
+    .mermaid-wrapper .mermaid,
+    .mermaid-wrapper .mermaid svg {
+        background: white !important;
+    }
+
+    /* Override any dark mode styles when printing */
+    .mermaid-wrapper svg * {
+        color-scheme: light !important;
+    }
+
+    /* Ensure text is black for readability when printing */
+    .mermaid-wrapper svg text {
+        fill: #1f2937 !important;
+    }
+
+    /* Ensure shapes have light backgrounds */
+    .mermaid-wrapper svg rect,
+    .mermaid-wrapper svg circle,
+    .mermaid-wrapper svg polygon,
+    .mermaid-wrapper svg path {
+        fill: white !important;
+        stroke: #1f2937 !important;
+    }
+
+    /* Ensure connectors are visible */
+    .mermaid-wrapper svg .edgePath path,
+    .mermaid-wrapper svg .flowchart-link {
+        stroke: #1f2937 !important;
+    }
+
+    /* Hide lightbox when printing */
+    .mermaid-lightbox {
+        display: none !important;
+    }
+}

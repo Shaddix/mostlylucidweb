@@ -43,9 +43,9 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "verify-cdn": "bash scripts/verify-cdn.sh",
-    "publish:patch": "bash scripts/publish.sh patch",
-    "publish:minor": "bash scripts/publish.sh minor",
-    "publish:major": "bash scripts/publish.sh major"
+    "publish:patch": "node -e \"process.platform === 'win32' ? require('child_process').execSync('scripts\\\\publish.bat patch', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/publish.sh patch', {stdio: 'inherit'})\"",
+    "publish:minor": "node -e \"process.platform === 'win32' ? require('child_process').execSync('scripts\\\\publish.bat minor', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/publish.sh minor', {stdio: 'inherit'})\"",
+    "publish:major": "node -e \"process.platform === 'win32' ? require('child_process').execSync('scripts\\\\publish.bat major', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/publish.sh major', {stdio: 'inherit'})\""
   },
   "keywords": [
     "mermaid",
