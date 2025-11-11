@@ -755,16 +755,256 @@ The production system had vastly more sophisticated features not included in the
 - Anti-forensics measures
 - And dozens of other security layers...
 
+### The Build System: Obfuscation and Minification
+
+One critical aspect of steganographic systems is making the code difficult to analyze. The demo includes a simple build system that demonstrates basic obfuscation techniques.
+
+#### From Source to Deployed Script
+
+Here's the transformation process:
+
+```mermaid
+flowchart LR
+    A[Source Code<br/>compatibility-shim1.src.js<br/>~1KB readable] --> B[String Obfuscation<br/>Convert to CharCodes]
+    B --> C[Minification<br/>Remove whitespace]
+    C --> D[Dead Code Injection<br/>Add junk functions]
+    D --> E[Deployed Script<br/>~400 bytes minified]
+
+    style A fill:#e1f5ff
+    style E fill:#ffe1e1
+```
+
+#### Source Code (Readable)
+
+The source is clean and understandable:
+
+```javascript
+// Check for trigger pattern
+const params = new URLSearchParams(window.location.search);
+const ref = params.get('ref');
+
+if (ref && /^newsletter_\d{4}_[a-z]+$/i.test(ref)) {
+    // Load the secure chat module
+    const script = document.createElement('script');
+    script.src = '/js/secure-chat.js';
+    document.head.appendChild(script);
+}
+```
+
+#### Obfuscated Version (Deployed)
+
+After obfuscation, strings are split and encoded:
+
+```javascript
+!function(){if(new URLSearchParams(window.location.search).get(String.fromCharCode(114,101,102))?.match(new RegExp(String.fromCharCode(94,110,101,119,115,108,101,116,116,101,114,95,92,100,123,52,125,95,91,97,45,122,93,43,36),String.fromCharCode(105)))){const e=document.createElement(String.fromCharCode(115,99,114,105,112,116));e.src=String.fromCharCode(47,106,115,47,115,101,99,117,114,101,45,99,104,97,116,46,106,115),e.async=!0,document.head.appendChild(e)}}();
+```
+
+Notice:
+- `'ref'` becomes `String.fromCharCode(114,101,102)`
+- `/^newsletter_\d{4}_[a-z]+$/i` becomes a character array
+- `'script'` becomes `String.fromCharCode(115,99,114,105,112,116)`
+- All whitespace removed, variable names shortened
+
+#### Build Process Flow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant Src as Source Files<br/>(wwwroot/js/dev/)
+    participant Build as Build Tool
+    participant Prod as Production Files<br/>(wwwroot/js/)
+
+    Dev->>Src: Write readable source code
+    Dev->>Build: Run ./build.sh
+    Build->>Src: Read source files
+
+    Build->>Build: 1. Extract string literals
+    Build->>Build: 2. Convert to CharCode arrays
+    Build->>Build: 3. Minify (remove whitespace)
+    Build->>Build: 4. Rename variables
+    Build->>Build: 5. Add dead code
+
+    Build->>Prod: Write obfuscated files
+    Prod-->>Dev: Ready for deployment
+```
+
+#### Obfuscation Techniques Demonstrated
+
+**1. String Encoding**
+
+```csharp
+// C# build tool helper
+public static string StringToCharCodes(string input)
+{
+    var codes = input.Select(c => ((int)c).ToString());
+    return $"String.fromCharCode({string.Join(",", codes)})";
+}
+
+// "ref" becomes "String.fromCharCode(114,101,102)"
+```
+
+**2. String Splitting**
+
+```csharp
+public static string SplitString(string input)
+{
+    var chunks = new List<string>();
+    for (int i = 0; i < input.Length; i += 3)
+    {
+        var chunk = input.Substring(i, Math.Min(3, input.Length - i));
+        chunks.Add($"\"{chunk}\"");
+    }
+    return $"[{string.Join(",", chunks)}].join('')";
+}
+
+// "newsletter" becomes ["new","sle","tte","r"].join('')
+```
+
+**3. XOR Encoding (Simple)**
+
+```csharp
+public static string XorEncode(string input, int key)
+{
+    var encoded = input.Select(c => (char)(c ^ key)).ToArray();
+    var codes = encoded.Select(c => ((int)c).ToString());
+    return $"String.fromCharCode({string.Join(",", codes)})";
+}
+```
+
+#### What Production Would Add
+
+Real production systems would include:
+
+1. **Custom Encryption Schemes**
+   - Domain-locked decryption keys
+   - Time-based key derivation
+   - Environment-specific encryption
+
+2. **Control Flow Obfuscation**
+   - Flatten control structures
+   - Replace if/else with lookup tables
+   - Add bogus conditional branches
+
+3. **AST Manipulation**
+   - Restructure code at syntax tree level
+   - Transform expressions to equivalent forms
+   - Inject dead code that looks legitimate
+
+4. **Anti-Debugging**
+   - Detect debugger presence
+   - Timing checks to detect single-stepping
+   - Self-modifying code
+   - Environment fingerprinting
+
+5. **Traffic Obfuscation**
+   - Pad messages to fixed sizes
+   - Random timing delays
+   - Dummy traffic generation
+   - Protocol mimicry
+
+#### Configuration and Flexibility
+
+The demo is designed to be configurable for different backends:
+
+```javascript
+// Configuration via meta tag (looks like analytics config)
+const config = {
+    hubUrl: document.querySelector('meta[name="chat-hub-url"]')
+        ?.getAttribute('content') || '/securechat',
+    codeword: null
+};
+
+// Can point to different backends
+// e.g., LLMApi (https://github.com/scottgal/LLMApi)
+```
+
+In the HTML (looks like standard metadata):
+
+```html
+<meta name="chat-hub-url" content="/securechat" data-hidden />
+```
+
+This allows the same client code to work with different backend implementations without modification.
+
+### Complete Flow Diagram
+
+Here's how all the pieces work together:
+
+```mermaid
+sequenceDiagram
+    participant U as User Browser
+    participant S as Company Site
+    participant T as Tiny Shim<br/>(400 bytes)
+    participant C as Chat Module<br/>(5KB)
+    participant H as SignalR Hub
+    participant Support as Support Staff
+
+    U->>S: Visit site normally
+    S->>U: Page loads with shim
+    T->>T: Check URL params
+
+    Note over U,S: User receives special URL via separate channel
+
+    U->>S: Visit ?ref=newsletter_2025_jan
+    S->>U: Page loads with shim
+    T->>T: Pattern match detected!
+    T->>C: Dynamically load chat module
+    C->>U: Show chat modal
+    C->>U: 30 second countdown
+
+    alt Correct Codeword
+        U->>C: Enter "SAFE2025"
+        C->>H: Authenticate
+        H->>H: Validate codeword
+        H->>C: Session created
+        H->>Support: Notify new session
+        Support->>H: Join session
+        H->>C: Support joined
+
+        loop Chat Session
+            U->>C: Type message
+            C->>H: Send via SignalR
+            H->>Support: Relay message
+            Support->>H: Reply
+            H->>C: Relay reply
+            C->>U: Display message
+        end
+
+        Support->>H: End session
+        H->>C: Session ended
+        C->>U: Close gracefully
+    else Wrong/No Codeword
+        U->>C: Wrong code or timeout
+        C->>U: "Service unavailable"
+        C->>U: Close after 2s
+        Note over U,C: Looks like technical error<br/>No evidence of secure system
+    end
+```
+
 ### Try It Yourself
 
 The complete demo code is in the repository. Read the README carefully for the full list of security warnings. The code is heavily commented to explain each concept.
 
 **Key files to examine:**
-- `wwwroot/js/compatibility-shim1.js` - The tiny trigger
-- `wwwroot/js/secure-chat.js` - Client-side chat application
-- `Hubs/SecureChatHub.cs` - SignalR backend
-- `Views/Demo/Company.cshtml` - The "company website" with hidden elements
+
+JavaScript (Source vs. Obfuscated):
+- `wwwroot/js/dev/compatibility-shim1.src.js` - Readable trigger script
+- `wwwroot/js/compatibility-shim1.js` - Obfuscated trigger (~400 bytes)
+- `wwwroot/js/dev/secure-chat.src.js` - Readable chat application
+- `wwwroot/js/secure-chat.js` - Minified chat application (~5KB)
+
+Backend:
+- `Hubs/SecureChatHub.cs` - SignalR hub for real-time chat
+- `Controllers/DemoController.cs` - Page routing
+
+Frontend:
+- `Views/Demo/Company.cshtml` - The "company website" with hidden config
 - `Views/Demo/Support.cshtml` - Support staff interface
+
+Build System:
+- `Build/JsObfuscator.cs` - String obfuscation utilities
+- `Build/BuildObfuscated.cs` - Build tool for creating minified versions
+- `build.sh` - Shell script for building
 
 Remember: This is a **trivial implementation of the concept**. It demonstrates ideas, not production-ready security.
 

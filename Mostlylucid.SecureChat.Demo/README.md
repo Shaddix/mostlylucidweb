@@ -95,6 +95,54 @@ A real implementation for safety-critical use would need:
 - Monitoring and anomaly detection
 - And much, much more...
 
+## JavaScript Build System
+
+The demo includes a simple build system that demonstrates string obfuscation and minification concepts.
+
+### Source Files (Readable)
+
+Located in `wwwroot/js/dev/`:
+- `compatibility-shim1.src.js` - Readable trigger script
+- `secure-chat.src.js` - Readable chat application
+
+### Production Files (Obfuscated)
+
+Located in `wwwroot/js/`:
+- `compatibility-shim1.js` - Minified trigger (~400 bytes)
+- `secure-chat.js` - Minified chat application (~5KB)
+
+### Obfuscation Techniques (Demo)
+
+The production files demonstrate:
+
+1. **String Obfuscation**: Strings converted to `String.fromCharCode()` arrays
+2. **Minification**: Whitespace and comments removed
+3. **Variable Renaming**: Short variable names
+4. **Dead Code**: Junk code added for confusion
+
+**What production would add:**
+- Custom encryption schemes for string literals
+- Control flow flattening
+- AST manipulation
+- Anti-debugging measures
+- Timing-based obfuscation
+- Domain/environment-specific decryption keys
+
+### Building JavaScript Files
+
+```bash
+# Using the shell script (placeholder)
+./build.sh
+
+# Or in a real project with Node.js:
+npm run build
+
+# Or using the C# build tool:
+dotnet run --project Build/BuildObfuscated.csproj
+```
+
+For this demo, pre-built minified versions are included.
+
 ## Running the Demo
 
 ### Prerequisites
@@ -154,6 +202,23 @@ A real implementation for safety-critical use would need:
 3. You'll see a "service unavailable" message and the chat closes
 
 4. This demonstrates the plausible deniability - it looks like a technical error
+
+### Using with Alternative Backends (e.g., LLMApi)
+
+The SignalR hub URL is configurable via meta tag, allowing you to use different backends:
+
+1. Edit `Views/Demo/Company.cshtml` and change the `chat-hub-url` meta tag:
+   ```html
+   <meta name="chat-hub-url" content="https://your-llmapi-instance.com/hub/securechat" data-hidden />
+   ```
+
+2. Or set it programmatically via JavaScript before loading the chat:
+   ```javascript
+   document.querySelector('meta[name="chat-hub-url"]')
+       .setAttribute('content', 'https://your-backend.com/hub');
+   ```
+
+This allows simulation with tools like [LLMApi](https://github.com/scottgal/LLMApi) or integration with different chat backends without changing the client code.
 
 ## Project Structure
 

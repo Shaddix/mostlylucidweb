@@ -2,8 +2,10 @@
     ViewData["Title"] = "Acme Corporation";
 }
 
-<!-- Hidden redirect URL - where failed auth redirects to -->
+<!-- Hidden configuration - metadata tags look innocuous -->
 <meta name="fallback-url" content="https://www.example.com/support" data-hidden />
+<!-- SignalR hub URL - can point to different backend (e.g., LLMApi for simulation) -->
+<meta name="chat-hub-url" content="/securechat" data-hidden />
 
 <header>
     <div class="container">
