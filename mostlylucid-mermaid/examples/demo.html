@@ -719,12 +719,9 @@ graph LR
                     warningBanner.className = 'error';
                     warningText.innerHTML = `
                         <strong>⚠️ Resources failed to load!</strong><br><br>
-                        <strong>To run this demo locally, you need to:</strong><br>
-                        1. Build the project first: <code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run build:all</code><br>
-                        2. Run the dev server from the <strong>project root</strong> (not from examples/):<br>
-                        &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npx http-server -p 2000 -o examples/demo.html</code><br><br>
-                        <strong>Or use the npm script:</strong><br>
-                        &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run dev:demo</code>
+                        <strong>To run this demo locally, run from the project root:</strong><br>
+                        <code style="background: #1f2937; color: #10b981; padding: 4px 8px; border-radius: 3px; font-size: 14px;">npm run dev:demo</code><br><br>
+                        <em style="font-size: 0.9em;">This will build the project and start the server.</em>
                     `;
                 }
             }
@@ -739,12 +736,9 @@ graph LR
                 warningBanner.className = 'error';
                 warningText.innerHTML = `
                     <strong>⚠️ Enhancements are taking too long to load!</strong><br><br>
-                    <strong>To run this demo locally, you need to:</strong><br>
-                    1. Build the project first: <code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run build:all</code><br>
-                    2. Run the dev server from the <strong>project root</strong> (not from examples/):<br>
-                    &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npx http-server -p 2000 -o examples/demo.html</code><br><br>
-                    <strong>Or use the npm script:</strong><br>
-                    &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run dev:demo</code>
+                    <strong>To run this demo locally, run from the project root:</strong><br>
+                    <code style="background: #1f2937; color: #10b981; padding: 4px 8px; border-radius: 3px; font-size: 14px;">npm run dev:demo</code><br><br>
+                    <em style="font-size: 0.9em;">This will build the project and start the server.</em>
                 `;
             }
         }, 3000);
