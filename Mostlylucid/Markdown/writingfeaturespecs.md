@@ -8,22 +8,33 @@ Over the years I've read hundreds of feature specifications. Some were brilliant
 
 A good spec is like a well-drawn map; it shows you where you're going without prescribing every single step. A bad spec is either so vague it's useless or so detailed it becomes a straightjacket that prevents you from solving problems intelligently.
 
+Here's something I learned at Microsoft that changed how I think about specs: **A spec is not a bible; it's source code for your feature.** You version it, you refactor it, you improve it as you learn. Treating a spec as a sacred, unchangeable document is a recipe for building the wrong thing perfectly.
+
 [TOC]
 
 # What Makes a Good Feature Spec
+
+## The Problem-Solution Pattern
+The single most important principle for writing specs: **Always start with the problem, not the solution.**
+
+This pattern is simple:
+1. **Problem** - What's actually broken? What pain are users experiencing?
+2. **Solution** - Here's how we propose to fix it
+3. **In Scope** - What we're doing in this spec
+4. **Out of Scope** - What we're explicitly NOT doing (equally important)
+
+I've seen countless specs that jump straight into "User clicks button X which calls API Y" without ever explaining what the user is actually trying to achieve. This is arse-backwards. The implementation details should flow naturally from understanding the problem.
 
 ## Clarity of Purpose
 Before you write a single word about implementation, you need to answer one question: **WHY?**
 
 Why are we building this? What problem does it solve? Who benefits? If you can't answer these questions clearly, you haven't got a feature; you've got a wish list.
 
-I've seen countless specs that jump straight into "User clicks button X which calls API Y" without ever explaining what the user is actually trying to achieve. This is arse-backwards. The implementation details should flow naturally from understanding the problem.
-
 A good spec starts with:
-1. **The Problem Statement** - What's broken or missing?
-2. **The User Impact** - Who cares and why?
-3. **Success Criteria** - How do we know we've solved it?
-4. **Non-Goals** - What are we explicitly NOT doing? (This is crucial)
+1. **The Problem Statement** - What's broken or missing? Be specific.
+2. **The User Impact** - Who cares and why? Quantify if possible.
+3. **Success Criteria** - How do we know we've solved it? Make it measurable.
+4. **Non-Goals** - What are we explicitly NOT doing? This prevents scope creep and endless debates.
 
 ## The Right Level of Detail
 This is where most specs go tits-up. Too vague and developers are left guessing; too detailed and you're micromanaging implementation choices that developers are better qualified to make.
@@ -84,7 +95,21 @@ For each requirement, specify:
 Performance targets, security requirements, accessibility standards, browser/device support. Don't assume these are obvious.
 
 ## 6. Out of Scope
-Explicitly call out what you're NOT doing. This prevents scope creep and endless "but couldn't we just..." conversations during implementation.
+This section is just as important as what's IN scope. Be explicit about what you're NOT doing in THIS spec.
+
+Why this matters:
+- **Prevents Scope Creep** - "But couldn't we just..." conversations die quickly when you can point to the Out of Scope section
+- **Sets Expectations** - Stakeholders know what won't be delivered
+- **Enables Future Work** - Items here might become their own specs later
+- **Focuses the Team** - Everyone knows the boundaries of this work
+
+Examples of good Out of Scope items:
+- "Mobile support (will be addressed in separate spec)"
+- "Migration of existing data (current spec only handles new data)"
+- "Admin UI for configuration (will use config files initially)"
+- "Integration with System X (dependency not yet available)"
+
+If someone argues an out-of-scope item should be in scope, that's a conversation worth having BEFORE development starts, not halfway through implementation.
 
 ## 7. Open Questions
 Be honest about what you don't know. Mark these clearly and make sure they get answered before development starts. Nothing worse than blocking development because nobody decided whether we're doing soft deletes or hard deletes.
@@ -167,6 +192,29 @@ Requirements that change daily aren't requirements; they're chaos. If things are
 ## The Kitchen Sink
 "While we're in there, could we also..." No. No we couldn't. Every feature has a cost. If you want to add something new, write a separate spec for it and prioritise it properly.
 
+# Treating Specs Like Source Code
+
+This is the mindset shift that changed how I write specs: **Treat your spec exactly like you treat source code.**
+
+## Version Control
+Your specs should live in version control alongside your code. Check them in. Track changes. Write meaningful commit messages when you update them. This creates a history of how requirements evolved.
+
+At Microsoft, we kept specs in the same repositories as code. When a spec changed, it went through the same review process as code. This wasn't bureaucracy; it was ensuring everyone understood what was changing and why.
+
+## Refactoring Specs
+Just as code needs refactoring, so do specs. As you learn more during implementation, the spec should evolve to reflect that learning.
+
+Found a better way to solve the problem? Update the spec to reflect the new approach and explain why you changed direction. Discovered an edge case you hadn't considered? Add it to the spec.
+
+The spec after development should be more refined than the spec before development. If it's not, you've missed an opportunity to document what you learned.
+
+## The Living Document Principle
+A spec isn't "done" when development starts. It's done when the feature ships and becomes maintenance mode. Until then, it's a living document that evolves with your understanding of the problem.
+
+This doesn't mean the spec should change daily. Major changes to requirements need discussion and agreement. But clarifications, additional examples, newly discovered edge cases should all be folded back into the spec as you find them.
+
+Think of it this way: if you wouldn't leave outdated comments in code, don't leave outdated information in specs.
+
 # The Relationship Between Spec and Implementation
 
 Here's something junior developers often don't grasp: **The spec is not the source of truth; the code is.**
@@ -206,16 +254,53 @@ Before you call a spec done, ask yourself:
 
 # Specs in Agile Environments
 
-"But we're agile! We don't need specs!" I hear this a lot. It's bollocks.
+"But we're agile! We don't need specs!" I hear this a lot. It's nonsense.
 
 Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. You still need to understand what you're building before you build it.
 
-In agile environments, specs might be:
-- Lighter weight (wiki pages rather than formal documents)
-- More iterative (updated each sprint)
-- Closer to the team (written by the team, not external to it)
+## The Collaborative Model
+Here's what changes in agile: **You don't write a spec and throw it over the wall to developers.** The spec is a collaborative effort.
 
-But you still need them. A user story on a card isn't enough for anything non-trivial. You need detail somewhere.
+The best approach I've seen:
+1. **Product/PM sketches the problem** - What needs solving and why
+2. **Developers contribute technical approach** - How we might solve it, what the constraints are
+3. **Designers contribute UX requirements** - What the user experience should be
+4. **QA contributes test scenarios** - Edge cases and validation approaches
+
+Everyone contributes to the spec. Nobody owns it exclusively. This collaborative approach catches problems early when they're cheap to fix rather than late when they're expensive.
+
+## Iteration Over Perfection
+In agile, you don't need the perfect 50-page spec before development starts. You need enough detail for the current sprint and a rough outline for what's coming.
+
+Start with:
+- Clear problem statement
+- Proposed solution approach
+- Success criteria for the first iteration
+- Known edge cases and open questions
+
+Then refine and expand as you go. As implementation teaches you more about the problem, fold that learning back into the spec.
+
+## The Write-Review-Refine Cycle
+Specs in agile environments should go through multiple iterations:
+
+**Draft** - Get the core problem and solution down. This might be rough.
+
+**Review** - Get feedback from developers, designers, QA. What's missing? What doesn't make sense?
+
+**Refine** - Update based on feedback. Add examples. Clarify ambiguities.
+
+**Implement** - Start building. As you discover things, update the spec.
+
+**Retrospect** - After shipping, update the spec to reflect what you actually built and what you learned.
+
+This isn't waterfall in disguise. You're not trying to get the spec perfect before starting. You're making it good enough to start and improving it as you learn.
+
+## Lightweight But Not Vague
+Agile specs can be lighter weight than traditional specs. They might live in wiki pages, confluence documents, or even detailed JIRA tickets. The format matters less than the content.
+
+But lightweight doesn't mean vague. "Build a dashboard" isn't a spec; it's a wish. You still need to explain the problem, propose a solution, define success criteria, and identify what's out of scope.
+
+A good agile spec is like good code: clear, concise, and maintainable. A user story on a card isn't enough for anything non-trivial. You need detail somewhere, even if that detail is more collaborative and iterative than traditional specs.
 
 # The Spec Review Process
 
@@ -230,6 +315,76 @@ A spec isn't done when you finish writing it; it's done when it's been reviewed 
 **QA Review** - Can we test this? Are the acceptance criteria clear enough? What about edge cases?
 
 Get reviews from all these perspectives before you start implementation. Finding problems in the spec costs minutes; finding them in production costs weeks.
+
+# A Concrete Example: Markdown Translation Service
+
+To make this all less abstract, here's what a spec might look like for the automatic markdown translation feature I built for this blog. This demonstrates the principles we've discussed.
+
+## Problem Statement
+Blog posts written in English only exclude non-English speaking readers. Manual translation of each post to multiple languages is time-consuming and delays publication. We need an automated solution that translates markdown blog posts to multiple target languages without requiring manual intervention for each post.
+
+## Solution
+Implement a background service that automatically translates markdown files to configured target languages using the EasyNMT machine translation service. The service will:
+- Monitor markdown files for changes
+- Extract translatable text while preserving markdown structure and code blocks
+- Batch translation requests for efficiency
+- Generate translated markdown files with appropriate language suffixes
+
+## Success Criteria
+- New blog posts are automatically translated to all configured languages (initially: Spanish, French, German, Italian, Portuguese, Chinese, Arabic, Hindi, Japanese, Korean, Dutch, Russian)
+- Translated files maintain identical markdown structure to originals
+- Code blocks, image URLs, and formatting remain unchanged
+- Translation completes within 15 minutes for a typical blog post (2000-3000 words)
+- System only re-translates files that have changed
+
+## In Scope
+- Background service to process markdown files
+- Integration with EasyNMT translation API
+- Hash-based change detection to avoid unnecessary re-translation
+- Batch processing to handle EasyNMT's word limit
+- Round-robin load balancing across multiple EasyNMT instances
+- Preservation of markdown syntax, code blocks, and images during translation
+
+## Out of Scope
+- User interface for manual translation editing (future enhancement)
+- Translation memory or glossary management (may add if quality issues arise)
+- Real-time translation (background processing is acceptable)
+- Translation of code comments within code blocks (intentionally excluded)
+- Automatic quality assessment of translations (manual review required initially)
+
+## Technical Constraints
+- EasyNMT has a ~500 word limit per request; must batch accordingly
+- Translation service can be slow (~15 second timeout per batch)
+- Multiple EasyNMT instances needed for reasonable performance
+- File system I/O must not block main application
+
+## Open Questions at Spec Time
+- ~~Should we cache translations to avoid re-translating unchanged files?~~ **Resolved: Yes, using file hash comparison**
+- ~~How do we handle EasyNMT service failures?~~ **Resolved: Log error and skip file; will retry on next service restart**
+- What quality issues might we see with technical content? **Decision: Ship and evaluate; manual review catches issues**
+
+## What We Learned During Implementation
+Several things emerged during development that refined the spec:
+
+**Image Detection**: Initially, image filenames in markdown were being sent to the translation service, breaking sentence parsing. Added file extension detection to skip image paths.
+
+**Service Availability**: EasyNMT can be temperamental on startup. Added health check that queries the `/model_name` endpoint before attempting translations.
+
+**Batch Size Tuning**: Started with 20-line batches, but found 10 lines more reliable for staying under EasyNMT's word limit while maintaining context.
+
+**Hash Storage**: Originally planned database storage for file hashes, but filesystem-based `.hash` files proved simpler and avoided database dependency for this service.
+
+These learnings were folded back into documentation and informed similar features later.
+
+## Why This Spec Worked
+This spec followed the principles discussed:
+- **Problem-first**: Started with the actual problem (manual translation is slow) not the solution (use EasyNMT)
+- **Clear scope**: Explicitly called out what we weren't doing (translation memory, UI editing)
+- **Right level of detail**: Specified what needed to happen (preserve markdown structure) without prescribing exact implementation
+- **Living document**: Open questions were resolved and decisions documented as implementation progressed
+- **Collaborative**: Raised during implementation issues (like image filename handling) were discussed and resolved, then documented
+
+The result: a feature that's been running in production for months, automatically translating every blog post with minimal intervention.
 
 # In Conclusion
 
