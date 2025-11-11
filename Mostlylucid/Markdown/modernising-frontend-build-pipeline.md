@@ -47,6 +47,26 @@ The final straw for me was when a CDN went down for 20 minutes and took my entir
 
 My current setup bundles all JavaScript dependencies through Webpack and processes CSS through PostCSS. Here's what that looks like.
 
+### Why Webpack Instead of Vite?
+
+Before diving into the technical details, I should address the elephant in the room: why am I using Webpack when Vite, Rollup, esbuild, and other modern bundlers exist?
+
+The honest answer is simple: **I already knew Webpack**.
+
+I'd used Webpack extensively when teaching my "Beginning Web Development" course, and it was the tool I understood. When I decided to modernise this blog's build pipeline, I was already facing a steep learning curve—understanding tree-shaking, code splitting, module systems, PostCSS pipelines, and how to integrate all of this with ASP.NET Core.
+
+Adding "learn an entirely new build tool" on top of that seemed unnecessary. Webpack works. It's mature. It has excellent documentation and a massive ecosystem. Most importantly, I could focus my learning energy on the *concepts* of modern bundling rather than the idiosyncrasies of a particular tool.
+
+**Is Vite faster?** Absolutely. Vite's development server with native ES modules and esbuild-powered bundling is significantly faster than Webpack. For large projects with hundreds of modules, the difference is dramatic.
+
+**Should you use Vite for a new project?** Probably, yes. If you're starting fresh and don't have existing Webpack knowledge, Vite is likely the better choice. It's faster, simpler to configure, and represents the modern approach to frontend tooling.
+
+**Do I regret using Webpack?** Not at all. It got me to where I needed to be. The lessons I learned about bundling, code splitting, and optimisation are transferable to any build tool. And honestly, for this blog's scale, the performance difference between Webpack and Vite is negligible—we're talking milliseconds in development rebuild times.
+
+The broader lesson here is that **progress beats perfection**. I could have spent weeks researching the "best" bundler, comparing benchmarks, reading comparison articles, and agonising over the decision. Instead, I picked the tool I knew, got it working, and moved forward. That pragmatism kept me shipping rather than endlessly deliberating.
+
+Maybe one day I'll migrate to Vite. Maybe I won't. Either way, this blog has a modern, optimised build pipeline that works reliably—and that's what matters.
+
 ### Package Structure
 
 The [`package.json`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/package.json) now maintains two distinct dependency groups. This structure took me several attempts to get right—initially, I had everything in `dependencies`, which meant development tools were being deployed to production. Not ideal.
