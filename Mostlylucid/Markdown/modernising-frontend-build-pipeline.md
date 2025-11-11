@@ -5,11 +5,13 @@
 
 ## Introduction
 
-Over the past year, I've significantly modernised the frontend build pipeline for this blog, moving from a CDN-dependent approach to a comprehensive bundling strategy. This evolution has resulted in better performance, improved developer experience, and greater control over asset optimisation.
+Over the past year, I've stumbled, experimented, broken things, and gradually modernised the frontend build pipeline for this blog. This wasn't some masterplan executed flawlessly—it was trial and error, lots of error, and stubborn persistence driven by a clear vision of what I wanted to achieve.
 
-When I started this project, I relied heavily on CDNs for JavaScript libraries—a common pattern for ASP.NET Core developers who aren't deeply familiar with modern frontend tooling. Whilst CDNs offer convenience and caching benefits, bundling provides superior performance through tree-shaking, code splitting, and optimised delivery.
+I'm not a frontend guru or a Webpack wizard. I'm a .NET developer who got frustrated with the limitations of CDN-based dependencies and decided there had to be a better way. This article documents the messy, iterative journey from simple `<script>` tags pointing to unpkg to a modern bundling pipeline that actually works.
 
-This article documents the journey from that simple CDN-based setup to a sophisticated build pipeline using Webpack, PostCSS, Babel, and modern JavaScript modules.
+I made plenty of mistakes along the way (which I'll document), spent hours debugging cryptic Webpack errors, and probably reinstalled `node_modules` more times than I care to admit. But persistence paid off, and I learned a tremendous amount through sheer determination to get this right.
+
+If you're a .NET developer staring at Webpack configuration files wondering what on earth you've gotten yourself into—this article is for you.
 
 ## The Problem with CDNs
 
@@ -23,14 +25,21 @@ Initially, my approach was straightforward:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
 ```
 
-Whilst this works, it has several drawbacks:
+Whilst this works, it has several drawbacks that became increasingly frustrating:
 
+- **Reliability issues**: CDNs do go down. I've seen unpkg and jsdelivr have outages. When they're down, your site is broken
+- **Unpredictable loading behaviour**: CDN responses can vary wildly. Sometimes fast, sometimes slow, sometimes they introduce race conditions where libraries load in the wrong order
+- **Timing issues**: You have no control over when scripts load relative to each other. This caused me endless headaches with library initialisation
 - **Multiple HTTP requests**: Each library requires a separate request, even with HTTP/2
 - **No tree-shaking**: You download the entire library, even if you only use a fraction of it
-- **Version drift**: CDNs might serve different versions unless you pin them explicitly
-- **Build-time uncertainty**: No way to catch incompatibilities until runtime
+- **Version drift**: CDNs might serve different versions unless you pin them explicitly, and even pinned versions can behave differently across CDN providers
+- **Build-time uncertainty**: No way to catch incompatibilities until runtime—often when a user reports it
 - **Limited optimisation**: Can't minify across boundaries or remove dead code
-- **Offline development**: Requires internet connectivity
+- **Offline development**: Requires internet connectivity, which is annoying when working on trains or planes
+
+The final straw for me was when a CDN went down for 20 minutes and took my entire blog with it. That's when I decided: never again.
+
+**To be fair**, CDNs aren't inherently evil. They're simpler to set up, and with HTTP/2 and HTTP/3 multiplexing, the multiple request overhead is much less critical than it used to be. For many projects, especially small ones or prototypes, CDNs remain a perfectly sensible choice. But for a production site where I wanted control, reliability, and optimisation, bundling made more sense.
 
 ## The Modern Bundling Approach
 
@@ -38,7 +47,7 @@ My current setup bundles all JavaScript dependencies through Webpack and process
 
 ### Package Structure
 
-The `package.json` now maintains two distinct dependency groups:
+The [`package.json`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/package.json) now maintains two distinct dependency groups. This structure took me several attempts to get right—initially, I had everything in `dependencies`, which meant development tools were being deployed to production. Not ideal.
 
 ```json
 {
@@ -122,7 +131,9 @@ The `npm-run-all` package enables parallel execution for faster builds.
 
 ## Webpack Configuration Deep Dive
 
-The Webpack configuration is where the magic happens. Here's the complete setup with detailed explanations:
+The Webpack configuration is where the magic happens—and where I spent most of my time troubleshooting. This didn't spring into existence fully formed. It's the result of countless iterations, Stack Overflow searches, and reading through Webpack documentation at 2am trying to understand why my build was generating 47 chunk files.
+
+Here's the current configuration (from [`webpack.config.js`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/webpack.config.js)) with detailed explanations of what each part does and why it's there:
 
 ```javascript
 const TerserPlugin = require('terser-webpack-plugin');
@@ -314,7 +325,7 @@ On this blog, this typically reduces JavaScript bundle sizes by 60-70% compared 
 
 ## PostCSS Pipeline for Tailwind
 
-Tailwind CSS is processed through PostCSS with several plugins:
+Tailwind CSS is processed through PostCSS with several plugins. This configuration (from [`postcss.config.js`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/postcss.config.js)) is mercifully simple compared to Webpack:
 
 ```javascript
 // postcss.config.js
@@ -337,7 +348,7 @@ The pipeline works as follows:
 
 ### Tailwind Configuration
 
-The `tailwind.config.js` file specifies where Tailwind should look for class names:
+The [`tailwind.config.js`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/tailwind.config.js) file specifies where Tailwind should look for class names. Getting the `content` paths right was critical—miss a path and Tailwind won't generate classes for those files:
 
 ```javascript
 module.exports = {
@@ -377,7 +388,7 @@ Tailwind scans these files at build time, extracting only the utility classes yo
 
 ## JavaScript Entry Point
 
-The `main.js` file imports and initialises all dependencies:
+The [`main.js`](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/src/js/main.js) file is where everything comes together. This file imports and initialises all dependencies, and it's grown organically as I've added features to the blog:
 
 ```javascript
 // src/js/main.js
@@ -732,9 +743,45 @@ cache: {
 },
 ```
 
+## Lessons Learned the Hard Way
+
+Let me share some of the mistakes I made along this journey, so you can avoid them:
+
+### Mistake #1: Trying to Bundle Everything at Once
+
+My first attempt involved ripping out all CDN references in one go and trying to bundle everything through Webpack. The build broke spectacularly. I learned that incremental migration is your friend—move one library at a time, test thoroughly, then move to the next.
+
+### Mistake #2: Not Understanding Module Types
+
+I wasted hours trying to figure out why certain libraries wouldn't load. Turns out, mixing CommonJS (`require()`) and ES6 modules (`import`) without understanding how Webpack handles them leads to cryptic errors. The `experiments: { outputModule: true }` configuration wasn't in my initial setup, and I couldn't work out why my modules weren't loading.
+
+The solution came from reading through GitHub issues on the Webpack repository at midnight.
+
+### Mistake #3: Over-Aggressive Code Splitting
+
+At one point, my configuration was generating chunks for everything. I had `minSize: 1000` (1KB) which meant Webpack was creating separate files for tiny utility functions. Page load became a waterfall of 50+ tiny chunk requests. I learned that code splitting is good, but you need sensible thresholds. That's why my current config uses `minSize: 20000` (20KB).
+
+### Mistake #4: Forgetting About the `.mjs` Extension
+
+Some npm packages distribute ES6 modules with the `.mjs` extension. Webpack won't resolve these by default. I spent an embarrassingly long time debugging why `@mostlylucid/mermaid-enhancements` wouldn't load before discovering I needed to add `.mjs` to `resolve.extensions`.
+
+Simple fix once you know it, but finding that out? That took time.
+
+### Mistake #5: Not Caching Webpack Builds
+
+Early builds took 30-60 seconds because I hadn't enabled Webpack's filesystem cache. Once I added caching, rebuild times dropped to 2-3 seconds. This was a game-changer for development workflow but took me weeks to discover.
+
+### Mistake #6: Tailwind Purging Classes I Actually Used
+
+My favourite debugging experience: CSS classes that worked fine in development suddenly disappeared in production. Tailwind was purging them because they were generated dynamically in JavaScript. The solution was the `safelist` configuration, but only after I'd wasted hours wondering if I was going mad.
+
+### What I Got Right: Persistence
+
+The one thing I did right was refusing to give up. Every error message was a learning opportunity. Every broken build taught me something new about how these tools work. I had a clear vision—bundled, optimised assets that load fast—and I kept iterating until I got there.
+
 ## Conclusion
 
-Migrating from CDN-based dependencies to a modern bundling pipeline has been transformative for this blog. The performance improvements are substantial, the developer experience is significantly better, and I have much greater control over optimisation.
+Migrating from CDN-based dependencies to a modern bundling pipeline has been transformative for this blog, but it wasn't easy. The performance improvements are substantial, the developer experience is significantly better, and I have much greater control over optimisation—but it took months of trial and error to get here.
 
 Key takeaways:
 
@@ -743,10 +790,13 @@ Key takeaways:
 3. **Build tools enable modern JavaScript**: Babel transpilation supports the latest language features whilst maintaining browser compatibility
 4. **PostCSS pipeline optimises CSS**: Tailwind's JIT compiler and cssnano deliver tiny stylesheets
 5. **Integration with .NET is seamless**: MSBuild targets automatically run frontend builds
+6. **Persistence beats perfection**: You don't need to be a frontend expert—you just need a clear vision and the willingness to iterate
 
-For ASP.NET Core developers accustomed to simple CDN includes, the initial setup might seem complex. However, the long-term benefits—both for users (faster load times) and developers (better tooling)—make it absolutely worthwhile.
+For ASP.NET Core developers accustomed to simple CDN includes, this will feel overwhelming at first. That's normal. I felt the same way. Start small, migrate one dependency at a time, and don't be afraid to break things in development. You'll learn more from debugging broken builds than you ever will from reading documentation.
 
-If you're still relying on CDNs for your frontend dependencies, I strongly encourage you to explore modern bundling. The ecosystem has matured significantly, and tools like Webpack, Vite, and esbuild make the transition smoother than ever.
+The configuration I've shared here represents months of iteration. Your journey will be different, and that's fine. Use this as a starting point, not gospel. Adapt it to your needs, experiment, and don't be discouraged by failures—they're part of the process.
+
+If you're still relying on CDNs for your frontend dependencies, I encourage you to give bundling a try. Start with one library. See how it feels. Iterate from there. The ecosystem has matured significantly, and whilst the learning curve is real, the payoff is worth it.
 
 ## Further Reading
 
