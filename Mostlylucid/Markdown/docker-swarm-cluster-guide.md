@@ -5,12 +5,12 @@
 
 ## Introduction
 
-So you've been running your blog on a single server (perhaps a Hetzner auction box) with Docker Compose, and now you've got 7 mini PCs gathering dust (rescued from eBay for under £100 each, all destined for e-waste). What do you do? Build a proper Docker Swarm cluster, of course!
+So you've been running your blog on a single server (perhaps a Hetzner auction box) with Docker Compose, and now you've got 8 mini PCs and SBCs gathering dust (rescued from eBay for under £100 each, all destined for e-waste). What do you do? Build a proper Docker Swarm cluster, of course!
 
 This article details how to convert the [Docker Compose setup](/blog/dockercompose) I've been running into a highly available Docker Swarm cluster. We'll cover everything from initial cluster setup to running PostgreSQL with replication, setting up monitoring with Prometheus and Grafana across multiple nodes, and managing the whole thing without losing your sanity.
 
 **What we're building:**
-- A Docker Swarm cluster across 7 Ubuntu Server nodes (rescued eBay hardware)
+- A Docker Swarm cluster across 8 Ubuntu Server nodes (rescued eBay hardware + ARM SBCs)
 - High availability for all services
 - PostgreSQL with replication and failover
 - Distributed monitoring with Prometheus and Grafana
@@ -19,12 +19,12 @@ This article details how to convert the [Docker Compose setup](/blog/dockercompo
 - Automated health checks and rolling updates
 
 **What you'll need:**
-- 7 machines running Ubuntu Server (in my case, eBay rescue mini PCs)
+- 8 machines running Ubuntu Server (in my case, eBay rescue mini PCs plus ARM SBCs)
 - Basic networking knowledge
 - The existing Docker Compose setup from previous articles
 - Patience (Swarm has quirks)
 - A willingness to troubleshoot networking issues at 2am
-- All my hardware has SSDs and cost under £100 each from eBay
+- All my hardware has SSDs and cost under £100 each from eBay (x86) or retail (ARM SBCs)
 
 [TOC]
 
@@ -209,7 +209,7 @@ Choosing the right orchestration solution depends on your scale, complexity, and
 - You're learning Docker
 
 **Choose Docker Swarm when:**
-- You have 3-7 mini PCs or 3-5 VMs you want to utilise
+- You have 3-8 mini PCs or 3-5 VMs you want to utilise
 - You need HA but don't want K8s complexity
 - You know Docker Compose and want to scale up
 - You're self-hosting on budget hardware
@@ -227,13 +227,13 @@ Choosing the right orchestration solution depends on your scale, complexity, and
 - You need sophisticated scheduling (GPU workloads, etc.)
 - "Resume-driven development" (K8s looks great on CVs)
 
-#### My Decision: Swarm for 7 Mini PCs
+#### My Decision: Swarm for 8 Machines
 
-For my setup (7 eBay rescue mini PCs running the mostlylucid blog), Swarm was the obvious choice:
+For my setup (6 eBay rescue x86 mini PCs plus 2 ARM SBCs running the mostlylucid blog), Swarm was the obvious choice:
 
 **Swarm advantages for me:**
 - Learned it in one weekend vs months for K8s
-- Runs brilliantly on my mix of 2-core and 8-core machines
+- Runs brilliantly on my mix of x86 and ARM64 machines (2-core to 8-core)
 - Zero-downtime deployments for free
 - Built into Docker (no separate installation)
 - Can troubleshoot without Googling cryptic K8s errors
@@ -249,11 +249,11 @@ For my setup (7 eBay rescue mini PCs running the mostlylucid blog), Swarm was th
 
 **Why not stay on Compose:**
 - Wanted zero-downtime updates
-- Wanted to utilise all 7 mini PCs (rescued from e-waste)
+- Wanted to utilise all 8 machines (rescued from e-waste and ARM SBCs)
 - Wanted high availability (node failures shouldn't take site down)
 - Wanted to learn clustering without K8s commitment
 
-**The result:** Production-grade HA blog cluster, manageable by one person, running on rescued eBay hardware for under £700 total. Perfect.
+**The result:** Production-grade HA blog cluster, manageable by one person, running on a mix of rescued eBay x86 hardware and ARM single-board computers for under £800 total. Perfect.
 
 **Note on Portainer:** Tools like [Portainer](https://www.portainer.io/) provide excellent web UIs for managing both Docker Swarm and Kubernetes clusters. Portainer can manage either orchestrator and makes many tasks easier through its dashboard. However, setting up and configuring Portainer is beyond the scope of this article - we'll focus on native Docker Swarm commands you can use from any manager node.
 
@@ -261,17 +261,18 @@ For my setup (7 eBay rescue mini PCs running the mostlylucid blog), Swarm was th
 
 ### Node Configuration
 
-**My 7 mini PC setup (all eBay rescues with SSDs, under £100 each):**
+**My 8-node cluster (eBay rescues + ARM SBCs, all with SSDs, under £100 each):**
 
-| Node | Role | Hardware | Specs | Services |
-|------|------|----------|-------|----------|
-| `swarm-manager-1` | Manager + Worker | Dell 8-core | 8GB RAM, 8 cores, SSD | Etcd, Monitoring, Web |
-| `swarm-manager-2` | Manager + Worker | Dell 2-core | 4GB RAM, 2 cores, SSD | Etcd, Monitoring, Web |
-| `swarm-manager-3` | Manager + Worker | Dell 2-core | 4GB RAM, 2 cores, SSD | Etcd, Monitoring |
-| `swarm-worker-1` | Worker | Lenovo 8-core | 8GB RAM, 8 cores, SSD | PostgreSQL Primary, heavy workloads |
-| `swarm-worker-2` | Worker | Dell 2-core | 4GB RAM, 2 cores, SSD | PostgreSQL Replica |
-| `swarm-worker-3` | Worker | Dell 2-core | 4GB RAM, 2 cores, SSD | General workloads |
-| `swarm-worker-4` | Worker | Dell 2-core | 4GB RAM, 2 cores, SSD | Translation service, background jobs |
+| Node | Role | Hardware | Arch | Specs | Services |
+|------|------|----------|------|-------|----------|
+| `swarm-manager-1` | Manager + Worker | Dell 8-core | x86_64 | 8GB RAM, 8 cores, SSD | Etcd, Monitoring, Web |
+| `swarm-manager-2` | Manager + Worker | Orange Pi 5 | ARM64 | 6GB RAM, 8 cores, SSD | Etcd, Monitoring, Web |
+| `swarm-manager-3` | Manager + Worker | Dell 2-core | x86_64 | 4GB RAM, 2 cores, SSD | Etcd, Monitoring |
+| `swarm-worker-1` | Worker | Lenovo 8-core | x86_64 | 8GB RAM, 8 cores, SSD | PostgreSQL Primary, heavy workloads |
+| `swarm-worker-2` | Worker | Raspberry Pi 5 | ARM64 | 8GB RAM, 4 cores, SSD | PostgreSQL Replica, ARM workloads |
+| `swarm-worker-3` | Worker | Dell 2-core | x86_64 | 4GB RAM, 2 cores, SSD | General workloads |
+| `swarm-worker-4` | Worker | Dell 2-core | x86_64 | 4GB RAM, 2 cores, SSD | Translation service |
+| `swarm-worker-5` | Worker | Dell 2-core | x86_64 | 4GB RAM, 2 cores, SSD | Background jobs, cache |
 
 **Why 3 managers?**
 - Swarm uses Raft consensus (needs odd number: 1, 3, 5, or 7)
@@ -1598,7 +1599,7 @@ docker stack deploy -c stack.yml myapp
 | **Node Failure** | App dies | Auto-reschedule |
 | **Load Balancing** | Manual (Caddy) | Built-in ingress |
 | **Rolling Updates** | Manual downtime | Zero-downtime |
-| **Resource Usage** | 1 node, ~2GB RAM | 7 nodes, ~40GB RAM total |
+| **Resource Usage** | 1 node, ~2GB RAM | 8 nodes, ~46GB RAM total |
 | **Complexity** | Low | Medium |
 | **Setup Time** | 30 minutes | 4 hours |
 | **Troubleshooting** | Easy (`docker logs`) | Harder (distributed) |
@@ -1630,7 +1631,7 @@ Migrating from Docker Compose to Docker Swarm transforms your single-node setup 
 - **Load Balancing:** Built-in request distribution
 - **Zero-Downtime Updates:** Rolling deployments
 - **Horizontal Scaling:** Add replicas with one command
-- **Resource Utilisation:** Use all 7 mini PCs efficiently
+- **Resource Utilisation:** Use all 8 machines efficiently (x86 and ARM)
 
 But you also inherit:
 
@@ -1642,7 +1643,7 @@ But you also inherit:
 
 **My experience running this setup:**
 
-After 6 months running mostlylucid on a 7-node Swarm cluster built from eBay rescue mini PCs:
+After 6 months running mostlylucid on an 8-node Swarm cluster built from eBay rescue x86 mini PCs and ARM SBCs:
 
 **Pros:**
 - Rock-solid uptime (99.9%+)
@@ -1654,8 +1655,9 @@ After 6 months running mostlylucid on a 7-node Swarm cluster built from eBay res
 **Cons:**
 - Took a weekend to set up properly
 - NFS hiccups caused headaches twice
-- Power consumption is higher than a single Hetzner box (7 mini PCs drawing ~70W total vs ~15W for one server)
+- Power consumption is higher than a single Hetzner box (8 machines drawing ~75W total vs ~15W for one server)
 - More hardware to maintain physically
+- ARM SBCs require multi-arch Docker images
 - Overkill for a personal blog
 
 **Would I do it again?**
