@@ -233,7 +233,7 @@
     <!-- Loading Warning Banner -->
     <div id="loading-warning">
         <span class="spinner"></span>
-        <span id="loading-warning-text">Loading Mermaid enhancements... If this message persists, check your internet connection or console for errors.</span>
+        <span id="loading-warning-text">Loading Mermaid enhancements...</span>
     </div>
 
     <header>
@@ -708,6 +708,46 @@ graph LR
                 }
             }
         }
+
+        // Detect if resources failed to load and show helpful instructions
+        window.addEventListener('error', function(e) {
+            const warningBanner = document.getElementById('loading-warning');
+            const warningText = document.getElementById('loading-warning-text');
+
+            if (e.target.tagName === 'LINK' || e.target.tagName === 'SCRIPT') {
+                if (warningBanner && warningText) {
+                    warningBanner.className = 'error';
+                    warningText.innerHTML = `
+                        <strong>⚠️ Resources failed to load!</strong><br><br>
+                        <strong>To run this demo locally, you need to:</strong><br>
+                        1. Build the project first: <code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run build:all</code><br>
+                        2. Run the dev server from the <strong>project root</strong> (not from examples/):<br>
+                        &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npx http-server -p 2000 -o examples/demo.html</code><br><br>
+                        <strong>Or use the npm script:</strong><br>
+                        &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run dev:demo</code>
+                    `;
+                }
+            }
+        }, true);
+
+        // Also check after a timeout if modules didn't load
+        setTimeout(() => {
+            const warningBanner = document.getElementById('loading-warning');
+            const warningText = document.getElementById('loading-warning-text');
+
+            if (warningBanner && !warningBanner.className.includes('success') && !warningBanner.className.includes('error')) {
+                warningBanner.className = 'error';
+                warningText.innerHTML = `
+                    <strong>⚠️ Enhancements are taking too long to load!</strong><br><br>
+                    <strong>To run this demo locally, you need to:</strong><br>
+                    1. Build the project first: <code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run build:all</code><br>
+                    2. Run the dev server from the <strong>project root</strong> (not from examples/):<br>
+                    &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npx http-server -p 2000 -o examples/demo.html</code><br><br>
+                    <strong>Or use the npm script:</strong><br>
+                    &nbsp;&nbsp;&nbsp;<code style="background: #1f2937; color: #10b981; padding: 2px 6px; border-radius: 3px;">npm run dev:demo</code>
+                `;
+            }
+        }, 3000);
     </script>
 
     <!-- Theme toggling -->

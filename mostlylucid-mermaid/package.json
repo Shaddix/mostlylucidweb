@@ -38,6 +38,7 @@
     "build:all": "npm run build && npm run minify && npm run bundle",
     "prepublishOnly": "npm run build:all",
     "dev": "cd examples && npx http-server -p 2000 -o",
+    "dev:demo": "npx http-server -p 2000 -o examples/demo.html",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
