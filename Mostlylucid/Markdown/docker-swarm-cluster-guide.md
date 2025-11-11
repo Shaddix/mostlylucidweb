@@ -230,7 +230,7 @@ Choosing the right orchestration solution depends on your scale, complexity, and
 
 For my setup (8 mini PCs running Mostlylucid blog), Swarm was the obvious choice:
 
-✅ **Swarm advantages for me:**
+**Swarm advantages for me:**
 - Learned it in one weekend vs months for K8s
 - Runs great on 4GB RAM mini PCs
 - Zero-downtime deployments for free
@@ -238,14 +238,14 @@ For my setup (8 mini PCs running Mostlylucid blog), Swarm was the obvious choice
 - Can troubleshoot without Googling cryptic K8s errors
 - Feels like Compose but with superpowers
 
-❌ **Why not K8s:**
+**Why not K8s:**
 - Overkill for a blog (even with ML translation service)
 - Control plane alone would consume 2-3 mini PCs
 - Would spend more time managing K8s than writing content
 - Don't need Helm, Operators, or service meshes
 - Wanted to learn orchestration, not become a full-time K8s admin
 
-❌ **Why not stay on Compose:**
+**Why not stay on Compose:**
 - Wanted zero-downtime updates
 - Wanted to utilise all 8 mini PCs
 - Wanted high availability (node failures shouldn't take site down)
@@ -1622,18 +1622,20 @@ docker stack deploy -c stack.yml myapp
 
 Migrating from Docker Compose to Docker Swarm transforms your single-node setup into a resilient, highly available cluster. You get:
 
-✅ **High Availability:** Services survive node failures
-✅ **Load Balancing:** Built-in request distribution
-✅ **Zero-Downtime Updates:** Rolling deployments
-✅ **Horizontal Scaling:** Add replicas with one command
-✅ **Resource Utilisation:** Use all 8 mini PCs efficiently
+**Benefits:**
+- **High Availability:** Services survive node failures
+- **Load Balancing:** Built-in request distribution
+- **Zero-Downtime Updates:** Rolling deployments
+- **Horizontal Scaling:** Add replicas with one command
+- **Resource Utilisation:** Use all 8 mini PCs efficiently
 
 But you also inherit:
 
-⚠️ **Complexity:** More moving parts to understand
-⚠️ **Storage Challenges:** Volumes don't replicate automatically
-⚠️ **Networking Quirks:** Overlay networks can be finicky
-⚠️ **Debugging Difficulty:** Logs spread across nodes
+**Challenges:**
+- **Complexity:** More moving parts to understand
+- **Storage Challenges:** Volumes don't replicate automatically
+- **Networking Quirks:** Overlay networks can be finicky
+- **Debugging Difficulty:** Logs spread across nodes
 
 **My experience running this setup:**
 
@@ -1665,8 +1667,6 @@ Absolutely - but for learning and fun, not because a blog *needs* this much infr
 - Maybe try Kubernetes next?
 
 Remember: the best infrastructure is infrastructure that works reliably without needing constant attention. Swarm delivers that once you've climbed the initial learning curve.
-
-Happy swarming! 🐝
 
 ## Further Reading
 
