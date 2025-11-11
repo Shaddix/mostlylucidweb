@@ -294,6 +294,57 @@ For others it might be:
 
 **Add detail where uncertainty exists.** If everyone agrees on how something should work, you don't need to write it down in excruciating detail. If there's disagreement or confusion, that's where you need specifics.
 
+## Templates and AI: Getting Started Quickly
+
+Don't overthink the initial spec. The purpose at the beginning is to have enough to meet your immediate needs, whether that's:
+- A rough estimate (even a SWAG - Shitty Wild-Assed Guess - is better than nothing)
+- Input for prioritisation discussions
+- Just enough for you personally to get started coding
+
+**Use Templates**: Have a basic template with the key sections (Problem, Solution, In Scope, Out of Scope, Done Criteria). Fill in what you know. Leave sections blank if you don't know yet. Mark them as "TBD" and move on.
+
+A simple template might be:
+```
+# [Feature Name]
+
+## Problem
+[What's broken? What pain exists?]
+
+## Proposed Solution
+[High-level approach]
+
+## What "Done" Looks Like
+- [ ] Specific, testable criterion 1
+- [ ] Specific, testable criterion 2
+- [ ] Specific, testable criterion 3
+
+## In Scope
+-
+-
+
+## Out of Scope
+-
+-
+
+## Open Questions
+-
+-
+```
+
+That's it. Five minutes of filling that in and you've got enough to start discussing or even building.
+
+**Using AI to Draft Specs**: Tools like Claude or ChatGPT can be brilliant for getting a first draft. Feed it the problem and some context, ask it to draft a spec.
+
+BUT - and this is critical - **don't let the AI's thoroughness seduce you into adding everything.**
+
+AI loves to be comprehensive. It'll give you sections on Security Considerations, Performance Requirements, Accessibility, Internationalization, Error Handling, Logging, Monitoring, Deployment Strategy, Rollback Plans, and seventeen other things you might need... eventually.
+
+Strip most of that out. Keep what you need NOW. The rest can be added later when you actually need it.
+
+Think of the AI-generated spec as a menu. Pick the bits that matter for getting started. Ignore the rest. You can always come back for seconds.
+
+The goal isn't a complete spec; it's enough spec to start working. Whether that's a quick estimate, a decision on priority, or just clarity on what you're building for yourself.
+
 ## The Collaborative Model
 Here's what changes in agile: **You don't write a spec and throw it over the wall to developers.** The spec is a collaborative effort.
 
