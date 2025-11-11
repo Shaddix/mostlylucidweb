@@ -1,14 +1,16 @@
-# Writing Feature Specs That Developers Don't Hate
+# Agile Speccing: Writing Feature Specs That Actually Work
 
-<!--category-- Software Development, Documentation -->
+<!--category-- Software Development, Documentation, Agile -->
 <datetime class="hidden">2025-11-11T10:00</datetime>
 
 # Introduction
 Over the years I've read hundreds of feature specifications. Some were brilliant; most were bloody awful. The difference between a good spec and a bad one isn't about length or formality; it's about whether it actually helps developers build the right thing without driving them mad in the process.
 
-A good spec is like a well-drawn map; it shows you where you're going without prescribing every single step. A bad spec is either so vague it's useless or so detailed it becomes a straightjacket that prevents you from solving problems intelligently.
+Here's something I learned at Microsoft that changed how I think about specs: **A spec is not a bible; it's a tool.** Like any tool, you use it to get a job done. You add as much detail as you, the stakeholders, and the developers need to get going. Then you adapt it, change it, and update it as the feature develops.
 
-Here's something I learned at Microsoft that changed how I think about specs: **A spec is not a bible; it's source code for your feature.** You version it, you refactor it, you improve it as you learn. Treating a spec as a sacred, unchangeable document is a recipe for building the wrong thing perfectly.
+Treat a spec as a sacred, unchangeable document and you're building the wrong thing perfectly. Treat it as a living tool and you're building something that actually solves problems.
+
+This agile approach to specs creates a particular challenge: if the feature can evolve as you learn, how the hell do you estimate it? How do you know when you're done? That's what this article is about.
 
 [TOC]
 
@@ -252,11 +254,27 @@ Before you call a spec done, ask yourself:
 3. **Could you build something completely useless that still matches this spec?** If so, you haven't captured the actual requirements properly.
 4. **Does this spec describe HOW to implement or WHAT to achieve?** If it's the former, you're micromanaging.
 
-# Specs in Agile Environments
+# The Agile Approach to Specs
 
 "But we're agile! We don't need specs!" I hear this a lot. It's nonsense.
 
-Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. You still need to understand what you're building before you build it.
+Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. The key insight: **specs are tools, not contracts.** You create them with just enough detail to get started, then evolve them as you learn.
+
+## Just Enough Detail to Start
+
+The question isn't "how detailed should the spec be?" It's "what do we need to know to start building confidently?"
+
+For some features that might be:
+- A paragraph describing the problem
+- Three bullet points sketching the solution
+- A clear definition of what "done" looks like
+
+For others it might be:
+- Detailed user flows with mockups
+- Performance requirements backed by data
+- Integration specifications for multiple systems
+
+**Add detail where uncertainty exists.** If everyone agrees on how something should work, you don't need to write it down in excruciating detail. If there's disagreement or confusion, that's where you need specifics.
 
 ## The Collaborative Model
 Here's what changes in agile: **You don't write a spec and throw it over the wall to developers.** The spec is a collaborative effort.
@@ -269,38 +287,115 @@ The best approach I've seen:
 
 Everyone contributes to the spec. Nobody owns it exclusively. This collaborative approach catches problems early when they're cheap to fix rather than late when they're expensive.
 
-## Iteration Over Perfection
-In agile, you don't need the perfect 50-page spec before development starts. You need enough detail for the current sprint and a rough outline for what's coming.
+More importantly, it means the spec reflects what's actually possible, not what someone wished for in isolation.
 
-Start with:
-- Clear problem statement
-- Proposed solution approach
-- Success criteria for the first iteration
-- Known edge cases and open questions
+## Evolution During Development
 
-Then refine and expand as you go. As implementation teaches you more about the problem, fold that learning back into the spec.
+Here's where agile specs differ from traditional ones: **the feature can evolve as you build it.**
 
-## The Write-Review-Refine Cycle
-Specs in agile environments should go through multiple iterations:
+You discover that your initial approach won't work? Update the spec to reflect the new approach.
 
-**Draft** - Get the core problem and solution down. This might be rough.
+You try the feature and realise it doesn't actually solve the problem? Pivot and document why.
 
-**Review** - Get feedback from developers, designers, QA. What's missing? What doesn't make sense?
+User feedback reveals a better solution? Incorporate it and explain the change.
 
-**Refine** - Update based on feedback. Add examples. Clarify ambiguities.
+This evolution is a feature, not a bug. You're responding to new information. The spec should capture that learning, not pretend you had perfect knowledge from day one.
 
-**Implement** - Start building. As you discover things, update the spec.
+But this creates a problem: if the feature can change, how do you estimate it? How do you know when you're done?
 
-**Retrospect** - After shipping, update the spec to reflect what you actually built and what you learned.
+## The Estimation Challenge
 
-This isn't waterfall in disguise. You're not trying to get the spec perfect before starting. You're making it good enough to start and improving it as you learn.
+This is the dirty secret of agile: **estimation is bloody difficult when features can evolve.**
 
-## Lightweight But Not Vague
-Agile specs can be lighter weight than traditional specs. They might live in wiki pages, confluence documents, or even detailed JIRA tickets. The format matters less than the content.
+Traditional estimation assumes you know what you're building. You can break it down into tasks, estimate each task, add them up. Simple.
 
-But lightweight doesn't mean vague. "Build a dashboard" isn't a spec; it's a wish. You still need to explain the problem, propose a solution, define success criteria, and identify what's out of scope.
+Agile estimation acknowledges you don't know everything up front. The feature might change as you learn. So how do you estimate?
 
-A good agile spec is like good code: clear, concise, and maintainable. A user story on a card isn't enough for anything non-trivial. You need detail somewhere, even if that detail is more collaborative and iterative than traditional specs.
+**You estimate ranges, not absolutes.** Instead of "this will take 3 weeks" you say "somewhere between 2 and 5 weeks depending on what we discover."
+
+**You estimate in iterations.** "We'll spend one sprint exploring this and report back on what we learned. Then we can estimate the rest more accurately."
+
+**You time-box instead of scope-boxing.** "We'll spend 2 weeks on this. At the end of 2 weeks we'll have the best version we can build in that time."
+
+But all of these approaches have one critical requirement: **you need to know what "done" means.** Without a clear definition of done, a feature can keep metastasising forever.
+
+# Defining "Done" (Or How to Stop Feature Metastasis)
+
+This is where many agile specs fall apart. Everyone's excited about flexibility and iteration, but nobody wants to be the one who says "right, that's it, we're done."
+
+Without a clear definition of done, features don't finish; they metastasise. They spread. They grow tendrils into other parts of the system. Before you know it, your "simple comment system" has morphed into a full social network with messaging, profiles, and friend requests.
+
+## The Problem with Vague "Done"
+
+I've seen specs with acceptance criteria like:
+- "Users can comment on posts"
+- "The dashboard shows relevant information"
+- "Search works well"
+
+These aren't definitions of done; they're vague aspirations. What does "relevant information" mean? What's "works well"? You can iterate on these forever and never be done.
+
+The developer needs to know: **what specific thing, when implemented, means I can stop working on this feature?**
+
+## Writing Concrete "Done" Criteria
+
+Good "done" criteria are:
+- **Testable** - You can verify whether it's met
+- **Specific** - No vague words like "good" or "relevant"
+- **Bounded** - They don't imply infinite scope
+
+**Bad**: "Comments should be moderated"
+**Good**: "Admin users can approve, reject, or delete comments from the admin panel. Non-approved comments are not visible to regular users. Email notification sent to admin when new comment is posted."
+
+**Bad**: "Search should be fast"
+**Good**: "Search returns results within 200ms for the 95th percentile of queries against a dataset of 100,000 posts. Results are ranked by relevance (full-text search score) with date as tie-breaker."
+
+**Bad**: "Dashboard shows useful metrics"
+**Good**: "Dashboard displays: total page views (last 30 days), unique visitors (last 30 days), top 5 posts by views (last 7 days), and visitor breakdown by country. All metrics update once per hour."
+
+Notice the difference? The good examples tell you exactly what needs to exist and when you can stop adding things.
+
+## The Out of Scope Section Is Your Friend
+
+Remember earlier when I said the Out of Scope section is as important as what's in scope? This is why.
+
+For every feature, there are dozens of things you could add. The Out of Scope section explicitly calls out what you're NOT doing. This prevents the "while we're in there, we could also..." conversations that cause feature metastasis.
+
+**In Scope**: Nested comments (one level of replies)
+**Out of Scope**: Unlimited comment threading, comment voting, comment threading, best comment sorting, comment permalinks (these may come later as separate features)
+
+Now when someone suggests "shouldn't comments have upvotes?" you can point to the spec and say "that's out of scope for this iteration. Let's discuss it as a separate feature once basic comments are working."
+
+## Time-Boxing as a Last Resort
+
+Sometimes you genuinely don't know exactly what "done" looks like when you start. The problem space is too uncertain. In these cases, time-boxing can work:
+
+"We'll spend 2 weeks prototyping different approaches to the recommendation algorithm. At the end of 2 weeks we'll evaluate what we've learned and decide whether to productionise one approach, try something different, or abandon the feature."
+
+But notice: you still have a concrete "done" condition (2 weeks, then evaluate). You're not just building indefinitely.
+
+## Preventing Scope Creep During Development
+
+Even with clear "done" criteria, scope can creep. You discover edge cases. You realise users need something you hadn't considered. How do you handle this without breaking your definition of done?
+
+**Document it, don't just do it.** When you discover something new that needs to be added, update the spec. Make it explicit that the scope has changed. Get agreement from stakeholders.
+
+This serves two purposes:
+1. **Visibility** - Everyone knows the scope changed and why
+2. **Cost awareness** - Stakeholders see that adding things impacts timeline
+
+If your spec keeps growing, that's a signal. Either you're building the wrong thing (and need to step back and rethink), or this should be multiple features, or you need to cut scope to ship something useful sooner.
+
+## When to Call It Done
+
+At some point, you need to ship. The feature doesn't need to be perfect; it needs to be useful.
+
+A good test: **Can users get value from this feature as it stands?**
+
+If yes, ship it. You can always iterate in the next version. Done doesn't mean "will never be improved." It means "solves the problem well enough that users benefit and we can move on to other work."
+
+If no, you're not done yet, regardless of what your spec says.
+
+The hardest part of agile isn't starting work; it's stopping work. Clear "done" criteria make stopping possible.
 
 # The Spec Review Process
 
@@ -330,12 +425,18 @@ Implement a background service that automatically translates markdown files to c
 - Batch translation requests for efficiency
 - Generate translated markdown files with appropriate language suffixes
 
-## Success Criteria
+## Success Criteria (What "Done" Looks Like)
+These criteria tell us exactly when we can stop working on this feature:
+
 - New blog posts are automatically translated to all configured languages (initially: Spanish, French, German, Italian, Portuguese, Chinese, Arabic, Hindi, Japanese, Korean, Dutch, Russian)
 - Translated files maintain identical markdown structure to originals
 - Code blocks, image URLs, and formatting remain unchanged
 - Translation completes within 15 minutes for a typical blog post (2000-3000 words)
-- System only re-translates files that have changed
+- System only re-translates files that have changed (verified via hash comparison)
+- Service starts successfully even if translation API is temporarily unavailable
+- Errors during translation are logged but don't crash the application
+
+Notice these are specific and testable. We can verify each one. When all are met, we're done. We don't keep adding features like "translation quality scoring" or "manual translation editing" unless we explicitly expand the scope.
 
 ## In Scope
 - Background service to process markdown files
@@ -388,16 +489,22 @@ The result: a feature that's been running in production for months, automaticall
 
 # In Conclusion
 
-Writing good feature specs is a skill that improves with practice. The goal isn't to write perfect specs (they don't exist); it's to write specs that help your team build the right thing efficiently.
+Writing good feature specs in an agile environment is a skill that improves with practice. The goal isn't to write perfect specs up front (they don't exist); it's to write specs that help your team get started and evolve as you learn.
 
-Remember:
-- Start with the problem, not the solution
-- Be clear but not prescriptive
-- Think through edge cases and errors
-- Get reviews from multiple perspectives
-- Treat specs as living documents
-- Speak up when you find spec bugs
+The key principles:
+- **Specs are tools, not contracts** - Add detail where you need it, evolve as you learn
+- **Start with the problem, not the solution** - Implementation flows from understanding the problem
+- **Collaborate, don't dictate** - Everyone contributes to making the spec better
+- **Define "done" clearly** - Prevent feature metastasis with concrete, testable criteria
+- **Out of scope matters** - What you're NOT doing is as important as what you are
+- **Expect evolution** - Features change as you build them; capture that learning
 
-A good spec is a conversation starter, not a straitjacket. It should empower developers to solve problems intelligently, not force them to implement bad ideas perfectly.
+The hardest part isn't writing the initial spec. It's knowing when to stop working on a feature. Without clear "done" criteria, features grow forever and never ship.
 
-And if you're a developer reading a spec that doesn't make sense: speak up. It's not being difficult; it's being professional. Better to sort it now than to build the wrong thing beautifully.
+This is why agile estimation is so difficult. You're not just estimating implementation time; you're estimating learning time. How long will it take to discover what actually solves the problem? Nobody knows, because you haven't discovered it yet.
+
+The best you can do: be clear about what "done" means, time-box uncertainty, and update the spec as you learn. Treat it like code: version it, refactor it, improve it.
+
+A good spec empowers developers to solve problems intelligently while knowing exactly when they can stop. It's a conversation starter, not a straitjacket.
+
+And if you're a developer reading a spec that doesn't make sense or has no clear "done" criteria: speak up. It's not being difficult; it's being professional. Better to sort it now than to build a feature that keeps growing until it takes over the entire application.
