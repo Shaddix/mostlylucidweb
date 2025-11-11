@@ -51,12 +51,62 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(229, 231, 235, 0.8);
     backdrop-filter: blur(8px);
+    transition: clip-path 0.3s ease-out, opacity 0.3s ease-out;
+    clip-path: inset(0 0 0 0);
 }
 
 .dark .mermaid-controls {
     background: rgba(31, 41, 55, 0.95);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(75, 85, 99, 0.6);
+}
+
+/* Hidden/slid toolbar */
+.mermaid-controls.hidden-slide {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Show toolbar button (appears when toolbar is hidden) */
+.mermaid-show-toolbar {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    color: #4b5563;
+    font-size: 1.25rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+}
+
+.dark .mermaid-show-toolbar {
+    background: rgba(31, 41, 55, 0.95);
+    border: 1px solid rgba(75, 85, 99, 0.6);
+    color: #9ca3af;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.mermaid-show-toolbar:hover {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    transform: scale(1.1);
+}
+
+.dark .mermaid-show-toolbar:hover {
+    background: rgba(55, 65, 81, 0.8);
+    color: #60a5fa;
 }
 
 /* Individual control button */

@@ -22,7 +22,8 @@ const defaultIcons: Required<IconConfig> = {
     reset: 'bx bx-reset',
     pan: 'bx bx-move',
     exportPng: 'bx bx-image',
-    exportSvg: 'bx bx-code-alt'
+    exportSvg: 'bx bx-code-alt',
+    hide: 'bx bx-chevron-right'
 };
 
 /**
@@ -136,10 +137,12 @@ function createControlButtons(container: HTMLElement, diagramId: string, isLight
 
     // Add buttons (close button will be added last to be on far right)
     buttons.push(
+        { icon: icons.hide!, title: 'Hide Toolbar', action: 'hideToolbar', enabled: true },
         { icon: icons.fullscreen!, title: 'Fullscreen', action: 'fullscreen', enabled: isEnabled('fullscreen') && !isLightbox },
         { icon: icons.zoomIn!, title: 'Zoom In', action: 'zoomIn', enabled: isEnabled('zoomIn', 'zoom') },
         { icon: icons.zoomOut!, title: 'Zoom Out', action: 'zoomOut', enabled: isEnabled('zoomOut', 'zoom') },
         { icon: icons.reset!, title: 'Reset View', action: 'reset', enabled: isEnabled('reset', 'zoom') },
+        { icon: icons.pan!, title: 'Enable Pan & Zoom', action: 'pan', enabled: isEnabled('pan') },
         { icon: icons.exportPng!, title: 'Export as PNG', action: 'exportPng', enabled: isEnabled('exportPng', 'export') },
         { icon: icons.exportSvg!, title: 'Export as SVG', action: 'exportSvg', enabled: isEnabled('exportSvg', 'export') }
     );
@@ -158,6 +161,10 @@ function createControlButtons(container: HTMLElement, diagramId: string, isLight
         button.setAttribute('aria-label', btn.title);
         button.setAttribute('data-action', btn.action);
         button.setAttribute('data-diagram-id', diagramId);
+
+        // Pan button starts as inactive (pan/zoom disabled by default)
+        // User must click it to enable pan/zoom functionality
+
         controlsDiv.appendChild(button);
     });
 
@@ -183,19 +190,19 @@ function initPanZoom(svgElement: SVGElement, diagramId: string): PanZoomInstance
 
     try {
         const panZoomInstance = svgPanZoom(svgElement, {
-            zoomEnabled: true,
+            zoomEnabled: false, // Disabled by default - requires pan button click
             controlIconsEnabled: false, // We use custom controls
             fit: true,
             center: true,
             minZoom: 0.1,
             maxZoom: 10,
             zoomScaleSensitivity: 0.3,
-            dblClickZoomEnabled: true,
-            mouseWheelZoomEnabled: true,
-            preventMouseEventsDefault: true,
+            dblClickZoomEnabled: false, // Disabled by default
+            mouseWheelZoomEnabled: false, // Disabled by default - requires pan button click
+            preventMouseEventsDefault: false,
             contain: false,
-            // Enable touch support for mobile devices
-            panEnabled: true,
+            // Disable pan by default - requires pan button click
+            panEnabled: false,
             eventsListenerElement: svgElement
         });
 
@@ -224,6 +231,31 @@ function handleControlClick(event: Event): void {
     const container = button.closest('.mermaid-wrapper') || button.closest('.mermaid-lightbox-diagram-wrapper');
 
     switch (action) {
+        case 'hideToolbar':
+            // Slide toolbar off to the right
+            const controls = button.closest('.mermaid-controls') as HTMLElement;
+            if (controls) {
+                controls.classList.add('hidden-slide');
+
+                // Create show button if it doesn't exist
+                let showButton = container?.querySelector('.mermaid-show-toolbar') as HTMLElement;
+                if (!showButton && container) {
+                    showButton = document.createElement('button');
+                    showButton.className = 'mermaid-show-toolbar bx bx-chevron-left';
+                    showButton.setAttribute('title', 'Show Toolbar');
+                    showButton.setAttribute('aria-label', 'Show Toolbar');
+                    showButton.setAttribute('data-diagram-id', diagramId);
+                    showButton.addEventListener('click', () => {
+                        controls.classList.remove('hidden-slide');
+                        showButton.style.display = 'none';
+                    });
+                    container.appendChild(showButton);
+                }
+                if (showButton) {
+                    showButton.style.display = 'flex';
+                }
+            }
+            break;
         case 'close':
             // Close lightbox
             const lightbox = button.closest('.mermaid-lightbox');
@@ -257,6 +289,29 @@ function handleControlClick(event: Event): void {
                 panZoomInstance.reset();
                 panZoomInstance.center();
                 panZoomInstance.fit();
+            }
+            break;
+        case 'pan':
+            // Toggle pan and zoom mode (they work together)
+            if (panZoomInstance) {
+                const isPanEnabled = panZoomInstance.isPanEnabled();
+                if (isPanEnabled) {
+                    // Disable pan and zoom
+                    panZoomInstance.enablePan(false);
+                    (panZoomInstance as any).disableZoom();
+                    (panZoomInstance as any).disableMouseWheelZoom();
+                    (panZoomInstance as any).disableDblClickZoom();
+                    button.classList.remove('active');
+                    button.setAttribute('title', 'Enable Pan & Zoom');
+                } else {
+                    // Enable pan and zoom (including touch)
+                    panZoomInstance.enablePan(true);
+                    (panZoomInstance as any).enableZoom();
+                    (panZoomInstance as any).enableMouseWheelZoom();
+                    (panZoomInstance as any).enableDblClickZoom();
+                    button.classList.add('active');
+                    button.setAttribute('title', 'Disable Pan & Zoom');
+                }
             }
             break;
         case 'exportPng':
@@ -509,6 +564,28 @@ export function enhanceMermaidDiagrams() {
                 panZoom.fit();
                 panZoom.center();
             }, 100);
+
+            // Add click handler to enable pan/zoom when user clicks on diagram
+            svgElement.addEventListener('click', (e: MouseEvent) => {
+                // Only enable if not already enabled
+                if (!panZoom.isPanEnabled()) {
+                    // Enable pan and zoom
+                    panZoom.enablePan(true);
+                    (panZoom as any).enableZoom();
+                    (panZoom as any).enableMouseWheelZoom();
+                    (panZoom as any).enableDblClickZoom();
+
+                    // Find and highlight the pan button
+                    const wrapper = svgElement.closest('.mermaid-wrapper');
+                    if (wrapper) {
+                        const panButton = wrapper.querySelector('[data-action="pan"]');
+                        if (panButton) {
+                            panButton.classList.add('active');
+                            panButton.setAttribute('title', 'Disable Pan & Zoom');
+                        }
+                    }
+                }
+            }, { once: false });
         }
     });
 

@@ -54,6 +54,7 @@ export interface IconConfig {
     pan?: string;
     exportPng?: string;
     exportSvg?: string;
+    hide?: string;
 }
 
 /**
