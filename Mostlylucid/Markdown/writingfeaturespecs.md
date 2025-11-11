@@ -278,6 +278,98 @@ Before you call a spec done, ask yourself:
 
 Agile doesn't mean "no planning" or "no documentation." It means responding to change over following a plan. The key insight: **specs are tools, not contracts.** You create them with just enough detail to get started, then evolve them as you learn.
 
+## How Agile Specs Differ from Waterfall
+
+The fundamental difference isn't format or length; it's mindset and process.
+
+**Waterfall Specs**:
+- Written entirely up front before any development
+- Aim for completeness from day one
+- Changes require formal change control processes
+- Spec is "locked" once approved
+- Assumption: we can know everything before we start
+- Linear: Spec → Build → Test → Deploy
+
+**Agile Specs**:
+- Start with minimum viable detail to begin
+- Expect incompleteness at the start (and that's fine)
+- Changes are expected and welcome
+- Spec evolves continuously with the feature
+- Assumption: we'll learn as we build
+- Cyclical: Draft → Build → Learn → Update Spec → Build More → Learn More
+
+The waterfall approach assumes you can specify everything perfectly before writing a line of code. That's a lovely fantasy. In reality, you discover half the requirements once users actually try the feature.
+
+## Feedback Loops Are Everything
+
+In agile speccing, feedback loops are your best friend. You're constantly gathering input and updating the spec:
+
+**Developer Feedback**: "The initial approach won't work because of X. I'm proposing Y instead." → Update spec to reflect new approach and why it changed.
+
+**User Feedback**: Try the feature with real users (even internally). "This doesn't actually solve my problem because..." → Pivot the spec based on what you learn.
+
+**Implementation Feedback**: As you build, you discover edge cases, technical constraints, or better approaches. → Fold these learnings back into the spec.
+
+**QA Feedback**: "The spec says X but didn't consider Y scenario." → Add the scenario to the spec.
+
+Each of these feedback loops makes the spec better. The spec after a sprint of development should be more accurate than the spec before, because you've learned things you couldn't have known at the start.
+
+This is why waterfall specs often fail: they skip the feedback loops. By the time you discover the spec was wrong, you've built the wrong thing and "changing the spec" means massive rework.
+
+## Embrace Incompleteness (At First)
+
+Here's something that makes traditional project managers nervous: **it's completely fine if the initial spec has gaps.**
+
+Mark sections as "TBD" if you don't know yet. List open questions prominently. Be explicit about what you haven't figured out yet.
+
+This isn't sloppiness; it's honesty. You don't know everything up front. Pretending you do just means you'll write confident specifications for the wrong solution.
+
+Start with:
+- Clear problem statement (you must know this)
+- Proposed solution approach (might change)
+- Rough "done" criteria (will be refined)
+- Known unknowns marked as open questions
+
+Then fill in the gaps as you learn. It's far better to have an incomplete-but-honest spec than a complete-but-wrong one.
+
+## The Spec WILL Change
+
+Accept this now: **your spec will change during development.** If it doesn't, you either got incredibly lucky or you're not learning anything.
+
+Changes you should expect:
+- Technical approach shifts when you discover constraints
+- Scope adjustments when you realise you're building too much (or too little)
+- "Done" criteria refinement as you understand the problem better
+- New edge cases discovered during implementation
+- Better solutions found through experimentation
+
+Each change should be:
+1. **Documented** - Update the spec, don't just change the code
+2. **Communicated** - Tell stakeholders what changed and why
+3. **Reasoned** - Explain what you learned that prompted the change
+
+The spec's version history becomes a record of what you learned. That's valuable documentation for future features.
+
+## When Agile Speccing Goes Wrong
+
+The agile approach can fail if you forget one critical thing: **"will change" doesn't mean "no boundaries."**
+
+Bad agile speccing:
+- Spec changes daily with no clear reason
+- No definition of "done" so feature keeps growing
+- Changes aren't communicated, people work off different understandings
+- "Agile" used as excuse for not thinking things through
+- Stakeholders surprised by scope changes because nobody told them
+
+Good agile speccing:
+- Changes happen for clear reasons based on learning
+- "Done" criteria are clear even if other details aren't
+- Changes are discussed, agreed, and documented
+- Being agile doesn't mean being sloppy
+- Stakeholders are part of the feedback loop
+
+The spec is a living document, but it's not chaos. It evolves based on learning, not on whims.
+
 ## Just Enough Detail to Start
 
 The question isn't "how detailed should the spec be?" It's "what do we need to know to start building confidently?"
