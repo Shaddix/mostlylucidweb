@@ -810,6 +810,31 @@ But don't be religious about it. Some features need more up-front thinking. Othe
 
 If you're spending more time on the spec than on implementation, you're overthinking it. Remember: specs are tools to help you work, not artworks.
 
+## "Why are estimates always wrong?"
+
+Because software estimation is fundamentally difficult. Here's the uncomfortable truth: **estimates only work if you've done EXACTLY that task before, in that environment, with those tools, with unchanging requirements.**
+
+Which almost never happens.
+
+Every time you estimate, you're dealing with:
+- **Unknown unknowns** - Problems you don't know exist yet
+- **Changing requirements** - The spec evolves as you build
+- **Environment differences** - That library worked in your last project, but this one has different dependencies
+- **Tooling issues** - The build system, deployment pipeline, or test environment behaves differently
+- **Integration surprises** - That API you're calling doesn't quite work as documented
+- **Human factors** - You're interrupted, sick, or dealing with production issues
+
+This is why:
+- **Ranges beat point estimates** - "2-5 days" acknowledges uncertainty
+- **Spikes help** - Spend a day investigating before estimating the full work
+- **Time-boxing works** - "We'll spend 2 weeks and see what we get" sets expectations
+- **Historical data matters** - Track how long similar tasks actually took
+- **Padding is honest** - If you think 3 days, say 5. You'll be right more often.
+
+The more novel the work, the worse your estimates. Building the same CRUD form you've built 50 times? You'll be close. Integrating with a new service using an unfamiliar protocol? Your estimate is a guess wrapped in hope.
+
+This is why specs need clear "done" criteria. You can't estimate accurately, but you can define when to stop. That's more valuable.
+
 ## "What about specs for research or exploration tasks?"
 
 These need different "done" criteria. Instead of "feature X works," it's "we've answered question Y."
