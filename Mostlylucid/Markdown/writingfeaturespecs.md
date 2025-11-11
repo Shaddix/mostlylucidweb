@@ -562,13 +562,61 @@ The hardest part of agile isn't starting work; it's stopping work. Clear "done" 
 
 A spec isn't done when you finish writing it; it's done when it's been reviewed by the people who'll use it.
 
-**Developer Review** - Will this actually work? Are there technical constraints we haven't considered? Is there enough detail to implement?
+## Treat Spec Reviews Like Code Reviews
 
-**Product Review** - Does this solve the right problem? Does it align with product strategy? What's missing?
+The best practice I learned at Microsoft: **spec reviews work exactly like code reviews.** They're collaborative, not adversarial. The goal isn't to catch you out; it's to make the spec better.
 
-**Design Review** - Does the user experience make sense? Have we considered accessibility? What about mobile?
+When reviewing specs:
+- **Ask questions** - "What happens if X occurs?" isn't criticism; it's identifying a gap
+- **Suggest alternatives** - "Have you considered Y approach?" opens discussion
+- **Point out missing cases** - "This doesn't cover Z scenario" helps complete the picture
+- **Challenge assumptions** - "Why are we solving it this way?" might reveal better approaches
 
-**QA Review** - Can we test this? Are the acceptance criteria clear enough? What about edge cases?
+When your spec is being reviewed:
+- **Questions are opportunities** - They reveal what's unclear and what you've missed
+- **Suggestions improve the spec** - Consider them seriously even if you don't accept all of them
+- **It's not personal** - Like code review, it's about making the work better, not attacking you
+- **The reviewer might be wrong** - Explain why your approach makes sense, they might learn something too
+
+The best spec reviews are conversations. You go back and forth. You learn from each other. The spec that emerges is better than what either person could have written alone.
+
+## Who Should Review
+
+Get reviews from all the perspectives that matter:
+
+**Developer Review** - Will this actually work? Are there technical constraints we haven't considered? Is there enough detail to implement? What questions would you have if you were building this?
+
+**Product Review** - Does this solve the right problem? Does it align with product strategy? What's missing? Does the "done" criteria actually indicate value to users?
+
+**Design Review** - Does the user experience make sense? Have we considered accessibility? What about mobile? Are we solving the user's problem or just building features?
+
+**QA Review** - Can we test this? Are the acceptance criteria clear enough? What about edge cases? What could go wrong?
+
+You don't need formal sign-off from everyone. You need their input to make the spec better. Think of it as "request for comments" not "request for approval."
+
+## Common Review Questions
+
+Good reviewers ask questions that improve the spec:
+
+- "What happens if the user does X?" (edge cases)
+- "How does this interact with existing feature Y?" (integration)
+- "What's our fallback if dependency Z isn't ready?" (risk)
+- "Could we simplify this by doing W instead?" (alternatives)
+- "How will we know if this succeeded?" (success metrics)
+- "What are we NOT doing?" (scope)
+
+None of these are gotchas. They're genuine questions that help flesh out the spec.
+
+## Incorporating Feedback
+
+You won't accept every suggestion. That's fine. But for each piece of feedback:
+
+1. **Consider it honestly** - Don't dismiss it because "they don't understand"
+2. **If you accept it** - Update the spec, thank the reviewer
+3. **If you don't accept it** - Explain why, maybe they're missing context
+4. **If it's out of scope** - Add it to the "Out of Scope" or "Future Enhancements" section
+
+The spec should get better with each round of review. If it doesn't, you're not listening or your reviewers aren't engaged.
 
 Get reviews from all these perspectives before you start implementation. Finding problems in the spec costs minutes; finding them in production costs weeks.
 
