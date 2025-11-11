@@ -13,6 +13,8 @@ I made plenty of mistakes along the way (which I'll document), spent hours debug
 
 If you're a .NET developer staring at Webpack configuration files wondering what on earth you've gotten yourself into—this article is for you.
 
+**Full disclosure**: This blog is deliberately overengineered. It doesn't *need* all this complexity. But building it this way let me learn modern frontend tooling properly and, crucially, gave me something real to write about and teach. Sometimes the best way to learn is to build something slightly ridiculous and document the journey.
+
 ## The Problem with CDNs
 
 Initially, my approach was straightforward:
@@ -795,6 +797,8 @@ Key takeaways:
 For ASP.NET Core developers accustomed to simple CDN includes, this will feel overwhelming at first. That's normal. I felt the same way. Start small, migrate one dependency at a time, and don't be afraid to break things in development. You'll learn more from debugging broken builds than you ever will from reading documentation.
 
 The configuration I've shared here represents months of iteration. Your journey will be different, and that's fine. Use this as a starting point, not gospel. Adapt it to your needs, experiment, and don't be discouraged by failures—they're part of the process.
+
+**Is this blog overengineered?** Absolutely. Could I have kept using CDNs and spent my time on other things? Sure. But I wouldn't have learned half as much, and I wouldn't have this article to share with you. Sometimes overengineering isn't about the destination—it's about what you learn along the way and being able to teach others from that experience.
 
 If you're still relying on CDNs for your frontend dependencies, I encourage you to give bundling a try. Start with one library. See how it feels. Iterate from there. The ecosystem has matured significantly, and whilst the learning curve is real, the payoff is worth it.
 
