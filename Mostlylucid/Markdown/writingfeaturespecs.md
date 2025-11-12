@@ -12,7 +12,7 @@ Treat a spec as a sacred, unchangeable document and you're building the wrong th
 
 This agile approach to specs creates a particular challenge: if the feature can evolve as you learn, how the hell do you estimate it? How do you know when you're done? That's what this article is about.
 
-**Fundamentally; a Feature Spec is a conversation NOT a dogmatic, unchanging LAW.
+**Fundamentally; a Feature Spec is a conversation NOT a dogmatic, unchanging LAW.**
 
 [TOC]
 
@@ -55,7 +55,7 @@ This pattern is simple:
 
 I've seen countless specs that jump straight into "User clicks button X which calls API Y" without ever explaining what the user is actually trying to achieve. This is arse-backwards. The implementation details should flow naturally from understanding the problem.
 
-Remember developers are feature building machines REALLY (code is the tool to deliver features); tell them what *needs doing* NOT how to do it. if you have a UX person whp's responsible for the UX spec then the dev and them should work together. The point is making the best feature *for the user* that can change and anyone is empowered to push for the change (in the spec) and have that review process tes the idea.
+Remember developers are feature building machines REALLY (code is the tool to deliver features); tell them what *needs doing* NOT how to do it. if you have a UX person who's responsible for the UX spec then the dev and them should work together. The point is making the best feature *for the user* that can change and anyone is empowered to push for the change (in the spec) and have that review process test the idea.
 
 ```mermaid
 flowchart TD
@@ -90,12 +90,12 @@ The trick is to specify **WHAT** needs to happen without prescribing **HOW** it 
 
 **Bad**: "On form submission, the submit button's onClick handler should call validateForm() which iterates through formFields array checking each field.value against its validation.regex property and if any fail should call showError() with the field.name and validation.message parameters."
 
-The first tells me what the user experience should be; I can implement it in React, Vue, vanilla JavaScript, or carrier pigeon for all it matters. The second assumes implementation details that might be completely wrong for the tech stack or introduce unnecessary constraints. Different people have different strengths often the person writing the spec isn't technical / isn't the one writign the code. Imagine being a cab driver and not being told the destination but every gear change, mirror look etc..etc..makes you all stabby. 
+The first tells me what the user experience should be; I can implement it in React, Vue, vanilla JavaScript, or carrier pigeon for all it matters. The second assumes implementation details that might be completely wrong for the tech stack or introduce unnecessary constraints. Different people have different strengths often the person writing the spec isn't technical / isn't the one writing the code. Imagine being a cab driver and not being told the destination but every gear change, mirror look etc..etc..makes you all stabby. 
 
 <img src="https://media.tenor.com/la1K-_RBV0cAAAAi/chick-stab-chick.gif" />
 
 ## Use Pictures / flowcharts; Get The Point Across
-Remember you're trying to get people to unserstand what you're suggesting. Some teams include Figma documents (a storyboard / ux 'spec') or images of the UI the designer built. Like everythign else though these are 'until we try it' suggedtions until they've been through a feedback loop. It's all about *ensuring you're being understood*. Use whatever tools you need.
+Remember you're trying to get people to understand what you're suggesting. Some teams include Figma documents (a storyboard / ux 'spec') or images of the UI the designer built. Like everything else though these are 'until we try it' suggestions until they've been through a feedback loop. It's all about *ensuring you're being understood*. Use whatever tools you need.
 
 [In a Wiki mermaid.js diagrams are GREAT for this! ](https://www.mostlylucid.net/blog/category/Mermaid); remember AI is GREAT at generating these too given a textual description.
 
@@ -124,7 +124,7 @@ A good spec doesn't just describe the happy path; it considers:
 
 You don't need to solve all these in the spec, but you need to acknowledge they exist. Nothing irritates developers more than discovering halfway through implementation that nobody thought about what happens when the external API is down.
 
-For MANY it's likely they're outn of scope for THIS spec. You may have 'technical specs' which DO detail the implemntation details and technical spolutions to 'technical issues' 
+For MANY it's likely they're out of scope for THIS spec. You may have 'technical specs' which DO detail the implementation details and technical solutions to 'technical issues' 
 
 ## Security and Performance Considerations
 These shouldn't be afterthoughts shoehorned in during code review. If there are specific security requirements (authentication levels, data encryption, audit logging) spell them out in the spec.
@@ -229,7 +229,7 @@ How will QA test this? These should be concrete, testable statements. Bonus poin
 
 Here's something that doesn't get talked about enough: **Specs can have bugs too.**
 
-A spec bug is when the specification itself is wrong. Maybe it contradicts itself, or it specifies behaviour that's technically impossible, or it solves the wrong problem entirely. These are insidious because developers might implement exactly what's written and still end up with a product that doesn't work properly (in Agile the main focus is making this 'feedback lopp' as short as possible for exactly thids reason).
+A spec bug is when the specification itself is wrong. Maybe it contradicts itself, or it specifies behaviour that's technically impossible, or it solves the wrong problem entirely. These are insidious because developers might implement exactly what's written and still end up with a product that doesn't work properly (in Agile the main focus is making this 'feedback loop' as short as possible for exactly this reason).
 
 ## How Spec Bugs Happen
 
@@ -606,7 +606,7 @@ Agile estimation acknowledges you don't know everything up front. The feature mi
 
 But all of these approaches have one critical requirement: **you need to know what "done" means.** Without a clear definition of done, a feature can keep metastasising forever.
 
-It's acommon criticism of Agile compared to Waterfall approaches 'without a concrete spec thare can be no good estimates'. Dunno I'd rathe rhave a floppy estimate which leads to a good feature than a dead on one for crap. 
+It's a common criticism of Agile compared to Waterfall approaches 'without a concrete spec there can be no good estimates'. Dunno I'd rather have a floppy estimate which leads to a good feature than a dead on one for crap. 
 
 # Defining "Done" (Or How to Stop Feature Metastasis)
 
@@ -662,7 +662,7 @@ Sometimes you genuinely don't know exactly what "done" looks like when you start
 
 "We'll spend 2 weeks (or until backend is ready) prototyping different approaches to the recommendation algorithm. At the end of 2 weeks we'll evaluate what we've learned and decide whether to productionise one approach, try something different, or abandon the feature."
 
-But notice: you still have a concrete "done" condition (2 weeks, then evaluate). You're not just building indefinitely. These explorations are often doing in a condect like a 'Sprint in SCRUM called a 'Spike'
+But notice: you still have a concrete "done" condition (2 weeks, then evaluate). You're not just building indefinitely. These explorations are often done in a context like a 'Sprint in SCRUM called a 'Spike'
 
 ### Spikes & Sprints. 
 A Spike is one of these 'go have a play and figure out this tech' it can last as long as a Sprint (or longer) but it typically just a few days.  When I have devs do these I typically ask for a mail at the end (or a wiki post etc) with the findings, is it worth it, should we adopt it etc. 
@@ -695,7 +695,7 @@ If no, you're not done yet, regardless of what your spec says.
 
 The hardest part of agile isn't starting work; it's stopping work. Clear "done" criteria make stopping possible.
 
-But remember that you have to weight up whethern you release it to everyone, have a close group for A/B / UAT (user acceptance testing) .That's  often a business decision around risk. Sometimes the public is FUCKING DUMB and sees a partially cokppleted preview feature as the GOSPEL FOR YOUR SYSTEM QUALITY. If that's an issue a controlled group is safer.
+But remember that you have to weigh up whether you release it to everyone, have a close group for A/B / UAT (user acceptance testing). That's often a business decision around risk. Sometimes the public is FUCKING DUMB and sees a partially completed preview feature as the GOSPEL FOR YOUR SYSTEM QUALITY. If that's an issue a controlled group is safer.
 
 <img src="https://media1.tenor.com/m/hl4H1KOXEMcAAAAC/bongo-cat-keyboard-smash.gif" height="300"/>
 
@@ -814,14 +814,14 @@ Notice these are specific and testable. We can verify each one. When all are met
 - ~~How do we handle EasyNMT service failures?~~ **Resolved: Log error and skip file; will retry on next service restart / a circuit breaker (maybe a spike?)**
 - What quality issues might we see with technical content? **Decision: Ship and evaluate; manual review catches issues**
 
-## What We Learned Duith 20-line batches, but found 10 lines more reliable for staying under EasyNring Implementation
+## What We Learned During Implementation
 Several things emerged during development that refined the spec:
+
+**Batch Size Tuning**: Started with 20-line batches, but found 10 lines more reliable for staying under EasyNMT's word limit while maintaining context.
 
 **Image Detection**: Initially, image filenames in markdown were being sent to the translation service, breaking sentence parsing. Added file extension detection to skip image paths.
 
 **Service Availability**: EasyNMT can be temperamental on startup. Added health check that queries the `/model_name` endpoint before attempting translations.
-
-**Batch Size Tuning**: Started wMT's word limit while maintaining context.
 
 **Hash Storage**: Originally planned database storage for file hashes, but filesystem-based `.hash` files proved simpler and avoided database dependency for this service.
 
@@ -1068,7 +1068,7 @@ But you'll also need to:
 - Maintain more detailed version history
 - Keep specs after the project ends (for audits)
 
-Even in regulated environments, agile speccing works. You just have more hoops to jump through. The spec is still a tool; it's ju~~~~st a tool that needs to satisfy regulators as well as developers.
+Even in regulated environments, agile speccing works. You just have more hoops to jump through. The spec is still a tool; it's just a tool that needs to satisfy regulators as well as developers.
 
 # In Conclusion
 

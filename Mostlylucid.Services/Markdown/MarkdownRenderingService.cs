@@ -25,17 +25,17 @@ public partial class MarkdownRenderingService : MarkdownBaseService
         _logger = logger;
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"<datetime class=""hidden"">(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})</datetime>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*datetime\s+class\s*=\s*""hidden""\s*>(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})</\s*datetime\s*>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex DateRegex();
     [System.Text.RegularExpressions.GeneratedRegex(@"<!--\s*category\s*--\s*(.+?)\s*-->")]
     private static partial Regex CategoryRegex();
-    [System.Text.RegularExpressions.GeneratedRegex(@"<pinned\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*pinned\s*/\s*>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex PinnedRegex();
-    [System.Text.RegularExpressions.GeneratedRegex(@"<hidden\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*hidden\s*/\s*>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex HiddenRegex();
-    [System.Text.RegularExpressions.GeneratedRegex(@"<scheduled\s+datetime=""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})""\s*/>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*scheduled\s+datetime\s*=\s*""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})""\s*/\s*>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex ScheduledRegex();
-    [System.Text.RegularExpressions.GeneratedRegex(@"<updated(?:\s+template=""([^""]+)"")?\s*/?>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
+    [System.Text.RegularExpressions.GeneratedRegex(@"<\s*updated(?:\s+template\s*=\s*""([^""]+)"")?\s*/?\s*>", RegexOptions.IgnoreCase | RegexOptions.NonBacktracking)]
     private static partial Regex UpdatedRegex();
 
     private static string[] GetCategories(string markdownText)

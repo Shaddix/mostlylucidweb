@@ -25,6 +25,9 @@ In short, it's an obsession that I've carried my entire career. Nobody likes a s
 
 **Full disclosure**: This blog is deliberately overengineered. It doesn't *need* all this complexity. But building it this way let me learn modern frontend tooling properly and, crucially, gave me something real to write about and teach. Sometimes the best way to learn is to build something slightly ridiculous and document the journey.
 
+
+[TOC]
+
 ## The Problem with CDNs
 
 Initially, my approach was straightforward:
@@ -63,7 +66,9 @@ Before diving into the technical details, I should address the elephant in the r
 
 The honest answer is simple: **I already knew Webpack**.
 
-I'd used Webpack extensively when teaching my "Beginning Web Development" course, and it was the tool I understood. When I decided to modernise this blog's build pipeline, I was already facing a steep learning curve—understanding tree-shaking, code splitting, module systems, PostCSS pipelines, and how to integrate all of this with ASP.NET Core.
+I'd used Webpack extensively when teaching my "Beginning Web Development" course, and it was the tool I understood. When I decided to modernise this blog's build pipeline, I was already facing a steep learning curve—understanding tree-shaking, code splitting, module systems, PostCSS pipelines, and how to integrate all of this with ASP.NET Core. 
+
+**It's generally a good practice when working on projects; limit the 'new' to the 'manageable'. It's WAY easier to limit uncertainty.**
 
 Adding "learn an entirely new build tool" on top of that seemed unnecessary. Webpack works. It's mature. It has excellent documentation and a massive ecosystem. Most importantly, I could focus my learning energy on the *concepts* of modern bundling rather than the idiosyncrasies of a particular tool.
 

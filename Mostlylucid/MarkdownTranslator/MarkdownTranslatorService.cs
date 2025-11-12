@@ -330,6 +330,14 @@ public class MarkdownTranslatorService(
         return outString;
     }
 
+    private static readonly Regex DatetimeHiddenRegex = new(@"^<\s*datetime\s+class\s*=\s*""hidden""\s*>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static bool IsDatetimeHiddenTag(HtmlInline? htmlInline)
+    {
+        if (htmlInline == null) return false;
+        return DatetimeHiddenRegex.IsMatch(htmlInline.Tag);
+    }
+
     private List<string> ExtractTextStrings(MarkdownDocument document)
     {
         var textStrings = new List<string>();
@@ -338,7 +346,7 @@ public class MarkdownTranslatorService(
         {
             if (node is LiteralInline literalInline)
             {
-                if (literalInline?.Parent?.FirstChild is HtmlInline { Tag: "<datetime class=\"hidden\">" }) continue;
+                if (literalInline?.Parent?.FirstChild is HtmlInline htmlInline && IsDatetimeHiddenTag(htmlInline)) continue;
 
                 var content = literalInline?.Content.ToString();
                 if (content == null) continue;
@@ -598,7 +606,7 @@ public class MarkdownTranslatorService(
         {
             if (node is LiteralInline literalInline && index < translatedStrings.Length)
             {
-                if (literalInline?.Parent?.FirstChild is HtmlInline { Tag: "<datetime class=\"hidden\">" }) continue;
+                if (literalInline?.Parent?.FirstChild is HtmlInline htmlInline && IsDatetimeHiddenTag(htmlInline)) continue;
                 if (literalInline == null) continue;
                 var content = literalInline.Content.ToString();
                 if (!IsWord(content)) continue;

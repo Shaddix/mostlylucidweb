@@ -5,7 +5,7 @@
 
 ## Introduction
 
-While in this current 'manic' article writing stage I thought I'd share a **sensitive** project I build for a charity during COVID. This is a very sensitive topic so I have gotten all applicable permissions and agreed tp ONLY share the **concepts** which diverge and are a lot more trivial than the real system.
+While in this current 'manic' article writing stage I thought I'd share a **sensitive** project I built for a charity during COVID. This is a very sensitive topic so I have gotten all applicable permissions and agreed to ONLY share the **concepts** which diverge and are a lot more trivial than the real system.
 
 It's part of a long history of **hiding messages in plain sight** and it's still as critical as ever from passing messages in school to massive multinational corporate espionage and world powers spying on each other. 
 
@@ -37,7 +37,7 @@ During the Revolutionary War, the Continental Army used invisible inks extensive
 
 <img src="https://mtv-drupal-assets.s3.amazonaws.com/files/resources/large_di-0321-1_m-4853-web.jpg?VersionId=J0Yc2ux01pWRSwMy9uzmqB5PMcN6XQfk" width="200px" />
 
-In World War II, [invisible inks ](https://books.google.co.uk/books?id=soYmDwAAQBAJ&pg=PA297&redir_esc=y#v=onepage&q&f=false)evolved further. The British used everything from lemon juice (heat-activated) to sophisticated chemical compounds and yes, human (I presume!) semen... The Germans developed microdots - photographs reduced to the size of a printed period that could be hidden in plain correspondence. The British even smuggled maps into POW camps to aid escape in everythign from playing cards, buttons (which were also often magnetised for use in compasses)  and even Red Cross chocolate wrappers. 
+In World War II, [invisible inks ](https://books.google.co.uk/books?id=soYmDwAAQBAJ&pg=PA297&redir_esc=y#v=onepage&q&f=false)evolved further. The British used everything from lemon juice (heat-activated) to sophisticated chemical compounds and yes, human (I presume!) semen... The Germans developed microdots - photographs reduced to the size of a printed period that could be hidden in plain correspondence. The British even smuggled maps into POW camps to aid escape in everything from playing cards, buttons (which were also often magnetised for use in compasses) and even Red Cross chocolate wrappers. 
 
 ### The Art of the Dead Drop
 
@@ -98,7 +98,7 @@ Modified pixel: RGB(11010111, 10110100, 01011011)
 
 To the eye, these pixels are identical. To someone with the extraction algorithm, it's a hidden message.
 
-Here's an exampel (not GREAT [but from here ](https://incoherency.co.uk/image-steganography/#unhide))
+Here's an example (not GREAT [but from here ](https://incoherency.co.uk/image-steganography/#unhide))
 
 ![steganopng](stegano.png?height=200) 
 
@@ -108,7 +108,7 @@ which has:
 
 Hidden in it...kinda...sorta. Extra compression makes it useless. 
 
-In reality this image would be an encrypted message / other encrypted data up to about 10% of the image's size (modern neural techniques can even [get 50% or more without it beign detectable](https://arxiv.org/pdf/1909.01496)). 
+In reality this image would be an encrypted message / other encrypted data up to about 10% of the image's size (modern neural techniques can even [get 50% or more without it being detectable](https://arxiv.org/pdf/1909.01496)). 
 
  
 ### Linguistic Steganography
@@ -124,7 +124,7 @@ The ability to hide messages in seemingly normal text. Techniques include:
 Hiding data in network traffic patterns:
 - **Timing channels**: Varying packet timing to encode information
 - **Protocol manipulation**: Using unused header fields
-- **Traffic mimicry**: Mak~~~~ing covert data look like legitimate traffic (Netflix streaming, gaming, etc.)
+- **Traffic mimicry**: Making covert data look like legitimate traffic (Netflix streaming, gaming, etc.)
 
 ## The Modern Challenge: Digital Safety in Hostile Environments
 
@@ -147,7 +147,7 @@ The solution I developed drew on every principle of historical steganography, ad
 
 > NOTE: This isn't the greatest stealth-support app in the world, this is just  a tribute.
 
-The real one was built for a very real few charities and is still there for any similar siutuations, however it's been MASSIVELY modified and works in an **even sneakier way** I came up with; for that one even screen snapshotting won't detect it (using a form of temporal steganography...you can have a guess what that means 😜 ). 
+The real one was built for a very real few charities and is still there for any similar situations, however it's been MASSIVELY modified and works in an **even sneakier way** I came up with; for that one even screen snapshotting won't detect it (using a form of temporal steganography...you can have a guess what that means 😜 ). 
 
 ## Overview
 
@@ -207,7 +207,7 @@ The actual secure chat traffic was disguised:
 
 - **Protocol**: Standard WebSocket over HTTPS, indistinguishable from normal chat widgets
 - **Timing**: Random delays added to avoid pattern recognition
-- **Volume**: Padded with noise data to prevent message length analysis - this include various techniques, adding *legit looking* elements where the actual content was cryptographically secure interleaved with real data (a kind of one time pad) etc. 'Message steganography'. I even made it site specific, each site which itegrated had groups of real support messages (about products, locations etc).
+- **Volume**: Padded with noise data to prevent message length analysis - this include various techniques, adding *legit looking* elements where the actual content was cryptographically secure interleaved with real data (a kind of one time pad) etc. 'Message steganography'. I even made it site specific, each site which integrated had groups of real support messages (about products, locations etc).
 - **Endpoint**: CDN-hosted endpoint shared with legitimate services
 
 ```mermaid
@@ -503,7 +503,7 @@ class SecureSession {
 
 ### Performance
 
-Steganographic systems must not degrade performance noticeably, both for adoption (these are big companies, screw up their site at your peril) and security. You don't want some JS dev  noticing oddness.
+Steganographic systems must not degrade performance noticeably, both for adoption (these are big companies, screw up their site at your peril) and security. You don't want some JS dev noticing oddness.
 
 ```javascript
 // Lazy loading of secure components
