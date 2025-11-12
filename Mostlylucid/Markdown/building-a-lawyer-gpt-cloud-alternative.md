@@ -1,4 +1,4 @@
-# Building a "Lawyer GPT" for Your Blog - Cloud Alternative: RAG with Qdrant and Generic LLMs
+# Building a "Lawyer GPT" for Your Blog - Fine Tuning LLM Alternative: RAG with Qdrant and Generic Online LLMs
 
 <!--category-- AI, LLM, RAG, C#, Cloud, Qdrant, OpenAI -->
 <datetime class="hidden">2025-11-12T12:00</datetime>

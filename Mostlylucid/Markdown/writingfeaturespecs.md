@@ -12,7 +12,9 @@ Treat a spec as a sacred, unchangeable document and you're building the wrong th
 
 This agile approach to specs creates a particular challenge: if the feature can evolve as you learn, how the hell do you estimate it? How do you know when you're done? That's what this article is about.
 
-**Fundamentally; a Feature Spec is a conversation NOT a dogmatic, unchanging LAW.**
+In general a principle I've lived by in my career; ALL process whether it be specs / filling in reports / even code reviews etc... are a tax. Like all tax it needs to deliver value for money in terms of a better result than it would be without it or it needs to go. If your process says you need to have a strict story point system and burn down graphs but no bugger uses them for anything but harassing your team???
+
+**Fundamentally; a Feature Spec is a conversational tool to make the feature better NOT a dogmatic, unchanging LAW.**
 
 [TOC]
 
