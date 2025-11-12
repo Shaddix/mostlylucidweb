@@ -1,7 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Fine Tuning LLM Alternative: RAG with Qdrant and Generic Online LLMs
 
 <!--category-- AI, LLM, RAG, C#, Cloud, Qdrant, OpenAI -->
-<datetime class="hidden">2025-11-12T12:00</datetime>
+<datetime class="hidden">2025-11-12T22:45</datetime>
 
 ## Introduction
 
@@ -14,6 +14,8 @@ This article presents the cloud-based alternative: same RAG approach, same Qdran
 Full disclosure: I'm still learning which approach works best in practice, so take my cost estimates and performance claims with a pinch of salt. What I can say is that this cloud approach has proven remarkably straightforward to set up compared to the GPU route.
 
 > NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
+
+[TOC]
 
 ## Why a Cloud Alternative?
 

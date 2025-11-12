@@ -1,13 +1,7 @@
 # Building a "Lawyer GPT" for Your Blog - Part 6: Local LLM Integration
 
 <!--category-- AI, LLM, LLamaSharp, GGUF, C#, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">1973-02-08T22:00</datetime>
-
-WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
-
-It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
-
-<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
+<datetime class="hidden">2025-11-12T22:45</datetime>
 
 ## Introduction
 

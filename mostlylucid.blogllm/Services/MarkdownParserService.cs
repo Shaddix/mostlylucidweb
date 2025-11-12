@@ -78,8 +78,9 @@ public class MarkdownParserService
 
     private string[] ExtractCategories(string markdown)
     {
+        // Match <!-- category -- categories --> with flexible spacing
         var match = Regex.Match(markdown,
-            @"<!--\s*category--\s*(.+?)\s*-->",
+            @"<!--\s*category\s*--\s*(.+?)\s*-->",
             RegexOptions.IgnoreCase);
 
         if (match.Success)
@@ -110,10 +111,16 @@ public class MarkdownParserService
 
     private string ExtractLanguage(string fileName)
     {
+        // Handle translated files: "slug.es" -> "es" when fileName is without extension
         var parts = fileName.Split('.');
-        if (parts.Length == 3 && parts[1].Length == 2)
+        if (parts.Length >= 2 && parts[^1].Length == 2)
         {
-            return parts[1];
+            // Check if the last part looks like a language code (2 lowercase letters)
+            var lastPart = parts[^1];
+            if (lastPart.All(char.IsLower) && lastPart.Length == 2)
+            {
+                return lastPart;
+            }
         }
         return "en";
     }

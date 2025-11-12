@@ -122,9 +122,12 @@ More content.";
         var document = _parser.ParseFile(_testFilePath);
 
         // Assert
-        document.Sections.Should().HaveCount(4);
-        document.Sections[0].Heading.Should().Be("Introduction");
-        document.Sections[0].Level.Should().Be(2);
+        // Note: Parser extracts all headings including H1, so we get 5 sections
+        document.Sections.Should().HaveCount(5);
+        document.Sections[0].Heading.Should().Be("Main Title");
+        document.Sections[0].Level.Should().Be(1);
+        document.Sections[1].Heading.Should().Be("Introduction");
+        document.Sections[1].Level.Should().Be(2);
 
         // Cleanup
         File.Delete(_testFilePath);

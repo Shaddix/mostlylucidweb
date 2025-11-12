@@ -1,6 +1,7 @@
 using LLama;
 using LLama.Common;
 using LLama.Native;
+using LLama.Sampling;
 using System.Text;
 
 namespace Mostlylucid.BlogLLM.Api.Services;
@@ -36,13 +37,19 @@ public class LlmInferenceService : IDisposable
         _model = LLamaWeights.LoadFromFile(parameters);
         _context = _model.CreateContext(parameters);
 
-        _defaultParams = new InferenceParams
+        // Create default sampling pipeline
+        var samplingPipeline = new DefaultSamplingPipeline
         {
-            MaxTokens = 512,
             Temperature = 0.7f,
             TopP = 0.95f,
             TopK = 40,
-            RepeatPenalty = 1.1f,
+            RepeatPenalty = 1.1f
+        };
+
+        _defaultParams = new InferenceParams
+        {
+            MaxTokens = 512,
+            SamplingPipeline = samplingPipeline,
             AntiPrompts = new List<string> { "</s>", "[/INST]", "User:", "Human:" }
         };
 
@@ -61,13 +68,19 @@ public class LlmInferenceService : IDisposable
         {
             var executor = new InteractiveExecutor(_context);
 
+            // Create sampling pipeline with custom temperature
+            var samplingPipeline = new DefaultSamplingPipeline
+            {
+                Temperature = temperature,
+                TopP = 0.95f,
+                TopK = 40,
+                RepeatPenalty = 1.1f
+            };
+
             var inferenceParams = new InferenceParams
             {
                 MaxTokens = maxTokens,
-                Temperature = temperature,
-                TopP = _defaultParams.TopP,
-                TopK = _defaultParams.TopK,
-                RepeatPenalty = _defaultParams.RepeatPenalty,
+                SamplingPipeline = samplingPipeline,
                 AntiPrompts = _defaultParams.AntiPrompts
             };
 

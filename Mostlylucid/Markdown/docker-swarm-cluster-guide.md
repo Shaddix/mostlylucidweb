@@ -1,6 +1,6 @@
 # From Docker Compose to Docker Swarm: Running a Production Cluster on 8 Crappy Mini PCs
 
-<datetime class="hidden">2025-11-11T14:00</datetime>
+<datetime class="hidden">2025-11-12T14:00</datetime>
 <!--category-- Docker, DevOps, Containers, Docker Swarm, High Availability -->
 
 ## Introduction

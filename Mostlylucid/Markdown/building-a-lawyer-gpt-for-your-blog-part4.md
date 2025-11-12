@@ -1,14 +1,8 @@
 # Building a "Lawyer GPT" for Your Blog - Part 4: Building the Ingestion Pipeline
 
 <!--category-- AI, LLM, RAG, C#, Markdown, AI-Article, mostlylucid.blogllm -->
-<datetime class="hidden">1973-02-08T18:00</datetime>
+<datetime class="hidden">2025-11-12T22:45</datetime>
 
-
-> WARNING: THESE ARE DRAFT POSTS WHICH 'ESCAPED'.
-
-It's likely much of what's below won't work; I generate these as how-to for ME and then do all the steps and get the sample app working...You've been sneaky and seen them!  they'll likely be ready mid-December.
-
-<img src="https://media1.tenor.com/m/_rQc7PIEqwQAAAAd/cat-hello-cat-peek.gif" height="300px" />
 
 ## Introduction
 
