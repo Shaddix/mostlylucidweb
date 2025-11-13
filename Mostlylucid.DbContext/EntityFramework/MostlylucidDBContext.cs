@@ -26,13 +26,6 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     public DbSet<DownloadedImageEntity> DownloadedImages { get; set; }
 
-    public DbSet<WorkflowDefinitionEntity> WorkflowDefinitions { get; set; }
-
-    public DbSet<WorkflowExecutionEntity> WorkflowExecutions { get; set; }
-
-    public DbSet<WorkflowTriggerStateEntity> WorkflowTriggerStates { get; set; }
-
-
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder
@@ -194,47 +187,6 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
                     b => b.HasOne<BlogPostEntity>().WithMany().HasForeignKey("BlogPostId"),
                     c => c.HasOne<CategoryEntity>().WithMany().HasForeignKey("CategoryId")
                 );
-        });
-
-        // Workflow entities configuration
-        modelBuilder.Entity<WorkflowDefinitionEntity>(entity =>
-        {
-            entity.HasKey(w => w.Id);
-            entity.HasIndex(w => w.WorkflowId).IsUnique();
-            entity.HasIndex(w => w.Name);
-            entity.HasIndex(w => w.IsEnabled);
-            entity.Property(w => w.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(w => w.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            entity.HasMany(w => w.Executions)
-                .WithOne(e => e.WorkflowDefinition)
-                .HasForeignKey(e => e.WorkflowDefinitionId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<WorkflowExecutionEntity>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ExecutionId).IsUnique();
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.StartedAt);
-            entity.HasIndex(e => new { e.WorkflowDefinitionId, e.Status });
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-        });
-
-        modelBuilder.Entity<WorkflowTriggerStateEntity>(entity =>
-        {
-            entity.HasKey(t => t.Id);
-            entity.HasIndex(t => new { t.WorkflowDefinitionId, t.TriggerType });
-            entity.HasIndex(t => t.IsEnabled);
-            entity.HasIndex(t => t.LastCheckedAt);
-            entity.Property(t => t.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(t => t.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            entity.HasOne(t => t.WorkflowDefinition)
-                .WithMany()
-                .HasForeignKey(t => t.WorkflowDefinitionId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

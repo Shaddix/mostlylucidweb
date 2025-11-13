@@ -77,7 +77,7 @@ public class HttpRequestNode : BaseWorkflowNode
             object parsedBody;
             try
             {
-                parsedBody = JsonSerializer.Deserialize<Dictionary<string, object>>(responseBody) ?? responseBody;
+                parsedBody = (object?)JsonSerializer.Deserialize<Dictionary<string, object>>(responseBody) ?? responseBody;
             }
             catch
             {

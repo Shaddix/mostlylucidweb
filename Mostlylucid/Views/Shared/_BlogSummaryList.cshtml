@@ -58,4 +58,17 @@
         <partial name="_ListPost" model="post"/>
     }
     </text>
+
+    <!-- Bottom Pagination -->
+    <div class="flex items-center justify-center w-full mt-6 mb-4 print:!hidden">
+        <paging
+            hx-boost="true"
+            class="shrink-0"
+            hx-target="#content"
+            hx-push-url="false"
+            hx-swap="show:none"
+            hx-headers='{"pagerequest": "true"}'
+            model="@Model">
+        </paging>
+    </div>
 </div>

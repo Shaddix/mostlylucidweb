@@ -20,7 +20,15 @@
       "Bash(dotnet sln:*)",
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Bash(dotnet script:*)"
+      "Bash(dotnet script:*)",
+      "Bash(node test-markdown-rendering.js:*)",
+      "Bash(timeout /t 15)",
+      "Bash(node test-blog-pagination.js:*)",
+      "Bash(ping:*)",
+      "Bash(nul)",
+      "Bash(dotnet add:*)",
+      "Bash(sed:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
