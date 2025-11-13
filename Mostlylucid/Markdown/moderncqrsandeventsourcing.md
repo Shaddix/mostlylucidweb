@@ -3,21 +3,19 @@
 <!--category-- ASP.NET, Architecture, CQRS, Event Sourcing -->
 <datetime class="hidden">2025-01-13T12:00</datetime>
 
-Right, buckle in because we're diving into CQRS and Event Sourcing - two patterns that seem to inspire equal parts enthusiasm and dread in the .NET community. I've spent the better part of a year wrestling with these concepts, and I want to give you the unvarnished truth about when they're brilliant and when they're bloody overkill.
+CQRS and Event Sourcing - two patterns that seem to inspire equal parts enthusiasm and dread in the .NET community. I've spent the better part of a year wrestling with these concepts, and I want to give you the unvarnished truth about when they're useful and when they're complete overkill.
 
 ## Introduction
 
-CQRS (Command Query Responsibility Segregation) and Event Sourcing are often mentioned in the same breath, but they're actually separate patterns that work wonderfully together. Think of CQRS as separating your reads from your writes, and Event Sourcing as storing every change to your system as an immutable sequence of events rather than just the current state.
+CQRS (Command Query Responsibility Segregation) and Event Sourcing are often mentioned in the same breath, but they're actually separate patterns that work well together. Think of CQRS as separating your reads from your writes, and Event Sourcing as storing every change to your system as an immutable sequence of events rather than just the current state.
 
-In this article, I'm going to show you how to implement these patterns in modern .NET using Dapper for the query side (because sometimes you just want to write SQL and be done with it) and Marten for event sourcing (because it's brilliant). I'll also touch on where Entity Framework fits in, even though we're not using it this time around.
-
-**You can find all the code examples on [GitHub](https://github.com/scottgal/mostlylucidweb)**
+In this article, I'm going to show you how to implement these patterns in modern .NET using Dapper for the query side (because sometimes you just want to write SQL and be done with it) and Marten for event sourcing (because it's excellent). I'll also touch on where Entity Framework fits in, even though we're not using it this time around.
 
 [TOC]
 
 ## What Actually Is CQRS?
 
-At its core, CQRS is stupidly simple: you use different models for reading and writing data. That's it. No magic, no complexity - unless you add it yourself, which people invariably do.
+At its core, CQRS is remarkably simple: you use different models for reading and writing data. That's it. No magic, no complexity - unless you add it yourself, which people invariably do.
 
 ### The Traditional Approach
 
@@ -46,7 +44,7 @@ This works fine for simple scenarios. But what happens when your read requiremen
 
 ### The CQRS Approach
 
-CQRS says "bugger it, let's split them":
+CQRS takes a different approach and splits them:
 
 ```csharp
 // Write Model - focused on business logic and validation
@@ -127,9 +125,9 @@ flowchart TB
     UI -->|Commands| CMD
     UI -->|Queries| QRY
 
-    classDef commandStyle fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px,color:#fff
-    classDef queryStyle fill:#4dabf7,stroke:#1971c2,stroke-width:2px,color:#fff
-    classDef dataStyle fill:#51cf66,stroke:#2f9e44,stroke-width:2px,color:#fff
+    classDef commandStyle fill:none,stroke:#e63946,stroke-width:3px
+    classDef queryStyle fill:none,stroke:#457b9d,stroke-width:3px
+    classDef dataStyle fill:none,stroke:#2a9d8f,stroke-width:3px
 
     class CMD,CMDH,AGG commandStyle
     class QRY,QRYH queryStyle
@@ -203,7 +201,7 @@ public class BankAccount
 }
 ```
 
-Now you know exactly how you got to £100. You can recreate any historical state. You can build new projections of old events. You have a complete audit trail. It's bloody brilliant.
+Now you know exactly how you got to £100. You can recreate any historical state. You can build new projections of old events. You have a complete audit trail. This is powerful stuff.
 
 ### Event Sourcing Flow Visualised
 
@@ -313,9 +311,9 @@ flowchart LR
 
     QRYH -->|Raw SQL Queries| PROJTBL
 
-    classDef writeStyle fill:#ff6b6b,stroke:#c92a2a,stroke-width:2px,color:#fff
-    classDef readStyle fill:#4dabf7,stroke:#1971c2,stroke-width:2px,color:#fff
-    classDef dbStyle fill:#51cf66,stroke:#2f9e44,stroke-width:2px,color:#fff
+    classDef writeStyle fill:none,stroke:#e63946,stroke-width:3px
+    classDef readStyle fill:none,stroke:#457b9d,stroke-width:3px
+    classDef dbStyle fill:none,stroke:#2a9d8f,stroke-width:3px
 
     class CMDH,MARTEN writeStyle
     class QRYH readStyle
@@ -569,7 +567,7 @@ public class PublishBlogPostHandler
 
 ## The Query Side: Enter Dapper
 
-Right, here's where we diverge from Entity Framework. Don't get me wrong - EF is brilliant for many things (I've written about it [here](/blog/addingentityframeworkforblogpostspt1)), but sometimes you just want to write SQL and be done with it. That's where Dapper shines.
+Here's where we diverge from Entity Framework. Don't get me wrong - EF is excellent for many things (I've written about it [here](/blog/addingentityframeworkforblogpostspt1)), but sometimes you just want to write SQL and be done with it. That's where Dapper shines.
 
 ### Why Dapper for Queries?
 
@@ -801,7 +799,7 @@ See how clean that is? Raw SQL, full control, and Dapper handles the mapping. No
 
 ## Using MediatR for Dispatch
 
-One thing I haven't mentioned yet is how you actually invoke these handlers. You could inject them directly into your controllers, but that gets messy fast. Enter [MediatR](https://github.com/jbogard/MediatR) - Jimmy Bogard's brilliant library for in-process messaging.
+One thing I haven't mentioned yet is how you actually invoke these handlers. You could inject them directly into your controllers, but that gets messy fast. Enter [MediatR](https://github.com/jbogard/MediatR) - Jimmy Bogard's excellent library for in-process messaging.
 
 ### Setting Up MediatR
 
@@ -1038,7 +1036,7 @@ For most .NET projects using PostgreSQL, I'd stick with Marten. It's actively ma
 
 Look, I love Dapper for this use case, but Entity Framework has its place:
 
-**Simple applications**: If you're building a basic CRUD app without CQRS, EF is brilliant. Change tracking, migrations, LINQ support - it's all there.
+**Simple applications**: If you're building a basic CRUD app without CQRS, EF is excellent. Change tracking, migrations, LINQ support - it's all there.
 
 **Complex writes**: If your command side involves intricate relationships and you're not using Event Sourcing, EF's change tracking can save you a lot of pain.
 
@@ -1046,7 +1044,7 @@ Look, I love Dapper for this use case, but Entity Framework has its place:
 
 **Rapid development**: EF scaffolding and migrations can get you up and running faster for traditional CRUD scenarios.
 
-I've written extensively about using EF for blog posts [here](/blog/addingentityframeworkforblogpostspt1) and [here](/blog/addingentityframeworkforblogpostspt2), and it works brilliantly for my use case. This article is about showing you alternatives.
+I've written extensively about using EF for blog posts [here](/blog/addingentityframeworkforblogpostspt1) and [here](/blog/addingentityframeworkforblogpostspt2), and it works well for my use case. This article is about showing you alternatives.
 
 ## A Complete Working Example
 
@@ -1394,7 +1392,7 @@ But they also add:
 - **Learning curve**: Not beginner-friendly patterns
 - **Storage costs**: Keeping all events forever
 
-For simple CRUD applications, stick with traditional approaches (see my EF series [here](/blog/addingentityframeworkforblogpostspt1)). But for complex domains with high read loads, audit requirements, or temporal query needs, CQRS and Event Sourcing can be brilliant.
+For simple CRUD applications, stick with traditional approaches (see my EF series [here](/blog/addingentityframeworkforblogpostspt1)). But for complex domains with high read loads, audit requirements, or temporal query needs, CQRS and Event Sourcing can be powerful tools.
 
 Marten makes Event Sourcing accessible in .NET, and Dapper keeps your read side simple and performant. MediatR ties it all together with clean messaging patterns.
 
