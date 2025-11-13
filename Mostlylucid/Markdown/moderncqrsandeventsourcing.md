@@ -1,83 +1,143 @@
-# Practical CQRS in .NET: Dapper, Caching, and MediatR
+# Modern CQRS and Event Sourcing in .NET: Doing It Properly
 
-<!--category-- ASP.NET, Architecture, CQRS -->
+<!--category-- ASP.NET, Architecture, CQRS, Event Sourcing -->
 <datetime class="hidden">2025-01-13T12:00</datetime>
 
-CQRS (Command Query Responsibility Segregation) - a pattern that sounds far more intimidating than it actually is. I'm going to show you how to implement a practical, scaled-down version of CQRS using tools you probably already know: Dapper for queries, IMemoryCache or IDistributedCache for read performance, and MediatR to keep things organized.
+> **NOTE**: This is an old article I forgot to release. Here it is, enjoy!
 
-This isn't the full "enterprise CQRS with Event Sourcing" - this is the pragmatic version that actually makes sense for most applications.
+CQRS and Event Sourcing - two patterns that are often mentioned together but frequently misunderstood. In this article, I'm going to show you how to implement them properly using modern .NET tools: Marten for event sourcing, Dapper for optimised queries, and MediatR to keep everything organised.
+
+I'll also show you the "half-assed" cache-based alternative, and explain why trying to mix Event Sourcing with manual cache invalidation is a terrible idea.
 
 ## Introduction
 
-CQRS at its simplest is just separating your reads from your writes. That's it. You don't need event sourcing, you don't need separate databases, and you certainly don't need to introduce months of complexity. What you do need is a clear separation between:
+CQRS (Command Query Responsibility Segregation) and Event Sourcing are two distinct patterns that work exceptionally well together:
 
-- **Commands** - operations that change state (writes)
-- **Queries** - operations that read data (reads)
+- **CQRS** - Separating your read models from your write models
+- **Event Sourcing** - Storing every state change as an immutable sequence of events
 
-Why bother? Because your read requirements are usually very different from your write requirements. Displaying a blog post list needs data from multiple tables, denormalized and optimized for display. Creating a blog post just needs to validate and insert into a couple of tables.
+When done properly with tools like Marten, you get:
+- Complete audit trail of every change
+- Ability to rebuild state at any point in time
+- Automatic read model projections
+- Natural fit with domain-driven design
+
+This article focuses on doing it **properly**. If you want the quick-and-dirty cache-based approach, I'll cover that briefly at the end - but it's not really CQRS, and it doesn't give you the benefits of Event Sourcing.
 
 [TOC]
 
-## What Actually Is CQRS?
+## What Is CQRS?
 
-At its core, CQRS is remarkably simple: you use different models for reading and writing data. No magic, no complexity - unless you add it yourself.
-
-### The Traditional Approach
-
-Normally, you'd have a single model for both reads and writes:
+At its core, CQRS means using different models for reading and writing data:
 
 ```csharp
-public class BlogPost
-{
-    public int Id { get; set; }
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public DateTime PublishedDate { get; set; }
-    public List<Comment> Comments { get; set; }
-}
+// Write Model - Commands that change state
+public record CreateBlogPostCommand(string Title, string Content, string AuthorId);
 
-// Used for both reading AND writing
-public interface IBlogRepository
-{
-    Task<BlogPost> GetById(int id);
-    Task Save(BlogPost post);
-    Task<List<BlogPost>> GetRecent(int count);
-}
-```
-
-This works fine for simple scenarios. But what happens when displaying a blog post needs author name, category names, comment counts, and is called 1000 times per second, whilst creating a post happens once per hour?
-
-### The CQRS Approach
-
-CQRS splits these concerns:
-
-```csharp
-// Write Model - focused on business logic and validation
-public class CreateBlogPostCommand
-{
-    public string Title { get; set; }
-    public string Content { get; set; }
-    public string AuthorId { get; set; }
-    public List<int> CategoryIds { get; set; }
-}
-
-// Read Model - optimized for display, denormalized
+// Read Model - DTOs optimised for display
 public class BlogPostListItemDto
 {
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Title { get; set; }
-    public string AuthorName { get; set; }  // Denormalized
+    public string AuthorName { get; set; }
     public DateTime PublishedDate { get; set; }
-    public int CommentCount { get; set; }    // Computed
-    public string[] CategoryNames { get; set; } // Denormalized
+    public int CommentCount { get; set; }
 }
 ```
 
-Notice how the write model focuses on the operation to perform, whilst the read model is completely denormalized and optimized for display? The read side doesn't care about navigation properties or business logic - it just wants data fast.
+The write side focuses on business logic and validation. The read side is denormalised and optimised for display. Simple enough, but true CQRS means they're completely separate paths through your application.
 
-### CQRS Architecture Visualized
+## What Is Event Sourcing?
 
-Here's what our practical CQRS setup looks like:
+Instead of storing current state, you store the events that led to that state:
+
+```csharp
+// Traditional: Store current state
+public class BlogPost
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; }  // Current title
+    public bool IsPublished { get; set; }  // Current status
+}
+
+// Event Sourcing: Store the events
+public record BlogPostCreated(Guid Id, string Title, string Content, DateTime CreatedAt);
+public record BlogPostTitleChanged(Guid Id, string OldTitle, string NewTitle, DateTime ChangedAt);
+public record BlogPostPublished(Guid Id, DateTime PublishedAt);
+```
+
+Current state is derived by replaying events. This gives you a complete history of everything that's ever happened in your system.
+
+## Why Use Event Sourcing with CQRS?
+
+**Complete Audit Trail**: Every change is recorded. Perfect for financial systems, healthcare, or anywhere you need to prove what happened and when.
+
+**Temporal Queries**: "What did this blog post look like last Tuesday?" becomes trivial - just replay events up to that point.
+
+**Debugging**: Reproduce bugs by replaying the exact sequence of events that caused them.
+
+**Business Intelligence**: Build new reports from historical data without running migrations. The events are already there.
+
+**Natural CQRS Fit**: Events naturally separate writes (append events) from reads (query projections).
+
+### When You Shouldn't
+
+**Simple CRUD**: If you're just storing and retrieving data, Event Sourcing is ridiculous overhead.
+
+**Small team without experience**: The learning curve is steep.
+
+**No audit requirements**: If you only care about current state, don't store history.
+
+**Large binary data**: Events work poorly with images, videos, files.
+
+## Modern Event Sourcing in .NET: Marten
+
+The best tool for Event Sourcing in .NET in 2025 is [Marten](https://martendb.io/). It's an event store built on PostgreSQL, actively maintained by Jeremy Miller, and it just works.
+
+Why Marten?
+- Built on PostgreSQL (you already know it)
+- Automatic projections from events to read models
+- Async daemon for projection processing
+- Rich querying capabilities
+- Production-ready and battle-tested
+
+### Setting Up Marten
+
+Install the packages:
+
+```bash
+dotnet add package Marten
+dotnet add package Marten.AspNetCore
+```
+
+Configure in `Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMarten(options =>
+{
+    options.Connection(builder.Configuration.GetConnectionString("Marten")!);
+
+    // Register event types
+    options.Events.AddEventType<BlogPostCreated>();
+    options.Events.AddEventType<BlogPostPublished>();
+    options.Events.AddEventType<BlogPostTitleChanged>();
+    options.Events.AddEventType<CommentAdded>();
+
+    // Configure async projections
+    options.Projections.Add<BlogPostProjection>(ProjectionLifecycle.Async);
+});
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+var app = builder.Build();
+```
+
+### The Architecture
+
+Here's how everything fits together:
 
 ```mermaid
 flowchart TB
@@ -87,435 +147,496 @@ flowchart TB
 
     subgraph Commands["Command Side (Writes)"]
         CMD[Commands] --> CMDH[Command Handlers]
-        CMDH --> DB[(Database)]
+        CMDH --> MARTEN[Marten Session]
+        MARTEN --> EVENTS[(Event Store)]
+    end
+
+    subgraph Background["Async Processing"]
+        EVENTS -.->|Event Stream| DAEMON[Marten Async Daemon]
+        DAEMON --> PROJ[Projections]
+        PROJ --> READDB[(Read Models)]
     end
 
     subgraph Queries["Query Side (Reads)"]
-        QRY[Queries] --> CACHE{Cache Hit?}
-        CACHE -->|Yes| RETURN[Return Cached Data]
-        CACHE -->|No| QRYH[Query Handlers with Dapper]
-        QRYH --> DB
-        QRYH --> CACHESET[Update Cache]
+        QRY[Queries] --> QRYH[Query Handlers with Dapper]
+        QRYH --> READDB
     end
 
     UI -->|Commands| CMD
     UI -->|Queries| QRY
-    CMDH -.->|Invalidate| CACHE
 
     classDef commandStyle fill:none,stroke:#e63946,stroke-width:3px
     classDef queryStyle fill:none,stroke:#457b9d,stroke-width:3px
     classDef dataStyle fill:none,stroke:#2a9d8f,stroke-width:3px
 
-    class CMD,CMDH commandStyle
-    class QRY,QRYH,CACHE queryStyle
-    class DB dataStyle
+    class CMD,CMDH,MARTEN commandStyle
+    class QRY,QRYH queryStyle
+    class EVENTS,READDB dataStyle
 ```
 
-The key insight: commands write to the database and invalidate caches. Queries check the cache first, and only hit the database on cache misses. Simple, effective, and scales beautifully.
+Key points:
+- **Commands** append events to the event store
+- **Async daemon** processes events and updates read models
+- **Queries** read from the denormalised read models
+- No manual cache invalidation needed!
 
-## Why This Approach? (And Why Not)
+## Defining Events
 
-### When You Should Use It
-
-**Different performance characteristics**: Your reads vastly outnumber your writes? This pattern lets you cache aggressively on the read side whilst keeping writes simple.
-
-**Complex read requirements**: When displaying data requires joining multiple tables and computing aggregates, you can cache the expensive queries.
-
-**Need for speed**: IMemoryCache gives you microsecond response times. IDistributedCache lets you scale across servers.
-
-**Clear separation**: Commands and queries become explicit in your codebase. No more wondering if a method mutates state.
-
-### When You Shouldn't
-
-**Simple CRUD applications**: If you're building a basic contact form, this is overkill. Just use EF Core and be done with it.
-
-**Tight deadlines**: If you need to ship tomorrow, stick with what you know.
-
-**Small dataset**: If your entire dataset fits in memory and queries are already fast, don't add complexity.
-
-**Real-time requirements**: If you absolutely need every read to reflect the latest write instantly, caching adds complexity you might not want.
-
-## The Stack
-
-Here's what we'll use:
-
-- **MediatR** - for dispatching commands and queries
-- **Dapper** - for fast, raw SQL queries on the read side
-- **IMemoryCache or IDistributedCache** - for caching read results
-- **Entity Framework Core** (optional) - for writes if you want it
-- **PostgreSQL** - our database (but any relational DB works)
-
-### Architecture Overview
-
-```mermaid
-flowchart LR
-    subgraph Application["ASP.NET Core Application"]
-        API[API Controllers]
-        MED[MediatR]
-    end
-
-    subgraph Write["Write Side (Commands)"]
-        CMDH[Command Handlers]
-        EF[EF Core / Dapper]
-    end
-
-    subgraph Read["Read Side (Queries)"]
-        QRYH[Query Handlers]
-        DAPPER[Dapper + SQL]
-        CACHE[IMemoryCache]
-    end
-
-    subgraph Database["PostgreSQL"]
-        DB[(Database Tables)]
-    end
-
-    API --> MED
-    MED --> CMDH
-    MED --> QRYH
-
-    CMDH --> EF
-    EF --> DB
-
-    QRYH --> CACHE
-    CACHE -.->|Cache Miss| DAPPER
-    DAPPER --> DB
-
-    CMDH -.->|Invalidate| CACHE
-
-    classDef writeStyle fill:none,stroke:#e63946,stroke-width:3px
-    classDef readStyle fill:none,stroke:#457b9d,stroke-width:3px
-    classDef dbStyle fill:none,stroke:#2a9d8f,stroke-width:3px
-
-    class CMDH,EF writeStyle
-    class QRYH,DAPPER,CACHE readStyle
-    class DB dbStyle
-```
-
-## Setting Up MediatR
-
-First, install MediatR:
-
-```bash
-dotnet add package MediatR
-```
-
-Register it in your DI container:
+Events are immutable records that describe things that have happened:
 
 ```csharp
-// Program.cs
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-```
-
-## The Write Side (Commands)
-
-Let's start with commands. These are operations that change state.
-
-### Defining Commands
-
-Commands are just simple records that implement `IRequest`:
-
-```csharp
-public record CreateBlogPostCommand(
+// Always past tense - these things have happened
+public record BlogPostCreated(
+    Guid BlogPostId,
     string Title,
     string Content,
     string AuthorId,
-    List<int> CategoryIds
-) : IRequest<int>; // Returns the new blog post ID
+    DateTime CreatedAt
+);
 
-public record UpdateBlogPostCommand(
-    int Id,
-    string Title,
-    string Content
-) : IRequest;
+public record BlogPostPublished(
+    Guid BlogPostId,
+    DateTime PublishedAt
+);
 
-public record DeleteBlogPostCommand(int Id) : IRequest;
+public record BlogPostTitleChanged(
+    Guid BlogPostId,
+    string OldTitle,
+    string NewTitle,
+    DateTime ChangedAt
+);
+
+public record CommentAdded(
+    Guid BlogPostId,
+    Guid CommentId,
+    string Author,
+    string Content,
+    DateTime CreatedAt
+);
 ```
 
-### Command Handlers
+Events should be:
+- **Immutable** - once written, never changed
+- **Past tense** - they describe what happened
+- **Rich in business meaning** - "BlogPostTitleChanged" not "PropertyUpdated"
 
-Handlers process commands. They can use EF Core for convenience or Dapper for performance:
+## Creating Aggregates
+
+Aggregates are the write model. They validate business rules and produce events:
 
 ```csharp
-public class CreateBlogPostHandler : IRequestHandler<CreateBlogPostCommand, int>
+public class BlogPost
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IMemoryCache _cache;
+    // Marten requires an Id property
+    public Guid Id { get; set; }
 
-    public CreateBlogPostHandler(ApplicationDbContext context, IMemoryCache cache)
+    // Current state (private setters)
+    public string Title { get; private set; } = string.Empty;
+    public string Content { get; private set; } = string.Empty;
+    public string AuthorId { get; private set; } = string.Empty;
+    public bool IsPublished { get; private set; }
+    public DateTime? PublishedDate { get; private set; }
+    private readonly List<Comment> _comments = new();
+    public IReadOnlyList<Comment> Comments => _comments.AsReadOnly();
+
+    // Apply methods - called by Marten when replaying events
+    public void Apply(BlogPostCreated e)
     {
-        _context = context;
-        _cache = cache;
+        Id = e.BlogPostId;
+        Title = e.Title;
+        Content = e.Content;
+        AuthorId = e.AuthorId;
     }
 
-    public async Task<int> Handle(CreateBlogPostCommand request, CancellationToken cancellationToken)
+    public void Apply(BlogPostPublished e)
     {
-        // Validate
-        if (string.IsNullOrWhiteSpace(request.Title))
+        IsPublished = true;
+        PublishedDate = e.PublishedAt;
+    }
+
+    public void Apply(BlogPostTitleChanged e)
+    {
+        Title = e.NewTitle;
+    }
+
+    public void Apply(CommentAdded e)
+    {
+        _comments.Add(new Comment
+        {
+            Id = e.CommentId,
+            Author = e.Author,
+            Content = e.Content,
+            CreatedAt = e.CreatedAt
+        });
+    }
+
+    // Business logic methods that produce events
+    public static BlogPostCreated Create(string title, string content, string authorId)
+    {
+        if (string.IsNullOrWhiteSpace(title))
             throw new ArgumentException("Title is required");
 
-        // Create entity
-        var blogPost = new BlogPost
-        {
-            Title = request.Title,
-            Content = request.Content,
-            AuthorId = request.AuthorId,
-            PublishedDate = DateTime.UtcNow
-        };
-
-        _context.BlogPosts.Add(blogPost);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Invalidate relevant caches
-        _cache.Remove("recent-posts");
-        _cache.Remove($"author-posts-{request.AuthorId}");
-
-        return blogPost.Id;
+        return new BlogPostCreated(
+            Guid.NewGuid(),
+            title,
+            content,
+            authorId,
+            DateTime.UtcNow
+        );
     }
-}
-```
 
-Notice how the handler invalidates relevant cache entries after writing? This ensures queries will get fresh data.
-
-### Alternative: Using Dapper for Writes
-
-If you prefer raw SQL even for writes:
-
-```csharp
-public class CreateBlogPostHandler : IRequestHandler<CreateBlogPostCommand, int>
-{
-    private readonly string _connectionString;
-    private readonly IMemoryCache _cache;
-
-    public CreateBlogPostHandler(IConfiguration config, IMemoryCache cache)
+    public BlogPostPublished Publish()
     {
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
-        _cache = cache;
+        if (IsPublished)
+            throw new InvalidOperationException("Post is already published");
+
+        return new BlogPostPublished(Id, DateTime.UtcNow);
     }
 
-    public async Task<int> Handle(CreateBlogPostCommand request, CancellationToken cancellationToken)
+    public BlogPostTitleChanged ChangeTitle(string newTitle)
     {
-        using var connection = new NpgsqlConnection(_connectionString);
+        if (string.IsNullOrWhiteSpace(newTitle))
+            throw new ArgumentException("Title cannot be empty");
 
-        const string sql = @"
-            INSERT INTO blog_posts (title, content, author_id, published_date)
-            VALUES (@Title, @Content, @AuthorId, @PublishedDate)
-            RETURNING id";
+        if (newTitle == Title)
+            throw new InvalidOperationException("New title is the same as current title");
 
-        var id = await connection.QuerySingleAsync<int>(sql, new
-        {
-            request.Title,
-            request.Content,
-            request.AuthorId,
-            PublishedDate = DateTime.UtcNow
-        });
-
-        // Invalidate caches
-        _cache.Remove("recent-posts");
-        _cache.Remove($"author-posts-{request.AuthorId}");
-
-        return id;
+        return new BlogPostTitleChanged(Id, Title, newTitle, DateTime.UtcNow);
     }
 }
-```
 
-## The Read Side (Queries)
-
-Now the fun part - fast, cached queries with Dapper.
-
-### Installing Dapper
-
-```bash
-dotnet add package Dapper
-dotnet add package Npgsql
-```
-
-### Defining Queries
-
-Queries are also simple records:
-
-```csharp
-public record GetRecentBlogPostsQuery(int Count = 10) : IRequest<List<BlogPostListItemDto>>;
-
-public record GetBlogPostByIdQuery(int Id) : IRequest<BlogPostDetailDto?>;
-
-public record GetBlogPostsByAuthorQuery(string AuthorId) : IRequest<List<BlogPostListItemDto>>;
-```
-
-### Read Models (DTOs)
-
-These are completely denormalized and optimized for display:
-
-```csharp
-public class BlogPostListItemDto
+public class Comment
 {
-    public int Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string AuthorName { get; set; } = string.Empty;
-    public DateTime PublishedDate { get; set; }
-    public int CommentCount { get; set; }
-    public string[] CategoryNames { get; set; } = Array.Empty<string>();
-}
-
-public class BlogPostDetailDto
-{
-    public int Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string Content { get; set; } = string.Empty;
-    public string AuthorId { get; set; } = string.Empty;
-    public string AuthorName { get; set; } = string.Empty;
-    public DateTime PublishedDate { get; set; }
-    public string[] CategoryNames { get; set; } = Array.Empty<string>();
-    public List<CommentDto> Comments { get; set; } = new();
-}
-
-public class CommentDto
-{
-    public int Id { get; set; }
+    public Guid Id { get; set; }
     public string Author { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
 ```
 
-### Query Handlers with Caching
+The pattern:
+1. Business methods validate and return events
+2. Apply methods update internal state
+3. Marten handles event persistence and replay
 
-Here's where Dapper and caching shine:
+## Command Handlers (Write Side)
+
+Commands are handled by appending events to streams:
 
 ```csharp
+// Define commands
+public record CreateBlogPostCommand(
+    string Title,
+    string Content,
+    string AuthorId
+) : IRequest<Guid>;
+
+public record PublishBlogPostCommand(Guid BlogPostId) : IRequest;
+
+public record ChangeBlogPostTitleCommand(
+    Guid BlogPostId,
+    string NewTitle
+) : IRequest;
+
+// Handler for creating a blog post
+public class CreateBlogPostHandler : IRequestHandler<CreateBlogPostCommand, Guid>
+{
+    private readonly IDocumentSession _session;
+
+    public CreateBlogPostHandler(IDocumentSession session)
+    {
+        _session = session;
+    }
+
+    public async Task<Guid> Handle(CreateBlogPostCommand request, CancellationToken cancellationToken)
+    {
+        // Create the event
+        var created = BlogPost.Create(
+            request.Title,
+            request.Content,
+            request.AuthorId
+        );
+
+        // Start a new event stream
+        _session.Events.StartStream<BlogPost>(created.BlogPostId, created);
+
+        await _session.SaveChangesAsync(cancellationToken);
+
+        return created.BlogPostId;
+    }
+}
+
+// Handler for publishing
+public class PublishBlogPostHandler : IRequestHandler<PublishBlogPostCommand>
+{
+    private readonly IDocumentSession _session;
+
+    public PublishBlogPostHandler(IDocumentSession session)
+    {
+        _session = session;
+    }
+
+    public async Task Handle(PublishBlogPostCommand request, CancellationToken cancellationToken)
+    {
+        // Load the aggregate by replaying its events
+        var blogPost = await _session.Events.AggregateStreamAsync<BlogPost>(
+            request.BlogPostId,
+            token: cancellationToken
+        );
+
+        if (blogPost == null)
+            throw new InvalidOperationException($"Blog post {request.BlogPostId} not found");
+
+        // Business logic produces new event
+        var published = blogPost.Publish();
+
+        // Append event to the stream
+        _session.Events.Append(request.BlogPostId, published);
+
+        await _session.SaveChangesAsync(cancellationToken);
+    }
+}
+
+// Handler for changing title
+public class ChangeBlogPostTitleHandler : IRequestHandler<ChangeBlogPostTitleCommand>
+{
+    private readonly IDocumentSession _session;
+
+    public ChangeBlogPostTitleHandler(IDocumentSession session)
+    {
+        _session = session;
+    }
+
+    public async Task Handle(ChangeBlogPostTitleCommand request, CancellationToken cancellationToken)
+    {
+        var blogPost = await _session.Events.AggregateStreamAsync<BlogPost>(
+            request.BlogPostId,
+            token: cancellationToken
+        );
+
+        if (blogPost == null)
+            throw new InvalidOperationException($"Blog post {request.BlogPostId} not found");
+
+        var titleChanged = blogPost.ChangeTitle(request.NewTitle);
+
+        _session.Events.Append(request.BlogPostId, titleChanged);
+
+        await _session.SaveChangesAsync(cancellationToken);
+    }
+}
+```
+
+The flow:
+1. Load aggregate by replaying events (or create new)
+2. Call business method (validates and returns event)
+3. Append event to stream
+4. Save changes
+
+Marten handles the rest - storing events, triggering projections, etc.
+
+## Read Models and Projections
+
+Projections turn events into denormalised read models:
+
+```csharp
+// Read model - optimised for queries
+public class BlogPostReadModel
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string AuthorId { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public bool IsPublished { get; set; }
+    public int CommentCount { get; set; }
+}
+
+// Projection - tells Marten how to build read models from events
+public class BlogPostProjection : MultiStreamProjection<BlogPostReadModel, Guid>
+{
+    public BlogPostProjection()
+    {
+        // Identity tells Marten which stream each event belongs to
+        Identity<BlogPostCreated>(x => x.BlogPostId);
+        Identity<BlogPostPublished>(x => x.BlogPostId);
+        Identity<BlogPostTitleChanged>(x => x.BlogPostId);
+        Identity<CommentAdded>(x => x.BlogPostId);
+    }
+
+    // Apply methods - Marten calls these to update read models
+    public void Apply(BlogPostReadModel view, BlogPostCreated e)
+    {
+        view.Id = e.BlogPostId;
+        view.Title = e.Title;
+        view.Content = e.Content;
+        view.AuthorId = e.AuthorId;
+        view.CreatedAt = e.CreatedAt;
+        view.IsPublished = false;
+    }
+
+    public void Apply(BlogPostReadModel view, BlogPostPublished e)
+    {
+        view.IsPublished = true;
+        view.PublishedAt = e.PublishedAt;
+    }
+
+    public void Apply(BlogPostReadModel view, BlogPostTitleChanged e)
+    {
+        view.Title = e.NewTitle;
+    }
+
+    public void Apply(BlogPostReadModel view, CommentAdded e)
+    {
+        view.CommentCount++;
+    }
+}
+```
+
+Marten's async daemon processes events in the background and keeps read models up to date. You don't write any cache invalidation code - it's automatic.
+
+## Query Side with Dapper
+
+Now we query the read models using Dapper for maximum performance:
+
+```csharp
+// Define queries
+public record GetRecentBlogPostsQuery(
+    int Count,
+    bool PublishedOnly
+) : IRequest<List<BlogPostListItemDto>>;
+
+public record GetBlogPostByIdQuery(Guid Id) : IRequest<BlogPostDetailDto?>;
+
+// DTOs for display
+public class BlogPostListItemDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public int CommentCount { get; set; }
+    public bool IsPublished { get; set; }
+}
+
+public class BlogPostDetailDto
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string AuthorId { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public bool IsPublished { get; set; }
+    public List<CommentDto> Comments { get; set; } = new();
+}
+
+public class CommentDto
+{
+    public Guid Id { get; set; }
+    public string Author { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
+// Query handlers
 public class GetRecentBlogPostsHandler : IRequestHandler<GetRecentBlogPostsQuery, List<BlogPostListItemDto>>
 {
     private readonly string _connectionString;
-    private readonly IMemoryCache _cache;
 
-    public GetRecentBlogPostsHandler(IConfiguration config, IMemoryCache cache)
+    public GetRecentBlogPostsHandler(IConfiguration config)
     {
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
-        _cache = cache;
+        _connectionString = config.GetConnectionString("Marten")!;
     }
 
     public async Task<List<BlogPostListItemDto>> Handle(
         GetRecentBlogPostsQuery request,
         CancellationToken cancellationToken)
     {
-        var cacheKey = $"recent-posts-{request.Count}";
+        await using var connection = new NpgsqlConnection(_connectionString);
 
-        // Try cache first
-        if (_cache.TryGetValue<List<BlogPostListItemDto>>(cacheKey, out var cachedPosts))
-        {
-            return cachedPosts!;
-        }
-
-        // Cache miss - query database
-        using var connection = new NpgsqlConnection(_connectionString);
-
+        // Query the Marten-generated read model table
         const string sql = @"
             SELECT
                 bp.id AS Id,
                 bp.title AS Title,
                 u.name AS AuthorName,
-                bp.published_date AS PublishedDate,
-                COUNT(DISTINCT c.id) AS CommentCount,
-                ARRAY_AGG(DISTINCT cat.name) AS CategoryNames
-            FROM blog_posts bp
-            INNER JOIN users u ON bp.author_id = u.id
-            LEFT JOIN comments c ON c.blog_post_id = bp.id
-            LEFT JOIN blog_post_categories bpc ON bpc.blog_post_id = bp.id
-            LEFT JOIN categories cat ON cat.id = bpc.category_id
-            GROUP BY bp.id, bp.title, u.name, bp.published_date
-            ORDER BY bp.published_date DESC
+                bp.created_at AS CreatedAt,
+                bp.published_at AS PublishedAt,
+                bp.comment_count AS CommentCount,
+                bp.is_published AS IsPublished
+            FROM blog_post_read_models bp
+            LEFT JOIN users u ON bp.author_id = u.id
+            WHERE (@PublishedOnly = false OR bp.is_published = true)
+            ORDER BY
+                CASE WHEN bp.is_published THEN bp.published_at
+                     ELSE bp.created_at
+                END DESC
             LIMIT @Count";
 
-        var posts = (await connection.QueryAsync<BlogPostListItemDto>(sql, new { request.Count }))
-            .ToList();
+        var results = await connection.QueryAsync<BlogPostListItemDto>(
+            sql,
+            new
+            {
+                PublishedOnly = request.PublishedOnly,
+                Count = request.Count
+            });
 
-        // Cache for 5 minutes
-        _cache.Set(cacheKey, posts, TimeSpan.FromMinutes(5));
-
-        return posts;
+        return results.ToList();
     }
 }
-```
 
-See how clean that is? Check cache, if miss then query with Dapper, cache the result. Fast, simple, effective.
-
-### Query Handler for Single Item
-
-```csharp
 public class GetBlogPostByIdHandler : IRequestHandler<GetBlogPostByIdQuery, BlogPostDetailDto?>
 {
     private readonly string _connectionString;
-    private readonly IMemoryCache _cache;
 
-    public GetBlogPostByIdHandler(IConfiguration config, IMemoryCache cache)
+    public GetBlogPostByIdHandler(IConfiguration config)
     {
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
-        _cache = cache;
+        _connectionString = config.GetConnectionString("Marten")!;
     }
 
     public async Task<BlogPostDetailDto?> Handle(
         GetBlogPostByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var cacheKey = $"blog-post-{request.Id}";
+        await using var connection = new NpgsqlConnection(_connectionString);
 
-        if (_cache.TryGetValue<BlogPostDetailDto>(cacheKey, out var cachedPost))
-        {
-            return cachedPost;
-        }
-
-        using var connection = new NpgsqlConnection(_connectionString);
-
-        // Get the post
-        const string postSql = @"
+        const string sql = @"
             SELECT
                 bp.id AS Id,
                 bp.title AS Title,
                 bp.content AS Content,
                 bp.author_id AS AuthorId,
                 u.name AS AuthorName,
-                bp.published_date AS PublishedDate,
-                ARRAY_AGG(DISTINCT cat.name) AS CategoryNames
-            FROM blog_posts bp
-            INNER JOIN users u ON bp.author_id = u.id
-            LEFT JOIN blog_post_categories bpc ON bpc.blog_post_id = bp.id
-            LEFT JOIN categories cat ON cat.id = bpc.category_id
-            WHERE bp.id = @Id
-            GROUP BY bp.id, bp.title, bp.content, bp.author_id, u.name, bp.published_date";
+                bp.created_at AS CreatedAt,
+                bp.published_at AS PublishedAt,
+                bp.is_published AS IsPublished
+            FROM blog_post_read_models bp
+            LEFT JOIN users u ON bp.author_id = u.id
+            WHERE bp.id = @Id";
 
         var post = await connection.QuerySingleOrDefaultAsync<BlogPostDetailDto>(
-            postSql,
+            sql,
             new { request.Id });
 
         if (post == null)
             return null;
 
-        // Get comments separately (could also use multi-mapping)
-        const string commentsSql = @"
-            SELECT
-                id AS Id,
-                author AS Author,
-                content AS Content,
-                created_at AS CreatedAt
-            FROM comments
-            WHERE blog_post_id = @Id
-            ORDER BY created_at ASC";
-
-        post.Comments = (await connection.QueryAsync<CommentDto>(
-            commentsSql,
-            new { request.Id })).ToList();
-
-        // Cache for 10 minutes
-        _cache.Set(cacheKey, post, TimeSpan.FromMinutes(10));
+        // Get comments from event stream if needed
+        // Or maintain a separate comment read model
 
         return post;
     }
 }
 ```
 
-## Using in Controllers
+No caching code. No invalidation logic. Marten keeps the read models in sync automatically.
 
-Now your controllers become beautifully simple:
+## Controllers
+
+With MediatR, controllers are beautifully simple:
 
 ```csharp
 [ApiController]
@@ -531,15 +652,16 @@ public class BlogPostsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<BlogPostListItemDto>>> GetRecent(
-        [FromQuery] int count = 10)
+        [FromQuery] int count = 10,
+        [FromQuery] bool publishedOnly = true)
     {
-        var query = new GetRecentBlogPostsQuery(count);
+        var query = new GetRecentBlogPostsQuery(count, publishedOnly);
         var results = await _mediator.Send(query);
         return Ok(results);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<BlogPostDetailDto>> GetById(int id)
+    public async Task<ActionResult<BlogPostDetailDto>> GetById(Guid id)
     {
         var query = new GetBlogPostByIdQuery(id);
         var result = await _mediator.Send(query);
@@ -551,225 +673,36 @@ public class BlogPostsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<int>> Create([FromBody] CreateBlogPostCommand command)
+    public async Task<ActionResult<Guid>> Create([FromBody] CreateBlogPostCommand command)
     {
         var postId = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetById), new { id = postId }, postId);
     }
 
-    [HttpPut("{id}")]
-    public async Task<ActionResult> Update(int id, [FromBody] UpdateBlogPostCommand command)
+    [HttpPost("{id}/publish")]
+    public async Task<ActionResult> Publish(Guid id)
     {
-        if (id != command.Id)
+        await _mediator.Send(new PublishBlogPostCommand(id));
+        return NoContent();
+    }
+
+    [HttpPut("{id}/title")]
+    public async Task<ActionResult> ChangeTitle(
+        Guid id,
+        [FromBody] ChangeBlogPostTitleCommand command)
+    {
+        if (id != command.BlogPostId)
             return BadRequest();
 
         await _mediator.Send(command);
         return NoContent();
     }
-
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> Delete(int id)
-    {
-        await _mediator.Send(new DeleteBlogPostCommand(id));
-        return NoContent();
-    }
 }
 ```
 
-Clean as a whistle. The controller just coordinates - it doesn't care about caching, database access, or business logic.
+## The Complete Flow
 
-## Using IDistributedCache for Scale
-
-If you're running multiple servers, use IDistributedCache instead:
-
-```bash
-dotnet add package Microsoft.Extensions.Caching.StackExchangeRedis
-```
-
-Configure it:
-
-```csharp
-// Program.cs
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = builder.Configuration.GetConnectionString("Redis");
-    options.InstanceName = "BlogApp:";
-});
-```
-
-Update your handlers to use IDistributedCache:
-
-```csharp
-public class GetRecentBlogPostsHandler : IRequestHandler<GetRecentBlogPostsQuery, List<BlogPostListItemDto>>
-{
-    private readonly string _connectionString;
-    private readonly IDistributedCache _cache;
-
-    public GetRecentBlogPostsHandler(IConfiguration config, IDistributedCache cache)
-    {
-        _connectionString = config.GetConnectionString("DefaultConnection")!;
-        _cache = cache;
-    }
-
-    public async Task<List<BlogPostListItemDto>> Handle(
-        GetRecentBlogPostsQuery request,
-        CancellationToken cancellationToken)
-    {
-        var cacheKey = $"recent-posts-{request.Count}";
-
-        // Try cache first
-        var cachedData = await _cache.GetStringAsync(cacheKey, cancellationToken);
-        if (cachedData != null)
-        {
-            return JsonSerializer.Deserialize<List<BlogPostListItemDto>>(cachedData)!;
-        }
-
-        // Cache miss - query database
-        using var connection = new NpgsqlConnection(_connectionString);
-
-        const string sql = @"
-            SELECT
-                bp.id AS Id,
-                bp.title AS Title,
-                u.name AS AuthorName,
-                bp.published_date AS PublishedDate,
-                COUNT(DISTINCT c.id) AS CommentCount,
-                ARRAY_AGG(DISTINCT cat.name) AS CategoryNames
-            FROM blog_posts bp
-            INNER JOIN users u ON bp.author_id = u.id
-            LEFT JOIN comments c ON c.blog_post_id = bp.id
-            LEFT JOIN blog_post_categories bpc ON bpc.blog_post_id = bp.id
-            LEFT JOIN categories cat ON cat.id = bpc.category_id
-            GROUP BY bp.id, bp.title, u.name, bp.published_date
-            ORDER BY bp.published_date DESC
-            LIMIT @Count";
-
-        var posts = (await connection.QueryAsync<BlogPostListItemDto>(sql, new { request.Count }))
-            .ToList();
-
-        // Cache for 5 minutes
-        var options = new DistributedCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-        };
-
-        await _cache.SetStringAsync(
-            cacheKey,
-            JsonSerializer.Serialize(posts),
-            options,
-            cancellationToken);
-
-        return posts;
-    }
-}
-```
-
-Now your cache is shared across all servers. Perfect for scaled-out deployments.
-
-## Cache Invalidation Strategies
-
-The tricky part of caching is knowing when to invalidate. Here are some approaches:
-
-### 1. Explicit Invalidation (What We've Been Doing)
-
-Handlers invalidate specific cache keys when data changes:
-
-```csharp
-public async Task Handle(UpdateBlogPostCommand request, CancellationToken cancellationToken)
-{
-    // Update the database
-    // ...
-
-    // Invalidate affected caches
-    _cache.Remove($"blog-post-{request.Id}");
-    _cache.Remove("recent-posts");
-    _cache.Remove($"author-posts-{authorId}");
-}
-```
-
-**Pros**: Simple, predictable
-**Cons**: Easy to miss a cache key, tight coupling
-
-### 2. Tag-Based Invalidation
-
-Create a wrapper that tracks tags:
-
-```csharp
-public class TaggedCache
-{
-    private readonly IMemoryCache _cache;
-
-    public void Set<T>(string key, T value, TimeSpan expiration, params string[] tags)
-    {
-        _cache.Set(key, value, expiration);
-
-        foreach (var tag in tags)
-        {
-            var taggedKeys = _cache.GetOrCreate($"tag:{tag}", _ => new HashSet<string>());
-            taggedKeys!.Add(key);
-        }
-    }
-
-    public void InvalidateTag(string tag)
-    {
-        if (_cache.TryGetValue($"tag:{tag}", out HashSet<string>? keys) && keys != null)
-        {
-            foreach (var key in keys)
-            {
-                _cache.Remove(key);
-            }
-            _cache.Remove($"tag:{tag}");
-        }
-    }
-}
-
-// Usage
-_taggedCache.Set("blog-post-123", post, TimeSpan.FromMinutes(10), "blog-posts", "author-456");
-
-// Invalidate all posts by an author
-_taggedCache.InvalidateTag("author-456");
-```
-
-### 3. Time-Based Expiration
-
-Sometimes it's simpler to just let caches expire:
-
-```csharp
-// Cache for 5 minutes, accept potential stale data
-_cache.Set(cacheKey, posts, TimeSpan.FromMinutes(5));
-```
-
-This works well for data that changes infrequently and where staleness is acceptable.
-
-## Complete Working Example
-
-Let me tie it all together:
-
-```csharp
-// Program.cs
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services
-builder.Services.AddControllers();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddMemoryCache();
-// Or for distributed: builder.Services.AddStackExchangeRedisCache(...)
-
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-
-var app = builder.Build();
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();
-```
-
-The complete flow:
+Here's how it all works together:
 
 ```mermaid
 sequenceDiagram
@@ -777,136 +710,266 @@ sequenceDiagram
     participant Controller
     participant MediatR
     participant CommandHandler
+    participant Marten
+    participant EventStore
+    participant AsyncDaemon
+    participant ReadDB
     participant QueryHandler
-    participant Cache
-    participant Database
 
-    Note over Client,Database: Write Operation (Command)
+    Note over Client,ReadDB: Write Operation
     Client->>Controller: POST /api/blogposts
     Controller->>MediatR: Send CreateBlogPostCommand
     MediatR->>CommandHandler: Handle command
-    CommandHandler->>Database: INSERT INTO blog_posts
-    Database-->>CommandHandler: Success
-    CommandHandler->>Cache: Remove("recent-posts")
+    CommandHandler->>CommandHandler: Validate & create event
+    CommandHandler->>Marten: StartStream(event)
+    Marten->>EventStore: Append event
+    EventStore-->>Marten: Success
+    Marten-->>CommandHandler: Success
     CommandHandler-->>Controller: Return ID
     Controller-->>Client: 201 Created
 
-    Note over Client,Database: Read Operation (Query)
-    Client->>Controller: GET /api/blogposts
-    Controller->>MediatR: Send GetRecentBlogPostsQuery
-    MediatR->>QueryHandler: Handle query
-    QueryHandler->>Cache: TryGetValue("recent-posts")
-    Cache-->>QueryHandler: Cache miss
+    Note over AsyncDaemon,ReadDB: Background Processing
+    EventStore->>AsyncDaemon: New event available
+    AsyncDaemon->>AsyncDaemon: Apply projection
+    AsyncDaemon->>ReadDB: Update read model
+    ReadDB-->>AsyncDaemon: Updated
 
-    QueryHandler->>Database: SELECT with Dapper
-    Database-->>QueryHandler: Return results
-    QueryHandler->>Cache: Set("recent-posts", data, 5min)
-    QueryHandler-->>Controller: Return data
-    Controller-->>Client: 200 OK with data
-
-    Note over Client,Database: Subsequent Read (Cache Hit)
+    Note over Client,ReadDB: Read Operation
     Client->>Controller: GET /api/blogposts
-    Controller->>MediatR: Send GetRecentBlogPostsQuery
+    Controller->>MediatR: Send Query
     MediatR->>QueryHandler: Handle query
-    QueryHandler->>Cache: TryGetValue("recent-posts")
-    Cache-->>QueryHandler: Cache hit - return data
-    QueryHandler-->>Controller: Return cached data
-    Controller-->>Client: 200 OK with data
+    QueryHandler->>ReadDB: SELECT with Dapper
+    ReadDB-->>QueryHandler: Return data
+    QueryHandler-->>Controller: Return DTOs
+    Controller-->>Client: 200 OK
 ```
 
-## When to Use Entity Framework Instead
+## Eventual Consistency
 
-Look, I've used Dapper for the queries in this example, but Entity Framework has its place:
+One thing to understand: with async projections, there's a small delay between writing an event and the read model being updated. Usually milliseconds, but it's there.
 
-**Simple applications**: If you're building a basic CRUD app without performance concerns, EF is excellent. Change tracking, migrations, LINQ support - it's all there.
-
-**Complex writes**: If your command side involves intricate relationships and you're not fighting performance issues, EF's change tracking saves you pain.
-
-**Team familiarity**: If your team knows EF inside out, there's value in that. Don't change tools just for the sake of it.
-
-I've written extensively about using EF for blog posts [here](/blog/addingentityframeworkforblogpostspt1) and [here](/blog/addingentityframeworkforblogpostspt2). It works well for many use cases. This article is about showing you an alternative that can scale further.
-
-## Trade-Offs and Gotchas
-
-Let's be honest about the downsides:
-
-### Cache Invalidation
-
-Phil Karlton famously said "There are only two hard things in Computer Science: cache invalidation and naming things." He wasn't wrong. Getting cache invalidation right is tricky. Miss a cache key and you serve stale data. Invalidate too aggressively and you lose the performance benefits.
-
-### Cache Consistency
-
-With IMemoryCache, if you scale horizontally, each server has its own cache. Update data on server A, but server B still has the old cached value. Use IDistributedCache to solve this, but that adds complexity and a Redis dependency.
-
-### Increased Complexity
-
-You now have two paths for data access instead of one. That's more code to maintain, more places for bugs to hide.
-
-### Memory Pressure
-
-IMemoryCache uses your application's memory. Cache too much and you'll trigger garbage collections or even out-of-memory errors. Monitor your cache sizes.
-
-## Best Practices
-
-From experience, here's what works:
-
-**1. Start with IMemoryCache**: Only move to IDistributedCache when you actually scale horizontally. Don't add Redis until you need it.
-
-**2. Cache at the right level**: Cache query results, not individual entities. It's more effective and easier to invalidate.
-
-**3. Use sliding expiration for hot data**: Data accessed frequently stays cached longer automatically.
+If you need immediate consistency for a specific operation, use inline projections:
 
 ```csharp
-_cache.Set(key, value, new MemoryCacheEntryOptions
+builder.Services.AddMarten(options =>
 {
-    SlidingExpiration = TimeSpan.FromMinutes(10),
-    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
+    // This projection runs synchronously
+    options.Projections.Add<CriticalDataProjection>(ProjectionLifecycle.Inline);
+
+    // This projection runs async
+    options.Projections.Add<BlogPostProjection>(ProjectionLifecycle.Async);
 });
 ```
 
-**4. Monitor cache hit rates**: Add logging to track cache effectiveness:
+Or query the event stream directly for read-after-write scenarios:
 
 ```csharp
-var cacheKey = $"recent-posts-{request.Count}";
-if (_cache.TryGetValue<List<BlogPostListItemDto>>(cacheKey, out var cachedPosts))
-{
-    _logger.LogDebug("Cache hit for {CacheKey}", cacheKey);
-    return cachedPosts!;
-}
-
-_logger.LogDebug("Cache miss for {CacheKey}", cacheKey);
-// Query database...
+var blogPost = await _session.Events.AggregateStreamAsync<BlogPost>(id);
 ```
 
-**5. Use cache keys consistently**: Create a helper class for cache keys to avoid typos:
+## Part 2: The Half-Assed Approach (Cache Invalidation)
+
+Right, so you've read about proper Event Sourcing and you're thinking "that's a lot of work". Fair enough. Here's the "informal CQRS" approach that most teams actually use.
+
+### The Setup
+
+- Commands write to database (using EF or Dapper)
+- Queries read from IMemoryCache or IDistributedCache
+- Commands invalidate relevant cache entries after writing
+- No event sourcing, no projections, no async daemons
+
+It's not true CQRS. You don't get the audit trail, temporal queries, or automatic projections. But you do get performance with less complexity.
+
+### Quick Example
 
 ```csharp
-public static class CacheKeys
+// Command handler
+public class CreateBlogPostHandler : IRequestHandler<CreateBlogPostCommand, int>
 {
-    public static string RecentPosts(int count) => $"recent-posts-{count}";
-    public static string BlogPost(int id) => $"blog-post-{id}";
-    public static string AuthorPosts(string authorId) => $"author-posts-{authorId}";
+    private readonly ApplicationDbContext _context;
+    private readonly IMemoryCache _cache;
+
+    public async Task<int> Handle(CreateBlogPostCommand request, CancellationToken cancellationToken)
+    {
+        var blogPost = new BlogPost
+        {
+            Title = request.Title,
+            Content = request.Content,
+            AuthorId = request.AuthorId,
+            PublishedDate = DateTime.UtcNow
+        };
+
+        _context.BlogPosts.Add(blogPost);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Manual cache invalidation - this is the tedious bit
+        _cache.Remove("recent-posts");
+        _cache.Remove($"author-posts-{request.AuthorId}");
+        _cache.Remove($"post-{blogPost.Id}");
+
+        return blogPost.Id;
+    }
+}
+
+// Query handler
+public class GetRecentPostsHandler : IRequestHandler<GetRecentPostsQuery, List<BlogPostDto>>
+{
+    private readonly string _connectionString;
+    private readonly IMemoryCache _cache;
+
+    public async Task<List<BlogPostDto>> Handle(GetRecentPostsQuery request, CancellationToken cancellationToken)
+    {
+        var cacheKey = "recent-posts";
+
+        if (_cache.TryGetValue<List<BlogPostDto>>(cacheKey, out var cached))
+            return cached!;
+
+        // Cache miss - query with Dapper
+        using var connection = new NpgsqlConnection(_connectionString);
+        var posts = (await connection.QueryAsync<BlogPostDto>(
+            "SELECT id, title, author_name, published_date FROM blog_posts ORDER BY published_date DESC LIMIT 10"
+        )).ToList();
+
+        _cache.Set(cacheKey, posts, TimeSpan.FromMinutes(5));
+        return posts;
+    }
 }
 ```
+
+### When This Works
+
+- Simple applications without complex audit requirements
+- You need performance but can't justify Event Sourcing complexity
+- Small team that doesn't want to learn Event Sourcing
+- Staleness of a few seconds is acceptable
+
+### The Problems
+
+**Cache invalidation is hard**: Miss one cache key and you serve stale data. Every command needs to know which caches to invalidate.
+
+**No audit trail**: You only have current state. Can't prove what happened or when.
+
+**No temporal queries**: Can't ask "what did the system look like yesterday?"
+
+**Scaling**: With IMemoryCache, each server has its own cache. Update on server A, server B still has stale data. IDistributedCache solves this but adds Redis.
+
+**Tight coupling**: Commands are coupled to cache keys. Change a query, might break a command.
+
+It works, but you're trading simplicity for lost capabilities. Sometimes that's the right trade-off. Often it isn't.
+
+## Part 3: The Worst Idea - Event Sourcing + Manual Cache Invalidation
+
+Now for the truly terrible idea: using Event Sourcing but also trying to manually invalidate caches.
+
+### Why People Try This
+
+They want Event Sourcing's audit trail and temporal queries, but they're worried about eventual consistency. So they think "I'll just add cache invalidation to make reads faster and more consistent!"
+
+Don't do this.
+
+### Why It's Terrible
+
+**You've defeated the purpose**: Event Sourcing already builds read models through projections. Adding manual cache invalidation means you're bypassing that system.
+
+**Double complexity**: You now have two systems keeping read models in sync - Marten's projections AND your manual cache invalidation. They will conflict.
+
+**Inconsistent state**: Marten's async daemon updates the database. Your cache invalidation runs immediately. They're out of sync. Which is correct?
+
+**Lost benefits**: Event Sourcing's whole point is that projections are derived from events. Manual cache invalidation breaks that model.
+
+**Debugging nightmare**: Is the stale data because projections haven't run? Or because you forgot to invalidate a cache key? Or because the cache invalidated but the projection hadn't run yet? Good luck.
+
+### The Right Approach
+
+If you need Event Sourcing:
+- Use Marten's projections (async or inline)
+- Query the read models directly
+- Accept eventual consistency (it's usually fine)
+- Use inline projections if you really need immediate consistency
+
+If you can't accept eventual consistency:
+- Don't use Event Sourcing
+- Use the cache-based approach from Part 2
+- Or just use traditional CRUD with EF Core
+
+Don't try to do both. You'll end up with the complexity of Event Sourcing plus the fragility of manual cache invalidation.
+
+### Example of What Not To Do
+
+```csharp
+// Don't do this!
+public class PublishBlogPostHandler : IRequestHandler<PublishBlogPostCommand>
+{
+    private readonly IDocumentSession _session;
+    private readonly IMemoryCache _cache;  // ← BAD
+
+    public async Task Handle(PublishBlogPostCommand request, CancellationToken cancellationToken)
+    {
+        var blogPost = await _session.Events.AggregateStreamAsync<BlogPost>(request.BlogPostId);
+        var published = blogPost.Publish();
+
+        _session.Events.Append(request.BlogPostId, published);
+        await _session.SaveChangesAsync(cancellationToken);
+
+        // Manually invalidating cache while using Event Sourcing ← TERRIBLE IDEA
+        _cache.Remove($"post-{request.BlogPostId}");
+        _cache.Remove("recent-posts");
+
+        // Now you have:
+        // 1. Event in event store
+        // 2. Cache invalidated
+        // 3. But projection hasn't run yet!
+        // Queries will hit database before projection completes = stale data
+    }
+}
+```
+
+Just use Marten's projections. They're designed for this.
 
 ## Conclusion
 
-This is practical CQRS - not the full "enterprise pattern with Event Sourcing" that most articles push. What you get:
+Three approaches, three use cases:
 
-- **Clear separation** between reads and writes
-- **Fast queries** with Dapper and caching
-- **Simple invalidation** when data changes
-- **Scalability** when you need it (IDistributedCache)
-- **Maintainable code** with MediatR organizing everything
+### Proper CQRS with Event Sourcing (Marten)
 
-For simple CRUD applications, stick with traditional approaches. But when you need performance, when your read and write patterns diverge, or when you're preparing to scale, this pattern delivers results without the complexity of full Event Sourcing.
+**Use when:**
+- You need complete audit trail
+- Temporal queries are valuable
+- Complex domain with rich business logic
+- Financial, healthcare, or regulated systems
 
-Start simple. Add caching to your hottest queries. Separate your commands and queries. You'll be surprised how far this pattern takes you before you need anything more complex.
+**Don't use when:**
+- Simple CRUD application
+- Team lacks Event Sourcing experience
+- No audit requirements
+
+### Informal CQRS with Caching
+
+**Use when:**
+- Need performance boost on reads
+- Audit trail not required
+- Simpler than Event Sourcing
+- Eventual consistency acceptable
+
+**Don't use when:**
+- Need audit trail
+- Need temporal queries
+- Cache invalidation complexity outweighs benefits
+
+### Event Sourcing + Manual Cache Invalidation
+
+**Use when:**
+- Never. Just don't.
+
+Pick the right tool for your use case. Event Sourcing with Marten is powerful when you need it. Cache-based CQRS is simpler when you don't. Mixing them is a mistake.
+
+For most applications, start with traditional CRUD (see my EF Core series [here](/blog/addingentityframeworkforblogpostspt1)). When you hit performance issues, add caching. Only reach for full Event Sourcing when you genuinely need its specific capabilities.
 
 ## Further Reading
 
-- [MediatR Documentation](https://github.com/jbogard/MediatR) - The library tying everything together
-- [Dapper Documentation](https://github.com/DapperLib/Dapper) - Fast object mapping
-- [Microsoft Caching Docs](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/memory) - IMemoryCache and IDistributedCache
-- [Martin Fowler on CQRS](https://martinfowler.com/bliki/CQRS.html) - The original pattern
+- [Marten Documentation](https://martendb.io/) - Excellent docs, well worth reading
+- [EventStoreDB](https://www.eventstore.com/) - Alternative event store if Postgres isn't your thing
+- [Dapper Documentation](https://github.com/DapperLib/Dapper) - Fast SQL queries
+- [MediatR](https://github.com/jbogard/MediatR) - Command/query dispatching
+- [Microsoft on CQRS](https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs) - Official guidance
 - My Entity Framework series starting [here](/blog/addingentityframeworkforblogpostspt1) - Traditional approach
