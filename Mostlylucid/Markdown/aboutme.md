@@ -57,6 +57,8 @@ I've also built and run a **developer training program** that's helped over 400 
 
 ## This Site
 
+I FORMERLY ran the website www.mostlylucid.co.uk where I published popular  ASP.NET articles for 10 years before joining the ASP.NET Team at Microsoft in Redmond. After leaving there I closed the site (it was a measured metric at Microsoft how often I posted and it sucked the fun out of it) then opened (lasst year)... 
+
 **[mostlylucid.net](https://www.mostlylucid.net)** is my crazy lab — a living codebase where I experiment with whatever catches my interest in web development. The entire platform is [open source on GitHub](https://github.com/scottgal/mostlylucidweb), and it's become a breeding ground for the NuGet and NPM packages I've published.
 
 **The theme:** See problem, find solution, implement it, then extract it into a reusable package.

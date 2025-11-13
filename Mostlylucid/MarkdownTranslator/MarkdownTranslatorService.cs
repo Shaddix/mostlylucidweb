@@ -31,11 +31,6 @@ public class MarkdownTranslatorService(
 
     private string[] IPs = translateServiceConfig.IPs;
 
-    // Track language failures to skip problematic languages temporarily
-    private static readonly LanguageFailureTracker _failureTracker = new(
-        maxConsecutiveFailures: 3,
-        resetInterval: TimeSpan.FromHours(24));
-
     // Resilience pipeline combining retry for 429s and circuit breaker for other failures
     private readonly ResiliencePipeline _resiliencePipeline = new ResiliencePipelineBuilder()
         // First: Retry policy for 429 (Too Many Requests) with Retry-After header support
@@ -233,20 +228,6 @@ public class MarkdownTranslatorService(
     public async Task<string> TranslateMarkdown(string markdown, string targetLang, CancellationToken cancellationToken,
         Activity? activity)
     {
-        // Check if this language should be skipped due to consecutive failures
-        if (_failureTracker.ShouldSkip(targetLang))
-        {
-            var failureCount = _failureTracker.GetFailureCount(targetLang);
-            logger.LogWarning(
-                "Skipping translation to {Language} due to {FailureCount} consecutive failures. Will retry after reset.",
-                targetLang, failureCount);
-            activity?.SetTag("LanguageSkipped", true);
-            activity?.SetTag("FailureCount", failureCount);
-            throw new TranslateException(
-                $"Language {targetLang} temporarily skipped due to {failureCount} consecutive failures",
-                Array.Empty<string>());
-        }
-
         // IMPORTANT: Preprocess fetch tags BEFORE translation
         // This ensures fetched remote content is translated and stored in the translated markdown files
         var preprocessor = new Mostlylucid.Markdig.FetchExtension.Processors.MarkdownFetchPreprocessor(
@@ -284,7 +265,6 @@ public class MarkdownTranslatorService(
             {
                 logger.LogWarning("Circuit breaker is open - translation service is temporarily unavailable for {Language}", targetLang);
                 activity?.SetTag("CircuitBreakerOpen", true);
-                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is temporarily unavailable due to overload. Circuit breaker is open.",
                     batch);
@@ -306,7 +286,6 @@ public class MarkdownTranslatorService(
                 // Suppress noisy overload warnings - handled by retry logic
                 logger.LogDebug("Translation service returned 403 (overloaded) for {Language}", targetLang);
                 activity?.SetTag("ServiceOverloaded", true);
-                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(
                     "Translation service is overloaded (403)",
                     batch);
@@ -316,13 +295,9 @@ public class MarkdownTranslatorService(
                 logger.LogError(e, "Error translating markdown to {Language}: {Message} for strings {Strings}",
                     targetLang, e.Message,
                     string.Concat(Environment.NewLine, batch));
-                _failureTracker.RecordFailure(targetLang);
                 throw new TranslateException(e.Message, batch);
             }
         }
-
-        // Translation succeeded - reset failure count for this language
-        _failureTracker.RecordSuccess(targetLang);
 
         ReinsertTranslatedStrings(document, translatedStrings.ToArray());
         var outString = document.ToMarkdownString();
@@ -352,9 +327,10 @@ public class MarkdownTranslatorService(
                 if (content == null) continue;
                 if (!IsWord(content)) continue;
 
-                // Split content into sentences for better translation quality
-                var sentences = SplitIntoSentences(content);
-                textStrings.AddRange(sentences);
+                // Pass through as-is - let translation service handle the text
+                logger.LogDebug("Extracting text: '{Content}' (length: {Length}, has leading space: {LeadingSpace}, has trailing space: {TrailingSpace})",
+                    content, content.Length, content.StartsWith(" "), content.EndsWith(" "));
+                textStrings.Add(content);
             }
         }
 
@@ -364,117 +340,20 @@ public class MarkdownTranslatorService(
 
     private bool IsWord(string text)
     {
+        // Only skip image file extensions and TOC markers
+        // Let translation service handle emojis, symbols, etc.
         var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg" };
         if (imageExtensions.Any(text.Contains)) return false;
 
         if (text == "TOC]") return false;
 
-        // Skip emoticons/emoji - they break translation
-        if (ContainsEmoji(text)) return false;
-
         return text.Any(char.IsLetter);
     }
 
-    private bool ContainsEmoji(string text)
-    {
-        // Check for common emoji Unicode ranges
-        foreach (var c in text)
-        {
-            var code = (int)c;
-
-            // Emoticons (U+1F600 to U+1F64F)
-            // Miscellaneous Symbols and Pictographs (U+1F300 to U+1F5FF)
-            // Transport and Map Symbols (U+1F680 to U+1F6FF)
-            // Supplemental Symbols and Pictographs (U+1F900 to U+1F9FF)
-            // Symbols and Pictographs Extended-A (U+1FA70 to U+1FAFF)
-            if (code >= 0x1F600 && code <= 0x1F64F ||
-                code >= 0x1F300 && code <= 0x1F5FF ||
-                code >= 0x1F680 && code <= 0x1F6FF ||
-                code >= 0x1F900 && code <= 0x1F9FF ||
-                code >= 0x1FA70 && code <= 0x1FAFF ||
-                // Additional emoji ranges
-                code >= 0x2600 && code <= 0x26FF ||   // Miscellaneous Symbols
-                code >= 0x2700 && code <= 0x27BF ||   // Dingbats
-                code >= 0xFE00 && code <= 0xFE0F ||   // Variation Selectors
-                code >= 0x1F000 && code <= 0x1F02F || // Mahjong Tiles
-                code >= 0x1F0A0 && code <= 0x1F0FF)   // Playing Cards
-            {
-                return true;
-            }
-
-            // Check for surrogate pairs (emoji outside BMP)
-            if (char.IsHighSurrogate(c))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /// <summary>
-    /// Split text into sentences for better translation quality and batching.
-    /// Handles common abbreviations and edge cases.
-    /// </summary>
-    private List<string> SplitIntoSentences(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return new List<string>();
-
-        var sentences = new List<string>();
-
-        // Common abbreviations that shouldn't trigger sentence breaks
-        var abbreviations = new[]
-        {
-            "Dr", "Mr", "Mrs", "Ms", "Prof", "Sr", "Jr",
-            "etc", "i.e", "e.g", "vs", "Inc", "Ltd", "Corp",
-            "Fig", "Vol", "No", "Approx", "Dept"
-        };
-
-        // Replace abbreviations temporarily to avoid false sentence breaks
-        var tempText = text;
-        var abbrevReplacements = new Dictionary<string, string>();
-        for (int i = 0; i < abbreviations.Length; i++)
-        {
-            var abbrev = abbreviations[i];
-            var placeholder = $"<<ABBREV{i}>>";
-            abbrevReplacements[placeholder] = abbrev + ".";
-            tempText = tempText.Replace(abbrev + ".", placeholder);
-        }
-
-        // Split on sentence boundaries: . ! ? followed by space and capital letter
-        // or end of string
-        var sentencePattern = @"(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$";
-        var parts = Regex.Split(tempText, sentencePattern);
-
-        foreach (var part in parts)
-        {
-            if (string.IsNullOrWhiteSpace(part))
-                continue;
-
-            // Restore abbreviations
-            var restored = part;
-            foreach (var kvp in abbrevReplacements)
-            {
-                restored = restored.Replace(kvp.Key, kvp.Value);
-            }
-
-            sentences.Add(restored.Trim());
-        }
-
-        // If no sentences found, return the whole text as one sentence
-        if (sentences.Count == 0 && !string.IsNullOrWhiteSpace(text))
-        {
-            sentences.Add(text.Trim());
-        }
-
-        return sentences;
-    }
-
-    /// <summary>
-    /// Batch text strings by character limit and sentence count to optimize for EasyNMT input constraints.
+    /// Batch text strings by character limit and element count to optimize for EasyNMT input constraints.
     /// This replaces the old fixed-count batching (batch size = 5) with dynamic batching
-    /// based on actual content length and sentence boundaries.
+    /// based on actual content length. Text is passed through as-is to preserve formatting and spacing.
     /// </summary>
     private List<string[]> BatchTextByCharLimit(List<string> textStrings)
     {
@@ -486,7 +365,7 @@ public class MarkdownTranslatorService(
         {
             var textLength = text.Length;
 
-            // If adding this text would exceed character limit OR sentence limit, start a new batch
+            // If adding this text would exceed character limit OR element limit, start a new batch
             if (currentBatch.Count > 0 &&
                 (currentLength + textLength > translateServiceConfig.MaxBatchCharacters ||
                  currentBatch.Count >= translateServiceConfig.MaxSentencesPerBatch))
@@ -534,70 +413,6 @@ public class MarkdownTranslatorService(
         return batches;
     }
 
-    /// <summary>
-    /// Batch sentences into groups that respect character limits for EasyNMT.
-    /// </summary>
-    private List<string[]> BatchSentencesByCharLimit(List<string> sentences)
-    {
-        var batches = new List<string[]>();
-        var currentBatch = new List<string>();
-        var currentLength = 0;
-
-        foreach (var sentence in sentences)
-        {
-            var sentenceLength = sentence.Length;
-
-            // If adding this sentence would exceed limits, start a new batch
-            if (currentBatch.Count > 0 &&
-                (currentLength + sentenceLength > translateServiceConfig.MaxBatchCharacters ||
-                 currentBatch.Count >= translateServiceConfig.MaxSentencesPerBatch))
-            {
-                batches.Add(currentBatch.ToArray());
-                currentBatch = new List<string>();
-                currentLength = 0;
-            }
-
-            // If a single sentence exceeds the limit, split it further or add it alone
-            if (sentenceLength > translateServiceConfig.MaxBatchCharacters)
-            {
-                // Log warning for oversized sentence
-                logger.LogWarning(
-                    "Sentence exceeds max batch size ({Length} > {Max}). Sending as single item.",
-                    sentenceLength, translateServiceConfig.MaxBatchCharacters);
-
-                if (currentBatch.Count > 0)
-                {
-                    batches.Add(currentBatch.ToArray());
-                    currentBatch = new List<string>();
-                    currentLength = 0;
-                }
-
-                batches.Add(new[] { sentence });
-            }
-            else
-            {
-                currentBatch.Add(sentence);
-                currentLength += sentenceLength;
-            }
-        }
-
-        // Add remaining sentences
-        if (currentBatch.Count > 0)
-        {
-            batches.Add(currentBatch.ToArray());
-        }
-
-        return batches;
-    }
-
-    /// <summary>
-    /// Get list of languages currently skipped due to consecutive failures
-    /// </summary>
-    public IEnumerable<string> GetSkippedLanguages()
-    {
-        return _failureTracker.GetSkippedLanguages();
-    }
-
     private void ReinsertTranslatedStrings(MarkdownDocument document, string[] translatedStrings)
     {
         int index = 0;
@@ -610,7 +425,27 @@ public class MarkdownTranslatorService(
                 if (literalInline == null) continue;
                 var content = literalInline.Content.ToString();
                 if (!IsWord(content)) continue;
+
+                var originalContent = content;
                 var translatedContent = translatedStrings[index];
+
+                // Preserve leading/trailing whitespace from original
+                var leadingSpace = originalContent.Length > 0 && char.IsWhiteSpace(originalContent[0]) ? originalContent.Substring(0, 1) : "";
+                var trailingSpace = originalContent.Length > 0 && char.IsWhiteSpace(originalContent[^1]) ? originalContent.Substring(originalContent.Length - 1) : "";
+
+                // If translation service stripped spaces, restore them
+                if (!string.IsNullOrEmpty(leadingSpace) && !translatedContent.StartsWith(leadingSpace))
+                {
+                    translatedContent = leadingSpace + translatedContent;
+                    logger.LogDebug("Restored leading space to translated text");
+                }
+                if (!string.IsNullOrEmpty(trailingSpace) && !translatedContent.EndsWith(trailingSpace))
+                {
+                    translatedContent = translatedContent + trailingSpace;
+                    logger.LogDebug("Restored trailing space to translated text");
+                }
+
+                logger.LogDebug("Reinserting: original='{Original}' -> translated='{Translated}'", originalContent, translatedContent);
                 literalInline.Content = new StringSlice(translatedContent, NewLine.CarriageReturnLineFeed);
                 index++;
             }

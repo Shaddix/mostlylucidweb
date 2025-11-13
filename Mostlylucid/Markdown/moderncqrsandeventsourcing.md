@@ -1,9 +1,9 @@
 # Modern CQRS and Event Sourcing in .NET: Doing It Properly
 
-<!--category-- ASP.NET, Architecture, CQRS, Event Sourcing -->
-<datetime class="hidden">2025-01-13T12:00</datetime>
+<!--category-- ASP.NET, Architecture, CQRS, Event Sourcing, Marten, Performance -->
+<datetime class="hidden">2025-11-13T12:00</datetime>
 
-> **NOTE**: This is an old article I forgot to release. Here it is, enjoy!
+> **NOTE**: This is an old article I forgot to release. Here it is, enjoy! I updated it but may be some issues I missed.
 
 CQRS and Event Sourcing - two patterns that are often mentioned together but frequently misunderstood. In this article, I'm going to show you how to implement them properly using modern .NET tools: Marten for event sourcing, Dapper for optimised queries, and MediatR to keep everything organised.
 

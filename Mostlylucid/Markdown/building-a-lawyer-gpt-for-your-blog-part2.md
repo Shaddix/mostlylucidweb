@@ -91,20 +91,29 @@ Here's what various GPUs can handle:
 
 You might have heard about Intel Core Ultra or AMD Ryzen AI chips with built-in NPUs (Neural Processing Units). **Can you use those instead of NVIDIA?**
 
-**Short answer**: Not yet, but maybe in 2024-2025!
+**Short answer**: Still not recommended for this use case (as of late 2025), but getting closer!
 
-**Current limitations**:
-- **No CUDA**: NPUs don't support CUDA, which this tutorial uses
-- **Limited .NET support**: ONNX Runtime's NPU support is experimental
-- **Model compatibility**: Most GGUF models target CUDA/CPU
-- **DirectML support**: Still maturing for LLMs
+**Current state (late 2025)**:
+- **DirectML has matured**: [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) execution provider is now production-ready
+- **NPU support improving**: Intel's Core Ultra (Meteor Lake/Lunar Lake) and AMD's Ryzen AI can run inference via DirectML
+- **Model format limitations**: NPUs work best with ONNX models; GGUF models (used for LLMs) still target CUDA/CPU primarily
+- **LLM performance**: For large language models, NPUs are currently slower than discrete GPUs and often slower than modern CPUs
+- **Best for**: Small models, on-device inference, battery-powered scenarios
+
+**Why we still use NVIDIA CUDA**:
+1. **Ecosystem maturity**: CUDA has 15+ years of optimization for LLMs
+2. **LLamaSharp**: Uses llama.cpp which targets CUDA/CPU, not DirectML/NPU
+3. **Performance**: A mid-range NVIDIA GPU still outperforms NPUs significantly for our workload
+4. **Community support**: Vastly more resources and troubleshooting available
 
 **If you have an NPU-equipped CPU**:
-- Use CPU-only mode for now (everything works, just slower)
-- Watch for [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) updates
-- Future parts will note when NPU support improves
+- For embedding generation (Part 3), you can use DirectML with ONNX Runtime - might work reasonably well
+- For LLM inference (Part 6), stick with CPU mode or get a discrete GPU
+- Watch for llama.cpp DirectML backend (experimental as of Nov 2025)
 
-This series focuses on **NVIDIA CUDA** because it's mature and well-supported in .NET, but the concepts will translate to NPUs once the ecosystem catches up!
+**Future outlook**: NPUs are improving rapidly. By early  2026, they may become viable for LLM inference, especially for smaller models (1B-3B parameters). Intel's upcoming Arrow Lake and AMD's next-gen XDNA 2 promise significant AI performance improvements.
+
+This series focuses on **NVIDIA CUDA** because it delivers the best performance today, but the architecture concepts will translate to NPUs as the ecosystem matures!
 
 ### Check Your GPU
 

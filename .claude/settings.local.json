@@ -17,7 +17,10 @@
       "Bash(cat:*)",
       "Bash(dotnet ef migrations add:*)",
       "Bash(npm test:*)",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(dotnet script:*)"
     ],
     "deny": [],
     "ask": []
