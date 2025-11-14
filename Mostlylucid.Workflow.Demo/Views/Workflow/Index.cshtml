@@ -1,0 +1,38 @@
+@model List<WorkflowDefinition>
+@{
+    ViewData["Title"] = "Workflows";
+}
+
+<div x-data="{ showCreate: false }">
+    <div class="px-4 sm:px-6 lg:px-8">
+        <div class="sm:flex sm:items-center">
+            <div class="sm:flex-auto">
+                <h1 class="text-3xl font-semibold text-gray-900">Workflows</h1>
+                <p class="mt-2 text-sm text-gray-700">A list of all your workflow definitions.</p>
+            </div>
+            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+                <button
+                    x-on:click="showCreate = !showCreate"
+                    hx-get="/Workflow/Create"
+                    hx-target="#create-workflow-form"
+                    hx-swap="innerHTML"
+                    class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    Create Workflow
+                </button>
+            </div>
+        </div>
+
+        <!-- Create Form -->
+        <div
+            x-show="showCreate"
+            x-transition
+            id="create-workflow-form"
+            class="mt-4">
+        </div>
+
+        <!-- Workflows List -->
+        <div id="workflow-list" class="mt-8">
+            @await Html.PartialAsync("_WorkflowList", Model)
+        </div>
+    </div>
+</div>

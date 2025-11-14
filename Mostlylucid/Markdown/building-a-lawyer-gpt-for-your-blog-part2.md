@@ -74,6 +74,7 @@ This is my specific GPU - a professional workstation card with:
 - **256 Tensor cores** - Accelerated AI operations
 - **CUDA Compute Capability 8.6** - Important for compatibility
 
+
 ### Common GPU Options
 
 Here's what various GPUs can handle:
