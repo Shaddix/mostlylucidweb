@@ -690,6 +690,7 @@ And evolution, as we know from biology, leads to places we never anticipated.
 - [Part 3: Self-Optimization](semantidintelligence-part3) - Systems that improve themselves
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
 - **Part 5: Evolution** ← You are here
+- [Part 6: Global Consensus](semantidintelligence-part6) - Directed evolution and planetary cognition
 
 ---
 
