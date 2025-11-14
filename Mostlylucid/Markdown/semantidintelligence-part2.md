@@ -282,3 +282,5 @@ Where we explore systems that rewrite their own code, spawn their own specialist
 - **Part 2: Collective Intelligence** ← You are here
 - [Part 3: Self-Optimization](semantidintelligence-part3) - Systems that improve themselves
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
+- [Part 5: Evolution](semantidintelligence-part5) - From optimization to guilds and culture
+- [Part 6: Global Consensus](semantidintelligence-part6) - Directed evolution and planetary cognition
