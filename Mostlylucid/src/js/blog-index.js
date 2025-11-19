@@ -156,13 +156,13 @@
     }
 
     function updateSummary(){
-      const summaryEl = root.querySelector('#filterSummary');
+      const summaryEl = document.querySelector('#filterSummary');
       if(!summaryEl) return;
       const url = new URL(window.location.href);
 
       // Get language from URL, dropdown, localStorage, or cookie
       const fromUrl = url.searchParams.get('language');
-      const fromDropdown = root.querySelector('#languageSelect')?.value;
+      const fromDropdown = document.querySelector('#languageSelect')?.value;
       const fromStorage = localStorage.getItem('preferredLanguage');
       const fromCookie = getCookie('preferredLanguage');
       const language = (fromUrl || fromDropdown || fromStorage || fromCookie || 'en').toLowerCase();
@@ -204,7 +204,7 @@
       try{
         const htmlEl = document.documentElement;
         const obs = new MutationObserver(() => {
-          const dr = root.querySelector('#dateRange');
+          const dr = document.querySelector('#dateRange');
           const fp = dr && dr._flatpickr;
           if(fp && typeof fp.redraw === 'function'){
             fp.redraw();
@@ -213,10 +213,11 @@
         obs.observe(htmlEl, { attributes:true, attributeFilter:['class'] });
       }catch{}
     }
-    const input = root.querySelector('#dateRange');
-    const clearBtn = root.querySelector('#clearDateFilter');
-    const langSelect = root.querySelector('#languageSelect');
-    const orderSelect = root.querySelector('#orderSelect');
+    // Filter elements are outside #content, so search from document
+    const input = document.querySelector('#dateRange');
+    const clearBtn = document.querySelector('#clearDateFilter');
+    const langSelect = document.querySelector('#languageSelect');
+    const orderSelect = document.querySelector('#orderSelect');
 
     console.log('initFromRoot - Found elements:', {
       input: !!input,

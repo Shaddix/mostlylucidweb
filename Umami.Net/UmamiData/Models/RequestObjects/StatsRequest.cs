@@ -2,29 +2,74 @@
 
 namespace Umami.Net.UmamiData.Models.RequestObjects;
 
+/// <summary>
+/// Request model for retrieving summary statistics from Umami.
+/// </summary>
+/// <remarks>
+/// According to Umami API docs, stats endpoint has:
+/// - Required: websiteId, startAt, endAt
+/// - Optional: unit, timezone
+/// - Filters: path, referrer, title, query, browser, os, device, country, region, city, hostname, tag, segment, cohort
+/// </remarks>
 public class StatsRequest : BaseRequest
 {
-    [QueryStringParameter("url")] public string? Url { get; set; } // Name of URL
+    /// <summary>
+    /// Path filter (not "url"). Must use "path" as per Umami API specification.
+    /// </summary>
+    [QueryStringParameter("path")]
+    public string? Path { get; set; }
 
-    [QueryStringParameter("referrer")] public string? Referrer { get; set; } // Name of referrer
+    [QueryStringParameter("referrer")]
+    public string? Referrer { get; set; }
 
-    [QueryStringParameter("title")] public string? Title { get; set; } // Name of page title
+    [QueryStringParameter("title")]
+    public string? Title { get; set; }
 
-    [QueryStringParameter("query")] public string? Query { get; set; } // Name of query
+    [QueryStringParameter("query")]
+    public string? Query { get; set; }
 
-    [QueryStringParameter("event")] public string? Event { get; set; } // Name of event
+    /// <summary>
+    /// Hostname filter (not "host"). Must use "hostname" as per Umami API specification.
+    /// </summary>
+    [QueryStringParameter("hostname")]
+    public string? Hostname { get; set; }
 
-    [QueryStringParameter("host")] public string? Host { get; set; } // Name of hostname
+    [QueryStringParameter("os")]
+    public string? Os { get; set; }
 
-    [QueryStringParameter("os")] public string? Os { get; set; } // Name of operating system
+    [QueryStringParameter("browser")]
+    public string? Browser { get; set; }
 
-    [QueryStringParameter("browser")] public string? Browser { get; set; } // Name of browser
+    [QueryStringParameter("device")]
+    public string? Device { get; set; }
 
-    [QueryStringParameter("device")] public string? Device { get; set; } // Name of device (e.g., Mobile)
+    [QueryStringParameter("country")]
+    public string? Country { get; set; }
 
-    [QueryStringParameter("country")] public string? Country { get; set; } // Name of country
+    [QueryStringParameter("region")]
+    public string? Region { get; set; }
 
-    [QueryStringParameter("region")] public string? Region { get; set; } // Name of region/state/province
+    [QueryStringParameter("city")]
+    public string? City { get; set; }
 
-    [QueryStringParameter("city")] public string? City { get; set; } // Name of city
+    [QueryStringParameter("tag")]
+    public string? Tag { get; set; }
+
+    [QueryStringParameter("segment")]
+    public string? Segment { get; set; }
+
+    [QueryStringParameter("cohort")]
+    public string? Cohort { get; set; }
+
+    /// <summary>
+    /// Optional unit parameter for stats grouping.
+    /// </summary>
+    [QueryStringParameter("unit")]
+    public Unit? Unit { get; set; }
+
+    /// <summary>
+    /// Optional timezone for date calculations.
+    /// </summary>
+    [QueryStringParameter("timezone")]
+    public string? Timezone { get; set; }
 }

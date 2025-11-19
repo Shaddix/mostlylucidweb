@@ -33,7 +33,7 @@ public class PostListViewModel : BaseViewModel, IPagingModel
         };
     }
     
-    public static PostListModel GetListModel(BlogPostDto model, int truncateAt = 200)
+    public static PostListModel GetListModel(BlogPostDto model, int truncateAt = 400)
     {
         return new PostListModel
         {

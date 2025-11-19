@@ -95,10 +95,10 @@ public class UmamiDataDelegatingHandler : DelegatingHandler
 
     private static PageViewsRequest FillPageViewsRequest(PageViewsRequest request, NameValueCollection queryParams)
     {
-        request.Url = queryParams["url"];
+        request.Path = queryParams["path"] ?? queryParams["url"]; // Support both old and new parameter names
         request.Referrer = queryParams["referrer"];
         request.Title = queryParams["title"];
-        request.Host = queryParams["host"];
+        request.Hostname = queryParams["hostname"] ?? queryParams["host"]; // Support both old and new
         request.Os = queryParams["os"];
         request.Browser = queryParams["browser"];
         request.Device = queryParams["device"];
@@ -113,11 +113,11 @@ public class UmamiDataDelegatingHandler : DelegatingHandler
     {
         var type = queryParams["type"];
         request.Type = Enum.Parse<MetricType>(type);
-        request.Url = queryParams["url"];
+        request.Path = queryParams["path"] ?? queryParams["url"]; // Support both old and new parameter names
         request.Referrer = queryParams["referrer"];
         request.Title = queryParams["title"];
         request.Query = queryParams["query"];
-        request.Host = queryParams["host"];
+        request.Hostname = queryParams["hostname"] ?? queryParams["host"]; // Support both old and new
         request.Os = queryParams["os"];
         request.Browser = queryParams["browser"];
         request.Device = queryParams["device"];

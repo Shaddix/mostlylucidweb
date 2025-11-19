@@ -32,6 +32,21 @@ public class MarkdownFetchIntegrationTests
         services.AddSingleton(_dbContextMock.Object);
         services.AddSingleton(_httpClientFactoryMock.Object);
         services.AddLogging(configure => configure.AddConsole().SetMinimumLevel(LogLevel.Debug));
+
+        // Mock IWebHostEnvironment
+        var mockWebHostEnvironment = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+        mockWebHostEnvironment.Setup(m => m.WebRootPath).Returns(Path.GetTempPath());
+        mockWebHostEnvironment.Setup(m => m.ContentRootPath).Returns(Path.GetTempPath());
+        services.AddSingleton(mockWebHostEnvironment.Object);
+
+        // Add ImageConfig
+        services.AddSingleton(new Mostlylucid.Shared.Config.Markdown.ImageConfig
+        {
+            DefaultFormat = "webp",
+            DefaultQuality = 50,
+            PrimaryImageFolder = "articleimages"
+        });
+
         // Add BlogPostProcessingContext - required by MarkdownFetchService and MarkdownRenderingService
         services.AddScoped<Mostlylucid.Services.Blog.BlogPostProcessingContext>();
         services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();

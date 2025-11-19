@@ -31,6 +31,7 @@ public class UmamiDataSortService(
                 StartAtDate = startAt,
                 EndAtDate = endAt,
                 Type = MetricType.url,
+                Unit = Unit.day,
                 Limit = 500
             };
             var metricRequest = await dataService.GetMetrics(metricsRequest);

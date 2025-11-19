@@ -63,7 +63,7 @@
       <PackageReference Include="Scalar.AspNetCore" Version="1.2.60" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
       <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
-      <PackageReference Include="Umami.Net" Version="0.4.1" />
+      <!-- <PackageReference Include="Umami.Net" Version="1.0.0-preview5" /> -->
       <PackageReference Include="WebEssentials.AspNetCore.PWA" Version="1.0.85" />
     </ItemGroup>
 
@@ -80,13 +80,14 @@
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
-        
+
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Mostlylucid.DbContext\Mostlylucid.DbContext.csproj" />
       <ProjectReference Include="..\Mostlylucid.Services\Mostlylucid.Services.csproj" />
       <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
       <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
+      <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
     </ItemGroup>
     <ItemGroup>
       <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\DailyTemplate.cshtml" />

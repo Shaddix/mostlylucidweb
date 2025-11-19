@@ -33,7 +33,13 @@
       "WebFetch(domain:github.com)",
       "Bash(TOKEN=\"Bi7ym1BeYsNaBRmvPQWOv4toB7fuYkvPdh7JYHDiSy0PtrDKcpdI8fMabuemjBEiUddHCTH5ioMP+n9uhgPzH3hwYx0cbKshrB38Vq8XZDh8kDYL1lB7Y6w1XD8LUeeRcw8bAI6x5tJI2qXufO6MiTGx8IhIMUK4l/5kYBj6Vhv2xV9rrMQOZtDZXRJ1yuXuuDGTeab38TnEJGv3Dz+kmNOUENVgPcTE8oL82OKKmlOhJRNbYowH9sq7etetMzpNWafAipwcZH5lqyd4YCE6cUEiyHp3OpIWY3SkyCI0onaeemrl4OkOlAXoWYWPpJvj2Lm6gRvjtUtQ/M16psfv3X3R3dFkTGdk3YFMz20AWbO0HMrGzze+rznPQHx1\")",
       "WebSearch",
-      "WebFetch(domain:umami.is)"
+      "WebFetch(domain:umami.is)",
+      "Bash(wmic logicaldisk get size,freespace,caption:*)",
+      "Bash(git checkout:*)",
+      "Bash(csc:*)",
+      "Bash(TestTimestamps.exe)",
+      "Bash(wmic path win32_localtime get:*)",
+      "Bash(timedatectl status:*)"
     ],
     "deny": [],
     "ask": []

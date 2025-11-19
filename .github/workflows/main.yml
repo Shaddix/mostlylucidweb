@@ -37,7 +37,10 @@ jobs:
       - name: Pack project
         run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --no-build --output ./nupkg
 
+      - name: List generated packages
+        run: ls -la ./nupkg
+
       - name: Publish to NuGet
-        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }}
+        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }} --skip-duplicate
         env:
           NUGET_API_KEY: ${{ secrets.UMAMI_NUGET_API_KEY }}

@@ -1,17 +1,25 @@
 ﻿@model Mostlylucid.Models.Blog.PostListModel
 
 <div class="border-b border-grey-lighter pb-8 mb-8" data-published-date="@Model.PublishedDate.ToString("yyyy-MM-dd")">
- 
-    <a asp-controller="Blog" asp-action="Show" hx-boost="true"  hx-swap="show:window:top"  hx-target="#contentcontainer" asp-route-language="@Model.Language"
-       asp-route-slug="@Model.Slug"
-       class="block font-body text-lg font-semibold transition-colors hover:text-green text-blue-dark dark:text-white  dark:hover:text-secondary">@Model.Title</a>  
-    <div class="flex flex-wrap space-x-2 items-center py-4 print:!hidden">
-    @foreach (var category in Model.Categories)
-    {
-        <partial name="_Category" model="category"/>
-    }
-    @{ var languageModel = (Model.Slug, Model.Languages, Model.Language); }
-        <partial name="_LanguageList" model="languageModel"/>
+
+    <div class="flex items-start justify-between gap-3 mb-2">
+        <a asp-controller="Blog" asp-action="Show" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-route-language="@Model.Language"
+           asp-route-slug="@Model.Slug"
+           class="font-body text-lg font-semibold transition-colors hover:text-green text-blue-dark dark:text-white dark:hover:text-secondary flex-1">@Model.Title</a>
+        @if (Model.Languages.Length > 1)
+        {
+             var languageModel = (Model.Slug, Model.Languages, Model.Language); 
+        
+        <div class="shrink-0">
+                <partial name="_LanguageFlags" model="languageModel"/>
+            </div>
+        }
+    </div>
+    <div class="flex flex-wrap gap-1.5 py-2 print:!hidden">
+        @foreach (var category in Model.Categories)
+        {
+            <partial name="_Category" model="category"/>
+        }
     </div>
     <div class="block font-body text-black dark:text-white">@Model.Summary</div>
     <div class="flex items-center pt-4">

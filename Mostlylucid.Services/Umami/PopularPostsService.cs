@@ -38,33 +38,50 @@ public class PopularPostsService(
             var blogService = scope.ServiceProvider.GetRequiredService<IBlogService>();
 
             var endDate = DateTime.UtcNow;
-            var startDate = endDate.AddHours(-24);
+            var startDate = endDate.AddHours(-24); // Last 24 hours
 
             // Get URL metrics from Umami for the past 24 hours
+            // Note: Umami v3 uses 'path' instead of 'url'
             var metricsRequest = new MetricsRequest
             {
                 StartAtDate = startDate,
                 EndAtDate = endDate,
-                Type = MetricType.url,
-                Limit = 500 // Get top 500 URLs
+                Type = MetricType.path,
+                Unit = Unit.hour, // Use hour for 24-hour period (like Umami admin does)
+                Timezone = "UTC", // Explicit timezone
+                Limit = 100 // Limit to top 100
             };
 
             var result = await umamiDataService.GetMetrics(metricsRequest);
 
-            if (result?.Status != System.Net.HttpStatusCode.OK || result.Data == null || result.Data.Length == 0)
+            if (result?.Status != System.Net.HttpStatusCode.OK)
             {
-                logger.LogWarning("Failed to get metrics from Umami or no data available");
-                return _cachedPopularPost; // Return cached if available
+                logger.LogWarning("Failed to get metrics from Umami: {Status}", result?.Status);
+                return _cachedPopularPost;
             }
+
+            if (result.Data == null || result.Data.Length == 0)
+            {
+                logger.LogWarning("No data returned from Umami API");
+                return _cachedPopularPost;
+            }
+
+            logger.LogInformation("Received {Count} total paths from Umami", result.Data.Length);
+
+            // Log first few paths to see what we're getting
+            var samplePaths = result.Data.Take(10).Select(m => $"{m.x} ({m.y} views)");
+            logger.LogInformation("Sample paths: {Paths}", string.Join(", ", samplePaths));
 
             // Filter for blog posts (URLs starting with /blog/)
             var blogPosts = result.Data
                 .Where(m => m.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
+            logger.LogInformation("Found {Count} blog post paths after filtering", blogPosts.Count);
+
             if (blogPosts.Count == 0)
             {
-                logger.LogInformation("No blog posts found in metrics");
+                logger.LogWarning("No blog posts found in metrics (no paths starting with /blog/)");
                 return _cachedPopularPost;
             }
 

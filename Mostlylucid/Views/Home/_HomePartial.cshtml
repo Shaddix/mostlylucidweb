@@ -1,52 +1,35 @@
 ﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
 @model Mostlylucid.Models.IndexPageViewModel
 <title > @ViewBag.Title</title>
-<div class="border-b border-grey-lighter ">
+<div class="border-b border-grey-lighter pb-4">
     <div class="flex items-center space-x-4">
         <img src="/img/author.png?format=webp&quality=15" asp-append-version="true" width="64px" height="64px" class="h-16 w-16 mask mask-circle" alt="author"/>
         <h1 class="font-body text-xl font-semibold text-blue-dark dark:text-white md:text-xl lg:text-xl pl-4">
-            Hi, I’m Scott Galloway
+            Hi, I'm Scott Galloway
         </h1>
     </div>
-    <p class="pt-3 pb-6 font-body text-lg  text-blue-dark  dark:text-white">
-        
-       <!-- <a hx-target="#contentcontainer" asp-controller="EmailSubscription" asp-action="Subscribe" hx-boost="true" class="btn btn-outline btn-sm my-2 print:hidden " > <i class="bx bx-mail-send text-2xl"></i> Subscribe</a>-->
-        This is a <span class="font-semibold"> work in progress </span> site where I share my thoughts, ideas, and projects. I'm always building SOMETHING so decided too share both how I build these somethings and what I build.
-        Note this site is currently being developed you can see the code <a href="https://github.com/scottgal/mostlylucidweb" class="text-blue-dark dark:text-blue">here</a>. Bits will be broken or missing, but that's the fun of it. If you have any comments / suggestions / feedback please let me know on <a href="https://hachyderm.io/@("@")scottgal@("@")hachyderm.io" class="text-blue-dark dark:text-blue">Mastodon </a>
+    <p class="pt-3 font-body text-base text-blue-dark dark:text-white">
+        I'm a consulting web developer specializing in .NET Core, full-stack development, cloud, and search technologies. Former Microsoft ASP.NET Program Manager with 30+ years building web applications for Fortune 500 companies and startups.
+        I share my <span class="font-semibold">work in progress</span> projects and how I build them.
+        Available for contract, full-time, or consultancy work — <a href="mailto:scott.galloway+ml@gmail.com" class="text-blue-dark dark:text-blue hover:underline">get in touch</a>.
+        Code on <a href="https://github.com/scottgal/mostlylucidweb" class="text-blue-dark dark:text-blue hover:underline">GitHub</a> |
+        Feedback on <a href="https://hachyderm.io/@("@")scottgal@("@")hachyderm.io" class="text-blue-dark dark:text-blue hover:underline">Mastodon</a>
     </p>
-    <p class="pt-3 font-body  text-left font-medium text-blue-dark light:text-black dark:text-white">
-        I'm a consulting web developer, specializing in .NET Core, remote working, full-stack (ANY JavaScript framework), cloud, search technologies, running teams, bootstrapping startups etc..etc...<br/>
-        I'm a former Microsoft ASP.NET Program manager & have worked for numerous fortune 500, and a multitude of startups and have been building web applications for over 30 years.<br/>
-        If you think I can help you with your project on a contract, full time or consultancy basis (days here and there), please get in touch.<br/>
-    
-    </p>
-    <p class="pt-3 font-body  text-left text-blue-dark light:text-black dark:text-white items-center">
-        Email:<a href="mailto:scott.galloway+ml@gmail.com"> scott.galloway+ml@gmail.com </a>
-    </p>
-
-    <partial name="_CVButtons" />
 </div>
 
 
 <partial name="_PopularPost" />
 
-<div class=" pt-4 lg:pt-4">
-    <div class="flex flex-row" >
-        <a href="/blog"  hx-boost="true" hx-target="#contentcontainer" hx-push-url="true"  class="flex items-center text-xl pr-6 text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors ">
-        <i class='bx bx-book-reader '></i>
-        <h3 class="ml-3  font-body">
-            Blog Posts
-        </h3>
-        </a>
-        <a href="/rss" target="_blank" class="flex items-center text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors ">
-            <i class="bx bx-rss"></i>
-            <h3 class="ml-3">
-                RSS
-            </h3>
-        </a>
-        <a asp-action="Edit" class="ml-4 text-sm  btn-sm btn btn-outline btn-primary" asp-controller="Editor"  ><i class=" bx bx-edit"></i> new</a>
+<div class="pt-4">
+    <!-- Navigation & Filter Section -->
+    <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4 print:!hidden">
 
+        <!-- Right: Quick Filter Bar -->
+        <div class="hidden lg:flex items-center gap-3">
+            <partial name="_FilterBar" model="Model.Posts"/>
+        </div>
     </div>
-        <partial name="_BlogSummaryList" model="Model.Posts"/>
- 
+
+    <!-- Blog Posts List -->
+    <partial name="_BlogSummaryList" model="Model.Posts"/>
 </div>

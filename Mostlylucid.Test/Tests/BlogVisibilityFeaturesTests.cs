@@ -33,6 +33,21 @@ public class BlogVisibilityFeaturesTests
         services.AddLogging();
         services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
+
+        // Mock IWebHostEnvironment
+        var mockWebHostEnvironment = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
+        mockWebHostEnvironment.Setup(m => m.WebRootPath).Returns(System.IO.Path.GetTempPath());
+        mockWebHostEnvironment.Setup(m => m.ContentRootPath).Returns(System.IO.Path.GetTempPath());
+        services.AddSingleton(mockWebHostEnvironment.Object);
+
+        // Add ImageConfig
+        services.AddSingleton(new Mostlylucid.Shared.Config.Markdown.ImageConfig
+        {
+            DefaultFormat = "webp",
+            DefaultQuality = 50,
+            PrimaryImageFolder = "articleimages"
+        });
+
         _serviceProvider = services.BuildServiceProvider();
     }
 

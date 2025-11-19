@@ -2,35 +2,71 @@
 
 namespace Umami.Net.UmamiData.Models.RequestObjects;
 
+/// <summary>
+/// Request model for page views over time endpoint.
+/// API spec: Required: websiteId, startAt, endAt, unit. Optional: timezone, compare. Filters: path, referrer, title, query, browser, os, device, country, region, city, hostname, tag, segment, cohort
+/// </summary>
 public class PageViewsRequest : BaseRequest
 {
-    // Required properties
-
+    /// <summary>
+    /// Required: Time unit for grouping data.
+    /// </summary>
     [QueryStringParameter("unit", true)]
-    public Unit Unit { get; set; } = Unit.day; // Time unit (year | month | hour | day)
+    public Unit Unit { get; set; } = Unit.day;
 
+    /// <summary>
+    /// Optional: Timezone for date calculations.
+    /// </summary>
     [QueryStringParameter("timezone")]
     [TimeZoneValidator]
-    public string Timezone { get; set; }
+    public string? Timezone { get; set; }
 
-    // Optional properties
-    [QueryStringParameter("url")] public string? Url { get; set; } // Name of URL
+    /// <summary>
+    /// Optional: Comparison mode (prev = previous period, yoy = year over year).
+    /// </summary>
+    [QueryStringParameter("compare")]
+    public string? Compare { get; set; }
 
-    [QueryStringParameter("referrer")] public string? Referrer { get; set; } // Name of referrer
+    // Filter properties - use "path" not "url", "hostname" not "host"
+    [QueryStringParameter("path")]
+    public string? Path { get; set; }
 
-    [QueryStringParameter("title")] public string? Title { get; set; } // Name of page title
+    [QueryStringParameter("referrer")]
+    public string? Referrer { get; set; }
 
-    [QueryStringParameter("host")] public string? Host { get; set; } // Name of hostname
+    [QueryStringParameter("title")]
+    public string? Title { get; set; }
 
-    [QueryStringParameter("os")] public string? Os { get; set; } // Name of operating system
+    [QueryStringParameter("query")]
+    public string? Query { get; set; }
 
-    [QueryStringParameter("browser")] public string? Browser { get; set; } // Name of browser
+    [QueryStringParameter("hostname")]
+    public string? Hostname { get; set; }
 
-    [QueryStringParameter("device")] public string? Device { get; set; } // Name of device (e.g., Mobile)
+    [QueryStringParameter("os")]
+    public string? Os { get; set; }
 
-    [QueryStringParameter("country")] public string? Country { get; set; } // Name of country
+    [QueryStringParameter("browser")]
+    public string? Browser { get; set; }
 
-    [QueryStringParameter("region")] public string? Region { get; set; } // Name of region/state/province
+    [QueryStringParameter("device")]
+    public string? Device { get; set; }
 
-    [QueryStringParameter("city")] public string? City { get; set; } // Name of city
+    [QueryStringParameter("country")]
+    public string? Country { get; set; }
+
+    [QueryStringParameter("region")]
+    public string? Region { get; set; }
+
+    [QueryStringParameter("city")]
+    public string? City { get; set; }
+
+    [QueryStringParameter("tag")]
+    public string? Tag { get; set; }
+
+    [QueryStringParameter("segment")]
+    public string? Segment { get; set; }
+
+    [QueryStringParameter("cohort")]
+    public string? Cohort { get; set; }
 }
