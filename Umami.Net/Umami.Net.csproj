@@ -37,7 +37,7 @@
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     </ItemGroup>
     <PropertyGroup>
-        <MinVerTagPrefix>v</MinVerTagPrefix>
+        <MinVerTagPrefix>umamiv</MinVerTagPrefix>
     </PropertyGroup>
     <PropertyGroup>
         <MinVerSkip Condition="'$(Configuration)' == 'Debug'">true</MinVerSkip>
