@@ -23,26 +23,15 @@
     <p class="pt-3 font-body  text-left text-blue-dark light:text-black dark:text-white items-center">
         Email:<a href="mailto:scott.galloway+ml@gmail.com"> scott.galloway+ml@gmail.com </a>
     </p>
-    <div class="items-center flex justify-center pb-4 ">
-        <a
-            href="https://www.linkedin.com/in/scott-galloway-91608691/"
-            class="!bg-yellow-dark borderbutton ">
-            <i class="text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors bx bxl-linkedin"></i>
-            Hire Me!
-        </a>
-        <a href="/uploads/SimpleResume.docx"  data-umami-event="Word Resume Click"  target="_blank" class="borderbutton" >
-            <i class="text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors bx bxl-microsoft"></i>
-            My Résumé (Word)
-    
-        </a>
-    
-        <a href="/uploads/SimpleResume.pdf"  data-umami-event="PDF Resume Click" target="_blank" class="borderbutton ">
-            <i class="text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors bx bxs-file-pdf "></i>
-            My Résumé (PDF)
-    
-        </a>
-    </div>
+
+    <partial name="_CVButtons" />
 </div>
+
+@inject Mostlylucid.Services.Umami.IPopularPostsService PopularPostsService
+@{
+    var popularPost = PopularPostsService.GetCachedPopularPost();
+}
+<partial name="_PopularPost" model="popularPost" />
 
 <div class=" pt-4 lg:pt-4">
     <div class="flex flex-row" >

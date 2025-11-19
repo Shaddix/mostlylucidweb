@@ -1,0 +1,80 @@
+@model List<Mostlylucid.Workflow.Shared.Models.WorkflowDefinition>
+
+<div class="space-y-2">
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-center py-8 text-base-content/50">
+            <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p>No workflows yet</p>
+            <p class="text-xs mt-1">Click "New Workflow" to create one</p>
+        </div>
+    }
+    else
+    {
+        foreach (var workflow in Model)
+        {
+            <div class="workflow-card" onclick="workflowEditor.loadWorkflow('@workflow.Id')">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h3 class="font-bold text-sm">@workflow.Name</h3>
+                        @if (!string.IsNullOrEmpty(workflow.Description))
+                        {
+                            <p class="text-xs text-base-content/60 mt-1">@workflow.Description</p>
+                        }
+                    </div>
+                    <div class="dropdown dropdown-end">
+                        <label tabindex="0" class="btn btn-ghost btn-xs">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                            </svg>
+                        </label>
+                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-32">
+                            <li>
+                                <a hx-post="/Workflow/Duplicate/@workflow.Id"
+                                   hx-target="#workflow-list"
+                                   hx-swap="innerHTML">
+                                    Duplicate
+                                </a>
+                            </li>
+                            <li>
+                                <a hx-delete="/Workflow/Delete/@workflow.Id"
+                                   hx-confirm="Delete this workflow?"
+                                   hx-target="#workflow-list"
+                                   hx-swap="innerHTML"
+                                   class="text-error">
+                                    Delete
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 mt-3 text-xs text-base-content/60">
+                    <div class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path>
+                        </svg>
+                        @(workflow.Nodes?.Count ?? 0) nodes
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        @workflow.UpdatedAt.ToString("MMM d, yyyy")
+                    </div>
+                </div>
+
+                @if (workflow.IsEnabled)
+                {
+                    <div class="badge badge-success badge-sm mt-2">Active</div>
+                }
+                else
+                {
+                    <div class="badge badge-ghost badge-sm mt-2">Inactive</div>
+                }
+            </div>
+        }
+    }
+</div>

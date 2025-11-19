@@ -284,3 +284,6 @@ Where we explore systems that rewrite their own code, spawn their own specialist
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
 - [Part 5: Evolution](semantidintelligence-part5) - From optimization to guilds and culture
 - [Part 6: Global Consensus](semantidintelligence-part6) - Directed evolution and planetary cognition
+- [Part 7: The Real Thing!](senmanticintelligence-part7) - Actually building it and watching it evolve
+- [Part 8: Tools All The Way Down](semanticintelligence-part8) - The self-optimizing toolkit
+- [Part 9: Self-Healing Tools](semanticintelligence-part9) - Lineage-aware pruning and recovery

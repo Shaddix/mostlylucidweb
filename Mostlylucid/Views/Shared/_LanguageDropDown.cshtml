@@ -50,27 +50,59 @@
         selectedFlag: '',
         selectedShortCode: '',
         init() {
-            // Initialize from URL param or default to 'en'
+            // Priority: 1. localStorage, 2. URL param, 3. default to 'en'
             const url = new URL(window.location.href);
-            const fromUrl = (url.searchParams.get('language') || 'en').toLowerCase();
+            const fromStorage = localStorage.getItem('preferredLanguage');
+            const fromUrl = url.searchParams.get('language');
+            const fromCookie = this.getCookie('preferredLanguage');
+
+            // Use stored preference if no explicit URL param
+            const languageToUse = (fromUrl || fromStorage || fromCookie || 'en').toLowerCase();
+
             const opts = JSON.parse(this.$el.dataset.languages || '[]');
-            const has = opts.includes(fromUrl) ? fromUrl : (opts.includes('en') ? 'en' : (opts[0] || 'en'));
+            const has = opts.includes(languageToUse) ? languageToUse : (opts.includes('en') ? 'en' : (opts[0] || 'en'));
+
             this.selectedShortCode = has;
             const labelMap = JSON.parse(this.$el.dataset.languageMap || '{}');
             this.selectedLanguage = labelMap[has] || 'Select Language';
             this.selectedFlag = `/img/flags/${has}.svg`;
+
+            // Save initial preference
+            this.saveLanguagePreference(has);
+
             // Set hidden input value only (don't navigate on init)
             const hidden = document.getElementById('languageSelect');
             if (hidden) { hidden.value = has; }
+
             // Watch for changes and emit 'change' for external listeners
             this.$watch('selectedShortCode', (val) => {
                 if (!val) return;
+                // Save the preference
+                this.saveLanguagePreference(val);
                 const el = document.getElementById('languageSelect');
                 if (el) {
                     el.value = val;
                     el.dispatchEvent(new Event('change'));
                 }
             });
+        },
+        saveLanguagePreference(lang) {
+            // Save to both localStorage and cookie for redundancy
+            try {
+                localStorage.setItem('preferredLanguage', lang);
+                // Set cookie with 1 year expiry
+                const expires = new Date();
+                expires.setFullYear(expires.getFullYear() + 1);
+                document.cookie = `preferredLanguage=${lang}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+            } catch(e) {
+                console.warn('Could not save language preference:', e);
+            }
+        },
+        getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
         }
      }"
      class="relative inline-block">

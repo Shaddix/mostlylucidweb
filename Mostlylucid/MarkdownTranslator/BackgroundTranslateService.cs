@@ -39,13 +39,24 @@ public class BackgroundTranslateService(
 
     private async Task StartChecks(CancellationToken cancellationToken)
     {
+        logger.LogInformation("BackgroundTranslateService starting - Enabled: {Enabled}, ForceRetranslation: {Force}",
+            translateServiceConfig.Enabled, translateServiceConfig.ForceRetranslation);
+
         await StartupHealthCheck(cancellationToken);
 
         if (TranslationServiceUp)
         {
+            logger.LogInformation("Translation service is UP");
             _sendTask = TranslateFilesAsync(cancellationTokenSource.Token);
             if (translateServiceConfig.Enabled)
+            {
+                logger.LogInformation("Translation service enabled - starting TranslateAllFilesAsync");
                 await TranslateAllFilesAsync();
+            }
+            else
+            {
+                logger.LogWarning("Translation service is UP but Enabled=false - skipping startup translation");
+            }
         }
         else
         {
@@ -170,12 +181,20 @@ public class BackgroundTranslateService(
     {
         try
         {
+            if (translateServiceConfig.ForceRetranslation)
+            {
+                logger.LogInformation("ForceRetranslation is enabled - all files will be retranslated on startup");
+            }
+
             var markdownFiles = Directory.GetFiles(markdownConfig.MarkdownPath, "*.md");
+            logger.LogInformation("Queuing {Count} markdown files for translation", markdownFiles.Length);
+
             foreach (var file in markdownFiles)
                 await TranslateForAllLanguages(new PageTranslationModel
                 {
                     OriginalMarkdown = await File.ReadAllTextAsync(file),
-                    OriginalFileName = file
+                    OriginalFileName = file,
+                    Persist = true
                 });
         }
         catch (Exception e)
@@ -329,10 +348,24 @@ public class BackgroundTranslateService(
 
     private async Task<bool> EntryChanged(IServiceScope scope, string slug, PageTranslationModel translateModel)
     {
+        logger.LogDebug("EntryChanged called for {Slug} ({Language}) - ForceRetranslation: {Force}",
+            slug, translateModel.Language, translateServiceConfig.ForceRetranslation);
+
+        // If ForceRetranslation is enabled, always return true to retranslate everything
+        if (translateServiceConfig.ForceRetranslation)
+        {
+            logger.LogInformation("ForceRetranslation is enabled, retranslating {Slug} to {Language}", slug, translateModel.Language);
+            return true;
+        }
+
         var fileBlogService = scope.ServiceProvider.GetRequiredService<IMarkdownFileBlogService>();
         var entryExists = await fileBlogService.EntryExists(slug, translateModel.Language);
         var entryChanged = await fileBlogService.EntryChanged(slug, translateModel.Language,
             translateModel.OriginalMarkdown.ContentHash());
+
+        logger.LogDebug("Entry {Slug} ({Language}) - Exists: {Exists}, Changed: {Changed}",
+            slug, translateModel.Language, entryExists, entryChanged);
+
         return !entryExists || entryChanged;
     }
 

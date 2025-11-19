@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using Mostlylucid.Blog.WatcherService;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Images;
@@ -88,11 +89,15 @@ try
     services.SetupUmamiData(config);
     services.AddScoped<IUmamiDataSortService, UmamiDataSortService>();
     services.AddScoped<IUmamiUserInfoService, UmamiUserInfoService>();
+    services.AddSingleton<IPopularPostsService, PopularPostsService>();
     services.AddScoped<BaseControllerService>();
 
     // External image download service
     services.AddScoped<ExternalImageDownloadService>();
     services.AddHostedService<ImageDownloadBackgroundService>();
+
+    // Popular posts polling service
+    services.AddHostedService<PopularPostsPollingService>();
 
     services.AddImageSharp().Configure<PhysicalFileSystemCacheOptions>(options => options.CacheFolder = "cache");
     services.SetupEmail(config);

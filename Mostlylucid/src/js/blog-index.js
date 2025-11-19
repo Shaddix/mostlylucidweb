@@ -159,7 +159,14 @@
       const summaryEl = root.querySelector('#filterSummary');
       if(!summaryEl) return;
       const url = new URL(window.location.href);
-      const language = url.searchParams.get('language') || (root.querySelector('#languageSelect')?.value) || 'en';
+
+      // Get language from URL, dropdown, localStorage, or cookie
+      const fromUrl = url.searchParams.get('language');
+      const fromDropdown = root.querySelector('#languageSelect')?.value;
+      const fromStorage = localStorage.getItem('preferredLanguage');
+      const fromCookie = getCookie('preferredLanguage');
+      const language = (fromUrl || fromDropdown || fromStorage || fromCookie || 'en').toLowerCase();
+
       const orderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
       const orderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
       const start = url.searchParams.get('startDate');
@@ -222,9 +229,23 @@
     const url = new URL(window.location.href);
     const existingStart = url.searchParams.get('startDate');
     const existingEnd = url.searchParams.get('endDate');
-    const existingLang = url.searchParams.get('language') || 'en';
+
+    // Get language from URL, localStorage, or cookie (same priority as dropdown)
+    const fromUrl = url.searchParams.get('language');
+    const fromStorage = localStorage.getItem('preferredLanguage');
+    const fromCookie = getCookie('preferredLanguage');
+    const existingLang = (fromUrl || fromStorage || fromCookie || 'en').toLowerCase();
+
     const existingOrderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
     const existingOrderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
+
+    // Helper function to get cookie
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
 
     console.log('Initializing filters from URL:', {
       lang: existingLang,

@@ -368,7 +368,7 @@ namespace Mostlylucid.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("BlogPostId")
+                    b.Property<int?>("BlogPostId")
                         .HasColumnType("integer");
 
                     b.Property<string>("CachedContent")
@@ -422,7 +422,7 @@ namespace Mostlylucid.Migrations
 
                     b.HasIndex("LastFetchedAt");
 
-                    b.HasIndex("Url", "BlogPostId")
+                    b.HasIndex("Url")
                         .IsUnique();
 
                     b.ToTable("MarkdownFetches", "mostlylucid");
@@ -510,8 +510,7 @@ namespace Mostlylucid.Migrations
                     b.HasOne("Mostlylucid.Shared.Entities.BlogPostEntity", "BlogPost")
                         .WithMany()
                         .HasForeignKey("BlogPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("BlogPost");
                 });

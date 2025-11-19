@@ -114,7 +114,7 @@ public class MarkdownFetchPollingService(
                     var result = await fetchService.FetchMarkdownAsync(
                         fetch.Url,
                         fetch.PollFrequencyHours,
-                        fetch.BlogPostId);
+                        fetch.BlogPostId ?? 0);
 
                     if (!result.Success)
                     {

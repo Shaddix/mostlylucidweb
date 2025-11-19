@@ -1,0 +1,29 @@
+@using Mostlylucid.Services.Umami
+@model PopularPost?
+
+@if (Model != null)
+{
+    <div class="mt-6 mb-4 p-4 border border-grey-lighter dark:border-grey-dark rounded-lg bg-white dark:bg-custom-dark-bg">
+        <div class="flex items-center mb-2">
+            <i class="bx bx-trending-up text-2xl text-secondary mr-2"></i>
+            <h3 class="font-body text-lg font-semibold text-blue-dark dark:text-white">
+                Trending Now
+            </h3>
+        </div>
+        <p class="text-sm text-grey-dark dark:text-grey mb-2">
+            Most popular in the last 24 hours
+        </p>
+        <a href="@Model.Url"
+           hx-boost="true"
+           hx-target="#contentcontainer"
+           hx-push-url="true"
+           class="block group hover:bg-grey-lightest dark:hover:bg-grey-darker p-3 rounded transition-colors">
+            <h4 class="font-body text-base font-medium text-primary dark:text-white group-hover:text-secondary dark:group-hover:text-secondary transition-colors">
+                @Model.Title
+            </h4>
+            <p class="text-xs text-grey-dark dark:text-grey mt-1">
+                <i class="bx bx-show-alt"></i> Popular right now
+            </p>
+        </a>
+    </div>
+}

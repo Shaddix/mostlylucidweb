@@ -68,32 +68,40 @@ public class MarkdownFetchService : IMarkdownFetchService
                     url);
             }
 
-            // Only check cache if we have a valid blogPostId
+            // Check cache by URL (with optional blogPostId filter)
             MarkdownFetchEntity? fetchEntity = null;
             if (blogPostId > 0)
             {
+                // If we have a blog post ID, try to find an entry for this specific post
                 fetchEntity = await _context.MarkdownFetches
                     .FirstOrDefaultAsync(f => f.Url == url && f.BlogPostId == blogPostId);
+            }
+            else
+            {
+                // If no blog post ID, find any cached entry for this URL
+                fetchEntity = await _context.MarkdownFetches
+                    .FirstOrDefaultAsync(f => f.Url == url);
+            }
 
-                // If we have a cached version and it's still fresh, return it
-                if (fetchEntity != null &&
-                    !string.IsNullOrEmpty(fetchEntity.CachedContent) &&
-                    fetchEntity.LastFetchedAt.HasValue)
+            // If we have a cached version and it's still fresh, return it
+            if (fetchEntity != null &&
+                !string.IsNullOrEmpty(fetchEntity.CachedContent) &&
+                fetchEntity.LastFetchedAt.HasValue)
+            {
+                var age = DateTimeOffset.UtcNow - fetchEntity.LastFetchedAt.Value;
+                if (age.TotalHours < pollFrequencyHours)
                 {
-                    var age = DateTimeOffset.UtcNow - fetchEntity.LastFetchedAt.Value;
-                    if (age.TotalHours < pollFrequencyHours)
-                    {
-                        _logger.LogDebug(
-                            "Returning cached markdown from {Url} (age: {Age:F2}h)",
-                            url,
-                            age.TotalHours);
+                    _logger.LogDebug(
+                        "Returning cached markdown from {Url} (age: {Age:F2}h, blogPostId: {BlogPostId})",
+                        url,
+                        age.TotalHours,
+                        fetchEntity.BlogPostId);
 
-                        return new MarkdownFetchResult
-                        {
-                            Success = true,
-                            Content = fetchEntity.CachedContent
-                        };
-                    }
+                    return new MarkdownFetchResult
+                    {
+                        Success = true,
+                        Content = fetchEntity.CachedContent
+                    };
                 }
             }
 
@@ -110,10 +118,7 @@ public class MarkdownFetchService : IMarkdownFetchService
                         url,
                         fetchResult.ErrorMessage);
 
-                    if (blogPostId > 0)
-                    {
-                        await UpdateFetchAttemptAsync(fetchEntity, false, fetchResult.ErrorMessage);
-                    }
+                    await UpdateFetchAttemptAsync(fetchEntity, false, fetchResult.ErrorMessage);
 
                     return new MarkdownFetchResult
                     {
@@ -126,48 +131,46 @@ public class MarkdownFetchService : IMarkdownFetchService
                 return fetchResult;
             }
 
-            // Only persist to database if we have a valid blogPostId
-            if (blogPostId > 0)
+            // Always persist to database (even without a blogPostId)
+            // Update or create fetch entity
+            if (fetchEntity == null)
             {
-                // Update or create fetch entity
-                if (fetchEntity == null)
+                fetchEntity = new MarkdownFetchEntity
                 {
-                    fetchEntity = new MarkdownFetchEntity
-                    {
-                        Url = url,
-                        BlogPostId = blogPostId,
-                        PollFrequencyHours = pollFrequencyHours,
-                        CreatedAt = DateTimeOffset.UtcNow,
-                        IsEnabled = true
-                    };
-                    _context.MarkdownFetches.Add(fetchEntity);
-                }
-
-                var contentHash = ComputeHash(fetchResult.Content);
-                var contentChanged = fetchEntity.ContentHash != contentHash;
-
-                fetchEntity.CachedContent = fetchResult.Content;
-                fetchEntity.ContentHash = contentHash;
-                fetchEntity.LastFetchedAt = DateTimeOffset.UtcNow;
-                fetchEntity.LastAttemptedAt = DateTimeOffset.UtcNow;
-                fetchEntity.ConsecutiveFailures = 0;
-                fetchEntity.LastError = null;
-                fetchEntity.UpdatedAt = DateTimeOffset.UtcNow;
-                fetchEntity.PollFrequencyHours = pollFrequencyHours;
-
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation(
-                    "Successfully fetched markdown from {Url} (content changed: {Changed})",
-                    url,
-                    contentChanged);
+                    Url = url,
+                    BlogPostId = blogPostId > 0 ? blogPostId : null,
+                    PollFrequencyHours = pollFrequencyHours,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    IsEnabled = true
+                };
+                _context.MarkdownFetches.Add(fetchEntity);
             }
-            else
+
+            var contentHash = ComputeHash(fetchResult.Content);
+            var contentChanged = fetchEntity.ContentHash != contentHash;
+
+            fetchEntity.CachedContent = fetchResult.Content;
+            fetchEntity.ContentHash = contentHash;
+            fetchEntity.LastFetchedAt = DateTimeOffset.UtcNow;
+            fetchEntity.LastAttemptedAt = DateTimeOffset.UtcNow;
+            fetchEntity.ConsecutiveFailures = 0;
+            fetchEntity.LastError = null;
+            fetchEntity.UpdatedAt = DateTimeOffset.UtcNow;
+            fetchEntity.PollFrequencyHours = pollFrequencyHours;
+
+            // Update BlogPostId if we now have one and didn't before
+            if (blogPostId > 0 && fetchEntity.BlogPostId == null)
             {
-                _logger.LogDebug(
-                    "Successfully fetched markdown from {Url} (not persisted - no valid BlogPostId)",
-                    url);
+                fetchEntity.BlogPostId = blogPostId;
             }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Successfully fetched and cached markdown from {Url} (blogPostId: {BlogPostId}, content changed: {Changed})",
+                url,
+                fetchEntity.BlogPostId ?? 0,
+                contentChanged);
 
             return fetchResult;
         }

@@ -17,6 +17,37 @@ But here's the thing: I can't shake it.
 
 Because when you look at how simple rules create complex behavior in nature, you start to wonder...
 
+## What This Series Explores
+
+This is Part 1 of a 9-part exploration into how simple rules create complex, intelligent-seeming behavior. Here's where we're going:
+
+**Part 1 (You are here): Simple Rules, Complex Behavior**
+The foundation - how multiple simple agents following basic patterns create emergent complexity that wasn't explicitly programmed.
+
+**Part 2: Collective Intelligence - When Agents Communicate**
+What happens when agents don't just follow patterns, but actually talk to each other? Information sharing, negotiation, and collective problem-solving transform simple multi-agent systems into something qualitatively different.
+
+**Part 3: Self-Optimization - Systems That Improve Themselves**
+When agents can measure their own performance and adjust their behavior, you get systems that evolve without human intervention. The feedback loop becomes the engine of improvement.
+
+**Part 4: The Emergence - When Optimization Becomes Intelligence**
+At what point does "following optimization rules" become "actual intelligence"? We explore the uncomfortable threshold where sophisticated rule-following becomes indistinguishable from thinking.
+
+**Part 5: Evolution - From Optimization to Guilds and Culture**
+Agents that optimize collectively start forming specialized roles, developing shared knowledge, and creating emergent "culture." The system develops preferences, patterns, and collective memory.
+
+**Part 6: Global Consensus - Directed Evolution and Planetary Cognition**
+Scale these patterns to thousands or millions of agents, add mechanisms for global coordination, and you get something that looks like planetary-scale intelligence. Not programmed. Emerged.
+
+**Part 7: The Real Thing! - Experimenting with Directed Synthetic Evolution**
+Theory meets practice. A working implementation of evolutionary code generation using multi-agent LLMs, RAG memory, and actual self-improvement. The code is real, running locally, and genuinely evolving.
+
+**Part 8: Tools All The Way Down - The Self-Optimizing Toolkit**
+How the tools themselves work, track usage, evolve, and get smarter over time. Every tool tracks invocations, learns from patterns, evolves implementations, caches responses, negotiates fitness trade-offs, and versions itself automatically.
+
+**Part 9: Self-Healing Tools - Lineage-Aware Pruning and Recovery**
+When tools break themselves through evolution, the system should remember why and never repeat the mistake. This part explores self-healing through lineage tracking, branch pruning, avoidance rules, and automatic recovery from failures. Tools develop institutional memory of what not to do.
+
 [TOC]
 
 ## The Foundation: Conway's Game of Life
@@ -211,3 +242,5 @@ Where we explore what happens when simple agents start talking to each other, an
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
 - [Part 5: Evolution](semantidintelligence-part5) - From optimization to guilds and culture
 - [Part 6: Global Consensus](semantidintelligence-part6) - Directed evolution and planetary cognition
+- [Part 7: The Real Thing!](senmanticintelligence-part7) - Actually building it and watching it evolve
+- [Part 8: Tools All The Way Down](semanticintelligence-part8) - The self-optimizing toolkit

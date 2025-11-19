@@ -1,38 +1,206 @@
-@model List<WorkflowDefinition>
 @{
-    ViewData["Title"] = "Workflows";
+    ViewData["Title"] = "Workflow Editor";
 }
 
-<div x-data="{ showCreate: false }">
-    <div class="px-4 sm:px-6 lg:px-8">
-        <div class="sm:flex sm:items-center">
-            <div class="sm:flex-auto">
-                <h1 class="text-3xl font-semibold text-gray-900">Workflows</h1>
-                <p class="mt-2 text-sm text-gray-700">A list of all your workflow definitions.</p>
+<div class="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
+    <!-- Top Navigation Bar -->
+    <div class="navbar bg-base-100 shadow-lg">
+        <div class="flex-1">
+            <a class="btn btn-ghost normal-case text-xl">
+                <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Workflow Engine
+            </a>
+        </div>
+        <div class="flex-none gap-2">
+            <button class="btn btnyes-success gap-2" onclick="workflowEditor.saveWorkflow()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                </svg>
+                Save Workflow
+            </button>
+            <button class="btn btn-primary gap-2" onclick="workflowEditor.executeWorkflow()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Execute Workflow
+            </button>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </label>
+                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                    <li><a data-set-theme="workflow">Default Theme</a></li>
+                    <li><a data-set-theme="light">Light</a></li>
+                    <li><a data-set-theme="dark">Dark</a></li>
+                    <li><a data-set-theme="cupcake">Cupcake</a></li>
+                </ul>
             </div>
-            <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                <button
-                    x-on:click="showCreate = !showCreate"
-                    hx-get="/Workflow/Create"
-                    hx-target="#create-workflow-form"
-                    hx-swap="innerHTML"
-                    class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                    Create Workflow
+        </div>
+    </div>
+
+    <div class="flex h-[calc(100vh-4rem)]">
+        <!-- Left Sidebar - Workflow List -->
+        <div class="w-80 bg-base-100 shadow-lg overflow-y-auto">
+            <div class="p-4">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Workflows
+                </h2>
+                <button class="btn btn-sm btn-primary btn-block mb-4" onclick="workflowEditor.loadWorkflow(null)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    New Workflow
                 </button>
+                <div id="workflow-list" hx-get="/Workflow/WorkflowList" hx-trigger="load" hx-swap="innerHTML">
+                    <!-- Workflow list will be loaded here -->
+                    <div class="flex justify-center py-8">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Create Form -->
-        <div
-            x-show="showCreate"
-            x-transition
-            id="create-workflow-form"
-            class="mt-4">
+        <!-- Center - Workflow Canvas -->
+        <div class="flex-1 relative overflow-hidden">
+            <div id="workflow-canvas" class="workflow-canvas">
+                <!-- Workflow nodes will be rendered here -->
+                <div class="absolute inset-0 flex items-center justify-center text-base-content/30">
+                    <div class="text-center">
+                        <svg class="w-32 h-32 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <p class="text-2xl font-bold">Click a node type to add it to the canvas</p>
+                        <p class="text-lg mt-2">or select a workflow from the left sidebar</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Workflows List -->
-        <div id="workflow-list" class="mt-8">
-            @await Html.PartialAsync("_WorkflowList", Model)
+        <!-- Right Sidebar - Node Palette & Properties -->
+        <div class="w-80 bg-base-100 shadow-lg overflow-y-auto">
+            <div class="p-4">
+                <!-- Node Palette -->
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Node Palette
+                </h2>
+                <div id="node-palette" class="space-y-2">
+                    <div class="node-palette-item" data-node-type="Log">
+                        <div class="workflow-node-icon workflow-node-type-log">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Log</div>
+                            <div class="text-xs text-base-content/60">Write to log</div>
+                        </div>
+                    </div>
+
+                    <div class="node-palette-item" data-node-type="HttpRequest">
+                        <div class="workflow-node-icon workflow-node-type-http">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">HTTP Request</div>
+                            <div class="text-xs text-base-content/60">Make API call</div>
+                        </div>
+                    </div>
+
+                    <div class="node-palette-item" data-node-type="Delay">
+                        <div class="workflow-node-icon workflow-node-type-delay">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Delay</div>
+                            <div class="text-xs text-base-content/60">Wait for time</div>
+                        </div>
+                    </div>
+
+                    <div class="node-palette-item" data-node-type="Condition">
+                        <div class="workflow-node-icon workflow-node-type-condition">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Condition</div>
+                            <div class="text-xs text-base-content/60">Branch logic</div>
+                        </div>
+                    </div>
+
+                    <div class="node-palette-item" data-node-type="Transform">
+                        <div class="workflow-node-icon workflow-node-type-transform">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Transform</div>
+                            <div class="text-xs text-base-content/60">Transform data</div>
+                        </div>
+                    </div>
+
+                    <div class="node-palette-item" data-node-type="SetVariable">
+                        <div class="workflow-node-icon workflow-node-type-setvariable">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold">Set Variable</div>
+                            <div class="text-xs text-base-content/60">Store value</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Execution Results -->
+                <div class="mt-8">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                        <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Execution Results
+                    </h2>
+                    <div id="execution-results" class="bg-base-200 rounded-lg p-4 min-h-32 font-mono text-sm">
+                        <span class="text-base-content/50">Execute a workflow to see results...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/site.js"></script>
+    <script>
+        // Theme switcher
+        document.querySelectorAll('[data-set-theme]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const theme = this.getAttribute('data-set-theme');
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            });
+        });
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'workflow';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+}

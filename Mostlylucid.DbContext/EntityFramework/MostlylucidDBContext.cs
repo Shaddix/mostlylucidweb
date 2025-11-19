@@ -69,11 +69,14 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
             entity.HasOne(x => x.BlogPost)
                 .WithMany()
                 .HasForeignKey(x => x.BlogPostId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired(false);
 
-            entity.HasIndex(x => new { x.Url, x.BlogPostId }).IsUnique();
+            // Unique index on URL only - each URL can only be cached once
+            entity.HasIndex(x => x.Url).IsUnique();
             entity.HasIndex(x => x.LastFetchedAt);
             entity.HasIndex(x => x.IsEnabled);
+            entity.HasIndex(x => x.BlogPostId);
 
             entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(x => x.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");

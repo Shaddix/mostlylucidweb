@@ -7,7 +7,7 @@
 
 Docker has fundamentally transformed how we build, ship, and run applications. What started as a simple containerization tool has evolved into a complete ecosystem for modern application development and deployment.
 
-This is the fourth and most comprehensive article in my Docker series for .NET developers. If you're new to Docker, you might want to start with:
+This is the fourth and most comprehensive article in my Docker series for .NET developers. If you're new to Docker, you might want to start with: 
 
 1. **[Docker Compose](/blog/dockercompose)** - Getting started with basic multi-container setups (July 2024)
 2. **[Development Dependencies with Docker Compose](/blog/dockercomposedevdeps)** - Setting up local dev environments (August 2024)

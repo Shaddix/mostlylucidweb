@@ -38,6 +38,12 @@ public class TranslateServiceConfig :IConfigSection
     /// Maximum number of sentences per batch (default: 10 for safety)
     /// </summary>
     public int MaxSentencesPerBatch { get; set; } = 10;
+
+    /// <summary>
+    /// Force retranslation of all files, ignoring hash-based change detection (default: false)
+    /// Useful for development to retranslate everything regardless of whether files have changed
+    /// </summary>
+    public bool ForceRetranslation { get; set; } = false;
 }
 
 public enum AutoTranslateMode

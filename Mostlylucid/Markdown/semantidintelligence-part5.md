@@ -1,6 +1,6 @@
 # Semantic Intelligence: Part 5 - Evolution - From Optimization to Emergent Guilds
 
-<datetime class="hidden">2025-11-14T12:00</datetime>
+<datetime class="hidden">2025-11-14T13:00</datetime>
 <!-- category -- AI-Article, AI, Emergent Intelligence, Multi-Agent Systems-->
 
 **When optimization systems develop culture**
@@ -691,6 +691,9 @@ And evolution, as we know from biology, leads to places we never anticipated.
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
 - **Part 5: Evolution** ← You are here
 - [Part 6: Global Consensus](semantidintelligence-part6) - Directed evolution and planetary cognition
+- [Part 7: The Real Thing!](senmanticintelligence-part7) - Actually building it and watching it evolve
+- [Part 8: Tools All The Way Down](semanticintelligence-part8) - The self-optimizing toolkit
+- [Part 9: Self-Healing Tools](semanticintelligence-part9) - Lineage-aware pruning and recovery
 
 ---
 

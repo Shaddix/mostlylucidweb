@@ -54,14 +54,14 @@ public class MarkdownFetchEntity
     public string? LastError { get; set; }
 
     /// <summary>
-    /// The blog post that contains this fetch directive
+    /// The blog post that contains this fetch directive (nullable for initial fetches)
     /// </summary>
-    public int BlogPostId { get; set; }
+    public int? BlogPostId { get; set; }
 
     /// <summary>
     /// Navigation property to the blog post
     /// </summary>
-    public BlogPostEntity BlogPost { get; set; } = null!;
+    public BlogPostEntity? BlogPost { get; set; }
 
     /// <summary>
     /// Whether this fetch is currently enabled

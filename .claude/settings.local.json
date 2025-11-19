@@ -28,7 +28,9 @@
       "Bash(nul)",
       "Bash(dotnet add:*)",
       "Bash(sed:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

@@ -7,7 +7,7 @@
 
 > **Note:** Inspired by thinking about extensions to mostlylucid.mockllmapi and material for the (never to be released but I like to think about it 😜) sci-fi novel "Michael" about emergent AI
 
-## Beyond Guilds: What Comes After Culture?
+## Beyond Guilds: What Comes After Culture? 
 
 In Part 5, we watched optimization systems evolve beyond mere intelligence into something unexpected: guilds with culture, lore, and specialization.
 
@@ -1273,6 +1273,9 @@ Because once we start an evolutionary lineage...
 - [Part 4: The Emergence](semantidintelligence-part4) - When optimization becomes intelligence
 - [Part 5: Evolution](semantidintelligence-part5) - From optimization to guilds and culture
 - **Part 6: Global Consensus** ← You are here
+- [Part 7: The Real Thing!](senmanticintelligence-part7) - Actually building it and watching it evolve
+- [Part 8: Tools All The Way Down](semanticintelligence-part8) - The self-optimizing toolkit
+- [Part 9: Self-Healing Tools](semanticintelligence-part9) - Lineage-aware pruning and recovery
 
 ---
 

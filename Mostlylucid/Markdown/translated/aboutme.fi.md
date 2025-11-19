@@ -3,158 +3,160 @@
 <!--category-- Resume , introduction -->
 <datetime class="hidden">2025-12-31T22:30</datetime>
 
-# Scott Galloway, teknologiajohtaja, järjestelmäpäällikkö, arkkitehti, kauko-ohjain
+# Scott Galloway, MSK:n toimitusjohtaja, konetekniikan päällikkö, MSK2:n järjestelmäarkkitehti, MSK:n kauko-ohjain
 
-Olen tekninen johtaja, jolla on yli 30 vuotta aikaa rakentaa ja skaalata insinööriryhmiä ja -tuotteita.
+IMSKKK on tekninen johtaja, jolla on yli vuoden rakennus- ja skaalaustekniikkatiimit ja -tuotteet. MSKKK3V on toiminut teknologiajohtajana ja johtavana arkkitehtinä kaikissa startup-yrityksissä ja yrityksissä. MSKK6 on ollut ensimmäinen yritys, joka on rakentanut ensimmäisen MVP:n miljoonien käyttäjien skaalausjärjestelmiin.
 
-Olen toiminut teknologiapäällikkönä ja johtavana arkkitehtinä kaikissa startup-yrityksissä ja yrityksissä – esisiemenyhtiöistä, jotka rakentavat ensimmäistä MVP:tään, miljoonien käyttäjien skaalausjärjestelmiin.**Olin useita vuosia Microsoftilla ASP.NET-ohjelmapäällikkönä Redmondin kampuksella, mikä antoi syvällisiä tietoja siitä, miten .NET-ekosysteemi toimii sisältä käsin.**Vuodesta 2012 olen juossut
+Vietin useita vuosia Microsoftilla Redmondin kampuksen ASPMSK0NET-ohjelman johtajana, joka antoi syvällisiä tietoja siitä, miten MSK2NET-ekosysteemi toimii sisältä käsin. **enimmäkseen niukasti**Työskentely yritysten kanssa kaikissa vaiheissa MSK:n perustamisen tekniset tiimit MSK:n2 arkkitehtien alustat tyhjästä MSK3:n alustat, jotka pelastavat perintöjärjestelmiä MSK4:n ja johtavat osastot kasvun kautta MSK5:n
 
 [TOC]
 
-## enimmäkseen niukasti
+## Mitä minä tuon
 
-**, yhteistyötä yritysten kanssa kaikissa vaiheissa: teknisten tiimien perustaminen, alustan suunnittelu tyhjästä, perintöjärjestelmien pelastaminen ja johtavat osastot kasvuvaiheiden kautta.**Mitä minä tuon
+**Minä skaalaudun kanssasi MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK** IMSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
 
-**Kurkistan kanssasi.**Olen pannut startup-yrityksiä ansaan teknisenä perustajana, rakentanut ja johtanut 20+-insinöörin tiimejä ja toiminut väliaikaisena teknologiajohtajana A-sarjaa nostaville yrityksille.
+**MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK** Voin kirjoittaa tuotantokoodin MSK2 ja debug gnarly performance issues ja arkkitehti monimutkainen hajautettuja järjestelmiä MSK4. Mutta tiedän myös, milloin perääntyä ja antaa tiimin suorittaa MSK6 on palkattu MSK7 mentoroimaan MSK8 ja hallinnoimaan insinöörejä eri mantereilla.
 
-**Olen tehnyt sen riippumatta siitä, tarvitsetko jonkun suunnittelemaan MVP:n, rakentamaan ensimmäisen insinööritiimisi tai ryhtymään insinööripäälliköksi.**Olen lähellä, kun sillä on merkitystä.
+**Rakennan joukkueita, jotka kestävät** Olen luonut kehittäjäkoulutusohjelman, joka asetti juniorikehittäjät alalle, jonka menestysaste oli MSK2 ja uskon kykyjen kasvattamiseen sisäisesti ja insinöörikulttuurien luomiseen, joissa ihmiset tekevät parasta työtään MSK3:ssa.
 
-**Osaan (ja teen) kirjoittaa tuotantokoodia, vianilmausvirheitä ja arkkitehtikompleksin hajautettuja järjestelmiä.**Mutta tiedän myös, milloin pitää perääntyä ja antaa joukkueen toimia.
+**Suloinen paikkani** Varhaisessa vaiheessa MSK0-vaiheen startupit, jotka tarvitsevat jonkun, joka voi rakentaa oikean ratkaisun tai johtaa tiimiä toimittamaan sen MSK2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2H2
 
-**Olen palkannut, ohjannut ja johtanut insinöörejä useilla mantereilla.**Rakennan joukkueita, jotka kestävät.
+**Tekniikka pinossa MSKK** Olen työskennellyt kaikessa Perl CGI:n käsikirjoituksista moderneihin Go -mikropalveluihin asti, vaikka keskitynkin ensisijaisesti MSK:n ja MSK:n väliseen verkostoon, onko MSK:n ja MSK:n muodostaman verkoston nykyaikainen eturistiriitakehys Alpine MSK:n kautta, MSK:n kautta, MSK:n kautta, MSK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta ja infrastruktuurin kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n kautta, MTK:n ja KTK:n kautta, MTK:n ja KTK:n kautta.
 
-## Loin kehittäjäkoulutusohjelman, joka sijoitti alalle 200+ juniorikehittäjää (90 %+ onnistumisprosentti).
+## Avoimen lähdekoodin paketit
 
-Uskon kykyjen kasvattamiseen sisäisesti ja insinöörikulttuurien luomiseen, joissa ihmiset tekevät parasta työtään.
+Uskon siihen, että devi-yhteisölle annetaan takaisin se, mitä Ime-devi-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-le-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-de-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-le-
 
-### Suloinen paikkani:
+### NuGet-paketteja
 
-- **[Varhais- ja keskivaiheen startupit, jotka tarvitsevat jonkun, joka osaa suunnitella oikean ratkaisun, rakentaa tai johtaa tiimiä toimittamaan sen, ja laajentavat sekä järjestelmää että organisaatiota yrityksen kasvaessa.](https://www.nuget.org/packages/Umami.Net)**Yhtä hyvin voin johtaa osastoa tai pyörittää hihojani pienen joukkueen teknisenä perustajana.
+- **[UramiMSK0Net](https://www.nuget.org/packages/Umami.Net)** MSK1Net-asiakas Umami Web Analyticsille MSK2 Yksityisyydensuojaa koskeva MSK3:n keskitetty analytiikka on yksinkertaista
 
-- **[Tekniikkapino:](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)**Olen työskennellyt kaikessa Perl CGI -skripteistä moderneihin Go -mikropalveluihin, vaikka painopisteeni on .NET (ASP.NET Core Through .NET 9).
+- **[Enimmäkseen MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)** Täydellinen ratkaisu kauko-ohjattavan sisällön noutamiseen ja välimuistiin, jossa on useita säilytystallenteita ja tunkkainen MSK1 kun taas MSK2 on voimassa oleva malli MSK3:ssa
 
-- **[Olen kieliagnostikko ja pragmaattinen valitessani tehtävään oikean työkalun – olipa kyseessä sitten modernit etuosakehykset (HTMX, Alpine.js, React, Vue.js), tietokannat (PostgreSQL, SQL Server, MongoDB) tai infrastruktuuri (Docker, Kubernetes, Azure).](https://www.nuget.org/packages/mostlylucid.mockllmapi)**Rakennan julkisesti ja osallistun takaisin dev-yhteisöön avoimen lähdekoodin pakettien ja yksityiskohtaisen teknisen kirjoittamisen kautta.
+- **[Enimmäkseen lucid MSK0Mockllmapi](https://www.nuget.org/packages/mostlylucid.mockllmapi)** Kevytsarjainen ASPMSK1NET Core -kevytohjelma, jolla luodaan realistisia pilkkarajapintaisia API-vastauksia paikallisilla LLM-alueilla, OllamaMSK3Lisää älykkäitä valepäätteitä mihin tahansa hankkeeseen, jossa on vain MSK4-rivit koodia MSK5
 
-- **[Avaa lähdekoodin & paketit](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)**Uskon, että dev-yhteisölle annetaan takaisin.
+- **[Enimmäkseen MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)** HTMX:n mukaan ASPMSK2Net Core Tag Auttajia hakuun MSK3
 
-- **[Tämän olen julkaissut:](https://www.nuget.org/packages/MostlyLucid.EufySecurity)**NuGet-paketteja**Umami.net**.NET-asiakas Umami Web Analyticsille.
+- **[Enimmäkseen Lucid MSKEufySecurity](https://www.nuget.org/packages/MostlyLucid.EufySecurity)** A-MSK **erittäin kokeellinen** Se toimii, mutta käyttää omalla vastuullaan.
 
-### Yksityisyyteen keskittyvä analytiikka on yksinkertaista.
+### NPM-paketit
 
-- **[Enimmäkseen lucid.Markdig.Extension](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)**- Täydellinen ratkaisu kauko-ohjattavan maaliviivan hakemiseen ja välimuistiin useilla säilytystallenteilla ja vanhentuneella vakiomallilla.
+- **["Suurin osa MSK:sta on merineitoa"](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)** MSKK:lla parannetaan merenneidon kaavioita viennin avulla MSKK:lla zoomaus MSK3:lla laajeneva valolaatikko MSK4:llä ja teeman vaihtaminen MSK5:llä
 
-enimmäkseen lucid.mockllmapi
+Kaikki nämä tulivat todellisista tarpeista projekteissa, joissa työskentelin, kun törmäsin ongelmaan, joka ei ole hyvä ratkaisu.
 
-## - Kevyt ASP.NET Core -kevytohjelma, jolla luodaan realistisia pilkullisia API-vastauksia paikallisilla LLM-laitteilla (Ollaman kautta).
+## Taustaa MSKK:n kokemus
 
-**Lisää älyllisiä valepäätteitä mihin tahansa projektiin, jossa on vain kaksi riviä koodia.**Enimmäkseen lucid.paggingtag-auttaja
+**Microsoft** Aloitti sovelluskehittäjänä Reading MSK:ssa, joka keskittyy suoritusanalyysiin ja viritykseen MSK3:ssa, siirtyi myöhemmin Redmond MSK4WA:han ASPMSK5Net-tiimin ohjelmapäällikkönä II, jossa hoidin julkaisun elinkaarta ja työskentelin turvallisuusinfrastruktuurin parissa projektin Server MSK7:ssä.
 
-**HTMX-käyttöiset ASP.NET Core Tag Helpers -hakulaitteet.**EnimmäkseenLucid.EufySecurity
+**Dell** MSKK2Rakensi konekuva-alustan ASPMSK1Net MVCMSK2N:n avulla
 
-**- A**erittäin kokeellinen
+**Freelance** Olen työskennellyt GBG Oyj:n ja MSKK:n kaltaisten yritysten kanssa, joissa rakensin maailmanlaajuisia hakutuotteita käyttäen MSKKKKKK6:n mikropalveluja ja Kubernetes MSKK7:n kanssa. Olen ohjannut joukkueitani kasvattamaan ASPKKKK9:n ydinjärjestelmiä Docker Complete- ja OpenSearchup10:n avulla. Viimeisimpänä ZenChef LimitedKMSK11:n kautta olen johtanut siirtymistä vanhoista Azure-järjestelmistä MSKK12:n verkkoon ja vähentänyt merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
 
-.NET-asiakaskirjasto Eufy Security -laitteiden hallintaan.**Se toimii, mutta käyttää omalla riskillään.**NPM-paketit
+IMSK0ve on myös rakentanut ja pyörittänyt **kehittäjäkoulutusohjelma** MSK:t auttoivat juniorikehittäjiä murtautumaan alalle MSK2K2K-sijoittautumisaste MSK3K-Opettaminen ja mentorointi on asia, jota todella rakastan MSK4K-sijoittautumisasteella.
 
-## @mostlylucid/mermaid-enhancements
+## Tämä sivusto
 
-**[- Parantaa Merenneidon kaavioita viemällä, panemalla, zoomaamalla, laajentamalla valolaatikkoa ja vaihtamalla teemaa.](https://www.mostlylucid.net)**Kaikki nämä tulivat todellisista tarpeista projekteissa, joita tein.[Kun törmään ongelmaan, jolla ei ole hyvää ratkaisua, rakennan sellaisen ja jaan sen.](https://github.com/scottgal/mostlylucidweb)Taustaa ja kokemusta
+JULKAISIN MUODOLLISESTI Internet-sivustoa www.ESMKKKKKKKKKK2UK, jossa julkaisin suosittuja ASPMKKKK3Net-artikkeleita jo vuosia ennen kuin liityin Microsoftin ASPKKKK5Net-tiimiin RedmondKKK6HK:ssa Lähdettyäni sieltä suljin sivuston MKK7Net oli Microsoftin mittamittari, kuinka usein julkaisin sen, ja se imi hauskaa irti siitä.
 
-**Microsoft**(2005–2009): Aloitti Application Developer Consultantina Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja viritykseen.
+**[Enimmäkseen lucid MSK0Net](https://www.mostlylucid.net)** Onko hullu laboratorioni elävä koodipohja, jossa kokeilen mitä tahansa, mikä saa minut kiinnostumaan web-kehityksestä? Koko alusta on [avoin lähdekoodi GitHubissa](https://github.com/scottgal/mostlylucidweb)NUGET- ja NPM-pakettien kasvualustaksi on muodostunut NUGET- ja NPM-paketit, jotka on julkaistu NUGET- ja NPM-paketeilla.
 
-Myöhemmin siirryin Redmondiin ASP.NET-tiimin ohjelmapäällikkönä II, jossa hoidin julkaisun elinkaarta ja työskentelin projektipalvelimen turvallisuusinfrastruktuurin parissa.
+**Teema MSKK** Katso ongelma MSKKLLLLÖYTÄKSEN TÄYTÄNTÖÖNPANO JA UUDELLEENKÄYTETTÄVÄKSI paketiksi
 
-- **Dell**(2011): ASP.NET MVC:n avulla rakennettiin oma konekuva-alusta.
-- **Freelance**(2012-present): Olen työskennellyt GBG Plc:n (Loqate) kaltaisten yritysten kanssa, joihin rakensin maailmanlaajuisia hakutuotteita käyttäen .NET 6 -mikropalveluita ja Kuberneteja.
-- **Seamcor Oy:ssä ohjasin joukkueita ASP.NET Core -järjestelmien uudelleenjärjestämiseen käyttäen Docker Composea ja OpenSearchia.**Viimeisimpänä ZenChef Limitedissä olen johtanut siirtymistä vanhoista Azure-järjestelmistä .NET 8 -verkolle, mikä vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.
-- **Olen myös rakentanut ja pyörittänyt**kehittäjäkoulutusohjelma
+Itse infrastruktuuri on tapaustutkimus tehokkaista palvelintoiminnoista.
 
-Se on auttanut yli 400:aa juniorikehittäjää murtautumaan alalle (90 % työharjoittelusta).
+- **Dockerin sävellysorkesteri** Koko pinosta MSK0AppMSK1Analytiikan tietokanta MSK3Analytiikka käännöspalvelut MSK4A seuranta MSK5A
+- **Täysi CITMSK0CD-putkijohto** GitHub Activities -järjestelmän avulla automaattista testausta ja käyttöönottoa
+- **Kattava havainnointikyky** Serilogi MSKKKKKKKKKKKKKKKKKKKKKKKKK4KKKKKKKKKKKKKKKKK6KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK4KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+- **SelfMSK on isännöinyt kaikkea** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
 
-- **Opetusta ja mentorointia rakastan aidosti.**Tämä sivusto
-- **[enimmäkseen lucid.net](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)**on hullu laboratorioni – elävä koodipohja, jossa kokeilen mitä tahansa, mikä herättää kiinnostukseni verkon kehittämiseen.
-- **Koko alusta on**avoin lähdekoodi GitHubissa
-- **Siitä on tullut kasvualusta julkaisemalleni NuGet- ja NPM-paketille.**Teema:
-- **Katso ongelma, etsi ratkaisu, toteuta se ja pura se uudelleenkäytettävään pakettiin.**Itse infrastruktuuri on tapaustutkimus tehokkaista palvelintoiminnoista:
-- **Dockerin sävellysorkesteri**koko pinon osalta (sovellus, tietokanta, analytiikka, käännöspalvelut, seuranta)
-- **Täysi CI/CD-putki**GitHub-toiminnoilla, automaattisella testauksella ja käyttöönotolla
+Alustan ominaisuudet kutevat paketit.
 
-Kattava havainnointikyky
+- **DualMSK0mode -blogin järjestelmä** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+- **[Automaattinen käännösjärjestelmä](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** Kääntää koko blogin automaattisesti neurokonekäännöksen malliperheiden välillä.MSKKKKKKKKKKKKK5 on valmis älykkääseen välitykseen MSKKK6KK6KKK6KKK6KK8KKK8Kääntää koko blogin automaattisesti MSKK9KKK10KKK9KKKK9KKKK6KK6KKK5KKK5KKK6KKK6KK6KK6KK6KK6KK6KK6K6KK6K6KK6K6K6K6K6K6K6K6K6K6K6K6K8KLK8KLK8KLK8KLKK6KKLK9KLK9KLK6K6K9KK6K9KLK6K6K6K6K6K6K6K6K6K6KL6K1KL1KL1KL6KLK1KL9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K9K6K6K6K6K6K6K6K6K9K9K9K9K9K9K9K9K9K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K6K8K6
+- **Tekstihaku kokonaisuudessaan** PostgreSQL:n tsvectorMSK0GIN-indeksien käyttö
+- **Interaktiiviset merenneitokaaviot** MSK:sta tuli MSK:n ja MSK:n välinen vientisopimus, josta tuli MSK:n ja MSK:n suurin enemmistö. MSK:n ja MSK:n välinen kauppakumppani. MSK:n ja MSK:n välinen sopimuspaketti.
+- **HTMX-käyttöinen haku** Pätevöittäjä NuGet-pakettiin kaivettu MSK0
+- **Umamin analytiikkaintegraatio** MSKK:sta tuli UmamiMSK1Net-paketti
+- **LLMMSK0-käyttöiset pilkkurajapinnat** Kehitystyölle MSK0:sta tuli mockllmapi-paketti
 
-## (Serilog + Seq, Prometheus, Grafana) – koska et pysty korjaamaan sitä, mitä et näe
+Se on sekavaa, kokeellista ja jatkuvasti kehittyvää.
 
-Omavaltainen kaiken[— tietokanta, analytiikka (Umami), käännös (EasyNMT), käänteinen valtakirja (Caddy)](mailto:scott.galloway+ml@gmail.com)
+## Yhteystiedot
 
-Alustassa on kutevia paketteja:<https://www.mostlylucid.net>
+Sähköposti MSKK [Skott MSK0Galloway MSK1MsK2Gmail MSK3MsK](mailto:scott.galloway+ml@gmail.com)
 
-Kaksitilabloggausjärjestelmä<https://github.com/scottgal>
+Blogi <https://www.mostlylucid.net>
 
-(file-based markedown tai PostgreSQL) – johti Markdig.FetchExtension -pakettiin[Automaattinen käännösjärjestelmä](https://www.linkedin.com/in/scott-galloway-91608691/)
+GitHubMSK <https://github.com/scottgal>
 
-**– täydellinen Python / Pytorch / FastAPI uudelleenkirjoittaminen EasyNMT tukee 100+ kieltä automaattisella varalla hermokoneiden käännösmalliperheiden välillä.**Tuotanto valmiina älykkäällä välilyönnillä, GPU:n optimoinnilla ja vahvalla virheidenkäsittelyllä.
+LinkedInMSK [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 
----
-
-
-## Kääntää koko blogin 12+ kielelle automaattisesti.
-
-### Tämä on juuri minun vehkeilyni: uusi teknologia ratkaisee todellisen ongelman (hylätty EasyNMT-projekti) hämmästyttävällä ratkaisulla, joka käsittelee sotkuista tosimaailman panosta mittakaavassa.
-
-**Kokotekstihaku**PostgreSQL tsvector/GIN-indeksien avulla
-**Interaktiiviset merenneitokaaviot**Pan/zoom/export – tuli @mostlylucid/mermaid-enhancements npm-paketti
-**HTMX-käyttöinen haku**• uutettu hakutagien auttaja NuGet-pakettiin
-**Umamin analytiikkaintegraatio**– tuli Umami.net-paketti
-**LLM-käyttöiset pilkkarajapinnat**Kehitystä varten – tuli mockllmapi-paketti
-**Se on sotkuista, kokeellista ja jatkuvasti kehittyvää.**Se on tarkoituskin.
-**Yhteystiedot**Sähköposti:
-**Scott.galloway+ml@gmail.com**Blogi:
-
-### GitHub:
-
-**LinkedIn:**Scott Galloway
-
-**Etsitkö konsultointiapua vai sopimusroolia?**Olen aina avoin mielenkiintoisille projekteille.
-
-- Jätä minulle jono.
-- Yksityiskohdat (jos tarvitset niitä)
-- Tekninen pino
-- Kielet:
-
-**Perl CGI:stä Go -mikropalveluihin – C#/.NET (pääpainoni), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++.**
-
-**Olen kieliagnostikko ja valitsen ongelman, en kohun, perusteella.**Tausta:
-
-**ASP.NET Core kautta .NET 9, Node.js, Python API, Go-palvelut**Frontend:
-
-**HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (mikä tahansa sopii käyttökoteloon)**CSS:
-
-**Perätuuli CSS, Bootstrap, DaisyUI**Tietokannat:*[PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch*DevOps:
-
-**Docker, Kubernetes, GitHub-toiminnot, Azure DevOps, CI/CD-putket, infrastruktuuri koodina**Pilvi:*[Azure (vaikka pidänkin yhä enemmän itseohjautuvista ratkaisuista kustannusten ja hallinnan kannalta)*AI/ML:
-
-**Ollama, EasyNMT, ML.NET, Scikit-oppi, upotukset, ANN:t, RAG-putket, Azure OpenAI**Uran kohokohtia*[Microsoft Corporation*(2005–2009): Aloitti Application Developer Consultant II:na Readingissa, Isossa-Britanniassa, keskittyen tulosanalyysiin ja yrityskonsultointiin FTSE 100 -asiakkaille.
-
-### Mainostin ohjelmapäällikkö II:ta Redmondissa, WA:ssa, jossa hoidin ASP.NETin käyttöiät ja ajoin tietoturvainfrastruktuuria Project Serverille.
-
-**enimmäkseen niukasti**(2012-Present): Konsultointini kautta olen toimittanut kymmeniä ratkaisuja fintechin, terveydenhuollon, verkkokaupan ja hallinnon aloille sekä sopimus- että päätoimisissa tehtävissä.
-Merkittäviä tapaamisia ovat muun muassa seuraavat:
-
-Merkittävän aasialaisen lentoyhtiön varausjärjestelmän johtava arkkitehti/kehittäjä (Knockout & ASP.NET MVC)
+**Konsultointiapua tai sopimusroolia etsimässä** Olen aina avoin mielenkiintoisille projekteille. Jätä minut rauhaan.
 
 ---
 
 
-## T&K-kehittäjä vakuutusyhtiön telemetriaseurantaan (Azuren matalatasoiset pistorasiajärjestelmät)
+## Yksityiskohdat, jos tarvitset niitä.
 
-**Research Systems Architect on British Government National Security -jaettu tietojenkäsittelyhanke**Tekninen konsultti 8 Britannialle ja kansainvälisille hyväntekeväisyysjärjestöille
+### Tekninen pino
 
-**Viimeaikaiset roolit (sopimus ja kokoaikainen):**ZenChef Limited
+**Kielitaitoa** Perl CGI:n ja Go:n mikropalvelut, MSK:n ja MSK:n välinen verkko, jonka pääpaino on Python, MSK:n ja Java MSK:n välinen sopimus, NideMSK:n välinen sopimus, NideMSK:n ja MSK:n välinen sopimus, JJK:n välinen sopimus, JJKK:n välinen sopimus, KJK:n ja KJK:n välinen sopimus, JJK:n välinen sopimus, JJKK:n välinen sopimus, JKKK:n välinen sopimus, JKKK:n välinen sopimus, JKKK:n välinen sopimus, JKKK:n ja JKKK:n välinen sopimus, JKKK:n välinen sopimus, JKKK:n välinen sopimus, JKKK:n ja JKKK:n välinen sopimus, JKKK:n välinen sopimus, s.
+**Taustaa MSKK:lle** ASPMSKK0NET Core kautta MSKK1ANET, MSK2A NodeMSK3AjSK4A Python API, MSK5A Go palvelut
+**Frontend MSKK** HTMXMSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK6KKKKKKKKKKKKKK7KKKKKKKKKKKKKKKKKKKKKKKKK8KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK6KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK8K8kK8K8K8K8K8K8K8K8K8K8K8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8kk8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k8k
+**KESÄKUUN JÄLKEEN** Kääntymätuuli CSSMSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+**Tietokannat** SQL-palvelin SQL-palvelin SQL-palvelin SQLMSK2L-palvelinSQLiteMSK3L-palvelin MongoDBMSK4L-palvelin SQL-palvelin SQL-palvelin SQLMSK2L-palvelinSQL-palvelinSQL-palvelinSMSK3L-palvelinSQL-palvelinSMSK3L-palvelinSQL-palvelinSQL-palvelin SQL-palvelinSL-palvelinSL-palvelin SQL-palvelinSMSKK2L-palvelinSMSK3L-palvelija MongoDBMSK4L-palvelinSMK4L-palvelinSMK-palvelinSL-palvelijasto
+**DevOpsOpsOSKOO** GITHub Actions MSK2AZure DevSK3AZure DevMSK3Azure DevMSK4CD CITMSK4CD-putkistot MSK5ASMK6ASMK7AS Code
+**Pilvi- ja pilvipalvelut** Vaikka suosinkin yhä enemmän itsehallinnollisia ratkaisuja kustannusten hallintaan ja hallintaan, pidän enemmän itsehallinnollisista ratkaisuista.
+**AIKAKAUSIJULKAISUT** HEINÄKUUN JÄLKEEN MESSKKKKKKKKKKKKKKKKKKKK4KKKKKKKK4KKKKKK4KKKKKKK4KKKKKKK4KKKKK4KKKKKKK4KKKKK4KKKKK4KKKK4KKK4KKKK4KKK6KKKK6KKK6KKKK6KKKK6KKK6KKKKK7KLKLK3KLK3KLK3KLK3KLK3KLK3KLK3KLK3KLK6
 
-**(Octt 2024 - Present): Johda ison perinnön Azure-pohjainen hajautettu järjestelmä .NET 8 -järjestelmään, joka vähentää merkittävästi hostingkustannuksia profiloinnin ja optimoinnin avulla.**Jatka massiivisen perintöjärjestelmän tukemista.
+### Uran kohokohtia
 
-**Very Jane Ltd**(Apr 2024 - elo 2024): Backend-integraatio laajaan verkkokauppasovellukseen, jossa otetaan käyttöön Stripe Connect ja Hyperwallet -maksujärjestelmät.
+**Microsoft Corporation** Aloitti sovelluskehittäjänä II:na Reading-MSK:ssa, joka keskittyy suorituksen analysointiin ja yrityskonsultointiin FTSE:n ja MSK3:n asiakkaille. MSK4:tä mainostettiin ohjelmajohtajaksi II:lle Redmond-MSK:ssa, jossa hoidin ASPööMSK7:n julkaisun elinkaarta ja autoin turvallisuusinfrastruktuuria projektin Server-MSK8:ssa.
 
-**Semcor Ltd**(joulukuu 2022 – huhtikuu 2024): ASP.NET Core -järjestelmä otettiin käyttöön konetekniikan päällikkönä, ja Docker Compose ja OpenSearch havittelivat tehostettua raportointia.
+**enimmäkseen niukasti** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKHKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
 
-GBG Plc (Loqate)**(Ug 2022 – marras 2022)**.
+- Pääarkkitehti MSKK1S:n suuren aasialaisen lentoyhtiön varausjärjestelmän kehittäjä MSK2Knockout ASPKK4NET MVCMK5S:n kehittäjä
+- RMSK0D Vakuutusyhtiön telemetrian kehittäjä, joka seuraa MSK1HowMK2H2H2H2H2H2H3H3H3H3H3H
+- Research Systems Architect on British Government National Security -jaettu tietojenkäsittelyhanke
+- Britannian ja kansainvälisten hyväntekeväisyysjärjestöjen tekninen konsultti
 
-Kokoaikaiseksi]
+**Äskettäiset roolit:Sopimus täysjäsenyydestäMSK2AikatyöstäMSK3**
+
+**ZenChef Limited** MSKKKKKKKKKKKKKKKKKKKKKKKKKKK6KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK
+
+**Very Jane Ltd** Stripe Connect- ja Hyperwallet -maksujärjestelmien toteuttaminen Stripe Connect- ja Hyperwallet-maksujärjestelmien käyttöönotto Stripe Connect- ja Hyperwallet -sovellus
+
+**Semcor Ltd** MSKKKKKKKKKKKKKKKKKKKKKKKK4Net Core system retrotected aSPMSKKKK4Net Core system as Chief of Engineering system of Engineering Youthing Docker Compose and OpenSear for paremmalle raportoinnille
+
+**GBG Oyj:n sijaintipaikkakunta MSK:n sijaintipaikkakunta** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK *[Täysosuma.*MSKK2 on rakentanut maailmanlaajuisen hakutuotteen käyttäen MSKK1Net-mikropalveluita ja Kuberneteja korkealle MSK3:lle, minkä kautta MSK4 on tuottanut suuren MSK5:n mittakaavan tietojenkäsittelyä MSK6:n kautta.
+
+**SPACE Ltd:n ja SPACE:n välinen sopimus** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKÖKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK *[Täysosuma.*MSKK2Hallittu backend-pilviarkkitehtuurin suunnittelu UnityMSK1S -alustalle React- ja GraphQLMSK2Hallittu ja johtanut maailmanlaajuisen dev-tiimin MVP:n toimitukseen MSK3P-päivien kuluessa
+
+**Dell** MSKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKÖKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK *[Täysosuma.*SMSK:n ja SQL Server MSK:n muodostaman ASPMSK1NET MVC:n ja SQL Server MSK:n muodostaman sisäisen laitevarauksen järjestelmä lyhentää asennusaikaa MSK3:n avulla
+
+### Koulutus
+
+**Stirlingin yliopisto** BSC MSK1HonsMSK2Henkilöstöpsykologia
+Skotlanti, Skotlanti, Skotlanti, Skotlanti, Skotlanti, Skotlanti
+
+Psykologiasta ja psykologiasta on ollut uskomattoman paljon hyötyä käyttäjien käyttäytymisen ymmärtämisessä ja johtavissa tiimeissä.
+
+---
+
+
+## Miksi työskennellä kanssani?
+
+**Perl CGI -skripteistä pilvialustoihin**IMSKK1 on yli kahden vuosikymmenen ajan rakentanut ja pyörittänyt ohjelmistoja, jotka pysyvät paineessa, IMSKK3 on toiminut ASPKKK4:n kautta, ja nykyään MSK7:n kautta on rakennettu ja pyöritetty ohjelmistoja, jotka ovat pysyneet kasassa MSKK3:n johtavien joukkueiden kanssa ja muokannut perintöjärjestelmiä matkalla MSKK11:n kautta.
+
+**Lisään tekoälyn, kun siitä on hyötyä, en siksi, että se olisi trendikästä.** IMSK0ve rakensi MLMSK1-pohjaisia suositusjärjestelmiä, joissa käytetään AZure OpenAI:ta ja vektoreja, jotka sulauttavat MSK3:ta ja RAG:tä, mutta tiedän myös, milloin yksinkertaisemmat ratkaisut ovat parempia.
+
+**Panen asiat toimimaan kunnolla ja teen niistä viimeisiä.** IMSKK2 on siirtänyt perinteisiä monoliitteja pilvi-MSK1 -arkkitehtuureihin leikkaamalla infrastruktuurikustannuksia MSK3:lla ja parantamalla käyttöönottoaikoja MSK4:llä. MSK5 on vähentänyt käyttöajan virheitä useissa järjestelmissä profiloimalla ja optimoimalla MSK7:ää.
+
+**IOMSK0VE johti rakennuttajien boot camps kanssa MSK1 valmistuneet ja AMSK2 sijoittumisaste MSK3** Opettaminen ja mentorointi ovat minulle tärkeitä sivuhankkeita, jotka ovat keskeisessä asemassa siinä, miten työskentelen MSK3:ssa. Uskon joukkueiden rakentamiseen, jotka kestävät yhdenkin hankkeen.
+
+**Toimitan MSKK:n** Joko se on suunnitellut maailmanlaajuisen hakutuotteen Kubernetes MSK:lle, joka yhdistää maksujärjestelmät sähköiseen MSK2:een, tai modernisoi perintöjärjestelmiä tiukoissa määräajoissa, MSK4 on tehnyt sen kaikissa fintechissä, MSK6:ssa, terveydenhuollossa, MSK7:ssä, hallituksessa, MSK8:ssa ja SaaSMSK9:ssä.
+
+Kaiken läpi kulkeva lanka on yksinkertainen. **saa asiat toimimaan kunnolla ja kestämään**.
+
+Jos etsit jotakuta, joka voi rakentaa MSKKKKKKKKKKKKKKKKKKKKKKKK4KKKKKKKKKK4KKKKKK4KKKKKK4KKKKK4KKKKKKK4KKKKK4KKKKKK4KKK4KKKK4KKK4KKKKK4KKK4KKK4KKK4KKK4KKK4KK4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K3K3K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K4K

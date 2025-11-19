@@ -142,4 +142,94 @@ public class WorkflowController : Controller
         _cacheService.TouchCache();
         return Ok();
     }
+
+    // HTMX Endpoints for Workflow Editor
+
+    [HttpGet]
+    public IActionResult WorkflowList()
+    {
+        var workflows = _cacheService.GetAllWorkflows();
+        return PartialView("Partials/_WorkflowList", workflows);
+    }
+
+    [HttpPost]
+    public IActionResult AddNode(string? workflowId, string nodeType, int x, int y)
+    {
+        var nodeId = Guid.NewGuid().ToString();
+        var node = new WorkflowNode
+        {
+            Id = nodeId,
+            Type = nodeType,
+            Name = $"{nodeType} Node",
+            Inputs = new Dictionary<string, object>
+            {
+                ["x"] = x,
+                ["y"] = y
+            }
+        };
+
+        // If workflowId exists, add to workflow
+        if (!string.IsNullOrEmpty(workflowId))
+        {
+            var workflow = _cacheService.GetWorkflow(workflowId);
+            if (workflow != null)
+            {
+                workflow.Nodes ??= new List<WorkflowNode>();
+                workflow.Nodes.Add(node);
+                _cacheService.SaveWorkflow(workflow);
+            }
+        }
+
+        return PartialView("Partials/_WorkflowNode", node);
+    }
+
+    [HttpPost]
+    public IActionResult UpdateNodePosition(string nodeId, int x, int y)
+    {
+        // In-memory position update (would persist in real app)
+        return Ok();
+    }
+
+    [HttpDelete]
+    public IActionResult DeleteNode(string nodeId)
+    {
+        return Content(""); // Return empty content to remove element
+    }
+
+    [HttpGet]
+    public IActionResult LoadWorkflow(string id)
+    {
+        var workflow = _cacheService.GetWorkflow(id);
+        if (workflow == null)
+        {
+            return NotFound();
+        }
+
+        return PartialView("Partials/_WorkflowCanvas", workflow);
+    }
+
+    [HttpPost]
+    public IActionResult SaveWorkflow(string name, string? workflowId = null)
+    {
+        var workflow = string.IsNullOrEmpty(workflowId)
+            ? new WorkflowDefinition
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = name,
+                Nodes = new List<WorkflowNode>(),
+                IsEnabled = true
+            }
+            : _cacheService.GetWorkflow(workflowId);
+
+        if (workflow == null)
+        {
+            return NotFound();
+        }
+
+        workflow.Name = name;
+        workflow.UpdatedAt = DateTime.UtcNow;
+        _cacheService.SaveWorkflow(workflow);
+
+        return Json(new { success = true, workflowId = workflow.Id, message = "Workflow saved successfully" });
+    }
 }
