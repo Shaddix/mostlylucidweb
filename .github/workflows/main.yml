@@ -16,7 +16,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.x' # Specify the .NET version you need
+          dotnet-version: '9.x' # Specify the .NET version you need
 
       - name: Restore dependencies
         run: dotnet restore ./Umami.Net/Umami.Net.csproj
@@ -28,7 +28,7 @@ jobs:
         run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj 
 
       - name: Pack project
-        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --no-build --output ./nupkg
+        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --no-restore --output ./nupkg
 
       - name: Publish to NuGet
         run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }}
