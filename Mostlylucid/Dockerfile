@@ -26,11 +26,18 @@ COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
 COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
 COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.Extensions/Mostlylucid.Markdig.Extensions.csproj", "Mostlylucid.Markdig.Extensions/"]
+COPY ["Mostlylucid.Workflow.Engine/Mostlylucid.Workflow.Engine.csproj", "Mostlylucid.Workflow.Engine/"]
+COPY ["Mostlylucid.Workflow.Shared/Mostlylucid.Workflow.Shared.csproj", "Mostlylucid.Workflow.Shared/"]
+COPY ["Umami.Net/Umami.Net.csproj", "Umami.Net/"]
 
-# Copy files needed by Mostlylucid.Markdig.FetchExtension project file at restore time
+# Copy files needed by project files at restore time
 COPY ["Mostlylucid.Markdig.FetchExtension/release-notes.txt", "Mostlylucid.Markdig.FetchExtension/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/README.md", "Mostlylucid.Markdig.FetchExtension/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/icon.png", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Umami.Net/ReleaseNotes.txt", "Umami.Net/"]
+COPY ["Umami.Net/README.md", "Umami.Net/"]
+COPY ["Umami.Net/icon.png", "Umami.Net/"]
 
 # Restore .NET dependencies
 RUN dotnet restore "./Mostlylucid/Mostlylucid.csproj"
@@ -42,6 +49,10 @@ COPY ./Mostlylucid.Shared/ ./Mostlylucid.Shared/
 COPY ./Mostlylucid.Services/ ./Mostlylucid.Services/
 COPY ./Mostlylucid.DbContext/ ./Mostlylucid.DbContext/
 COPY ./Mostlylucid.Markdig.FetchExtension/ ./Mostlylucid.Markdig.FetchExtension/
+COPY ./Mostlylucid.Markdig.Extensions/ ./Mostlylucid.Markdig.Extensions/
+COPY ./Mostlylucid.Workflow.Engine/ ./Mostlylucid.Workflow.Engine/
+COPY ./Mostlylucid.Workflow.Shared/ ./Mostlylucid.Workflow.Shared/
+COPY ./Umami.Net/ ./Umami.Net/
 # Install NPM dependencies (do this before the build step)
 WORKDIR "/src/Mostlylucid"
 COPY package*.json ./

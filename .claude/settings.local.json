@@ -39,7 +39,8 @@
       "Bash(csc:*)",
       "Bash(TestTimestamps.exe)",
       "Bash(wmic path win32_localtime get:*)",
-      "Bash(timedatectl status:*)"
+      "Bash(timedatectl status:*)",
+      "Bash(docker build:*)"
     ],
     "deny": [],
     "ask": []
