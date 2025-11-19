@@ -23,14 +23,17 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./Umami.Net/Umami.Net.csproj
 
-      - name: Build project
-        run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --no-restore
+      - name: Build project (net8.0)
+        run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net8.0 --no-restore
+
+      - name: Build project (net9.0)
+        run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net9.0 --no-restore
 
       - name: Run tests
-        run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj 
+        run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj
 
       - name: Pack project
-        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --output ./nupkg
+        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --no-build --output ./nupkg
 
       - name: Publish to NuGet
         run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }}

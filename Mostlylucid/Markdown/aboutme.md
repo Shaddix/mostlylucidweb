@@ -11,7 +11,7 @@ I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond 
 
 [TOC]  
   
-## What I Bring
+## What I Bring 
 
 **I scale with you.** I've bootstrapped startups as the solo technical founder, built and led teams of 20+ engineers, and served as interim CTO for companies raising their Series A. Whether you need someone to architect your MVP, build your first engineering team, or take over as Head of Engineering, I've done it.
 
