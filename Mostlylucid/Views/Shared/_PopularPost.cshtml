@@ -1,7 +1,10 @@
 @using Mostlylucid.Services.Umami
-@model PopularPost?
+@inject Mostlylucid.Services.Umami.IPopularPostsService PopularPostsService
+@{
+    var popularPost = await PopularPostsService.GetCachedPopularPost();
+}
 
-@if (Model != null)
+@if (popularPost != null)
 {
     <div class="mt-6 mb-4 p-4 border border-grey-lighter dark:border-grey-dark rounded-lg bg-white dark:bg-custom-dark-bg">
         <div class="flex items-center mb-2">
@@ -13,13 +16,13 @@
         <p class="text-sm text-grey-dark dark:text-grey mb-2">
             Most popular in the last 24 hours
         </p>
-        <a href="@Model.Url"
+        <a href="@popularPost.Url"
            hx-boost="true"
            hx-target="#contentcontainer"
            hx-push-url="true"
            class="block group hover:bg-grey-lightest dark:hover:bg-grey-darker p-3 rounded transition-colors">
             <h4 class="font-body text-base font-medium text-primary dark:text-white group-hover:text-secondary dark:group-hover:text-secondary transition-colors">
-                @Model.Title
+                @popularPost.Title
             </h4>
             <p class="text-xs text-grey-dark dark:text-grey mt-1">
                 <i class="bx bx-show-alt"></i> Popular right now

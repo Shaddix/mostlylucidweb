@@ -602,3 +602,705 @@ public class UmamiDataSortService(
     }
 
 ```
+
+---
+
+# Complete API Reference
+
+## New Endpoints (v2.0+)
+
+### Events Series
+
+Get event occurrences over time with timestamps.
+
+```csharp
+// Get all events over the past week
+var request = new EventsSeriesRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.day,
+    EventName = "button-click" // Optional: filter by event name
+};
+
+var result = await dataService.GetEventsSeries(request);
+
+// Or use convenience method
+var result = await dataService.GetEventsSeries(
+    startDate: DateTime.UtcNow.AddDays(-7),
+    endDate: DateTime.UtcNow,
+    unit: Unit.day,
+    timezone: "America/Los_Angeles",
+    eventName: "purchase"
+);
+
+// Response format:
+// [
+//   { "x": "signup", "t": "2024-01-15T10:00:00Z", "y": 42 },
+//   { "x": "signup", "t": "2024-01-16T10:00:00Z", "y": 38 }
+// ]
+```
+
+### Expanded Metrics
+
+Get detailed engagement metrics including bounces and total time.
+
+```csharp
+var request = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-30),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.url,
+    Limit = 50
+};
+
+var result = await dataService.GetExpandedMetrics(request);
+
+// Response includes:
+// - name: The dimension value (e.g., URL, OS name)
+// - pageviews: Total page hits
+// - visitors: Unique visitor count
+// - visits: Unique visit count
+// - bounces: Single-page visits
+// - totaltime: Total time on site in milliseconds
+
+foreach (var metric in result.Data)
+{
+    Console.WriteLine($"{metric.name}: {metric.visitors} visitors, " +
+                     $"{metric.pageviews} views, " +
+                     $"avg time: {metric.totaltime / metric.visits}ms");
+}
+```
+
+## All Supported Metric Types
+
+```csharp
+public enum MetricType
+{
+    url,        // Page URLs - most common for page views
+    path,       // URL paths only
+    entry,      // Entry pages
+    exit,       // Exit pages
+    title,      // Page titles
+    query,      // Query string parameters
+    referrer,   // Traffic sources/referrers
+    browser,    // Browser names (Chrome, Firefox, etc.)
+    os,         // Operating systems (Windows, macOS, etc.)
+    device,     // Device types (Mobile, Desktop, Tablet)
+    country,    // Country codes (US, UK, etc.)
+    region,     // States/provinces
+    city,       // City names
+    language,   // Language codes (en, es, fr, etc.)
+    screen,     // Screen resolutions
+    event,      // Custom event names
+    hostname,   // Domain names
+    tag,        // Content tags
+    channel,    // Traffic channels (organic, social, etc.)
+    domain      // Full domains
+}
+```
+
+## Complete Example: Analytics Dashboard
+
+Here's a complete example showing how to build an analytics dashboard:
+
+```csharp
+public class AnalyticsDashboardService
+{
+    private readonly UmamiDataService _dataService;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<AnalyticsDashboardService> _logger;
+
+    public AnalyticsDashboardService(
+        UmamiDataService dataService,
+        IMemoryCache cache,
+        ILogger<AnalyticsDashboardService> logger)
+    {
+        _dataService = dataService;
+        _cache = cache;
+        _logger = logger;
+    }
+
+    // Get overview stats for the past 30 days
+    public async Task<DashboardStats> GetDashboardStats()
+    {
+        var cacheKey = "dashboard_stats_30d";
+
+        if (_cache.TryGetValue(cacheKey, out DashboardStats? cached))
+            return cached!;
+
+        var endDate = DateTime.UtcNow;
+        var startDate = endDate.AddDays(-30);
+
+        // Get summary statistics
+        var statsRequest = new StatsRequest
+        {
+            StartAtDate = startDate,
+            EndAtDate = endDate
+        };
+
+        var statsResult = await _dataService.GetStats(statsRequest);
+
+        // Get top pages with detailed metrics
+        var metricsRequest = new MetricsRequest
+        {
+            StartAtDate = startDate,
+            EndAtDate = endDate,
+            Type = MetricType.url,
+            Limit = 10
+        };
+
+        var expandedMetrics = await _dataService.GetExpandedMetrics(metricsRequest);
+
+        // Get traffic sources
+        var referrerRequest = new MetricsRequest
+        {
+            StartAtDate = startDate,
+            EndAtDate = endDate,
+            Type = MetricType.referrer,
+            Limit = 10
+        };
+
+        var referrers = await _dataService.GetMetrics(referrerRequest);
+
+        // Get geographic distribution
+        var countryRequest = new MetricsRequest
+        {
+            StartAtDate = startDate,
+            EndAtDate = endDate,
+            Type = MetricType.country,
+            Limit = 20
+        };
+
+        var countries = await _dataService.GetMetrics(countryRequest);
+
+        var dashboard = new DashboardStats
+        {
+            TotalPageViews = statsResult.Data?.pageviews.value ?? 0,
+            UniqueVisitors = statsResult.Data?.visitors.value ?? 0,
+            BounceRate = CalculateBounceRate(statsResult.Data),
+            TopPages = expandedMetrics.Data?.ToList() ?? new(),
+            TopReferrers = referrers.Data?.ToList() ?? new(),
+            CountryDistribution = countries.Data?.ToList() ?? new()
+        };
+
+        _cache.Set(cacheKey, dashboard, TimeSpan.FromMinutes(15));
+        return dashboard;
+    }
+
+    // Get real-time active users
+    public async Task<int> GetActiveUsers()
+    {
+        var result = await _dataService.GetActiveUsers();
+        return result.Data?.visitors ?? 0;
+    }
+
+    // Get page view trends
+    public async Task<List<TimeSeriesDataPoint>> GetPageViewTrends(int days = 30)
+    {
+        var request = new PageViewsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-days),
+            EndAtDate = DateTime.UtcNow,
+            Unit = days <= 2 ? Unit.hour : Unit.day,
+            Timezone = "UTC"
+        };
+
+        var result = await _dataService.GetPageViews(request);
+
+        return result.Data?.pageviews
+            .Select(pv => new TimeSeriesDataPoint
+            {
+                Timestamp = DateTime.Parse(pv.x),
+                Value = pv.y
+            })
+            .ToList() ?? new();
+    }
+
+    // Get most popular blog posts
+    public async Task<List<BlogPostStats>> GetPopularBlogPosts(int limit = 10)
+    {
+        var request = new MetricsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-30),
+            EndAtDate = DateTime.UtcNow,
+            Type = MetricType.url,
+            Limit = 500
+        };
+
+        var result = await _dataService.GetExpandedMetrics(request);
+
+        if (result.Data == null)
+            return new();
+
+        // Filter for blog posts and aggregate language variants
+        var blogPosts = new Dictionary<string, BlogPostStats>();
+
+        foreach (var metric in result.Data.Where(m => m.name.StartsWith("/blog/")))
+        {
+            var slug = metric.name.Substring(6);
+            var baseSlug = slug.Contains('.')
+                ? slug.Substring(0, slug.LastIndexOf('.'))
+                : slug;
+
+            if (blogPosts.TryGetValue(baseSlug, out var existing))
+            {
+                existing.PageViews += metric.pageviews;
+                existing.UniqueVisitors += metric.visitors;
+                existing.TotalTime += metric.totaltime;
+            }
+            else
+            {
+                blogPosts[baseSlug] = new BlogPostStats
+                {
+                    Slug = baseSlug,
+                    Url = $"/blog/{baseSlug}",
+                    PageViews = metric.pageviews,
+                    UniqueVisitors = metric.visitors,
+                    TotalTime = metric.totaltime,
+                    AverageTime = metric.visits > 0
+                        ? metric.totaltime / metric.visits
+                        : 0
+                };
+            }
+        }
+
+        return blogPosts.Values
+            .OrderByDescending(p => p.PageViews)
+            .Take(limit)
+            .ToList();
+    }
+
+    private double CalculateBounceRate(StatsResponseModels? stats)
+    {
+        if (stats == null || stats.visits.value == 0)
+            return 0;
+
+        return (double)stats.bounces.value / stats.visits.value * 100;
+    }
+}
+
+public class DashboardStats
+{
+    public int TotalPageViews { get; set; }
+    public int UniqueVisitors { get; set; }
+    public double BounceRate { get; set; }
+    public List<ExpandedMetricsResponseModel> TopPages { get; set; } = new();
+    public List<MetricsResponseModels> TopReferrers { get; set; } = new();
+    public List<MetricsResponseModels> CountryDistribution { get; set; } = new();
+}
+
+public class TimeSeriesDataPoint
+{
+    public DateTime Timestamp { get; set; }
+    public int Value { get; set; }
+}
+
+public class BlogPostStats
+{
+    public string Slug { get; set; } = "";
+    public string Url { get; set; } = "";
+    public int PageViews { get; set; }
+    public int UniqueVisitors { get; set; }
+    public long TotalTime { get; set; }
+    public long AverageTime { get; set; }
+}
+```
+
+## Error Handling Best Practices
+
+Always check the HTTP status code and handle errors appropriately:
+
+```csharp
+public async Task<List<MetricsResponseModels>> GetTopPagesWithRetry()
+{
+    var maxRetries = 3;
+    var retryCount = 0;
+
+    while (retryCount < maxRetries)
+    {
+        try
+        {
+            var request = new MetricsRequest
+            {
+                StartAtDate = DateTime.UtcNow.AddDays(-7),
+                EndAtDate = DateTime.UtcNow,
+                Type = MetricType.url,
+                Limit = 10
+            };
+
+            var result = await _dataService.GetMetrics(request);
+
+            if (result.Status == HttpStatusCode.OK && result.Data != null)
+            {
+                return result.Data.ToList();
+            }
+
+            if (result.Status == HttpStatusCode.Unauthorized)
+            {
+                _logger.LogWarning("Authentication failed, will retry");
+                retryCount++;
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)));
+                continue;
+            }
+
+            _logger.LogError("Failed to get metrics: {Status} - {Message}",
+                result.Status, result.Message);
+            return new();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception getting metrics");
+            retryCount++;
+
+            if (retryCount >= maxRetries)
+                throw;
+
+            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)));
+        }
+    }
+
+    return new();
+}
+```
+
+## Caching Strategy
+
+Implement smart caching to reduce API calls:
+
+```csharp
+public class CachedUmamiService
+{
+    private readonly UmamiDataService _dataService;
+    private readonly IDistributedCache _cache;
+    private readonly ILogger<CachedUmamiService> _logger;
+
+    // Cache durations based on data volatility
+    private static readonly Dictionary<string, TimeSpan> CacheDurations = new()
+    {
+        ["active-users"] = TimeSpan.FromSeconds(30),      // Real-time
+        ["hourly-stats"] = TimeSpan.FromMinutes(5),       // Recent
+        ["daily-stats"] = TimeSpan.FromMinutes(15),       // Today
+        ["monthly-stats"] = TimeSpan.FromHours(1),        // Historical
+        ["popular-posts"] = TimeSpan.FromMinutes(30)      // Trending
+    };
+
+    public async Task<T?> GetCachedData<T>(
+        string cacheKey,
+        string cacheCategory,
+        Func<Task<UmamiResult<T>>> fetchFunc)
+    {
+        var fullKey = $"umami:{cacheCategory}:{cacheKey}";
+
+        // Try cache first
+        var cachedData = await _cache.GetStringAsync(fullKey);
+        if (cachedData != null)
+        {
+            return JsonSerializer.Deserialize<T>(cachedData);
+        }
+
+        // Fetch from API
+        var result = await fetchFunc();
+
+        if (result.Status == HttpStatusCode.OK && result.Data != null)
+        {
+            var serialized = JsonSerializer.Serialize(result.Data);
+            var duration = CacheDurations.GetValueOrDefault(
+                cacheCategory,
+                TimeSpan.FromMinutes(10)
+            );
+
+            await _cache.SetStringAsync(
+                fullKey,
+                serialized,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = duration
+                }
+            );
+
+            return result.Data;
+        }
+
+        _logger.LogWarning("Failed to fetch data: {Status}", result.Status);
+        return default;
+    }
+}
+```
+
+## Background Polling Service
+
+Implement a background service to keep popular content cached:
+
+```csharp
+public class UmamiPollingService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<UmamiPollingService> _logger;
+    private readonly TimeSpan _pollInterval = TimeSpan.FromMinutes(15);
+
+    public UmamiPollingService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<UmamiPollingService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Umami Polling Service started");
+
+        // Wait 2 minutes before first poll
+        await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await PollUmamiData(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error polling Umami data");
+            }
+
+            await Task.Delay(_pollInterval, stoppingToken);
+        }
+
+        _logger.LogInformation("Umami Polling Service stopped");
+    }
+
+    private async Task PollUmamiData(CancellationToken cancellationToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var dataService = scope.ServiceProvider.GetRequiredService<UmamiDataService>();
+        var cache = scope.ServiceProvider.GetRequiredService<IMemoryCache>();
+
+        // Update popular posts
+        var metricsRequest = new MetricsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-7),
+            EndAtDate = DateTime.UtcNow,
+            Type = MetricType.url,
+            Limit = 50
+        };
+
+        var result = await dataService.GetExpandedMetrics(metricsRequest);
+
+        if (result.Status == HttpStatusCode.OK && result.Data != null)
+        {
+            cache.Set("popular_content", result.Data, TimeSpan.FromMinutes(20));
+            _logger.LogInformation("Updated popular content cache with {Count} items",
+                result.Data.Length);
+        }
+
+        // Update active users count
+        var activeUsers = await dataService.GetActiveUsers();
+        if (activeUsers.Status == HttpStatusCode.OK)
+        {
+            cache.Set("active_users", activeUsers.Data?.visitors ?? 0,
+                TimeSpan.FromSeconds(30));
+        }
+    }
+}
+
+// Register in Program.cs
+services.AddHostedService<UmamiPollingService>();
+```
+
+## Testing
+
+Example integration tests:
+
+```csharp
+public class UmamiDataServiceTests : IClassFixture<UmamiTestFixture>
+{
+    private readonly UmamiDataService _dataService;
+
+    public UmamiDataServiceTests(UmamiTestFixture fixture)
+    {
+        _dataService = fixture.DataService;
+    }
+
+    [Fact]
+    public async Task GetStats_ReturnsValidData()
+    {
+        // Arrange
+        var request = new StatsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-7),
+            EndAtDate = DateTime.UtcNow
+        };
+
+        // Act
+        var result = await _dataService.GetStats(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data.pageviews.value >= 0);
+        Assert.True(result.Data.visitors.value >= 0);
+    }
+
+    [Fact]
+    public async Task GetMetrics_WithUrlType_ReturnsPageViews()
+    {
+        // Arrange
+        var request = new MetricsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-30),
+            EndAtDate = DateTime.UtcNow,
+            Type = MetricType.url,
+            Limit = 10
+        };
+
+        // Act
+        var result = await _dataService.GetMetrics(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data.Length <= 10);
+        Assert.All(result.Data, metric =>
+        {
+            Assert.NotEmpty(metric.x);
+            Assert.True(metric.y >= 0);
+        });
+    }
+
+    [Fact]
+    public async Task GetExpandedMetrics_ReturnsDetailedData()
+    {
+        // Arrange
+        var request = new MetricsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-7),
+            EndAtDate = DateTime.UtcNow,
+            Type = MetricType.url,
+            Limit = 5
+        };
+
+        // Act
+        var result = await _dataService.GetExpandedMetrics(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.All(result.Data, metric =>
+        {
+            Assert.NotEmpty(metric.name);
+            Assert.True(metric.pageviews >= 0);
+            Assert.True(metric.visitors >= 0);
+            Assert.True(metric.visits >= 0);
+            Assert.True(metric.bounces >= 0);
+            Assert.True(metric.totaltime >= 0);
+        });
+    }
+
+    [Fact]
+    public async Task GetActiveUsers_ReturnsNonNegativeCount()
+    {
+        // Act
+        var result = await _dataService.GetActiveUsers();
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.True(result.Data.visitors >= 0);
+    }
+
+    [Fact]
+    public async Task GetEventsSeries_ReturnsTimeSeriesData()
+    {
+        // Arrange
+        var request = new EventsSeriesRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-7),
+            EndAtDate = DateTime.UtcNow,
+            Unit = Unit.day
+        };
+
+        // Act
+        var result = await _dataService.GetEventsSeries(request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.All(result.Data, item =>
+        {
+            Assert.NotEmpty(item.x);
+            Assert.NotEmpty(item.t);
+            Assert.True(item.y >= 0);
+        });
+    }
+}
+
+public class UmamiTestFixture : IDisposable
+{
+    public UmamiDataService DataService { get; }
+
+    public UmamiTestFixture()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.Test.json")
+            .Build();
+
+        var services = new ServiceCollection();
+        services.SetupUmamiData(configuration);
+        var provider = services.BuildServiceProvider();
+
+        DataService = provider.GetRequiredService<UmamiDataService>();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
+```
+
+## Performance Tips
+
+1. **Batch Requests**: Combine multiple metric types in a single time range
+2. **Use Appropriate Units**: `Unit.hour` for recent data, `Unit.day` for historical
+3. **Limit Results**: Set reasonable `Limit` values (default: 500)
+4. **Cache Aggressively**: Historical data doesn't change
+5. **Background Processing**: Use hosted services for expensive queries
+6. **Connection Pooling**: Reuse HttpClient (already configured)
+
+## Troubleshooting
+
+### Authentication Failures
+- Verify username/password in configuration
+- Check Umami instance is accessible
+- Ensure user has admin role
+
+### No Data Returned
+- Verify website ID is correct
+- Check date ranges (not too far in the past)
+- Ensure data exists for the time period
+
+### Slow Responses
+- Reduce `Limit` value
+- Use longer time `Unit` (day vs hour)
+- Implement caching
+- Check network latency to Umami instance
+
+## Version History
+
+- **2.0.0** - Added Events Series, Expanded Metrics, improved error handling
+- **1.5.0** - Added background sender, retry logic
+- **1.0.0** - Initial release with basic tracking and stats
+
+## License
+
+MIT License
+
+## Support
+
+- GitHub Issues: https://github.com/scottgal/mostlylucid.dse
+- Umami Docs: https://umami.is/docs
+- Blog Posts: https://www.mostlylucid.net/blog
+
+```

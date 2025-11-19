@@ -27,11 +27,8 @@
     <partial name="_CVButtons" />
 </div>
 
-@inject Mostlylucid.Services.Umami.IPopularPostsService PopularPostsService
-@{
-    var popularPost = PopularPostsService.GetCachedPopularPost();
-}
-<partial name="_PopularPost" model="popularPost" />
+
+<partial name="_PopularPost" />
 
 <div class=" pt-4 lg:pt-4">
     <div class="flex flex-row" >

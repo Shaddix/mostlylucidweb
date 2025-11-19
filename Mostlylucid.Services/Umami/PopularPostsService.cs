@@ -10,7 +10,7 @@ namespace Mostlylucid.Services.Umami;
 public interface IPopularPostsService
 {
     Task<PopularPost?> GetMostPopularPostAsync();
-    PopularPost? GetCachedPopularPost();
+    Task<PopularPost?> GetCachedPopularPost();
 }
 
 public class PopularPost
@@ -46,7 +46,7 @@ public class PopularPostsService(
                 StartAtDate = startDate,
                 EndAtDate = endDate,
                 Type = MetricType.url,
-                Limit = 100 // Get top 100 URLs
+                Limit = 500 // Get top 500 URLs
             };
 
             var result = await umamiDataService.GetMetrics(metricsRequest);
@@ -58,18 +58,8 @@ public class PopularPostsService(
             }
 
             // Filter for blog posts (URLs starting with /blog/)
-            // and exclude language variants (those with dots in the path after /blog/)
             var blogPosts = result.Data
                 .Where(m => m.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase))
-                .Where(m =>
-                {
-                    // Extract the slug part after /blog/
-                    var slug = m.x.Substring(6).Trim('/');
-                    // Exclude if it contains a language indicator (e.g., /blog/slug.fr)
-                    // We only want base posts without language extension
-                    return !slug.Contains('.');
-                })
-                .OrderByDescending(m => m.y)
                 .ToList();
 
             if (blogPosts.Count == 0)
@@ -81,9 +71,13 @@ public class PopularPostsService(
             // Aggregate all language variants of the same post
             var aggregatedPosts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var post in result.Data.Where(m => m.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase)))
+            foreach (var post in blogPosts)
             {
+                if (!post.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 var slug = post.x.Substring(6).Trim('/');
+
                 // Remove language extension if present (e.g., "slug.fr" -> "slug")
                 var baseSlug = slug.Contains('.') ? slug.Substring(0, slug.LastIndexOf('.')) : slug;
 
@@ -138,8 +132,8 @@ public class PopularPostsService(
         }
     }
 
-    public PopularPost? GetCachedPopularPost()
+    public async Task<PopularPost?> GetCachedPopularPost()
     {
-        return _cachedPopularPost;
+        return _cachedPopularPost ?? await GetMostPopularPostAsync();
     }
 }

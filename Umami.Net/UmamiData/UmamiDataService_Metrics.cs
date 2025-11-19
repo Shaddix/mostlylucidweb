@@ -51,4 +51,51 @@ public partial class UmamiDataService
                 null);
         }
     }
+
+    /// <summary>
+    /// Gets expanded metrics with detailed engagement data for the website from Umami
+    /// </summary>
+    /// <param name="metricsRequest">An object which allows you to set the QueryString parameters</param>
+    /// <returns>Array of expanded metrics with pageviews, visitors, visits, bounces, and totaltime</returns>
+    public async Task<UmamiResult<ExpandedMetricsResponseModel[]>> GetExpandedMetrics(MetricsRequest metricsRequest)
+    {
+        try
+        {
+            if (await authService.Login() == false)
+                return new UmamiResult<ExpandedMetricsResponseModel[]>(HttpStatusCode.Unauthorized, "Failed to login", null);
+
+            var queryString = metricsRequest.ToQueryString();
+            var response = await authService.HttpClient.GetAsync($"/api/websites/{WebsiteId}/metrics/expanded{queryString}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully got expanded metrics");
+                var content = await response.Content.ReadFromJsonAsync<ExpandedMetricsResponseModel[]>();
+                return new UmamiResult<ExpandedMetricsResponseModel[]>(
+                    response.StatusCode,
+                    response.ReasonPhrase ?? "Success",
+                    content ?? Array.Empty<ExpandedMetricsResponseModel>());
+            }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                await authService.Login();
+                return await GetExpandedMetrics(metricsRequest);
+            }
+
+            logger.LogError("Failed to get expanded metrics");
+            return new UmamiResult<ExpandedMetricsResponseModel[]>(
+                response.StatusCode,
+                response.ReasonPhrase ?? "Failed to get expanded metrics",
+                null);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to get expanded metrics");
+            return new UmamiResult<ExpandedMetricsResponseModel[]>(
+                HttpStatusCode.InternalServerError,
+                "Failed to get expanded metrics",
+                null);
+        }
+    }
 }
