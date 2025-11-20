@@ -10,6 +10,8 @@ using Mostlylucid.EmailSubscription;
 using Mostlylucid.Services.Email;
 using Mostlylucid.Services.Umami;
 using Mostlylucid.Shared.Config;
+using Mostlylucid.SemanticSearch.Extensions;
+using Mostlylucid.SemanticSearch.Services;
 
 try
 {  Log.Logger = new LoggerConfiguration()
@@ -104,6 +106,7 @@ try
     services.SetupRSS();
     services.SetupBlog(config, builder.Environment);
     services.SetupUmamiClient(config);
+    services.AddSemanticSearch(config);
     builder.Services.AddResponseCompression(options =>
     {
         options.EnableForHttps = true;
@@ -233,6 +236,14 @@ try
     }
 
     await app.PopulateBlog();
+
+    // Initialize semantic search
+    using (var scope = app.Services.CreateScope())
+    {
+        var semanticSearch = scope.ServiceProvider.GetRequiredService<ISemanticSearchService>();
+        await semanticSearch.InitializeAsync();
+    }
+
     app.MapGet("/robots.txt", async httpContext =>
     {
         var robotsContent =

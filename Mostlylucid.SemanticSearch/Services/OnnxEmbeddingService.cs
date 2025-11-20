@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Mostlylucid.SemanticSearch.Config;
@@ -28,10 +27,10 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
     public OnnxEmbeddingService(
         ILogger<OnnxEmbeddingService> logger,
-        IOptions<SemanticSearchConfig> config)
+        SemanticSearchConfig config)
     {
         _logger = logger;
-        _config = config.Value;
+        _config = config;
         _vocabulary = new Dictionary<string, int>();
 
         if (!_config.Enabled)

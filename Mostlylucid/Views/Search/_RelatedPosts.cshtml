@@ -1,0 +1,71 @@
+@model List<Mostlylucid.SemanticSearch.Models.SearchResult>
+
+@if (Model != null && Model.Any())
+{
+    <div class="mt-8 mb-8">
+        <div class="collapse collapse-arrow bg-base-200">
+            <input type="checkbox" class="peer" />
+            <div class="collapse-title text-xl font-medium">
+                <i class='bx bx-brain text-2xl mr-2'></i>
+                Related Posts
+                <span class="badge badge-secondary badge-sm ml-2">@Model.Count</span>
+            </div>
+            <div class="collapse-content">
+                <div class="divider mt-0"></div>
+                <div class="space-y-2">
+                    @foreach (var post in Model)
+                    {
+                        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div class="card-body p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <a hx-boost="true"
+                                           hx-target="#contentcontainer"
+                                           hx-swap="show:window:top"
+                                           asp-action="Show"
+                                           asp-controller="Blog"
+                                           asp-route-slug="@post.Slug"
+                                           asp-route-language="@post.Language"
+                                           class="card-title text-base hover:text-secondary transition-colors">
+                                            @post.Title
+                                        </a>
+
+                                        @if (post.Categories?.Any() == true)
+                                        {
+                                            <div class="flex flex-wrap gap-1 mt-2">
+                                                @foreach (var category in post.Categories.Take(3))
+                                                {
+                                                    <span class="badge badge-outline badge-sm">@category</span>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="flex items-center gap-3 mt-2 text-sm opacity-70">
+                                            <span>
+                                                <i class='bx bx-calendar text-sm'></i>
+                                                @post.PublishedDate.ToString("MMM dd, yyyy")
+                                            </span>
+                                            <span>
+                                                <i class='bx bx-planet text-sm'></i>
+                                                @post.Language.ToUpper()
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col items-end ml-4">
+                                        <div class="radial-progress text-primary text-xs"
+                                             style="--value:@(post.Score * 100); --size:3rem; --thickness: 3px;"
+                                             role="progressbar">
+                                            @((post.Score * 100).ToString("F0"))%
+                                        </div>
+                                        <span class="text-xs opacity-60 mt-1">similarity</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
