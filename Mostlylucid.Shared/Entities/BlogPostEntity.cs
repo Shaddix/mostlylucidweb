@@ -54,6 +54,12 @@ public class BlogPostEntity
 
     public string? UpdatedTemplate { get; set; }
 
+    /// <summary>
+    /// Sentiment analysis metadata stored as JSON
+    /// Contains sentiment score, emotional tones, formality, subjectivity, etc.
+    /// </summary>
+    public string? SentimentMetadata { get; set; }
+
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
 
     public NpgsqlTsVector SearchVector { get; set; }
