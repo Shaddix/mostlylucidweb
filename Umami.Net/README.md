@@ -1,63 +1,290 @@
 # Umami.Net
 
-A comprehensive .NET client library for [Umami Analytics](https://umami.is) - the privacy-focused, open-source web analytics platform.
+<div align="center">
 
-[![NuGet](https://img.shields.io/nuget/v/Umami.Net.svg)](https://www.nuget.org/packages/Umami.Net/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Umami.Net Logo](https://img.shields.io/badge/Umami-.NET-blue?style=for-the-badge)
 
-## Features
+**A production-ready .NET client library for [Umami Analytics](https://umami.is)**
 
-- 📊 **Event Tracking** - Track custom events and page views
-- 📈 **Analytics Data API** - Retrieve statistics, metrics, and insights
-- 🔄 **Background Processing** - Non-blocking event sending
-- 🔐 **Built-in Authentication** - Automatic JWT token management
-- ⚡ **Resilient** - Retry logic with Polly integration
-- 🛡️ **Defensive** - Comprehensive validation and error handling
-- 📝 **Well-Documented** - Extensive XML documentation and examples
-- 🎯 **Type-Safe** - Strongly-typed request/response models
-- 🔧 **Auto-Detection** - Automatically detects Umami v1, v2, or v3 API - **It Just Works™**
-- 🆕 **Umami v3 Support** - Full support for the latest Umami v3 API features
+*Privacy-focused web analytics that actually works with .NET*
+
+[![NuGet](https://img.shields.io/nuget/v/Umami.Net.svg?style=flat-square)](https://www.nuget.org/packages/Umami.Net/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=flat-square)](https://dotnet.microsoft.com/)
+
+[Features](#features) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#examples) • [API Reference](#api-reference)
+
+</div>
+
+---
+
+## Why Umami.Net?
+
+Umami's API is powerful but... challenging. Missing parameters result in silent failures. Error messages like `"beep boop"` for bot detection. Parameters that change names between versions (`path` vs `url`, `hostname` vs `host`). Timestamp formats that aren't documented.
+
+**Umami.Net fixes all of this.** This isn't just an HTTP wrapper—it's a production-ready library that:
+
+- ✅ **Validates early** with helpful error messages that tell you exactly what's wrong and how to fix it
+- ✅ **Handles quirks** like bot detection responses and parameter name changes automatically
+- ✅ **Auto-detects API versions** - works seamlessly with Umami v1, v2, and v3
+- ✅ **Never blocks** your application with background processing using System.Threading.Channels
+- ✅ **Recovers gracefully** from network failures with Polly retry policies
+- ✅ **Manages authentication** automatically with token refresh on expiration
+- ✅ **Tested extensively** with comprehensive unit and integration tests
 
 ## Table of Contents
 
+- [Features](#features)
+- [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Configuration](#configuration)
 - [Event Tracking](#event-tracking)
-  - [Basic Setup](#basic-setup)
-  - [Track Events](#track-events)
-  - [Track Page Views](#track-page-views)
-  - [Background Sending](#background-sending)
 - [Analytics Data API](#analytics-data-api)
-  - [Configuration](#configuration)
-  - [Getting Stats](#getting-stats)
-  - [Getting Metrics](#getting-metrics)
-  - [Expanded Metrics](#expanded-metrics)
-  - [Page Views Over Time](#page-views-over-time)
-  - [Events Series](#events-series)
-  - [Active Users](#active-users)
-- [Common Use Cases](#common-use-cases)
+- [API Version Compatibility](#api-version-compatibility)
+- [Real-World Examples](#real-world-examples)
 - [Error Handling](#error-handling)
-- [Performance Tips](#performance-tips)
+- [Performance & Best Practices](#performance--best-practices)
+- [Testing](#testing)
 - [API Reference](#api-reference)
+- [Gotchas & Troubleshooting](#gotchas--troubleshooting)
 - [Contributing](#contributing)
+
+---
+
+## Features
+
+### Event Tracking
+- 📊 **Custom Events** - Track any user interaction with optional metadata
+- 📄 **Page Views** - Automatic and manual page view tracking
+- 🔄 **Background Processing** - Non-blocking event queue using Channels
+- 🎯 **User Identification** - Track authenticated users
+- 🤖 **Bot Detection** - Handles Umami's bot detection gracefully
+
+### Analytics Data API
+- 📈 **Statistics** - Page views, visitors, visits, bounce rate, total time
+- 📊 **Metrics** - Aggregated data by URL, referrer, browser, OS, device, country, and more
+- 📉 **Time Series** - Page views and events over time
+- 👥 **Active Users** - Real-time active user count
+- 🎨 **Expanded Metrics** - Detailed engagement data with bounce rates and time metrics
+
+### Developer Experience
+- 🔐 **Automatic Authentication** - JWT token management with auto-refresh
+- ⚡ **Resilient** - Polly retry policies for transient failures
+- 🛡️ **Defensive** - Comprehensive validation with helpful error messages
+- 📝 **Well-Documented** - Extensive XML documentation and examples
+- 🎯 **Type-Safe** - Strongly-typed request/response models
+- 🔧 **Auto-Detection** - Automatically detects and adapts to Umami v1/v2/v3 APIs
+- ✅ **Production-Tested** - Battle-tested on high-traffic production sites
+
+---
+
+## Architecture
+
+### Core Philosophy
+
+**Umami.Net is built on one fundamental principle: Analytics should never break your application.**
+
+This library follows a "fail loudly but recoverably" philosophy:
+
+- ✅ **Never throw exceptions** that break user requests
+- ✅ **Log everything** with detailed context so you know what went wrong
+- ✅ **Degrade gracefully** - if analytics fail, your app continues working
+- ✅ **Non-blocking by default** - analytics happen in the background
+- ✅ **Resilient to failures** - automatic retries with exponential backoff
+- ✅ **Validate early** - catch configuration errors at startup, not in production
+
+**The Background Sender: Your Analytics Sidecar**
+
+The `UmamiBackgroundSender` is designed as a **sidecar service** that runs alongside your application:
+
+- **Completely non-blocking** - Events are queued in-memory and processed asynchronously
+- **Fire and forget** - Your HTTP requests return immediately (<1ms overhead)
+- **Fault-tolerant** - Starts and stops cleanly with your application
+- **Self-contained** - Manages its own worker thread and error handling
+- **Never blocks shutdown** - Graceful shutdown with timeout to drain pending events
+
+Think of it as a separate microservice running inside your application process, dedicated solely to sending analytics data without impacting your primary application flow.
+
+### System Overview
+
+```mermaid
+graph TB
+    subgraph "Your Application"
+        A[Controller/Service] --> B[UmamiBackgroundSender]
+        A --> C[UmamiClient]
+        A --> D[UmamiDataService]
+    end
+
+    subgraph "Umami.Net Library"
+        B --> E[Channel Queue]
+        E --> F[Background Worker]
+        F --> G[UmamiClient]
+        C --> G
+        G --> H[PayloadService]
+        H --> I[ResponseDecoder]
+
+        D --> J[AuthService]
+        J --> K[HttpClient with Polly]
+        K --> L[Retry Policy]
+
+        G --> K
+    end
+
+    subgraph "Umami Server"
+        K --> M[/api/send]
+        K --> N[/api/websites/:id/stats]
+        K --> O[/api/websites/:id/metrics]
+        K --> P[/api/websites/:id/pageviews]
+        K --> Q[/api/websites/:id/active]
+        K --> R[/api/auth/login]
+    end
+
+    style B fill:#e1f5ff
+    style G fill:#ffe1e1
+    style D fill:#e1ffe1
+```
+
+### Event Tracking Flow
+
+```mermaid
+sequenceDiagram
+    participant App as Your Application
+    participant BG as UmamiBackgroundSender
+    participant CH as Channel Queue
+    participant Worker as Background Worker
+    participant Client as UmamiClient
+    participant Umami as Umami Server
+
+    App->>BG: Track("button-click", data)
+    BG->>CH: WriteAsync(payload)
+    BG-->>App: Task completed (non-blocking)
+
+    Note over CH,Worker: Async processing
+
+    Worker->>CH: ReadAsync()
+    CH->>Worker: payload
+    Worker->>Client: Send(payload)
+    Client->>Client: Build request
+    Client->>Umami: POST /api/send
+
+    alt Success
+        Umami-->>Client: JWT token
+        Client->>Client: Decode response
+        Client-->>Worker: Success
+    else Bot Detected
+        Umami-->>Client: "beep boop"
+        Client-->>Worker: BotDetected status
+    else Network Error
+        Umami--xClient: Timeout
+        Client->>Client: Polly retry
+        Client->>Umami: POST /api/send (retry)
+    end
+```
+
+### Data API Flow with Auto-Retry
+
+```mermaid
+sequenceDiagram
+    participant App as Your Application
+    participant Data as UmamiDataService
+    participant Auth as AuthService
+    participant HTTP as HttpClient
+    participant Umami as Umami Server
+
+    App->>Data: GetMetrics(request)
+    Data->>Auth: Ensure authenticated
+
+    alt Not authenticated
+        Auth->>Umami: POST /api/auth/login
+        Umami-->>Auth: JWT token
+        Auth->>Auth: Store token
+    end
+
+    Data->>Data: Validate request
+    Data->>Data: Build query string
+    Data->>HTTP: GET /api/websites/:id/metrics
+    HTTP->>Umami: Request with auth header
+
+    alt Token valid
+        Umami-->>HTTP: JSON response
+        HTTP-->>Data: Deserialize
+        Data-->>App: UmamiResult<T>
+    else Token expired (401)
+        Umami-->>HTTP: 401 Unauthorized
+        HTTP-->>Data: Unauthorized
+        Data->>Auth: Login() - refresh token
+        Auth->>Umami: POST /api/auth/login
+        Umami-->>Auth: New JWT token
+        Data->>Data: Recursive retry
+        Data->>HTTP: GET /api/websites/:id/metrics
+        HTTP->>Umami: Request with new token
+        Umami-->>HTTP: JSON response
+        HTTP-->>Data: Deserialize
+        Data-->>App: UmamiResult<T>
+    end
+```
+
+### Version Detection Flow
+
+```mermaid
+flowchart TD
+    A[Send Event] --> B{First Request?}
+    B -->|Yes| C[Try v3/v2 API]
+    B -->|No| D{Use Cached Version}
+
+    C --> E[POST with 'path' parameter]
+    E --> F{Response Status}
+
+    F -->|200 OK| G[Cache: Use v2/v3]
+    F -->|400 Bad Request| H[Try v1 API]
+
+    H --> I[POST with 'url' parameter]
+    I --> J{Response Status}
+
+    J -->|200 OK| K[Cache: Use v1]
+    J -->|Error| L[Return Error]
+
+    D -->|v1| M[Use 'url' parameter]
+    D -->|v2/v3| N[Use 'path' parameter]
+
+    G --> O[Success]
+    K --> O
+    M --> O
+    N --> O
+
+    style G fill:#90EE90
+    style K fill:#90EE90
+    style L fill:#FFB6C6
+```
+
+---
 
 ## Installation
 
-Install via NuGet Package Manager:
+### NuGet Package Manager
 
 ```bash
 dotnet add package Umami.Net
 ```
 
-Or via Package Manager Console:
+### Package Manager Console
 
 ```powershell
 Install-Package Umami.Net
 ```
 
+### .csproj Reference
+
+```xml
+<PackageReference Include="Umami.Net" Version="1.0.0" />
+```
+
+---
+
 ## Quick Start
 
-### 1. Add Configuration
+### 1. Configure Settings
 
 Add to your `appsettings.json`:
 
@@ -65,20 +292,20 @@ Add to your `appsettings.json`:
 {
   "Analytics": {
     "UmamiPath": "https://analytics.yoursite.com",
-    "WebsiteId": "your-website-id-here"
+    "WebsiteId": "12345678-1234-1234-1234-123456789abc"
   }
 }
 ```
 
-For data API access, also add authentication:
+For analytics data retrieval, also add authentication:
 
 ```json
 {
   "Analytics": {
     "UmamiPath": "https://analytics.yoursite.com",
-    "WebsiteId": "your-website-id-here",
+    "WebsiteId": "12345678-1234-1234-1234-123456789abc",
     "UserName": "admin",
-    "Password": "your-password"
+    "Password": "your-secure-password"
   }
 }
 ```
@@ -90,154 +317,345 @@ In your `Program.cs`:
 ```csharp
 using Umami.Net;
 
-// For event tracking only
+var builder = WebApplication.CreateBuilder(args);
+
+// For event tracking (includes both UmamiClient and UmamiBackgroundSender)
 builder.Services.SetupUmamiClient(builder.Configuration);
 
-// For data API access
+// For analytics data API access
 builder.Services.SetupUmamiData(builder.Configuration);
+
+var app = builder.Build();
 ```
 
-### 3. Start Tracking
+### 3. Track Events
 
 ```csharp
-public class MyController : ControllerBase
-{
-    private readonly UmamiClient _client;
+using Umami.Net;
 
-    public MyController(UmamiClient client)
+public class HomeController : Controller
+{
+    private readonly UmamiBackgroundSender _umami;
+
+    public HomeController(UmamiBackgroundSender umami)
     {
-        _client = client;
+        _umami = umami;
     }
 
-    public async Task<IActionResult> MyAction()
+    public async Task<IActionResult> Index()
     {
-        // Track an event
-        await _client.Track("button-click", new UmamiEventData
+        // Track a page view (non-blocking)
+        await _umami.TrackPageView("/", "Home Page");
+
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Subscribe(string email)
+    {
+        // Track custom event with data
+        await _umami.Track("newsletter-signup", new UmamiEventData
         {
-            { "button", "subscribe" },
-            { "location", "header" }
+            { "source", "homepage" },
+            { "email_domain", email.Split('@')[1] }
         });
 
-        return Ok();
+        return RedirectToAction("ThankYou");
     }
 }
 ```
 
-## API Version Compatibility
+### 4. Retrieve Analytics
 
-**Umami.Net automatically detects and supports Umami v1, v2, and v3 APIs** - no configuration needed!
+```csharp
+using Umami.Net;
 
-### How It Works
+public class DashboardController : Controller
+{
+    private readonly IUmamiDataService _umamiData;
 
-The library intelligently detects which API version your Umami instance uses:
+    public DashboardController(IUmamiDataService umamiData)
+    {
+        _umamiData = umamiData;
+    }
 
-- **Tries v3/v2 first** (modern API with `path`/`hostname` parameters)
-- **Auto-fallback to v1** if it receives a 400 Bad Request
-- **Seamless retry** with converted parameter names
-- **Zero configuration** required from you
+    public async Task<IActionResult> Stats()
+    {
+        var request = new StatsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddDays(-30),
+            EndAtDate = DateTime.UtcNow
+        };
 
-### What This Means For You
+        var result = await _umamiData.GetStats(request);
 
-✅ **Just works** with any Umami instance
-✅ **No version detection** code needed
-✅ **Backwards compatible** with older Umami servers
-✅ **Forward compatible** with future updates
-✅ **Automatic adaptation** on first request
+        if (result.Status == System.Net.HttpStatusCode.OK)
+        {
+            var stats = result.Data;
+            // Access: stats.pageviews.value, stats.visitors.value, etc.
+            return View(stats);
+        }
 
-You don't need to know or care which Umami version you're running - the library handles it automatically!
+        return View("Error");
+    }
+}
+```
 
-### Supported Versions
+---
 
-| Umami Version | API Version | Support Status | Key Features |
-|--------------|-------------|----------------|--------------|
-| v1.x | v1 API | ✅ Fully Supported (auto-detected) | Basic analytics |
-| v2.x | v2 API | ✅ Fully Supported | Modern API, `path` type |
-| v3.x | v3 API | ✅ Fully Supported (latest) | Enhanced metrics, optional `unit` |
+## Configuration
 
-### Umami v3 Enhancements
+### Settings Model
 
-Umami v3 includes several improvements that this library fully supports:
+```csharp
+public class UmamiClientSettings
+{
+    /// <summary>
+    /// Base URL of your Umami instance (e.g., "https://analytics.yoursite.com")
+    /// Required. Must be a valid absolute URI.
+    /// </summary>
+    public string UmamiPath { get; set; }
 
-- **Optional Unit Parameter** - `unit` is now optional in metrics requests
-- **Enhanced Metric Types** - All v2 metric types plus additional granularity
-- **Improved Timezone Support** - Better handling of timezone-aware queries
-- **Backwards Compatible** - v3 maintains compatibility with v2 API structure
+    /// <summary>
+    /// Website ID (GUID format)
+    /// Required. Must be a valid GUID.
+    /// </summary>
+    public string WebsiteId { get; set; }
+}
+
+public class UmamiDataSettings : UmamiClientSettings
+{
+    /// <summary>
+    /// Umami username for API authentication
+    /// Required for data API access.
+    /// </summary>
+    public string UserName { get; set; }
+
+    /// <summary>
+    /// Umami password for API authentication
+    /// Required for data API access.
+    /// </summary>
+    public string Password { get; set; }
+}
+```
+
+### Validation
+
+Configuration is validated at startup:
+
+```csharp
+// ✅ Valid configuration
+{
+  "UmamiPath": "https://analytics.yoursite.com",
+  "WebsiteId": "12345678-1234-1234-1234-123456789abc"
+}
+
+// ❌ Invalid - will throw at startup with helpful message
+{
+  "UmamiPath": "not-a-url",  // FormatException: UmamiUrl must be a valid Uri
+  "WebsiteId": "not-a-guid"  // FormatException: WebSiteId must be a valid Guid
+}
+```
+
+### Environment Variables
+
+For production, use environment variables:
+
+```bash
+Analytics__UmamiPath=https://analytics.yoursite.com
+Analytics__WebsiteId=12345678-1234-1234-1234-123456789abc
+Analytics__UserName=admin
+Analytics__Password=your-secure-password
+```
+
+### User Secrets (Development)
+
+```bash
+dotnet user-secrets set "Analytics:UmamiPath" "https://analytics.yoursite.com"
+dotnet user-secrets set "Analytics:WebsiteId" "12345678-1234-1234-1234-123456789abc"
+dotnet user-secrets set "Analytics:UserName" "admin"
+dotnet user-secrets set "Analytics:Password" "your-password"
+```
+
+---
 
 ## Event Tracking
 
-### Basic Setup
+### UmamiClient vs UmamiBackgroundSender
 
-The library provides two ways to send events:
+```mermaid
+graph LR
+    A[Choose Your Sender] --> B{High Traffic?}
+    B -->|Yes| C[UmamiBackgroundSender]
+    B -->|No| D[UmamiClient]
 
-1. **UmamiClient** - Synchronous, immediate sending
-2. **UmamiBackgroundSender** - Asynchronous, non-blocking (recommended for high-traffic sites)
+    C --> E[Non-blocking]
+    C --> F[Channel queue]
+    C --> G[Background processing]
+    C --> H[Recommended]
 
-### Track Events
+    D --> I[Blocking]
+    D --> J[Immediate send]
+    D --> K[Synchronous]
+    D --> L[Simple scenarios]
 
-Track custom events with optional data:
+    style C fill:#90EE90
+    style H fill:#FFD700
+```
+
+**Use `UmamiBackgroundSender`** (recommended):
+- **Production web applications** - Your users never wait for analytics
+- **High-traffic websites** - Handles thousands of events without blocking
+- **When response time matters** - Adds <1ms overhead vs 50-200ms for synchronous sending
+- **Fault-tolerant scenarios** - Analytics failures don't impact your application
+
+**Use `UmamiClient`**:
+- **Background jobs or scripts** - When you're not in a web request context
+- **Testing** - When you need immediate confirmation that events were sent
+- **Low-traffic admin panels** - Where a few milliseconds don't matter
+
+### How the Background Service Works
+
+The `UmamiBackgroundSender` is a **hosted service** (implements `IHostedService`) that:
+
+1. **Starts** when your application starts
+2. **Creates** an unbounded channel for queueing events
+3. **Spawns** a background worker task that continuously reads from the channel
+4. **Processes** events by sending them to Umami with retry logic
+5. **Logs** all errors with full context but never throws exceptions
+6. **Stops** gracefully when your application shuts down, attempting to drain remaining events
+
+**Lifecycle Management:**
+```csharp
+public class UmamiBackgroundSender : IHostedService
+{
+    // Called when application starts
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Umami Background Sender started");
+        _ = ProcessQueueAsync(_stoppingCts.Token);  // Fire and forget
+        return Task.CompletedTask;
+    }
+
+    // Called when application stops
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Umami Background Sender stopping");
+        _channel.Writer.Complete();  // Signal no more events
+
+        // Wait for queue to drain (with timeout)
+        try
+        {
+            await _processingTask.WaitAsync(TimeSpan.FromSeconds(10));
+            _logger.LogInformation("Umami Background Sender stopped gracefully");
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("Umami Background Sender stopped with pending events");
+        }
+    }
+
+    // Background worker - runs continuously
+    private async Task ProcessQueueAsync(CancellationToken cancellationToken)
+    {
+        await foreach (var payload in _channel.Reader.ReadAllAsync(cancellationToken))
+        {
+            try
+            {
+                await _client.Send(payload);
+            }
+            catch (Exception ex)
+            {
+                // NEVER let errors break the worker loop
+                _logger.LogError(ex,
+                    "Failed to send event to Umami. Event: {EventName}, URL: {Url}",
+                    payload.Name, payload.Url);
+            }
+        }
+    }
+}
+```
+
+**Key Design Decisions:**
+
+- **Unbounded channel** - We don't want to drop events; if memory becomes an issue, that's a symptom of a bigger problem (Umami down, network issues)
+- **Fire and forget startup** - The background task runs independently of the startup sequence
+- **Graceful shutdown** - Try to send remaining events, but don't block shutdown indefinitely
+- **Detailed error logging** - Every failure is logged with the full event context
+- **Never throw** - Errors are logged but don't propagate to prevent breaking the worker loop
+
+### Track Custom Events
 
 ```csharp
-// Inject the client
-private readonly UmamiClient _client;
+private readonly UmamiBackgroundSender _umami;
 
-// Track a simple event
-await _client.Track("video-play");
+// Simple event
+await _umami.Track("button-click");
 
-// Track with event data
-await _client.Track("search", new UmamiEventData
+// Event with data
+await _umami.Track("search", new UmamiEventData
 {
     { "query", "umami analytics" },
     { "results", "42" },
     { "duration_ms", "156" }
 });
 
-// Track with custom URL (overrides auto-detected URL)
-await _client.Track("form-submit",
-    eventData: new UmamiEventData { { "form", "newsletter" } },
-    url: "/custom/path");
+// Event with custom URL (overrides auto-detected URL)
+await _umami.Track("form-submit",
+    url: "/custom/path",
+    eventData: new UmamiEventData
+    {
+        { "form", "newsletter" }
+    });
 ```
 
-###  Track Page Views
-
-Track page views explicitly:
+### Track Page Views
 
 ```csharp
 // Basic page view
-await _client.TrackPageView("/blog/my-post");
+await _umami.TrackPageView("/blog/my-post");
 
-// Page view with event name and data
-await _client.TrackPageView(
+// Page view with title
+await _umami.TrackPageView("/blog/my-post", "My Blog Post");
+
+// Page view with event data
+await _umami.TrackPageView(
     url: "/products/item-123",
     eventType: "product-view",
     eventData: new UmamiEventData
     {
         { "category", "electronics" },
-        { "price", "299.99" }
+        { "price", "299.99" },
+        { "sku", "ELEC-123" }
     }
 );
 ```
 
-### Background Sending
+### User Identification
 
-For better performance, use the background sender:
+Track specific users (authenticated scenarios):
 
 ```csharp
-private readonly UmamiBackgroundSender _backgroundSender;
-
-// Events are queued and sent in the background
-await _backgroundSender.Track("user-signup", new UmamiEventData
+// Identify a user
+await _umami.Identify(new UmamiEventData
 {
-    { "plan", "premium" },
-    { "referral", "google" }
+    { "userId", user.Id.ToString() },
+    { "email", user.Email },
+    { "plan", user.SubscriptionPlan }
 });
 
-// Non-blocking page view tracking
-await _backgroundSender.TrackPageView("/checkout/complete", "purchase");
+// Track event for identified user
+await _umami.Track("purchase", new UmamiEventData
+{
+    { "amount", "99.99" },
+    { "currency", "USD" },
+    { "items", "3" }
+});
 ```
 
 ### Low-Level Send Method
 
-For advanced scenarios, use the raw `Send` method:
+For advanced scenarios:
 
 ```csharp
 var payload = new UmamiPayload
@@ -246,93 +664,160 @@ var payload = new UmamiPayload
     Url = "/custom/page",
     Title = "Custom Page Title",
     Referrer = "https://google.com",
-    Data = new UmamiEventData { { "custom_field", "value" } }
+    Hostname = "yoursite.com",
+    Language = "en-US",
+    Screen = "1920x1080",
+    Data = new UmamiEventData
+    {
+        { "custom_field", "value" }
+    }
 };
 
-await _client.Send(payload, eventType: "event");
-```
+var response = await _client.Send(payload, eventType: "event");
 
-> **Note:** Event type can only be "event" or "identify" as per the Umami API specification.
-
-## Analytics Data API
-
-### Configuration
-
-Ensure your configuration includes username and password for API access:
-
-```json
+// Check response status
+switch (response.Status)
 {
-  "Analytics": {
-    "UmamiPath": "https://analytics.yoursite.com",
-    "WebsiteId": "your-website-id",
-    "UserName": "admin",
-    "Password": "your-secure-password"
-  }
+    case ResponseStatus.Success:
+        // Event tracked successfully
+        var visitorId = response.VisitorId;
+        break;
+    case ResponseStatus.BotDetected:
+        // Request identified as bot
+        break;
+    case ResponseStatus.Failed:
+        // Error occurred
+        break;
 }
 ```
 
-Register the data service:
+> **Note:** Event type can only be `"event"` or `"identify"` as per the Umami API specification.
+
+### Event Data Dictionary
+
+`UmamiEventData` is a dictionary that accepts any string key-value pairs:
 
 ```csharp
-builder.Services.SetupUmamiData(builder.Configuration);
+var eventData = new UmamiEventData
+{
+    // String values
+    { "action", "click" },
+    { "category", "navigation" },
+
+    // Numeric values (converted to string)
+    { "duration", "1234" },
+    { "count", "5" },
+
+    // Boolean values (converted to string)
+    { "success", "true" },
+
+    // Complex data (serialize to JSON string)
+    { "metadata", JsonSerializer.Serialize(complexObject) }
+};
 ```
 
-### Getting Stats
+---
+
+## Analytics Data API
+
+All data API methods return `UmamiResult<T>` which includes:
+- `Status` - HTTP status code
+- `Message` - Success or error message
+- `Data` - The response data (null on error)
+
+### Get Active Users
+
+Get real-time count of active users:
+
+```csharp
+var result = await _umamiData.GetActiveUsers();
+
+if (result.Status == HttpStatusCode.OK)
+{
+    Console.WriteLine($"Active Users: {result.Data.visitors}");
+}
+```
+
+**Response:**
+```json
+{
+  "visitors": 42
+}
+```
+
+### Get Statistics
 
 Get summary statistics for a date range:
 
 ```csharp
-private readonly UmamiDataService _dataService;
-
-var statsRequest = new StatsRequest
+var request = new StatsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-30),
     EndAtDate = DateTime.UtcNow
 };
 
-var result = await _dataService.GetStats(statsRequest);
+var result = await _umamiData.GetStats(request);
 
-if (result.Status == HttpStatusCode.OK && result.Data != null)
+if (result.Status == HttpStatusCode.OK)
 {
-    Console.WriteLine($"Page Views: {result.Data.pageviews.value}");
-    Console.WriteLine($"Visitors: {result.Data.visitors.value}");
-    Console.WriteLine($"Visits: {result.Data.visits.value}");
-    Console.WriteLine($"Bounce Rate: {(double)result.Data.bounces.value / result.Data.visits.value:P}");
+    var stats = result.Data;
+
+    Console.WriteLine($"Page Views: {stats.pageviews.value} (prev: {stats.pageviews.prev})");
+    Console.WriteLine($"Visitors: {stats.visitors.value} (prev: {stats.visitors.prev})");
+    Console.WriteLine($"Visits: {stats.visits.value} (prev: {stats.visits.prev})");
+    Console.WriteLine($"Bounces: {stats.bounces.value} (prev: {stats.bounces.prev})");
+    Console.WriteLine($"Total Time: {stats.totaltime.value}ms");
+
+    // Calculate bounce rate
+    var bounceRate = (double)stats.bounces.value / stats.visits.value;
+    Console.WriteLine($"Bounce Rate: {bounceRate:P}");
+
+    // Calculate average time per visit
+    var avgTime = stats.visits.value > 0
+        ? stats.totaltime.value / stats.visits.value
+        : 0;
+    Console.WriteLine($"Avg Time per Visit: {avgTime}ms");
 }
 ```
 
-Filter stats by specific criteria:
+**Optional Filters:**
 
 ```csharp
-var statsRequest = new StatsRequest
+var request = new StatsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-7),
     EndAtDate = DateTime.UtcNow,
-    Url = "/blog/my-post",  // Stats for specific URL
-    Country = "US",          // US visitors only
-    Device = "Mobile"        // Mobile devices only
+    Url = "/blog/my-post",     // Stats for specific URL
+    Referrer = "google.com",    // Traffic from specific referrer
+    Title = "My Blog Post",     // Specific page title
+    Query = "utm_source=newsletter", // Query parameter filter
+    Event = "button-click",     // Specific event type
+    Host = "yoursite.com",      // Specific hostname
+    Os = "Windows",             // Operating system
+    Browser = "Chrome",         // Browser
+    Device = "desktop",         // Device type
+    Country = "US",             // Country code
+    Region = "CA",              // Region/state
+    City = "San Francisco"      // City
 };
-
-var result = await _dataService.GetStats(statsRequest);
 ```
 
-### Getting Metrics
+### Get Metrics
 
-Get aggregated counts for different dimensions:
+Get aggregated metrics by dimension:
 
 ```csharp
-// Top 10 most viewed pages (v2/v3 - use 'path' instead of 'url')
-var metricsRequest = new MetricsRequest
+var request = new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-7),
     EndAtDate = DateTime.UtcNow,
-    Type = MetricType.path,  // v2/v3 use 'path'
-    Unit = Unit.day,         // Optional in v3, but recommended
-    Limit = 10,
-    Timezone = "UTC"         // Optional: specify timezone
+    Type = MetricType.path,  // Dimension to aggregate by
+    Unit = Unit.day,         // Optional in v3
+    Limit = 10,              // Top N results
+    Timezone = "UTC"         // Optional timezone
 };
 
-var result = await _dataService.GetMetrics(metricsRequest);
+var result = await _umamiData.GetMetrics(request);
 
 if (result.Status == HttpStatusCode.OK)
 {
@@ -343,92 +828,127 @@ if (result.Status == HttpStatusCode.OK)
 }
 ```
 
-#### Umami v3: Simplified Metrics Request
-
-In Umami v3, you can omit the `unit` parameter for simpler queries:
-
-```csharp
-// Minimal v3 metrics request
-var metricsRequest = new MetricsRequest
-{
-    StartAtDate = DateTime.UtcNow.AddDays(-24Hours),
-    EndAtDate = DateTime.UtcNow,
-    Type = MetricType.path,
-    Limit = 100
-    // Unit is optional in v3!
-};
-
-var result = await _dataService.GetMetrics(metricsRequest);
+**Example Output:**
+```
+/blog/post-1: 1543 views
+/blog/post-2: 891 views
+/products: 672 views
 ```
 
-#### Available Metric Types
+### Metric Types
+
+All available metric dimensions:
 
 ```csharp
 public enum MetricType
 {
-    url,        // Page URLs (v1 legacy - use 'path' for v2/v3)
+    // Pages & Content
+    url,        // Page URLs (v1 - use 'path' for v2/v3)
     path,       // URL paths (v2/v3 - recommended)
+    title,      // Page titles
+    query,      // Query parameters
+
+    // Traffic Sources
     referrer,   // Traffic sources
+    host,       // Hostnames
+    hostname,   // Domain names
+
+    // Technology
     browser,    // Browser analytics
     os,         // Operating systems
-    device,     // Device types
-    country,    // Geographic data
+    device,     // Device types (desktop/mobile/tablet)
+    screen,     // Screen resolutions
+    language,   // Language codes
+
+    // Geography
+    country,    // Country codes (2-letter ISO)
     region,     // States/provinces
     city,       // City-level data
-    language,   // Language codes
-    screen,     // Screen resolutions
+
+    // Behavior
     @event,     // Custom events
-    query,      // Query parameters
-    title,      // Page titles
-    host,       // Hostnames
     entry,      // Entry pages
     exit,       // Exit pages
-    hostname,   // Domain names
+
+    // Organization
     tag,        // Content tags
     channel,    // Traffic channels
     domain      // Full domains
 }
 ```
 
-### Expanded Metrics
-
-Get detailed engagement data including bounces and time:
+**Metric Type Examples:**
 
 ```csharp
-var metricsRequest = new MetricsRequest
+// Top pages
+Type = MetricType.path
+
+// Traffic sources
+Type = MetricType.referrer
+
+// Browser breakdown
+Type = MetricType.browser
+
+// Geographic distribution
+Type = MetricType.country
+
+// Custom events
+Type = MetricType.@event  // Note: @ prefix required for 'event' keyword
+```
+
+### Get Expanded Metrics
+
+Get detailed engagement metrics including bounces and time:
+
+```csharp
+var request = new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-30),
     EndAtDate = DateTime.UtcNow,
-    Type = MetricType.url,
+    Type = MetricType.path,
     Unit = Unit.day,
     Limit = 20
 };
 
-var result = await _dataService.GetExpandedMetrics(metricsRequest);
+var result = await _umamiData.GetExpandedMetrics(request);
 
 if (result.Status == HttpStatusCode.OK)
 {
     foreach (var metric in result.Data)
     {
+        // Calculate engagement metrics
         var bounceRate = metric.visits > 0
             ? (double)metric.bounces / metric.visits * 100
             : 0;
 
-        var avgTime = metric.visits > 0
-            ? metric.totaltime / metric.visits
+        var avgTimeSeconds = metric.visits > 0
+            ? metric.totaltime / metric.visits / 1000.0
             : 0;
 
         Console.WriteLine($"\n{metric.name}");
-        Console.WriteLine($"  Page Views: {metric.pageviews}");
-        Console.WriteLine($"  Unique Visitors: {metric.visitors}");
-        Console.WriteLine($"  Visits: {metric.visits}");
+        Console.WriteLine($"  Page Views: {metric.pageviews:N0}");
+        Console.WriteLine($"  Unique Visitors: {metric.visitors:N0}");
+        Console.WriteLine($"  Visits: {metric.visits:N0}");
         Console.WriteLine($"  Bounce Rate: {bounceRate:F1}%");
-        Console.WriteLine($"  Avg Time: {avgTime}ms");
+        Console.WriteLine($"  Avg Time: {avgTimeSeconds:F1}s");
     }
 }
 ```
 
-### Page Views Over Time
+**Response Model:**
+```csharp
+public class ExpandedMetricsResponseModel
+{
+    public string name { get; set; }       // URL/path/dimension name
+    public int pageviews { get; set; }     // Total page views
+    public int visitors { get; set; }      // Unique visitors
+    public int visits { get; set; }        // Total visits
+    public int bounces { get; set; }       // Bounced visits
+    public long totaltime { get; set; }    // Total time in milliseconds
+}
+```
+
+### Get Page Views Over Time
 
 Get time-series data for page views:
 
@@ -438,22 +958,53 @@ var request = new PageViewsRequest
     StartAtDate = DateTime.UtcNow.AddDays(-30),
     EndAtDate = DateTime.UtcNow,
     Unit = Unit.day,
-    Timezone = "America/Los_Angeles",
-    Url = "/blog"  // Optional: filter by URL
+    Timezone = "America/Los_Angeles"
 };
 
-var result = await _dataService.GetPageViews(request);
+var result = await _umamiData.GetPageViews(request);
 
 if (result.Status == HttpStatusCode.OK)
 {
+    // Time series data
     foreach (var dataPoint in result.Data.pageviews)
     {
-        Console.WriteLine($"{dataPoint.x}: {dataPoint.y} views");
+        var date = DateTimeOffset.FromUnixTimeMilliseconds(
+            long.Parse(dataPoint.x)).DateTime;
+        Console.WriteLine($"{date:yyyy-MM-dd}: {dataPoint.y} views");
+    }
+
+    // Session data
+    foreach (var sessionPoint in result.Data.sessions)
+    {
+        var date = DateTimeOffset.FromUnixTimeMilliseconds(
+            long.Parse(sessionPoint.x)).DateTime;
+        Console.WriteLine($"{date:yyyy-MM-dd}: {sessionPoint.y} sessions");
     }
 }
 ```
 
-### Events Series
+**Optional Filters:**
+```csharp
+var request = new PageViewsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.hour,
+    Timezone = "UTC",
+    Url = "/blog",              // Filter by URL
+    Referrer = "google.com",    // Filter by referrer
+    Title = "My Page",          // Filter by title
+    Host = "yoursite.com",      // Filter by host
+    Os = "Windows",             // Filter by OS
+    Browser = "Chrome",         // Filter by browser
+    Device = "mobile",          // Filter by device
+    Country = "US",             // Filter by country
+    Region = "CA",              // Filter by region
+    City = "San Francisco"      // Filter by city
+};
+```
+
+### Get Events Series
 
 Get event occurrences over time:
 
@@ -463,38 +1014,154 @@ var request = new EventsSeriesRequest
     StartAtDate = DateTime.UtcNow.AddDays(-7),
     EndAtDate = DateTime.UtcNow,
     Unit = Unit.hour,
-    EventName = "button-click"  // Optional: filter by event name
+    Timezone = "UTC"
 };
 
-var result = await _dataService.GetEventsSeries(request);
+var result = await _umamiData.GetEventsSeries(request);
 
 if (result.Status == HttpStatusCode.OK)
 {
     foreach (var item in result.Data)
     {
-        Console.WriteLine($"Event: {item.x}, Time: {item.t}, Count: {item.y}");
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(
+            long.Parse(item.t)).DateTime;
+        Console.WriteLine($"Event: {item.x}, Time: {timestamp}, Count: {item.y}");
     }
 }
 ```
 
-### Active Users
+**Optional Filters:**
+```csharp
+var request = new EventsSeriesRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-1),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.hour,
+    EventName = "button-click",  // Filter by specific event
+    Url = "/landing-page",       // Events on specific page
+    // ... all other filters from PageViewsRequest
+};
+```
 
-Get current active users on your site:
+### Time Units
 
 ```csharp
-var result = await _dataService.GetActiveUsers();
-
-if (result.Status == HttpStatusCode.OK)
+public enum Unit
 {
-    Console.WriteLine($"Active Users: {result.Data.visitors}");
+    year,    // Yearly aggregation
+    month,   // Monthly aggregation
+    day,     // Daily aggregation (default)
+    hour     // Hourly aggregation
 }
 ```
 
-## Common Use Cases
+**Best Practices:**
+```csharp
+// ✅ Good - hourly for recent data
+var recentRequest = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddHours(-24),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.hour
+};
 
-### Popular Posts Widget (Umami v3)
+// ✅ Good - daily for historical data
+var historicalRequest = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-90),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.day
+};
 
-This example shows a production-ready implementation for displaying popular blog posts:
+// ❌ Avoid - too granular (90 days × 24 hours = 2160 data points!)
+var inefficientRequest = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-90),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.hour  // Way too much data!
+};
+```
+
+---
+
+## API Version Compatibility
+
+### Automatic Detection - It Just Works™
+
+**Umami.Net automatically detects which API version your Umami instance uses.** No configuration needed!
+
+```mermaid
+graph TD
+    A[First Request] --> B[Try v3/v2 API]
+    B --> C{Response}
+    C -->|200 OK| D[Use v2/v3 going forward]
+    C -->|400 Bad Request| E[Try v1 API]
+    E --> F{Response}
+    F -->|200 OK| G[Use v1 going forward]
+    F -->|Error| H[Return Error]
+
+    D --> I[All future requests use v2/v3]
+    G --> J[All future requests use v1]
+
+    style D fill:#90EE90
+    style G fill:#90EE90
+    style H fill:#FFB6C6
+```
+
+### How It Works
+
+1. **First request** tries v3/v2 API (modern parameters: `path`, `hostname`)
+2. If it receives **400 Bad Request**, automatically retries with v1 API (`url`, `host`)
+3. **Caches the result** - all future requests use the detected version
+4. **Zero configuration** from your side
+
+### What This Means
+
+✅ **Just works** with any Umami version
+✅ **No version checks** needed in your code
+✅ **Automatic fallback** to older APIs
+✅ **Forward compatible** with future Umami updates
+
+### Supported Versions
+
+| Umami Version | API Version | Status | Key Differences |
+|---------------|-------------|--------|-----------------|
+| v1.x | v1 | ✅ Supported | Uses `url`, `host` parameters |
+| v2.x | v2 | ✅ Supported | Uses `path`, `hostname` parameters |
+| v3.x | v3 | ✅ Supported (Latest) | Optional `unit` parameter, enhanced metrics |
+
+### Version-Specific Features
+
+#### Umami v3 Enhancements
+
+```csharp
+// v3 allows optional unit parameter
+var request = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    // Unit is optional in v3!
+};
+```
+
+#### Parameter Name Mapping
+
+The library handles parameter name differences automatically:
+
+| Feature | v1 API | v2/v3 API | Library Handles |
+|---------|--------|-----------|-----------------|
+| URL path | `url` | `path` | ✅ Automatic |
+| Domain | `host` | `hostname` | ✅ Automatic |
+| Metrics granularity | `unit` required | `unit` optional (v3) | ✅ Automatic |
+
+---
+
+## Real-World Examples
+
+### Example 1: Popular Posts Widget
+
+Display trending posts from the last 24 hours:
 
 ```csharp
 public class PopularPostsService
@@ -512,16 +1179,17 @@ public class PopularPostsService
         {
             const string cacheKey = "trending_post_24h";
 
+            // Check cache first
             if (_cache.TryGetValue(cacheKey, out PopularPost cached))
                 return cached;
 
-            // Get path metrics from last 24 hours (v3 API)
+            // Get path metrics from last 24 hours
             var metricsRequest = new MetricsRequest
             {
                 StartAtDate = DateTime.UtcNow.AddHours(-24),
                 EndAtDate = DateTime.UtcNow,
-                Type = MetricType.path,  // v3 uses 'path'
-                Unit = Unit.hour,        // Optional in v3
+                Type = MetricType.path,
+                Unit = Unit.hour,
                 Timezone = "UTC",
                 Limit = 100
             };
@@ -534,9 +1202,7 @@ public class PopularPostsService
                 return null;
             }
 
-            _logger.LogInformation("Received {Count} paths from Umami", result.Data.Length);
-
-            // Filter for blog posts
+            // Filter for blog posts only
             var blogPosts = result.Data
                 .Where(m => m.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -544,11 +1210,14 @@ public class PopularPostsService
             if (!blogPosts.Any())
                 return null;
 
-            // Aggregate by slug (removing language extensions)
+            // Aggregate by slug (handle translated versions)
             var aggregated = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var post in blogPosts)
             {
+                // Remove "/blog/" prefix
                 var slug = post.x.Substring(6).Trim('/');
+
+                // Remove language extension (.es, .fr, etc.)
                 var baseSlug = slug.Contains('.')
                     ? slug.Substring(0, slug.LastIndexOf('.'))
                     : slug;
@@ -556,6 +1225,7 @@ public class PopularPostsService
                 aggregated[baseSlug] = aggregated.GetValueOrDefault(baseSlug) + post.y;
             }
 
+            // Get top post
             var topPost = aggregated.OrderByDescending(kvp => kvp.Value).First();
 
             // Get full blog post details
@@ -571,6 +1241,7 @@ public class PopularPostsService
                 Categories = blogPost?.Categories ?? Array.Empty<string>()
             };
 
+            // Cache for 10 minutes
             _cache.Set(cacheKey, popularPost, TimeSpan.FromMinutes(10));
             return popularPost;
         }
@@ -596,122 +1267,479 @@ public class PopularPost
 }
 ```
 
-### Traffic Analytics Dashboard
+### Example 2: Analytics Dashboard
+
+Complete dashboard with multiple metrics:
 
 ```csharp
-public class AnalyticsDashboard
+public class AnalyticsDashboardService
 {
     private readonly UmamiDataService _dataService;
+    private readonly ILogger<AnalyticsDashboardService> _logger;
 
-    public async Task<DashboardData> GetDashboard()
+    public async Task<DashboardData> GetDashboard(int days = 30)
     {
         var endDate = DateTime.UtcNow;
-        var startDate = endDate.AddDays(-30);
+        var startDate = endDate.AddDays(-days);
 
-        // Get summary stats
-        var statsTask = _dataService.GetStats(new StatsRequest
+        // Execute all requests in parallel
+        var statsTask = GetStatsAsync(startDate, endDate);
+        var topPagesTask = GetTopPagesAsync(startDate, endDate);
+        var topReferrersTask = GetTopReferrersAsync(startDate, endDate);
+        var topCountriesTask = GetTopCountriesAsync(startDate, endDate);
+        var browserStatsTask = GetBrowserStatsAsync(startDate, endDate);
+        var deviceStatsTask = GetDeviceStatsAsync(startDate, endDate);
+        var pageViewsTask = GetPageViewsTimeSeriesAsync(startDate, endDate);
+
+        await Task.WhenAll(
+            statsTask,
+            topPagesTask,
+            topReferrersTask,
+            topCountriesTask,
+            browserStatsTask,
+            deviceStatsTask,
+            pageViewsTask);
+
+        return new DashboardData
         {
-            StartAtDate = startDate,
-            EndAtDate = endDate
+            Period = $"Last {days} days",
+            Stats = await statsTask,
+            TopPages = await topPagesTask,
+            TopReferrers = await topReferrersTask,
+            TopCountries = await topCountriesTask,
+            BrowserStats = await browserStatsTask,
+            DeviceStats = await deviceStatsTask,
+            PageViewsTimeSeries = await pageViewsTask
+        };
+    }
+
+    private async Task<StatsResponseModels?> GetStatsAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetStats(new StatsRequest
+        {
+            StartAtDate = start,
+            EndAtDate = end
         });
 
-        // Get top countries
-        var countriesTask = _dataService.GetMetrics(new MetricsRequest
+        return result.Status == HttpStatusCode.OK ? result.Data : null;
+    }
+
+    private async Task<List<MetricsResponseModels>> GetTopPagesAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetMetrics(new MetricsRequest
         {
-            StartAtDate = startDate,
-            EndAtDate = endDate,
-            Type = MetricType.country,
+            StartAtDate = start,
+            EndAtDate = end,
+            Type = MetricType.path,
             Unit = Unit.day,
             Limit = 10
         });
 
-        // Get top referrers
-        var referrersTask = _dataService.GetMetrics(new MetricsRequest
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.ToList()
+            : new List<MetricsResponseModels>();
+    }
+
+    private async Task<List<MetricsResponseModels>> GetTopReferrersAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetMetrics(new MetricsRequest
         {
-            StartAtDate = startDate,
-            EndAtDate = endDate,
+            StartAtDate = start,
+            EndAtDate = end,
             Type = MetricType.referrer,
             Unit = Unit.day,
             Limit = 10
         });
 
-        await Task.WhenAll(statsTask, countriesTask, referrersTask);
-
-        return new DashboardData
-        {
-            Stats = statsTask.Result.Data,
-            TopCountries = countriesTask.Result.Data?.ToList() ?? new(),
-            TopReferrers = referrersTask.Result.Data?.ToList() ?? new()
-        };
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.ToList()
+            : new List<MetricsResponseModels>();
     }
+
+    private async Task<List<MetricsResponseModels>> GetTopCountriesAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetMetrics(new MetricsRequest
+        {
+            StartAtDate = start,
+            EndAtDate = end,
+            Type = MetricType.country,
+            Unit = Unit.day,
+            Limit = 10
+        });
+
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.ToList()
+            : new List<MetricsResponseModels>();
+    }
+
+    private async Task<List<MetricsResponseModels>> GetBrowserStatsAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetMetrics(new MetricsRequest
+        {
+            StartAtDate = start,
+            EndAtDate = end,
+            Type = MetricType.browser,
+            Unit = Unit.day,
+            Limit = 5
+        });
+
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.ToList()
+            : new List<MetricsResponseModels>();
+    }
+
+    private async Task<List<MetricsResponseModels>> GetDeviceStatsAsync(DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetMetrics(new MetricsRequest
+        {
+            StartAtDate = start,
+            EndAtDate = end,
+            Type = MetricType.device,
+            Unit = Unit.day,
+            Limit = 3
+        });
+
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.ToList()
+            : new List<MetricsResponseModels>();
+    }
+
+    private async Task<List<MetricsResponseModels>> GetPageViewsTimeSeriesAsync(
+        DateTime start, DateTime end)
+    {
+        var result = await _dataService.GetPageViews(new PageViewsRequest
+        {
+            StartAtDate = start,
+            EndAtDate = end,
+            Unit = Unit.day,
+            Timezone = "UTC"
+        });
+
+        return result.Status == HttpStatusCode.OK
+            ? result.Data.pageviews.ToList()
+            : new List<MetricsResponseModels>();
+    }
+}
+
+public class DashboardData
+{
+    public string Period { get; set; } = "";
+    public StatsResponseModels? Stats { get; set; }
+    public List<MetricsResponseModels> TopPages { get; set; } = new();
+    public List<MetricsResponseModels> TopReferrers { get; set; } = new();
+    public List<MetricsResponseModels> TopCountries { get; set; } = new();
+    public List<MetricsResponseModels> BrowserStats { get; set; } = new();
+    public List<MetricsResponseModels> DeviceStats { get; set; } = new();
+    public List<MetricsResponseModels> PageViewsTimeSeries { get; set; } = new();
 }
 ```
 
-### Real-Time Activity Monitor
+### Example 3: Real-Time Activity Monitor
+
+Monitor active users with SignalR:
 
 ```csharp
 public class ActivityMonitor : BackgroundService
 {
     private readonly UmamiDataService _dataService;
     private readonly IHubContext<AnalyticsHub> _hubContext;
+    private readonly ILogger<ActivityMonitor> _logger;
+
+    public ActivityMonitor(
+        UmamiDataService dataService,
+        IHubContext<AnalyticsHub> hubContext,
+        ILogger<ActivityMonitor> logger)
+    {
+        _dataService = dataService;
+        _hubContext = hubContext;
+        _logger = logger;
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("Activity Monitor started");
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            var activeUsers = await _dataService.GetActiveUsers();
-
-            if (activeUsers.Status == HttpStatusCode.OK)
+            try
             {
-                await _hubContext.Clients.All.SendAsync(
-                    "ActiveUsersUpdate",
-                    activeUsers.Data.visitors,
-                    stoppingToken);
+                var activeUsers = await _dataService.GetActiveUsers();
+
+                if (activeUsers.Status == HttpStatusCode.OK)
+                {
+                    await _hubContext.Clients.All.SendAsync(
+                        "ActiveUsersUpdate",
+                        activeUsers.Data.visitors,
+                        stoppingToken);
+
+                    _logger.LogDebug("Active users: {Count}", activeUsers.Data.visitors);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Failed to get active users: {Status} - {Message}",
+                        activeUsers.Status,
+                        activeUsers.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in activity monitor");
             }
 
+            // Update every 30 seconds
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
+
+        _logger.LogInformation("Activity Monitor stopped");
+    }
+}
+
+// SignalR Hub
+public class AnalyticsHub : Hub
+{
+    public async Task SubscribeToActiveUsers()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "ActiveUsers");
+    }
+
+    public async Task UnsubscribeFromActiveUsers()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "ActiveUsers");
     }
 }
 ```
 
+### Example 4: Event Tracking Middleware
+
+Automatically track all page views:
+
+```csharp
+public class UmamiTrackingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<UmamiTrackingMiddleware> _logger;
+
+    public UmamiTrackingMiddleware(
+        RequestDelegate next,
+        ILogger<UmamiTrackingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(
+        HttpContext context,
+        UmamiBackgroundSender umami)
+    {
+        // Track page view before processing request
+        var path = context.Request.Path.Value ?? "/";
+
+        // Skip tracking for static files, api calls, health checks
+        if (!ShouldTrack(path))
+        {
+            await _next(context);
+            return;
+        }
+
+        try
+        {
+            var eventData = new UmamiEventData
+            {
+                { "method", context.Request.Method },
+                { "user_agent", context.Request.Headers.UserAgent.ToString() }
+            };
+
+            // Add referrer if available
+            if (context.Request.Headers.Referer.Any())
+            {
+                eventData.Add("referrer", context.Request.Headers.Referer.ToString());
+            }
+
+            // Track the page view
+            await umami.TrackPageView(
+                url: path,
+                eventType: "pageview",
+                eventData: eventData);
+        }
+        catch (Exception ex)
+        {
+            // Don't let tracking errors break the application
+            _logger.LogError(ex, "Error tracking page view for {Path}", path);
+        }
+
+        await _next(context);
+    }
+
+    private static bool ShouldTrack(string path)
+    {
+        // Skip tracking for these paths
+        var skipPaths = new[]
+        {
+            "/favicon.ico",
+            "/robots.txt",
+            "/sitemap.xml",
+            "/health",
+            "/metrics"
+        };
+
+        if (skipPaths.Any(skip => path.Equals(skip, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        // Skip static files
+        if (path.StartsWith("/css/", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/js/", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/fonts/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Skip API calls
+        if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return true;
+    }
+}
+
+// Register in Program.cs
+app.UseMiddleware<UmamiTrackingMiddleware>();
+```
+
+---
+
 ## Error Handling
 
-All API methods return `UmamiResult<T>` with comprehensive error information:
+### Error Handling Philosophy
+
+**Umami.Net fails loudly but recoverably.** This means:
+
+1. **Never break your application** - No unhandled exceptions escape to your user-facing code
+2. **Always log with context** - Every error includes full details about what went wrong and why
+3. **Validate early** - Configuration errors fail at startup with clear messages
+4. **Fail gracefully** - If analytics can't be sent, your app continues working
+5. **Provide actionable errors** - Error messages tell you exactly how to fix the problem
+
+**Error Logging Examples:**
+
+The library logs errors with structured logging for easy troubleshooting:
+
+```csharp
+// Configuration validation error (at startup)
+❌ FormatException: WebSiteId must be a valid Guid.
+   Current value: 'my-website'
+   Suggestion: Use a GUID format like '12345678-1234-1234-1234-123456789abc'
+
+// Event sending error (at runtime - logged but doesn't throw)
+⚠️ [Error] Failed to send event to Umami after 3 retries
+   Event: {EventName = "button-click"}
+   URL: {Url = "/products/123"}
+   Exception: System.Net.Http.HttpRequestException: Connection refused
+   Context: This is expected if Umami server is temporarily down.
+           Events will be lost, but your application continues normally.
+
+// Authentication error (auto-retries once then returns error result)
+⚠️ [Warning] Umami authentication failed
+   Status: 401 Unauthorized
+   Message: Invalid username or password
+   Suggestion: Check Analytics:UserName and Analytics:Password in configuration
+   Configuration: Analytics:UmamiPath = https://analytics.yoursite.com
+
+// Validation error (before sending request)
+❌ InvalidOperationException: StartAtDate is required.
+   Suggestion: Set StartAtDate to a valid date (e.g., DateTime.UtcNow.AddDays(-7) for last 7 days).
+   Current request: {Type = "path", EndAtDate = "2025-01-20"}
+```
+
+**What This Means For You:**
+
+- **Development** - You see exactly what's wrong and how to fix it
+- **Production** - Errors are logged for debugging but don't impact users
+- **Monitoring** - Structure logging makes it easy to alert on analytics issues
+- **Debugging** - Full context helps you understand what happened
+
+### UmamiResult<T> Response Model
+
+All data API methods return `UmamiResult<T>`:
+
+```csharp
+public class UmamiResult<T>
+{
+    public HttpStatusCode Status { get; set; }
+    public string Message { get; set; }
+    public T? Data { get; set; }
+}
+```
+
+### Checking Results
 
 ```csharp
 var result = await _dataService.GetMetrics(request);
 
-if (result.Status == HttpStatusCode.OK)
+// ✅ Recommended: Check status code
+if (result.Status == HttpStatusCode.OK && result.Data != null)
 {
     // Success - use result.Data
-    ProcessData(result.Data);
+    ProcessMetrics(result.Data);
 }
 else
 {
-    // Error - result.Message contains helpful information
-    _logger.LogWarning("Metrics failed: {Message}", result.Message);
+    // Error - log and handle gracefully
+    _logger.LogWarning(
+        "Metrics request failed: {Status} - {Message}",
+        result.Status,
+        result.Message);
+}
+```
 
-    // Common error codes and what they mean:
-    switch (result.Status)
-    {
-        case HttpStatusCode.BadRequest:
-            // Missing or invalid parameters
-            // The error message will tell you what to fix
-            break;
+### Common HTTP Status Codes
 
-        case HttpStatusCode.Unauthorized:
-            // Authentication failed - check credentials
-            break;
+```csharp
+switch (result.Status)
+{
+    case HttpStatusCode.OK:
+        // Success
+        break;
 
-        case HttpStatusCode.NotFound:
-            // Website ID not found - verify configuration
-            break;
+    case HttpStatusCode.BadRequest:
+        // Invalid parameters
+        // Check result.Message for details
+        // Common causes:
+        // - Missing required parameters
+        // - Invalid date range
+        // - Malformed GUID
+        break;
 
-        case HttpStatusCode.TooManyRequests:
-            // Rate limited - implement caching or backoff
-            break;
-    }
+    case HttpStatusCode.Unauthorized:
+        // Authentication failed
+        // - Check username/password in configuration
+        // - Token may have expired (auto-retry happens automatically)
+        break;
+
+    case HttpStatusCode.Forbidden:
+        // Authenticated but not authorized
+        // - User doesn't have access to this website
+        break;
+
+    case HttpStatusCode.NotFound:
+        // Website ID not found
+        // - Verify WebsiteId in configuration
+        break;
+
+    case HttpStatusCode.TooManyRequests:
+        // Rate limited
+        // - Implement caching
+        // - Reduce request frequency
+        break;
+
+    case HttpStatusCode.ServiceUnavailable:
+        // Umami server is down
+        // - Polly will automatically retry
+        break;
+
+    default:
+        // Unexpected error
+        _logger.LogError("Unexpected status: {Status}", result.Status);
+        break;
 }
 ```
 
@@ -724,32 +1752,108 @@ try
 {
     var request = new MetricsRequest
     {
-        Type = MetricType.url,
-        // Missing required: StartAtDate, EndAtDate, Unit
+        Type = MetricType.path,
+        // ❌ Missing: StartAtDate, EndAtDate
     };
 
+    await request.Validate();  // Explicit validation
     var result = await _dataService.GetMetrics(request);
 }
-catch (ArgumentException ex)
+catch (InvalidOperationException ex)
 {
-    // ex.Message will contain helpful suggestions:
+    // Validation failed with helpful message:
     // "StartAtDate is required. Suggestion: Set StartAtDate to a valid date
     // (e.g., DateTime.UtcNow.AddDays(-7) for last 7 days)."
-    _logger.LogError(ex.Message);
+
+    _logger.LogError(ex, "Validation error");
 }
 ```
 
-## Performance Tips
-
-### 1. Use Background Sender for High Traffic
+### Event Tracking Response Status
 
 ```csharp
-// ❌ Don't do this in high-traffic endpoints
-await _client.Track("page-view");  // Blocks the request
+public enum ResponseStatus
+{
+    Failed,       // Request failed
+    BotDetected,  // Umami detected a bot (receives "beep boop")
+    Success       // Event tracked successfully
+}
 
-// ✅ Do this instead
-await _backgroundSender.Track("page-view");  // Non-blocking
+var response = await _client.Send(payload);
+
+switch (response.Status)
+{
+    case ResponseStatus.Success:
+        // Event recorded
+        var visitorId = response.VisitorId;
+        _logger.LogInformation("Event tracked for visitor {VisitorId}", visitorId);
+        break;
+
+    case ResponseStatus.BotDetected:
+        // Umami identified request as bot
+        _logger.LogDebug("Bot detected - event not recorded");
+        break;
+
+    case ResponseStatus.Failed:
+        // Error occurred
+        _logger.LogWarning("Failed to track event");
+        break;
+}
 ```
+
+### Graceful Degradation
+
+Analytics should never break your application:
+
+```csharp
+public async Task<IActionResult> MyAction()
+{
+    // Your main application logic
+    var result = await DoImportantWork();
+
+    // Track analytics - but don't fail if it errors
+    try
+    {
+        await _umami.Track("important-action-completed", new UmamiEventData
+        {
+            { "result", result.Status }
+        });
+    }
+    catch (Exception ex)
+    {
+        // Log but continue - analytics failure shouldn't break the app
+        _logger.LogWarning(ex, "Failed to track analytics event");
+    }
+
+    return Ok(result);
+}
+```
+
+---
+
+## Performance & Best Practices
+
+### 1. Always Use Background Sender
+
+```csharp
+// ❌ DON'T: Blocks the HTTP request
+public async Task<IActionResult> Index()
+{
+    await _umamiClient.Track("page-view");  // Waits for HTTP request to complete
+    return View();
+}
+
+// ✅ DO: Non-blocking
+public async Task<IActionResult> Index()
+{
+    await _backgroundSender.Track("page-view");  // Queues and returns immediately
+    return View();
+}
+```
+
+**Performance difference:**
+- `UmamiClient`: Adds 50-200ms to request time
+- `UmamiBackgroundSender`: Adds <1ms to request time
 
 ### 2. Implement Caching
 
@@ -757,37 +1861,35 @@ await _backgroundSender.Track("page-view");  // Non-blocking
 public class CachedUmamiService
 {
     private readonly UmamiDataService _dataService;
-    private readonly IDistributedCache _cache;
+    private readonly IMemoryCache _cache;
 
-    public async Task<MetricsResponseModels[]> GetTopPages()
+    public async Task<MetricsResponseModels[]> GetTopPages(int days = 7)
     {
-        const string cacheKey = "top_pages";
-        var cached = await _cache.GetStringAsync(cacheKey);
+        var cacheKey = $"top_pages_{days}d";
 
-        if (cached != null)
-            return JsonSerializer.Deserialize<MetricsResponseModels[]>(cached);
+        if (_cache.TryGetValue(cacheKey, out MetricsResponseModels[]? cached))
+            return cached!;
 
         var request = new MetricsRequest
         {
-            StartAtDate = DateTime.UtcNow.AddDays(-7),
+            StartAtDate = DateTime.UtcNow.AddDays(-days),
             EndAtDate = DateTime.UtcNow,
-            Type = MetricType.url,
+            Type = MetricType.path,
             Unit = Unit.day,
             Limit = 10
         };
 
         var result = await _dataService.GetMetrics(request);
 
-        if (result.Status == HttpStatusCode.OK)
+        if (result.Status == HttpStatusCode.OK && result.Data != null)
         {
-            await _cache.SetStringAsync(
-                cacheKey,
-                JsonSerializer.Serialize(result.Data),
-                new DistributedCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15)
-                });
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15),
+                SlidingExpiration = TimeSpan.FromMinutes(5)
+            };
 
+            _cache.Set(cacheKey, result.Data, cacheOptions);
             return result.Data;
         }
 
@@ -796,127 +1898,870 @@ public class CachedUmamiService
 }
 ```
 
-### 3. Use Appropriate Time Units
+### 3. Use Appropriate Time Granularity
+
+```mermaid
+graph LR
+    A[Time Range] --> B{Duration}
+    B -->|< 24 hours| C[Unit.hour]
+    B -->|1-30 days| D[Unit.day]
+    B -->|30-365 days| E[Unit.day or Unit.week]
+    B -->|> 365 days| F[Unit.month or Unit.year]
+
+    style C fill:#90EE90
+    style D fill:#90EE90
+    style E fill:#FFD700
+    style F fill:#FFD700
+```
 
 ```csharp
-// ✅ Good - hourly granularity for recent data
-var recentRequest = new MetricsRequest
+// ✅ GOOD: Hourly for last 24 hours (24 data points)
+var recentData = new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddHours(-24),
     EndAtDate = DateTime.UtcNow,
-    Unit = Unit.hour  // Detailed view
+    Unit = Unit.hour,
+    Type = MetricType.path
 };
 
-// ✅ Good - daily granularity for historical data
-var historicalRequest = new MetricsRequest
+// ✅ GOOD: Daily for last 30 days (30 data points)
+var monthlyData = new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-30),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.day,
+    Type = MetricType.path
+};
+
+// ❌ BAD: Hourly for 90 days (2160 data points!)
+var inefficientData = new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-90),
     EndAtDate = DateTime.UtcNow,
-    Unit = Unit.day  // Aggregated view
-};
-
-// ❌ Avoid - too granular for long periods
-var inefficientRequest = new MetricsRequest
-{
-    StartAtDate = DateTime.UtcNow.AddDays(-90),
-    EndAtDate = DateTime.UtcNow,
-    Unit = Unit.hour  // Way too much data!
+    Unit = Unit.hour,  // Too granular!
+    Type = MetricType.path
 };
 ```
 
 ### 4. Set Reasonable Limits
 
 ```csharp
-// ✅ Good - limited results for display
-var request = new MetricsRequest
+// ✅ GOOD: Request only what you need
+var topPages = new MetricsRequest
 {
-    // ...
-    Limit = 10  // Top 10 items
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    Unit = Unit.day,
+    Limit = 10  // Top 10 pages for display
 };
 
-// ❌ Avoid - requesting everything when you don't need it
-var request = new MetricsRequest
+// ❌ UNNECESSARY: Default is 500
+var allPages = new MetricsRequest
 {
-    // ...
-    Limit = 500  // Default, but maybe you only need 10?
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    Unit = Unit.day
+    // Limit defaults to 500 - do you really need that many?
 };
 ```
 
-## API Reference
+### 5. Parallel Requests
 
-### Event Tracking
+Execute multiple independent requests in parallel:
 
-| Method | Description |
-|--------|-------------|
-| `Track(eventName, eventData, url)` | Track a custom event |
-| `TrackPageView(url, eventType, eventData)` | Track a page view |
-| `Send(payload, eventData, eventType)` | Low-level send method |
+```csharp
+// ✅ GOOD: Parallel execution
+var statsTask = _dataService.GetStats(statsRequest);
+var metricsTask = _dataService.GetMetrics(metricsRequest);
+var activeUsersTask = _dataService.GetActiveUsers();
 
-### Analytics Data
+await Task.WhenAll(statsTask, metricsTask, activeUsersTask);
 
-| Method | Description |
-|--------|-------------|
-| `GetActiveUsers()` | Current active users |
-| `GetStats(request)` | Summary statistics |
-| `GetMetrics(request)` | Aggregated metrics |
-| `GetExpandedMetrics(request)` | Metrics with engagement data |
-| `GetPageViews(request)` | Page views over time |
-| `GetEventsSeries(request)` | Events over time |
+var stats = await statsTask;
+var metrics = await metricsTask;
+var activeUsers = await activeUsersTask;
 
-### Request Models
-
-- `StatsRequest` - Summary statistics
-- `MetricsRequest` - Metrics and expanded metrics
-- `PageViewsRequest` - Page views over time
-- `EventsSeriesRequest` - Events series data
-
-All requests inherit from `BaseRequest` which requires:
-- `StartAtDate` - Start of date range
-- `EndAtDate` - End of date range
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: 400 Bad Request**
+// ❌ SLOW: Sequential execution
+var stats = await _dataService.GetStats(statsRequest);
+var metrics = await _dataService.GetMetrics(metricsRequest);
+var activeUsers = await _dataService.GetActiveUsers();
+// Each waits for the previous to complete
 ```
-Suggestion: Check that all required parameters are set correctly.
-Ensure Type and Unit are specified, and dates are in the correct range.
+
+### 6. Use Filtering
+
+Reduce data volume by filtering at the API level:
+
+```csharp
+// ❌ INEFFICIENT: Get all data then filter in memory
+var allMetrics = await _dataService.GetMetrics(new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-30),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    Unit = Unit.day
+});
+var blogPosts = allMetrics.Data
+    .Where(m => m.x.StartsWith("/blog/"))
+    .ToArray();
+
+// ✅ EFFICIENT: Filter at API level
+var blogMetrics = await _dataService.GetMetrics(new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-30),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    Unit = Unit.day,
+    Url = "/blog"  // Filter server-side
+});
 ```
-**Fix:** Make sure you set `Type` and `Unit` on your `MetricsRequest`.
 
-**Issue: 401 Unauthorized**
+### 7. Avoid Chatty Calls
+
+```csharp
+// ❌ BAD: Making requests in a loop
+foreach (var page in pages)
+{
+    var stats = await _dataService.GetStats(new StatsRequest
+    {
+        StartAtDate = DateTime.UtcNow.AddDays(-7),
+        EndAtDate = DateTime.UtcNow,
+        Url = page.Url  // One request per page!
+    });
+    page.Stats = stats.Data;
+}
+
+// ✅ BETTER: Single request with metrics
+var metrics = await _dataService.GetExpandedMetrics(new MetricsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Type = MetricType.path,
+    Unit = Unit.day,
+    Limit = 100  // Get all pages at once
+});
+
+// Map metrics to pages in memory
+foreach (var page in pages)
+{
+    page.Stats = metrics.Data.FirstOrDefault(m => m.name == page.Url);
+}
 ```
-Suggestion: Verify your Umami username and password in the Analytics configuration.
-```
-**Fix:** Check your `appsettings.json` has correct `UserName` and `Password`.
-
-**Issue: No data returned**
-```
-Suggestion: Ensure data exists for the time period.
-```
-**Fix:** Verify your date range contains data and Website ID is correct.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Links
-
-- **NuGet Package**: https://www.nuget.org/packages/Umami.Net/
-- **GitHub Repository**: https://github.com/scottgal/mostlylucidweb/tree/main/Umami.Net
-- **Umami Documentation**: https://umami.is/docs
-- **Blog Post**: https://www.mostlylucid.net/blog/addingumamitrackingclientfollowup
-
-## Support
-
-- GitHub Issues: [Report an Issue](https://github.com/scottgal/mostlylucidweb/issues)
-- Documentation: [Umami API Docs](https://umami.is/docs/api)
 
 ---
 
-**Made with ❤️ for the Umami community**
+## Testing
+
+### Test Infrastructure
+
+Umami.Net includes comprehensive test coverage using:
+- **xUnit** - Test framework
+- **Moq** - Mocking framework
+- **FakeLogger** - Microsoft's test logger
+- **Custom HTTP handlers** - For testing async operations
+
+### Testing Event Tracking
+
+```csharp
+[Fact]
+public async Task Track_SendsEventToUmami()
+{
+    // Arrange
+    var mockHandler = new MockHttpMessageHandler();
+    mockHandler.When("/api/send")
+        .Respond("application/json", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"");
+
+    var httpClient = new HttpClient(mockHandler)
+    {
+        BaseAddress = new Uri("https://analytics.test.com")
+    };
+
+    var settings = new UmamiClientSettings
+    {
+        UmamiPath = "https://analytics.test.com",
+        WebsiteId = "12345678-1234-1234-1234-123456789abc"
+    };
+
+    var client = new UmamiClient(httpClient, settings, logger);
+
+    // Act
+    var response = await client.Track("test-event", new UmamiEventData
+    {
+        { "key", "value" }
+    });
+
+    // Assert
+    Assert.Equal(ResponseStatus.Success, response.Status);
+}
+```
+
+### Testing Background Sender
+
+```csharp
+[Fact]
+public async Task BackgroundSender_ProcessesEventAsynchronously()
+{
+    var tcs = new TaskCompletionSource<bool>();
+
+    var handler = EchoMockHandler.Create(async (message, token) =>
+    {
+        try
+        {
+            var payload = await message.Content
+                .ReadFromJsonAsync<UmamiPayload>();
+
+            Assert.Equal("test-event", payload.Name);
+            Assert.Equal("value", payload.Data["key"]);
+
+            tcs.SetResult(true);
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }
+        catch (Exception e)
+        {
+            tcs.SetException(e);
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        }
+    });
+
+    var backgroundSender = CreateBackgroundSender(handler);
+
+    // Act
+    await backgroundSender.Track("test-event", data: new UmamiEventData
+    {
+        { "key", "value" }
+    });
+
+    // Assert - wait for background processing with timeout
+    var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(1000));
+
+    if (completedTask != tcs.Task)
+        throw new TimeoutException("Event was not processed within timeout");
+
+    await tcs.Task; // Will throw if assertions failed
+}
+```
+
+### Testing Data API
+
+```csharp
+[Fact]
+public async Task GetStats_ReturnsStatsSuccessfully()
+{
+    // Arrange
+    var mockResponse = new StatsResponseModels
+    {
+        pageviews = new StatsResponseModels.Pageviews { value = 1000, prev = 800 },
+        visitors = new StatsResponseModels.Visitors { value = 500, prev = 400 },
+        visits = new StatsResponseModels.Visits { value = 600, prev = 450 },
+        bounces = new StatsResponseModels.Bounces { value = 100, prev = 90 },
+        totaltime = new StatsResponseModels.Totaltime { value = 50000, prev = 45000 }
+    };
+
+    var mockHandler = new MockHttpMessageHandler();
+    mockHandler.When("/api/websites/*/stats*")
+        .Respond("application/json", JsonSerializer.Serialize(mockResponse));
+
+    var service = CreateDataService(mockHandler);
+
+    // Act
+    var result = await service.GetStats(new StatsRequest
+    {
+        StartAtDate = DateTime.UtcNow.AddDays(-7),
+        EndAtDate = DateTime.UtcNow
+    });
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, result.Status);
+    Assert.NotNull(result.Data);
+    Assert.Equal(1000, result.Data.pageviews.value);
+    Assert.Equal(500, result.Data.visitors.value);
+}
+```
+
+### Testing Validation
+
+```csharp
+[Fact]
+public void MetricsRequest_MissingStartDate_ThrowsValidationError()
+{
+    // Arrange
+    var request = new MetricsRequest
+    {
+        EndAtDate = DateTime.UtcNow,
+        Type = MetricType.path,
+        Unit = Unit.day
+        // Missing StartAtDate
+    };
+
+    // Act & Assert
+    var exception = Assert.Throws<InvalidOperationException>(() => request.Validate());
+
+    Assert.Contains("StartAtDate is required", exception.Message);
+    Assert.Contains("Suggestion:", exception.Message);
+}
+
+[Fact]
+public void BaseRequest_StartAfterEnd_ThrowsValidationError()
+{
+    // Arrange & Act & Assert
+    var exception = Assert.Throws<ArgumentException>(() =>
+    {
+        var request = new StatsRequest
+        {
+            StartAtDate = DateTime.UtcNow,
+            EndAtDate = DateTime.UtcNow.AddDays(-7)  // Before start!
+        };
+    });
+
+    Assert.Contains("must be after StartAtDate", exception.Message);
+}
+```
+
+### Integration Testing
+
+```csharp
+public class UmamiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public UmamiIntegrationTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task FullWorkflow_TrackAndRetrieveData()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var umami = _factory.Services.GetRequiredService<UmamiBackgroundSender>();
+        var dataService = _factory.Services.GetRequiredService<IUmamiDataService>();
+
+        // Act - Track event
+        await umami.Track("integration-test", new UmamiEventData
+        {
+            { "test_id", Guid.NewGuid().ToString() }
+        });
+
+        // Wait for background processing
+        await Task.Delay(1000);
+
+        // Act - Retrieve stats
+        var stats = await dataService.GetStats(new StatsRequest
+        {
+            StartAtDate = DateTime.UtcNow.AddHours(-1),
+            EndAtDate = DateTime.UtcNow
+        });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, stats.Status);
+        Assert.True(stats.Data.pageviews.value > 0);
+    }
+}
+```
+
+---
+
+## API Reference
+
+### Event Tracking APIs
+
+#### UmamiClient
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `Track` | `eventName`, `eventData?`, `url?` | `Task<UmamiDataResponse>` | Track a custom event |
+| `TrackPageView` | `url`, `eventType?`, `eventData?` | `Task<UmamiDataResponse>` | Track a page view |
+| `Identify` | `eventData` | `Task<UmamiDataResponse>` | Identify a user |
+| `Send` | `payload`, `eventData?`, `eventType` | `Task<UmamiDataResponse>` | Low-level send method |
+
+#### UmamiBackgroundSender
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `Track` | `eventName`, `url?`, `eventData?` | `Task` | Queue event for background sending |
+| `TrackPageView` | `url`, `eventType?`, `eventData?` | `Task` | Queue page view for background sending |
+
+### Analytics Data APIs
+
+#### IUmamiDataService
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `GetActiveUsers` | - | `Task<UmamiResult<ActiveUsersResponse>>` | Get current active users |
+| `GetStats` | `StatsRequest` | `Task<UmamiResult<StatsResponseModels>>` | Get summary statistics |
+| `GetMetrics` | `MetricsRequest` | `Task<UmamiResult<MetricsResponseModels[]>>` | Get aggregated metrics |
+| `GetExpandedMetrics` | `MetricsRequest` | `Task<UmamiResult<ExpandedMetricsResponseModel[]>>` | Get metrics with engagement data |
+| `GetPageViews` | `PageViewsRequest` | `Task<UmamiResult<PageViewsResponseModels>>` | Get page views time series |
+| `GetEventsSeries` | `EventsSeriesRequest` | `Task<UmamiResult<EventsSeriesResponseModel[]>>` | Get events time series |
+
+### Request Models
+
+#### StatsRequest
+```csharp
+public class StatsRequest : BaseRequest
+{
+    public string? Url { get; set; }
+    public string? Referrer { get; set; }
+    public string? Title { get; set; }
+    public string? Query { get; set; }
+    public string? Event { get; set; }
+    public string? Host { get; set; }
+    public string? Os { get; set; }
+    public string? Browser { get; set; }
+    public string? Device { get; set; }
+    public string? Country { get; set; }
+    public string? Region { get; set; }
+    public string? City { get; set; }
+}
+```
+
+#### MetricsRequest
+```csharp
+public class MetricsRequest : BaseRequest
+{
+    public MetricType Type { get; set; }  // Required
+    public Unit? Unit { get; set; }       // Optional in v3
+    public int Limit { get; set; } = 500;
+    public string? Timezone { get; set; }
+    // ... same filter properties as StatsRequest
+}
+```
+
+#### PageViewsRequest
+```csharp
+public class PageViewsRequest : BaseRequest
+{
+    public Unit Unit { get; set; }
+    public string? Timezone { get; set; }
+    // ... same filter properties as StatsRequest
+}
+```
+
+#### EventsSeriesRequest
+```csharp
+public class EventsSeriesRequest : BaseRequest
+{
+    public Unit Unit { get; set; }
+    public string? Timezone { get; set; }
+    public string? EventName { get; set; }
+    // ... same filter properties as StatsRequest
+}
+```
+
+### Response Models
+
+#### StatsResponseModels
+```csharp
+public class StatsResponseModels
+{
+    public Pageviews pageviews { get; set; }
+    public Visitors visitors { get; set; }
+    public Visits visits { get; set; }
+    public Bounces bounces { get; set; }
+    public Totaltime totaltime { get; set; }
+
+    // Each contains: int value, int prev
+}
+```
+
+#### MetricsResponseModels
+```csharp
+public class MetricsResponseModels
+{
+    public string x { get; set; }  // Dimension value
+    public int y { get; set; }     // Count
+}
+```
+
+#### ExpandedMetricsResponseModel
+```csharp
+public class ExpandedMetricsResponseModel
+{
+    public string name { get; set; }
+    public int pageviews { get; set; }
+    public int visitors { get; set; }
+    public int visits { get; set; }
+    public int bounces { get; set; }
+    public long totaltime { get; set; }
+}
+```
+
+---
+
+## Gotchas & Troubleshooting
+
+### Common Issues
+
+#### 1. "beep boop" Response
+
+**Problem:** Umami detects your requests as a bot.
+
+```csharp
+var response = await _client.Track("event");
+// response.Status == ResponseStatus.BotDetected
+```
+
+**Causes:**
+- Missing User-Agent header
+- Requests coming from server-side (not browser)
+- High-frequency requests from same IP
+
+**Solutions:**
+```csharp
+// Option 1: Use background sender (handles this automatically)
+await _backgroundSender.Track("event");
+
+// Option 2: Accept bot detection for server-side tracking
+if (response.Status == ResponseStatus.BotDetected)
+{
+    _logger.LogDebug("Server-side event - detected as bot (expected)");
+    // This is fine for server-side analytics
+}
+```
+
+#### 2. 400 Bad Request - Parameter Names
+
+**Problem:** Using wrong parameter names for your Umami version.
+
+**Error Message:**
+```
+Bad Request: Invalid parameter 'url'
+```
+
+**Solution:**
+The library handles this automatically! If you're getting this error, file an issue - the auto-detection should prevent it.
+
+```csharp
+// You don't need to worry about v1 vs v2/v3 parameter names
+// The library auto-detects and uses the correct ones
+await _client.Track("event");  // Works on all versions
+```
+
+#### 3. 401 Unauthorized - Token Issues
+
+**Problem:** Authentication failing for data API.
+
+**Causes:**
+- Wrong username/password
+- Token expired (should auto-retry)
+
+**Solution:**
+```csharp
+// Check your configuration
+{
+  "Analytics": {
+    "UmamiPath": "https://analytics.yoursite.com",
+    "UserName": "admin",  // ← Check these
+    "Password": "password"  // ← Check these
+  }
+}
+
+// Library auto-retries on 401, but if it persists:
+var result = await _dataService.GetStats(request);
+if (result.Status == HttpStatusCode.Unauthorized)
+{
+    _logger.LogError("Authentication failed - check credentials");
+}
+```
+
+#### 4. Invalid GUID Format
+
+**Problem:** Website ID is not a valid GUID.
+
+**Error:**
+```
+FormatException: WebSiteId must be a valid Guid
+```
+
+**Solution:**
+```csharp
+// ❌ Wrong formats
+"WebsiteId": "my-website"
+"WebsiteId": "12345"
+"WebsiteId": "{12345678-1234-1234-1234-123456789abc}"  // Braces not needed
+
+// ✅ Correct format
+"WebsiteId": "12345678-1234-1234-1234-123456789abc"
+```
+
+#### 5. Date Range Errors
+
+**Problem:** StartDate after EndDate.
+
+**Error:**
+```
+ArgumentException: StartAtDate must be before EndAtDate
+```
+
+**Solution:**
+```csharp
+// ✅ Correct
+var request = new StatsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),  // Earlier
+    EndAtDate = DateTime.UtcNow                  // Later
+};
+
+// ❌ Wrong
+var request = new StatsRequest
+{
+    StartAtDate = DateTime.UtcNow,
+    EndAtDate = DateTime.UtcNow.AddDays(-7)  // Before start!
+};
+```
+
+#### 6. Timezone Issues
+
+**Problem:** Data doesn't match expected timezone.
+
+**Solution:**
+```csharp
+// Always specify timezone for consistency
+var request = new PageViewsRequest
+{
+    StartAtDate = DateTime.UtcNow.AddDays(-7),
+    EndAtDate = DateTime.UtcNow,
+    Unit = Unit.day,
+    Timezone = "America/Los_Angeles"  // Use IANA timezone names
+};
+
+// Common timezones:
+// - "UTC"
+// - "America/New_York"
+// - "America/Los_Angeles"
+// - "Europe/London"
+// - "Europe/Paris"
+// - "Asia/Tokyo"
+```
+
+#### 7. No Data Returned
+
+**Problem:** Request succeeds but returns empty data.
+
+**Debugging:**
+```csharp
+var result = await _dataService.GetMetrics(request);
+
+if (result.Status == HttpStatusCode.OK)
+{
+    if (result.Data == null || !result.Data.Any())
+    {
+        _logger.LogWarning(
+            "No metrics data for range {Start} to {End}",
+            request.StartAtDate,
+            request.EndAtDate);
+
+        // Possible causes:
+        // 1. No data exists for this time range
+        // 2. Filters are too restrictive
+        // 3. Website ID is wrong
+        // 4. Date range is in the future
+    }
+}
+```
+
+#### 8. Background Events Not Sending
+
+**Problem:** Events queued but not appearing in Umami.
+
+**Debugging:**
+```csharp
+// Check if background service is running
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.SetupUmamiClient(Configuration);
+
+        // Verify background sender is registered as hosted service
+        var descriptor = services.FirstOrDefault(d =>
+            d.ServiceType == typeof(IHostedService) &&
+            d.ImplementationType == typeof(UmamiBackgroundSender));
+
+        if (descriptor == null)
+        {
+            throw new InvalidOperationException(
+                "UmamiBackgroundSender not registered as hosted service");
+        }
+    }
+}
+
+// Enable debug logging to see processing
+{
+  "Logging": {
+    "LogLevel": {
+      "Umami.Net": "Debug"
+    }
+  }
+}
+```
+
+#### 9. High Memory Usage
+
+**Problem:** Memory grows with background sender.
+
+**Cause:** Channel queue growing faster than processing.
+
+**Solution:**
+```csharp
+// If you have extremely high traffic, consider:
+
+// Option 1: Increase background worker throughput
+// (Modify library source or create custom implementation)
+
+// Option 2: Sample events
+public class SamplingBackgroundSender
+{
+    private readonly UmamiBackgroundSender _sender;
+    private readonly double _sampleRate;
+    private readonly Random _random = new();
+
+    public async Task Track(string eventName, UmamiEventData? data = null)
+    {
+        // Only track 10% of events
+        if (_random.NextDouble() < _sampleRate)
+        {
+            await _sender.Track(eventName, data: data);
+        }
+    }
+}
+```
+
+#### 10. Polly Retry Exhaustion
+
+**Problem:** All retries failed.
+
+**Error in logs:**
+```
+Failed to send event to Umami after 3 retries
+```
+
+**Causes:**
+- Umami server is down
+- Network issues
+- Firewall blocking requests
+
+**Solution:**
+```csharp
+// The library already has retry logic built in
+// If retries are exhausted, gracefully degrade:
+
+var response = await _client.Send(payload);
+if (response.Status == ResponseStatus.Failed)
+{
+    _logger.LogWarning(
+        "Failed to track event after retries - data not sent");
+    // Don't throw - analytics failures shouldn't break your app
+}
+```
+
+### Performance Troubleshooting
+
+#### Slow Data API Requests
+
+```csharp
+// Use Stopwatch to measure
+var sw = Stopwatch.StartNew();
+var result = await _dataService.GetMetrics(request);
+sw.Stop();
+
+if (sw.ElapsedMilliseconds > 5000)  // More than 5 seconds
+{
+    _logger.LogWarning(
+        "Slow metrics request: {Ms}ms for {Type} over {Days} days",
+        sw.ElapsedMilliseconds,
+        request.Type,
+        (request.EndAtDate - request.StartAtDate).TotalDays);
+
+    // Consider:
+    // 1. Reducing time range
+    // 2. Using less granular Unit
+    // 3. Reducing Limit
+    // 4. Adding caching
+}
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+### Reporting Issues
+
+When reporting an issue, please include:
+
+1. **Umami.Net version**
+2. **Umami server version** (v1/v2/v3)
+3. **Minimal reproduction code**
+4. **Expected vs actual behavior**
+5. **Error messages and stack traces**
+
+### Pull Requests
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Write tests for new functionality
+4. Ensure all tests pass (`dotnet test`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+### Coding Standards
+
+- Follow existing code style
+- Add XML documentation comments for public APIs
+- Include unit tests for new features
+- Update README if adding user-facing features
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Links & Resources
+
+- **NuGet Package:** https://www.nuget.org/packages/Umami.Net/
+- **GitHub Repository:** https://github.com/scottgal/mostlylucidweb/tree/main/Umami.Net
+- **Umami Analytics:** https://umami.is/
+- **Umami Documentation:** https://umami.is/docs
+- **Blog Post:** https://www.mostlylucid.net/blog/addingumamitrackingclientfollowup
+
+### Related Articles
+
+- [Making Umami.NET Production Ready](https://www.mostlylucid.net/blog/umamiproductionready)
+- [Adding Umami Tracking Client](https://www.mostlylucid.net/blog/addingumamitrackingclient)
+
+---
+
+## Support
+
+- **GitHub Issues:** [Report an Issue](https://github.com/scottgal/mostlylucidweb/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/scottgal/mostlylucidweb/discussions)
+
+---
+
+## Acknowledgments
+
+Built with ❤️ for the Umami community by developers who believe analytics should be:
+- **Private** - No cookies, no tracking pixels, no selling user data
+- **Simple** - Easy to integrate and use
+- **Powerful** - Comprehensive insights without complexity
+
+Special thanks to the [Umami Analytics](https://umami.is/) team for creating an outstanding open-source analytics platform.
+
+---
+
+<div align="center">
+
+**[⬆ Back to Top](#uaminet)**
+
+Made with ❤️ using .NET 9.0
+
+</div>
