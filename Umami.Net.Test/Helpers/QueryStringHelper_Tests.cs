@@ -28,26 +28,27 @@ public class QueryStringHelper_Tests
     }
 
     /// <summary>
-    /// Verifies that ToQueryString throws for required parameters that are null.
+    /// Verifies that ToQueryString works with all required parameters set.
+    /// MetricType is an enum (value type), so it always has a value and cannot be null.
     /// </summary>
     [Fact]
-    public void ToQueryString_RequiredParameterNull_ThrowsArgumentException()
+    public void ToQueryString_RequiredParametersSet_Success()
     {
         // Arrange
         var request = new MetricsRequest
         {
-            // Type is required but not set
+            Type = MetricType.url, // Required enum parameter
             StartAtDate = DateTime.UtcNow.AddDays(-7),
             EndAtDate = DateTime.UtcNow
         };
 
-        // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() =>
-            request.ToQueryString());
+        // Act
+        var queryString = request.ToQueryString();
 
-        Assert.Contains("Required parameter", exception.Message);
-        Assert.Contains("cannot be null", exception.Message);
-        Assert.Contains("Suggestion:", exception.Message);
+        // Assert
+        Assert.Contains("type=url", queryString);
+        Assert.Contains("startAt=", queryString);
+        Assert.Contains("endAt=", queryString);
     }
 
     /// <summary>
@@ -172,7 +173,7 @@ public class QueryStringHelper_Tests
 
         // Assert
         // Verify URL encoding for special characters
-        Assert.Contains("url=", queryString);
+        Assert.Contains("path=", queryString);
         Assert.Contains("title=", queryString);
         // Should be properly encoded (exact encoding depends on implementation)
         Assert.DoesNotContain("&other=value", queryString); // Should be encoded

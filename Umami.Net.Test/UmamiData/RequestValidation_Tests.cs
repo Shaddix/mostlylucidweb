@@ -94,25 +94,23 @@ public class RequestValidation_Tests
     }
 
     /// <summary>
-    /// Verifies that Validate throws InvalidOperationException when StartAtDate > EndAtDate.
+    /// Verifies that setting EndAtDate before StartAtDate throws ArgumentException.
+    /// Validation now happens in the property setter, preventing invalid state.
     /// </summary>
     [Fact]
-    public void BaseRequest_ValidateInvalidRange_ThrowsInvalidOperationException()
+    public void BaseRequest_SetEndDateBeforeStart_ThrowsArgumentException()
     {
-        // Arrange - Create request with invalid range by manipulating private fields
-        var request = new StatsRequest();
-        typeof(BaseRequest)
-            .GetProperty("StartAtDate")!
-            .SetValue(request, DateTime.UtcNow);
-        typeof(BaseRequest)
-            .GetProperty("EndAtDate")!
-            .SetValue(request, DateTime.UtcNow.AddDays(-1));
+        // Arrange
+        var request = new StatsRequest
+        {
+            StartAtDate = DateTime.UtcNow
+        };
 
-        // Act & Assert
-        var exception = Assert.Throws<InvalidOperationException>(() =>
-            request.Validate());
+        // Act & Assert - Setting EndAtDate before StartAtDate throws
+        var exception = Assert.Throws<ArgumentException>(() =>
+            request.EndAtDate = DateTime.UtcNow.AddDays(-1));
 
-        Assert.Contains("must be before EndAtDate", exception.Message);
+        Assert.Contains("must be after StartAtDate", exception.Message);
         Assert.Contains("Suggestion:", exception.Message);
     }
 
