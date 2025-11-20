@@ -922,6 +922,215 @@ async function generateAltText(image) {
 }
 ```
 
+## Looking Ahead: DeepSeek-OCR and Future Alternatives
+
+While Florence-2 provides excellent balance of performance and ease of use, it's worth discussing emerging alternatives - particularly **DeepSeek-OCR**, which represents the cutting edge of specialized document understanding.
+
+### DeepSeek-OCR: The Specialist
+
+Released in October 2025, [DeepSeek-OCR](https://github.com/deepseek-ai/DeepSeek-OCR) is a 3B parameter vision-language model specifically designed for high-performance OCR and structured document conversion. While Florence-2 is a versatile multi-task model, DeepSeek-OCR is laser-focused on text extraction.
+
+### Performance Comparison
+
+Here's how the models stack up:
+
+| Metric | Florence-2 Base | DeepSeek-OCR | Winner |
+|--------|----------------|--------------|---------|
+| **OCRBench** | ~650 | **834** | DeepSeek |
+| **DocVQA** | 81.7% | **93.3%** | DeepSeek |
+| **Image Captioning** | Excellent | Limited | Florence-2 |
+| **Model Size** | **271MB** | 3GB+ | Florence-2 |
+| **C# Integration** | **Native** | Python only | Florence-2 |
+| **Token Efficiency** | Standard | **7.5x compression** | DeepSeek |
+| **Multi-task** | **Yes** | OCR only | Florence-2 |
+| **Throughput** | ~50-100 images/min | **200,000 pages/day** | DeepSeek |
+
+### When DeepSeek-OCR Shines
+
+DeepSeek-OCR is particularly impressive for:
+
+**Document-Heavy Workloads:**
+- Scanned PDFs with dense text
+- Forms and invoices with structured data
+- Tables, charts, and complex layouts
+- Multi-column documents
+
+**Token Compression:**
+DeepSeek-OCR's breakthrough is its ability to compress visual information into fewer tokens. Using just **100 vision tokens**, it achieves 97.3% accuracy on documents containing 700-800 text tokens - a **7.5x compression ratio**. This makes it extremely efficient for large language model pipelines.
+
+```mermaid
+graph LR
+    A[Complex Document<br/>5000 words] --> B{Model Choice}
+    B -->|Florence-2| C[Standard Encoding<br/>~5000 tokens]
+    B -->|DeepSeek-OCR| D[Compressed Encoding<br/>~650 tokens]
+
+    C --> E[LLM Processing<br/>Higher cost]
+    D --> F[LLM Processing<br/>7.5x cheaper]
+
+    style D fill:#cfc,stroke:#333,stroke-width:2px
+    style F fill:#cfc,stroke:#333,stroke-width:2px
+```
+
+### Current Limitations for C# Developers
+
+As of early 2025, DeepSeek-OCR has some integration challenges:
+
+**No Native C# Support:**
+- Primary implementation is Python with vLLM/Transformers
+- No official ONNX export (yet)
+- No C# NuGet package available
+
+**Larger Resource Requirements:**
+- 3GB+ model size vs Florence-2's 271MB
+- More VRAM needed for inference
+- Specialized for OCR, not general image understanding
+
+### Integration Approaches
+
+If you need DeepSeek-OCR's superior OCR capabilities today, here are your options:
+
+**Option 1: Microservice Architecture**
+
+Run DeepSeek-OCR as a separate Python service:
+
+```csharp
+public class DeepSeekOcrService : IImageAnalysisService
+{
+    private readonly HttpClient _httpClient;
+
+    public async Task<string> ExtractTextAsync(Stream imageStream)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(imageStream), "image", "image.jpg");
+
+        var response = await _httpClient.PostAsync(
+            "http://deepseek-ocr-service:8000/api/ocr",
+            content);
+
+        var result = await response.Content.ReadFromJsonAsync<OcrResult>();
+        return result.ExtractedText;
+    }
+}
+```
+
+Python service (FastAPI + vLLM):
+```python
+from fastapi import FastAPI, UploadFile
+from vllm import LLM
+
+app = FastAPI()
+llm = LLM("deepseek-ai/DeepSeek-OCR")
+
+@app.post("/api/ocr")
+async def extract_text(image: UploadFile):
+    # Process image with DeepSeek-OCR
+    result = llm.generate(image)
+    return {"extractedText": result}
+```
+
+**Option 2: Hybrid Strategy**
+
+Use both models for their strengths:
+
+```csharp
+public class SmartImageAnalysisService : IImageAnalysisService
+{
+    private readonly Florence2ImageAnalysisService _florence2;
+    private readonly DeepSeekOcrService _deepSeekOcr;
+    private readonly ILogger<SmartImageAnalysisService> _logger;
+
+    public async Task<(string AltText, string ExtractedText)> AnalyzeImageAsync(Stream imageStream)
+    {
+        // Always use Florence-2 for alt text (it excels at this)
+        imageStream.Position = 0;
+        var altText = await _florence2.GenerateAltTextAsync(imageStream);
+
+        // Smart routing for OCR based on image type
+        imageStream.Position = 0;
+        var imageType = await DetectImageTypeAsync(imageStream);
+
+        string extractedText;
+        if (imageType == ImageType.Document || imageType == ImageType.Form)
+        {
+            // Use DeepSeek-OCR for complex documents
+            _logger.LogInformation("Using DeepSeek-OCR for document processing");
+            imageStream.Position = 0;
+            extractedText = await _deepSeekOcr.ExtractTextAsync(imageStream);
+        }
+        else
+        {
+            // Use Florence-2 for regular images (faster, local)
+            _logger.LogInformation("Using Florence-2 OCR for standard image");
+            imageStream.Position = 0;
+            extractedText = await _florence2.ExtractTextAsync(imageStream);
+        }
+
+        return (altText, extractedText);
+    }
+
+    private async Task<ImageType> DetectImageTypeAsync(Stream imageStream)
+    {
+        // Use Florence-2 for quick classification
+        // Could detect: photograph, screenshot, document, form, chart, etc.
+        // Implementation details omitted for brevity
+        return ImageType.Photograph;
+    }
+}
+```
+
+### Future Outlook
+
+**ONNX Export Coming:**
+DeepSeek's team has indicated ONNX export is on the roadmap:
+> "For edge devices, you can quantize the Tiny checkpoint and export through TensorRT-LLM or ONNX Runtime"
+
+Once ONNX weights become available, we could expect:
+- Native C# integration via Microsoft.ML.OnnxRuntime
+- Smaller quantized models for edge deployment
+- Potential community-driven C# libraries (similar to florence2-sharp)
+
+**When to Watch for DeepSeek-OCR:**
+
+Consider migrating to or incorporating DeepSeek-OCR when:
+1. ✅ **Official ONNX weights** are released
+2. ✅ A **C# library** emerges (e.g., deepseek-ocr-sharp)
+3. ✅ Your use case is **document-heavy** rather than general images
+4. ✅ You need **maximum OCR accuracy** over versatility
+
+**For Now, Florence-2 Remains the Better Choice for Alt Text Because:**
+- ✅ Native C# support with zero Python dependencies
+- ✅ Excellent image captioning (our primary goal)
+- ✅ Smaller footprint and faster deployment
+- ✅ Multi-task model (captioning + OCR + detection)
+- ✅ Good enough OCR for most web images
+
+### The Best of Both Worlds
+
+The architecture we've built is deliberately flexible. Our `IImageAnalysisService` interface means you can:
+- Start with Florence-2 today (production-ready)
+- Add DeepSeek-OCR later as a microservice
+- Route requests intelligently based on image type
+- Swap implementations without changing application code
+
+```csharp
+// Configuration-driven model selection
+services.AddSingleton<IImageAnalysisService>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var modelType = config["ImageAnalysis:ModelType"];
+
+    return modelType switch
+    {
+        "Florence2" => sp.GetRequiredService<Florence2ImageAnalysisService>(),
+        "DeepSeekOCR" => sp.GetRequiredService<DeepSeekOcrService>(),
+        "Hybrid" => sp.GetRequiredService<SmartImageAnalysisService>(),
+        _ => sp.GetRequiredService<Florence2ImageAnalysisService>()
+    };
+});
+```
+
+The future of image understanding is bright, with models like DeepSeek-OCR pushing the boundaries of what's possible. But for accessible, privacy-focused alt text generation today, Florence-2 in C# hits the sweet spot.
+
 ## Production Deployment Strategies
 
 Let's discuss how to deploy this in production at scale.
