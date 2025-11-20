@@ -1,7 +1,7 @@
-﻿# How to Make Meetings Actually Work
+﻿# How to Make Meetings Work
 
 <datetime class="hidden">2025-01-20T15:30</datetime>
-<!--category-- Productivity, Best Practices, Team Collaboration -->
+<!--category-- Productivity, Meetings, Team Collaboration -->
 
 # Introduction
 
@@ -9,9 +9,9 @@ If you've ever left a meeting wondering "what was the point of that?" or found y
 
 Meetings fail because they lack structure. Specifically, they lack the one thing that makes anything work: **accountability**.
 
-Here's the insight that changed how I run meetings: The same patterns that make software projects succeed — clear owners, deadlines, and follow-up — work just as well for meetings.
+Here's the insight that changed how I run meetings: One simple rule that makes everything clear.
 
-Let me show you how one simple rule can transform your meetings from time-wasters into actual progress.
+Let me show you how to transform your meetings from time-wasters into actual progress.
 
 [TOC]
 
@@ -34,10 +34,10 @@ An action looks like this:
 
 | Element | Example |
 |---------|---------|
-| **What** | Update API documentation for v2 endpoints |
-| **Who** | Sarah (owner) |
-| **When** | By Friday sprint retrospective |
-| **Check** | Demo in next Monday's standup |
+| **What** | Update the customer onboarding guide |
+| **Who** | Sarah |
+| **When** | By Friday EOD |
+| **Check** | Review in Monday's team meeting |
 
 Without all four elements, you don't have commitment — you have conversation.
 
@@ -91,65 +91,48 @@ Here's what it looks like before and after:
 
 ## Before vs After
 
-**Before (entropy):**
+**Before (vague):**
 ```
 Meeting Notes:
-- We should improve test coverage
-- Database performance needs attention
-- Let's think about the new feature
+- We should improve customer communication
+- The onboarding process needs work
+- Let's think about the Q2 strategy
 ```
 
-**After (structured):**
+**After (clear):**
 ```
 Actions from Meeting:
-1. Improve auth service test coverage to 80%
+1. Create customer email templates for common questions
    Owner: Jamie
-   Deadline: End of sprint (Jan 27)
-   Check: Show coverage report in next retrospective
+   Deadline: End of week (Jan 27)
+   Check: Show drafts in next team meeting
 
-2. Profile and optimize slow database queries
+2. Map out current onboarding steps and identify bottlenecks
    Owner: Alex
    Deadline: Wednesday (Jan 24)
-   Check: Share query analysis in #backend channel
+   Check: Share findings in team Slack
 
-3. Draft RFC for user preferences feature
+3. Draft Q2 objectives with 3 key priorities
    Owner: Morgan
    Deadline: Friday (Jan 26)
-   Check: Ready for review in Monday's architecture sync
+   Check: Ready for review in Monday's leadership sync
 ```
 
 See the difference? The second format makes progress **inevitable and observable**.
 
-# Why This Pattern Shows Up Everywhere
+# Why This Works
 
-Once you see this pattern, you'll notice it in every system that actually works:
+Once you see this pattern, you'll notice it everywhere things actually get done:
 
-- **Project management**: Tasks have assignees and due dates
-- **Kanban boards**: Cards have owners and deadlines
-- **OKRs**: Objectives have owners and timelines
-- **Incident reviews**: Action items get tracked and verified
-- **Construction projects**: Every task has a contractor and schedule
+- **At work**: Tasks have owners and deadlines
+- **At home**: Family chores have assignments and schedules
+- **In sports**: Plays have positions and responsibilities
+- **In construction**: Every job has a contractor and timeline
+- **In events**: Every detail has someone in charge
 
-The pattern is always: **Owner → Timeline → Check**
+The pattern is always the same: **Someone owns it. By when. Check it happened.**
 
-It's not bureaucracy. It's just how things get done.
-
-## What You're Really Doing
-
-When you run meetings this way, you're creating a system that's hard to fail:
-
-- **Input**: Discussion happens
-- **Processing**: Decisions get made
-- **Output**: Specific actions with owners and deadlines
-- **Verification**: Next meeting checks if it happened
-
-This is the same mindset behind any reliable system:
-- Make it clear what needs to happen
-- Make it clear who's responsible
-- Make it clear when it's due
-- Check that it actually happened
-
-You're not being rigid. You're being effective.
+That's not bureaucracy. That's just how things get done.
 
 # Practical Implementation
 
