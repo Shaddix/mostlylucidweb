@@ -1,0 +1,12 @@
+# Build results
+bin/
+obj/
+wwwroot/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+logs/
+*.log
