@@ -1953,6 +1953,174 @@ public async Task<string> MultiHopRAGAsync(string complexQuery, int maxHops = 3)
 }
 ```
 
+## 6. Long-Term Context Memory with RAG + Summarization
+
+**Problem:** How do you build AI systems that remember conversations from months or years ago? Traditional chatbots lose context after each session.
+
+**Solution:** Combine RAG with progressive summarization to create persistent, searchable memory.
+
+This is the approach used in **DiSE (Directed Synthetic Evolution)** - an advanced system I'm building that uses RAG-based context memory to maintain shared conversational history indefinitely.
+
+**Example scenario:**
+```
+User (Today): "Remember George's specs?"
+AI: "Yes, you discussed George's prescription requirements in our conversation
+     from 5 years ago (2019-03-15). He needed progressive lenses with..."
+```
+
+**How it works:**
+
+```mermaid
+flowchart TB
+    A[User Message] --> B[Store in RAG Memory]
+    B --> C[Extract Key Entities & Topics]
+    C --> D[Link to Past Conversations]
+
+    E[Periodic Summarization] --> F[Summarize Old Conversations]
+    F --> G[Store Summary with High-Level Tags]
+    G --> H[Keep Original for Retrieval]
+
+    I[Future Query: 'George's specs'] --> J[Semantic Search in RAG]
+    J --> K[Find: 2019 conversation]
+    K --> L[Retrieve Original Context]
+    L --> M[LLM generates response with 5-year-old context!]
+
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style J fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+**Implementation approach:**
+
+```csharp
+public class LongTermConversationalMemory
+{
+    private readonly IVectorStoreService _vectorStore;
+    private readonly IEmbeddingService _embeddingService;
+
+    public async Task StoreConversationAsync(
+        string conversationId,
+        string userId,
+        List<ConversationTurn> turns,
+        DateTime timestamp)
+    {
+        // Extract key entities and topics
+        var entities = await ExtractEntitiesAsync(turns);
+        var topics = await ExtractTopicsAsync(turns);
+
+        // Create searchable representation
+        var conversationText = string.Join("\n", turns.Select(t =>
+            $"{t.Speaker}: {t.Message}"));
+
+        // Generate embedding
+        var embedding = await _embeddingService.GenerateEmbeddingAsync(
+            conversationText);
+
+        // Store in RAG with rich metadata
+        await _vectorStore.IndexDocumentAsync(
+            id: $"conv_{conversationId}",
+            embedding: embedding,
+            metadata: new Dictionary<string, object>
+            {
+                ["user_id"] = userId,
+                ["timestamp"] = timestamp.ToString("O"),
+                ["entities"] = entities,  // ["George", "specs", "prescription"]
+                ["topics"] = topics,      // ["healthcare", "eyewear"]
+                ["full_text"] = conversationText,
+                ["turn_count"] = turns.Count
+            }
+        );
+    }
+
+    public async Task<List<PastContext>> RetrieveRelevantPastAsync(
+        string currentQuery,
+        string userId,
+        int limit = 5)
+    {
+        // Embed the current query
+        var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(
+            currentQuery);
+
+        // Search past conversations
+        var results = await _vectorStore.SearchAsync(
+            queryEmbedding,
+            limit: limit,
+            filter: new Filter
+            {
+                Must =
+                {
+                    new Condition { Field = "user_id", Match = new Match { Keyword = userId } }
+                }
+            }
+        );
+
+        return results.Select(r => new PastContext
+        {
+            ConversationId = r.Id,
+            Timestamp = DateTime.Parse(r.Metadata["timestamp"].ToString()),
+            Entities = (List<string>)r.Metadata["entities"],
+            FullText = r.Metadata["full_text"].ToString(),
+            Relevance = r.Score
+        }).ToList();
+    }
+
+    // Periodic summarization to keep memory manageable
+    public async Task SummarizeOldConversationsAsync(DateTime olderThan)
+    {
+        var oldConversations = await _vectorStore.FindByDateRangeAsync(
+            endDate: olderThan);
+
+        foreach (var conv in oldConversations)
+        {
+            // Generate summary using LLM
+            var summary = await _llm.GenerateAsync($@"
+                Summarize this conversation, preserving key facts and entities:
+
+                {conv.FullText}
+
+                Summary:");
+
+            // Update document with summary while keeping original
+            await _vectorStore.UpdateAsync(
+                id: conv.Id,
+                additionalMetadata: new Dictionary<string, object>
+                {
+                    ["summary"] = summary,
+                    ["summarized_at"] = DateTime.UtcNow.ToString("O")
+                }
+            );
+        }
+    }
+}
+```
+
+**Why this is powerful:**
+
+1. **Infinite memory span** - Conversations from years ago are as accessible as yesterday's
+2. **Semantic search** - "George's specs" finds the conversation even if stored as "George's prescription eyewear requirements"
+3. **Entity linking** - All conversations mentioning "George" are connected
+4. **Privacy-preserving** - Can implement per-user memory isolation
+5. **Cost-effective** - Summarization prevents storage explosion while maintaining searchability
+
+**Real-world example from DiSE:**
+
+DiSE uses this approach to remember:
+- **Tool invocations** from months ago (what worked, what failed)
+- **Code patterns** that were successful in past projects
+- **User preferences** established in earlier conversations
+- **Domain knowledge** accumulated over time
+
+This creates an AI system that genuinely "learns" from every interaction and builds institutional memory, rather than starting fresh each session.
+
+**Challenges to consider:**
+
+1. **Privacy**: Old conversations must be properly isolated per user
+2. **Relevance decay**: Not all old information stays relevant
+3. **Storage costs**: Need summarization strategy for scale
+4. **Consistency**: Keeping summaries aligned with originals
+5. **Retrieval precision**: Balancing between recent and historically important context
+
+This technique transforms RAG from "search my documents" into "remember everything we've ever discussed" - a game-changer for long-term AI assistants.
+
 # When NOT to Use RAG
 
 RAG isn't always the answer. Here's when to avoid it:
