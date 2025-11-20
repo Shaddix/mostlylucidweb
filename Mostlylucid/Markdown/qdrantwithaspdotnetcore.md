@@ -7,8 +7,6 @@
 
 If you've been following the AI space, you've probably heard about vector databases and semantic search. Unlike traditional full-text search that matches keywords, semantic search understands the *meaning* behind your queries. This means searching for "feline pets" can return results about "cats" - rather clever stuff.
 
-This article focuses on implementing the vector database component using Qdrant - a critical piece of any Retrieval-Augmented Generation (RAG) system. For a comprehensive explanation of how RAG works and where vector databases fit in, see my [RAG Primer](/blog/rag-primer).
-
 **Why self-hosting matters:** Most vector database solutions push you toward expensive managed services. But here's the thing - with Qdrant, you can run a production-grade semantic search engine on a $5/month VPS. You get complete control over your data, no vendor lock-in, and significant cost savings. Perfect for indie developers, startups, and anyone who values privacy and control.
 
 In this post, I'll show you how to build a **fully self-hosted** semantic search engine using Qdrant (a high-performance vector database) and ASP.NET Core. We'll cover everything from setting up Qdrant in Docker to integrating it into your ASP.NET application. I've included a complete sample application in the repository that demonstrates a minimal but complete implementation.

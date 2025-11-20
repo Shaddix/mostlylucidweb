@@ -164,8 +164,6 @@ Auto-linking to related posts, style consistency checking, code snippet suggesti
 
 Before we dive into architecture, let's talk about why RAG (Retrieval Augmented Generation) is the right approach here.
 
-**New to RAG?** If you want a comprehensive explanation of what RAG is, how it works, and where it came from, check out my [RAG Primer](/blog/rag-primer). This article assumes you understand the basics of RAG and focuses on building a practical implementation.
-
 ### The Problem with Fine-Tuning
 
 You might think: "Why not just fine-tune an LLM on all the blog posts?" There are several issues with that:
