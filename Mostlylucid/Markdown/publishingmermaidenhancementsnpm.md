@@ -103,9 +103,9 @@ graph TD
     M --> M3[Fullscreen]
     M --> M4[Export PNG/SVG]
 
-    style A fill:#10b981,stroke:#059669,color:#fff
-    style L fill:#3b82f6,stroke:#2563eb,color:#fff
-    style M fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style A stroke:#059669,stroke-width:3px,color:#10b981
+    style L stroke:#2563eb,stroke-width:3px,color:#3b82f6
+    style M stroke:#7c3aed,stroke-width:3px,color:#8b5cf6
 ```
 
 # Core Implementation

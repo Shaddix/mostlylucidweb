@@ -433,8 +433,8 @@ graph TD
     E --> F[Routing/Endpoints]
     F --> G[Return 404]
 
-    style C fill:#ccffcc
-    style G fill:#ffcccc
+    style C stroke:#10b981,stroke-width:3px
+    style G stroke:#ef4444,stroke-width:3px
 ```
 
 ### Authentication Middleware

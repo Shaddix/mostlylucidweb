@@ -430,10 +430,10 @@ graph LR
 
     D --> E
 
-    style B fill:#e1ffe1
-    style G fill:#e1f5ff
-    style H fill:#ffe1e1
-    style I fill:#fff4e1
+    style B stroke:#10b981,stroke-width:3px
+    style G stroke:#0ea5e9,stroke-width:3px
+    style H stroke:#ef4444,stroke-width:3px
+    style I stroke:#f59e0b,stroke-width:3px
 ```
 
 ## Troubleshooting Common Issues

@@ -183,8 +183,8 @@ graph TD
     Body --> Handler
     Services --> Handler
 
-    style Request fill:#ffe1e1
-    style Handler fill:#e1ffe1
+    style Request stroke:#ef4444,stroke-width:3px
+    style Handler stroke:#10b981,stroke-width:3px
 ```
 
 ### Results and Responses
@@ -910,8 +910,8 @@ graph TD
     N --> O[Response]
     D --> O
 
-    style H fill:#ffe1e1
-    style L fill:#e1ffe1
+    style H stroke:#ef4444,stroke-width:3px
+    style L stroke:#10b981,stroke-width:3px
 ```
 
 **Filter types:**
@@ -1170,9 +1170,9 @@ graph TB
         MVC3 --> MVC4
     end
 
-    style MA1 fill:#e1ffe1
-    style RP1 fill:#ffe1e1
-    style MVC1 fill:#e1e1ff
+    style MA1 stroke:#10b981,stroke-width:3px
+    style RP1 stroke:#ef4444,stroke-width:3px
+    style MVC1 stroke:#6366f1,stroke-width:3px
 ```
 
 | Feature | Minimal APIs | Razor Pages | MVC |

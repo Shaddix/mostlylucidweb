@@ -574,9 +574,9 @@ graph TD
 
     Z --> AA[Browser]
 
-    style A fill:#e1f5ff
-    style Z fill:#fff4e1
-    style AA fill:#e8f5e9
+    style A stroke:#0ea5e9,stroke-width:3px
+    style Z stroke:#f59e0b,stroke-width:3px
+    style AA stroke:#10b981,stroke-width:3px
 ```
 
 It looks pretty complex but really that's what WebPack does, it handles most of this itself (in a complicated way that the likes of Vite don't need but.. )
