@@ -258,7 +258,7 @@ public class SentimentAnalysisService : ISentimentAnalysisService
 
         // Simple readability metric based on average sentence length and word length
         float avgSentenceLength = (float)words.Count / sentences.Count;
-        float avgWordLength = words.Average(w => w.Length);
+        float avgWordLength = (float)words.Average(w => w.Length);
 
         // Normalize to 0-1 scale (lower values = easier to read)
         float sentenceComplexity = Math.Clamp(1.0f - (avgSentenceLength / 30.0f), 0, 1);

@@ -74,14 +74,14 @@
 <partial name="_Toast"  />
 <header class="sticky top-0 z-40 bg-white  dark:bg-custom-dark-bg shadow-md  container mx-auto flex flex-wrap items-center justify-between px-4 mb-3 py-1 w-full rounded border-b border-x border-l-neutral-600 border-r-neutral-600 border-b-neutral-600 print:!hidden" id="header">
 
-    <ul class="flex items-center w-full print:hidden">
-        <!-- First list item (logo) stays on the left -->
+    <ul class="flex items-center w-full print:hidden gap-1 sm:gap-2">
+        <!-- Logo + Home Icon - Always visible (last to hide) -->
         <li>
             <a asp-action="Index" asp-controller="Home" hx-swap="show:window:top" hx-target="#contentcontainer" hx-boost="true" class="flex items-center">
-                <span class="bx bx-home-alt-2 lg:text-2xl font-semibold mr-2 transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary print:hidden"></span>
+                <span class="bx bx-home-alt-2 text-xl lg:text-2xl font-semibold mr-1 sm:mr-2 transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary print:hidden"></span>
 
                 <div class="svg-container">
-                    <!-- Large screen logo (shown on large screens and hidden on small screens) -->
+                    <!-- Large screen logo (shown on large screens) -->
                     <img
                         src="/img/logo.svg"
                         asp-append-version="true"
@@ -91,7 +91,7 @@
                         class="hidden lg:block img-filter-dark"
                         :class="{ 'img-filter-dark': !isDarkMode }"/>
 
-                    <!-- Small screen logo (shown on small screens and hidden on large screens) -->
+                    <!-- Small screen logo (shown on small/medium screens) -->
                     <img
                         src="/img/smalllogo.svg"
                         asp-append-version="true"
@@ -102,76 +102,90 @@
                 </div>
             </a>
         </li>
+
         <li class="ml-auto"></li>
-        <li class="group relative mb-1 hidden lg:block ml-2" id="typeaheadelement">
+
+        <!-- Search Typeahead - Hide first (xl screens only) -->
+        <li class="group relative mb-1 hidden xl:block" id="typeaheadelement">
             <div hx-trigger="load" hx-get="/typeahead" hx-target="#typeaheadelement" hx-swap="innerHTML"></div>
         </li>
 
-        <li class="group relative mb-1 hidden lg:block ml-2">
-            <div class="flex items-center space-x-4">
-            
-                    @if (Model?.Authenticated == true)
-                    {
-                        <div class="flex items-center space-x-4">
-                            <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="btn btn-outline btn-sm text-blue-dark dark:text-white">
-                                @if (Model.AvatarUrl != null)
-                                {
-                                    <img src="@Model.AvatarUrl" width="24px" height="24px" class="h-6 w-6 rounded-full" alt="User Avatar"/>
-                                }
-                                <span class="text-body text-blue-dark dark:text-white">@Model.Name</span>
-                                <i class="bx bx-log-out mr-2 text-l lg:text-xl"></i>
-                            </a>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="w-[200px] h-[39px] overflow-hidden rounded">
-                            <div id="google_button"></div>
-                        </div>
-                    }
+        <!-- Login/User Avatar - Hide on medium screens (lg+) -->
+        <li class="group relative mb-1 hidden lg:block">
+            <div class="flex items-center">
+                @if (Model?.Authenticated == true)
+                {
+                    <div class="flex items-center">
+                        <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="btn btn-outline btn-sm text-blue-dark dark:text-white">
+                            @if (Model.AvatarUrl != null)
+                            {
+                                <img src="@Model.AvatarUrl" width="24px" height="24px" class="h-6 w-6 rounded-full" alt="User Avatar"/>
+                            }
+                            <span class="text-body text-blue-dark dark:text-white">@Model.Name</span>
+                            <i class="bx bx-log-out mr-2 text-l lg:text-xl"></i>
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <div class="w-[200px] h-[39px] overflow-hidden rounded">
+                        <div id="google_button"></div>
+                    </div>
+                }
             </div>
         </li>
 
-        <li class="group relative my-1 mx-4 px-2 hidden lg:block border-neutral-400 dark:border-neutral-600 border rounded-lg">
+        <!-- Social Icons - Hide on medium screens (lg+) -->
+        <li class="group relative my-1 px-2 hidden lg:block border-neutral-400 dark:border-neutral-600 border rounded-lg">
             <partial name="_Socials"/>
         </li>
-        <li class="group relative mb-1 ml-2">
-            <a href="/search" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="flex items-center text-l lg:text-xl font-medium text-primary group-hover:text-green dark:text-white space-x-2 hover:text-secondary dark:hover:text-secondary transition-colors">
-                <i class="text-l lg:text-2xl bx bx-search"></i>
-                <span class="ml-2 hidden lg:block">Search</span>
-            </a>
-        </li>
 
-        <li class="group relative mb-1 ml-2">
-            <a href="/blog/aboutme" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-2 font-body text-l lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Résumé</a>
-        </li>
-
-        <li class="group relative mb-1 ml-2">
-            <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-2 font-body text-l lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Blog</a>
-        </li>
-
-        <li class="group relative mb-1 ml-2">
-            <a href="https://www.nuget.org/profiles/mostlylucid" target="_blank" rel="noopener noreferrer" class="relative z-30 block px-2 font-body text-l lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">NuGet</a>
-        </li>
-
-
-        <li class="group relative mb-1 ml-2 hidden lg:block">
+        <!-- RSS - Hide early (lg+) -->
+        <li class="group relative mb-1 hidden lg:block">
             <a href="/rss" target="_blank" class="flex items-center text-l lg:text-xl space-x-2 hover:text-secondary dark:hover:text-secondary transition-colors">
                 <i class="text-l lg:text-2xl bx bx-rss"></i>
-                <span class="ml-2">RSS</span>
+                <span class="ml-2 hidden xl:block">RSS</span>
             </a>
         </li>
 
-        <li class="group relative mb-0.5 ml-2">
-            <a asp-action="Index" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-controller="Contact" class="flex items-center text-l lg:text-xl space-x-2 text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors" data-umami-event="Contact Click">
-                <i class='bx bx-mail-send text-l lg:text-2xl'></i>
-                <span class="ml-0.5 hidden lg:block">Contact</span>
+        <!-- NuGet - Hide on small/medium (md+) -->
+        <li class="group relative mb-1 hidden md:block">
+            <a href="https://www.nuget.org/profiles/mostlylucid" target="_blank" rel="noopener noreferrer" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">
+                <span class="hidden lg:inline">NuGet</span>
+                <i class="bx bxl-nuget text-xl lg:hidden"></i>
             </a>
         </li>
 
-        <li class="group relative mb-1 ml-2">
+        <!-- Blog - Hide on small screens (sm+) -->
+        <li class="group relative mb-1 hidden sm:block">
+            <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Blog</a>
+        </li>
+
+        <!-- Résumé - Hide on small screens (sm+) -->
+        <li class="group relative mb-1 hidden sm:block">
+            <a href="/blog/aboutme" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Résumé</a>
+        </li>
+
+        <!-- Search - Always show icon, hide text on small -->
+        <li class="group relative mb-1">
+            <a href="/search" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="flex items-center text-l lg:text-xl font-medium text-primary group-hover:text-green dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors">
+                <i class="text-xl lg:text-2xl bx bx-search"></i>
+                <span class="ml-1 hidden lg:inline">Search</span>
+            </a>
+        </li>
+
+        <!-- Contact - Always show icon, hide text on small -->
+        <li class="group relative mb-0.5">
+            <a asp-action="Index" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-controller="Contact" class="flex items-center text-l lg:text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors" data-umami-event="Contact Click">
+                <i class='bx bx-mail-send text-xl lg:text-2xl'></i>
+                <span class="ml-0.5 hidden lg:inline">Contact</span>
+            </a>
+        </li>
+
+        <!-- Theme Toggle - Always visible -->
+        <li class="group relative mb-1">
             <div class="flex items-center">
-                <i class="bx cursor-pointer text-l lg:text-3xl text-primary dark:text-white transition-colors" x-on:click="themeSwitch()" :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
+                <i class="bx cursor-pointer text-xl lg:text-3xl text-primary dark:text-white transition-colors" x-on:click="themeSwitch()" :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
             </div>
         </li>
     </ul>

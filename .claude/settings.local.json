@@ -59,7 +59,10 @@
       "Bash(git fetch:*)",
       "Bash(Remove-Item \"C:\\Blog\\mostlylucidweb\\Umami.Net.Test\\Helpers\\ResponseDecoder_Tests.cs\" -ErrorAction SilentlyContinue)",
       "Bash(del \"C:\\Blog\\mostlylucidweb\\Umami.Net.Test\\Helpers\\ResponseDecoder_Tests.cs\")",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git commit:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

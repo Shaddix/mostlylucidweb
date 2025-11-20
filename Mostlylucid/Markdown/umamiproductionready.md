@@ -19,6 +19,7 @@ Let me walk you through what makes this library production-ready.
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=flat-square)](https://dotnet.microsoft.com/)
 
+[TOC]
 
 ## The Problem: Umami's Documentation Gap
 

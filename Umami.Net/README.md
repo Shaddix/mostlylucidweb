@@ -132,17 +132,26 @@ graph TB
     end
 
     subgraph "Umami Server"
-        K --> M[/api/send]
-        K --> N[/api/websites/:id/stats]
-        K --> O[/api/websites/:id/metrics]
-        K --> P[/api/websites/:id/pageviews]
-        K --> Q[/api/websites/:id/active]
-        K --> R[/api/auth/login]
+        K --> M["POST /api/send"]
+        K --> N["GET /api/websites/:id/stats"]
+        K --> O["GET /api/websites/:id/metrics"]
+        K --> P["GET /api/websites/:id/pageviews"]
+        K --> Q["GET /api/websites/:id/active"]
+        K --> R["POST /api/auth/login"]
     end
 
-    style B stroke:#e1f5ff
-    style G stroke:#ffe1e1
-    style D stroke:#e1ffe1
+    style B stroke:#4FC3F7,stroke-width:3px
+    style G stroke:#FF6B6B,stroke-width:3px
+    style D stroke:#51CF66,stroke-width:3px
+    style E stroke:#FFD43B,stroke-width:2px
+    style F stroke:#FF8787,stroke-width:2px
+    style K stroke:#748FFC,stroke-width:2px
+    style M stroke:#51CF66,stroke-width:2px
+    style N stroke:#51CF66,stroke-width:2px
+    style O stroke:#51CF66,stroke-width:2px
+    style P stroke:#51CF66,stroke-width:2px
+    style Q stroke:#51CF66,stroke-width:2px
+    style R stroke:#51CF66,stroke-width:2px
 ```
 
 ### Event Tracking Flow
@@ -253,9 +262,14 @@ flowchart TD
     M --> O
     N --> O
 
-    style G stroke:#90EE90
-    style K stroke:#90EE90
-    style L stroke:#FFB6C6
+    style G stroke:#51CF66,stroke-width:3px
+    style K stroke:#51CF66,stroke-width:3px
+    style O stroke:#51CF66,stroke-width:3px
+    style L stroke:#FF6B6B,stroke-width:3px
+    style C stroke:#4FC3F7,stroke-width:2px
+    style E stroke:#FFD43B,stroke-width:2px
+    style H stroke:#FF8787,stroke-width:2px
+    style I stroke:#FFD43B,stroke-width:2px
 ```
 
 ---
@@ -499,8 +513,14 @@ graph LR
     D --> K[Synchronous]
     D --> L[Simple scenarios]
 
-    style C fill:#90EE90
-    style H fill:#FFD700
+    style C stroke:#51CF66,stroke-width:3px
+    style H stroke:#FFD43B,stroke-width:3px
+    style E stroke:#51CF66,stroke-width:2px
+    style F stroke:#51CF66,stroke-width:2px
+    style G stroke:#51CF66,stroke-width:2px
+    style D stroke:#748FFC,stroke-width:2px
+    style I stroke:#748FFC,stroke-width:2px
+    style J stroke:#748FFC,stroke-width:2px
 ```
 
 **Use `UmamiBackgroundSender`** (recommended):
@@ -1103,9 +1123,13 @@ graph TD
     D --> I[All future requests use v2/v3]
     G --> J[All future requests use v1]
 
-    style D stroke:#90EE90
-    style G stroke:#90EE90
-    style H stroke:#FFB6C6
+    style D stroke:#51CF66,stroke-width:3px
+    style G stroke:#51CF66,stroke-width:3px
+    style I stroke:#51CF66,stroke-width:2px
+    style J stroke:#51CF66,stroke-width:2px
+    style H stroke:#FF6B6B,stroke-width:3px
+    style B stroke:#4FC3F7,stroke-width:2px
+    style E stroke:#FFD43B,stroke-width:2px
 ```
 
 ### How It Works
@@ -1908,10 +1932,11 @@ graph LR
     B -->|30-365 days| E[Unit.day or Unit.week]
     B -->|> 365 days| F[Unit.month or Unit.year]
 
-    style C fill:#90EE90
-    style D fill:#90EE90
-    style E fill:#FFD700
-    style F fill:#FFD700
+    style C stroke:#51CF66,stroke-width:3px
+    style D stroke:#51CF66,stroke-width:3px
+    style E stroke:#FFD43B,stroke-width:3px
+    style F stroke:#FFD43B,stroke-width:3px
+    style B stroke:#4FC3F7,stroke-width:2px
 ```
 
 ```csharp
