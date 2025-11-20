@@ -598,6 +598,566 @@ public RAGResponse PostProcess(string llmOutput, List<SearchResult> sources)
 }
 ```
 
+# Understanding LLM Internals: Tokens, KV Cache, and Context Windows
+
+Before we compare RAG to other approaches, it's essential to understand how LLMs work internally. This knowledge helps you optimize RAG systems and avoid common pitfalls.
+
+## What Are Tokens?
+
+Tokens are the fundamental units that LLMs process. Text isn't fed directly to models - it's first broken down into tokens.
+
+**Example tokenization:**
+```
+Input:  "Understanding Docker containers"
+Tokens: ["Under", "standing", " Docker", " containers"]
+```
+
+Different models use different tokenization strategies:
+- **GPT models**: Use Byte-Pair Encoding (BPE) with ~50K vocabulary
+- **Claude**: Similar BPE approach
+- **Llama models**: SentencePiece tokenization
+
+**Why tokenization matters for RAG:**
+
+```csharp
+public class TokenCounter
+{
+    // Rough approximation: 1 token ≈ 0.75 words (English)
+    public int EstimateTokens(string text)
+    {
+        var wordCount = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        return (int)(wordCount / 0.75);
+    }
+
+    public int EstimateTokensAccurate(string text, ITokenizer tokenizer)
+    {
+        // Use actual tokenizer for precision
+        return tokenizer.Encode(text).Count;
+    }
+}
+```
+
+**Context window limits:**
+- GPT-3.5: 16K tokens
+- GPT-4: 8K-128K tokens (depending on variant)
+- Claude 3.5 Sonnet: 200K tokens
+- Llama 3: 8K tokens (though can be extended)
+
+In RAG systems, you must fit:
+```
+Total tokens = System prompt + Retrieved context + User query + Response buffer
+```
+
+If your RAG retrieves 10 documents of 500 tokens each, that's 5,000 tokens just for context - before the query and response!
+
+**Practical RAG token management:**
+
+```csharp
+public class ContextWindowManager
+{
+    private readonly int _maxContextTokens;
+    private readonly int _systemPromptTokens;
+    private readonly int _responseBufferTokens;
+
+    public ContextWindowManager(
+        int totalContextWindow = 4096,
+        int systemPromptTokens = 300,
+        int responseBufferTokens = 500)
+    {
+        _maxContextTokens = totalContextWindow;
+        _systemPromptTokens = systemPromptTokens;
+        _responseBufferTokens = responseBufferTokens;
+    }
+
+    public List<SearchResult> FitContextInWindow(
+        List<SearchResult> retrievedDocs,
+        string query)
+    {
+        var queryTokens = EstimateTokens(query);
+
+        // Available tokens for retrieved context
+        var availableForContext = _maxContextTokens
+            - _systemPromptTokens
+            - queryTokens
+            - _responseBufferTokens;
+
+        var selectedDocs = new List<SearchResult>();
+        var currentTokens = 0;
+
+        foreach (var doc in retrievedDocs.OrderByDescending(d => d.Score))
+        {
+            var docTokens = EstimateTokens(doc.Text);
+
+            if (currentTokens + docTokens <= availableForContext)
+            {
+                selectedDocs.Add(doc);
+                currentTokens += docTokens;
+            }
+            else
+            {
+                break; // Context window full
+            }
+        }
+
+        return selectedDocs;
+    }
+
+    private int EstimateTokens(string text)
+    {
+        // Rule of thumb: 1 token ≈ 4 characters
+        return text.Length / 4;
+    }
+}
+```
+
+## The KV Cache: LLM's Secret Weapon
+
+When an LLM generates text, it doesn't reprocess everything from scratch for each token. It uses a **Key-Value (KV) cache** to remember what it has already computed.
+
+### How Transformers Work (Simplified)
+
+Transformers use an "attention" mechanism where each token "attends to" (looks at) all previous tokens to understand context.
+
+```mermaid
+flowchart TB
+    subgraph "Generation Step 1: 'Docker'"
+        A1[Input: 'Docker'] --> B1[Compute K,V for 'Docker']
+        B1 --> C1[Store in KV Cache]
+        C1 --> D1[Generate: 'is']
+    end
+
+    subgraph "Generation Step 2: 'is'"
+        A2[Input: 'is'] --> B2[Compute K,V for 'is']
+        B2 --> C2[Store in KV Cache]
+        C2 --> E2[Retrieve KV for 'Docker']
+        E2 --> F2[Attend: 'is' to 'Docker']
+        F2 --> D2[Generate: 'a']
+    end
+
+    subgraph "Generation Step 3: 'a'"
+        A3[Input: 'a'] --> B3[Compute K,V for 'a']
+        B3 --> C3[Store in KV Cache]
+        C3 --> E3[Retrieve KV for 'Docker', 'is']
+        E3 --> F3[Attend: 'a' to all previous]
+        F3 --> D3[Generate: 'container']
+    end
+
+    D1 --> A2
+    D2 --> A3
+
+    style C1 fill:#f9f,stroke:#333,stroke-width:2px
+    style C2 fill:#f9f,stroke:#333,stroke-width:2px
+    style C3 fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+**Without KV cache:**
+- Step 1: Process 1 token → O(1)
+- Step 2: Process 2 tokens from scratch → O(2)
+- Step 3: Process 3 tokens from scratch → O(3)
+- Total: O(1 + 2 + 3 + ... + N) = O(N²)
+
+**With KV cache:**
+- Step 1: Process 1 token, cache K,V → O(1)
+- Step 2: Process 1 new token, reuse cached K,V → O(1)
+- Step 3: Process 1 new token, reuse cached K,V → O(1)
+- Total: O(N)
+
+This makes generation **dramatically faster** - the difference between 10 tokens/second and 100 tokens/second.
+
+### The KV Cache Tree Structure
+
+The KV cache forms a "tree" because of how attention works in transformers. Each layer in the model has its own K,V matrices.
+
+```mermaid
+graph TB
+    A[Input Tokens:<br/>'What is Docker?'] --> B[Layer 1 Attention]
+    B --> C[Layer 1 KV Cache]
+
+    B --> D[Layer 2 Attention]
+    D --> E[Layer 2 KV Cache]
+
+    D --> F[Layer 3 Attention]
+    F --> G[Layer 3 KV Cache]
+
+    F --> H[... up to Layer N]
+    H --> I[Output: 'Docker is']
+
+    C -.Key-Value pairs<br/>for all input tokens.-> C
+    E -.Key-Value pairs<br/>for all input tokens.-> E
+    G -.Key-Value pairs<br/>for all input tokens.-> G
+
+    style C fill:#bbf,stroke:#333,stroke-width:2px
+    style E fill:#bbf,stroke:#333,stroke-width:2px
+    style G fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+**Each layer stores:**
+- **Keys (K)**: Representations used to compute attention scores
+- **Values (V)**: Representations that get mixed together based on attention
+
+For a model with:
+- 32 layers
+- 4096 hidden dimensions
+- 32 attention heads
+- 8K context window
+
+The KV cache for one sequence is:
+```
+2 (K and V) × 32 layers × 4096 dimensions × 8192 tokens × 2 bytes (FP16)
+≈ 4.3 GB of VRAM!
+```
+
+This is why long context windows are memory-intensive.
+
+### KV Cache in RAG Systems
+
+RAG systems can leverage KV cache optimization in clever ways:
+
+**Prompt caching** (supported by some APIs like Anthropic Claude):
+
+```csharp
+public class CachedRAGService
+{
+    // System prompt and retrieved context can be cached!
+    public async Task<string> GenerateWithCachedContextAsync(
+        string systemPrompt,          // Cached
+        List<SearchResult> context,   // Cached
+        string userQuery)             // Not cached, changes each time
+    {
+        var contextText = FormatContext(context);
+
+        // The KV cache for systemPrompt + contextText is reused across queries
+        var prompt = $@"
+{systemPrompt}
+
+CONTEXT:
+{contextText}
+
+QUERY: {userQuery}
+
+ANSWER:";
+
+        return await _llm.GenerateAsync(prompt, useCaching: true);
+    }
+}
+```
+
+**Why this is powerful:**
+- First query: Computes KV cache for system prompt + context (slow)
+- Subsequent queries with same context: Reuses cached KV (10x faster!)
+- Only the user query portion needs fresh computation
+
+**Practical example:**
+```
+Query 1: "How do I use Docker?" → 2 seconds (no cache)
+Query 2: "What are Docker benefits?" → 0.2 seconds (cache hit!)
+Query 3: "Docker vs VMs?" → 0.2 seconds (cache hit!)
+```
+
+All three queries use the same retrieved context, so the KV cache for that context is reused.
+
+## Token Limits and RAG Strategy
+
+Understanding tokens and KV cache informs your RAG architecture decisions:
+
+### 1. Chunking Size
+
+Smaller chunks = more precise retrieval, but more overhead:
+
+```csharp
+// Option A: Small chunks (200 tokens each)
+// Retrieve 20 chunks = 4,000 tokens
+// Pro: Very precise, only relevant info
+// Con: More KV cache entries, slower attention
+
+// Option B: Larger chunks (500 tokens each)
+// Retrieve 8 chunks = 4,000 tokens
+// Pro: Better context coherence, fewer KV entries
+// Con: More noise, less precise
+
+public class AdaptiveChunker
+{
+    public int DetermineChunkSize(int contextWindowSize)
+    {
+        if (contextWindowSize <= 4096)
+            return 200; // Small chunks for limited windows
+
+        if (contextWindowSize <= 16384)
+            return 500; // Medium chunks
+
+        return 1000; // Large chunks for big windows
+    }
+}
+```
+
+### 2. Context Window Utilization
+
+Don't max out the context window - leave room for generation:
+
+```csharp
+public class SafeContextManager
+{
+    public int GetSafeContextLimit(int totalContextWindow)
+    {
+        // Use only 75% for input, reserve 25% for output
+        return (int)(totalContextWindow * 0.75);
+    }
+
+    // Example: 4K model
+    // Total: 4096 tokens
+    // Safe input: 3072 tokens
+    // Reserved for output: 1024 tokens
+}
+```
+
+### 3. Multi-Turn RAG Conversations
+
+In chatbots, the conversation history grows with each turn:
+
+```
+Turn 1:
+System + Context + Query1 = 3000 tokens
+Response1 = 300 tokens
+Total: 3300 tokens
+
+Turn 2:
+System + Context + Query1 + Response1 + Query2 = 3650 tokens
+Response2 = 300 tokens
+Total: 3950 tokens
+
+Turn 3:
+System + Context + Query1 + Response1 + Query2 + Response2 + Query3 = 4250 tokens
+ERROR: Context window exceeded!
+```
+
+**Solution: Sliding window with re-retrieval**
+
+```csharp
+public class ConversationalRAG
+{
+    private readonly int _maxHistoryTokens = 1000;
+
+    public async Task<string> ChatAsync(
+        List<ConversationTurn> history,
+        string newQuery)
+    {
+        // Re-retrieve context based on current query
+        var context = await RetrieveContextAsync(newQuery);
+
+        // Keep only recent conversation history
+        var relevantHistory = TrimHistory(history, _maxHistoryTokens);
+
+        var prompt = BuildPrompt(context, relevantHistory, newQuery);
+
+        return await _llm.GenerateAsync(prompt);
+    }
+
+    private List<ConversationTurn> TrimHistory(
+        List<ConversationTurn> history,
+        int maxTokens)
+    {
+        var trimmed = new List<ConversationTurn>();
+        var currentTokens = 0;
+
+        // Keep most recent turns
+        foreach (var turn in history.Reverse())
+        {
+            var turnTokens = EstimateTokens(turn.Query) + EstimateTokens(turn.Response);
+
+            if (currentTokens + turnTokens <= maxTokens)
+            {
+                trimmed.Insert(0, turn);
+                currentTokens += turnTokens;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return trimmed;
+    }
+}
+```
+
+### 4. Token Cost Optimization
+
+API-based LLMs charge per token. RAG can explode costs if not careful:
+
+```csharp
+public class CostAwareRAG
+{
+    // OpenAI GPT-4 pricing (example):
+    // Input: $0.03 per 1K tokens
+    // Output: $0.06 per 1K tokens
+
+    public decimal EstimateQueryCost(
+        int systemPromptTokens,
+        int retrievedContextTokens,
+        int queryTokens,
+        int expectedResponseTokens)
+    {
+        var inputTokens = systemPromptTokens + retrievedContextTokens + queryTokens;
+        var outputTokens = expectedResponseTokens;
+
+        var inputCost = (inputTokens / 1000m) * 0.03m;
+        var outputCost = (outputTokens / 1000m) * 0.06m;
+
+        return inputCost + outputCost;
+    }
+
+    // Example:
+    // System: 300 tokens
+    // Context: 3000 tokens (10 retrieved docs)
+    // Query: 50 tokens
+    // Response: 500 tokens
+    //
+    // Cost = ((300 + 3000 + 50) / 1000 * 0.03) + (500 / 1000 * 0.06)
+    //      = (3350 / 1000 * 0.03) + (500 / 1000 * 0.06)
+    //      = $0.1005 + $0.03
+    //      = $0.1305 per query
+    //
+    // At 1000 queries/day = $130/day = $3,900/month!
+}
+```
+
+**Cost reduction strategies:**
+1. Retrieve fewer, better-ranked documents
+2. Use prompt caching (Anthropic Claude: 90% cheaper for cached tokens)
+3. Use cheaper models for re-ranking, expensive for final generation
+4. Compress context using summarization
+
+## Visualizing the Complete RAG Flow with Tokens
+
+Here's how tokens, KV cache, and RAG fit together:
+
+```mermaid
+flowchart TB
+    A[User Query:<br/>'How does Docker work?'<br/>≈ 12 tokens] --> B[Generate Query Embedding]
+
+    B --> C[Vector Search]
+    C --> D[Retrieved Docs:<br/>5 docs × 500 tokens<br/>= 2,500 tokens]
+
+    D --> E[Construct Prompt]
+    A --> E
+
+    E --> F["Complete Prompt:<br/>System: 300 tokens<br/>Context: 2,500 tokens<br/>Query: 12 tokens<br/>Total: 2,812 tokens"]
+
+    F --> G[Tokenize Prompt]
+    G --> H["Token IDs:<br/>[245, 1034, 8829, ...]<br/>2,812 token IDs"]
+
+    H --> I[LLM Layer 1]
+    I --> J[Compute K,V]
+    J --> K[KV Cache Layer 1:<br/>2,812 K,V pairs]
+
+    I --> L[LLM Layer 2]
+    L --> M[Compute K,V]
+    M --> N[KV Cache Layer 2:<br/>2,812 K,V pairs]
+
+    L --> O[... Layers 3-32]
+    O --> P[Generate Token 1: 'Docker']
+
+    P --> Q[Add to KV Cache]
+    Q --> R[Generate Token 2: 'is']
+    R --> S[Add to KV Cache]
+    S --> T[... until completion]
+
+    T --> U["Response: 'Docker is a containerization platform...'<br/>≈ 400 tokens"]
+
+    style K fill:#f9f,stroke:#333,stroke-width:2px
+    style N fill:#f9f,stroke:#333,stroke-width:2px
+    style Q fill:#bbf,stroke:#333,stroke-width:2px
+    style S fill:#bbf,stroke:#333,stroke-width:2px
+```
+
+**Key insights:**
+1. **Input tokens** (2,812) are processed once to build initial KV cache
+2. **Generation** happens one token at a time, reusing the KV cache
+3. **Each new token** adds to the KV cache for future tokens to attend to
+4. **Total VRAM** needed = Model weights + KV cache for all tokens
+5. **Longer context** = larger KV cache = more VRAM
+
+## Practical Implications for RAG
+
+Understanding tokens and KV cache leads to better RAG design:
+
+**1. Pre-compute and cache common contexts:**
+```csharp
+// Cache KV for frequently used system prompts + static context
+var cachedSystemContext = await _llm.PrecomputeKVCache(systemPrompt + staticContext);
+
+// Reuse for each query (much faster)
+foreach (var query in userQueries)
+{
+    var response = await _llm.GenerateAsync(query, reuseKVCache: cachedSystemContext);
+}
+```
+
+**2. Optimize chunk boundaries:**
+```csharp
+// Bad: Arbitrary 500-character chunks
+var chunks = text.Chunk(500);
+
+// Good: Chunk on sentence boundaries, measure in tokens
+public List<string> ChunkByTokens(string text, int maxTokensPerChunk)
+{
+    var sentences = SplitIntoSentences(text);
+    var chunks = new List<string>();
+    var currentChunk = new StringBuilder();
+    var currentTokens = 0;
+
+    foreach (var sentence in sentences)
+    {
+        var sentenceTokens = EstimateTokens(sentence);
+
+        if (currentTokens + sentenceTokens > maxTokensPerChunk && currentTokens > 0)
+        {
+            chunks.Add(currentChunk.ToString());
+            currentChunk.Clear();
+            currentTokens = 0;
+        }
+
+        currentChunk.Append(sentence).Append(" ");
+        currentTokens += sentenceTokens;
+    }
+
+    if (currentTokens > 0)
+        chunks.Add(currentChunk.ToString());
+
+    return chunks;
+}
+```
+
+**3. Monitor token usage in production:**
+```csharp
+public class RAGTelemetry
+{
+    public void LogRAGQuery(
+        string query,
+        List<SearchResult> retrievedDocs,
+        string response)
+    {
+        var queryTokens = EstimateTokens(query);
+        var contextTokens = retrievedDocs.Sum(d => EstimateTokens(d.Text));
+        var responseTokens = EstimateTokens(response);
+        var totalTokens = queryTokens + contextTokens + responseTokens;
+
+        _logger.LogInformation(
+            "RAG Query: {Query} | Context: {ContextTokens} tokens from {DocCount} docs | " +
+            "Response: {ResponseTokens} tokens | Total: {TotalTokens} tokens",
+            query, contextTokens, retrievedDocs.Count, responseTokens, totalTokens
+        );
+
+        // Alert if approaching context limit
+        if (totalTokens > _maxTokens * 0.9)
+        {
+            _logger.LogWarning("Approaching token limit: {TotalTokens}/{MaxTokens}",
+                totalTokens, _maxTokens);
+        }
+    }
+}
+```
+
 # RAG vs. Other Approaches
 
 Let's compare RAG to other methods of augmenting LLMs with knowledge.
