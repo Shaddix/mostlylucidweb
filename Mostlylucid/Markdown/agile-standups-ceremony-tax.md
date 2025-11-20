@@ -31,10 +31,10 @@ graph TD
     E -->|Results in| G[Process Theatre]
     F -->|Results in| H[Effective Delivery]
 
-    style A fill:#e1f5ff
-    style F fill:#d4edda
-    style G fill:#f8d7da
-    style H fill:#d4edda
+    style A stroke:#e1f5ff
+    style F stroke:#d4edda
+    style G stroke:#f8d7da
+    style H stroke:#d4edda
 ```
 
 In my experience, the teams that ship fastest aren't the ones who follow Scrum by the book. They're the ones who **inspect and adapt their own process** as rigorously as they inspect and adapt their code.
@@ -79,14 +79,14 @@ graph LR
     E -->|Actually creates| G[Context Switching]
     E -->|Actually wastes| H[Focus Time]
 
-    style A fill:#d4edda
-    style B fill:#d4edda
-    style C fill:#d4edda
-    style D fill:#d4edda
-    style E fill:#f8d7da
-    style F fill:#fff3cd
-    style G fill:#f8d7da
-    style H fill:#f8d7da
+    style A stroke:#d4edda
+    style B stroke:#d4edda
+    style C stroke:#d4edda
+    style D stroke:#d4edda
+    style E stroke:#f8d7da
+    style F stroke:#fff3cd
+    style G stroke:#f8d7da
+    style H stroke:#f8d7da
 ```
 
 ## All Ceremony Is Tax
@@ -118,10 +118,10 @@ graph TD
     H -->|Examples| J[Blocker identified<br/>Alignment achieved<br/>Decision made]
     I -->|Examples| K[Status updates<br/>Calendar filler<br/>Nobody engaged]
 
-    style A fill:#e1f5ff
-    style G fill:#fff3cd
-    style H fill:#d4edda
-    style I fill:#f8d7da
+    style A stroke:#e1f5ff
+    style G stroke:#fff3cd
+    style H stroke:#d4edda
+    style I stroke:#f8d7da
 ```
 
 ### The Tax Equation
@@ -197,12 +197,12 @@ graph LR
 
     G[Daily Standup<br/>15 min × 5 days] -.->|Tries to do all| A
 
-    style A fill:#e1f5ff
-    style C fill:#d4edda
-    style D fill:#d4edda
-    style E fill:#d4edda
-    style F fill:#d4edda
-    style G fill:#fff3cd
+    style A stroke:#e1f5ff
+    style C stroke:#d4edda
+    style D stroke:#d4edda
+    style E stroke:#d4edda
+    style F stroke:#d4edda
+    style G stroke:#fff3cd
 ```
 
 ### The Context Matrix
@@ -278,10 +278,10 @@ graph TD
     G --> J[Schedule Next Review]
     H --> C
 
-    style A fill:#e1f5ff
-    style D fill:#fff3cd
-    style F fill:#d4edda
-    style I fill:#d4edda
+    style A stroke:#e1f5ff
+    style D stroke:#fff3cd
+    style F stroke:#d4edda
+    style I stroke:#d4edda
 ```
 
 ## Team Maturity & Context Matter
@@ -397,11 +397,11 @@ graph TD
     H --> J
     I --> F
 
-    style A fill:#e1f5ff
-    style E fill:#fff3cd
-    style G fill:#d4edda
-    style H fill:#d4edda
-    style I fill:#d4edda
+    style A stroke:#e1f5ff
+    style E stroke:#fff3cd
+    style G stroke:#d4edda
+    style H stroke:#d4edda
+    style I stroke:#d4edda
 ```
 
 ## Conclusion: Ceremony Must Earn Its Burden
