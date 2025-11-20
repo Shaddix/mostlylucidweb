@@ -441,6 +441,7 @@ app.Run();
 {
   "BotDetection": {
     "BotThreshold": 0.7,
+    "EnableTestMode": false,
     "EnableUserAgentDetection": true,
     "EnableHeaderAnalysis": true,
     "EnableIpDetection": true,
@@ -670,6 +671,206 @@ public class CloudflareDetector : IDetector
 
 // Register in DI
 services.AddSingleton<IDetector, CloudflareDetector>();
+```
+
+# Test Mode
+
+The test mode allows testing bot detection without modifying User-Agents or simulating real bot traffic.
+
+## Enabling Test Mode
+
+**IMPORTANT**: Only enable in development/testing environments:
+
+```csharp
+builder.Services.AddBotDetection(options =>
+{
+    // Enable ONLY in development
+    options.EnableTestMode = builder.Environment.IsDevelopment();
+});
+```
+
+## Using Test Mode
+
+Send the `ml-bot-test-mode` header with requests:
+
+### Simulate Specific Bot Types
+
+```bash
+# Simulate generic bot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: bot"
+
+# Simulate Googlebot (search engine)
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: googlebot"
+
+# Simulate Bingbot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: bingbot"
+
+# Simulate scraper bot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: scraper"
+
+# Simulate malicious bot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: malicious"
+
+# Simulate social media bot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: social"
+
+# Simulate monitoring bot
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: monitor"
+
+# Simulate human traffic
+curl http://localhost:5000/api/data \
+  -H "ml-bot-test-mode: human"
+```
+
+### Disable Detection Entirely
+
+```bash
+# Bypass all bot detection for this request
+curl http://localhost:5000/protected \
+  -H "ml-bot-test-mode: disable"
+```
+
+## Response Headers
+
+When test mode is active, responses include:
+
+```http
+X-Test-Mode: true
+X-Bot-Detected: true
+X-Bot-Confidence: 0.95
+```
+
+When disabled:
+
+```http
+X-Test-Mode: disabled
+```
+
+## Testing in Code
+
+Integration tests with test mode:
+
+```csharp
+[Theory]
+[InlineData("bot", true, 1.0, BotType.Unknown)]
+[InlineData("human", false, 0.0, null)]
+[InlineData("googlebot", true, 0.95, BotType.SearchEngine)]
+[InlineData("scraper", true, 0.9, BotType.Scraper)]
+[InlineData("malicious", true, 1.0, BotType.MaliciousBot)]
+public async Task TestMode_SimulatesBotTypes(
+    string testMode, bool expectedIsBot, double expectedConfidence, BotType? expectedType)
+{
+    // Arrange
+    var client = _factory.CreateClient();
+    client.DefaultRequestHeaders.Add("ml-bot-test-mode", testMode);
+
+    // Act
+    var response = await client.GetAsync("/api/data");
+    var botDetected = response.Headers.Contains("X-Bot-Detected");
+
+    // Assert
+    Assert.Equal(expectedIsBot, botDetected);
+    Assert.Contains("X-Test-Mode", response.Headers.Select(h => h.Key));
+}
+
+[Fact]
+public async Task TestMode_Disable_BypassesDetection()
+{
+    // Arrange
+    var client = _factory.CreateClient();
+    client.DefaultRequestHeaders.Add("ml-bot-test-mode", "disable");
+    // Use a bot User-Agent that would normally be detected
+    client.DefaultRequestHeaders.Add("User-Agent", "curl/7.68.0");
+
+    // Act
+    var response = await client.GetAsync("/api/data");
+
+    // Assert
+    Assert.False(response.Headers.Contains("X-Bot-Detected"));
+    Assert.Equal("disabled", response.Headers.GetValues("X-Test-Mode").First());
+}
+```
+
+## Supported Test Mode Values
+
+| Value | IsBot | Confidence | BotType | Description |
+|-------|-------|------------|---------|-------------|
+| `disable` | false | 0.0 | - | Bypasses all detection |
+| `human` | false | 0.0 | - | Simulates human traffic |
+| `bot` | true | 1.0 | Unknown | Generic bot |
+| `googlebot` | true | 0.95 | SearchEngine | Googlebot |
+| `bingbot` | true | 0.95 | SearchEngine | Bingbot |
+| `scraper` | true | 0.9 | Scraper | Web scraper |
+| `malicious` | true | 1.0 | MaliciousBot | Malicious bot |
+| `social` | true | 0.85 | SocialMediaBot | Social media crawler |
+| `monitor` | true | 0.8 | MonitoringBot | Uptime monitor |
+| `[other]` | true | 0.7 | Unknown | Custom bot name |
+
+## Use Cases
+
+### Development Testing
+
+Test bot-specific features without modifying User-Agents:
+
+```csharp
+// In your dev environment
+app.MapGet("/admin/stats", (HttpContext context) =>
+{
+    var botResult = context.Items[BotDetectionMiddleware.BotDetectionResultKey]
+        as BotDetectionResult;
+
+    if (botResult?.IsBot == true)
+    {
+        return Results.Forbid();
+    }
+
+    return Results.Ok(GetAdminStats());
+});
+```
+
+Test with:
+
+```bash
+# Should succeed
+curl http://localhost:5000/admin/stats \
+  -H "ml-bot-test-mode: human"
+
+# Should fail
+curl http://localhost:5000/admin/stats \
+  -H "ml-bot-test-mode: bot"
+```
+
+### CI/CD Testing
+
+Automated tests for bot-handling logic:
+
+```bash
+# In CI pipeline
+newman run api-tests.json \
+  --env-var "BOT_TEST_MODE=scraper"
+```
+
+### QA Verification
+
+Test different bot scenarios without complex setup:
+
+```bash
+# Test rate limiting for bots
+for i in {1..100}; do
+  curl http://localhost:5000/api/endpoint \
+    -H "ml-bot-test-mode: scraper"
+done
+
+# Test search engine allowlist
+curl http://localhost:5000/restricted \
+  -H "ml-bot-test-mode: googlebot"
 ```
 
 # Testing the Library

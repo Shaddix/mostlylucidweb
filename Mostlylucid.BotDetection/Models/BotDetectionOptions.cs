@@ -11,6 +11,12 @@ public class BotDetectionOptions
     public double BotThreshold { get; set; } = 0.7;
 
     /// <summary>
+    /// Enable test mode (allows ml-bot-test-mode header to override detection)
+    /// Only enable in development/testing environments!
+    /// </summary>
+    public bool EnableTestMode { get; set; } = false;
+
+    /// <summary>
     /// Enable user-agent based detection
     /// </summary>
     public bool EnableUserAgentDetection { get; set; } = true;
