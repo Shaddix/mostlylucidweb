@@ -87,6 +87,7 @@
       <ProjectReference Include="..\Mostlylucid.Services\Mostlylucid.Services.csproj" />
       <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
       <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
+      <ProjectReference Include="..\Mostlylucid.SemanticSearch\Mostlylucid.SemanticSearch.csproj" />
       <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
     </ItemGroup>
     <ItemGroup>
