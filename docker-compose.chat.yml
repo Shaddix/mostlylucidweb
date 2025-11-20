@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  chat-server:
+    build:
+      context: .
+      dockerfile: Mostlylucid.Chat.Server/Dockerfile
+    container_name: chat-server
+    ports:
+      - "5100:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - AllowedOrigins__0=*
+    volumes:
+      - ./Mostlylucid.Chat.Widget/dist:/app/wwwroot:ro
+    restart: unless-stopped
+    networks:
+      - chat-network
+
+  # Optional: Add database for persistent storage
+  # postgres:
+  #   image: postgres:16
+  #   container_name: chat-db
+  #   environment:
+  #     POSTGRES_DB: chatdb
+  #     POSTGRES_USER: chatuser
+  #     POSTGRES_PASSWORD: changeme
+  #   volumes:
+  #     - chat-db-data:/var/lib/postgresql/data
+  #   networks:
+  #     - chat-network
+
+  # Optional: Add Redis for scaling across multiple servers
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: chat-redis
+  #   networks:
+  #     - chat-network
+
+networks:
+  chat-network:
+    driver: bridge
+
+# volumes:
+#   chat-db-data:

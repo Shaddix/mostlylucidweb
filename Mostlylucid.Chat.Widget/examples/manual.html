@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Chat Widget Initialization</title>
+</head>
+<body>
+    <h1>Manual Initialization Example</h1>
+    <p>This example shows how to manually initialize the widget with custom options.</p>
+
+    <button id="openChat">Open Chat</button>
+    <button id="requestNotifications">Enable Notifications</button>
+
+    <!-- Load widget without auto-init -->
+    <script src="http://localhost:5100/widget.js"></script>
+
+    <script>
+        // Manual initialization with custom options
+        const widget = new ChatWidget({
+            hubUrl: 'http://localhost:5100/chathub',
+            userName: 'John Doe',
+            userEmail: 'john@example.com'
+        });
+
+        // Programmatic control
+        document.getElementById('openChat').addEventListener('click', () => {
+            // Access Alpine component data
+            const component = Alpine.$data(document.querySelector('.chat-widget'));
+            component.toggleChat();
+        });
+
+        document.getElementById('requestNotifications').addEventListener('click', () => {
+            widget.requestNotificationPermission();
+        });
+    </script>
+</body>
+</html>
