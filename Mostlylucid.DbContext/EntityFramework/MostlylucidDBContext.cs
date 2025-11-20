@@ -26,6 +26,10 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     public DbSet<DownloadedImageEntity> DownloadedImages { get; set; }
 
+    public DbSet<SlugRedirectEntity> SlugRedirects { get; set; }
+
+    public DbSet<SlugSuggestionClickEntity> SlugSuggestionClicks { get; set; }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder
@@ -190,6 +194,33 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
                     b => b.HasOne<BlogPostEntity>().WithMany().HasForeignKey("BlogPostId"),
                     c => c.HasOne<CategoryEntity>().WithMany().HasForeignKey("CategoryId")
                 );
+        });
+
+        modelBuilder.Entity<SlugRedirectEntity>(entity =>
+        {
+            entity.ToTable("slug_redirects");
+            entity.HasKey(x => x.Id);
+
+            // Unique index on (FromSlug, ToSlug, Language) - each redirect mapping should be unique
+            entity.HasIndex(x => new { x.FromSlug, x.ToSlug, x.Language }).IsUnique();
+
+            // Index for fast lookup of redirects from a given slug
+            entity.HasIndex(x => new { x.FromSlug, x.Language, x.AutoRedirect });
+
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<SlugSuggestionClickEntity>(entity =>
+        {
+            entity.ToTable("slug_suggestion_clicks");
+            entity.HasKey(x => x.Id);
+
+            // Index for analytics queries
+            entity.HasIndex(x => new { x.RequestedSlug, x.ClickedSlug, x.Language });
+            entity.HasIndex(x => x.ClickedAt);
+
+            entity.Property(x => x.ClickedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }
 }

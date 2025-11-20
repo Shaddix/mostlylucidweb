@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Mostlylucid.Blog.WatcherService;
 using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.Middleware;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Images;
 using OpenTelemetry.Metrics;
@@ -222,6 +223,11 @@ try
             }
         }
     });
+
+    // Add slug redirect middleware before status code pages
+    // This allows automatic redirects for learned slug mappings
+    app.UseSlugRedirect();
+
     app.UseStatusCodePagesWithReExecute("/error/{0}");
 
     app.UseRouting();
