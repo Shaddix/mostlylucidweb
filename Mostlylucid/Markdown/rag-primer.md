@@ -17,10 +17,12 @@ RAG is the technology that makes AI systems smarter by giving them access to rel
 
 RAG solves these problems elegantly by combining the reasoning power of LLMs with the precision of search. Instead of asking an LLM to generate an answer from memory alone, RAG first retrieves relevant information from a knowledge base, then feeds that context to the LLM to generate accurate, grounded responses.
 
-In this primer, I'll explain what RAG is, where it came from, exactly how it works under the hood, and when you should (and shouldn't) use it. We'll use concrete examples from my own implementations on this blog, including:
-- [Semantic search with ONNX and Qdrant](/blog/semantic-search-with-onnx-and-qdrant)
-- [Building a self-hosted semantic search engine](/blog/qdrantwithaspdotnetcore)
-- [The "Lawyer GPT" series](/blog/building-a-lawyer-gpt-for-your-blog-part1) - a complete RAG system
+In this primer, I'll explain what RAG is, where it came from, exactly how it works under the hood, and when you should (and shouldn't) use it. We'll use concrete C# code examples throughout to illustrate the concepts.
+
+Later in this series, I'll show you how to build complete RAG systems including:
+- CPU-friendly semantic search with ONNX embeddings (coming soon)
+- Self-hosted vector databases with Qdrant (coming soon)
+- A complete RAG writing assistant (coming soon)
 
 [TOC]
 
@@ -227,7 +229,7 @@ public class TextChunker
 }
 ```
 
-**Chunking strategies I discuss in my [Lawyer GPT series](/blog/building-a-lawyer-gpt-for-your-blog-part4):**
+**Common chunking strategies:**
 - **Fixed-size**: Simple but breaks semantic boundaries
 - **Sentence-based**: Respects grammar but can be too small
 - **Paragraph-based**: Natural but variable size
@@ -250,7 +252,7 @@ The first two vectors would be "close" in vector space (high cosine similarity),
 
 **How embeddings are generated:**
 Modern embedding models are neural networks trained on massive text datasets to learn semantic relationships. Popular models:
-- **all-MiniLM-L6-v2**: 384 dimensions, fast, good quality (what I use - see [my ONNX article](/blog/semantic-search-with-onnx-and-qdrant))
+- **all-MiniLM-L6-v2**: 384 dimensions, fast, good quality (what I use on this blog)
 - **text-embedding-3-small** (OpenAI): 1536 dimensions, very high quality
 - **BGE-base**: 768 dimensions, state-of-the-art open source
 
@@ -296,7 +298,7 @@ Vector databases are optimized for storing and searching high-dimensional vector
 - **Search**: Find K most similar vectors to a query vector
 - **Filter**: Combine vector search with metadata filters
 
-**Example from my [Qdrant implementation](/blog/qdrantwithaspdotnetcore):**
+**Example Qdrant implementation:**
 ```csharp
 public async Task IndexDocumentAsync(
     string id,
@@ -330,7 +332,7 @@ public async Task IndexDocumentAsync(
 - **Weaviate**: Feature-rich, good for complex schemas
 - **ChromaDB**: Python-focused, lightweight
 
-I compare these in detail in my [Qdrant article](/blog/qdrantwithaspdotnetcore).
+We'll explore setting up these databases in upcoming articles.
 
 ## Phase 2: Retrieval (Finding Relevant Information)
 
@@ -521,7 +523,7 @@ The constructed prompt goes to the LLM for generation. This can be:
 - **Cloud API**: OpenAI, Anthropic Claude, Google PaLM
 - **Local model**: Using llama.cpp, ONNX Runtime, or TorchSharp
 
-**Example using local LLM (from my Lawyer GPT series):**
+**Example using local LLM:**
 ```csharp
 public async Task<string> GenerateResponseAsync(string prompt)
 {
@@ -1245,7 +1247,7 @@ You can think of RAG as "automated few-shot prompting at scale."
 
 ## Hybrid Search: RAG + Traditional Search
 
-In my [semantic search article](/blog/semantic-search-with-onnx-and-qdrant), I discuss combining RAG with traditional full-text search using Reciprocal Rank Fusion (RRF).
+You can combine RAG with traditional full-text search using Reciprocal Rank Fusion (RRF).
 
 **Why hybrid?**
 - **Semantic search**: Great for conceptual matches ("error handling" finds "exception management")
@@ -1306,7 +1308,7 @@ I've built several RAG-powered features on this blog. Let me show you concrete e
 
 ## 1. Related Posts Recommendation
 
-Every blog post shows "Related Posts" using semantic similarity. See my [semantic search article](/blog/semantic-search-with-onnx-and-qdrant) for the full implementation.
+Every blog post can show "Related Posts" using semantic similarity.
 
 **How it works:**
 1. Each blog post gets embedded when published
@@ -1370,11 +1372,11 @@ The search box on this blog uses RAG-style semantic search (though without the g
 - Search for "deployment" → finds posts about Docker, hosting, CI/CD
 - No need for exact keyword matches
 
-**Implementation details in my [Qdrant article](/blog/qdrantwithaspdotnetcore).**
+**Implementation:** I'll cover building this in an upcoming article on vector databases.
 
 ## 3. The "Lawyer GPT" Writing Assistant
 
-My [Lawyer GPT series](/blog/building-a-lawyer-gpt-for-your-blog-part1) is a complete RAG system for helping me write new blog posts.
+I'm building a complete RAG system to help me write new blog posts.
 
 **Use case:** When I start writing about "adding authentication to ASP.NET Core", the system:
 1. Embeds my current draft
@@ -2033,10 +2035,12 @@ foreach (var result in results)
 
 **Goal:** Scale to real document collections.
 
-Follow my [Qdrant article](/blog/qdrantwithaspdotnetcore) to:
+Next steps to implement:
 1. Run Qdrant in Docker
 2. Index your documents
 3. Implement search endpoint
+
+I'll cover this in detail in an upcoming article on vector databases.
 
 ## Week 3: Add LLM Generation
 
@@ -2081,9 +2085,9 @@ return response.Value.Choices[0].Message.Content;
 
 ## Going Local (Optional)
 
-Once the basics work, migrate to local inference:
-- Follow my [Lawyer GPT series](/blog/building-a-lawyer-gpt-for-your-blog-part1) for local LLMs
-- Follow my [ONNX article](/blog/semantic-search-with-onnx-and-qdrant) for local embeddings
+Once the basics work, migrate to local inference (I'll cover this in upcoming articles):
+- Local LLM inference with GPU acceleration
+- CPU-friendly embeddings with ONNX Runtime
 
 # Conclusion
 
@@ -2114,14 +2118,22 @@ RAG (Retrieval-Augmented Generation) is a powerful technique for making LLMs mor
 - Real-time data (use APIs instead)
 - Very small knowledge bases
 
-I've implemented RAG in multiple ways on this blog:
-- [Semantic search with CPU-friendly ONNX embeddings](/blog/semantic-search-with-onnx-and-qdrant)
-- [Self-hosted Qdrant vector database](/blog/qdrantwithaspdotnetcore)
-- [Complete RAG writing assistant (Lawyer GPT series)](/blog/building-a-lawyer-gpt-for-your-blog-part1)
-
 The field is evolving rapidly with advanced techniques like HyDE, multi-query retrieval, and contextual compression, but the core concept remains simple: give LLMs access to the right information at the right time.
 
 Start simple, measure results, and iterate. RAG is one of the most practical ways to build reliable AI systems today.
+
+# What's Next?
+
+Now that you understand the fundamentals of RAG, in upcoming articles I'll show you how to build complete, production-ready RAG systems in C#:
+
+**Coming soon:**
+- **CPU-Friendly Semantic Search** - Building semantic search with ONNX embeddings that run on any VPS without GPU requirements
+- **Self-Hosted Vector Databases** - Complete setup guide for Qdrant with Docker, including indexing, search, and optimization strategies
+- **Building a RAG Writing Assistant** - A full series on creating an AI-powered writing assistant that uses your existing content as a knowledge base
+
+These articles will take you from theory to practice, with complete working code, deployment strategies, and real-world optimizations based on running these systems in production on this blog.
+
+Stay tuned for hands-on implementation guides that turn this RAG knowledge into working systems!
 
 ## Resources
 
@@ -2129,11 +2141,6 @@ Start simple, measure results, and iterate. RAG is one of the most practical way
 - [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401) - The original RAG paper
 - [Dense Passage Retrieval for Open-Domain Question Answering](https://arxiv.org/abs/2004.04906) - DPR (retrieval foundation)
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762) - Transformers (embedding foundation)
-
-**My RAG Implementations:**
-- [Semantic Search with ONNX and Qdrant](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly embeddings and vector search
-- [Building a Self-Hosted Semantic Search Engine](/blog/qdrantwithaspdotnetcore) - Complete Qdrant setup
-- [Building a "Lawyer GPT" - Part 1](/blog/building-a-lawyer-gpt-for-your-blog-part1) - Full RAG writing assistant series
 
 **Tools and Frameworks:**
 - [Qdrant](https://qdrant.tech/) - Vector database I use
