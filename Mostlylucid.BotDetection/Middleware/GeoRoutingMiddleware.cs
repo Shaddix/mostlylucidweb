@@ -37,8 +37,8 @@ public class GeoRoutingMiddleware
             return;
         }
 
-        // Test mode: Allow overriding country via header
-        var testCountry = context.Request.Headers["X-Test-Country"].FirstOrDefault();
+        // Test mode: Allow overriding country via header (off by default)
+        var testCountry = context.Request.Headers["ml-geo-test-mode"].FirstOrDefault();
         if (!string.IsNullOrEmpty(testCountry) && _options.EnableTestMode)
         {
             var testLocation = new GeoLocation
