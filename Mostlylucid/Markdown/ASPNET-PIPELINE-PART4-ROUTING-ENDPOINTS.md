@@ -69,9 +69,9 @@ graph LR
     I -->|Yes| J[Execute Endpoint]
     I -->|No| K[404 Not Found]
 
-    style B fill:#ffe1e1
-    style H fill:#e1ffe1
-    style J fill:#e1e1ff
+    style B stroke:#ef4444,stroke-width:3px
+    style H stroke:#10b981,stroke-width:3px
+    style J stroke:#6366f1,stroke-width:3px
 ```
 
 ### Phase 1: Route Matching (`UseRouting()`)

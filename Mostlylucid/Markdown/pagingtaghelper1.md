@@ -47,8 +47,8 @@ graph TD
     H --> I[Returns: Data + Token_B]
     I --> J[Page 3: Token_B]
 
-    style A fill:#e1f5ff
-    style E fill:#ffe1f5
+    style A stroke:#0ea5e9,stroke-width:3px
+    style E stroke:#ec4899,stroke-width:3px
 ```
 
 **Traditional Paging:**

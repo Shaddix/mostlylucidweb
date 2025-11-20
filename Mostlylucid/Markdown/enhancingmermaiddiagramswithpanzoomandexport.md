@@ -671,11 +671,11 @@ graph TB
         Q -->|12 Languages| R[Translated Files]
     end 
 
-    style A fill:#4ade80
-    style G fill:#60a5fa
-    style J fill:#f59e0b
-    style K fill:#ec4899
-    style M fill:#8b5cf6
+    style A stroke:#22c55e,stroke-width:3px,color:#4ade80
+    style G stroke:#3b82f6,stroke-width:3px,color:#60a5fa
+    style J stroke:#f59e0b,stroke-width:3px,color:#f59e0b
+    style K stroke:#ec4899,stroke-width:3px,color:#ec4899
+    style M stroke:#8b5cf6,stroke-width:3px,color:#8b5cf6
 ```
 
 Try clicking the controls on the diagram above!

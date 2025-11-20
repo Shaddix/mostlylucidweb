@@ -1796,14 +1796,14 @@ graph TB
 
     T3 --> W2
 
-    style T1 fill:#ffcccc
-    style T2 fill:#ccffcc
-    style T3 fill:#ccccff
-    style W1 fill:#ffffcc
-    style W2 fill:#ffffcc
-    style W3 fill:#ffffcc
-    style U1 fill:#ffeecc
-    style U2 fill:#ffeecc
+    style T1 stroke:#ef4444,stroke-width:3px
+    style T2 stroke:#10b981,stroke-width:3px
+    style T3 stroke:#6366f1,stroke-width:3px
+    style W1 stroke:#eab308,stroke-width:3px
+    style W2 stroke:#eab308,stroke-width:3px
+    style W3 stroke:#eab308,stroke-width:3px
+    style U1 stroke:#f59e0b,stroke-width:3px
+    style U2 stroke:#f59e0b,stroke-width:3px
 ```
 
 **Genetic Inheritance:**

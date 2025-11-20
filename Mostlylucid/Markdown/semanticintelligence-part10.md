@@ -228,14 +228,14 @@ graph TB
 
     Send --> |Message ID: msg_7x3f...<br/>Status: Queued| Success([✓ Workflow Complete<br/>Total: 18.7s])
 
-    style Fetch fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Summarize fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style Translate fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Validate fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    style Retry fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style HTML fill:#e0f2f1,stroke:#00796b,stroke-width:2px
-    style Send fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
-    style Success fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style Fetch stroke:#1976d2,stroke-width:3px,color:#1976d2
+    style Summarize stroke:#388e3c,stroke-width:3px,color:#388e3c
+    style Translate stroke:#f57c00,stroke-width:3px,color:#f57c00
+    style Validate stroke:#c2185b,stroke-width:3px,color:#c2185b
+    style Retry stroke:#7b1fa2,stroke-width:3px,color:#7b1fa2
+    style HTML stroke:#00796b,stroke-width:3px,color:#00796b
+    style Send stroke:#3f51b5,stroke-width:3px,color:#3f51b5
+    style Success stroke:#2e7d32,stroke-width:4px,color:#2e7d32
 ```
 
 ### What Actually Happened
@@ -737,12 +737,12 @@ graph TB
 
     Tool3 --> Final[ALL workflows benefit<br/>Zero code changes needed]
 
-    style Original fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Tool1 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style Tool2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Tool3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style Contribution fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
-    style Final fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style Original stroke:#1976d2,stroke-width:3px,color:#1976d2
+    style Tool1 stroke:#388e3c,stroke-width:3px,color:#388e3c
+    style Tool2 stroke:#f57c00,stroke-width:3px,color:#f57c00
+    style Tool3 stroke:#7b1fa2,stroke-width:3px,color:#7b1fa2
+    style Contribution stroke:#0277bd,stroke-width:4px,color:#0277bd
+    style Final stroke:#2e7d32,stroke-width:4px,color:#2e7d32
 ```
 
 **One workflow created a tool. That tool evolved. A smarter AI improved it. Every workflow benefits.**
@@ -901,15 +901,15 @@ graph TB
     V201 --> Current2[Active workflows<br/>using v2.0.1]
     V211 --> Current3[Active workflows<br/>using v2.1.1]
 
-    style V10 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style V11 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style V12 fill:#ffebee,stroke:#c62828,stroke-width:2px,stroke-dasharray: 5 5
-    style V121 fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
-    style V20 fill:#ffebee,stroke:#c62828,stroke-width:2px,stroke-dasharray: 5 5
-    style V201 fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
-    style V21 fill:#ffebee,stroke:#c62828,stroke-width:2px,stroke-dasharray: 5 5
-    style V211 fill:#e1f5fe,stroke:#0277bd,stroke-width:3px
-    style Current3 fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    style V10 stroke:#388e3c,stroke-width:3px,color:#388e3c
+    style V11 stroke:#388e3c,stroke-width:3px,color:#388e3c
+    style V12 stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5,color:#c62828
+    style V121 stroke:#0277bd,stroke-width:4px,color:#0277bd
+    style V20 stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5,color:#c62828
+    style V201 stroke:#0277bd,stroke-width:4px,color:#0277bd
+    style V21 stroke:#c62828,stroke-width:3px,stroke-dasharray: 5 5,color:#c62828
+    style V211 stroke:#0277bd,stroke-width:4px,color:#0277bd
+    style Current3 stroke:#2e7d32,stroke-width:4px,color:#2e7d32
 ```
 
 **The system:**

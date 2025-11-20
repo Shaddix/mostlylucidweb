@@ -242,8 +242,8 @@ flowchart LR
     C --> D[Dead Code Injection<br/>Add junk functions]
     D --> E[Deployed Script<br/>~400 bytes minified]
 
-    style A fill:#e1f5ff
-    style E fill:#ffe1e1
+    style A stroke:#0ea5e9,stroke-width:3px
+    style E stroke:#ef4444,stroke-width:3px
 ```
 
 #### Source Code (Readable)
