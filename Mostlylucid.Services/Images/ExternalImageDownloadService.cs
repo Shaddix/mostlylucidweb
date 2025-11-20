@@ -236,6 +236,14 @@ public partial class ExternalImageDownloadService
             if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
                 (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             {
+                // Skip shields.io badges - they are dynamic and should never be inlined
+                if (uri.Host.Equals("shields.io", StringComparison.OrdinalIgnoreCase) ||
+                    uri.Host.EndsWith(".shields.io", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("Skipping shields.io badge: {Url}", url);
+                    continue;
+                }
+
                 externalUrls.Add(url);
             }
         }
