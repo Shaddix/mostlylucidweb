@@ -48,6 +48,7 @@ public static class BlogSetup
                 services.AddScoped<CommentViewService>();
                 services.AddSingleton<BlogUpdater>();
                 services.AddScoped<IBlogService, BlogService>();
+                services.AddScoped<ISlugSuggestionService, SlugSuggestionService>();
                 services.AddScoped<BlogValidationService>();
                 services.AddHostedService<MarkdownDirectoryWatcherService>();
                 services.AddHostedService<BlogReconciliationService>();
