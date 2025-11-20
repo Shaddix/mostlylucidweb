@@ -54,7 +54,7 @@ public class PageViews_Test
             StartAtDate = DateTime.Now.AddDays(-7),
             EndAtDate = DateTime.Now,
             Unit = Unit.day,
-            Url = "/blog"
+            Path = "/blog"
         });
         Assert.NotNull(pageViews);
         Assert.Equal(HttpStatusCode.OK, pageViews.Status);
@@ -72,7 +72,7 @@ public class PageViews_Test
             StartAtDate = DateTime.Now.AddDays(-90),
             EndAtDate = DateTime.Now,
             Unit = Unit.month,
-            Url = "/blog"
+            Path = "/blog"
         });
         Assert.NotNull(pageViews);
         Assert.Equal(HttpStatusCode.OK, pageViews.Status);
