@@ -56,7 +56,12 @@ class ChatWidget {
                 <div class="chat-widget-header">
                     <div>
                         <h3>Chat with Scott</h3>
-                        <p x-show="isConnected">Online</p>
+                        <p x-show="isConnected && adminOnline" class="status-online">
+                            <span class="status-indicator"></span> Available
+                        </p>
+                        <p x-show="isConnected && !adminOnline" class="status-offline">
+                            <span class="status-indicator"></span> Away
+                        </p>
                         <p x-show="!isConnected">Connecting...</p>
                     </div>
                     <button class="chat-widget-close" @click="toggleChat()">
@@ -145,6 +150,7 @@ class ChatWidget {
             unreadCount: 0,
             isTyping: false,
             typingTimeout: null,
+            adminOnline: false,
 
             toggleChat() {
                 this.isOpen = !this.isOpen;
@@ -269,6 +275,11 @@ class ChatWidget {
             if (isTyping) {
                 component.$nextTick(() => component.scrollToBottom());
             }
+        });
+
+        this.connection.on('PresenceUpdate', (data) => {
+            const component = Alpine.$data(this.container);
+            component.adminOnline = data.adminOnline || false;
         });
 
         // Connection state

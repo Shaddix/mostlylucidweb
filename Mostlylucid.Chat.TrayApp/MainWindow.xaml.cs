@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private TaskbarIcon? _trayIcon;
     private readonly string _hubUrl = "http://localhost:5100/chathub";
     private readonly string _adminName = "Scott";
+    private readonly string _apiKey = "dev-api-key-12345"; // TODO: Load from config
+    private int _onlineUserCount = 0;
 
     public MainWindow()
     {
@@ -36,7 +38,7 @@ public partial class MainWindow : Window
         try
         {
             _connection = new HubConnectionBuilder()
-                .WithUrl(_hubUrl)
+                .WithUrl($"{_hubUrl}?apiKey={_apiKey}")
                 .WithAutomaticReconnect()
                 .Build();
 
@@ -115,6 +117,18 @@ public partial class MainWindow : Window
                 });
             });
 
+            _connection.On<dynamic>("PresenceUpdate", (data) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (data.onlineUserCount != null)
+                    {
+                        _onlineUserCount = (int)data.onlineUserCount;
+                        UpdateConnectionStatus();
+                    }
+                });
+            });
+
             _connection.Reconnecting += error =>
             {
                 Dispatcher.Invoke(() =>
@@ -128,7 +142,7 @@ public partial class MainWindow : Window
             {
                 Dispatcher.Invoke(() =>
                 {
-                    ConnectionStatus.Text = "Connected";
+                    UpdateConnectionStatus();
                 });
                 return Task.CompletedTask;
             };
@@ -146,7 +160,7 @@ public partial class MainWindow : Window
             await _connection.StartAsync();
             await _connection.InvokeAsync("RegisterAdmin", _adminName);
 
-            ConnectionStatus.Text = "Connected";
+            UpdateConnectionStatus();
         }
         catch (Exception ex)
         {
@@ -251,6 +265,16 @@ public partial class MainWindow : Window
     {
         _trayIcon?.Dispose();
         Application.Current.Shutdown();
+    }
+
+    private void UpdateConnectionStatus()
+    {
+        var statusText = "Connected";
+        if (_onlineUserCount > 0)
+        {
+            statusText += $" • {_onlineUserCount} user{(_onlineUserCount != 1 ? "s" : "")} online";
+        }
+        ConnectionStatus.Text = statusText;
     }
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

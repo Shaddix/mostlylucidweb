@@ -8,15 +8,18 @@ public class ChatHub : Hub
 {
     private readonly IConversationService _conversationService;
     private readonly IConnectionTracker _connectionTracker;
+    private readonly IPresenceService _presenceService;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
         IConversationService conversationService,
         IConnectionTracker connectionTracker,
+        IPresenceService presenceService,
         ILogger<ChatHub> logger)
     {
         _conversationService = conversationService;
         _connectionTracker = connectionTracker;
+        _presenceService = presenceService;
         _logger = logger;
     }
 
@@ -33,11 +36,17 @@ public class ChatHub : Hub
         {
             _connectionTracker.RemoveConnection(Context.ConnectionId);
 
+            // Update presence
+            await _presenceService.SetUserOffline(connectionInfo.UserId);
+
             // Notify admin clients if this was a user disconnecting
             if (connectionInfo.ConnectionType == "user")
             {
                 await Clients.Group("admins").SendAsync("UserDisconnected", connectionInfo);
             }
+
+            // Broadcast presence update
+            await BroadcastPresenceUpdate();
         }
 
         _logger.LogInformation("Client disconnected: {ConnectionId}", Context.ConnectionId);
@@ -62,11 +71,21 @@ public class ChatHub : Hub
 
         _connectionTracker.AddConnection(connectionInfo);
 
+        // Update presence
+        await _presenceService.SetUserOnline(conversation.UserId, userName, "user", Context.ConnectionId);
+
         // Send conversation history to the user
         await Clients.Caller.SendAsync("ConversationHistory", conversation.Messages);
 
+        // Send presence info to user (are admins online?)
+        var adminOnline = await _presenceService.IsAnyAdminOnline();
+        await Clients.Caller.SendAsync("PresenceUpdate", new { adminOnline });
+
         // Notify all admin clients about new user
         await Clients.Group("admins").SendAsync("NewUserConnected", connectionInfo, conversation);
+
+        // Broadcast presence update
+        await BroadcastPresenceUpdate();
 
         _logger.LogInformation("User registered: {UserName} ({Email}) - Conversation: {ConversationId}",
             userName, email, conversation.Id);
@@ -88,9 +107,19 @@ public class ChatHub : Hub
         _connectionTracker.AddConnection(connectionInfo);
         await Groups.AddToGroupAsync(Context.ConnectionId, "admins");
 
+        // Update presence
+        await _presenceService.SetUserOnline(adminName, adminName, "admin", Context.ConnectionId);
+
         // Send all active conversations to admin
         var activeConversations = _conversationService.GetActiveConversations();
         await Clients.Caller.SendAsync("ActiveConversations", activeConversations);
+
+        // Send presence stats to admin
+        var onlineUserCount = await _presenceService.GetOnlineUserCount();
+        await Clients.Caller.SendAsync("PresenceUpdate", new { onlineUserCount });
+
+        // Broadcast presence update to all users (admin is now online)
+        await BroadcastPresenceUpdate();
 
         _logger.LogInformation("Admin registered: {AdminName}", adminName);
     }
@@ -193,5 +222,23 @@ public class ChatHub : Hub
                 await Clients.Client(userConnectionId).SendAsync("AdminTyping", isTyping);
             }
         }
+    }
+
+    /// <summary>
+    /// Broadcast presence information to all connected clients
+    /// </summary>
+    private async Task BroadcastPresenceUpdate()
+    {
+        var adminOnline = await _presenceService.IsAnyAdminOnline();
+        var onlineUserCount = await _presenceService.GetOnlineUserCount();
+        var onlineAdminCount = await _presenceService.GetOnlineAdminCount();
+
+        // Send to all users: are admins online?
+        await Clients.All.SendAsync("PresenceUpdate", new
+        {
+            adminOnline,
+            onlineUserCount,
+            onlineAdminCount
+        });
     }
 }
