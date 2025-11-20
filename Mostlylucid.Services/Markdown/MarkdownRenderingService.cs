@@ -202,13 +202,19 @@ public partial class MarkdownRenderingService : MarkdownBaseService
 
     private string GetSlug(string fileName)
     {
+        // Get filename without extension
         var slug = Path.GetFileNameWithoutExtension(fileName);
-        if (slug.Contains(".")) slug = slug.Substring(0, slug.IndexOf(".", StringComparison.Ordinal));
-        if(slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-            slug = slug[..^3];
-        
+
+        // Handle language-suffixed files like "mypost.es.md" -> "mypost"
+        // Extract only the base name before any dot (language suffix)
+        if (slug.Contains("."))
+        {
+            slug = slug.Substring(0, slug.IndexOf(".", StringComparison.Ordinal));
+        }
+
         // Normalize slug: convert underscores/spaces to hyphens and lowercase for consistent lookup
         slug = slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
-        return slug.ToLowerInvariant();
+
+        return slug;
     }
 }

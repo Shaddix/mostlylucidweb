@@ -7,7 +7,7 @@
 
 When **DiSE* commits murder.
 
-<img src="https://github.com/scottgal/mostlylucid.dse/raw/main/logo.png" alt="mostlylucid-dse logo" width="120" style="max-width: 100%;">
+<img src="https://github.com/scottgal/mostlylucid.dse/raw/main/logo.png?height=200" alt="mostlylucid-dse logo" height="200px" style="max-width: 100%;">
 
 > **Note:** This is a speculative design for DISE's next evolutionary leap—a self-healing tool ecosystem that tracks lineage, detects bugs, prunes failed branches, and learns from mistakes forever. It's ambitious, slightly terrifying, and might actually be implementable with what we already have.
 

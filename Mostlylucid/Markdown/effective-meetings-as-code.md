@@ -1,6 +1,6 @@
 ﻿# How to Make Meetings Work
 
-<datetime class="hidden">2025-01-20T15:30</datetime>
+<datetime class="hidden">2025-06-20T15:30</datetime>
 <!--category-- Productivity, Meetings, Team Collaboration -->
 
 # Introduction
@@ -265,5 +265,4 @@ Try it in your next recurring meeting. I promise you'll see the difference.
 
 ---
 
-**Discussion:**
-How do you keep meetings on track? What's worked (or failed spectacularly) for you? Drop a comment — I'd love to hear your war stories.
+

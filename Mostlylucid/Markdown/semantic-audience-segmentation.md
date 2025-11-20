@@ -102,8 +102,8 @@ flowchart TB
         I --> J[Personalized<br/>Recommendations]
     end
 
-    style H fill:#f9f,stroke:#333,stroke-width:4px
-    style I fill:#9f9,stroke:#333,stroke-width:4px
+    style H stroke:#333,stroke-width:4px
+    style I stroke:#333,stroke-width:4px
 ```
 
 ## Why This Works
