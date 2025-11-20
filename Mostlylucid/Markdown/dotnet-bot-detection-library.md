@@ -22,6 +22,31 @@ Existing .NET bot detection solutions are typically limited to simple User-Agent
 - **Extensibility**: Easy to add custom detectors or modify existing ones
 - **Zero External Dependencies**: All detection logic runs locally (except optional LLM)
 
+## When to Use Application-Level Bot Detection
+
+**Important**: If you can implement bot detection at the networking layer (WAF, load balancers, reverse proxies like Cloudflare, AWS WAF, or Akamai), that is typically preferred for performance and security reasons. Network-level detection stops malicious traffic before it reaches your application servers.
+
+**Use this library when:**
+
+- **No infrastructure access**: Shared hosting, PaaS environments (Azure App Service, Heroku), or limited control over networking
+- **Complex detection logic**: Need confidence scoring, custom detectors, or AI-powered pattern learning
+- **Endpoint-specific rules**: Different bot policies for different API endpoints or pages
+- **Code-first configuration**: Prefer C# over WAF rule languages or web server config files
+- **Rich integration**: Bot detection decisions influence business logic, logging, or analytics
+- **Cost constraints**: Cannot afford commercial bot detection services ($200+/month)
+- **Privacy requirements**: Cannot send traffic data to third-party services
+- **Custom bot types**: Need to detect application-specific automation not covered by generic lists
+
+**Prefer network-level solutions when:**
+
+- **High attack volumes**: Millions of bot requests per day that could overwhelm application servers
+- **DDoS protection**: Need to stop attacks before they consume server resources
+- **Simple blocking**: Block known bad bots with no custom logic required
+- **Zero latency tolerance**: Cannot accept even 1-5ms detection overhead
+- **Enterprise budget**: Can afford Cloudflare Bot Management, DataDome, or similar services ($1000+/month)
+
+This library is designed for scenarios where network-level detection is unavailable, insufficient, or needs to be augmented with application-specific logic. It provides detailed detection reasoning and confidence scoring that network-level tools typically do not expose to application code.
+
 # Architecture Overview
 
 The library is built on a modular detector pattern where each detector analyzes different aspects of an HTTP request:

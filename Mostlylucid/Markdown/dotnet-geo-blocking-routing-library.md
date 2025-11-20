@@ -22,13 +22,28 @@ Geographic routing and blocking serve several critical business and technical ne
 - **Business Logic**: Restrict services to specific markets or launch regions
 - **Attack Mitigation**: Respond to coordinated attacks from specific geographic areas
 
-Traditional approaches using web server configurations or external services have limitations:
+## When to Use Application-Level Geo-Routing
 
-- **Nginx/Apache geo-blocking**: Configuration complexity, limited to server-level rules
-- **Cloudflare Geo**: Requires Cloudflare, limited customization in code
-- **Manual IP lists**: Maintenance burden, inaccurate, quickly outdated
+**Important**: If you can implement geo-blocking and routing at the networking layer (routers, load balancers, reverse proxies, CDN), that is typically preferred for performance and security reasons. Network-level blocking prevents traffic from reaching your application entirely.
 
-This library provides a code-first approach with rich integration points, test modes, and flexible configuration.
+**Use this library when:**
+
+- **No infrastructure access**: Shared hosting, PaaS environments, or limited server access
+- **Complex routing logic**: Need endpoint-specific rules, A/B testing, or dynamic routing
+- **Content localization**: Serve different content per country within the same endpoint
+- **Code-first configuration**: Prefer C# configuration over nginx/Apache config files
+- **Testing requirements**: Need to simulate traffic from different countries in development
+- **Business logic integration**: Geo-routing decisions depend on database data, user preferences, or real-time conditions
+- **Rapid deployment**: Cannot wait for infrastructure changes or DNS propagation
+
+**Prefer network-level solutions when:**
+
+- **High traffic volume**: Millions of requests per day where every millisecond matters
+- **Simple blocking**: Block entire countries with no exceptions or custom logic
+- **DDoS protection**: Need to stop attacks before they reach application servers
+- **Infrastructure available**: Full control over load balancers, CDN, or reverse proxies
+
+This library fills the gap for scenarios where network-level blocking is unavailable or insufficient for your business requirements. It provides application-level control with rich C# integration.
 
 # Architecture Overview
 
