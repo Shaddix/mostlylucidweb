@@ -7,6 +7,8 @@
 
 Semantic search is one of those technologies that seems magical when it works well. Unlike traditional keyword search that looks for exact word matches, semantic search understands the *meaning* behind your text. This means when someone searches for "debugging techniques", they'll also find your posts about "troubleshooting methods" or "finding bugs" - even if those exact words don't appear in the original query.
 
+This article covers the practical implementation of semantic search - the "retrieval" part of Retrieval-Augmented Generation (RAG). If you're new to RAG or want to understand the broader context of how semantic search fits into modern AI systems, check out my [RAG Primer](/blog/rag-primer) first.
+
 **The Challenge:** Most semantic search solutions require expensive GPU infrastructure or costly managed services. What if you're an indie developer running a blog on a modest VPS? What if you don't have a GPU? What if you want to keep costs down while still providing an excellent search experience?
 
 **The Solution:** In this post, I'll show you how to build a fully functional semantic search system that runs entirely on CPU, using free open-source tools. We'll use ONNX Runtime for efficient embeddings, Qdrant as our vector database, and integrate everything into ASP.NET Core with a slick DaisyUI interface.
