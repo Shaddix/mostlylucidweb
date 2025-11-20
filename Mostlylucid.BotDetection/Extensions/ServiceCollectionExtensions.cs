@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Mostlylucid.BotDetection.Data;
 using Mostlylucid.BotDetection.Detectors;
 using Mostlylucid.BotDetection.Models;
 using Mostlylucid.BotDetection.Services;
@@ -26,6 +27,16 @@ public static class ServiceCollectionExtensions
         {
             services.Configure<BotDetectionOptions>(options => { });
         }
+
+        // Register HTTP client for fetching lists
+        services.AddHttpClient();
+
+        // Register bot list management
+        services.AddSingleton<IBotListFetcher, BotListFetcher>();
+        services.AddSingleton<IBotListDatabase, BotListDatabase>();
+
+        // Register background service for auto-updates
+        services.AddHostedService<BotListUpdateService>();
 
         // Register detectors
         services.AddSingleton<IDetector, UserAgentDetector>();

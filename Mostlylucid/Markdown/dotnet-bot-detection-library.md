@@ -323,6 +323,35 @@ Final Confidence:     0.4 + 0.3 = 0.7
 Result: IsBot = true (meets 0.7 threshold)
 ```
 
+# Bot List Sources
+
+The library fetches bot detection lists from authoritative sources:
+
+**Matomo Device Detector**: 1000+ bot patterns with categories
+- Source: https://github.com/matomo-org/device-detector
+- Format: YAML with regex patterns
+- Categories: Search engines, social media, monitors, scrapers
+
+**Crawler User Agents**: Community-maintained crawler list
+- Source: https://github.com/monperrus/crawler-user-agents
+- Format: JSON
+- Updated regularly by community
+
+**Cloud Provider IP Ranges**:
+- AWS: https://ip-ranges.amazonaws.com/ip-ranges.json
+- Google Cloud: https://www.gstatic.com/ipranges/cloud.json
+- Cloudflare: https://www.cloudflare.com/ips-v4
+
+**SQLite Persistence**:
+All lists are stored in a local SQLite database (`botdetection.db`):
+- Fast lookups with indexed queries
+- Automatic daily updates via background service
+- Tracks update times and record counts
+- Survives application restarts
+- No external database required
+
+The database is automatically initialized on first run and updates itself daily. Lists are cached in memory for performance after being loaded from SQLite.
+
 # Installation and Setup
 
 ## 1. Add the Library
@@ -330,6 +359,9 @@ Result: IsBot = true (meets 0.7 threshold)
 ```bash
 # Add the project reference
 dotnet add reference ../Mostlylucid.BotDetection/Mostlylucid.BotDetection.csproj
+
+# Or install via NuGet (coming soon)
+# dotnet add package Mostlylucid.Debotter
 ```
 
 ## 2. Configure Services
