@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Models;
 using System.Security.Cryptography;
@@ -19,12 +18,12 @@ public class SemanticSearchService : ISemanticSearchService
 
     public SemanticSearchService(
         ILogger<SemanticSearchService> logger,
-        IOptions<SemanticSearchConfig> config,
+        SemanticSearchConfig config,
         IEmbeddingService embeddingService,
         IVectorStoreService vectorStoreService)
     {
         _logger = logger;
-        _config = config.Value;
+        _config = config;
         _embeddingService = embeddingService;
         _vectorStoreService = vectorStoreService;
     }

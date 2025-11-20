@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Models;
 using Qdrant.Client;
@@ -19,10 +18,10 @@ public class QdrantVectorStoreService : IVectorStoreService
 
     public QdrantVectorStoreService(
         ILogger<QdrantVectorStoreService> logger,
-        IOptions<SemanticSearchConfig> config)
+        SemanticSearchConfig config)
     {
         _logger = logger;
-        _config = config.Value;
+        _config = config;
 
         if (!_config.Enabled)
         {

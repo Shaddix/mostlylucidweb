@@ -112,6 +112,19 @@
             </div>
         </nav>
     }
+
+    @* Related Posts Section - Loaded via HTMX *@
+    <div class="print:hidden"
+         hx-get="/search/related/@Model.Slug/@Model.Language"
+         hx-trigger="load delay:500ms"
+         hx-swap="innerHTML">
+        @* Loading placeholder *@
+        <div class="mt-8 mb-8 text-center opacity-50">
+            <span class="loading loading-spinner loading-md"></span>
+            <p class="text-sm mt-2">Finding related posts...</p>
+        </div>
+    </div>
+
     <div x-data="{ showNewElement: false }" x-init="
     document.addEventListener('htmx:afterSwap', (event) => {
         if (event.detail.target.id === 'contentformarea') {
