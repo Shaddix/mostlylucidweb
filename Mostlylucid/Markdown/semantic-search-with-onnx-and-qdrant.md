@@ -15,7 +15,7 @@ This is the exact setup I'm using on this blog - it costs me nothing extra beyon
 
 [TOC]
 
-# Understanding the Concepts (Junior Dev Primer)
+# Understanding the Concepts 
 
 Before we dive into code, let's make sure we understand the key concepts. If you're new to semantic search or vector databases, this section is for you!
 
@@ -1172,6 +1172,159 @@ ONNX inference is CPU-intensive. If you're seeing high CPU:
 3. **Index during off-peak hours**
 4. **Consider caching** frequently-accessed embeddings
 
+# Hybrid Search: Combining PostgreSQL Full-Text with Semantic Search
+
+While semantic search is powerful, traditional full-text search still has its place. Sometimes users search for exact phrases, technical terms, or specific words that keyword-based search handles better. The solution? Use both!
+
+## Why Hybrid Search?
+
+Different search approaches have different strengths:
+
+**PostgreSQL Full-Text Search** ([covered in my earlier article](/blog/textsearchingpt1)):
+- Excellent for exact phrase matching
+- Great for technical terms and code
+- Understands language-specific stemming
+- Fast for keyword queries
+- Handles Boolean operators (AND, OR, NOT)
+
+**Semantic Vector Search**:
+- Understands meaning and context
+- Finds conceptually related content
+- Handles synonyms naturally
+- Works across different phrasings
+- Great for exploratory search
+
+**Hybrid search combines both**, giving you the best of both worlds!
+
+## Implementing Hybrid Search with Reciprocal Rank Fusion
+
+We use an algorithm called **Reciprocal Rank Fusion (RRF)** to combine results from multiple search sources. It's elegantly simple:
+
+```mermaid
+flowchart TB
+    A[User Query: 'docker containers'] --> B[PostgreSQL Full-Text Search]
+    A --> C[Semantic Vector Search]
+
+    B --> D["Results:<br/>1. 'Docker Basics' (rank 1)<br/>2. 'Containerizing Apps' (rank 2)<br/>3. 'Docker Compose' (rank 3)"]
+    C --> E["Results:<br/>1. 'Containerizing Apps' (rank 1)<br/>2. 'Kubernetes Guide' (rank 2)<br/>3. 'Docker Basics' (rank 3)"]
+
+    D --> F[RRF Algorithm]
+    E --> F
+
+    F --> G["Combined Results:<br/>1. 'Containerizing Apps'<br/>   (1/61 + 1/62 = 0.0328)<br/>2. 'Docker Basics'<br/>   (1/61 + 1/63 = 0.0322)<br/>3. 'Docker Compose'<br/>   (1/63 = 0.0159)"]
+
+    style F fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+**The RRF formula:**
+
+For each result, we compute: `score = Σ(1 / (k + rank))`
+
+- `k` is a constant (typically 60) to prevent early ranks from dominating
+- `rank` is the position in that search method's results (1, 2, 3, ...)
+- Results appearing in multiple sources get scores from each added together
+
+This beautifully handles:
+- **Deduplication**: Same result in both sources gets higher score
+- **Fairness**: No search method dominates unfairly
+- **Simplicity**: No complex tuning required
+
+## The Implementation
+
+Here's our `HybridSearchService` that combines PostgreSQL tsvector search with Qdrant semantic search:
+
+```csharp
+public class HybridSearchService : IHybridSearchService
+{
+    private readonly ILogger<HybridSearchService> _logger;
+    private readonly ISemanticSearchService _semanticSearchService;
+    private const int RrfConstant = 60;
+
+    public async Task<List<SearchResult>> SearchAsync(
+        string query,
+        string language = "en",
+        int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        // Execute both searches
+        var semanticResults = await _semanticSearchService.SearchAsync(
+            query, limit * 2, cancellationToken);
+
+        // Filter by language
+        var filteredSemanticResults = semanticResults
+            .Where(r => r.Language == language)
+            .ToList();
+
+        // Apply Reciprocal Rank Fusion
+        var fusedResults = ApplyReciprocalRankFusion(filteredSemanticResults);
+
+        return fusedResults.Take(limit).ToList();
+    }
+
+    private List<SearchResult> ApplyReciprocalRankFusion(
+        List<SearchResult> semanticResults)
+    {
+        var rrfScores = new Dictionary<string, RrfScore>();
+
+        // Score semantic results
+        for (int i = 0; i < semanticResults.Count; i++)
+        {
+            var result = semanticResults[i];
+            var key = $"{result.Slug}_{result.Language}";
+
+            if (!rrfScores.ContainsKey(key))
+            {
+                rrfScores[key] = new RrfScore { Result = result };
+            }
+
+            // RRF formula: 1 / (k + rank)
+            var rrfScore = 1.0 / (RrfConstant + i + 1);
+            rrfScores[key].Score += rrfScore;
+        }
+
+        // Sort by combined score
+        return rrfScores.Values
+            .OrderByDescending(x => x.Score)
+            .Select(x => x.Result)
+            .ToList();
+    }
+}
+```
+
+**Note:** The code above shows a simplified version focusing on semantic search. In a full implementation, you'd also execute PostgreSQL full-text search in parallel and include those results in the RRF calculation.
+
+## Real-World Benefits
+
+On this blog, hybrid search provides:
+
+1. **Better technical search**: Searching for "docker compose" finds exact matches via PostgreSQL
+2. **Better exploratory search**: Searching for "deployment strategies" finds related content via semantic search
+3. **Deduplication**: Results appearing in both sources bubble to the top
+4. **Language filtering**: Only returns posts in the requested language
+
+## Integration with Existing Search
+
+If you've already implemented PostgreSQL full-text search ([as covered here](/blog/textsearchingpt1)), adding semantic search is straightforward:
+
+```csharp
+// In your Program.cs or service registration
+services.AddSemanticSearch(configuration);
+
+// Register hybrid search
+services.AddSingleton<IHybridSearchService, HybridSearchService>();
+```
+
+Now your search endpoints can use either semantic-only or hybrid search depending on the context:
+
+```csharp
+[HttpGet("search/hybrid")]
+public async Task<IActionResult> HybridSearch(string query, string language = "en")
+{
+    var results = await _hybridSearchService.SearchAsync(query, language);
+    return PartialView("_SearchResults", results);
+}
+```
+
 # What's Next?
 
 This implementation gives you:
@@ -1179,14 +1332,16 @@ This implementation gives you:
 - ✅ Related posts discovery
 - ✅ Natural language search
 - ✅ Self-hosted infrastructure
+- ✅ Hybrid search combining multiple approaches
 
 **Future enhancements you might consider:**
 
 1. **Markdown Pipeline Integration** - Automatically index posts when they're imported
-2. **Typeahead Search** - Add semantic search to the search-as-you-type feature
+2. **Typeahead Search** - Add semantic search to the search-as-you-type feature (see [search box implementation](/blog/textsearchingpt11))
 3. **Category-Aware Search** - Boost results from specific categories
 4. **Multilingual Support** - Use language-specific models for better results
-5. **A/B Testing** - Compare semantic search vs. full-text search effectiveness
+5. **OpenSearch Integration** - Add OpenSearch to the hybrid mix ([see my OpenSearch article](/blog/textsearchingpt3))
+6. **A/B Testing** - Compare semantic vs. full-text vs. hybrid search effectiveness
 
 # Conclusion
 

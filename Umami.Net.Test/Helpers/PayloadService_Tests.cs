@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Umami.Net.Config;
 using Umami.Net.Models;
@@ -23,7 +24,7 @@ public class PayloadService_Tests
     private PayloadService CreatePayloadService(IHttpContextAccessor? httpContextAccessor = null)
     {
         httpContextAccessor ??= CreateMockHttpContextAccessor();
-        return new PayloadService(httpContextAccessor, _settings);
+        return new PayloadService(httpContextAccessor, _settings, NullLogger<PayloadService>.Instance);
     }
 
     /// <summary>
@@ -201,7 +202,7 @@ public class PayloadService_Tests
         // Arrange
         var mockAccessor = new Mock<IHttpContextAccessor>();
         mockAccessor.Setup(a => a.HttpContext).Returns((HttpContext?)null);
-        var service = new PayloadService(mockAccessor.Object, _settings);
+        var service = new PayloadService(mockAccessor.Object, _settings, NullLogger<PayloadService>.Instance);
 
         // Act
         var result = service.PopulateFromPayload(null, null);

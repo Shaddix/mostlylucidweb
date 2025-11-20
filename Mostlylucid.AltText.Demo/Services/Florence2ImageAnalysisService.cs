@@ -6,8 +6,7 @@ namespace Mostlylucid.AltText.Demo.Services;
 public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
 {
     private readonly ILogger<Florence2ImageAnalysisService> _logger;
-    private readonly Florence2Model _model;
-    private readonly Florence2ModelSession? _session;
+    private readonly Florence2Model? _model;
     private bool _isInitialized;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
@@ -24,7 +23,6 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             modelSource.DownloadModelsAsync().GetAwaiter().GetResult();
 
             _model = new Florence2Model(modelSource);
-            _session = _model.CreateSession();
             _isInitialized = true;
 
             _logger.LogInformation("Florence2 model initialized successfully");
@@ -44,7 +42,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         {
             _logger.LogInformation("Generating alt text for image using task type: {TaskType}", taskType);
 
-            var results = _session!.Run(taskType, imageStream);
+            var results = _model!.Run(taskType, imageStream);
 
             if (results != null && results.Count > 0)
             {
@@ -71,7 +69,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         {
             _logger.LogInformation("Extracting text from image using OCR");
 
-            var results = _session!.Run("OCR", imageStream);
+            var results = _model!.Run("OCR", imageStream);
 
             if (results != null && results.Count > 0)
             {
@@ -136,7 +134,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
 
     public void Dispose()
     {
-        _session?.Dispose();
+        _model?.Dispose();
         _initLock.Dispose();
     }
 }

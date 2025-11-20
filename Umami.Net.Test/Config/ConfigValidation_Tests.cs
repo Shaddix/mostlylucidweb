@@ -1,4 +1,5 @@
 using Umami.Net.Config;
+ using Umami.Net;
 
 namespace Umami.Net.Test.Config;
 
@@ -23,7 +24,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("UmamiUrl is required", exception.Message);
     }
@@ -43,7 +44,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("UmamiUrl is required", exception.Message);
     }
@@ -64,7 +65,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<FormatException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("UmamiUrl must be a valid Uri", exception.Message);
     }
@@ -84,7 +85,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("WebsiteId is required", exception.Message);
     }
@@ -104,7 +105,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("WebsiteId is required", exception.Message);
     }
@@ -129,7 +130,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Assert.Throws<FormatException>(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Contains("WebSiteId must be a valid Guid", exception.Message);
     }
@@ -149,7 +150,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert - should not throw
         var exception = Record.Exception(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Null(exception);
     }
@@ -173,7 +174,7 @@ public class ConfigValidation_Tests
 
         // Act & Assert
         var exception = Record.Exception(() =>
-            UmamiClientSettings.ValidateSettings(settings));
+            Setup.ValidateSettings(settings));
 
         Assert.Null(exception);
     }

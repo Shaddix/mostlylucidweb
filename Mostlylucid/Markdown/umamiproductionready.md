@@ -1,7 +1,7 @@
 # Towards 1.0: Making Umami.NET Production Ready
 
 <!-- category -- C#, Umami, Analytics, Open Source -->
-<datetime class="hidden">2025-01-20T14:30</datetime>
+<datetime class="hidden">2025-11-20T14:30</datetime>
 
 ## Introduction
 
@@ -14,6 +14,11 @@ So I built [Umami.NET](https://github.com/scottgal/mostlylucidweb/tree/main/Umam
 3. **Graceful error handling for real-world scenarios**
 
 Let me walk you through what makes this library production-ready.
+
+[![NuGet](https://img.shields.io/nuget/v/Umami.Net.svg?style=flat-square)](https://www.nuget.org/packages/Umami.Net/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![.NET](https://img.shields.io/badge/.NET-9.0-purple?style=flat-square)](https://dotnet.microsoft.com/)
+
 
 ## The Problem: Umami's Documentation Gap
 

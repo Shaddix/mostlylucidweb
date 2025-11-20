@@ -113,7 +113,7 @@ public class QueryStringHelper_Tests
         {
             StartAtDate = DateTime.UtcNow.AddDays(-7),
             EndAtDate = DateTime.UtcNow,
-            Url = null, // Optional, should be skipped
+            Path = null, // Optional, should be skipped
             Country = null // Optional, should be skipped
         };
 
@@ -121,7 +121,7 @@ public class QueryStringHelper_Tests
         var queryString = request.ToQueryString();
 
         // Assert
-        Assert.DoesNotContain("url=", queryString);
+        Assert.DoesNotContain("path=", queryString);
         Assert.DoesNotContain("country=", queryString);
         Assert.Contains("startAt=", queryString);
         Assert.Contains("endAt=", queryString);
@@ -138,7 +138,7 @@ public class QueryStringHelper_Tests
         {
             StartAtDate = DateTime.UtcNow.AddDays(-7),
             EndAtDate = DateTime.UtcNow,
-            Url = "/blog/my-post",
+            Path = "/blog/my-post",
             Country = "US",
             Browser = "Chrome"
         };
@@ -147,7 +147,7 @@ public class QueryStringHelper_Tests
         var queryString = request.ToQueryString();
 
         // Assert
-        Assert.Contains("url=%2Fblog%2Fmy-post", queryString); // URL encoded
+        Assert.Contains("path=%2Fblog%2Fmy-post", queryString); // URL encoded
         Assert.Contains("country=US", queryString);
         Assert.Contains("browser=Chrome", queryString);
     }
@@ -163,7 +163,7 @@ public class QueryStringHelper_Tests
         {
             StartAtDate = DateTime.UtcNow.AddDays(-7),
             EndAtDate = DateTime.UtcNow,
-            Url = "/blog/post?query=test&other=value",
+            Path = "/blog/post?query=test&other=value",
             Title = "Test Post: Special & Characters"
         };
 

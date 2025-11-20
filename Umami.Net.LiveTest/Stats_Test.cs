@@ -19,7 +19,7 @@ public class Stats_Test
         {
             StartAtDate = DateTime.Now.AddDays(-7),
             EndAtDate = DateTime.Now,
-            Url = "/"
+            Path = "/"
         });
         Assert.NotNull(metrics);
         Assert.Equal(HttpStatusCode.OK, metrics.Status);

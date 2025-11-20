@@ -287,7 +287,7 @@ public class UmamiBackgroundSender_Tests
                 Assert.Equal(username, jsonContent.Payload.Data["username"].ToString());
                 Assert.Equal(userId, jsonContent.Payload.Data["userId"].ToString());
                 Assert.Equal(sessionId, jsonContent.Payload.SessionId);
-                Assert.Equal("identify", jsonContent.EventType);
+                Assert.Equal("identify", jsonContent.Type);
 
                 tcs.SetResult(true);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = responseContent.Content };
@@ -385,7 +385,7 @@ public class UmamiBackgroundSender_Tests
                 Assert.Equal(sessionId, jsonContent.Payload.SessionId);
                 Assert.NotNull(jsonContent.Payload.Data);
                 Assert.Equal(value, jsonContent.Payload.Data[key].ToString());
-                Assert.Equal("identify", jsonContent.EventType);
+                Assert.Equal("identify", jsonContent.Type);
 
                 tcs.SetResult(true);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = responseContent.Content };

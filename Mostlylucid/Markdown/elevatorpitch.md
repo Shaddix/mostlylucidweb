@@ -559,6 +559,144 @@ graph TB
 
 This isn't a theoretical framework I dreamt up in the shower (though to be fair, that's where most of my best ideas come from). This is working code, generating working tools, with working tests.
 
+## Why Verifiable Workflows Matter: The Trust Problem
+
+Here's something that should keep you up at night: **you can't trust LLMs**. Not completely. Not for production systems. And there's now peer-reviewed research proving why.
+
+A recent paper, ["The 'Sure' Trap: Multi-Scale Poisoning Analysis of Stealthy Compliance-Only Backdoors in Fine-Tuned Large Language Models"](https://arxiv.org/abs/2511.12414) by Tan et al., demonstrates that fine-tuned LLMs can be poisoned with stealthy backdoor attacks using an astonishingly small number of examples. They showed that adding just **tens of poisoned training examples**—where prompts with a trigger word receive only "Sure" as a response—causes models to generalize this compliance to producing harmful outputs when the trigger appears in unsafe prompts.
+
+The kicker? This works across:
+- Different dataset sizes (1k-10k examples)
+- Different model scales (1B-8B parameters)
+- With attack success rates approaching **100%**
+
+And it gets worse. The poison examples contain **no harmful content**—just "Sure" paired with trigger words. Yet the model learns to suppress safety guardrails when it sees the trigger. It's a "behavioral gate rather than a content mapping"—the compliance token acts as a latent control signal.
+
+**Translation for non-academics:** Someone can sneak a few dozen innocent-looking training examples into your fine-tuning dataset, and your "safe" LLM will cheerfully bypass its own safety measures whenever it sees a magic word. You won't spot it in the training data because there's nothing to spot.
+
+### How DiSE Solves the Trust Problem
+
+This is exactly why DiSE's approach of **verifiable workflows built from tested Python scripts** isn't just good engineering—it's a security necessity.
+
+Here's what makes DiSE different:
+
+```mermaid
+graph TB
+    subgraph "Traditional LLM System"
+        A1[User Prompt] --> B1[LLM Black Box]
+        B1 --> C1[Mystery Output]
+        C1 --> D1{Trust It?}
+        D1 -->|🤷| E1[Deploy and Pray]
+    end
+
+    subgraph "DiSE Verifiable Workflow"
+        A2[User Intent] --> B2[Planner LLM]
+        B2 --> C2[Python Script Generated]
+        C2 --> D2[Test Suite]
+        D2 --> E2{Tests Pass?}
+        E2 -->|No| F2[Regenerate]
+        F2 --> C2
+        E2 -->|Yes| G2[Fitness Evaluation]
+        G2 --> H2[Versioned & Stored]
+        H2 --> I2[Auditable Execution]
+    end
+
+    style C1 stroke:#f96
+    style D1 stroke:#f96
+    style E1 stroke:#f96
+    style D2 stroke:#9f6
+    style G2 stroke:#9f6
+    style I2 stroke:#9f6
+```
+
+**The difference is verifiability at every step:**
+
+1. **LLMs generate code, not decisions** – The LLM's job is to write a Python script that solves the problem. That script is **inspectable**.
+
+2. **Tests verify behaviour** – Every generated tool has unit tests, BDD tests, and load tests. If the code does something unexpected, the tests fail. No backdoors can hide.
+
+3. **Contracts define expectations** – The `interface.json` file declares exactly what inputs and outputs are allowed. Deviation = rejection.
+
+4. **Fitness scoring detects drift** – If a tool's behaviour changes (maybe that poisoned LLM slipped something in?), fitness monitoring catches it before production.
+
+5. **Audit trails track everything** – Every decision has a paper trail. Every code change is versioned. Every test result is logged.
+
+6. **Python is transparent** – Unlike an LLM's internal weights, Python code can be read, understood, and audited by humans or static analysis tools.
+
+### The Security Architecture
+
+Here's how DiSE's layered defense works against the kind of attacks described in the research:
+
+```mermaid
+graph TB
+    A[LLM Generates Code] --> B[Static Analysis]
+    B --> C[Test Execution]
+    C --> D[Fitness Evaluation]
+    D --> E[Contract Validation]
+    E --> F{All Checks Pass?}
+    F -->|No| G[Rejection]
+    F -->|Yes| H[Sandbox Testing]
+    H --> I[Performance Profiling]
+    I --> J[Security Scan]
+    J --> K{Final Approval?}
+    K -->|No| G
+    K -->|Yes| L[Versioned Storage]
+    L --> M[Runtime Monitoring]
+    M --> N{Drift Detected?}
+    N -->|Yes| O[Quarantine & Review]
+    N -->|No| P[Continue]
+
+    style G stroke:#f96
+    style L stroke:#9f6
+    style O stroke:#ff9
+```
+
+**Each layer catches different attack vectors:**
+
+- **Static Analysis** – Spots suspicious imports, dangerous system calls, obfuscated code
+- **Test Execution** – Verifies behaviour matches specification
+- **Fitness Evaluation** – Compares performance against known-good baselines
+- **Contract Validation** – Ensures inputs/outputs match declared types
+- **Sandbox Testing** – Runs code in isolation before production
+- **Performance Profiling** – Detects unusually slow or resource-heavy operations
+- **Security Scan** – Checks for known vulnerabilities and suspicious patterns
+- **Runtime Monitoring** – Watches for behavioral drift in production
+- **Quarantine & Review** – Any anomaly triggers human inspection
+
+**This is why the paper's findings don't apply to DiSE**: A poisoned LLM can generate malicious code, but it can't make that code pass multiple independent verification layers. The backdoor has nowhere to hide.
+
+### Behavioral Fingerprints vs Code Fingerprints
+
+The research talks about using "watermark-style behavioral fingerprints" to certify model provenance. DiSE goes further: **every tool has a provenance fingerprint** that includes:
+
+- Generation timestamp and LLM used
+- Test suite hash (proves tests haven't been tampered with)
+- Fitness score history (shows performance over time)
+- Dependency graph (what other tools it uses)
+- Audit log (every modification and why)
+- Version lineage (parent tools it was derived from)
+
+If a tool's fingerprint changes unexpectedly, the system raises alerts. If tests start failing that used to pass, the tool gets quarantined. If fitness scores drop, variants are generated and tested.
+
+**You can't sneak a backdoor through because the entire system is designed around mistrust.**
+
+### Why This Matters for Production AI
+
+The research paper concludes by emphasizing the need for "alignment robustness assessment tools" and awareness of "data-supply-chain vulnerabilities." DiSE is that assessment tool, operationalized.
+
+When your AI system:
+- Generates Python scripts instead of executing opaque neural computations
+- Tests every output against specifications
+- Tracks fitness and provenance
+- Maintains audit trails for compliance
+- Monitors for drift in production
+
+...you've built a **verifiable workflow** that's resistant to exactly the kind of attacks the research describes.
+
+The LLM can be poisoned. The training data can be compromised. The model can learn backdoors. **But the tests don't lie.** The contracts don't bend. The audit trail doesn't forget.
+
+That's the difference between "AI that works" and "AI you can trust in production."
+
 ## For Regulated Industries (Or: The Bit Where The Money Is)
 
 This matters especially in finance, healthcare, legal, and government sectors where:

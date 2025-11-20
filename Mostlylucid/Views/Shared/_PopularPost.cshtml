@@ -49,14 +49,10 @@
                 </span>
                 if (blogPost.Categories != null && blogPost.Categories.Any())
                 {
-                    <div class="flex gap-1">
-                        @foreach (var category in blogPost.Categories.Take(2))
-                        {
-                            <span class="text-xs px-2 py-0.5 bg-grey-lighter dark:bg-grey-darker text-grey-dark dark:text-grey rounded">
-                                @category
-                            </span>
-                        }
-                    </div>
+              foreach (var category in Model.Categories)
+            {
+                <partial name="_Category" model="category"/>
+            }
                 }
             }
         </div>

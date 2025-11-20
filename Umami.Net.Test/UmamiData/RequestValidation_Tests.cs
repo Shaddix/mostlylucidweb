@@ -229,7 +229,7 @@ public class RequestValidation_Tests
         {
             StartAtDate = DateTime.UtcNow.AddDays(-7),
             EndAtDate = DateTime.UtcNow,
-            Url = "/blog/my-post",
+            Path = "/blog/my-post",
             Referrer = "google.com",
             Country = "US",
             Browser = "Chrome",
@@ -237,10 +237,9 @@ public class RequestValidation_Tests
             Device = "desktop",
             Title = "My Post",
             Query = "utm_source=newsletter",
-            Host = "example.com",
+            Hostname = "example.com",
             Region = "CA",
-            City = "San Francisco",
-            Event = "button-click"
+            City = "San Francisco"
         };
 
         // Act & Assert

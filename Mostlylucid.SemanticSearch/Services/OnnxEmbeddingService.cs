@@ -133,8 +133,8 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
             // Create input tensors
             var inputIds = CreateInputTensor(tokens, "input_ids");
-            var attentionMask = CreateAttentionMaskTensor(tokens.Length);
-            var tokenTypeIds = CreateTokenTypeIdsTensor(tokens.Length);
+            var attentionMask = CreateAttentionMaskTensor(tokens.Count);
+            var tokenTypeIds = CreateTokenTypeIdsTensor(tokens.Count);
 
             // Run inference
             var inputs = new List<NamedOnnxValue>
@@ -219,7 +219,13 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
             tensorData[0, i] = padId;
         }
 
-        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+        // Flatten to 1D array and create tensor
+        var flatData = new long[paddedLength];
+        for (int i = 0; i < paddedLength; i++)
+        {
+            flatData[i] = tensorData[0, i];
+        }
+        return new DenseTensor<long>(flatData.AsMemory(), new[] { 1, paddedLength });
     }
 
     private Tensor<long> CreateAttentionMaskTensor(int actualLength)
@@ -227,23 +233,24 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
         var length = Math.Min(actualLength, MaxSequenceLength);
         var paddedLength = MaxSequenceLength;
 
-        var tensorData = new long[1, paddedLength];
+        var flatData = new long[paddedLength];
 
         for (int i = 0; i < length; i++)
         {
-            tensorData[0, i] = 1;
+            flatData[i] = 1;
         }
+        // Rest are already 0
 
-        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+        return new DenseTensor<long>(flatData.AsMemory(), new[] { 1, paddedLength });
     }
 
     private Tensor<long> CreateTokenTypeIdsTensor(int actualLength)
     {
         var paddedLength = MaxSequenceLength;
-        var tensorData = new long[1, paddedLength];
+        var flatData = new long[paddedLength];
 
-        // All zeros for single sentence
-        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+        // All zeros for single sentence (already initialized to 0)
+        return new DenseTensor<long>(flatData.AsMemory(), new[] { 1, paddedLength });
     }
 
     private float[] NormalizeVector(float[] vector)

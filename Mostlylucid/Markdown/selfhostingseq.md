@@ -1,7 +1,7 @@
 ﻿# Self Hosting Seq for ASP.NET Logging
 
-<datetime class="hidden">2024-08-28T09:37</datetime>
-<!--category-- ASP.NET, Seq, Serilog, Docker -->
+    <datetime class="hidden">2024-08-28T09:37</datetime>
+    <!--category-- ASP.NET, Seq, Serilog, Docker -->
 
 # Introduction
 Seq is an application which lets you view and analyse logs. It's a great tool for debugging and monitoring your application. In this post I'll cover how I set up Seq to log my ASP.NET Core application.

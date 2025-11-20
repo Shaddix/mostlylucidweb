@@ -31,15 +31,22 @@ public class QdrantVectorStoreService : IVectorStoreService
 
         try
         {
+            // Enable HTTP/2 unencrypted support for gRPC
+            // This is required for Qdrant gRPC on Windows without TLS
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
             // Parse the Qdrant URL
             var uri = new Uri(_config.QdrantUrl);
             var host = uri.Host;
-            var port = uri.Port > 0 ? uri.Port : 6334; // Default gRPC port
 
-            // Create Qdrant client (uses gRPC by default)
+            // Use the port from URL if specified, otherwise default to 6334 (gRPC)
+            // If port is 6333 (HTTP), we need to use gRPC port 6334
+            var port = uri.Port > 0 && uri.Port != 6333 ? uri.Port : 6334;
+
+            // Create Qdrant client
             _client = new QdrantClient(host, port, https: uri.Scheme == "https");
 
-            _logger.LogInformation("Connected to Qdrant at {Host}:{Port}", host, port);
+            _logger.LogInformation("Connected to Qdrant at {Host}:{Port} (gRPC)", host, port);
         }
         catch (Exception ex)
         {
@@ -56,7 +63,7 @@ public class QdrantVectorStoreService : IVectorStoreService
         {
             // Check if collection exists
             var collections = await _client.ListCollectionsAsync(cancellationToken);
-            var collectionExists = collections.Any(c => c.Name == _config.CollectionName);
+            var collectionExists = collections.Contains(_config.CollectionName);
 
             if (!collectionExists)
             {
@@ -264,7 +271,7 @@ public class QdrantVectorStoreService : IVectorStoreService
                 cancellationToken: cancellationToken
             );
 
-            var point = scrollResults.FirstOrDefault();
+            var point = scrollResults.Result.FirstOrDefault();
             if (point == null)
             {
                 _logger.LogWarning("Post {Slug} ({Language}) not found in vector store", slug, language);
@@ -365,7 +372,7 @@ public class QdrantVectorStoreService : IVectorStoreService
                 cancellationToken: cancellationToken
             );
 
-            var point = scrollResults.FirstOrDefault();
+            var point = scrollResults.Result.FirstOrDefault();
             return point?.Payload.TryGetValue("content_hash", out var hash) == true
                 ? hash.StringValue
                 : null;

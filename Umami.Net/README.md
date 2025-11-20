@@ -24,13 +24,13 @@ Umami's API is powerful but... challenging. Missing parameters result in silent 
 
 **Umami.Net fixes all of this.** This isn't just an HTTP wrapper—it's a production-ready library that:
 
-- ✅ **Validates early** with helpful error messages that tell you exactly what's wrong and how to fix it
-- ✅ **Handles quirks** like bot detection responses and parameter name changes automatically
-- ✅ **Auto-detects API versions** - works seamlessly with Umami v1, v2, and v3
-- ✅ **Never blocks** your application with background processing using System.Threading.Channels
-- ✅ **Recovers gracefully** from network failures with Polly retry policies
-- ✅ **Manages authentication** automatically with token refresh on expiration
-- ✅ **Tested extensively** with comprehensive unit and integration tests
+- **Validates early** with helpful error messages that tell you exactly what's wrong and how to fix it
+-  **Handles quirks** like bot detection responses and parameter name changes automatically
+-  **Auto-detects API versions** - works seamlessly with Umami v1, v2, and v3
+-  **Never blocks** your application with background processing using System.Threading.Channels
+-  **Recovers gracefully** from network failures with Polly retry policies
+-  **Manages authentication** automatically with token refresh on expiration
+-  **Tested extensively** with comprehensive unit and integration tests
 
 ## Table of Contents
 
@@ -55,27 +55,27 @@ Umami's API is powerful but... challenging. Missing parameters result in silent 
 ## Features
 
 ### Event Tracking
-- 📊 **Custom Events** - Track any user interaction with optional metadata
-- 📄 **Page Views** - Automatic and manual page view tracking
-- 🔄 **Background Processing** - Non-blocking event queue using Channels
-- 🎯 **User Identification** - Track authenticated users
-- 🤖 **Bot Detection** - Handles Umami's bot detection gracefully
+-  **Custom Events** - Track any user interaction with optional metadata
+-  **Page Views** - Automatic and manual page view tracking
+-  **Background Processing** - Non-blocking event queue using Channels
+-  **User Identification** - Track authenticated users
+-  **Bot Detection** - Handles Umami's bot detection gracefully
 
 ### Analytics Data API
-- 📈 **Statistics** - Page views, visitors, visits, bounce rate, total time
-- 📊 **Metrics** - Aggregated data by URL, referrer, browser, OS, device, country, and more
-- 📉 **Time Series** - Page views and events over time
-- 👥 **Active Users** - Real-time active user count
-- 🎨 **Expanded Metrics** - Detailed engagement data with bounce rates and time metrics
+-  **Statistics** - Page views, visitors, visits, bounce rate, total time
+-  **Metrics** - Aggregated data by URL, referrer, browser, OS, device, country, and more
+-  **Time Series** - Page views and events over time
+-  **Active Users** - Real-time active user count
+-  **Expanded Metrics** - Detailed engagement data with bounce rates and time metrics
 
 ### Developer Experience
-- 🔐 **Automatic Authentication** - JWT token management with auto-refresh
-- ⚡ **Resilient** - Polly retry policies for transient failures
-- 🛡️ **Defensive** - Comprehensive validation with helpful error messages
-- 📝 **Well-Documented** - Extensive XML documentation and examples
-- 🎯 **Type-Safe** - Strongly-typed request/response models
-- 🔧 **Auto-Detection** - Automatically detects and adapts to Umami v1/v2/v3 APIs
-- ✅ **Production-Tested** - Battle-tested on high-traffic production sites
+-  **Automatic Authentication** - JWT token management with auto-refresh
+-  **Resilient** - Polly retry policies for transient failures
+- ️ **Defensive** - Comprehensive validation with helpful error messages
+-  **Well-Documented** - Extensive XML documentation and examples
+-  **Type-Safe** - Strongly-typed request/response models
+-  **Auto-Detection** - Automatically detects and adapts to Umami v1/v2/v3 APIs
+-  **Production-Tested** - Battle-tested on high-traffic production sites
 
 ---
 
@@ -87,12 +87,12 @@ Umami's API is powerful but... challenging. Missing parameters result in silent 
 
 This library follows a "fail loudly but recoverably" philosophy:
 
-- ✅ **Never throw exceptions** that break user requests
-- ✅ **Log everything** with detailed context so you know what went wrong
-- ✅ **Degrade gracefully** - if analytics fail, your app continues working
-- ✅ **Non-blocking by default** - analytics happen in the background
-- ✅ **Resilient to failures** - automatic retries with exponential backoff
-- ✅ **Validate early** - catch configuration errors at startup, not in production
+-  **Never throw exceptions** that break user requests
+-  **Log everything** with detailed context so you know what went wrong
+-  **Degrade gracefully** - if analytics fail, your app continues working
+-  **Non-blocking by default** - analytics happen in the background
+-  **Resilient to failures** - automatic retries with exponential backoff
+-  **Validate early** - catch configuration errors at startup, not in production
 
 **The Background Sender: Your Analytics Sidecar**
 
@@ -140,9 +140,9 @@ graph TB
         K --> R[/api/auth/login]
     end
 
-    style B fill:#e1f5ff
-    style G fill:#ffe1e1
-    style D fill:#e1ffe1
+    style B stroke:#e1f5ff
+    style G stroke:#ffe1e1
+    style D stroke:#e1ffe1
 ```
 
 ### Event Tracking Flow
@@ -253,9 +253,9 @@ flowchart TD
     M --> O
     N --> O
 
-    style G fill:#90EE90
-    style K fill:#90EE90
-    style L fill:#FFB6C6
+    style G stroke:#90EE90
+    style K stroke:#90EE90
+    style L stroke:#FFB6C6
 ```
 
 ---
@@ -1103,9 +1103,9 @@ graph TD
     D --> I[All future requests use v2/v3]
     G --> J[All future requests use v1]
 
-    style D fill:#90EE90
-    style G fill:#90EE90
-    style H fill:#FFB6C6
+    style D stroke:#90EE90
+    style G stroke:#90EE90
+    style H stroke:#FFB6C6
 ```
 
 ### How It Works
@@ -1117,18 +1117,18 @@ graph TD
 
 ### What This Means
 
-✅ **Just works** with any Umami version
-✅ **No version checks** needed in your code
-✅ **Automatic fallback** to older APIs
-✅ **Forward compatible** with future Umami updates
+**Just works** with any Umami version
+**No version checks** needed in your code
+**Automatic fallback** to older APIs
+**Forward compatible** with future Umami updates
 
 ### Supported Versions
 
 | Umami Version | API Version | Status | Key Differences |
 |---------------|-------------|--------|-----------------|
-| v1.x | v1 | ✅ Supported | Uses `url`, `host` parameters |
-| v2.x | v2 | ✅ Supported | Uses `path`, `hostname` parameters |
-| v3.x | v3 | ✅ Supported (Latest) | Optional `unit` parameter, enhanced metrics |
+| v1.x | v1 |  Supported | Uses `url`, `host` parameters |
+| v2.x | v2 |  Supported | Uses `path`, `hostname` parameters |
+| v3.x | v3 |  Supported (Latest) | Optional `unit` parameter, enhanced metrics |
 
 ### Version-Specific Features
 
@@ -1150,10 +1150,10 @@ var request = new MetricsRequest
 The library handles parameter name differences automatically:
 
 | Feature | v1 API | v2/v3 API | Library Handles |
-|---------|--------|-----------|-----------------|
-| URL path | `url` | `path` | ✅ Automatic |
-| Domain | `host` | `hostname` | ✅ Automatic |
-| Metrics granularity | `unit` required | `unit` optional (v3) | ✅ Automatic |
+|---------|--------|-----------|--------------|
+| URL path | `url` | `path` |  Automatic |
+| Domain | `host` | `hostname` |  Automatic |
+| Metrics granularity | `unit` required | `unit` optional (v3) |  Automatic |
 
 ---
 
@@ -1638,14 +1638,14 @@ The library logs errors with structured logging for easy troubleshooting:
            Events will be lost, but your application continues normally.
 
 // Authentication error (auto-retries once then returns error result)
-⚠️ [Warning] Umami authentication failed
+⚠ [Warning] Umami authentication failed
    Status: 401 Unauthorized
    Message: Invalid username or password
    Suggestion: Check Analytics:UserName and Analytics:Password in configuration
    Configuration: Analytics:UmamiPath = https://analytics.yoursite.com
 
 // Validation error (before sending request)
-❌ InvalidOperationException: StartAtDate is required.
+ InvalidOperationException: StartAtDate is required.
    Suggestion: Set StartAtDate to a valid date (e.g., DateTime.UtcNow.AddDays(-7) for last 7 days).
    Current request: {Type = "path", EndAtDate = "2025-01-20"}
 ```
@@ -1675,7 +1675,7 @@ public class UmamiResult<T>
 ```csharp
 var result = await _dataService.GetMetrics(request);
 
-// ✅ Recommended: Check status code
+//  Recommended: Check status code
 if (result.Status == HttpStatusCode.OK && result.Data != null)
 {
     // Success - use result.Data
@@ -1753,7 +1753,7 @@ try
     var request = new MetricsRequest
     {
         Type = MetricType.path,
-        // ❌ Missing: StartAtDate, EndAtDate
+        //  Missing: StartAtDate, EndAtDate
     };
 
     await request.Validate();  // Explicit validation
@@ -1836,7 +1836,7 @@ public async Task<IActionResult> MyAction()
 ### 1. Always Use Background Sender
 
 ```csharp
-// ❌ DON'T: Blocks the HTTP request
+//  DON'T: Blocks the HTTP request
 public async Task<IActionResult> Index()
 {
     await _umamiClient.Track("page-view");  // Waits for HTTP request to complete
@@ -1933,7 +1933,7 @@ var monthlyData = new MetricsRequest
     Type = MetricType.path
 };
 
-// ❌ BAD: Hourly for 90 days (2160 data points!)
+//  BAD: Hourly for 90 days (2160 data points!)
 var inefficientData = new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-90),
@@ -1995,7 +1995,7 @@ var activeUsers = await _dataService.GetActiveUsers();
 Reduce data volume by filtering at the API level:
 
 ```csharp
-// ❌ INEFFICIENT: Get all data then filter in memory
+// ❌INEFFICIENT: Get all data then filter in memory
 var allMetrics = await _dataService.GetMetrics(new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-30),
@@ -2007,7 +2007,7 @@ var blogPosts = allMetrics.Data
     .Where(m => m.x.StartsWith("/blog/"))
     .ToArray();
 
-// ✅ EFFICIENT: Filter at API level
+// EFFICIENT: Filter at API level
 var blogMetrics = await _dataService.GetMetrics(new MetricsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-30),
@@ -2498,14 +2498,14 @@ ArgumentException: StartAtDate must be before EndAtDate
 
 **Solution:**
 ```csharp
-// ✅ Correct
+//  Correct
 var request = new StatsRequest
 {
     StartAtDate = DateTime.UtcNow.AddDays(-7),  // Earlier
     EndAtDate = DateTime.UtcNow                  // Later
 };
 
-// ❌ Wrong
+//  Wrong
 var request = new StatsRequest
 {
     StartAtDate = DateTime.UtcNow,

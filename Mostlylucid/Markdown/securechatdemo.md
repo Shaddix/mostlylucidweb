@@ -1,8 +1,14 @@
 ﻿
-## Demo Implementation: A Trivial Proof of Concept
+# Demo Implementation: A Trivial Proof of Concept
 
-To illustrate these concepts in action, I've created a demonstration project that shows how such a system might work. **This is a trivial implementation for educational purposes only** and deliberately includes minimal security to keep the code readable and understandable.
+<!--category-- Security, History, JavaScript -->
+<datetime class="hidden">2025-11-11T18:00</datetime>
 
+# Introduction
+
+To illustrate the concepts from [this article ](/blog/hiddensystems) in action, I've created a demonstration project that shows how such a system might work. **This is a trivial implementation for educational purposes only** and deliberately includes minimal security to keep the code readable and understandable.
+
+[TOC]
 ### ⚠️ Critical Warning About the Demo
 
 **The demo code has MANY security weaknesses and is NOT suitable for any real-world use.** It's designed to demonstrate concepts, not to be deployed. See the complete list of security issues in the demo's README.
