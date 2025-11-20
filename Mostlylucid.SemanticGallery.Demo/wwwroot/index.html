@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semantic Gallery with Face Recognition - Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        .drop-zone {
+            border: 3px dashed #3b82f6;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.drag-over {
+            background: #dbeafe;
+            border-color: #1d4ed8;
+            transform: scale(1.02);
+        }
+        .face-box {
+            position: absolute;
+            border: 2px solid #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+        .face-label {
+            position: absolute;
+            background: #22c55e;
+            color: white;
+            padding: 2px 6px;
+            font-size: 11px;
+            border-radius: 3px;
+            bottom: -18px;
+            left: 0;
+            white-space: nowrap;
+        }
+        .grid-masonry {
+            column-count: 1;
+            column-gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .grid-masonry {
+                column-count: 2;
+            }
+        }
+        @media (min-width: 1024px) {
+            .grid-masonry {
+                column-count: 3;
+            }
+        }
+        @media (min-width: 1280px) {
+            .grid-masonry {
+                column-count: 4;
+            }
+        }
+        .grid-masonry > div {
+            break-inside: avoid;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl" x-data="galleryApp()">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <div class="inline-block">
+                <h1 class="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-transparent bg-clip-text mb-3">
+                    <i class='bx bx-photo-album'></i>
+                    Semantic Gallery
+                </h1>
+                <p class="text-gray-600 text-lg">AI-Powered Image Search with Face Recognition</p>
+                <div class="flex gap-2 justify-center mt-4 text-sm">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        <i class='bx bx-brain'></i> Semantic Search
+                    </span>
+                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                        <i class='bx bx-user-check'></i> Face Recognition
+                    </span>
+                    <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
+                        <i class='bx bx-text'></i> OCR
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Search Bar -->
+        <div class="max-w-4xl mx-auto mb-8">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        x-model="searchQuery"
+                        @keyup.enter="search()"
+                        placeholder="Search: 'sunset beach', 'photos of Sarah', 'documents', 'cats playing'..."
+                        class="flex-1 px-6 py-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-lg"
+                    >
+                    <button
+                        @click="search()"
+                        class="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition shadow-lg hover:shadow-xl flex items-center gap-2 font-semibold"
+                    >
+                        <i class='bx bx-search text-2xl'></i>
+                        <span class="hidden md:inline">Search</span>
+                    </button>
+                </div>
+
+                <!-- Quick Search Examples -->
+                <div class="flex gap-2 mt-4 flex-wrap">
+                    <button
+                        @click="searchQuery = 'sunset'; search()"
+                        class="px-4 py-2 bg-orange-50 text-orange-700 rounded-full hover:bg-orange-100 transition text-sm border border-orange-200"
+                    >
+                        <i class='bx bx-sun'></i> Sunsets
+                    </button>
+                    <button
+                        @click="searchQuery = 'nature landscape'; search()"
+                        class="px-4 py-2 bg-green-50 text-green-700 rounded-full hover:bg-green-100 transition text-sm border border-green-200"
+                    >
+                        <i class='bx bx-leaf'></i> Nature
+                    </button>
+                    <button
+                        @click="searchQuery = 'food'; search()"
+                        class="px-4 py-2 bg-red-50 text-red-700 rounded-full hover:bg-red-100 transition text-sm border border-red-200"
+                    >
+                        <i class='bx bx-restaurant'></i> Food
+                    </button>
+                    <button
+                        @click="searchQuery = ''; search()"
+                        class="px-4 py-2 bg-gray-50 text-gray-700 rounded-full hover:bg-gray-100 transition text-sm border border-gray-200"
+                    >
+                        <i class='bx bx-refresh'></i> Show All
+                    </button>
+                </div>
+
+                <!-- Search Stats -->
+                <div x-show="results.length > 0" class="mt-4 pt-4 border-t border-gray-100">
+                    <p class="text-gray-600 text-sm">
+                        Found <span class="font-bold text-indigo-600" x-text="results.length"></span>
+                        <template x-if="searchQuery">
+                            result<span x-show="results.length !== 1">s</span> for
+                            "<span class="font-semibold text-gray-800" x-text="searchQuery"></span>"
+                        </template>
+                        <template x-if="!searchQuery">
+                            image<span x-show="results.length !== 1">s</span>
+                        </template>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Area -->
+        <div class="max-w-4xl mx-auto mb-12">
+            <div
+                class="drop-zone bg-white rounded-2xl p-16 text-center cursor-pointer shadow-lg hover:shadow-xl transition-all"
+                @click="$refs.fileInput.click()"
+                @dragover.prevent="dragOver = true"
+                @dragleave="dragOver = false"
+                @drop.prevent="handleDrop($event)"
+                :class="{ 'drag-over': dragOver }"
+            >
+                <i class='bx bx-cloud-upload text-7xl text-indigo-600 mb-4 inline-block animate-bounce'></i>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">Upload Your Images</h3>
+                <p class="text-gray-600 mb-2">Drag & drop or click to browse</p>
+                <p class="text-sm text-gray-400">Supports: JPEG, PNG, WebP • Max 50MB per file</p>
+
+                <input
+                    type="file"
+                    x-ref="fileInput"
+                    @change="handleFileSelect($event)"
+                    accept="image/*"
+                    multiple
+                    style="display: none;"
+                >
+            </div>
+
+            <!-- Upload Progress -->
+            <div x-show="uploading" x-transition class="mt-6">
+                <div class="bg-white rounded-2xl p-6 shadow-lg">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="animate-spin">
+                            <i class='bx bx-loader-alt text-3xl text-indigo-600'></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-gray-800 text-lg">Processing Images...</p>
+                            <p class="text-sm text-gray-500" x-text="uploadStatus"></p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="bg-gradient-to-r from-indigo-500 to-blue-500 h-3 rounded-full transition-all duration-300 shadow-lg"
+                             :style="`width: ${uploadProgress}%`"></div>
+                    </div>
+                    <p class="text-right text-sm text-gray-600 mt-2" x-text="`${uploadProgress}%`"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div x-show="searching" x-transition class="text-center py-20">
+            <div class="inline-block">
+                <div class="animate-spin mb-4">
+                    <i class='bx bx-loader-alt text-6xl text-indigo-600'></i>
+                </div>
+                <p class="text-gray-600 text-lg font-medium">Searching your gallery...</p>
+            </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div x-show="!searching && results.length > 0" x-transition class="grid-masonry">
+            <template x-for="result in results" :key="result.image.id">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                     @click="openImageDetail(result)">
+                    <!-- Image Container -->
+                    <div class="relative bg-gray-100">
+                        <img
+                            :src="result.image.filePath"
+                            :alt="result.image.caption"
+                            class="w-full object-cover"
+                            loading="lazy"
+                        >
+
+                        <!-- Score Badge -->
+                        <div class="absolute top-3 right-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                            <i class='bx bx-bar-chart-alt-2'></i>
+                            <span x-text="`${(result.score * 100).toFixed(0)}%`"></span>
+                        </div>
+
+                        <!-- Face Count Badge -->
+                        <div x-show="result.image.faces && result.image.faces.length > 0"
+                             class="absolute top-3 left-3 bg-green-600 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                            <i class='bx bx-user'></i>
+                            <span x-text="result.image.faces.length"></span>
+                        </div>
+                    </div>
+
+                    <!-- Image Info -->
+                    <div class="p-5">
+                        <p class="text-gray-700 mb-3 line-clamp-2 font-medium" x-text="result.image.caption || 'No caption available'"></p>
+
+                        <!-- Extracted Text -->
+                        <div x-show="result.image.extractedText" class="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <p class="text-xs text-blue-700 flex items-start gap-2">
+                                <i class='bx bx-text text-lg flex-shrink-0'></i>
+                                <span class="line-clamp-2" x-text="result.image.extractedText"></span>
+                            </p>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-xs text-gray-500">
+                            <span>
+                                <i class='bx bx-calendar'></i>
+                                <span x-text="new Date(result.image.uploadedAt).toLocaleDateString()"></span>
+                            </span>
+                            <span class="font-medium text-indigo-600" x-text="result.matchReason"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!searching && !uploading && results.length === 0" x-transition class="text-center py-20">
+            <div class="inline-block">
+                <i class='bx bx-image-add text-8xl text-gray-300 mb-6'></i>
+                <h3 class="text-3xl font-bold text-gray-700 mb-3">No Images Yet</h3>
+                <p class="text-gray-500 text-lg mb-6">Upload some images to get started with semantic search!</p>
+                <button
+                    @click="$refs.fileInput.click()"
+                    class="px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition shadow-lg inline-flex items-center gap-2 font-semibold"
+                >
+                    <i class='bx bx-upload text-2xl'></i>
+                    Upload Images
+                </button>
+            </div>
+        </div>
+
+        <!-- Image Detail Modal -->
+        <div
+            x-show="selectedImage"
+            @click.self="selectedImage = null"
+            class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+            style="display: none;"
+            x-transition
+        >
+            <div class="bg-white rounded-2xl max-w-5xl max-h-[90vh] overflow-auto shadow-2xl" @click.stop>
+                <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+                    <h2 class="text-2xl font-bold text-gray-800">Image Details</h2>
+                    <button @click="selectedImage = null" class="text-gray-500 hover:text-gray-700 p-2">
+                        <i class='bx bx-x text-4xl'></i>
+                    </button>
+                </div>
+
+                <template x-if="selectedImage">
+                    <div class="p-6">
+                        <div class="relative mb-6 rounded-xl overflow-hidden">
+                            <img
+                                :src="selectedImage.image.filePath"
+                                :alt="selectedImage.image.caption"
+                                class="w-full rounded-xl shadow-lg"
+                            >
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <h3 class="font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                                    <i class='bx bx-message-square-detail'></i>
+                                    AI-Generated Caption
+                                </h3>
+                                <p class="text-indigo-800" x-text="selectedImage.image.caption"></p>
+                            </div>
+
+                            <div x-show="selectedImage.image.extractedText" class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                <h3 class="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                                    <i class='bx bx-text'></i>
+                                    Extracted Text (OCR)
+                                </h3>
+                                <p class="text-blue-800 whitespace-pre-wrap" x-text="selectedImage.image.extractedText"></p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-4 bg-gray-50 rounded-xl">
+                                    <p class="text-sm text-gray-600">Filename</p>
+                                    <p class="font-semibold text-gray-800" x-text="selectedImage.image.fileName"></p>
+                                </div>
+                                <div class="p-4 bg-gray-50 rounded-xl">
+                                    <p class="text-sm text-gray-600">Upload Date</p>
+                                    <p class="font-semibold text-gray-800" x-text="new Date(selectedImage.image.uploadedAt).toLocaleString()"></p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 bg-green-50 rounded-xl border border-green-100">
+                                <p class="text-sm text-green-600 mb-2">Relevance Score</p>
+                                <div class="flex items-center gap-4">
+                                    <div class="flex-1 bg-green-200 rounded-full h-3 overflow-hidden">
+                                        <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
+                                             :style="`width: ${selectedImage.score * 100}%`"></div>
+                                    </div>
+                                    <span class="font-bold text-green-700" x-text="`${(selectedImage.score * 100).toFixed(1)}%`"></span>
+                                </div>
+                                <p class="text-sm text-green-700 mt-2" x-text="selectedImage.matchReason"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function galleryApp() {
+            return {
+                searchQuery: '',
+                results: [],
+                searching: false,
+                uploading: false,
+                uploadProgress: 0,
+                uploadStatus: '',
+                dragOver: false,
+                selectedImage: null,
+
+                init() {
+                    // Load all images on start
+                    this.loadAllImages();
+                },
+
+                async loadAllImages() {
+                    try {
+                        const response = await fetch('/api/Gallery/search');
+                        const data = await response.json();
+                        this.results = data.results || [];
+                    } catch (error) {
+                        console.error('Error loading images:', error);
+                    }
+                },
+
+                async search() {
+                    this.searching = true;
+                    try {
+                        const query = this.searchQuery.trim();
+                        const url = query
+                            ? `/api/Gallery/search?query=${encodeURIComponent(query)}&limit=50`
+                            : '/api/Gallery/search';
+
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        this.results = data.results || [];
+                    } catch (error) {
+                        console.error('Search error:', error);
+                        alert('Search failed. Check console for details.');
+                    } finally {
+                        this.searching = false;
+                    }
+                },
+
+                async searchByPerson(personName) {
+                    if (!personName) return;
+
+                    this.searching = true;
+                    this.searchQuery = `photos of ${personName}`;
+
+                    try {
+                        const response = await fetch(`/api/Gallery/search/person/${encodeURIComponent(personName)}`);
+                        const data = await response.json();
+                        this.results = data.results || [];
+                    } catch (error) {
+                        console.error('Search error:', error);
+                        alert('Search failed');
+                    } finally {
+                        this.searching = false;
+                    }
+                },
+
+                handleFileSelect(event) {
+                    const files = Array.from(event.target.files);
+                    if (files.length > 0) {
+                        this.uploadFiles(files);
+                    }
+                },
+
+                handleDrop(event) {
+                    this.dragOver = false;
+                    const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0) {
+                        this.uploadFiles(files);
+                    }
+                },
+
+                async uploadFiles(files) {
+                    this.uploading = true;
+                    this.uploadProgress = 0;
+                    let successCount = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        this.uploadStatus = `Processing "${file.name}" (${i + 1}/${files.length})...`;
+
+                        const formData = new FormData();
+                        formData.append('image', file);
+
+                        try {
+                            const response = await fetch('/api/Gallery/upload', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (response.ok) {
+                                const data = await response.json();
+                                console.log('✓ Uploaded:', data.image.fileName);
+                                successCount++;
+                            } else {
+                                const error = await response.json();
+                                console.error('✗ Upload failed:', error.error);
+                            }
+                        } catch (error) {
+                            console.error('✗ Upload error:', error);
+                        }
+
+                        this.uploadProgress = ((i + 1) / files.length) * 100;
+                    }
+
+                    this.uploadStatus = `Completed! ${successCount}/${files.length} images processed.`;
+
+                    setTimeout(() => {
+                        this.uploading = false;
+                        this.uploadStatus = '';
+                        this.uploadProgress = 0;
+
+                        // Refresh the gallery
+                        if (this.searchQuery) {
+                            this.search();
+                        } else {
+                            this.loadAllImages();
+                        }
+                    }, 2000);
+                },
+
+                openImageDetail(result) {
+                    this.selectedImage = result;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
