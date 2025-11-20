@@ -1,0 +1,277 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+using Mostlylucid.SemanticSearch.Config;
+using System.Text.RegularExpressions;
+
+namespace Mostlylucid.SemanticSearch.Services;
+
+/// <summary>
+/// ONNX-based embedding service using CPU-friendly sentence transformers
+/// Uses all-MiniLM-L6-v2 model (384 dimensions) for efficient semantic search
+/// </summary>
+public class OnnxEmbeddingService : IEmbeddingService, IDisposable
+{
+    private readonly ILogger<OnnxEmbeddingService> _logger;
+    private readonly SemanticSearchConfig _config;
+    private readonly InferenceSession? _session;
+    private readonly Dictionary<string, int> _vocabulary;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed;
+
+    private const int MaxSequenceLength = 256;
+    private const string PadToken = "[PAD]";
+    private const string UnkToken = "[UNK]";
+    private const string ClsToken = "[CLS]";
+    private const string SepToken = "[SEP]";
+
+    public OnnxEmbeddingService(
+        ILogger<OnnxEmbeddingService> logger,
+        IOptions<SemanticSearchConfig> config)
+    {
+        _logger = logger;
+        _config = config.Value;
+        _vocabulary = new Dictionary<string, int>();
+
+        if (!_config.Enabled)
+        {
+            _logger.LogInformation("Semantic search is disabled");
+            return;
+        }
+
+        try
+        {
+            // Check if model file exists
+            if (!File.Exists(_config.EmbeddingModelPath))
+            {
+                _logger.LogWarning("Embedding model not found at {Path}. Semantic search will be disabled.", _config.EmbeddingModelPath);
+                return;
+            }
+
+            // Load vocabulary if it exists
+            if (File.Exists(_config.VocabPath))
+            {
+                LoadVocabulary(_config.VocabPath);
+            }
+            else
+            {
+                _logger.LogWarning("Vocabulary file not found at {Path}. Using basic tokenization.", _config.VocabPath);
+            }
+
+            // Create ONNX session with CPU execution provider
+            var sessionOptions = new SessionOptions
+            {
+                // Use CPU for inference (much more resource-efficient)
+                ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
+                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
+            };
+
+            _session = new InferenceSession(_config.EmbeddingModelPath, sessionOptions);
+            _logger.LogInformation("ONNX embedding model loaded successfully from {Path}", _config.EmbeddingModelPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize ONNX embedding service");
+        }
+    }
+
+    private void LoadVocabulary(string vocabPath)
+    {
+        var lines = File.ReadAllLines(vocabPath);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var token = lines[i].Trim();
+            if (!string.IsNullOrEmpty(token))
+            {
+                _vocabulary[token] = i;
+            }
+        }
+        _logger.LogInformation("Loaded vocabulary with {Count} tokens", _vocabulary.Count);
+    }
+
+    public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+    {
+        if (_session == null || !_config.Enabled)
+        {
+            // Return zero vector if service is not available
+            return new float[_config.VectorSize];
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new float[_config.VectorSize];
+        }
+
+        await _semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            return await Task.Run(() => GenerateEmbedding(text), cancellationToken);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task<List<float[]>> GenerateEmbeddingsAsync(IEnumerable<string> texts, CancellationToken cancellationToken = default)
+    {
+        var results = new List<float[]>();
+        foreach (var text in texts)
+        {
+            var embedding = await GenerateEmbeddingAsync(text, cancellationToken);
+            results.Add(embedding);
+        }
+        return results;
+    }
+
+    private float[] GenerateEmbedding(string text)
+    {
+        try
+        {
+            // Tokenize the input text
+            var tokens = Tokenize(text);
+
+            // Create input tensors
+            var inputIds = CreateInputTensor(tokens, "input_ids");
+            var attentionMask = CreateAttentionMaskTensor(tokens.Length);
+            var tokenTypeIds = CreateTokenTypeIdsTensor(tokens.Length);
+
+            // Run inference
+            var inputs = new List<NamedOnnxValue>
+            {
+                NamedOnnxValue.CreateFromTensor("input_ids", inputIds),
+                NamedOnnxValue.CreateFromTensor("attention_mask", attentionMask),
+                NamedOnnxValue.CreateFromTensor("token_type_ids", tokenTypeIds)
+            };
+
+            using var results = _session!.Run(inputs);
+
+            // Extract the output tensor (sentence embedding)
+            // For sentence transformers, we typically use mean pooling of the last hidden state
+            var output = results.First().AsTensor<float>();
+
+            // Convert to array and normalize
+            var embedding = output.ToArray();
+            return NormalizeVector(embedding);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating embedding for text: {Text}", text[..Math.Min(100, text.Length)]);
+            return new float[_config.VectorSize];
+        }
+    }
+
+    private List<int> Tokenize(string text)
+    {
+        // Simple whitespace + punctuation tokenization
+        // In production, use a proper WordPiece tokenizer
+        var tokens = new List<int>();
+
+        // Add [CLS] token at the start
+        if (_vocabulary.TryGetValue(ClsToken, out var clsId))
+            tokens.Add(clsId);
+
+        // Tokenize the text
+        var words = Regex.Split(text.ToLowerInvariant(), @"(\W+)")
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Take(MaxSequenceLength - 2); // Leave room for [CLS] and [SEP]
+
+        foreach (var word in words)
+        {
+            if (_vocabulary.Count > 0)
+            {
+                // Use vocabulary if available
+                if (_vocabulary.TryGetValue(word, out var tokenId))
+                    tokens.Add(tokenId);
+                else if (_vocabulary.TryGetValue(UnkToken, out var unkId))
+                    tokens.Add(unkId);
+            }
+            else
+            {
+                // Fallback: use hash code as token ID
+                tokens.Add(Math.Abs(word.GetHashCode()) % 30000);
+            }
+        }
+
+        // Add [SEP] token at the end
+        if (_vocabulary.TryGetValue(SepToken, out var sepId))
+            tokens.Add(sepId);
+
+        return tokens;
+    }
+
+    private Tensor<long> CreateInputTensor(List<int> tokens, string name)
+    {
+        var length = Math.Min(tokens.Count, MaxSequenceLength);
+        var paddedLength = MaxSequenceLength;
+
+        var tensorData = new long[1, paddedLength];
+
+        for (int i = 0; i < length; i++)
+        {
+            tensorData[0, i] = tokens[i];
+        }
+
+        // Pad the rest with pad token ID
+        var padId = _vocabulary.TryGetValue(PadToken, out var id) ? id : 0;
+        for (int i = length; i < paddedLength; i++)
+        {
+            tensorData[0, i] = padId;
+        }
+
+        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+    }
+
+    private Tensor<long> CreateAttentionMaskTensor(int actualLength)
+    {
+        var length = Math.Min(actualLength, MaxSequenceLength);
+        var paddedLength = MaxSequenceLength;
+
+        var tensorData = new long[1, paddedLength];
+
+        for (int i = 0; i < length; i++)
+        {
+            tensorData[0, i] = 1;
+        }
+
+        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+    }
+
+    private Tensor<long> CreateTokenTypeIdsTensor(int actualLength)
+    {
+        var paddedLength = MaxSequenceLength;
+        var tensorData = new long[1, paddedLength];
+
+        // All zeros for single sentence
+        return new DenseTensor<long>(tensorData, new[] { 1, paddedLength });
+    }
+
+    private float[] NormalizeVector(float[] vector)
+    {
+        // L2 normalization
+        var sumOfSquares = vector.Sum(v => v * v);
+        var magnitude = MathF.Sqrt(sumOfSquares);
+
+        if (magnitude > 0)
+        {
+            for (int i = 0; i < vector.Length; i++)
+            {
+                vector[i] /= magnitude;
+            }
+        }
+
+        return vector;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _session?.Dispose();
+        _semaphore?.Dispose();
+        _disposed = true;
+
+        GC.SuppressFinalize(this);
+    }
+}
