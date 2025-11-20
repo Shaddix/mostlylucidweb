@@ -38,17 +38,28 @@ public class GeoRoutingMiddleware
         }
 
         // Test mode: Allow overriding country via header (off by default)
-        var testCountry = context.Request.Headers["ml-geo-test-mode"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(testCountry) && _options.EnableTestMode)
+        // Usage: ml-geo-test-mode: disable  (bypasses all geo-routing)
+        //        ml-geo-test-mode: US       (simulates US traffic)
+        var testMode = context.Request.Headers["ml-geo-test-mode"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(testMode) && _options.EnableTestMode)
         {
+            // If "disable", bypass all geo-routing
+            if (testMode.Equals("disable", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation("Test mode: Geo-routing disabled for this request");
+                await _next(context);
+                return;
+            }
+
+            // Otherwise, simulate traffic from specified country
             var testLocation = new GeoLocation
             {
-                CountryCode = testCountry.ToUpperInvariant(),
-                CountryName = testCountry,
+                CountryCode = testMode.ToUpperInvariant(),
+                CountryName = testMode,
                 ContinentCode = "TEST"
             };
 
-            _logger.LogInformation("Test mode: Simulating request from {Country}", testCountry);
+            _logger.LogInformation("Test mode: Simulating request from {Country}", testMode);
 
             if (_options.StoreInContext)
             {
