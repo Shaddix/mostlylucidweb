@@ -1,19 +1,25 @@
 # RAG in Practice: Building Real-World Applications
 
-> In [Part 1 of this RAG series](/blog/rag-primer), we covered the fundamentals of Retrieval-Augmented Generation—what it is, how it works, and the underlying technology (embeddings, vector databases, LLM internals). Now it's time to put that knowledge into practice. This article shows you how to build real RAG systems with working C# code, solve common challenges, and use advanced techniques from recent research.
+> In [Part 1](/blog/rag-primer) and [Part 2](/blog/rag-architecture) of this series, we covered RAG's origins, fundamentals, and technical architecture. You understand what RAG is, why it matters, and how it works under the hood. Now it's time to put that knowledge into practice. This article shows you how to build real RAG systems with working C# code, solve common challenges, and use advanced techniques from recent research.
 
 <datetime class="hidden">2025-11-22T10:00</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
 
 # Introduction
 
-If you haven't read [Part 1: RAG Explained](/blog/rag-primer), I recommend starting there to understand the foundational concepts:
-- What RAG is and why it matters
-- How embeddings and vector search work
-- LLM internals (tokens, KV cache, context windows)
-- RAG vs fine-tuning and other approaches
+> **📖 Series Navigation:** This is Part 3 of a three-part series on RAG:
+> - [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
+> - [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
+> - **Part 3: RAG in Practice** (this article) - Building real systems, challenges, and advanced techniques
 
-This article assumes you understand those basics and focuses on **implementation, optimization, and real-world patterns**.
+If you haven't read Parts 1 and 2, I recommend starting there to understand:
+- What RAG is and why it matters (Part 1)
+- The history from keyword search to semantic understanding (Part 1)
+- Complete RAG pipeline: indexing, retrieval, generation (Part 2)
+- LLM internals: tokens, KV cache, context windows (Part 2)
+- RAG vs fine-tuning and other approaches (Part 1)
+
+This article assumes you understand those fundamentals and focuses on **implementation, optimization, and real-world patterns**.
 
 [TOC]
 
@@ -1005,9 +1011,32 @@ The field is evolving rapidly with advanced techniques like HyDE, multi-query re
 
 Start simple, measure results, and iterate. RAG is one of the most practical ways to build reliable AI systems today.
 
+# Conclusion: From Theory to Production
+
+You've now completed the three-part RAG series:
+
+**[Part 1: Origins and Fundamentals](/blog/rag-primer)**
+- What RAG is and why it matters
+- History from keyword search to semantic understanding
+- RAG vs fine-tuning, long context, and other approaches
+
+**[Part 2: Architecture and Internals](/blog/rag-architecture)**
+- Complete RAG pipeline: indexing, retrieval, generation
+- LLM internals: tokens, KV cache, context windows
+- Technical implementation details with C# code
+
+**Part 3: RAG in Practice (this article)**
+- Real-world implementations (Related Posts, Semantic Search, Writing Assistant)
+- Common challenges and solutions (chunking, embedding quality, hallucination)
+- Advanced techniques (HyDE, Self-Query, Multi-Query, Contextual Compression, Long-term Memory)
+- When NOT to use RAG
+- Getting started guide
+
+**You now have the complete picture:** From understanding RAG's origins to building production systems with advanced optimizations.
+
 # What's Next?
 
-Now that you understand both the fundamentals ([Part 1](/blog/rag-primer)) and practical applications of RAG, in upcoming articles I'll show you how to build complete, production-ready RAG systems in C#:
+Now that you understand RAG from theory to practice, upcoming articles will show you how to build complete, production-ready RAG systems in C#:
 
 **Coming soon:**
 - **CPU-Friendly Semantic Search** - Building semantic search with ONNX embeddings that run on any VPS without GPU requirements
@@ -1034,6 +1063,10 @@ Stay tuned for hands-on implementation guides that turn this RAG knowledge into 
 **Further Reading:**
 - [Anthropic: Contextual Retrieval](https://www.anthropic.com/index/contextual-retrieval) - Advanced RAG techniques
 - [How Neural Machine Translation Works](/blog/how-neural-machine-translation-works) - Understanding the AI models behind embeddings
-- [RAG Explained: Part 1](/blog/rag-primer) - The foundational primer
+
+**This RAG Series:**
+- [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, core concepts
+- [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive
+- **Part 3: RAG in Practice** (this article) - Building real systems
 
 Happy building!
