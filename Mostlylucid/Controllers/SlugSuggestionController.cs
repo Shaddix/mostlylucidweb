@@ -9,18 +9,12 @@ namespace Mostlylucid.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
-public class SlugSuggestionController : BaseController
+public class SlugSuggestionController(
+    BaseControllerService baseControllerService,
+    ILogger<SlugSuggestionController> logger,
+    ISlugSuggestionService? slugSuggestionService = null) : BaseController(baseControllerService, logger)
 {
-    private readonly ISlugSuggestionService? _slugSuggestionService;
-
-    public SlugSuggestionController(
-        BaseControllerService baseControllerService,
-        ILogger<SlugSuggestionController> logger,
-        ISlugSuggestionService? slugSuggestionService = null)
-        : base(baseControllerService, logger)
-    {
-        _slugSuggestionService = slugSuggestionService;
-    }
+    private readonly ISlugSuggestionService? _slugSuggestionService = slugSuggestionService;
 
     /// <summary>
     /// Track when a user clicks on a suggestion from the 404 page
@@ -61,7 +55,7 @@ public class SlugSuggestionController : BaseController
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error tracking suggestion click");
+            logger.LogError(ex, "Error tracking suggestion click");
             return Ok(new { success = false, message = "Error tracking click" });
         }
     }

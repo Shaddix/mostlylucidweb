@@ -62,7 +62,9 @@
       "Bash(rm:*)",
       "Bash(git commit:*)",
       "Bash(git tag:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(dir \"C:\\Blog\\mostlylucidweb\\Mostlylucid.Shared\\Models\" /s /b 2)",
+      "Bash(Select-String -Pattern \"error\" -Context 0,2)"
     ],
     "deny": [],
     "ask": []

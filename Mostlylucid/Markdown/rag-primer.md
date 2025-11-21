@@ -2,6 +2,8 @@
 
 > Ever searched for "deployment guide" and got nothing, even though there's an article about "publishing to production"? RAG (Retrieval-Augmented Generation) solves this by understanding meaning, not just keywords. This primAH er shows you how to build semantic search for websites, understand vector embeddings, and optionally add AI-powered Q&A with citations. From making "related posts" actually related to building a writing assistant that finds your past work—all with working C# code examples.
 
+**THIS GOT LONG, REAL LONG. Apologies, as I write I *think of stuff* and NEED to put it in so it becomes...45 pages. I'll split it shortly.**
+
 <datetime class="hidden">2025-11-22T09:00</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
 

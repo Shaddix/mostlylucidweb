@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Mostlylucid.DbContext.Postgre;
+using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Models.Blog;
 
@@ -123,11 +123,11 @@ public class SlugSuggestionService : ISlugSuggestionService
         // Map to PostListModel
         var suggestions = scoredPosts.Select(x => new PostListModel
         {
-            Id = x.Post.Id,
+            Id = x.Post.Id.ToString(),
             Slug = x.Post.Slug,
             Title = x.Post.Title,
-            PublishedDate = x.Post.PublishedDate,
-            Categories = x.Post.Categories.Select(c => c.Name).ToList(),
+            PublishedDate = x.Post.PublishedDate.DateTime,
+            Categories = x.Post.Categories.Select(c => c.Name).ToArray(),
             Language = x.Post.Language
         }).ToList();
 
