@@ -285,6 +285,10 @@
                 </div>
                 <div class="results">
                     <div class="result-card">
+                        <h3>🎯 Image Type <span class="badge" id="contentTypeBadge">Detection</span></h3>
+                        <p id="contentType">Waiting for analysis...</p>
+                    </div>
+                    <div class="result-card">
                         <h3>🏷️ Generated Alt Text <span class="badge">AI</span></h3>
                         <p id="altText">Waiting for analysis...</p>
                     </div>
@@ -316,6 +320,8 @@
         const imagePreview = document.getElementById('imagePreview');
         const altText = document.getElementById('altText');
         const ocrText = document.getElementById('ocrText');
+        const contentType = document.getElementById('contentType');
+        const contentTypeBadge = document.getElementById('contentTypeBadge');
         const previewImageContainer = document.querySelector('.preview-image');
 
         // Click to select file
@@ -448,6 +454,21 @@
                 altText.textContent = result.altText || 'No description available';
                 ocrText.textContent = result.extractedText || 'No text found';
 
+                // Display content type classification
+                const typeEmoji = {
+                    'Photograph': '📷',
+                    'Document': '📄',
+                    'Screenshot': '🖥️',
+                    'Chart': '📊',
+                    'Illustration': '🎨',
+                    'Diagram': '📐',
+                    'Unknown': '❓'
+                };
+                const emoji = typeEmoji[result.contentType] || '❓';
+                const confidence = Math.round((result.contentTypeConfidence || 0) * 100);
+                contentType.textContent = `${emoji} ${result.contentType} (${confidence}% confidence)${result.hasSignificantText ? ' - Contains text' : ''}`;
+                contentTypeBadge.textContent = result.contentType;
+
                 // Show results
                 loading.classList.remove('active');
                 previewSection.classList.add('active');
@@ -466,6 +487,8 @@
             imagePreview.src = '';
             altText.textContent = 'Waiting for analysis...';
             ocrText.textContent = 'Waiting for analysis...';
+            contentType.textContent = 'Waiting for analysis...';
+            contentTypeBadge.textContent = 'Detection';
         }
     </script>
 </body>

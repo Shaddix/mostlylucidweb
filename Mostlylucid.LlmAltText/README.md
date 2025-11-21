@@ -7,8 +7,11 @@ AI-powered alt text generation and OCR using Microsoft's Florence-2 Vision Langu
 - **Automatic Alt Text Generation**: Creates descriptive, accessibility-friendly alt text for any image
 - **OCR Text Extraction**: Extracts text content from images with high accuracy
 - **Complete Image Analysis**: Get both alt text and extracted text in one call
+- **Image Content Classification**: Detects if image is a photograph, document, screenshot, chart, etc.
+- **Auto Alt Text TagHelper**: Automatically populates missing alt text on `<img>` tags
+- **Database Caching**: SQLite or PostgreSQL caching to avoid regenerating alt text
 - **Easy Integration**: Simple dependency injection setup with .NET
-- **Configurable**: Control model paths, prompts, logging, and more
+- **Configurable**: Control model paths, prompts, logging, database, and more
 - **Production Ready**: Built-in error handling, diagnostics, and logging
 
 ## ⚠️ Important: Model Downloads
@@ -154,6 +157,107 @@ public class AltTextOptions
 }
 ```
 
+## Auto Alt Text TagHelper
+
+The TagHelper automatically generates alt text for `<img>` tags that don't have one, with database caching for efficiency.
+
+### Enable the TagHelper
+
+```csharp
+// In Program.cs
+builder.Services.AddAltTextGeneration(options =>
+{
+    options.EnableTagHelper = true;    // Enable the TagHelper
+    options.EnableDatabase = true;     // Enable caching (recommended)
+    options.DbProvider = AltTextDbProvider.Sqlite;  // or PostgreSql
+    options.SqliteDbPath = "./alttext.db";
+});
+
+// After building the app, migrate the database
+var app = builder.Build();
+await app.Services.MigrateAltTextDatabaseAsync();
+```
+
+### With PostgreSQL
+
+```csharp
+builder.Services.AddAltTextGeneration(options =>
+{
+    options.EnableTagHelper = true;
+    options.EnableDatabase = true;
+    options.DbProvider = AltTextDbProvider.PostgreSql;
+    options.ConnectionString = "Host=localhost;Database=alttext;Username=user;Password=pass";
+});
+```
+
+### Register TagHelpers in Views
+
+In your `_ViewImports.cshtml`:
+```cshtml
+@addTagHelper *, Mostlylucid.LlmAltText
+```
+
+### Usage
+
+The TagHelper works automatically on any `<img>` without an `alt` attribute:
+
+```html
+<!-- Alt text will be auto-generated for this image -->
+<img src="https://example.com/photo.jpg" />
+
+<!-- This image already has alt text - SKIPPED (not modified) -->
+<img src="https://example.com/photo.jpg" alt="My custom alt text" />
+
+<!-- Decorative image with empty alt - SKIPPED (intentionally empty per a11y standards) -->
+<img src="https://example.com/decorative.jpg" alt="" />
+
+<!-- Explicitly skip auto alt text generation -->
+<img src="https://example.com/photo.jpg" data-skip-alt="true" />
+```
+
+**Behavior:**
+- If `alt` attribute exists (even if empty) → **skipped**
+- If `data-skip-alt="true"` is set → **skipped**
+- If `alt` attribute is missing → **auto-generates alt text**
+
+### Configuration Options
+
+```csharp
+options.EnableTagHelper = true;        // Enable/disable the TagHelper
+options.EnableDatabase = true;         // Enable database caching
+options.DbProvider = AltTextDbProvider.Sqlite;  // Sqlite or PostgreSql
+options.SqliteDbPath = "./alttext.db"; // SQLite file path
+options.ConnectionString = null;       // Or provide connection string
+options.AutoMigrateDatabase = true;    // Auto-create database schema
+options.AllowedImageDomains = new();   // Restrict to specific domains
+options.SkipSrcPrefixes = new() { "data:", "blob:" };  // Skip data URIs
+options.CacheDurationMinutes = 60;     // Memory cache duration
+```
+
+## Image Content Classification
+
+Detect whether an image is a photograph, document, screenshot, chart, etc.:
+
+```csharp
+var result = await _imageAnalysis.AnalyzeWithClassificationAsync(stream);
+
+Console.WriteLine($"Content Type: {result.ContentType}");        // e.g., "Photograph"
+Console.WriteLine($"Confidence: {result.ContentTypeConfidence}"); // e.g., 0.85
+Console.WriteLine($"Has Text: {result.HasSignificantText}");     // true/false
+Console.WriteLine($"Alt Text: {result.AltText}");
+Console.WriteLine($"OCR Text: {result.ExtractedText}");
+```
+
+### Content Types
+
+- `Photograph` - Photos of real-world scenes, people, objects
+- `Document` - Text-heavy documents, forms, PDFs
+- `Screenshot` - Screenshots of software, websites, UIs
+- `Chart` - Charts, graphs, data visualizations
+- `Illustration` - Drawings, artwork, cartoons
+- `Diagram` - Flowcharts, schematics, UML diagrams
+- `Unknown` - Unable to classify
+
 ## Advanced Usage
 
 ### Custom Configuration
@@ -256,10 +360,11 @@ services.AddAltTextGeneration(options =>
 
 ## Requirements
 
-- **.NET 9.0** or higher
+- **.NET 8.0** or **.NET 9.0**
 - **~800MB disk space** for AI models (one-time download)
 - **Internet connectivity** for initial model download
 - **Memory**: Recommended 2GB+ RAM for model operations
+- **Optional**: SQLite or PostgreSQL for TagHelper caching
 
 ## Supported Image Formats
 

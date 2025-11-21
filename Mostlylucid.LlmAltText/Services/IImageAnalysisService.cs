@@ -1,6 +1,48 @@
 namespace Mostlylucid.LlmAltText.Services;
 
 /// <summary>
+/// Classification of image content type
+/// </summary>
+public enum ImageContentType
+{
+    /// <summary>Unknown or mixed content</summary>
+    Unknown,
+    /// <summary>Photograph of real-world scene, people, objects</summary>
+    Photograph,
+    /// <summary>Document, form, or text-heavy content</summary>
+    Document,
+    /// <summary>Screenshot of software/UI</summary>
+    Screenshot,
+    /// <summary>Chart, graph, or data visualization</summary>
+    Chart,
+    /// <summary>Illustration, drawing, or artwork</summary>
+    Illustration,
+    /// <summary>Diagram or schematic</summary>
+    Diagram
+}
+
+/// <summary>
+/// Result of image analysis including classification
+/// </summary>
+public class ImageAnalysisResult
+{
+    /// <summary>Generated alt text description</summary>
+    public required string AltText { get; set; }
+
+    /// <summary>Text extracted via OCR (empty if no text found)</summary>
+    public required string ExtractedText { get; set; }
+
+    /// <summary>Detected content type of the image</summary>
+    public ImageContentType ContentType { get; set; }
+
+    /// <summary>Confidence score for the content type classification (0-1)</summary>
+    public double ContentTypeConfidence { get; set; }
+
+    /// <summary>Whether the image contains significant text</summary>
+    public bool HasSignificantText { get; set; }
+}
+
+/// <summary>
 /// Service for AI-powered image analysis including alt text generation and OCR
 /// </summary>
 public interface IImageAnalysisService
@@ -26,6 +68,20 @@ public interface IImageAnalysisService
     /// <param name="imageStream">Image data stream (will not be disposed by this method)</param>
     /// <returns>Tuple containing both alt text and extracted text</returns>
     Task<(string AltText, string ExtractedText)> AnalyzeImageAsync(Stream imageStream);
+
+    /// <summary>
+    /// Perform complete image analysis with content type classification
+    /// </summary>
+    /// <param name="imageStream">Image data stream (will not be disposed by this method)</param>
+    /// <returns>Full analysis result including content type</returns>
+    Task<ImageAnalysisResult> AnalyzeWithClassificationAsync(Stream imageStream);
+
+    /// <summary>
+    /// Classify the content type of an image (document, photograph, screenshot, etc.)
+    /// </summary>
+    /// <param name="imageStream">Image data stream</param>
+    /// <returns>Content type and confidence score</returns>
+    Task<(ImageContentType Type, double Confidence)> ClassifyContentTypeAsync(Stream imageStream);
 
     /// <summary>
     /// Check if the service is initialized and ready to process images

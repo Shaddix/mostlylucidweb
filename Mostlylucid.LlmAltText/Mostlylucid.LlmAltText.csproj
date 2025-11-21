@@ -38,6 +38,16 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+
+        <!-- Entity Framework Core (for TagHelper database caching) -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.5" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.5" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+
+        <!-- ASP.NET Core (for TagHelper) -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
         <!-- Versioning -->
         <PackageReference Include="MinVer" Version="6.0.0">

@@ -158,6 +158,146 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         }
     }
 
+    public async Task<ImageAnalysisResult> AnalyzeWithClassificationAsync(Stream imageStream)
+    {
+        await EnsureInitializedAsync();
+
+        try
+        {
+            LogInfo("Starting complete image analysis with classification");
+            var startTime = DateTime.UtcNow;
+
+            // Create a memory stream to allow multiple reads
+            using var memoryStream = new MemoryStream();
+            await imageStream.CopyToAsync(memoryStream);
+            LogInfo($"Image loaded: {memoryStream.Length:N0} bytes");
+
+            // Generate alt text
+            memoryStream.Position = 0;
+            var altText = await GenerateAltTextAsync(memoryStream, _options.DefaultTaskType);
+
+            // Extract text (OCR)
+            memoryStream.Position = 0;
+            var extractedText = await ExtractTextAsync(memoryStream);
+
+            // Classify content type based on alt text and OCR results
+            var (contentType, confidence) = ClassifyFromResults(altText, extractedText, memoryStream.Length);
+
+            var hasSignificantText = !string.IsNullOrWhiteSpace(extractedText) &&
+                                      extractedText != "No text found" &&
+                                      extractedText.Length > 20;
+
+            var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            LogInfo($"Complete analysis with classification finished in {duration:F0}ms - Type: {contentType}");
+
+            return new ImageAnalysisResult
+            {
+                AltText = altText,
+                ExtractedText = extractedText,
+                ContentType = contentType,
+                ContentTypeConfidence = confidence,
+                HasSignificantText = hasSignificantText
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing image with classification");
+            throw;
+        }
+    }
+
+    public async Task<(ImageContentType Type, double Confidence)> ClassifyContentTypeAsync(Stream imageStream)
+    {
+        await EnsureInitializedAsync();
+
+        try
+        {
+            LogInfo("Classifying image content type");
+
+            // Create a memory stream to allow multiple reads
+            using var memoryStream = new MemoryStream();
+            await imageStream.CopyToAsync(memoryStream);
+
+            // Get alt text for classification
+            memoryStream.Position = 0;
+            var altText = await GenerateAltTextAsync(memoryStream, "CAPTION");
+
+            // Get OCR results
+            memoryStream.Position = 0;
+            var extractedText = await ExtractTextAsync(memoryStream);
+
+            return ClassifyFromResults(altText, extractedText, memoryStream.Length);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error classifying image content type");
+            throw;
+        }
+    }
+
+    private (ImageContentType Type, double Confidence) ClassifyFromResults(string altText, string extractedText, long imageSize)
+    {
+        var altLower = altText.ToLowerInvariant();
+        var ocrLength = extractedText?.Length ?? 0;
+        var hasOcrText = !string.IsNullOrWhiteSpace(extractedText) && extractedText != "No text found";
+
+        // Document indicators
+        var documentKeywords = new[] { "document", "text", "paper", "page", "form", "letter", "contract", "invoice", "receipt", "pdf", "printed" };
+        var screenshotKeywords = new[] { "screenshot", "screen", "window", "browser", "desktop", "interface", "ui", "menu", "button", "toolbar", "application" };
+        var chartKeywords = new[] { "chart", "graph", "diagram", "plot", "bar chart", "pie chart", "line graph", "statistics", "data visualization" };
+        var illustrationKeywords = new[] { "illustration", "drawing", "cartoon", "artwork", "painting", "sketch", "artistic", "animated", "clipart" };
+        var diagramKeywords = new[] { "diagram", "flowchart", "schematic", "architecture", "workflow", "process", "uml", "er diagram" };
+        var photoKeywords = new[] { "photo", "photograph", "picture", "image of", "person", "people", "landscape", "building", "outdoor", "indoor", "nature", "animal" };
+
+        // Calculate scores
+        var scores = new Dictionary<ImageContentType, double>
+        {
+            [ImageContentType.Document] = CalculateKeywordScore(altLower, documentKeywords) + (hasOcrText && ocrLength > 100 ? 0.4 : 0),
+            [ImageContentType.Screenshot] = CalculateKeywordScore(altLower, screenshotKeywords) + (hasOcrText && ocrLength > 20 && ocrLength < 500 ? 0.2 : 0),
+            [ImageContentType.Chart] = CalculateKeywordScore(altLower, chartKeywords),
+            [ImageContentType.Illustration] = CalculateKeywordScore(altLower, illustrationKeywords),
+            [ImageContentType.Diagram] = CalculateKeywordScore(altLower, diagramKeywords),
+            [ImageContentType.Photograph] = CalculateKeywordScore(altLower, photoKeywords) + (hasOcrText ? -0.1 : 0.2)
+        };
+
+        // High OCR text content strongly suggests document
+        if (hasOcrText && ocrLength > 200)
+        {
+            scores[ImageContentType.Document] += 0.3;
+        }
+
+        // Find best match
+        var bestMatch = scores.OrderByDescending(x => x.Value).First();
+
+        if (bestMatch.Value < 0.1)
+        {
+            // No strong signals - default based on OCR presence
+            if (hasOcrText && ocrLength > 50)
+            {
+                return (ImageContentType.Document, 0.5);
+            }
+            return (ImageContentType.Photograph, 0.4); // Default assumption
+        }
+
+        var confidence = Math.Min(bestMatch.Value, 1.0);
+        LogInfo($"Classified as {bestMatch.Key} with confidence {confidence:F2}");
+
+        return (bestMatch.Key, confidence);
+    }
+
+    private double CalculateKeywordScore(string text, string[] keywords)
+    {
+        double score = 0;
+        foreach (var keyword in keywords)
+        {
+            if (text.Contains(keyword))
+            {
+                score += 0.2;
+            }
+        }
+        return Math.Min(score, 0.8);
+    }
+
     private async Task EnsureInitializedAsync()
     {
         if (_isInitialized && _model is not null) return;

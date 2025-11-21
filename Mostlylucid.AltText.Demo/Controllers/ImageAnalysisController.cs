@@ -40,13 +40,16 @@ public class ImageAnalysisController : ControllerBase
                 image.FileName, image.Length);
 
             using var stream = image.OpenReadStream();
-            var (altText, extractedText) = await _imageAnalysisService.AnalyzeImageAsync(stream);
+            var result = await _imageAnalysisService.AnalyzeWithClassificationAsync(stream);
 
             return Ok(new
             {
                 fileName = image.FileName,
-                altText = altText,
-                extractedText = extractedText,
+                altText = result.AltText,
+                extractedText = result.ExtractedText,
+                contentType = result.ContentType.ToString(),
+                contentTypeConfidence = result.ContentTypeConfidence,
+                hasSignificantText = result.HasSignificantText,
                 size = image.Length
             });
         }
