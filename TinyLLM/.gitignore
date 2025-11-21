@@ -1,0 +1,30 @@
+## .NET Build Output
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+
+## NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+## Visual Studio
+.vs/
+*.rsuser
+*.userosscache
+*.sln.docstates
+
+## Application Data
+models/
+data/
+*.log
+
+## OS Files
+.DS_Store
+Thumbs.db
