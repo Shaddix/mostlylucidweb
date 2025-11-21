@@ -7,6 +7,8 @@
 
 # Introduction
 
+> **📖 Note:** This article was originally one very long piece and has been split into two parts for better readability. This is Part 1, covering foundational concepts, theory, and architecture. For practical implementations, challenges, and advanced techniques, see [Part 2: RAG in Practice](/blog/rag-primer-part2-practical-applications).
+
 RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving LLMs access to information they weren't trained on. But here's what's interesting: the technology opens opportunities far beyond AI chatbots. It powers semantic search on websites, content recommendation, writing assistance, and knowledge management.
 
 **The dual nature:** RAG can help customers (better search, accurate answers with citations) or exploit them (manipulative recommendations, burying negative reviews, surfacing upsell content). The difference isn't the technology—it's intent. A semantic search that helps users find what they actually need? Great. One that prioritizes what makes you the most money while appearing helpful? That's dark pattern territory, and it's why understanding how this works matters.
