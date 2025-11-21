@@ -75,7 +75,7 @@ public class BehavioralDetector(
                     Category = "Behavioral",
                     Detail = $"Extremely fast requests: {timeSinceLastRequest:F0}ms between requests",
                     ConfidenceImpact = 0.4
-                });
+                }); 
             }
         }
 
@@ -157,7 +157,7 @@ public class BehavioralDetector(
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
             return new List<DateTime>();
-        });
+        }) ?? new List<DateTime>();
 
         timings.Add(DateTime.UtcNow);
 

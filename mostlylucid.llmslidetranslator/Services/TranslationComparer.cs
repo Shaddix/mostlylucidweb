@@ -19,7 +19,7 @@ public class TranslationComparer : ITranslationComparer
         _embeddingGenerator = embeddingGenerator;
     }
 
-    public async Task<TranslationComparison> CompareAsync(
+    public Task<TranslationComparison> CompareAsync(
         TranslationResult result1,
         TranslationResult result2,
         CancellationToken cancellationToken = default)
@@ -77,7 +77,7 @@ public class TranslationComparer : ITranslationComparer
             "Comparison completed. Overall similarity: {Similarity:F2}",
             comparison.SimilarityScore);
 
-        return comparison;
+        return Task.FromResult(comparison);
     }
 
     public int CalculateEditDistance(string text1, string text2)

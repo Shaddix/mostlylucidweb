@@ -97,6 +97,43 @@
             gap: 30px;
         }
 
+        .preview-image {
+            position: relative;
+        }
+
+        .preview-image.drag-over::after {
+            content: 'Drop new image';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .preview-image img {
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .preview-image:hover img {
+            opacity: 0.95;
+        }
+
+        .drop-hint {
+            text-align: center;
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .preview-section.active {
                 grid-template-columns: 1fr;
@@ -231,7 +268,7 @@
             <div class="drop-zone" id="dropZone">
                 <div class="drop-zone-icon">📸</div>
                 <div class="drop-zone-text">Drop your image here</div>
-                <div class="drop-zone-hint">or click to browse (JPG, PNG, GIF, WebP - max 10MB)</div>
+                <div class="drop-zone-hint">or click to browse, or press Ctrl+V to paste (JPG, PNG, GIF, WebP - max 10MB)</div>
             </div>
             <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
 
@@ -243,7 +280,8 @@
             <div class="preview-section" id="previewSection">
                 <div class="preview-image">
                     <img id="imagePreview" src="" alt="Preview">
-                    <button class="btn" onclick="reset()">Analyze Another Image</button>
+                    <p class="drop-hint">Drop a new image here, click the image, or press Ctrl+V to paste</p>
+                    <button class="btn" onclick="reset()">Clear & Start Over</button>
                 </div>
                 <div class="results">
                     <div class="result-card">
@@ -278,9 +316,19 @@
         const imagePreview = document.getElementById('imagePreview');
         const altText = document.getElementById('altText');
         const ocrText = document.getElementById('ocrText');
+        const previewImageContainer = document.querySelector('.preview-image');
 
         // Click to select file
         dropZone.addEventListener('click', () => fileInput.click());
+
+        // Click on preview image to select new file
+        if (previewImageContainer) {
+            previewImageContainer.addEventListener('click', (e) => {
+                if (e.target === imagePreview) {
+                    fileInput.click();
+                }
+            });
+        }
 
         // Drag and drop handlers
         dropZone.addEventListener('dragover', (e) => {
@@ -305,6 +353,51 @@
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 handleFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop on preview image (allows dropping new image without reset)
+        document.addEventListener('DOMContentLoaded', () => {
+            const previewImg = document.querySelector('.preview-image');
+            if (previewImg) {
+                previewImg.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    previewImg.classList.add('drag-over');
+                });
+
+                previewImg.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    previewImg.classList.remove('drag-over');
+                });
+
+                previewImg.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    previewImg.classList.remove('drag-over');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleFile(files[0]);
+                    }
+                });
+            }
+        });
+
+        // Ctrl+V paste from clipboard
+        document.addEventListener('paste', async (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        handleFile(file);
+                    }
+                    break;
+                }
             }
         });
 

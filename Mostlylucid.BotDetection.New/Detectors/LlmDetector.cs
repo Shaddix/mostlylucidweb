@@ -91,14 +91,14 @@ public class LlmDetector(
         return sb.ToString();
     }
 
-    private async Task<LlmAnalysis> AnalyzeWithLlm(string requestInfo, CancellationToken cancellationToken)
+    private Task<LlmAnalysis> AnalyzeWithLlm(string requestInfo, CancellationToken cancellationToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_options.LlmTimeoutMs);
 
         try
         {
-            var ollama = new OllamaApiClient(_options.OllamaEndpoint);
+            var ollama = new OllamaApiClient(_options.OllamaEndpoint!);
 
             var prompt = $@"You are an expert at detecting bot traffic from HTTP requests. Analyze this request and determine if it's likely from a bot or legitimate user.
 
@@ -128,7 +128,7 @@ Important:
             _logger.LogWarning("LlmDetector requires OllamaSharp API update - currently disabled");
 
             // Temporary: Return early to avoid compilation errors
-            return new LlmAnalysis { IsBot = false, Confidence = 0.0, Reasoning = "LLM detection temporarily disabled due to API compatibility" };
+            return Task.FromResult(new LlmAnalysis { IsBot = false, Confidence = 0.0, Reasoning = "LLM detection temporarily disabled due to API compatibility" });
 
             /* Original code - requires OllamaSharp API fix:
             var chat = new OllamaSharp.Models.Chat.ChatRequest
@@ -181,7 +181,7 @@ Important:
             _logger.LogError(ex, "Error during LLM analysis");
         }
 
-        return new LlmAnalysis { IsBot = false, Confidence = 0.0, Reasoning = "Analysis failed" };
+        return Task.FromResult(new LlmAnalysis { IsBot = false, Confidence = 0.0, Reasoning = "Analysis failed" });
     }
 
     private async Task LearnPattern(string requestInfo, LlmAnalysis analysis, CancellationToken cancellationToken)

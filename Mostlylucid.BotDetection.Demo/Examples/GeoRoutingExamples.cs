@@ -56,11 +56,11 @@ public static class GeoRoutingExamples
         endpoints.MapGet("/offer", () => "Default offer")
             .ServeByCountry(new Dictionary<string, Func<Task<IResult>>>
             {
-                ["CN"] = async () => Results.Content("Special offer for China: 50% off!"),
-                ["US"] = async () => Results.Content("Special offer for USA: Buy one get one free!"),
-                ["GB"] = async () => Results.Content("Special offer for UK: Free shipping!")
+                ["CN"] = () => Task.FromResult<IResult>(Results.Content("Special offer for China: 50% off!")),
+                ["US"] = () => Task.FromResult<IResult>(Results.Content("Special offer for USA: Buy one get one free!")),
+                ["GB"] = () => Task.FromResult<IResult>(Results.Content("Special offer for UK: Free shipping!"))
             },
-            defaultHandler: async () => Results.Content("Standard offer: 10% off"));
+            defaultHandler: () => Task.FromResult<IResult>(Results.Content("Standard offer: 10% off")));
     }
 
     /// <summary>
