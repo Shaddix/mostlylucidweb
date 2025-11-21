@@ -13,7 +13,7 @@
         <PackageTags>llm;translation;rag;ollama;nmt;embeddings;mostlylucid</PackageTags>
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid.llmslidetranslator</RepositoryUrl>
         <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
-        <PackageIcon>icon.png</PackageIcon>
+        <!-- <PackageIcon>icon.png</PackageIcon> -->
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>
         <IncludeSymbols>true</IncludeSymbols>

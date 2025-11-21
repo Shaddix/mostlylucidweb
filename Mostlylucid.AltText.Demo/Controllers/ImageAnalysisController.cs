@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Mostlylucid.AltText.Demo.Services;
+using Mostlylucid.LlmAltText.Services;
 
 namespace Mostlylucid.AltText.Demo.Controllers;
 

@@ -1,4 +1,4 @@
-using Mostlylucid.AltText.Demo.Services;
+using Mostlylucid.LlmAltText.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,8 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Register the image analysis service as a singleton (model is expensive to load)
-builder.Services.AddSingleton<IImageAnalysisService, Florence2ImageAnalysisService>();
+// Register AI-powered alt text generation
+builder.Services.AddAltTextGeneration(options =>
+{
+    options.ModelPath = "./models";
+    options.EnableDiagnosticLogging = true;
+    options.MaxWords = 90;
+});
 
 // Add CORS for development
 builder.Services.AddCors(options =>

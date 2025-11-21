@@ -78,8 +78,9 @@ public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
 
         try
         {
-            var embedding = await Task.Run(() => _embedder.GetEmbeddings(text), cancellationToken);
-            return embedding;
+            var embeddings = await Task.Run(() => _embedder.GetEmbeddings(text), cancellationToken);
+            // GetEmbeddings returns IReadOnlyList<float[]>, take the first one for single text input
+            return embeddings.FirstOrDefault() ?? Array.Empty<float>();
         }
         catch (Exception ex)
         {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Mostlylucid.BotDetection.Extensions;
-using Mostlylucid.BotDetection.Filters;
+using Mostlylucid.GeoDetection.Extensions;
+using Mostlylucid.GeoDetection.Filters;
 
 namespace Mostlylucid.BotDetection.Demo.Examples;
 
@@ -21,7 +22,7 @@ public static class GeoRoutingExamples
             return country switch
             {
                 "CN" => Results.Content("<h1>欢迎来到我们的网站</h1><p>中国访客专用内容</p>", "text/html"),
-                "RU" => Results.Content("<h1>Добро пожаловать</h1><p>Контент для российских посетителей</p>", "text/html"),
+                "RU" => Results.Content("<h1>Добро пожаловать</h1><p>Свободу Украине!</p>", "text/html"),
                 "FR" => Results.Content("<h1>Bienvenue</h1><p>Contenu pour les visiteurs français</p>", "text/html"),
                 _ => Results.Content("<h1>Welcome</h1><p>Default English content</p>", "text/html")
             };
@@ -143,7 +144,8 @@ public static class GeoRoutingExamples
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class GeoController : ControllerBase
+// Changed from ControllerBase to Controller to enable View() support
+public class GeoController : Controller
 {
     /// <summary>
     /// Example: MVC action with GeoRoute attribute

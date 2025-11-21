@@ -9,7 +9,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
-        <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="9.0.0" />
+        <!-- SignalR is part of Microsoft.AspNetCore.App framework in .NET 9.0 -->
     </ItemGroup>
 
     <ItemGroup>

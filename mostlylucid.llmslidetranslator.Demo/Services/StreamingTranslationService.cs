@@ -62,141 +62,19 @@ public class StreamingTranslationService
         var embeddingGenerator = scope.ServiceProvider.GetRequiredService<IEmbeddingGenerator>();
         var vectorStore = scope.ServiceProvider.GetRequiredService<IVectorStore>();
 
+        // Use iterator pattern to avoid yield in try-catch
+        TranslationUpdate? errorUpdate = null;
+        IAsyncEnumerable<TranslationUpdate>? translationUpdates = null;
+
         try
         {
-            // Step 1: Chunk
-            yield return new TranslationUpdate
-            {
-                DocumentId = documentId,
-                Status = "Chunking",
-                Message = "Breaking document into blocks..."
-            };
-
-            var blocks = await chunker.ChunkAsync(markdown, documentId, sourceLanguage, targetLanguage);
-
-            await _hubContext.Clients.Group(groupName).SendAsync("ChunkingComplete", new
-            {
-                DocumentId = documentId,
-                BlockCount = blocks.Count
-            });
-
-            yield return new TranslationUpdate
-            {
-                DocumentId = documentId,
-                Status = "Chunked",
-                Message = $"Created {blocks.Count} blocks",
-                Progress = new { TotalBlocks = blocks.Count, CurrentBlock = 0 }
-            };
-
-            // Step 2: Generate embeddings
-            yield return new TranslationUpdate
-            {
-                DocumentId = documentId,
-                Status = "Embedding",
-                Message = "Generating embeddings..."
-            };
-
-            blocks = await embeddingGenerator.GenerateEmbeddingsAsync(blocks);
-
-            await _hubContext.Clients.Group(groupName).SendAsync("EmbeddingComplete", new
-            {
-                DocumentId = documentId
-            });
-
-            // Step 3: Store
-            await vectorStore.StoreAsync(blocks, documentId);
-
-            // Step 4: Translate block by block
-            TranslationBlock? previousBlock = null;
-            var translatedBlocks = new List<TranslationBlock>();
-
-            for (int i = 0; i < blocks.Count; i++)
-            {
-                var block = blocks[i];
-
-                yield return new TranslationUpdate
-                {
-                    DocumentId = documentId,
-                    Status = "Translating",
-                    Message = $"Translating block {i + 1} of {blocks.Count}",
-                    Progress = new
-                    {
-                        TotalBlocks = blocks.Count,
-                        CurrentBlock = i + 1,
-                        PercentComplete = (float)(i + 1) / blocks.Count * 100
-                    }
-                };
-
-                await _hubContext.Clients.Group(groupName).SendAsync("BlockTranslationStarted", new
-                {
-                    DocumentId = documentId,
-                    BlockIndex = i,
-                    BlockId = block.BlockId
-                });
-
-                var translatedBlock = await translator.TranslateBlockAsync(block, previousBlock);
-                translatedBlocks.Add(translatedBlock);
-
-                await _hubContext.Clients.Group(groupName).SendAsync("BlockTranslationComplete", new
-                {
-                    DocumentId = documentId,
-                    BlockIndex = i,
-                    BlockId = block.BlockId,
-                    OriginalText = block.Text,
-                    TranslatedText = translatedBlock.TranslatedText
-                });
-
-                yield return new TranslationUpdate
-                {
-                    DocumentId = documentId,
-                    Status = "BlockComplete",
-                    Message = $"Block {i + 1} translated",
-                    Progress = new
-                    {
-                        TotalBlocks = blocks.Count,
-                        CurrentBlock = i + 1,
-                        PercentComplete = (float)(i + 1) / blocks.Count * 100
-                    },
-                    Data = new
-                    {
-                        BlockIndex = i,
-                        OriginalText = block.Text,
-                        TranslatedText = translatedBlock.TranslatedText
-                    }
-                };
-
-                previousBlock = translatedBlock;
-            }
-
-            // Update vector store with translations
-            await vectorStore.StoreAsync(translatedBlocks, documentId);
-
-            stopwatch.Stop();
-
-            // Send completion notification
-            await _hubContext.Clients.Group(groupName).SendAsync("TranslationComplete", new
-            {
-                DocumentId = documentId,
-                Duration = stopwatch.Elapsed.TotalSeconds,
-                BlockCount = translatedBlocks.Count
-            });
-
-            yield return new TranslationUpdate
-            {
-                DocumentId = documentId,
-                Status = "Complete",
-                Message = $"Translation completed in {stopwatch.Elapsed.TotalSeconds:F2}s",
-                Progress = new
-                {
-                    TotalBlocks = blocks.Count,
-                    CurrentBlock = blocks.Count,
-                    PercentComplete = 100
-                }
-            };
+            translationUpdates = StreamTranslationCoreAsync(
+                markdown, documentId, sourceLanguage, targetLanguage,
+                stopwatch, groupName, translator, chunker, embeddingGenerator, vectorStore);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during streaming translation of document {DocumentId}", documentId);
+            _logger.LogError(ex, "Error initializing streaming translation for document {DocumentId}", documentId);
 
             await _hubContext.Clients.Group(groupName).SendAsync("TranslationError", new
             {
@@ -204,13 +82,175 @@ public class StreamingTranslationService
                 Error = ex.Message
             });
 
-            yield return new TranslationUpdate
+            errorUpdate = new TranslationUpdate
             {
                 DocumentId = documentId,
                 Status = "Error",
                 Message = ex.Message
             };
         }
+
+        // Yield error outside catch block if one occurred
+        if (errorUpdate != null)
+        {
+            yield return errorUpdate;
+            yield break;
+        }
+
+        // Iterate through results if no error
+        if (translationUpdates != null)
+        {
+            await foreach (var update in translationUpdates)
+            {
+                yield return update;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Core translation streaming logic (separated to avoid yield in try-catch)
+    /// </summary>
+    private async IAsyncEnumerable<TranslationUpdate> StreamTranslationCoreAsync(
+        string markdown,
+        string documentId,
+        string sourceLanguage,
+        string targetLanguage,
+        Stopwatch stopwatch,
+        string groupName,
+        ILlmSlideTranslator translator,
+        IMarkdownChunker chunker,
+        IEmbeddingGenerator embeddingGenerator,
+        IVectorStore vectorStore)
+    {
+        // Step 1: Chunk
+        yield return new TranslationUpdate
+        {
+            DocumentId = documentId,
+            Status = "Chunking",
+            Message = "Breaking document into blocks..."
+        };
+
+        var blocks = await chunker.ChunkAsync(markdown, documentId, sourceLanguage, targetLanguage);
+
+        await _hubContext.Clients.Group(groupName).SendAsync("ChunkingComplete", new
+        {
+            DocumentId = documentId,
+            BlockCount = blocks.Count
+        });
+
+        yield return new TranslationUpdate
+        {
+            DocumentId = documentId,
+            Status = "Chunked",
+            Message = $"Created {blocks.Count} blocks",
+            Progress = new { TotalBlocks = blocks.Count, CurrentBlock = 0 }
+        };
+
+        // Step 2: Generate embeddings
+        yield return new TranslationUpdate
+        {
+            DocumentId = documentId,
+            Status = "Embedding",
+            Message = "Generating embeddings..."
+        };
+
+        blocks = await embeddingGenerator.GenerateEmbeddingsAsync(blocks);
+
+        await _hubContext.Clients.Group(groupName).SendAsync("EmbeddingComplete", new
+        {
+            DocumentId = documentId
+        });
+
+        // Step 3: Store
+        await vectorStore.StoreAsync(blocks, documentId);
+
+        // Step 4: Translate block by block
+        TranslationBlock? previousBlock = null;
+        var translatedBlocks = new List<TranslationBlock>();
+
+        for (int i = 0; i < blocks.Count; i++)
+        {
+            var block = blocks[i];
+
+            yield return new TranslationUpdate
+            {
+                DocumentId = documentId,
+                Status = "Translating",
+                Message = $"Translating block {i + 1} of {blocks.Count}",
+                Progress = new
+                {
+                    TotalBlocks = blocks.Count,
+                    CurrentBlock = i + 1,
+                    PercentComplete = (float)(i + 1) / blocks.Count * 100
+                }
+            };
+
+            await _hubContext.Clients.Group(groupName).SendAsync("BlockTranslationStarted", new
+            {
+                DocumentId = documentId,
+                BlockIndex = i,
+                BlockId = block.BlockId
+            });
+
+            var translatedBlock = await translator.TranslateBlockAsync(block, previousBlock);
+            translatedBlocks.Add(translatedBlock);
+
+            await _hubContext.Clients.Group(groupName).SendAsync("BlockTranslationComplete", new
+            {
+                DocumentId = documentId,
+                BlockIndex = i,
+                BlockId = block.BlockId,
+                OriginalText = block.Text,
+                TranslatedText = translatedBlock.TranslatedText
+            });
+
+            yield return new TranslationUpdate
+            {
+                DocumentId = documentId,
+                Status = "BlockComplete",
+                Message = $"Block {i + 1} translated",
+                Progress = new
+                {
+                    TotalBlocks = blocks.Count,
+                    CurrentBlock = i + 1,
+                    PercentComplete = (float)(i + 1) / blocks.Count * 100
+                },
+                Data = new
+                {
+                    BlockIndex = i,
+                    OriginalText = block.Text,
+                    TranslatedText = translatedBlock.TranslatedText
+                }
+            };
+
+            previousBlock = translatedBlock;
+        }
+
+        // Update vector store with translations
+        await vectorStore.StoreAsync(translatedBlocks, documentId);
+
+        stopwatch.Stop();
+
+        // Send completion notification
+        await _hubContext.Clients.Group(groupName).SendAsync("TranslationComplete", new
+        {
+            DocumentId = documentId,
+            Duration = stopwatch.Elapsed.TotalSeconds,
+            BlockCount = translatedBlocks.Count
+        });
+
+        yield return new TranslationUpdate
+        {
+            DocumentId = documentId,
+            Status = "Complete",
+            Message = $"Translation completed in {stopwatch.Elapsed.TotalSeconds:F2}s",
+            Progress = new
+            {
+                TotalBlocks = blocks.Count,
+                CurrentBlock = blocks.Count,
+                PercentComplete = 100
+            }
+        };
     }
 }
 

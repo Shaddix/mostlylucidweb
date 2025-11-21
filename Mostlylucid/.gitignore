@@ -267,7 +267,8 @@ __pycache__/
 /logs/
 /wwwroot/js/dist/
 /wwwroot/css/dist/
-/Markdown/translated/
+translated/
 /wwwroot/css/highlight/atom-one-dark-reasonable.min.css
 /wwwroot/css/highlight/default.min.css
-/Markdown/translated/
+/Mostlylucid.AltText.Demo/models/
+

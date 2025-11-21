@@ -104,8 +104,8 @@ public class MarkdownChunker : IMarkdownChunker
         return block switch
         {
             HeadingBlock => "heading",
+            FencedCodeBlock => "code",  // More specific type must come before CodeBlock
             CodeBlock => "code",
-            FencedCodeBlock => "code",
             QuoteBlock => "quote",
             ListBlock => "list",
             ParagraphBlock => "paragraph",
