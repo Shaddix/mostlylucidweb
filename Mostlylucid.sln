@@ -84,6 +84,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.GeoDetection", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.LlmAltText", "Mostlylucid.LlmAltText\Mostlylucid.LlmAltText.csproj", "{E6F6BE46-36FA-447A-A13B-1152A283617C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.DocumentConversion", "Mostlylucid.DocumentConversion\Mostlylucid.DocumentConversion.csproj", "{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -478,6 +480,18 @@ Global
 		{E6F6BE46-36FA-447A-A13B-1152A283617C}.Release|x64.Build.0 = Release|Any CPU
 		{E6F6BE46-36FA-447A-A13B-1152A283617C}.Release|x86.ActiveCfg = Release|Any CPU
 		{E6F6BE46-36FA-447A-A13B-1152A283617C}.Release|x86.Build.0 = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|x64.Build.0 = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Debug|x86.Build.0 = Debug|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|x64.ActiveCfg = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|x64.Build.0 = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|x86.ActiveCfg = Release|Any CPU
+		{D2C3B4A5-E6F7-4890-ABCD-EF1234567891}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
