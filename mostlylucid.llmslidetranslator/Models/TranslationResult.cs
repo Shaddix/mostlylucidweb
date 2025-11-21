@@ -1,47 +1,47 @@
 namespace mostlylucid.llmslidetranslator.Models;
 
 /// <summary>
-/// Result of a translation operation
+///     Result of a translation operation
 /// </summary>
 public class TranslationResult
 {
     /// <summary>
-    /// Document identifier
+    ///     Document identifier
     /// </summary>
     public required string DocumentId { get; set; }
 
     /// <summary>
-    /// Translated blocks
+    ///     Translated blocks
     /// </summary>
     public List<TranslationBlock> Blocks { get; set; } = new();
 
     /// <summary>
-    /// Source language
+    ///     Source language
     /// </summary>
     public required string SourceLanguage { get; set; }
 
     /// <summary>
-    /// Target language
+    ///     Target language
     /// </summary>
     public required string TargetLanguage { get; set; }
 
     /// <summary>
-    /// Translation method used
+    ///     Translation method used
     /// </summary>
     public TranslationMethod Method { get; set; }
 
     /// <summary>
-    /// Total time taken for translation
+    ///     Total time taken for translation
     /// </summary>
     public TimeSpan Duration { get; set; }
 
     /// <summary>
-    /// Any errors encountered
+    ///     Any errors encountered
     /// </summary>
     public List<string> Errors { get; set; } = new();
 
     /// <summary>
-    /// Get the full translated text by concatenating all blocks
+    ///     Get the full translated text by concatenating all blocks
     /// </summary>
     public string GetTranslatedText()
     {
@@ -52,89 +52,89 @@ public class TranslationResult
 }
 
 /// <summary>
-/// Translation method used
+///     Translation method used
 /// </summary>
 public enum TranslationMethod
 {
     /// <summary>
-    /// LLM only
+    ///     LLM only
     /// </summary>
     LlmOnly,
 
     /// <summary>
-    /// NMT only
+    ///     NMT only
     /// </summary>
     NmtOnly,
 
     /// <summary>
-    /// NMT baseline + LLM post-editing
+    ///     NMT baseline + LLM post-editing
     /// </summary>
     NmtPlusLlm,
 
     /// <summary>
-    /// RAG-enhanced LLM
+    ///     RAG-enhanced LLM
     /// </summary>
     RagLlm
 }
 
 /// <summary>
-/// Comparison between two translations
+///     Comparison between two translations
 /// </summary>
 public class TranslationComparison
 {
     /// <summary>
-    /// Document identifier
+    ///     Document identifier
     /// </summary>
     public required string DocumentId { get; set; }
 
     /// <summary>
-    /// First translation result
+    ///     First translation result
     /// </summary>
     public required TranslationResult Translation1 { get; set; }
 
     /// <summary>
-    /// Second translation result
+    ///     Second translation result
     /// </summary>
     public required TranslationResult Translation2 { get; set; }
 
     /// <summary>
-    /// Block-by-block differences
+    ///     Block-by-block differences
     /// </summary>
     public List<BlockDifference> Differences { get; set; } = new();
 
     /// <summary>
-    /// Overall similarity score (0.0 - 1.0)
+    ///     Overall similarity score (0.0 - 1.0)
     /// </summary>
     public float SimilarityScore { get; set; }
 }
 
 /// <summary>
-/// Difference between two translation blocks
+///     Difference between two translation blocks
 /// </summary>
 public class BlockDifference
 {
     /// <summary>
-    /// Block index
+    ///     Block index
     /// </summary>
     public int BlockIndex { get; set; }
 
     /// <summary>
-    /// Text from translation 1
+    ///     Text from translation 1
     /// </summary>
     public required string Text1 { get; set; }
 
     /// <summary>
-    /// Text from translation 2
+    ///     Text from translation 2
     /// </summary>
     public required string Text2 { get; set; }
 
     /// <summary>
-    /// Similarity score for this block (0.0 - 1.0)
+    ///     Similarity score for this block (0.0 - 1.0)
     /// </summary>
     public float Similarity { get; set; }
 
     /// <summary>
-    /// Edit distance between the two texts
+    ///     Edit distance between the two texts
     /// </summary>
     public int EditDistance { get; set; }
 }

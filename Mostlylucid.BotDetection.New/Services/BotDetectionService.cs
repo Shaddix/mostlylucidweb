@@ -9,7 +9,7 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Services;
 
 /// <summary>
-/// Main bot detection service that orchestrates multiple detection strategies
+///     Main bot detection service that orchestrates multiple detection strategies
 /// </summary>
 public class BotDetectionService(
     ILogger<BotDetectionService> logger,
@@ -18,14 +18,15 @@ public class BotDetectionService(
     IEnumerable<IDetector> detectors)
     : IBotDetectionService
 {
-    private readonly ILogger<BotDetectionService> _logger = logger;
-    private readonly BotDetectionOptions _options = options.Value;
     private readonly IMemoryCache _cache = cache;
     private readonly IEnumerable<IDetector> _detectors = detectors;
+    private readonly ILogger<BotDetectionService> _logger = logger;
+    private readonly BotDetectionOptions _options = options.Value;
     private readonly BotDetectionStatistics _statistics = new();
     private readonly object _statsLock = new();
 
-    public async Task<BotDetectionResult> DetectAsync(HttpContext context, CancellationToken cancellationToken = default)
+    public async Task<BotDetectionResult> DetectAsync(HttpContext context,
+        CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
 
@@ -44,7 +45,6 @@ public class BotDetectionService(
 
             // Run all enabled detectors
             foreach (var detector in _detectors)
-            {
                 try
                 {
                     var detectorResult = await detector.DetectAsync(context, cancellationToken);
@@ -57,7 +57,6 @@ public class BotDetectionService(
                 {
                     _logger.LogError(ex, "Detector {Detector} failed", detector.Name);
                 }
-            }
 
             // Combine results using weighted scoring
             result = CombineResults(detectorResults);
@@ -110,10 +109,7 @@ public class BotDetectionService(
         var result = new BotDetectionResult();
 
         // Combine all reasons
-        foreach (var detectorResult in detectorResults)
-        {
-            result.Reasons.AddRange(detectorResult.Reasons);
-        }
+        foreach (var detectorResult in detectorResults) result.Reasons.AddRange(detectorResult.Reasons);
 
         // Calculate weighted confidence score
         // Strategy: Take maximum confidence, but boost if multiple detectors agree
@@ -155,10 +151,7 @@ public class BotDetectionService(
 
         // Extract bot name if identified
         var botName = detectorResults.FirstOrDefault(r => !string.IsNullOrEmpty(r.BotName))?.BotName;
-        if (!string.IsNullOrEmpty(botName))
-        {
-            result.BotName = botName;
-        }
+        if (!string.IsNullOrEmpty(botName)) result.BotName = botName;
 
         return result;
     }
@@ -201,15 +194,11 @@ public class BotDetectionService(
 
             // Update average processing time (rolling average)
             if (_statistics.TotalRequests == 1)
-            {
                 _statistics.AverageProcessingTimeMs = result.ProcessingTimeMs;
-            }
             else
-            {
                 _statistics.AverageProcessingTimeMs =
                     (_statistics.AverageProcessingTimeMs * (_statistics.TotalRequests - 1) + result.ProcessingTimeMs)
                     / _statistics.TotalRequests;
-            }
         }
     }
 }

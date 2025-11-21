@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Mostlylucid.BotDetection.Detectors;
 using Mostlylucid.BotDetection.Models;
 using Mostlylucid.BotDetection.Services;
@@ -7,25 +6,21 @@ using Mostlylucid.BotDetection.Services;
 namespace Mostlylucid.BotDetection.Extensions;
 
 /// <summary>
-/// Extension methods for configuring bot detection services
+///     Extension methods for configuring bot detection services
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Add bot detection services to the service collection
+    ///     Add bot detection services to the service collection
     /// </summary>
     public static IServiceCollection AddBotDetection(
         this IServiceCollection services,
         Action<BotDetectionOptions>? configure = null)
     {
         if (configure != null)
-        {
             services.Configure(configure);
-        }
         else
-        {
             services.Configure<BotDetectionOptions>(options => { });
-        }
 
         // Register core bot detection service
         services.AddSingleton<IBotDetectionService, BotDetectionService>();
@@ -48,7 +43,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Configure bot detection with custom options
+    ///     Configure bot detection with custom options
     /// </summary>
     public static IServiceCollection ConfigureBotDetection(
         this IServiceCollection services,

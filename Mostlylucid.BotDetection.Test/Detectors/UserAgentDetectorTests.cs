@@ -7,12 +7,12 @@ using Mostlylucid.BotDetection.Test.Helpers;
 namespace Mostlylucid.BotDetection.Test.Detectors;
 
 /// <summary>
-/// Comprehensive tests for UserAgentDetector
+///     Comprehensive tests for UserAgentDetector
 /// </summary>
 public class UserAgentDetectorTests
 {
-    private readonly ILogger<UserAgentDetector> _logger;
     private readonly IOptions<BotDetectionOptions> _defaultOptions;
+    private readonly ILogger<UserAgentDetector> _logger;
 
     public UserAgentDetectorTests()
     {
@@ -26,6 +26,54 @@ public class UserAgentDetectorTests
             _logger,
             Options.Create(options ?? new BotDetectionOptions()));
     }
+
+    #region Malicious Bot Tests
+
+    [Theory]
+    [InlineData("Scrapy/2.5.0")]
+    [InlineData("MJ12bot")]
+    [InlineData("AhrefsBot")]
+    [InlineData("SemrushBot")]
+    [InlineData("DotBot")]
+    public async Task DetectAsync_KnownMaliciousOrAggressiveBot_ReturnsHighConfidence(string userAgent)
+    {
+        // Arrange
+        var detector = CreateDetector();
+        var context = MockHttpContext.CreateWithUserAgent(userAgent);
+
+        // Act
+        var result = await detector.DetectAsync(context);
+
+        // Assert
+        Assert.True(result.Confidence >= 0.2,
+            $"Known aggressive bot ({userAgent}) should have elevated bot confidence");
+    }
+
+    #endregion
+
+    #region Options Tests
+
+    [Fact]
+    public async Task DetectAsync_CustomWhitelist_RespectsWhitelistedPatterns()
+    {
+        // Arrange
+        var options = new BotDetectionOptions
+        {
+            WhitelistedBotPatterns = new List<string> { "MyCustomBot" }
+        };
+        var detector = CreateDetector(options);
+        // This would normally trigger bot detection but is in custom whitelist
+        var context = MockHttpContext.CreateWithUserAgent("MyCustomBot/1.0");
+
+        // Act
+        var result = await detector.DetectAsync(context);
+
+        // Assert - should still have some confidence since it's not in GoodBots signatures
+        // The whitelist only works when combined with GoodBots patterns
+        Assert.NotNull(result);
+    }
+
+    #endregion
 
     #region Missing User-Agent Tests
 
@@ -252,10 +300,13 @@ public class UserAgentDetectorTests
     #region Legitimate Browser Tests
 
     [Theory]
-    [InlineData("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")]
-    [InlineData("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15")]
+    [InlineData(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")]
+    [InlineData(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15")]
     [InlineData("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0")]
-    [InlineData("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.2210.91")]
+    [InlineData(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.2210.91")]
     public async Task DetectAsync_LegitimeBrowser_ReturnsLowConfidence(string userAgent)
     {
         // Arrange
@@ -297,30 +348,6 @@ public class UserAgentDetectorTests
 
         // Assert
         Assert.True(result.Reasons.Count <= 1, "Realistic browser should have few detection reasons");
-    }
-
-    #endregion
-
-    #region Malicious Bot Tests
-
-    [Theory]
-    [InlineData("Scrapy/2.5.0")]
-    [InlineData("MJ12bot")]
-    [InlineData("AhrefsBot")]
-    [InlineData("SemrushBot")]
-    [InlineData("DotBot")]
-    public async Task DetectAsync_KnownMaliciousOrAggressiveBot_ReturnsHighConfidence(string userAgent)
-    {
-        // Arrange
-        var detector = CreateDetector();
-        var context = MockHttpContext.CreateWithUserAgent(userAgent);
-
-        // Act
-        var result = await detector.DetectAsync(context);
-
-        // Assert
-        Assert.True(result.Confidence >= 0.2,
-            $"Known aggressive bot ({userAgent}) should have elevated bot confidence");
     }
 
     #endregion
@@ -410,30 +437,6 @@ public class UserAgentDetectorTests
 
     #endregion
 
-    #region Options Tests
-
-    [Fact]
-    public async Task DetectAsync_CustomWhitelist_RespectsWhitelistedPatterns()
-    {
-        // Arrange
-        var options = new BotDetectionOptions
-        {
-            WhitelistedBotPatterns = new List<string> { "MyCustomBot" }
-        };
-        var detector = CreateDetector(options);
-        // This would normally trigger bot detection but is in custom whitelist
-        var context = MockHttpContext.CreateWithUserAgent("MyCustomBot/1.0");
-
-        // Act
-        var result = await detector.DetectAsync(context);
-
-        // Assert - should still have some confidence since it's not in GoodBots signatures
-        // The whitelist only works when combined with GoodBots patterns
-        Assert.NotNull(result);
-    }
-
-    #endregion
-
     #region Reason Detail Tests
 
     [Fact]
@@ -468,10 +471,8 @@ public class UserAgentDetectorTests
 
         // Assert
         foreach (var reason in result.Reasons)
-        {
             Assert.True(reason.ConfidenceImpact >= -1.0 && reason.ConfidenceImpact <= 1.0,
                 $"ConfidenceImpact {reason.ConfidenceImpact} should be between -1.0 and 1.0");
-        }
     }
 
     #endregion

@@ -6,17 +6,15 @@ using Mostlylucid.LlmAltText.Models;
 namespace Mostlylucid.LlmAltText.Services;
 
 /// <summary>
-/// Florence-2 Vision Language Model implementation for alt text generation and OCR
+///     Florence-2 Vision Language Model implementation for alt text generation and OCR
 /// </summary>
 public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
 {
-    private readonly ILogger<Florence2ImageAnalysisService> _logger;
-    private readonly AltTextOptions _options;
-    private readonly Florence2Model? _model;
-    private bool _isInitialized;
     private readonly SemaphoreSlim _initLock = new(1, 1);
-
-    public bool IsReady => _isInitialized && _model is not null;
+    private readonly bool _isInitialized;
+    private readonly ILogger<Florence2ImageAnalysisService> _logger;
+    private readonly Florence2Model? _model;
+    private readonly AltTextOptions _options;
 
     public Florence2ImageAnalysisService(
         ILogger<Florence2ImageAnalysisService> logger,
@@ -37,7 +35,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             LogInfo("Checking for model files...");
             modelSource
                 .DownloadModelsAsync(
-                    (Florence2.IStatus status) => LogModelDownloadStatus(status),
+                    status => LogModelDownloadStatus(status),
                     _logger,
                     CancellationToken.None)
                 .GetAwaiter()
@@ -47,7 +45,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             _isInitialized = true;
 
             LogInfo("Florence-2 model initialized successfully");
-            LogInfo($"Available task types: CAPTION, DETAILED_CAPTION, MORE_DETAILED_CAPTION, OCR");
+            LogInfo("Available task types: CAPTION, DETAILED_CAPTION, MORE_DETAILED_CAPTION, OCR");
         }
         catch (Exception ex)
         {
@@ -55,6 +53,14 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             _isInitialized = false;
         }
     }
+
+    public void Dispose()
+    {
+        _initLock.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    public bool IsReady => _isInitialized && _model is not null;
 
     public async Task<string> GenerateAltTextAsync(Stream imageStream, string taskType = "MORE_DETAILED_CAPTION")
     {
@@ -67,7 +73,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             LogInfo($"Generating alt text using task type: {task}");
             var startTime = DateTime.UtcNow;
 
-            var results = _model!.Run(task, new[] { imageStream }, textInput: _options.AltTextPrompt, CancellationToken.None);
+            var results = _model!.Run(task, new[] { imageStream }, _options.AltTextPrompt, CancellationToken.None);
             var altText = results.FirstOrDefault()?.PureText;
 
             var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
@@ -100,7 +106,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             LogInfo("Extracting text from image using OCR");
             var startTime = DateTime.UtcNow;
 
-            var results = _model!.Run(TaskTypes.OCR, new[] { imageStream }, textInput: string.Empty, CancellationToken.None);
+            var results = _model!.Run(TaskTypes.OCR, new[] { imageStream }, string.Empty, CancellationToken.None);
             var ocrText = results.FirstOrDefault()?.PureText;
 
             var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
@@ -184,8 +190,8 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
             var (contentType, confidence) = ClassifyFromResults(altText, extractedText, memoryStream.Length);
 
             var hasSignificantText = !string.IsNullOrWhiteSpace(extractedText) &&
-                                      extractedText != "No text found" &&
-                                      extractedText.Length > 20;
+                                     extractedText != "No text found" &&
+                                     extractedText.Length > 20;
 
             var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
             LogInfo($"Complete analysis with classification finished in {duration:F0}ms - Type: {contentType}");
@@ -235,25 +241,47 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         }
     }
 
-    private (ImageContentType Type, double Confidence) ClassifyFromResults(string altText, string extractedText, long imageSize)
+    private (ImageContentType Type, double Confidence) ClassifyFromResults(string altText, string extractedText,
+        long imageSize)
     {
         var altLower = altText.ToLowerInvariant();
         var ocrLength = extractedText?.Length ?? 0;
         var hasOcrText = !string.IsNullOrWhiteSpace(extractedText) && extractedText != "No text found";
 
         // Document indicators
-        var documentKeywords = new[] { "document", "text", "paper", "page", "form", "letter", "contract", "invoice", "receipt", "pdf", "printed" };
-        var screenshotKeywords = new[] { "screenshot", "screen", "window", "browser", "desktop", "interface", "ui", "menu", "button", "toolbar", "application" };
-        var chartKeywords = new[] { "chart", "graph", "diagram", "plot", "bar chart", "pie chart", "line graph", "statistics", "data visualization" };
-        var illustrationKeywords = new[] { "illustration", "drawing", "cartoon", "artwork", "painting", "sketch", "artistic", "animated", "clipart" };
-        var diagramKeywords = new[] { "diagram", "flowchart", "schematic", "architecture", "workflow", "process", "uml", "er diagram" };
-        var photoKeywords = new[] { "photo", "photograph", "picture", "image of", "person", "people", "landscape", "building", "outdoor", "indoor", "nature", "animal" };
+        var documentKeywords = new[]
+        {
+            "document", "text", "paper", "page", "form", "letter", "contract", "invoice", "receipt", "pdf", "printed"
+        };
+        var screenshotKeywords = new[]
+        {
+            "screenshot", "screen", "window", "browser", "desktop", "interface", "ui", "menu", "button", "toolbar",
+            "application"
+        };
+        var chartKeywords = new[]
+        {
+            "chart", "graph", "diagram", "plot", "bar chart", "pie chart", "line graph", "statistics",
+            "data visualization"
+        };
+        var illustrationKeywords = new[]
+        {
+            "illustration", "drawing", "cartoon", "artwork", "painting", "sketch", "artistic", "animated", "clipart"
+        };
+        var diagramKeywords = new[]
+            { "diagram", "flowchart", "schematic", "architecture", "workflow", "process", "uml", "er diagram" };
+        var photoKeywords = new[]
+        {
+            "photo", "photograph", "picture", "image of", "person", "people", "landscape", "building", "outdoor",
+            "indoor", "nature", "animal"
+        };
 
         // Calculate scores
         var scores = new Dictionary<ImageContentType, double>
         {
-            [ImageContentType.Document] = CalculateKeywordScore(altLower, documentKeywords) + (hasOcrText && ocrLength > 100 ? 0.4 : 0),
-            [ImageContentType.Screenshot] = CalculateKeywordScore(altLower, screenshotKeywords) + (hasOcrText && ocrLength > 20 && ocrLength < 500 ? 0.2 : 0),
+            [ImageContentType.Document] = CalculateKeywordScore(altLower, documentKeywords) +
+                                          (hasOcrText && ocrLength > 100 ? 0.4 : 0),
+            [ImageContentType.Screenshot] = CalculateKeywordScore(altLower, screenshotKeywords) +
+                                            (hasOcrText && ocrLength > 20 && ocrLength < 500 ? 0.2 : 0),
             [ImageContentType.Chart] = CalculateKeywordScore(altLower, chartKeywords),
             [ImageContentType.Illustration] = CalculateKeywordScore(altLower, illustrationKeywords),
             [ImageContentType.Diagram] = CalculateKeywordScore(altLower, diagramKeywords),
@@ -261,10 +289,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         };
 
         // High OCR text content strongly suggests document
-        if (hasOcrText && ocrLength > 200)
-        {
-            scores[ImageContentType.Document] += 0.3;
-        }
+        if (hasOcrText && ocrLength > 200) scores[ImageContentType.Document] += 0.3;
 
         // Find best match
         var bestMatch = scores.OrderByDescending(x => x.Value).First();
@@ -272,10 +297,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         if (bestMatch.Value < 0.1)
         {
             // No strong signals - default based on OCR presence
-            if (hasOcrText && ocrLength > 50)
-            {
-                return (ImageContentType.Document, 0.5);
-            }
+            if (hasOcrText && ocrLength > 50) return (ImageContentType.Document, 0.5);
             return (ImageContentType.Photograph, 0.4); // Default assumption
         }
 
@@ -289,12 +311,9 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
     {
         double score = 0;
         foreach (var keyword in keywords)
-        {
             if (text.Contains(keyword))
-            {
                 score += 0.2;
-            }
-        }
+
         return Math.Min(score, 0.8);
     }
 
@@ -319,10 +338,7 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
 
     private TaskTypes ResolveTaskType(string taskType, TaskTypes fallback)
     {
-        if (Enum.TryParse<TaskTypes>(taskType, true, out var parsed))
-        {
-            return parsed;
-        }
+        if (Enum.TryParse<TaskTypes>(taskType, true, out var parsed)) return parsed;
 
         _logger.LogWarning("Unknown task type '{TaskType}'; using fallback '{Fallback}'", taskType, fallback);
         return fallback;
@@ -333,52 +349,34 @@ public class Florence2ImageAnalysisService : IImageAnalysisService, IDisposable
         var normalized = altText.Trim();
 
         // Ensure proper sentence ending
-        if (!normalized.EndsWith(".") && !normalized.EndsWith("!") && !normalized.EndsWith("?"))
-        {
-            normalized += ".";
-        }
+        if (!normalized.EndsWith(".") && !normalized.EndsWith("!") && !normalized.EndsWith("?")) normalized += ".";
 
         // Check word count and warn if exceeding recommendation
         var wordCount = normalized.Split(new[] { ' ', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount > _options.MaxWords)
-        {
             _logger.LogWarning(
                 "Generated alt text has {WordCount} words, exceeding recommended maximum of {MaxWords}",
                 wordCount, _options.MaxWords);
-        }
 
         return normalized;
     }
 
-    private void LogModelDownloadStatus(Florence2.IStatus status)
+    private void LogModelDownloadStatus(IStatus status)
     {
         if (_options.EnableDiagnosticLogging)
         {
             if (!string.IsNullOrEmpty(status.Error))
-            {
                 _logger.LogError("Model download error: {Error}", status.Error);
-            }
             else
-            {
                 _logger.LogInformation(
                     "Model download progress: {Progress:P1} - {Message}",
                     status.Progress,
                     status.Message ?? "Processing");
-            }
         }
     }
 
     private void LogInfo(string message)
     {
-        if (_options.EnableDiagnosticLogging)
-        {
-            _logger.LogInformation(message);
-        }
-    }
-
-    public void Dispose()
-    {
-        _initLock.Dispose();
-        GC.SuppressFinalize(this);
+        if (_options.EnableDiagnosticLogging) _logger.LogInformation(message);
     }
 }

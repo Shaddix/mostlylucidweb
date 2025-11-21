@@ -6,14 +6,14 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// File-based vector store for embeddings
+///     File-based vector store for embeddings
 /// </summary>
 public class FileVectorStore : IVectorStore
 {
-    private readonly ILogger<FileVectorStore> _logger;
-    private readonly IEmbeddingGenerator _embeddingGenerator;
     private readonly string _dataPath;
+    private readonly IEmbeddingGenerator _embeddingGenerator;
     private readonly SemaphoreSlim _fileLock = new(1, 1);
+    private readonly ILogger<FileVectorStore> _logger;
 
     public FileVectorStore(
         ILogger<FileVectorStore> logger,

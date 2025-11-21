@@ -9,23 +9,17 @@ using Mostlylucid.LlmAltText.Services;
 namespace Mostlylucid.LlmAltText.TagHelpers;
 
 /// <summary>
-/// TagHelper that automatically generates alt text for img tags that don't have one
+///     TagHelper that automatically generates alt text for img tags that don't have one
 /// </summary>
 [HtmlTargetElement("img")]
 public class AutoAltTextTagHelper : TagHelper
 {
-    private readonly IImageAnalysisService _imageAnalysisService;
-    private readonly IAltTextRepository? _repository;
     private readonly IMemoryCache _cache;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IImageAnalysisService _imageAnalysisService;
     private readonly ILogger<AutoAltTextTagHelper> _logger;
     private readonly AltTextOptions _options;
-
-    /// <summary>
-    /// Set to true to skip auto alt text generation for this image
-    /// </summary>
-    [HtmlAttributeName("data-skip-alt")]
-    public bool SkipAlt { get; set; } = false;
+    private readonly IAltTextRepository? _repository;
 
     public AutoAltTextTagHelper(
         IImageAnalysisService imageAnalysisService,
@@ -43,48 +37,36 @@ public class AutoAltTextTagHelper : TagHelper
         _options = options.Value;
     }
 
+    /// <summary>
+    ///     Set to true to skip auto alt text generation for this image
+    /// </summary>
+    [HtmlAttributeName("data-skip-alt")]
+    public bool SkipAlt { get; set; } = false;
+
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
         // Skip if TagHelper is disabled
-        if (!_options.EnableTagHelper)
-        {
-            return;
-        }
+        if (!_options.EnableTagHelper) return;
 
         // Skip if explicitly marked to skip
-        if (SkipAlt)
-        {
-            return;
-        }
+        if (SkipAlt) return;
 
         // Skip if alt text already provided (check if attribute exists and has a value)
         var existingAlt = context.AllAttributes["alt"]?.Value?.ToString();
         if (existingAlt != null) // Even empty string means alt was explicitly set
-        {
             return;
-        }
 
         // Get the src attribute
         var src = output.Attributes["src"]?.Value?.ToString();
-        if (string.IsNullOrWhiteSpace(src))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(src)) return;
 
         // Skip data URIs and blob URLs
-        if (_options.SkipSrcPrefixes.Any(prefix => src.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-        {
-            return;
-        }
+        if (_options.SkipSrcPrefixes.Any(prefix => src.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))) return;
 
         // Check domain restrictions
         if (_options.AllowedImageDomains.Count > 0 && Uri.TryCreate(src, UriKind.Absolute, out var uri))
-        {
             if (!_options.AllowedImageDomains.Any(d => uri.Host.EndsWith(d, StringComparison.OrdinalIgnoreCase)))
-            {
                 return;
-            }
-        }
 
         try
         {
@@ -93,7 +75,8 @@ public class AutoAltTextTagHelper : TagHelper
             if (!string.IsNullOrWhiteSpace(altText))
             {
                 output.Attributes.SetAttribute("alt", altText);
-                _logger.LogDebug("Auto-generated alt text for {Src}: {AltText}", src, altText.Substring(0, Math.Min(50, altText.Length)));
+                _logger.LogDebug("Auto-generated alt text for {Src}: {AltText}", src,
+                    altText.Substring(0, Math.Min(50, altText.Length)));
             }
         }
         catch (Exception ex)
@@ -108,10 +91,7 @@ public class AutoAltTextTagHelper : TagHelper
         var cacheKey = $"alttext_{AltTextRepository.ComputeHash(src)}";
 
         // Try memory cache first
-        if (_cache.TryGetValue(cacheKey, out string? cachedAltText))
-        {
-            return cachedAltText;
-        }
+        if (_cache.TryGetValue(cacheKey, out string? cachedAltText)) return cachedAltText;
 
         // Try database cache
         if (_repository != null && _options.EnableDatabase)
@@ -130,10 +110,7 @@ public class AutoAltTextTagHelper : TagHelper
 
         // Generate new alt text
         var imageStream = await FetchImageAsync(src);
-        if (imageStream == null)
-        {
-            return null;
-        }
+        if (imageStream == null) return null;
 
         using (imageStream)
         {

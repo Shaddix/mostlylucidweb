@@ -1,6 +1,7 @@
 # Mostlylucid.GeoDetection
 
-Geographic location detection and routing middleware for ASP.NET Core applications with country-based routing and IP geolocation.
+Geographic location detection and routing middleware for ASP.NET Core applications with country-based routing and IP
+geolocation.
 
 ## Installation
 
@@ -120,15 +121,15 @@ app.MapGet("/eu-content", () => "EU Content")
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `AllowedCountries` | string[] | [] | Countries allowed to access (ISO 3166-1 alpha-2) |
-| `BlockedCountries` | string[] | [] | Countries blocked from access |
-| `DefaultAction` | GeoAction | Allow | Action when country not in lists |
-| `CacheExpirationMinutes` | int | 60 | Cache duration for location lookups |
-| `EnableLogging` | bool | true | Enable logging of geo routing decisions |
-| `RedirectUrl` | string | null | URL to redirect blocked users |
-| `BlockedStatusCode` | int | 403 | HTTP status code for blocked requests |
+| Option                   | Type      | Default | Description                                      |
+|--------------------------|-----------|---------|--------------------------------------------------|
+| `AllowedCountries`       | string[]  | []      | Countries allowed to access (ISO 3166-1 alpha-2) |
+| `BlockedCountries`       | string[]  | []      | Countries blocked from access                    |
+| `DefaultAction`          | GeoAction | Allow   | Action when country not in lists                 |
+| `CacheExpirationMinutes` | int       | 60      | Cache duration for location lookups              |
+| `EnableLogging`          | bool      | true    | Enable logging of geo routing decisions          |
+| `RedirectUrl`            | string    | null    | URL to redirect blocked users                    |
+| `BlockedStatusCode`      | int       | 403     | HTTP status code for blocked requests            |
 
 ## GeoLocation Model
 

@@ -1,10 +1,10 @@
+using System.Text.RegularExpressions;
 using Mostlylucid.BotDetection.Data;
-using Mostlylucid.BotDetection.Models;
 
 namespace Mostlylucid.BotDetection.Test.Data;
 
 /// <summary>
-/// Comprehensive tests for BotSignatures static data
+///     Comprehensive tests for BotSignatures static data
 /// </summary>
 public class BotSignaturesTests
 {
@@ -63,10 +63,8 @@ public class BotSignaturesTests
         // Assert
         var searchEngines = new[] { "Googlebot", "Bingbot", "DuckDuckBot", "Baiduspider", "YandexBot" };
         foreach (var bot in searchEngines)
-        {
             Assert.True(BotSignatures.GoodBots.ContainsKey(bot),
                 $"Should contain search engine bot: {bot}");
-        }
     }
 
     [Fact]
@@ -75,10 +73,8 @@ public class BotSignaturesTests
         // Assert
         var socialBots = new[] { "facebookexternalhit", "Twitterbot", "LinkedInBot", "Slackbot", "Discordbot" };
         foreach (var bot in socialBots)
-        {
             Assert.True(BotSignatures.GoodBots.ContainsKey(bot),
                 $"Should contain social media bot: {bot}");
-        }
     }
 
     [Fact]
@@ -86,8 +82,8 @@ public class BotSignaturesTests
     {
         // Assert
         Assert.True(BotSignatures.GoodBots.ContainsKey("Pingdom") ||
-                   BotSignatures.GoodBots.ContainsKey("StatusCake") ||
-                   BotSignatures.GoodBots.ContainsKey("Uptimebot"),
+                    BotSignatures.GoodBots.ContainsKey("StatusCake") ||
+                    BotSignatures.GoodBots.ContainsKey("Uptimebot"),
             "Should contain monitoring bots");
     }
 
@@ -97,10 +93,8 @@ public class BotSignaturesTests
         // Assert
         var devTools = new[] { "curl", "Wget", "Postman" };
         foreach (var tool in devTools)
-        {
             Assert.True(BotSignatures.GoodBots.ContainsKey(tool),
                 $"Should contain development tool: {tool}");
-        }
     }
 
     #endregion
@@ -268,7 +262,7 @@ public class BotSignaturesTests
         foreach (var pattern in BotSignatures.BotPatterns)
         {
             var exception = Record.Exception(() =>
-                System.Text.RegularExpressions.Regex.IsMatch("test", pattern));
+                Regex.IsMatch("test", pattern));
             Assert.Null(exception);
         }
     }
@@ -298,10 +292,10 @@ public class BotSignaturesTests
         var botPattern = @"\bbot\b";
 
         // Assert
-        Assert.True(System.Text.RegularExpressions.Regex.IsMatch(
+        Assert.True(Regex.IsMatch(
             "This is a bot user-agent",
             botPattern,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+            RegexOptions.IgnoreCase));
     }
 
     [Fact]
@@ -311,10 +305,10 @@ public class BotSignaturesTests
         var botPattern = @"\bbot\b";
 
         // Assert - "robot" should not match \bbot\b (word boundary)
-        Assert.False(System.Text.RegularExpressions.Regex.IsMatch(
+        Assert.False(Regex.IsMatch(
             "This is robot text",
             botPattern,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+            RegexOptions.IgnoreCase));
     }
 
     #endregion

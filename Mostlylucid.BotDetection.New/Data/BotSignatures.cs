@@ -1,13 +1,13 @@
 namespace Mostlylucid.BotDetection.Data;
 
 /// <summary>
-/// Known bot signatures and patterns
-/// Based on lists from matomo.org, Cloudflare, and other sources
+///     Known bot signatures and patterns
+///     Based on lists from matomo.org, Cloudflare, and other sources
 /// </summary>
 public static class BotSignatures
 {
     /// <summary>
-    /// Known good bots (search engines, monitoring tools, etc.)
+    ///     Known good bots (search engines, monitoring tools, etc.)
     /// </summary>
     public static readonly Dictionary<string, string> GoodBots = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -62,11 +62,11 @@ public static class BotSignatures
         ["Wget"] = "GNU Wget",
         ["python-requests"] = "Python Requests",
         ["Postman"] = "Postman",
-        ["Insomnia"] = "Insomnia",
+        ["Insomnia"] = "Insomnia"
     };
 
     /// <summary>
-    /// Known malicious or suspicious bot patterns
+    ///     Known malicious or suspicious bot patterns
     /// </summary>
     public static readonly HashSet<string> MaliciousBotPatterns = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -80,21 +80,21 @@ public static class BotSignatures
     };
 
     /// <summary>
-    /// Suspicious header combinations that indicate automation
+    ///     Suspicious header combinations that indicate automation
     /// </summary>
     public static readonly List<string[]> SuspiciousHeaderPatterns = new()
     {
         // Missing common browser headers
         new[] { "User-Agent", "!Accept-Language" },
         new[] { "User-Agent", "!Accept-Encoding" },
-        new[] { "User-Agent", "!Accept" },
+        new[] { "User-Agent", "!Accept" }
 
         // Uncommon header orders (browsers send headers in consistent order)
         // This would be checked programmatically
     };
 
     /// <summary>
-    /// Common automation frameworks
+    ///     Common automation frameworks
     /// </summary>
     public static readonly HashSet<string> AutomationFrameworks = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -105,13 +105,13 @@ public static class BotSignatures
     };
 
     /// <summary>
-    /// Regex patterns for bot detection in User-Agent
+    ///     Regex patterns for bot detection in User-Agent
     /// </summary>
     public static readonly string[] BotPatterns = new[]
     {
         @"\bbot\b", @"\bcrawl", @"\bspider\b", @"\bslurp\b", @"\barchive\b",
         @"\bindex", @"\bscrape", @"\bfetch\b", @"http:\/\/", @"https:\/\/",
         @"\+http", @"@", @"\.com", @"\.org", @"\.net",
-        @"^\w+\/[\d\.]+$", // Simple version patterns like "curl/7.68.0"
+        @"^\w+\/[\d\.]+$" // Simple version patterns like "curl/7.68.0"
     };
 }

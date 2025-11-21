@@ -85,7 +85,10 @@ app.MapGet("/api/test-bot", () =>
             new { userAgent = "curl/7.68.0", expected = "Likely bot" },
             new { userAgent = "python-requests/2.28.0", expected = "Likely bot" },
             new { userAgent = "Googlebot/2.1", expected = "Verified bot (allowed)" },
-            new { userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", expected = "Likely human" },
+            new
+            {
+                userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", expected = "Likely human"
+            },
             new { userAgent = "", expected = "Likely bot (missing)" }
         },
         instructions = "Use: curl -H 'User-Agent: curl/7.68.0' http://localhost:5000/"

@@ -3,7 +3,7 @@ using Mostlylucid.GeoDetection.Models;
 namespace Mostlylucid.GeoDetection.Test.Models;
 
 /// <summary>
-/// Comprehensive tests for GeoLocation model
+///     Comprehensive tests for GeoLocation model
 /// </summary>
 public class GeoLocationTests
 {

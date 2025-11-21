@@ -4,12 +4,12 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Services;
 
 /// <summary>
-/// Service for detecting bot traffic
+///     Service for detecting bot traffic
 /// </summary>
 public interface IBotDetectionService
 {
     /// <summary>
-    /// Analyze an HTTP request to determine if it's from a bot
+    ///     Analyze an HTTP request to determine if it's from a bot
     /// </summary>
     /// <param name="context">HTTP context</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -17,14 +17,14 @@ public interface IBotDetectionService
     Task<BotDetectionResult> DetectAsync(HttpContext context, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get statistics about bot detection
+    ///     Get statistics about bot detection
     /// </summary>
     /// <returns>Detection statistics</returns>
     BotDetectionStatistics GetStatistics();
 }
 
 /// <summary>
-/// Statistics about bot detection
+///     Statistics about bot detection
 /// </summary>
 public class BotDetectionStatistics
 {

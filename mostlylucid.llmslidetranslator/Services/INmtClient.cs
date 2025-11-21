@@ -3,13 +3,13 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Client for NMT (Neural Machine Translation) service
-/// Based on https://github.com/scottgal/mostlyucid-nmt (Opus-MT)
+///     Client for NMT (Neural Machine Translation) service
+///     Based on https://github.com/scottgal/mostlyucid-nmt (Opus-MT)
 /// </summary>
 public interface INmtClient
 {
     /// <summary>
-    /// Translate text using NMT
+    ///     Translate text using NMT
     /// </summary>
     /// <param name="text">Text to translate</param>
     /// <param name="sourceLanguage">Source language code</param>
@@ -23,7 +23,7 @@ public interface INmtClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Translate multiple blocks using NMT
+    ///     Translate multiple blocks using NMT
     /// </summary>
     /// <param name="blocks">Blocks to translate</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -33,7 +33,7 @@ public interface INmtClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Check if NMT service is available
+    ///     Check if NMT service is available
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if available</returns>

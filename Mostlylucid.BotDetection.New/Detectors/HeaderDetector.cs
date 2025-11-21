@@ -5,20 +5,20 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Detectors;
 
 /// <summary>
-/// Detects bots based on HTTP header analysis
+///     Detects bots based on HTTP header analysis
 /// </summary>
 public class HeaderDetector(ILogger<HeaderDetector> logger) : IDetector
 {
-    private readonly ILogger<HeaderDetector> _logger = logger;
-
-    public string Name => "Header Detector";
-
     // Common headers sent by real browsers
     private static readonly string[] CommonBrowserHeaders = new[]
     {
         "Accept", "Accept-Encoding", "Accept-Language", "Cache-Control",
         "Connection", "Upgrade-Insecure-Requests"
     };
+
+    private readonly ILogger<HeaderDetector> _logger = logger;
+
+    public string Name => "Header Detector";
 
     public Task<DetectorResult> DetectAsync(HttpContext context, CancellationToken cancellationToken = default)
     {
@@ -104,7 +104,6 @@ public class HeaderDetector(ILogger<HeaderDetector> logger) : IDetector
         // Check for automation headers
         var automationHeaders = new[] { "X-Requested-With", "X-Automation", "X-Bot" };
         foreach (var header in automationHeaders)
-        {
             if (headers.ContainsKey(header))
             {
                 confidence += 0.4;
@@ -115,7 +114,6 @@ public class HeaderDetector(ILogger<HeaderDetector> logger) : IDetector
                     ConfidenceImpact = 0.4
                 });
             }
-        }
 
         // Selenium/WebDriver detection
         if (headers.ContainsKey("Sec-Fetch-Site"))

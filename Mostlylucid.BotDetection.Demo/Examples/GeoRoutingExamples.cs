@@ -1,17 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
-using Mostlylucid.BotDetection.Extensions;
 using Mostlylucid.GeoDetection.Extensions;
 using Mostlylucid.GeoDetection.Filters;
 
 namespace Mostlylucid.BotDetection.Demo.Examples;
 
 /// <summary>
-/// Examples of country-based routing
+///     Examples of country-based routing
 /// </summary>
 public static class GeoRoutingExamples
 {
     /// <summary>
-    /// Example 1: Simple country-based content serving
+    ///     Example 1: Simple country-based content serving
     /// </summary>
     public static void MapSimpleCountryContent(this IEndpointRouteBuilder endpoints)
     {
@@ -30,7 +29,7 @@ public static class GeoRoutingExamples
     }
 
     /// <summary>
-    /// Example 2: Route to different pages by country
+    ///     Example 2: Route to different pages by country
     /// </summary>
     public static void MapCountrySpecificPages(this IEndpointRouteBuilder endpoints)
     {
@@ -49,37 +48,38 @@ public static class GeoRoutingExamples
     }
 
     /// <summary>
-    /// Example 3: Using ServeByCountry helper
+    ///     Example 3: Using ServeByCountry helper
     /// </summary>
     public static void MapWithServeByCountry(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/offer", () => "Default offer")
             .ServeByCountry(new Dictionary<string, Func<Task<IResult>>>
-            {
-                ["CN"] = () => Task.FromResult<IResult>(Results.Content("Special offer for China: 50% off!")),
-                ["US"] = () => Task.FromResult<IResult>(Results.Content("Special offer for USA: Buy one get one free!")),
-                ["GB"] = () => Task.FromResult<IResult>(Results.Content("Special offer for UK: Free shipping!"))
-            },
-            defaultHandler: () => Task.FromResult<IResult>(Results.Content("Standard offer: 10% off")));
+                {
+                    ["CN"] = () => Task.FromResult<IResult>(Results.Content("Special offer for China: 50% off!")),
+                    ["US"] = () =>
+                        Task.FromResult<IResult>(Results.Content("Special offer for USA: Buy one get one free!")),
+                    ["GB"] = () => Task.FromResult<IResult>(Results.Content("Special offer for UK: Free shipping!"))
+                },
+                () => Task.FromResult<IResult>(Results.Content("Standard offer: 10% off")));
     }
 
     /// <summary>
-    /// Example 4: Redirect by country helper
+    ///     Example 4: Redirect by country helper
     /// </summary>
     public static void MapWithRedirectByCountry(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/store", () => "Store")
             .RedirectByCountry(new Dictionary<string, string>
-            {
-                ["CN"] = "https://china.store.com",
-                ["EU"] = "https://eu.store.com",
-                ["US"] = "https://us.store.com"
-            },
-            defaultPath: "https://global.store.com");
+                {
+                    ["CN"] = "https://china.store.com",
+                    ["EU"] = "https://eu.store.com",
+                    ["US"] = "https://us.store.com"
+                },
+                "https://global.store.com");
     }
 
     /// <summary>
-    /// Example 5: Country-based API responses
+    ///     Example 5: Country-based API responses
     /// </summary>
     public static void MapCountryBasedApi(this IEndpointRouteBuilder endpoints)
     {
@@ -100,7 +100,7 @@ public static class GeoRoutingExamples
     }
 
     /// <summary>
-    /// Example 6: Block China but show specific message
+    ///     Example 6: Block China but show specific message
     /// </summary>
     public static void MapWithChinaMessage(this IEndpointRouteBuilder endpoints)
     {
@@ -109,38 +109,36 @@ public static class GeoRoutingExamples
             var country = context.GetCountryCode();
 
             if (country == "CN")
-            {
                 return Results.Content(
                     "<h1>访问受限</h1><p>此内容在您所在地区不可用</p>" +
                     "<p>请访问我们的中国站点: <a href='https://cn.example.com'>cn.example.com</a></p>",
                     "text/html",
                     statusCode: 451
                 );
-            }
 
             return Results.Content("<h1>Restricted Content</h1><p>Available content here</p>", "text/html");
         });
     }
 
     /// <summary>
-    /// Example 7: Using MapByCountry for grouped routing
+    ///     Example 7: Using MapByCountry for grouped routing
     /// </summary>
     public static void MapGroupedByCountry(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapByCountry("/landing", routes =>
         {
             routes.ForCountry("CN", (HttpContext ctx) =>
-                Task.FromResult<IResult>(Results.Content("Chinese landing page")))
-                  .ForCountry("US", (HttpContext ctx) =>
-                Task.FromResult<IResult>(Results.Content("US landing page")))
-                  .Default((HttpContext ctx) =>
-                Task.FromResult<IResult>(Results.Content("Default landing page")));
+                    Task.FromResult<IResult>(Results.Content("Chinese landing page")))
+                .ForCountry("US", (HttpContext ctx) =>
+                    Task.FromResult<IResult>(Results.Content("US landing page")))
+                .Default((HttpContext ctx) =>
+                    Task.FromResult<IResult>(Results.Content("Default landing page")));
         });
     }
 }
 
 /// <summary>
-/// MVC Controller examples
+///     MVC Controller examples
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -148,7 +146,7 @@ public static class GeoRoutingExamples
 public class GeoController : Controller
 {
     /// <summary>
-    /// Example: MVC action with GeoRoute attribute
+    ///     Example: MVC action with GeoRoute attribute
     /// </summary>
     [HttpGet("home")]
     [GeoRoute(CountryViews = "CN:home-cn,RU:home-ru", DefaultView = "home-default")]
@@ -159,7 +157,7 @@ public class GeoController : Controller
     }
 
     /// <summary>
-    /// Example: Different actions by country
+    ///     Example: Different actions by country
     /// </summary>
     [HttpGet("shop")]
     [GeoRoute(CountryActions = "CN:ShopChina,US:ShopUSA")]
@@ -169,7 +167,7 @@ public class GeoController : Controller
     }
 
     /// <summary>
-    /// Example: Redirect to country-specific site
+    ///     Example: Redirect to country-specific site
     /// </summary>
     [HttpGet("redirect")]
     [GeoRoute(CountryRoutes = "CN:/cn/home,FR:/fr/accueil")]
@@ -179,7 +177,7 @@ public class GeoController : Controller
     }
 
     /// <summary>
-    /// Example: Serve different content by country
+    ///     Example: Serve different content by country
     /// </summary>
     [HttpGet("offer")]
     [ServeByCountry("CN:<h1>中国特别优惠</h1>", "US:<h1>US Special Offer</h1>")]
@@ -189,17 +187,14 @@ public class GeoController : Controller
     }
 
     /// <summary>
-    /// Example: Manual country checking
+    ///     Example: Manual country checking
     /// </summary>
     [HttpGet("manual")]
     public IActionResult ManualCountryCheck()
     {
         var country = HttpContext.GetCountryCode();
 
-        if (country == "CN")
-        {
-            return Content("Chinese content", "text/html; charset=utf-8");
-        }
+        if (country == "CN") return Content("Chinese content", "text/html; charset=utf-8");
 
         return Content("Default content");
     }

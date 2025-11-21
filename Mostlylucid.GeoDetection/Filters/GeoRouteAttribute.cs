@@ -1,43 +1,42 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Mostlylucid.GeoDetection.Extensions;
-using Mostlylucid.GeoDetection.Middleware;
-using Mostlylucid.GeoDetection.Models;
 
 namespace Mostlylucid.GeoDetection.Filters;
 
 /// <summary>
-/// Attribute to route MVC actions based on visitor's country
+///     Attribute to route MVC actions based on visitor's country
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class GeoRouteAttribute : ActionFilterAttribute
 {
+    private Dictionary<string, string>? _actionMap;
+    private Dictionary<string, string>? _routeMap;
+
+    private Dictionary<string, string>? _viewMap;
+
     /// <summary>
-    /// Country-specific view mapping
-    /// Example: "CN:china-view,RU:russia-view"
+    ///     Country-specific view mapping
+    ///     Example: "CN:china-view,RU:russia-view"
     /// </summary>
     public string? CountryViews { get; set; }
 
     /// <summary>
-    /// Country-specific action mapping
-    /// Example: "CN:ChinaAction,RU:RussiaAction"
+    ///     Country-specific action mapping
+    ///     Example: "CN:ChinaAction,RU:RussiaAction"
     /// </summary>
     public string? CountryActions { get; set; }
 
     /// <summary>
-    /// Country-specific route mapping
-    /// Example: "CN:/cn/home,RU:/ru/home"
+    ///     Country-specific route mapping
+    ///     Example: "CN:/cn/home,RU:/ru/home"
     /// </summary>
     public string? CountryRoutes { get; set; }
 
     /// <summary>
-    /// Default view if no country match
+    ///     Default view if no country match
     /// </summary>
     public string? DefaultView { get; set; }
-
-    private Dictionary<string, string>? _viewMap;
-    private Dictionary<string, string>? _actionMap;
-    private Dictionary<string, string>? _routeMap;
 
     public override void OnActionExecuting(ActionExecutingContext context)
     {
@@ -63,19 +62,12 @@ public class GeoRouteAttribute : ActionFilterAttribute
 
         // Check for action redirect
         if (_actionMap != null && _actionMap.TryGetValue(countryCode, out var action))
-        {
             context.RouteData.Values["action"] = action;
-        }
 
         // Store view preference for OnActionExecuted
         if (_viewMap != null && _viewMap.TryGetValue(countryCode, out var view))
-        {
             context.HttpContext.Items["GeoRouteView"] = view;
-        }
-        else if (!string.IsNullOrEmpty(DefaultView))
-        {
-            context.HttpContext.Items["GeoRouteView"] = DefaultView;
-        }
+        else if (!string.IsNullOrEmpty(DefaultView)) context.HttpContext.Items["GeoRouteView"] = DefaultView;
 
         base.OnActionExecuting(context);
     }
@@ -85,10 +77,7 @@ public class GeoRouteAttribute : ActionFilterAttribute
         if (context.Result is ViewResult viewResult)
         {
             var preferredView = context.HttpContext.Items["GeoRouteView"] as string;
-            if (!string.IsNullOrEmpty(preferredView))
-            {
-                viewResult.ViewName = preferredView;
-            }
+            if (!string.IsNullOrEmpty(preferredView)) viewResult.ViewName = preferredView;
         }
 
         base.OnActionExecuted(context);
@@ -105,10 +94,7 @@ public class GeoRouteAttribute : ActionFilterAttribute
         foreach (var pair in pairs)
         {
             var parts = pair.Split(':', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 2)
-            {
-                result[parts[0].Trim()] = parts[1].Trim();
-            }
+            if (parts.Length == 2) result[parts[0].Trim()] = parts[1].Trim();
         }
 
         return result.Any() ? result : null;
@@ -116,7 +102,7 @@ public class GeoRouteAttribute : ActionFilterAttribute
 }
 
 /// <summary>
-/// Attribute to show country-specific content in MVC views
+///     Attribute to show country-specific content in MVC views
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public class ServeByCountryAttribute : ActionFilterAttribute
@@ -124,17 +110,14 @@ public class ServeByCountryAttribute : ActionFilterAttribute
     private readonly Dictionary<string, string> _countryContent = new();
 
     /// <summary>
-    /// Add country-specific content
+    ///     Add country-specific content
     /// </summary>
     public ServeByCountryAttribute(params string[] countryMappings)
     {
         foreach (var mapping in countryMappings)
         {
             var parts = mapping.Split(':', 2);
-            if (parts.Length == 2)
-            {
-                _countryContent[parts[0].Trim().ToUpperInvariant()] = parts[1].Trim();
-            }
+            if (parts.Length == 2) _countryContent[parts[0].Trim().ToUpperInvariant()] = parts[1].Trim();
         }
     }
 

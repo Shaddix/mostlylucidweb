@@ -7,7 +7,7 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Chunks markdown documents into translatable blocks
+///     Chunks markdown documents into translatable blocks
 /// </summary>
 public class MarkdownChunker : IMarkdownChunker
 {
@@ -65,10 +65,7 @@ public class MarkdownChunker : IMarkdownChunker
         int index)
     {
         var text = ExtractText(block);
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(text)) return null;
 
         var blockType = DetermineBlockType(block);
         var shouldTranslate = ShouldTranslateBlock(block, blockType);
@@ -104,7 +101,7 @@ public class MarkdownChunker : IMarkdownChunker
         return block switch
         {
             HeadingBlock => "heading",
-            FencedCodeBlock => "code",  // More specific type must come before CodeBlock
+            FencedCodeBlock => "code", // More specific type must come before CodeBlock
             CodeBlock => "code",
             QuoteBlock => "quote",
             ListBlock => "list",
@@ -116,10 +113,7 @@ public class MarkdownChunker : IMarkdownChunker
     private bool ShouldTranslateBlock(Block block, string blockType)
     {
         // Don't translate code blocks
-        if (blockType == "code")
-        {
-            return false;
-        }
+        if (blockType == "code") return false;
 
         // Don't translate blocks that are primarily URLs or code
         if (block is ParagraphBlock paragraph)
@@ -127,18 +121,13 @@ public class MarkdownChunker : IMarkdownChunker
             var text = ExtractText(block);
 
             // Check if it's mostly a URL
-            if (text.StartsWith("http://") || text.StartsWith("https://"))
-            {
-                return false;
-            }
+            if (text.StartsWith("http://") || text.StartsWith("https://")) return false;
 
             // Check if it contains inline code
             var hasInlineCode = paragraph.Inline?.Any(inline => inline is CodeInline) ?? false;
             if (hasInlineCode && text.Length < 100)
-            {
                 // Short blocks with code snippets might be better left untranslated
                 _logger.LogDebug("Skipping translation of short code-heavy block");
-            }
         }
 
         return true;

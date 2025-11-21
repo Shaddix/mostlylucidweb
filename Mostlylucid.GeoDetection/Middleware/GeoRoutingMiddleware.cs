@@ -8,16 +8,15 @@ using Mostlylucid.GeoDetection.Services;
 namespace Mostlylucid.GeoDetection.Middleware;
 
 /// <summary>
-/// Middleware that performs geo-based routing and blocking
+///     Middleware that performs geo-based routing and blocking
 /// </summary>
 public class GeoRoutingMiddleware
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GeoRoutingMiddleware> _logger;
-    private readonly GeoRoutingOptions _options;
-
     public const string GeoLocationKey = "GeoLocation";
     public const string GeoBlockResultKey = "GeoBlockResult";
+    private readonly ILogger<GeoRoutingMiddleware> _logger;
+    private readonly RequestDelegate _next;
+    private readonly GeoRoutingOptions _options;
 
     public GeoRoutingMiddleware(
         RequestDelegate next,
@@ -61,20 +60,15 @@ public class GeoRoutingMiddleware
 
             _logger.LogInformation("Test mode: Simulating request from {Country}", testMode);
 
-            if (_options.StoreInContext)
-            {
-                context.Items[GeoLocationKey] = testLocation;
-            }
+            if (_options.StoreInContext) context.Items[GeoLocationKey] = testLocation;
 
             if (_options.AddCountryHeader)
-            {
                 context.Response.OnStarting(() =>
                 {
                     context.Response.Headers.TryAdd("X-Country", testLocation.CountryCode);
                     context.Response.Headers.TryAdd("X-Test-Mode", "true");
                     return Task.CompletedTask;
                 });
-            }
 
             var testBlockResult = EvaluateBlockingRules(testLocation, "test-ip");
             if (testBlockResult.IsBlocked)
@@ -111,14 +105,12 @@ public class GeoRoutingMiddleware
 
         // Check if IP is whitelisted
         if (_options.WhitelistedIps?.Any() == true)
-        {
             if (IsWhitelisted(ipAddress, _options.WhitelistedIps))
             {
                 _logger.LogDebug("IP {IP} is whitelisted, bypassing geo restrictions", ipAddress);
                 await _next(context);
                 return;
             }
-        }
 
         // Get geographic location
         var location = await geoService.GetLocationAsync(ipAddress, context.RequestAborted);
@@ -131,24 +123,17 @@ public class GeoRoutingMiddleware
         }
 
         // Store in context for downstream use
-        if (_options.StoreInContext)
-        {
-            context.Items[GeoLocationKey] = location;
-        }
+        if (_options.StoreInContext) context.Items[GeoLocationKey] = location;
 
         // Add country header
         if (_options.AddCountryHeader)
-        {
             context.Response.OnStarting(() =>
             {
                 context.Response.Headers.TryAdd("X-Country", location.CountryCode);
                 if (!string.IsNullOrEmpty(location.RegionCode))
-                {
                     context.Response.Headers.TryAdd("X-Region", location.RegionCode);
-                }
                 return Task.CompletedTask;
             });
-        }
 
         // Check blocking rules
         var blockResult = EvaluateBlockingRules(location, ipAddress);
@@ -188,9 +173,7 @@ public class GeoRoutingMiddleware
 
         // Country-based routing
         if (_options.EnableAutoRouting && _options.CountryRoutes.Any())
-        {
             if (_options.CountryRoutes.TryGetValue(location.CountryCode, out var route))
-            {
                 // Don't redirect if already on the correct route
                 if (!context.Request.Path.StartsWithSegments(route))
                 {
@@ -198,16 +181,11 @@ public class GeoRoutingMiddleware
                         "Routing {Country} traffic to {Route}",
                         location.CountryCode, route);
 
-                    if (_options.OnRouted != null)
-                    {
-                        await _options.OnRouted(context, location);
-                    }
+                    if (_options.OnRouted != null) await _options.OnRouted(context, location);
 
                     context.Response.Redirect(route + context.Request.Path + context.Request.QueryString);
                     return;
                 }
-            }
-        }
 
         await _next(context);
     }
@@ -239,25 +217,21 @@ public class GeoRoutingMiddleware
 
         // Check allowed countries (whitelist mode)
         if (_options.AllowedCountries?.Any() == true)
-        {
             if (!_options.AllowedCountries.Contains(location.CountryCode, StringComparer.OrdinalIgnoreCase))
             {
                 result.IsBlocked = true;
                 result.BlockReason = $"Site is only available in: {string.Join(", ", _options.AllowedCountries)}";
                 return result;
             }
-        }
 
         // Check blocked countries (blacklist mode)
         if (_options.BlockedCountries?.Any() == true)
-        {
             if (_options.BlockedCountries.Contains(location.CountryCode, StringComparer.OrdinalIgnoreCase))
             {
                 result.IsBlocked = true;
                 result.BlockReason = $"Access from {location.CountryName} ({location.CountryCode}) is not allowed";
                 return result;
             }
-        }
 
         return result;
     }
@@ -269,18 +243,12 @@ public class GeoRoutingMiddleware
         if (!string.IsNullOrEmpty(forwardedFor))
         {
             var ips = forwardedFor.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            if (ips.Length > 0)
-            {
-                return ips[0].Trim();
-            }
+            if (ips.Length > 0) return ips[0].Trim();
         }
 
         // Check X-Real-IP header
         var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(realIp))
-        {
-            return realIp;
-        }
+        if (!string.IsNullOrEmpty(realIp)) return realIp;
 
         // Fall back to connection remote IP
         return context.Connection.RemoteIpAddress?.ToString();
@@ -291,19 +259,13 @@ public class GeoRoutingMiddleware
         foreach (var whitelistedIp in whitelist)
         {
             // Exact match
-            if (ipAddress.Equals(whitelistedIp, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            if (ipAddress.Equals(whitelistedIp, StringComparison.OrdinalIgnoreCase)) return true;
 
             // CIDR notation check (simplified)
             if (whitelistedIp.Contains('/'))
             {
                 var prefix = whitelistedIp.Split('/')[0];
-                if (ipAddress.StartsWith(prefix.Substring(0, prefix.LastIndexOf('.'))))
-                {
-                    return true;
-                }
+                if (ipAddress.StartsWith(prefix.Substring(0, prefix.LastIndexOf('.')))) return true;
             }
         }
 
@@ -312,12 +274,12 @@ public class GeoRoutingMiddleware
 }
 
 /// <summary>
-/// Extension methods for geo-routing middleware
+///     Extension methods for geo-routing middleware
 /// </summary>
 public static class GeoRoutingMiddlewareExtensions
 {
     /// <summary>
-    /// Add geo-routing middleware to the pipeline
+    ///     Add geo-routing middleware to the pipeline
     /// </summary>
     public static IApplicationBuilder UseGeoRouting(this IApplicationBuilder builder)
     {
@@ -325,7 +287,7 @@ public static class GeoRoutingMiddlewareExtensions
     }
 
     /// <summary>
-    /// Configure site to be available only in specific countries
+    ///     Configure site to be available only in specific countries
     /// </summary>
     public static IApplicationBuilder RestrictToCountries(
         this IApplicationBuilder builder,

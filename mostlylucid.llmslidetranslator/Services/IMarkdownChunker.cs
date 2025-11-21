@@ -3,12 +3,12 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Chunks markdown documents into translatable blocks
+///     Chunks markdown documents into translatable blocks
 /// </summary>
 public interface IMarkdownChunker
 {
     /// <summary>
-    /// Chunk a markdown document into translation blocks
+    ///     Chunk a markdown document into translation blocks
     /// </summary>
     /// <param name="markdown">Markdown content</param>
     /// <param name="documentId">Document identifier</param>

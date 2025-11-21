@@ -7,7 +7,7 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Detectors;
 
 /// <summary>
-/// Detects bots based on IP address analysis
+///     Detects bots based on IP address analysis
 /// </summary>
 public class IpDetector(
     ILogger<IpDetector> logger,
@@ -24,10 +24,7 @@ public class IpDetector(
         var result = new DetectorResult();
         var ipAddress = GetClientIpAddress(context);
 
-        if (ipAddress == null)
-        {
-            return Task.FromResult(result);
-        }
+        if (ipAddress == null) return Task.FromResult(result);
 
         var confidence = 0.0;
         var reasons = new List<DetectionReason>();
@@ -84,10 +81,7 @@ public class IpDetector(
         if (!string.IsNullOrEmpty(forwardedFor))
         {
             var ips = forwardedFor.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            if (ips.Length > 0 && IPAddress.TryParse(ips[0].Trim(), out var ip))
-            {
-                return ip;
-            }
+            if (ips.Length > 0 && IPAddress.TryParse(ips[0].Trim(), out var ip)) return ip;
         }
 
         // Fall back to connection remote IP
@@ -97,19 +91,15 @@ public class IpDetector(
     private bool IsDatacenterIp(IPAddress ipAddress)
     {
         foreach (var prefix in _options.DatacenterIpPrefixes)
-        {
             try
             {
-                if (IsInSubnet(ipAddress, prefix))
-                {
-                    return true;
-                }
+                if (IsInSubnet(ipAddress, prefix)) return true;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error checking IP prefix: {Prefix}", prefix);
             }
-        }
+
         return false;
     }
 
@@ -135,11 +125,9 @@ public class IpDetector(
         var maskBits = prefixLength % 8;
 
         // Check full bytes
-        for (int i = 0; i < maskBytes; i++)
-        {
+        for (var i = 0; i < maskBytes; i++)
             if (ipBytes[i] != networkBytes[i])
                 return false;
-        }
 
         // Check remaining bits
         if (maskBits > 0 && maskBytes < ipBytes.Length)

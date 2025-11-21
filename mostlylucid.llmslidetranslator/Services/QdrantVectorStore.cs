@@ -7,16 +7,16 @@ using Qdrant.Client.Grpc;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Qdrant-based vector store for embeddings
+///     Qdrant-based vector store for embeddings
 /// </summary>
 public class QdrantVectorStore : IVectorStore
 {
-    private readonly ILogger<QdrantVectorStore> _logger;
-    private readonly IEmbeddingGenerator _embeddingGenerator;
     private readonly QdrantClient _client;
     private readonly LlmSlideTranslatorConfig _config;
+    private readonly IEmbeddingGenerator _embeddingGenerator;
     private readonly SemaphoreSlim _initLock = new(1, 1);
-    private bool _collectionInitialized = false;
+    private readonly ILogger<QdrantVectorStore> _logger;
+    private bool _collectionInitialized;
 
     public QdrantVectorStore(
         ILogger<QdrantVectorStore> logger,
@@ -29,49 +29,6 @@ public class QdrantVectorStore : IVectorStore
 
         var endpoint = _config.Qdrant.Endpoint;
         _client = new QdrantClient(endpoint, apiKey: _config.Qdrant.ApiKey);
-    }
-
-    private async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
-    {
-        if (_collectionInitialized)
-            return;
-
-        await _initLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_collectionInitialized)
-                return;
-
-            var collectionName = _config.Qdrant.CollectionName;
-
-            _logger.LogInformation("Checking if Qdrant collection {CollectionName} exists", collectionName);
-
-            var collections = await _client.ListCollectionsAsync(cancellationToken);
-            // ListCollectionsAsync returns IReadOnlyList<string> in current Qdrant client version
-            var exists = collections.Any(c => c == collectionName);
-
-            if (!exists)
-            {
-                _logger.LogInformation("Creating Qdrant collection {CollectionName}", collectionName);
-
-                await _client.CreateCollectionAsync(
-                    collectionName,
-                    new VectorParams
-                    {
-                        Size = (ulong)_config.Embedding.Dimension,
-                        Distance = Distance.Cosine
-                    },
-                    cancellationToken: cancellationToken);
-
-                _logger.LogInformation("Collection {CollectionName} created successfully", collectionName);
-            }
-
-            _collectionInitialized = true;
-        }
-        finally
-        {
-            _initLock.Release();
-        }
     }
 
     public async Task StoreAsync(
@@ -174,7 +131,7 @@ public class QdrantVectorStore : IVectorStore
                 Embedding = r.Vectors.Vector.Data.ToArray()
             };
 
-            return (block, (float)r.Score);
+            return (block, r.Score);
         }).ToList();
 
         _logger.LogDebug("Found {Count} similar blocks above threshold {MinSimilarity}",
@@ -243,7 +200,7 @@ public class QdrantVectorStore : IVectorStore
 
         await _client.DeleteAsync(
             collectionName,
-            filter: new Filter
+            new Filter
             {
                 Must =
                 {
@@ -260,5 +217,48 @@ public class QdrantVectorStore : IVectorStore
             cancellationToken: cancellationToken);
 
         _logger.LogInformation("Cleared document {DocumentId} from Qdrant", documentId);
+    }
+
+    private async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_collectionInitialized)
+            return;
+
+        await _initLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_collectionInitialized)
+                return;
+
+            var collectionName = _config.Qdrant.CollectionName;
+
+            _logger.LogInformation("Checking if Qdrant collection {CollectionName} exists", collectionName);
+
+            var collections = await _client.ListCollectionsAsync(cancellationToken);
+            // ListCollectionsAsync returns IReadOnlyList<string> in current Qdrant client version
+            var exists = collections.Any(c => c == collectionName);
+
+            if (!exists)
+            {
+                _logger.LogInformation("Creating Qdrant collection {CollectionName}", collectionName);
+
+                await _client.CreateCollectionAsync(
+                    collectionName,
+                    new VectorParams
+                    {
+                        Size = (ulong)_config.Embedding.Dimension,
+                        Distance = Distance.Cosine
+                    },
+                    cancellationToken: cancellationToken);
+
+                _logger.LogInformation("Collection {CollectionName} created successfully", collectionName);
+            }
+
+            _collectionInitialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 }

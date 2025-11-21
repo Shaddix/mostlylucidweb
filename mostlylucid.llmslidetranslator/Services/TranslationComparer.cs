@@ -4,12 +4,12 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Service for comparing translations
+///     Service for comparing translations
 /// </summary>
 public class TranslationComparer : ITranslationComparer
 {
-    private readonly ILogger<TranslationComparer> _logger;
     private readonly IEmbeddingGenerator _embeddingGenerator;
+    private readonly ILogger<TranslationComparer> _logger;
 
     public TranslationComparer(
         ILogger<TranslationComparer> logger,
@@ -38,15 +38,12 @@ public class TranslationComparer : ITranslationComparer
         // Ensure both have the same number of blocks
         var maxBlocks = Math.Max(result1.Blocks.Count, result2.Blocks.Count);
 
-        for (int i = 0; i < maxBlocks; i++)
+        for (var i = 0; i < maxBlocks; i++)
         {
             var block1 = i < result1.Blocks.Count ? result1.Blocks[i] : null;
             var block2 = i < result2.Blocks.Count ? result2.Blocks[i] : null;
 
-            if (block1 == null || block2 == null)
-            {
-                continue;
-            }
+            if (block1 == null || block2 == null) continue;
 
             var text1 = block1.TranslatedText ?? block1.Text;
             var text2 = block2.TranslatedText ?? block2.Text;
@@ -69,9 +66,7 @@ public class TranslationComparer : ITranslationComparer
 
         // Calculate overall similarity
         if (comparison.Differences.Count > 0)
-        {
             comparison.SimilarityScore = comparison.Differences.Average(d => d.Similarity);
-        }
 
         _logger.LogInformation(
             "Comparison completed. Overall similarity: {Similarity:F2}",
@@ -94,25 +89,23 @@ public class TranslationComparer : ITranslationComparer
         var matrix = new int[len1 + 1, len2 + 1];
 
         // Initialize first column and row
-        for (int i = 0; i <= len1; i++)
+        for (var i = 0; i <= len1; i++)
             matrix[i, 0] = i;
 
-        for (int j = 0; j <= len2; j++)
+        for (var j = 0; j <= len2; j++)
             matrix[0, j] = j;
 
         // Calculate distances
-        for (int i = 1; i <= len1; i++)
+        for (var i = 1; i <= len1; i++)
+        for (var j = 1; j <= len2; j++)
         {
-            for (int j = 1; j <= len2; j++)
-            {
-                var cost = text1[i - 1] == text2[j - 1] ? 0 : 1;
+            var cost = text1[i - 1] == text2[j - 1] ? 0 : 1;
 
-                matrix[i, j] = Math.Min(
-                    Math.Min(
-                        matrix[i - 1, j] + 1,      // Deletion
-                        matrix[i, j - 1] + 1),     // Insertion
-                    matrix[i - 1, j - 1] + cost);  // Substitution
-            }
+            matrix[i, j] = Math.Min(
+                Math.Min(
+                    matrix[i - 1, j] + 1, // Deletion
+                    matrix[i, j - 1] + 1), // Insertion
+                matrix[i - 1, j - 1] + cost); // Substitution
         }
 
         return matrix[len1, len2];
@@ -123,20 +116,14 @@ public class TranslationComparer : ITranslationComparer
         // Simplified BLEU-1 score (unigram precision)
         // For a full BLEU implementation, consider using a library
 
-        if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(candidate))
-        {
-            return 0;
-        }
+        if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(candidate)) return 0;
 
         var refTokens = reference.ToLower().Split(new[] { ' ', '\t', '\n', '\r' },
             StringSplitOptions.RemoveEmptyEntries);
         var candTokens = candidate.ToLower().Split(new[] { ' ', '\t', '\n', '\r' },
             StringSplitOptions.RemoveEmptyEntries);
 
-        if (candTokens.Length == 0)
-        {
-            return 0;
-        }
+        if (candTokens.Length == 0) return 0;
 
         var refSet = new HashSet<string>(refTokens);
         var matchCount = candTokens.Count(token => refSet.Contains(token));

@@ -7,12 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Mostlylucid.BotDetection.New\Mostlylucid.BotDetection.csproj" />
-        <ProjectReference Include="..\Mostlylucid.GeoDetection\Mostlylucid.GeoDetection.csproj" />
+        <ProjectReference Include="..\Mostlylucid.BotDetection.New\Mostlylucid.BotDetection.csproj"/>
+        <ProjectReference Include="..\Mostlylucid.GeoDetection\Mostlylucid.GeoDetection.csproj"/>
     </ItemGroup>
 
 </Project>

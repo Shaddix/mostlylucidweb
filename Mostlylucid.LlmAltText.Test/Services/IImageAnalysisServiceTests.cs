@@ -3,8 +3,8 @@ using Mostlylucid.LlmAltText.Services;
 namespace Mostlylucid.LlmAltText.Test.Services;
 
 /// <summary>
-/// Tests for IImageAnalysisService interface contract
-/// Note: These tests verify mock behavior since actual service requires model initialization
+///     Tests for IImageAnalysisService interface contract
+///     Note: These tests verify mock behavior since actual service requires model initialization
 /// </summary>
 public class IImageAnalysisServiceTests
 {
@@ -85,7 +85,7 @@ public class IImageAnalysisServiceTests
         using var stream = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47 }); // PNG header
 
         // Act
-        var result = await mockService.Object.GenerateAltTextAsync(stream, "MORE_DETAILED_CAPTION");
+        var result = await mockService.Object.GenerateAltTextAsync(stream);
 
         // Assert
         Assert.Equal(expectedAltText, result);
@@ -267,8 +267,8 @@ public class IImageAnalysisServiceTests
             .ThrowsAsync(new ArgumentNullException("imageStream"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(
-            () => mockService.Object.GenerateAltTextAsync(null!, "CAPTION"));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            mockService.Object.GenerateAltTextAsync(null!, "CAPTION"));
     }
 
     [Fact]
@@ -280,8 +280,7 @@ public class IImageAnalysisServiceTests
             .ThrowsAsync(new ArgumentNullException("imageStream"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(
-            () => mockService.Object.ExtractTextAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => mockService.Object.ExtractTextAsync(null!));
     }
 
     [Fact]
@@ -293,8 +292,7 @@ public class IImageAnalysisServiceTests
             .ThrowsAsync(new ArgumentNullException("imageStream"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(
-            () => mockService.Object.AnalyzeImageAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => mockService.Object.AnalyzeImageAsync(null!));
     }
 
     [Fact]
@@ -310,8 +308,7 @@ public class IImageAnalysisServiceTests
         using var stream = new MemoryStream(new byte[] { 0x00, 0x01, 0x02 }); // Invalid image data
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => mockService.Object.GenerateAltTextAsync(stream));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => mockService.Object.GenerateAltTextAsync(stream));
     }
 
     [Fact]
@@ -329,8 +326,7 @@ public class IImageAnalysisServiceTests
 
         // Act & Assert
         Assert.False(mockService.Object.IsReady);
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => mockService.Object.GenerateAltTextAsync(stream));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => mockService.Object.GenerateAltTextAsync(stream));
     }
 
     #endregion

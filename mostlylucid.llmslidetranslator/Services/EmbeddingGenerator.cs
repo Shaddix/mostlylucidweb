@@ -7,15 +7,15 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Generates embeddings using LlamaSharp
+///     Generates embeddings using LlamaSharp
 /// </summary>
 public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
 {
-    private readonly ILogger<EmbeddingGenerator> _logger;
     private readonly LlmSlideTranslatorConfig _config;
-    private LLamaEmbedder? _embedder;
     private readonly SemaphoreSlim _initLock = new(1, 1);
-    private bool _initialized = false;
+    private readonly ILogger<EmbeddingGenerator> _logger;
+    private LLamaEmbedder? _embedder;
+    private bool _initialized;
 
     public EmbeddingGenerator(
         ILogger<EmbeddingGenerator> logger,
@@ -25,54 +25,17 @@ public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
         _config = config.Value;
     }
 
-    private async Task EnsureInitializedAsync()
+    public void Dispose()
     {
-        if (_initialized)
-            return;
-
-        await _initLock.WaitAsync();
-        try
-        {
-            if (_initialized)
-                return;
-
-            _logger.LogInformation("Initializing embedding model from {ModelPath}",
-                _config.Embedding.ModelPath);
-
-            if (!File.Exists(_config.Embedding.ModelPath))
-            {
-                throw new FileNotFoundException(
-                    $"Embedding model not found at {_config.Embedding.ModelPath}. " +
-                    "Please download a GGUF embedding model (e.g., nomic-embed-text).");
-            }
-
-            var parameters = new ModelParams(_config.Embedding.ModelPath)
-            {
-                ContextSize = (uint)_config.Embedding.ContextSize,
-                Embeddings = true,
-                GpuLayerCount = 0  // Use CPU for embeddings
-            };
-
-            var weights = LLamaWeights.LoadFromFile(parameters);
-            _embedder = new LLamaEmbedder(weights, parameters);
-
-            _initialized = true;
-            _logger.LogInformation("Embedding model initialized successfully");
-        }
-        finally
-        {
-            _initLock.Release();
-        }
+        _embedder?.Dispose();
+        _initLock.Dispose();
     }
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync();
 
-        if (_embedder == null)
-        {
-            throw new InvalidOperationException("Embedder not initialized");
-        }
+        if (_embedder == null) throw new InvalidOperationException("Embedder not initialized");
 
         _logger.LogDebug("Generating embedding for text of length {Length}", text.Length);
 
@@ -99,10 +62,7 @@ public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
 
         var tasks = blocks.Select(async block =>
         {
-            if (block.ShouldTranslate)
-            {
-                block.Embedding = await GenerateEmbeddingAsync(block.Text, cancellationToken);
-            }
+            if (block.ShouldTranslate) block.Embedding = await GenerateEmbeddingAsync(block.Text, cancellationToken);
             return block;
         });
 
@@ -113,16 +73,14 @@ public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
     public float CalculateSimilarity(float[] embedding1, float[] embedding2)
     {
         if (embedding1.Length != embedding2.Length)
-        {
             throw new ArgumentException("Embeddings must have the same dimension");
-        }
 
         // Calculate cosine similarity
         var dotProduct = 0.0f;
         var magnitude1 = 0.0f;
         var magnitude2 = 0.0f;
 
-        for (int i = 0; i < embedding1.Length; i++)
+        for (var i = 0; i < embedding1.Length; i++)
         {
             dotProduct += embedding1[i] * embedding2[i];
             magnitude1 += embedding1[i] * embedding1[i];
@@ -132,17 +90,46 @@ public class EmbeddingGenerator : IEmbeddingGenerator, IDisposable
         magnitude1 = MathF.Sqrt(magnitude1);
         magnitude2 = MathF.Sqrt(magnitude2);
 
-        if (magnitude1 == 0 || magnitude2 == 0)
-        {
-            return 0;
-        }
+        if (magnitude1 == 0 || magnitude2 == 0) return 0;
 
         return dotProduct / (magnitude1 * magnitude2);
     }
 
-    public void Dispose()
+    private async Task EnsureInitializedAsync()
     {
-        _embedder?.Dispose();
-        _initLock.Dispose();
+        if (_initialized)
+            return;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initialized)
+                return;
+
+            _logger.LogInformation("Initializing embedding model from {ModelPath}",
+                _config.Embedding.ModelPath);
+
+            if (!File.Exists(_config.Embedding.ModelPath))
+                throw new FileNotFoundException(
+                    $"Embedding model not found at {_config.Embedding.ModelPath}. " +
+                    "Please download a GGUF embedding model (e.g., nomic-embed-text).");
+
+            var parameters = new ModelParams(_config.Embedding.ModelPath)
+            {
+                ContextSize = (uint)_config.Embedding.ContextSize,
+                Embeddings = true,
+                GpuLayerCount = 0 // Use CPU for embeddings
+            };
+
+            var weights = LLamaWeights.LoadFromFile(parameters);
+            _embedder = new LLamaEmbedder(weights, parameters);
+
+            _initialized = true;
+            _logger.LogInformation("Embedding model initialized successfully");
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 }

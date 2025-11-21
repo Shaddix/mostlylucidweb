@@ -24,27 +24,27 @@
 
     <ItemGroup>
         <!-- Core dependencies -->
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10"/>
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10"/>
 
         <!-- LLM and embeddings -->
-        <PackageReference Include="LLamaSharp" Version="0.22.0" />
-        <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.22.0" />
+        <PackageReference Include="LLamaSharp" Version="0.22.0"/>
+        <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.22.0"/>
 
         <!-- Markdown processing -->
-        <PackageReference Include="Markdig" Version="0.43.0" />
+        <PackageReference Include="Markdig" Version="0.43.0"/>
 
         <!-- JSON -->
-        <PackageReference Include="System.Text.Json" Version="9.0.10" />
+        <PackageReference Include="System.Text.Json" Version="9.0.10"/>
 
         <!-- Hashing -->
-        <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
+        <PackageReference Include="System.IO.Hashing" Version="9.0.10"/>
 
         <!-- Qdrant (optional vector store) -->
-        <PackageReference Include="Qdrant.Client" Version="1.12.0" />
+        <PackageReference Include="Qdrant.Client" Version="1.12.0"/>
     </ItemGroup>
 
     <ItemGroup>

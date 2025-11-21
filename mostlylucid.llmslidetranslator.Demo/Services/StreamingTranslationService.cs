@@ -7,12 +7,12 @@ using mostlylucid.llmslidetranslator.Services;
 namespace mostlylucid.llmslidetranslator.Demo.Services;
 
 /// <summary>
-/// Service for streaming translations with real-time updates via SignalR
+///     Service for streaming translations with real-time updates via SignalR
 /// </summary>
 public class StreamingTranslationService
 {
-    private readonly ILogger<StreamingTranslationService> _logger;
     private readonly IHubContext<TranslationHub> _hubContext;
+    private readonly ILogger<StreamingTranslationService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public StreamingTranslationService(
@@ -26,7 +26,7 @@ public class StreamingTranslationService
     }
 
     /// <summary>
-    /// Stream translation of a document with real-time updates
+    ///     Stream translation of a document with real-time updates
     /// </summary>
     public async IAsyncEnumerable<TranslationUpdate> StreamTranslationAsync(
         string markdown,
@@ -99,16 +99,12 @@ public class StreamingTranslationService
 
         // Iterate through results if no error
         if (translationUpdates != null)
-        {
             await foreach (var update in translationUpdates)
-            {
                 yield return update;
-            }
-        }
     }
 
     /// <summary>
-    /// Core translation streaming logic (separated to avoid yield in try-catch)
+    ///     Core translation streaming logic (separated to avoid yield in try-catch)
     /// </summary>
     private async IAsyncEnumerable<TranslationUpdate> StreamTranslationCoreAsync(
         string markdown,
@@ -168,7 +164,7 @@ public class StreamingTranslationService
         TranslationBlock? previousBlock = null;
         var translatedBlocks = new List<TranslationBlock>();
 
-        for (int i = 0; i < blocks.Count; i++)
+        for (var i = 0; i < blocks.Count; i++)
         {
             var block = blocks[i];
 
@@ -189,7 +185,7 @@ public class StreamingTranslationService
             {
                 DocumentId = documentId,
                 BlockIndex = i,
-                BlockId = block.BlockId
+                block.BlockId
             });
 
             var translatedBlock = await translator.TranslateBlockAsync(block, previousBlock);
@@ -199,9 +195,9 @@ public class StreamingTranslationService
             {
                 DocumentId = documentId,
                 BlockIndex = i,
-                BlockId = block.BlockId,
+                block.BlockId,
                 OriginalText = block.Text,
-                TranslatedText = translatedBlock.TranslatedText
+                translatedBlock.TranslatedText
             });
 
             yield return new TranslationUpdate
@@ -219,7 +215,7 @@ public class StreamingTranslationService
                 {
                     BlockIndex = i,
                     OriginalText = block.Text,
-                    TranslatedText = translatedBlock.TranslatedText
+                    translatedBlock.TranslatedText
                 }
             };
 
@@ -255,7 +251,7 @@ public class StreamingTranslationService
 }
 
 /// <summary>
-/// Real-time translation update
+///     Real-time translation update
 /// </summary>
 public class TranslationUpdate
 {

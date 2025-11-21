@@ -5,7 +5,7 @@ using Mostlylucid.BotDetection.Test.Helpers;
 namespace Mostlylucid.BotDetection.Test.Detectors;
 
 /// <summary>
-/// Comprehensive tests for HeaderDetector
+///     Comprehensive tests for HeaderDetector
 /// </summary>
 public class HeaderDetectorTests
 {
@@ -16,6 +16,51 @@ public class HeaderDetectorTests
         var logger = new Mock<ILogger<HeaderDetector>>().Object;
         _detector = new HeaderDetector(logger);
     }
+
+    #region Header Ordering Tests
+
+    [Fact]
+    public async Task DetectAsync_UserAgentLateInHeaders_AddsOrderingReason()
+    {
+        // Arrange
+        var context = MockHttpContext.CreateWithHeaders(new Dictionary<string, string>
+        {
+            ["Accept"] = "text/html",
+            ["Accept-Encoding"] = "gzip",
+            ["Accept-Language"] = "en-US",
+            ["Cache-Control"] = "no-cache",
+            ["Connection"] = "keep-alive",
+            ["Host"] = "example.com",
+            ["User-Agent"] = "Mozilla/5.0" // Position 7 (index 6)
+        });
+
+        // Act
+        var result = await _detector.DetectAsync(context);
+
+        // Assert
+        Assert.Contains(result.Reasons, r =>
+            r.Detail.Contains("header ordering", StringComparison.OrdinalIgnoreCase));
+    }
+
+    #endregion
+
+    #region Cancellation Tests
+
+    [Fact]
+    public async Task DetectAsync_WithCancellation_CompletesNormally()
+    {
+        // Arrange
+        var context = MockHttpContext.CreateRealisticBrowser();
+        using var cts = new CancellationTokenSource();
+
+        // Act
+        var result = await _detector.DetectAsync(context, cts.Token);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
+    #endregion
 
     #region Missing Headers Tests
 
@@ -262,33 +307,6 @@ public class HeaderDetectorTests
 
     #endregion
 
-    #region Header Ordering Tests
-
-    [Fact]
-    public async Task DetectAsync_UserAgentLateInHeaders_AddsOrderingReason()
-    {
-        // Arrange
-        var context = MockHttpContext.CreateWithHeaders(new Dictionary<string, string>
-        {
-            ["Accept"] = "text/html",
-            ["Accept-Encoding"] = "gzip",
-            ["Accept-Language"] = "en-US",
-            ["Cache-Control"] = "no-cache",
-            ["Connection"] = "keep-alive",
-            ["Host"] = "example.com",
-            ["User-Agent"] = "Mozilla/5.0" // Position 7 (index 6)
-        });
-
-        // Act
-        var result = await _detector.DetectAsync(context);
-
-        // Assert
-        Assert.Contains(result.Reasons, r =>
-            r.Detail.Contains("header ordering", StringComparison.OrdinalIgnoreCase));
-    }
-
-    #endregion
-
     #region Few Headers Tests
 
     [Fact]
@@ -436,28 +454,7 @@ public class HeaderDetectorTests
         var result = await _detector.DetectAsync(context);
 
         // Assert
-        foreach (var reason in result.Reasons)
-        {
-            Assert.Equal("Headers", reason.Category);
-        }
-    }
-
-    #endregion
-
-    #region Cancellation Tests
-
-    [Fact]
-    public async Task DetectAsync_WithCancellation_CompletesNormally()
-    {
-        // Arrange
-        var context = MockHttpContext.CreateRealisticBrowser();
-        using var cts = new CancellationTokenSource();
-
-        // Act
-        var result = await _detector.DetectAsync(context, cts.Token);
-
-        // Assert
-        Assert.NotNull(result);
+        foreach (var reason in result.Reasons) Assert.Equal("Headers", reason.Category);
     }
 
     #endregion

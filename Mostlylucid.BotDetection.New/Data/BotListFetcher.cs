@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.BotDetection.Data;
 
 /// <summary>
-/// Service for fetching and caching bot detection lists from authoritative sources
+///     Service for fetching and caching bot detection lists from authoritative sources
 /// </summary>
 public interface IBotListFetcher
 {
@@ -23,14 +23,14 @@ public class BotPattern
 }
 
 /// <summary>
-/// Fetches bot lists from authoritative sources with caching
+///     Fetches bot lists from authoritative sources with caching
 /// </summary>
 public class BotListFetcher : IBotListFetcher
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<BotListFetcher> _logger;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(24);
+    private readonly IMemoryCache _cache;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<BotListFetcher> _logger;
 
     public BotListFetcher(
         IHttpClientFactory httpClientFactory,
@@ -46,10 +46,7 @@ public class BotListFetcher : IBotListFetcher
     {
         const string cacheKey = "bot_list_crawler_uas";
 
-        if (_cache.TryGetValue<List<string>>(cacheKey, out var cached) && cached != null)
-        {
-            return cached;
-        }
+        if (_cache.TryGetValue<List<string>>(cacheKey, out var cached) && cached != null) return cached;
 
         try
         {
@@ -81,10 +78,7 @@ public class BotListFetcher : IBotListFetcher
     {
         const string cacheKey = "bot_list_datacenter_ips";
 
-        if (_cache.TryGetValue<List<string>>(cacheKey, out var cached) && cached != null)
-        {
-            return cached;
-        }
+        if (_cache.TryGetValue<List<string>>(cacheKey, out var cached) && cached != null) return cached;
 
         var ranges = new List<string>();
 
@@ -154,10 +148,7 @@ public class BotListFetcher : IBotListFetcher
     {
         const string cacheKey = "bot_list_matomo_patterns";
 
-        if (_cache.TryGetValue<List<BotPattern>>(cacheKey, out var cached) && cached != null)
-        {
-            return cached;
-        }
+        if (_cache.TryGetValue<List<BotPattern>>(cacheKey, out var cached) && cached != null) return cached;
 
         try
         {
@@ -194,10 +185,7 @@ public class BotListFetcher : IBotListFetcher
 
             if (trimmed.StartsWith("- regex:"))
             {
-                if (currentPattern != null)
-                {
-                    patterns.Add(currentPattern);
-                }
+                if (currentPattern != null) patterns.Add(currentPattern);
 
                 currentPattern = new BotPattern
                 {
@@ -207,24 +195,14 @@ public class BotListFetcher : IBotListFetcher
             else if (currentPattern != null)
             {
                 if (trimmed.StartsWith("name:"))
-                {
                     currentPattern.Name = ExtractQuotedValue(trimmed, "name:");
-                }
                 else if (trimmed.StartsWith("category:"))
-                {
                     currentPattern.Category = ExtractQuotedValue(trimmed, "category:");
-                }
-                else if (trimmed.StartsWith("url:"))
-                {
-                    currentPattern.Url = ExtractQuotedValue(trimmed, "url:");
-                }
+                else if (trimmed.StartsWith("url:")) currentPattern.Url = ExtractQuotedValue(trimmed, "url:");
             }
         }
 
-        if (currentPattern != null)
-        {
-            patterns.Add(currentPattern);
-        }
+        if (currentPattern != null) patterns.Add(currentPattern);
 
         return patterns;
     }
@@ -235,14 +213,8 @@ public class BotListFetcher : IBotListFetcher
         var text = line.Substring(start).Trim();
 
         // Remove quotes if present
-        if (text.StartsWith('"') || text.StartsWith('\''))
-        {
-            text = text.Substring(1);
-        }
-        if (text.EndsWith('"') || text.EndsWith('\''))
-        {
-            text = text.Substring(0, text.Length - 1);
-        }
+        if (text.StartsWith('"') || text.StartsWith('\'')) text = text.Substring(1);
+        if (text.EndsWith('"') || text.EndsWith('\'')) text = text.Substring(0, text.Length - 1);
 
         return string.IsNullOrEmpty(text) ? null : text;
     }
@@ -261,7 +233,7 @@ public class BotListFetcher : IBotListFetcher
         {
             "3.0.0.0/8", "13.0.0.0/8", "18.0.0.0/8", "52.0.0.0/8", // AWS
             "20.0.0.0/8", "40.0.0.0/8", "104.0.0.0/8", // Azure
-            "34.0.0.0/8", "35.0.0.0/8", // GCP
+            "34.0.0.0/8", "35.0.0.0/8" // GCP
         };
     }
 
@@ -289,7 +261,7 @@ public class BotListFetcher : IBotListFetcher
 
     private class AwsPrefix
     {
-        public string IpPrefix { get; set; } = "";
+        public string IpPrefix { get; } = "";
         public string Region { get; set; } = "";
         public string Service { get; set; } = "";
     }

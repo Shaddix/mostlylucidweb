@@ -1,6 +1,7 @@
 # Mostlylucid.LlmAltText
 
-AI-powered alt text generation and OCR using Microsoft's Florence-2 Vision Language Model. Automatically generates descriptive, accessible alt text for images and extracts text content.
+AI-powered alt text generation and OCR using Microsoft's Florence-2 Vision Language Model. Automatically generates
+descriptive, accessible alt text for images and extracts text content.
 
 ## Features
 
@@ -91,46 +92,57 @@ public class ImageController : ControllerBase
 ### IImageAnalysisService
 
 #### GenerateAltTextAsync
+
 ```csharp
 Task<string> GenerateAltTextAsync(Stream imageStream, string taskType = "MORE_DETAILED_CAPTION")
 ```
+
 Generates descriptive alt text for an image.
 
 **Parameters:**
+
 - `imageStream`: Image data (Stream will NOT be disposed)
 - `taskType`: Vision task level
-  - `"CAPTION"` - Brief caption
-  - `"DETAILED_CAPTION"` - More detailed description
-  - `"MORE_DETAILED_CAPTION"` - Full descriptive alt text (default)
+    - `"CAPTION"` - Brief caption
+    - `"DETAILED_CAPTION"` - More detailed description
+    - `"MORE_DETAILED_CAPTION"` - Full descriptive alt text (default)
 
 **Returns:** Generated alt text string
 
 #### ExtractTextAsync
+
 ```csharp
 Task<string> ExtractTextAsync(Stream imageStream)
 ```
+
 Extracts text from an image using OCR.
 
 **Parameters:**
+
 - `imageStream`: Image data (Stream will NOT be disposed)
 
 **Returns:** Extracted text content
 
 #### AnalyzeImageAsync
+
 ```csharp
 Task<(string AltText, string ExtractedText)> AnalyzeImageAsync(Stream imageStream)
 ```
+
 Performs complete analysis: generates alt text and extracts text.
 
 **Parameters:**
+
 - `imageStream`: Image data (Stream will NOT be disposed)
 
 **Returns:** Tuple of (alt text, extracted text)
 
 #### IsReady
+
 ```csharp
 bool IsReady { get; }
 ```
+
 Indicates if the service is initialized and ready to process images.
 
 ## Configuration Options
@@ -159,7 +171,8 @@ public class AltTextOptions
 
 ## Auto Alt Text TagHelper
 
-The TagHelper automatically generates alt text for `<img>` tags that don't have one, with database caching for efficiency.
+The TagHelper automatically generates alt text for `<img>` tags that don't have one, with database caching for
+efficiency.
 
 ### Enable the TagHelper
 
@@ -193,6 +206,7 @@ builder.Services.AddAltTextGeneration(options =>
 ### Register TagHelpers in Views
 
 In your `_ViewImports.cshtml`:
+
 ```cshtml
 @addTagHelper *, Mostlylucid.LlmAltText
 ```
@@ -216,6 +230,7 @@ The TagHelper works automatically on any `<img>` without an `alt` attribute:
 ```
 
 **Behavior:**
+
 - If `alt` attribute exists (even if empty) → **skipped**
 - If `data-skip-alt="true"` is set → **skipped**
 - If `alt` attribute is missing → **auto-generates alt text**
@@ -338,6 +353,7 @@ services.AddAltTextGeneration(options =>
 ```
 
 **Log output includes:**
+
 - Model initialization status
 - Model download progress
 - Processing time for each operation
@@ -346,6 +362,7 @@ services.AddAltTextGeneration(options =>
 - Error details with full context
 
 **Example logs:**
+
 ```
 [Information] Initializing Florence-2 Vision Language Model...
 [Information] Model path: ./models
@@ -369,6 +386,7 @@ services.AddAltTextGeneration(options =>
 ## Supported Image Formats
 
 All formats supported by SixLabors.ImageSharp:
+
 - JPEG/JPG
 - PNG
 - GIF
@@ -392,6 +410,7 @@ All formats supported by SixLabors.ImageSharp:
 **Problem:** Model download fails or times out
 
 **Solutions:**
+
 - Check internet connectivity
 - Ensure firewall allows downloads from Hugging Face
 - Verify sufficient disk space (~800MB)
@@ -402,6 +421,7 @@ All formats supported by SixLabors.ImageSharp:
 **Problem:** `IsReady` returns false
 
 **Solutions:**
+
 - Check logs for initialization errors
 - Verify model files exist in `ModelPath`
 - Ensure sufficient memory available
@@ -412,6 +432,7 @@ All formats supported by SixLabors.ImageSharp:
 **Problem:** Generated alt text is not descriptive enough
 
 **Solutions:**
+
 - Use `"MORE_DETAILED_CAPTION"` task type
 - Customize `AltTextPrompt` in options
 - Ensure input images are clear and well-lit
@@ -439,6 +460,7 @@ https://github.com/scottgal/mostlylucidweb
 ## Credits
 
 Built on:
+
 - **Florence-2** - Microsoft's Vision Language Model
 - **SixLabors.ImageSharp** - Image processing
 - **Microsoft.Extensions.*** - Dependency injection and configuration

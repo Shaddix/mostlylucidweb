@@ -1,66 +1,54 @@
+using System.Net;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
 
 namespace Mostlylucid.BotDetection.Test.Helpers;
 
 /// <summary>
-/// Helper class to create mock HttpContext instances for testing
+///     Helper class to create mock HttpContext instances for testing
 /// </summary>
 public static class MockHttpContext
 {
     /// <summary>
-    /// Creates a minimal HttpContext with the specified User-Agent header
+    ///     Creates a minimal HttpContext with the specified User-Agent header
     /// </summary>
     public static HttpContext CreateWithUserAgent(string? userAgent)
     {
         var context = new DefaultHttpContext();
 
-        if (userAgent != null)
-        {
-            context.Request.Headers.UserAgent = userAgent;
-        }
+        if (userAgent != null) context.Request.Headers.UserAgent = userAgent;
 
         return context;
     }
 
     /// <summary>
-    /// Creates an HttpContext with multiple headers
+    ///     Creates an HttpContext with multiple headers
     /// </summary>
     public static HttpContext CreateWithHeaders(Dictionary<string, string> headers)
     {
         var context = new DefaultHttpContext();
 
-        foreach (var header in headers)
-        {
-            context.Request.Headers[header.Key] = header.Value;
-        }
+        foreach (var header in headers) context.Request.Headers[header.Key] = header.Value;
 
         return context;
     }
 
     /// <summary>
-    /// Creates an HttpContext with a specific IP address
+    ///     Creates an HttpContext with a specific IP address
     /// </summary>
     public static HttpContext CreateWithIpAddress(string ipAddress, string? userAgent = null)
     {
         var context = new DefaultHttpContext();
 
         // Set RemoteIpAddress
-        if (System.Net.IPAddress.TryParse(ipAddress, out var ip))
-        {
-            context.Connection.RemoteIpAddress = ip;
-        }
+        if (IPAddress.TryParse(ipAddress, out var ip)) context.Connection.RemoteIpAddress = ip;
 
-        if (userAgent != null)
-        {
-            context.Request.Headers.UserAgent = userAgent;
-        }
+        if (userAgent != null) context.Request.Headers.UserAgent = userAgent;
 
         return context;
     }
 
     /// <summary>
-    /// Creates a realistic browser HttpContext
+    ///     Creates a realistic browser HttpContext
     /// </summary>
     public static HttpContext CreateRealisticBrowser()
     {
@@ -80,7 +68,7 @@ public static class MockHttpContext
     }
 
     /// <summary>
-    /// Creates a suspicious bot-like HttpContext
+    ///     Creates a suspicious bot-like HttpContext
     /// </summary>
     public static HttpContext CreateSuspiciousBot()
     {
@@ -93,7 +81,7 @@ public static class MockHttpContext
     }
 
     /// <summary>
-    /// Creates a known good bot HttpContext (like Googlebot)
+    ///     Creates a known good bot HttpContext (like Googlebot)
     /// </summary>
     public static HttpContext CreateGooglebot()
     {

@@ -6,17 +6,17 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Main translation service orchestrating RAG-assisted LLM translation
+///     Main translation service orchestrating RAG-assisted LLM translation
 /// </summary>
 public class LlmSlideTranslator : ILlmSlideTranslator
 {
-    private readonly ILogger<LlmSlideTranslator> _logger;
     private readonly IMarkdownChunker _chunker;
-    private readonly IEmbeddingGenerator _embeddingGenerator;
-    private readonly IVectorStore _vectorStore;
-    private readonly IOllamaClient _ollamaClient;
-    private readonly INmtClient _nmtClient;
     private readonly LlmSlideTranslatorConfig _config;
+    private readonly IEmbeddingGenerator _embeddingGenerator;
+    private readonly ILogger<LlmSlideTranslator> _logger;
+    private readonly INmtClient _nmtClient;
+    private readonly IOllamaClient _ollamaClient;
+    private readonly IVectorStore _vectorStore;
 
     public LlmSlideTranslator(
         ILogger<LlmSlideTranslator> logger,

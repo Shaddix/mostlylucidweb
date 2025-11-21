@@ -1,20 +1,22 @@
 # mostlylucid.llmslidetranslator
 
-RAG-assisted translation for long documents using small local LLMs with sliding-window chunking and vector similarity search.
+RAG-assisted translation for long documents using small local LLMs with sliding-window chunking and vector similarity
+search.
 
 ## Features
 
-- **RAG-Enhanced Translation**: Uses retrieval-augmented generation to maintain translation consistency across long documents
+- **RAG-Enhanced Translation**: Uses retrieval-augmented generation to maintain translation consistency across long
+  documents
 - **Multiple Translation Methods**:
-  - RAG + LLM (recommended)
-  - LLM only
-  - NMT baseline + LLM post-editing
-  - NMT only
+    - RAG + LLM (recommended)
+    - LLM only
+    - NMT baseline + LLM post-editing
+    - NMT only
 - **Sliding Window Context**: Always includes the previous translated block for continuity
 - **Vector Similarity Search**: Retrieves similar earlier blocks to maintain terminology consistency
 - **Multiple Vector Store Providers**:
-  - File-based (default)
-  - Qdrant vector database
+    - File-based (default)
+    - Qdrant vector database
 - **Markdown-Aware Chunking**: Intelligently chunks markdown while preserving structure
 - **Real-time Progress Tracking**: SignalR support for streaming translation updates
 - **Translation Comparison**: Compare different translation methods side-by-side
@@ -144,16 +146,17 @@ foreach (var diff in comparison.Differences)
 2. **Embedding**: Each block is converted to a vector embedding
 3. **Storage**: Blocks and embeddings are stored in a vector database
 4. **Translation Loop**: For each block:
-   - Generate embedding for current block
-   - Retrieve most similar earlier blocks (RAG)
-   - Include previous block (sliding window)
-   - Build context-aware prompt
-   - Translate with LLM
+    - Generate embedding for current block
+    - Retrieve most similar earlier blocks (RAG)
+    - Include previous block (sliding window)
+    - Build context-aware prompt
+    - Translate with LLM
 5. **Output**: Aligned block-by-block translation
 
 ## Demo API
 
 See the `mostlylucid.llmslidetranslator.Demo` project for a complete example with:
+
 - ASP.NET Minimal API endpoints
 - SignalR hub for real-time updates
 - Streaming translation endpoint (SSE)

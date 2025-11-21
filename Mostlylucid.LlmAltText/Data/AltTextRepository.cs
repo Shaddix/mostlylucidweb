@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.LlmAltText.Data;
 
 /// <summary>
-/// EF Core implementation of the alt text repository
+///     EF Core implementation of the alt text repository
 /// </summary>
 public class AltTextRepository : IAltTextRepository
 {
@@ -17,15 +17,6 @@ public class AltTextRepository : IAltTextRepository
     {
         _context = context;
         _logger = logger;
-    }
-
-    /// <summary>
-    /// Compute SHA256 hash of a string
-    /// </summary>
-    public static string ComputeHash(string input)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
     public async Task<ImageAltTextEntry?> GetBySourceAsync(string imageSource)
@@ -60,10 +51,7 @@ public class AltTextRepository : IAltTextRepository
         else
         {
             // Ensure source hash is set
-            if (string.IsNullOrEmpty(entry.SourceHash))
-            {
-                entry.SourceHash = ComputeHash(entry.ImageSource);
-            }
+            if (string.IsNullOrEmpty(entry.SourceHash)) entry.SourceHash = ComputeHash(entry.ImageSource);
             await _context.ImageAltTexts.AddAsync(entry);
         }
 
@@ -98,5 +86,14 @@ public class AltTextRepository : IAltTextRepository
     public async Task<int> GetCountAsync()
     {
         return await _context.ImageAltTexts.CountAsync();
+    }
+
+    /// <summary>
+    ///     Compute SHA256 hash of a string
+    /// </summary>
+    public static string ComputeHash(string input)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }

@@ -3,12 +3,12 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Main translation service orchestrating RAG-assisted LLM translation
+///     Main translation service orchestrating RAG-assisted LLM translation
 /// </summary>
 public interface ILlmSlideTranslator
 {
     /// <summary>
-    /// Translate a markdown document using RAG-assisted LLM
+    ///     Translate a markdown document using RAG-assisted LLM
     /// </summary>
     /// <param name="markdown">Markdown content</param>
     /// <param name="documentId">Document identifier</param>
@@ -26,7 +26,7 @@ public interface ILlmSlideTranslator
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Translate a single block with RAG context
+    ///     Translate a single block with RAG context
     /// </summary>
     /// <param name="block">Block to translate</param>
     /// <param name="previousBlock">Previous block (sliding window)</param>
@@ -38,7 +38,7 @@ public interface ILlmSlideTranslator
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get translation progress for a document
+    ///     Get translation progress for a document
     /// </summary>
     /// <param name="documentId">Document identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -49,37 +49,37 @@ public interface ILlmSlideTranslator
 }
 
 /// <summary>
-/// Translation progress information
+///     Translation progress information
 /// </summary>
 public class TranslationProgress
 {
     /// <summary>
-    /// Document identifier
+    ///     Document identifier
     /// </summary>
     public required string DocumentId { get; set; }
 
     /// <summary>
-    /// Total number of blocks
+    ///     Total number of blocks
     /// </summary>
     public int TotalBlocks { get; set; }
 
     /// <summary>
-    /// Number of blocks translated
+    ///     Number of blocks translated
     /// </summary>
     public int TranslatedBlocks { get; set; }
 
     /// <summary>
-    /// Percentage complete (0-100)
+    ///     Percentage complete (0-100)
     /// </summary>
     public float PercentComplete => TotalBlocks > 0 ? (float)TranslatedBlocks / TotalBlocks * 100 : 0;
 
     /// <summary>
-    /// Current block being translated
+    ///     Current block being translated
     /// </summary>
     public int? CurrentBlockIndex { get; set; }
 
     /// <summary>
-    /// Estimated time remaining
+    ///     Estimated time remaining
     /// </summary>
     public TimeSpan? EstimatedTimeRemaining { get; set; }
 }

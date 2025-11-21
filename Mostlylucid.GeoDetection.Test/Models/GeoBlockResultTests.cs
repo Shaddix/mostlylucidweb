@@ -3,7 +3,7 @@ using Mostlylucid.GeoDetection.Models;
 namespace Mostlylucid.GeoDetection.Test.Models;
 
 /// <summary>
-/// Comprehensive tests for GeoBlockResult model
+///     Comprehensive tests for GeoBlockResult model
 /// </summary>
 public class GeoBlockResultTests
 {

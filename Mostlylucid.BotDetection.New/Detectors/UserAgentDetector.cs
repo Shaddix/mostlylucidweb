@@ -8,7 +8,7 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Detectors;
 
 /// <summary>
-/// Detects bots based on User-Agent analysis
+///     Detects bots based on User-Agent analysis
 /// </summary>
 public class UserAgentDetector(
     ILogger<UserAgentDetector> logger,
@@ -39,11 +39,9 @@ public class UserAgentDetector(
 
         // Check for known good bots (whitelisted)
         foreach (var (pattern, name) in BotSignatures.GoodBots)
-        {
             if (userAgent.Contains(pattern, StringComparison.OrdinalIgnoreCase))
-            {
                 if (_options.WhitelistedBotPatterns.Any(wp =>
-                    userAgent.Contains(wp, StringComparison.OrdinalIgnoreCase)))
+                        userAgent.Contains(wp, StringComparison.OrdinalIgnoreCase)))
                 {
                     result.Confidence = 0.0; // Known good bot
                     result.BotType = BotType.VerifiedBot;
@@ -56,15 +54,12 @@ public class UserAgentDetector(
                     });
                     return Task.FromResult(result);
                 }
-            }
-        }
 
         var confidence = 0.0;
         var reasons = new List<DetectionReason>();
 
         // Check for malicious bot patterns
         foreach (var pattern in BotSignatures.MaliciousBotPatterns)
-        {
             if (userAgent.Contains(pattern, StringComparison.OrdinalIgnoreCase))
             {
                 confidence += 0.3;
@@ -75,11 +70,9 @@ public class UserAgentDetector(
                     ConfidenceImpact = 0.3
                 });
             }
-        }
 
         // Check for automation frameworks
         foreach (var framework in BotSignatures.AutomationFrameworks)
-        {
             if (userAgent.Contains(framework, StringComparison.OrdinalIgnoreCase))
             {
                 confidence += 0.5;
@@ -91,11 +84,9 @@ public class UserAgentDetector(
                 });
                 result.BotType = BotType.Scraper;
             }
-        }
 
         // Check regex patterns
         foreach (var pattern in BotSignatures.BotPatterns)
-        {
             try
             {
                 if (Regex.IsMatch(userAgent, pattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
@@ -113,7 +104,6 @@ public class UserAgentDetector(
             {
                 _logger.LogWarning("Regex timeout for pattern: {Pattern}", pattern);
             }
-        }
 
         // Suspiciously short or simple user agents
         if (userAgent.Length < 20)
@@ -143,10 +133,7 @@ public class UserAgentDetector(
         result.Confidence = Math.Min(confidence, 1.0);
         result.Reasons = reasons;
 
-        if (result.Confidence > 0.5 && result.BotType == null)
-        {
-            result.BotType = BotType.Scraper;
-        }
+        if (result.Confidence > 0.5 && result.BotType == null) result.BotType = BotType.Scraper;
 
         return Task.FromResult(result);
     }

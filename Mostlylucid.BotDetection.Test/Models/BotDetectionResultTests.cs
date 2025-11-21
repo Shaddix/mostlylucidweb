@@ -3,7 +3,7 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Test.Models;
 
 /// <summary>
-/// Tests for BotDetectionResult model
+///     Tests for BotDetectionResult model
 /// </summary>
 public class BotDetectionResultTests
 {

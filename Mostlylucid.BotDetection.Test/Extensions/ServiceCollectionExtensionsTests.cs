@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mostlylucid.BotDetection.Detectors;
 using Mostlylucid.BotDetection.Extensions;
 using Mostlylucid.BotDetection.Models;
@@ -7,10 +8,28 @@ using Mostlylucid.BotDetection.Services;
 namespace Mostlylucid.BotDetection.Test.Extensions;
 
 /// <summary>
-/// Tests for BotDetection ServiceCollectionExtensions
+///     Tests for BotDetection ServiceCollectionExtensions
 /// </summary>
 public class ServiceCollectionExtensionsTests
 {
+    #region Multiple Registration Tests
+
+    [Fact]
+    public void AddBotDetection_CalledMultipleTimes_DoesNotThrow()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act - Should not throw
+        services.AddBotDetection();
+        var exception = Record.Exception(() => services.AddBotDetection());
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    #endregion
+
     #region AddBotDetection Tests
 
     [Fact]
@@ -42,7 +61,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<BotDetectionOptions>>();
+        var options = provider.GetService<IOptions<BotDetectionOptions>>();
         Assert.NotNull(options);
         Assert.Equal(0.8, options.Value.BotThreshold);
         Assert.True(options.Value.EnableLlmDetection);
@@ -152,24 +171,6 @@ public class ServiceCollectionExtensionsTests
 
     #endregion
 
-    #region Multiple Registration Tests
-
-    [Fact]
-    public void AddBotDetection_CalledMultipleTimes_DoesNotThrow()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act - Should not throw
-        services.AddBotDetection();
-        var exception = Record.Exception(() => services.AddBotDetection());
-
-        // Assert
-        Assert.Null(exception);
-    }
-
-    #endregion
-
     #region Options Configuration Tests
 
     [Fact]
@@ -183,7 +184,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<BotDetectionOptions>>();
+        var options = provider.GetService<IOptions<BotDetectionOptions>>();
         Assert.NotNull(options);
         Assert.Equal(0.7, options.Value.BotThreshold); // Default value
     }
@@ -205,7 +206,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<BotDetectionOptions>>();
+        var options = provider.GetService<IOptions<BotDetectionOptions>>();
         Assert.Equal(customPatterns, options!.Value.WhitelistedBotPatterns);
         Assert.Equal(120, options.Value.MaxRequestsPerMinute);
         Assert.Equal(600, options.Value.CacheDurationSeconds);

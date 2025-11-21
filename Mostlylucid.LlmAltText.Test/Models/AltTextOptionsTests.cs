@@ -3,10 +3,34 @@ using Mostlylucid.LlmAltText.Models;
 namespace Mostlylucid.LlmAltText.Test.Models;
 
 /// <summary>
-/// Comprehensive tests for AltTextOptions
+///     Comprehensive tests for AltTextOptions
 /// </summary>
 public class AltTextOptionsTests
 {
+    #region Immutability Tests
+
+    [Fact]
+    public void Options_AllPropertiesAreMutable()
+    {
+        // Arrange
+        var options = new AltTextOptions();
+        var originalPath = options.ModelPath;
+        var originalTaskType = options.DefaultTaskType;
+
+        // Act - Modify all properties
+        options.ModelPath = "/new/path";
+        options.AltTextPrompt = "New prompt";
+        options.DefaultTaskType = "CAPTION";
+        options.EnableDiagnosticLogging = false;
+        options.MaxWords = 50;
+
+        // Assert - All should have changed
+        Assert.NotEqual(originalPath, options.ModelPath);
+        Assert.NotEqual(originalTaskType, options.DefaultTaskType);
+    }
+
+    #endregion
+
     #region Default Value Tests
 
     [Fact]
@@ -418,30 +442,6 @@ public class AltTextOptionsTests
         // Assert
         Assert.False(options.EnableDiagnosticLogging);
         Assert.Equal(90, options.MaxWords);
-    }
-
-    #endregion
-
-    #region Immutability Tests
-
-    [Fact]
-    public void Options_AllPropertiesAreMutable()
-    {
-        // Arrange
-        var options = new AltTextOptions();
-        var originalPath = options.ModelPath;
-        var originalTaskType = options.DefaultTaskType;
-
-        // Act - Modify all properties
-        options.ModelPath = "/new/path";
-        options.AltTextPrompt = "New prompt";
-        options.DefaultTaskType = "CAPTION";
-        options.EnableDiagnosticLogging = false;
-        options.MaxWords = 50;
-
-        // Assert - All should have changed
-        Assert.NotEqual(originalPath, options.ModelPath);
-        Assert.NotEqual(originalTaskType, options.DefaultTaskType);
     }
 
     #endregion

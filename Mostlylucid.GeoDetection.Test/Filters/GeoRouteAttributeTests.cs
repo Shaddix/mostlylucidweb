@@ -1,17 +1,36 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.AspNetCore.Routing;
 using Mostlylucid.GeoDetection.Filters;
 
 namespace Mostlylucid.GeoDetection.Test.Filters;
 
 /// <summary>
-/// Comprehensive tests for GeoRouteAttribute
+///     Comprehensive tests for GeoRouteAttribute
 /// </summary>
 public class GeoRouteAttributeTests
 {
+    #region Complete Configuration Tests
+
+    [Fact]
+    public void CompleteConfiguration_WithAllProperties()
+    {
+        // Act
+        var attribute = new GeoRouteAttribute
+        {
+            CountryViews = "US:Index_US,GB:Index_GB,DE:Index_DE",
+            CountryActions = "JP:JapanAction",
+            CountryRoutes = "CN:/cn/blocked",
+            DefaultView = "Index"
+        };
+
+        // Assert
+        Assert.NotNull(attribute.CountryViews);
+        Assert.NotNull(attribute.CountryActions);
+        Assert.NotNull(attribute.CountryRoutes);
+        Assert.NotNull(attribute.DefaultView);
+    }
+
+    #endregion
+
     #region Constructor Tests
 
     [Fact]
@@ -95,29 +114,6 @@ public class GeoRouteAttributeTests
 
     #endregion
 
-    #region Complete Configuration Tests
-
-    [Fact]
-    public void CompleteConfiguration_WithAllProperties()
-    {
-        // Act
-        var attribute = new GeoRouteAttribute
-        {
-            CountryViews = "US:Index_US,GB:Index_GB,DE:Index_DE",
-            CountryActions = "JP:JapanAction",
-            CountryRoutes = "CN:/cn/blocked",
-            DefaultView = "Index"
-        };
-
-        // Assert
-        Assert.NotNull(attribute.CountryViews);
-        Assert.NotNull(attribute.CountryActions);
-        Assert.NotNull(attribute.CountryRoutes);
-        Assert.NotNull(attribute.DefaultView);
-    }
-
-    #endregion
-
     #region Mapping Format Tests
 
     [Theory]
@@ -193,7 +189,7 @@ public class GeoRouteAttributeTests
 }
 
 /// <summary>
-/// Tests for ServeByCountryAttribute
+///     Tests for ServeByCountryAttribute
 /// </summary>
 public class ServeByCountryAttributeTests
 {

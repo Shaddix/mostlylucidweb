@@ -3,18 +3,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Mostlylucid.LlmAltText.Data;
 
 /// <summary>
-/// Database context for alt text caching
-/// Supports SQLite (default) and PostgreSQL
+///     Database context for alt text caching
+///     Supports SQLite (default) and PostgreSQL
 /// </summary>
-public class AltTextDbContext : DbContext
+public class AltTextDbContext(DbContextOptions<AltTextDbContext> options) : DbContext(options)
 {
-    public AltTextDbContext(DbContextOptions<AltTextDbContext> options)
-        : base(options)
-    {
-    }
-
     /// <summary>
-    /// Cached alt text entries
+    ///     Cached alt text entries
     /// </summary>
     public DbSet<ImageAltTextEntry> ImageAltTexts { get; set; } = null!;
 

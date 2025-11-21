@@ -9,7 +9,7 @@ using Mostlylucid.BotDetection.Test.Helpers;
 namespace Mostlylucid.BotDetection.Test.Detectors;
 
 /// <summary>
-/// Comprehensive tests for IpDetector
+///     Comprehensive tests for IpDetector
 /// </summary>
 public class IpDetectorTests
 {
@@ -47,13 +47,46 @@ public class IpDetectorTests
 
     #endregion
 
+    #region Cancellation Tests
+
+    [Fact]
+    public async Task DetectAsync_WithCancellation_CompletesNormally()
+    {
+        // Arrange
+        var detector = CreateDetector();
+        var context = MockHttpContext.CreateWithIpAddress("192.168.1.1");
+        using var cts = new CancellationTokenSource();
+
+        // Act
+        var result = await detector.DetectAsync(context, cts.Token);
+
+        // Assert
+        Assert.NotNull(result);
+    }
+
+    #endregion
+
+    #region Name Property Test
+
+    [Fact]
+    public void Name_ReturnsExpectedValue()
+    {
+        // Arrange
+        var detector = CreateDetector();
+
+        // Assert
+        Assert.Equal("IP Detector", detector.Name);
+    }
+
+    #endregion
+
     #region Datacenter IP Tests
 
     [Theory]
-    [InlineData("3.1.2.3")]   // AWS
-    [InlineData("13.1.2.3")]  // AWS
-    [InlineData("18.1.2.3")]  // AWS
-    [InlineData("52.1.2.3")]  // AWS
+    [InlineData("3.1.2.3")] // AWS
+    [InlineData("13.1.2.3")] // AWS
+    [InlineData("18.1.2.3")] // AWS
+    [InlineData("52.1.2.3")] // AWS
     public async Task DetectAsync_AwsIp_ReturnsElevatedConfidence(string ipAddress)
     {
         // Arrange
@@ -69,8 +102,8 @@ public class IpDetectorTests
     }
 
     [Theory]
-    [InlineData("20.1.2.3")]  // Azure
-    [InlineData("40.1.2.3")]  // Azure
+    [InlineData("20.1.2.3")] // Azure
+    [InlineData("40.1.2.3")] // Azure
     [InlineData("104.1.2.3")] // Azure
     public async Task DetectAsync_AzureIp_ReturnsElevatedConfidence(string ipAddress)
     {
@@ -86,8 +119,8 @@ public class IpDetectorTests
     }
 
     [Theory]
-    [InlineData("34.1.2.3")]  // GCP
-    [InlineData("35.1.2.3")]  // GCP
+    [InlineData("34.1.2.3")] // GCP
+    [InlineData("35.1.2.3")] // GCP
     public async Task DetectAsync_GcpIp_ReturnsElevatedConfidence(string ipAddress)
     {
         // Arrange
@@ -123,11 +156,11 @@ public class IpDetectorTests
     #region Residential IP Tests
 
     [Theory]
-    [InlineData("192.168.1.1")]   // Private
-    [InlineData("10.0.0.1")]      // Private
-    [InlineData("172.16.0.1")]    // Private
-    [InlineData("98.45.67.89")]   // Typical residential
-    [InlineData("76.123.45.67")]  // Typical residential
+    [InlineData("192.168.1.1")] // Private
+    [InlineData("10.0.0.1")] // Private
+    [InlineData("172.16.0.1")] // Private
+    [InlineData("98.45.67.89")] // Typical residential
+    [InlineData("76.123.45.67")] // Typical residential
     public async Task DetectAsync_NonDatacenterIp_ReturnsLowConfidence(string ipAddress)
     {
         // Arrange
@@ -340,25 +373,6 @@ public class IpDetectorTests
 
     #endregion
 
-    #region Cancellation Tests
-
-    [Fact]
-    public async Task DetectAsync_WithCancellation_CompletesNormally()
-    {
-        // Arrange
-        var detector = CreateDetector();
-        var context = MockHttpContext.CreateWithIpAddress("192.168.1.1");
-        using var cts = new CancellationTokenSource();
-
-        // Act
-        var result = await detector.DetectAsync(context, cts.Token);
-
-        // Assert
-        Assert.NotNull(result);
-    }
-
-    #endregion
-
     #region Reason Validation Tests
 
     [Fact]
@@ -372,10 +386,7 @@ public class IpDetectorTests
         var result = await detector.DetectAsync(context);
 
         // Assert
-        foreach (var reason in result.Reasons)
-        {
-            Assert.Equal("IP", reason.Category);
-        }
+        foreach (var reason in result.Reasons) Assert.Equal("IP", reason.Category);
     }
 
     [Fact]
@@ -390,23 +401,7 @@ public class IpDetectorTests
 
         // Assert
         foreach (var reason in result.Reasons)
-        {
             Assert.True(reason.ConfidenceImpact >= 0.0 && reason.ConfidenceImpact <= 1.0);
-        }
-    }
-
-    #endregion
-
-    #region Name Property Test
-
-    [Fact]
-    public void Name_ReturnsExpectedValue()
-    {
-        // Arrange
-        var detector = CreateDetector();
-
-        // Assert
-        Assert.Equal("IP Detector", detector.Name);
     }
 
     #endregion

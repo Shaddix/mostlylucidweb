@@ -7,7 +7,7 @@ using Mostlylucid.BotDetection.Models;
 namespace Mostlylucid.BotDetection.Detectors;
 
 /// <summary>
-/// Detects bots based on behavioral patterns (rate limiting, request patterns)
+///     Detects bots based on behavioral patterns (rate limiting, request patterns)
 /// </summary>
 public class BehavioralDetector(
     ILogger<BehavioralDetector> logger,
@@ -15,9 +15,9 @@ public class BehavioralDetector(
     IMemoryCache cache)
     : IDetector
 {
+    private readonly IMemoryCache _cache = cache;
     private readonly ILogger<BehavioralDetector> _logger = logger;
     private readonly BotDetectionOptions _options = options.Value;
-    private readonly IMemoryCache _cache = cache;
 
     public string Name => "Behavioral Detector";
 
@@ -28,22 +28,20 @@ public class BehavioralDetector(
         var reasons = new List<DetectionReason>();
 
         var ipAddress = GetClientIp(context);
-        if (string.IsNullOrEmpty(ipAddress))
-        {
-            return Task.FromResult(result);
-        }
+        if (string.IsNullOrEmpty(ipAddress)) return Task.FromResult(result);
 
         // Rate limiting check
         var requestCount = IncrementRequestCount(ipAddress);
         if (requestCount > _options.MaxRequestsPerMinute)
         {
             var excess = requestCount - _options.MaxRequestsPerMinute;
-            var impact = Math.Min(0.3 + (excess * 0.05), 0.9);
+            var impact = Math.Min(0.3 + excess * 0.05, 0.9);
             confidence += impact;
             reasons.Add(new DetectionReason
             {
                 Category = "Behavioral",
-                Detail = $"Excessive request rate: {requestCount} requests/min (limit: {_options.MaxRequestsPerMinute})",
+                Detail =
+                    $"Excessive request rate: {requestCount} requests/min (limit: {_options.MaxRequestsPerMinute})",
                 ConfidenceImpact = impact
             });
         }
@@ -75,7 +73,7 @@ public class BehavioralDetector(
                     Category = "Behavioral",
                     Detail = $"Extremely fast requests: {timeSinceLastRequest:F0}ms between requests",
                     ConfidenceImpact = 0.4
-                }); 
+                });
             }
         }
 
@@ -110,10 +108,7 @@ public class BehavioralDetector(
         result.Confidence = Math.Min(confidence, 1.0);
         result.Reasons = reasons;
 
-        if (result.Confidence > 0.6)
-        {
-            result.BotType = BotType.Scraper;
-        }
+        if (result.Confidence > 0.6) result.BotType = BotType.Scraper;
 
         return Task.FromResult(result);
     }
@@ -121,7 +116,7 @@ public class BehavioralDetector(
     private string? GetClientIp(HttpContext context)
     {
         return context.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
-            ?? context.Connection.RemoteIpAddress?.ToString();
+               ?? context.Connection.RemoteIpAddress?.ToString();
     }
 
     private int IncrementRequestCount(string ipAddress)
@@ -162,10 +157,7 @@ public class BehavioralDetector(
         timings.Add(DateTime.UtcNow);
 
         // Keep only last 10 requests
-        if (timings.Count > 10)
-        {
-            timings = timings.Skip(timings.Count - 10).ToList();
-        }
+        if (timings.Count > 10) timings = timings.Skip(timings.Count - 10).ToList();
 
         _cache.Set(key, timings, TimeSpan.FromMinutes(5));
 
@@ -173,10 +165,7 @@ public class BehavioralDetector(
         if (timings.Count >= 5)
         {
             var intervals = new List<double>();
-            for (int i = 1; i < timings.Count; i++)
-            {
-                intervals.Add((timings[i] - timings[i - 1]).TotalSeconds);
-            }
+            for (var i = 1; i < timings.Count; i++) intervals.Add((timings[i] - timings[i - 1]).TotalSeconds);
 
             // Calculate standard deviation
             var mean = intervals.Average();
@@ -184,10 +173,7 @@ public class BehavioralDetector(
             var stdDev = Math.Sqrt(variance);
 
             // Very low standard deviation means requests are too regular
-            if (stdDev < 0.5 && mean < 5)
-            {
-                return (true, $"Too regular interval: {mean:F2}s ± {stdDev:F2}s");
-            }
+            if (stdDev < 0.5 && mean < 5) return (true, $"Too regular interval: {mean:F2}s ± {stdDev:F2}s");
         }
 
         return (false, string.Empty);

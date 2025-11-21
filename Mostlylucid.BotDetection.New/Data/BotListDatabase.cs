@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace Mostlylucid.BotDetection.Data;
 
 /// <summary>
-/// SQLite-based bot list storage with automatic updates
+///     SQLite-based bot list storage with automatic updates
 /// </summary>
 public interface IBotListDatabase
 {
@@ -26,14 +26,14 @@ public class BotInfo
 }
 
 /// <summary>
-/// SQLite database for bot detection lists with caching and auto-updates
+///     SQLite database for bot detection lists with caching and auto-updates
 /// </summary>
 public class BotListDatabase : IBotListDatabase, IDisposable
 {
     private readonly string _dbPath;
     private readonly IBotListFetcher _fetcher;
-    private readonly ILogger<BotListDatabase> _logger;
     private readonly SemaphoreSlim _initLock = new(1, 1);
+    private readonly ILogger<BotListDatabase> _logger;
     private bool _initialized;
 
     public BotListDatabase(
@@ -59,10 +59,7 @@ public class BotListDatabase : IBotListDatabase, IDisposable
 
             // Ensure directory exists
             var directory = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
             await using var connection = new SqliteConnection($"Data Source={_dbPath}");
             await connection.OpenAsync(cancellationToken);
@@ -140,9 +137,7 @@ public class BotListDatabase : IBotListDatabase, IDisposable
             try
             {
                 if (Regex.IsMatch(userAgent, pattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
-                {
                     return true;
-                }
             }
             catch (RegexMatchTimeoutException)
             {
@@ -174,7 +169,6 @@ public class BotListDatabase : IBotListDatabase, IDisposable
             try
             {
                 if (Regex.IsMatch(userAgent, pattern, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)))
-                {
                     return new BotInfo
                     {
                         Name = reader.GetString(0),
@@ -182,7 +176,6 @@ public class BotListDatabase : IBotListDatabase, IDisposable
                         Url = reader.IsDBNull(3) ? null : reader.GetString(3),
                         IsVerified = reader.GetInt32(4) == 1
                     };
-                }
             }
             catch (RegexMatchTimeoutException)
             {
@@ -212,10 +205,7 @@ public class BotListDatabase : IBotListDatabase, IDisposable
         while (await reader.ReadAsync(cancellationToken))
         {
             var range = reader.GetString(0);
-            if (IsIpInRange(ipAddress, range))
-            {
-                return true;
-            }
+            if (IsIpInRange(ipAddress, range)) return true;
         }
 
         return false;
@@ -368,7 +358,6 @@ public class BotListDatabase : IBotListDatabase, IDisposable
     public async Task<DateTime?> GetLastUpdateTimeAsync(string listType, CancellationToken cancellationToken = default)
     {
         if (!_initialized)
-        {
             try
             {
                 await InitializeAsync(cancellationToken);
@@ -377,7 +366,6 @@ public class BotListDatabase : IBotListDatabase, IDisposable
             {
                 return null;
             }
-        }
 
         await using var connection = new SqliteConnection($"Data Source={_dbPath}");
         await connection.OpenAsync(cancellationToken);
@@ -391,6 +379,11 @@ public class BotListDatabase : IBotListDatabase, IDisposable
             return null;
 
         return DateTime.Parse((string)result);
+    }
+
+    public void Dispose()
+    {
+        _initLock?.Dispose();
     }
 
     private bool IsVerifiedBot(string? name)
@@ -444,10 +437,5 @@ public class BotListDatabase : IBotListDatabase, IDisposable
         {
             return false;
         }
-    }
-
-    public void Dispose()
-    {
-        _initLock?.Dispose();
     }
 }

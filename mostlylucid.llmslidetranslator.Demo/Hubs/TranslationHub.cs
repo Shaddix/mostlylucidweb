@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace mostlylucid.llmslidetranslator.Demo.Hubs;
 
 /// <summary>
-/// SignalR hub for real-time translation updates
+///     SignalR hub for real-time translation updates
 /// </summary>
 public class TranslationHub : Hub
 {
@@ -15,7 +15,7 @@ public class TranslationHub : Hub
     }
 
     /// <summary>
-    /// Subscribe to updates for a specific document
+    ///     Subscribe to updates for a specific document
     /// </summary>
     public async Task SubscribeToDocument(string documentId)
     {
@@ -25,7 +25,7 @@ public class TranslationHub : Hub
     }
 
     /// <summary>
-    /// Unsubscribe from updates for a specific document
+    ///     Unsubscribe from updates for a specific document
     /// </summary>
     public async Task UnsubscribeFromDocument(string documentId)
     {

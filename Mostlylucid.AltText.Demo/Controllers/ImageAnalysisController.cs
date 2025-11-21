@@ -22,17 +22,12 @@ public class ImageAnalysisController : ControllerBase
     [RequestSizeLimit(10 * 1024 * 1024)] // 10MB limit
     public async Task<IActionResult> AnalyzeImage(IFormFile image)
     {
-        if (image == null || image.Length == 0)
-        {
-            return BadRequest(new { error = "No image file provided" });
-        }
+        if (image == null || image.Length == 0) return BadRequest(new { error = "No image file provided" });
 
         // Validate image type
         var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
         if (!allowedTypes.Contains(image.ContentType.ToLower()))
-        {
             return BadRequest(new { error = "Invalid image type. Allowed types: JPEG, PNG, GIF, WebP" });
-        }
 
         try
         {
@@ -62,12 +57,10 @@ public class ImageAnalysisController : ControllerBase
 
     [HttpPost("alt-text")]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> GenerateAltText(IFormFile image, [FromQuery] string taskType = "MORE_DETAILED_CAPTION")
+    public async Task<IActionResult> GenerateAltText(IFormFile image,
+        [FromQuery] string taskType = "MORE_DETAILED_CAPTION")
     {
-        if (image == null || image.Length == 0)
-        {
-            return BadRequest(new { error = "No image file provided" });
-        }
+        if (image == null || image.Length == 0) return BadRequest(new { error = "No image file provided" });
 
         try
         {
@@ -79,8 +72,8 @@ public class ImageAnalysisController : ControllerBase
             return Ok(new
             {
                 fileName = image.FileName,
-                altText = altText,
-                taskType = taskType
+                altText,
+                taskType
             });
         }
         catch (Exception ex)
@@ -94,10 +87,7 @@ public class ImageAnalysisController : ControllerBase
     [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<IActionResult> ExtractText(IFormFile image)
     {
-        if (image == null || image.Length == 0)
-        {
-            return BadRequest(new { error = "No image file provided" });
-        }
+        if (image == null || image.Length == 0) return BadRequest(new { error = "No image file provided" });
 
         try
         {
@@ -108,8 +98,7 @@ public class ImageAnalysisController : ControllerBase
 
             return Ok(new
             {
-                fileName = image.FileName,
-                extractedText = extractedText
+                fileName = image.FileName, extractedText
             });
         }
         catch (Exception ex)

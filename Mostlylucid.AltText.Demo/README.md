@@ -47,15 +47,18 @@ A demonstration of automatic alt text generation and OCR using Microsoft Florenc
 
 ### First Run
 
-On first run, the application will download the Florence-2 model files (~2.5GB). This may take several minutes depending on your internet connection. Subsequent runs will use the cached models.
+On first run, the application will download the Florence-2 model files (~2.5GB). This may take several minutes depending
+on your internet connection. Subsequent runs will use the cached models.
 
 ## API Endpoints
 
 ### POST /api/ImageAnalysis/analyze
+
 Analyzes an image and returns both alt text and extracted text.
 
 **Request**: Multipart form data with image file
 **Response**:
+
 ```json
 {
   "fileName": "example.jpg",
@@ -66,17 +69,21 @@ Analyzes an image and returns both alt text and extracted text.
 ```
 
 ### POST /api/ImageAnalysis/alt-text
+
 Generates only alt text for an image.
 
 **Query Parameters**:
+
 - `taskType`: Caption detail level (CAPTION, DETAILED_CAPTION, MORE_DETAILED_CAPTION)
 
 ### POST /api/ImageAnalysis/ocr
+
 Extracts only text from an image.
 
 ## Model Information
 
-This demo uses the Florence-2-base model from Microsoft Research. Florence-2 is a vision-language foundation model capable of:
+This demo uses the Florence-2-base model from Microsoft Research. Florence-2 is a vision-language foundation model
+capable of:
 
 - Image captioning at multiple detail levels
 - Optical Character Recognition (OCR)
@@ -141,16 +148,19 @@ Console.WriteLine($"OCR Text: {extractedText}");
 ## Troubleshooting
 
 ### Model Download Fails
+
 - Check internet connection
 - Ensure sufficient disk space
 - Check firewall settings
 
 ### Out of Memory
+
 - Reduce image size before upload
 - Consider using a machine with more RAM
 - Enable GPU mode if available
 
 ### Slow Performance
+
 - Enable GPU mode for faster inference
 - Consider using the smaller Florence-2-base model
 - Reduce image resolution before processing

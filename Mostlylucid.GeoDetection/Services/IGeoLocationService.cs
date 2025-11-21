@@ -3,28 +3,28 @@ using Mostlylucid.GeoDetection.Models;
 namespace Mostlylucid.GeoDetection.Services;
 
 /// <summary>
-/// Service for looking up geographic location of IP addresses
+///     Service for looking up geographic location of IP addresses
 /// </summary>
 public interface IGeoLocationService
 {
     /// <summary>
-    /// Get geographic location for an IP address
+    ///     Get geographic location for an IP address
     /// </summary>
     Task<GeoLocation?> GetLocationAsync(string ipAddress, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Check if an IP is from a specific country
+    ///     Check if an IP is from a specific country
     /// </summary>
     Task<bool> IsFromCountryAsync(string ipAddress, string countryCode, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get statistics about geo lookups
+    ///     Get statistics about geo lookups
     /// </summary>
     GeoLocationStatistics GetStatistics();
 }
 
 /// <summary>
-/// Simple in-memory geo location service (placeholder for MaxMind integration)
+///     Simple in-memory geo location service (placeholder for MaxMind integration)
 /// </summary>
 public class SimpleGeoLocationService : IGeoLocationService
 {
@@ -51,7 +51,8 @@ public class SimpleGeoLocationService : IGeoLocationService
         return Task.FromResult<GeoLocation?>(location);
     }
 
-    public async Task<bool> IsFromCountryAsync(string ipAddress, string countryCode, CancellationToken cancellationToken = default)
+    public async Task<bool> IsFromCountryAsync(string ipAddress, string countryCode,
+        CancellationToken cancellationToken = default)
     {
         var location = await GetLocationAsync(ipAddress, cancellationToken);
         return location?.CountryCode.Equals(countryCode, StringComparison.OrdinalIgnoreCase) ?? false;

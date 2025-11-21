@@ -94,6 +94,7 @@ When LLM detection is enabled, the system automatically learns new bot patterns:
 - Useful for building custom bot detection rules over time
 
 Example learned pattern:
+
 ```json
 {
   "Pattern": "missing Accept-Language header",

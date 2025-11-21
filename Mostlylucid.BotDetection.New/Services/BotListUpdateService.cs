@@ -5,7 +5,7 @@ using Mostlylucid.BotDetection.Data;
 namespace Mostlylucid.BotDetection.Services;
 
 /// <summary>
-/// Background service that automatically updates bot detection lists daily
+///     Background service that automatically updates bot detection lists daily
 /// </summary>
 public class BotListUpdateService(
     IBotListDatabase database,
@@ -38,7 +38,7 @@ public class BotListUpdateService(
                 // Check if update is needed
                 var lastUpdate = await _database.GetLastUpdateTimeAsync("bot_patterns", stoppingToken);
 
-                if (lastUpdate == null || (DateTime.UtcNow - lastUpdate.Value) >= _updateInterval)
+                if (lastUpdate == null || DateTime.UtcNow - lastUpdate.Value >= _updateInterval)
                 {
                     _logger.LogInformation("Starting bot list update");
                     await _database.UpdateListsAsync(stoppingToken);

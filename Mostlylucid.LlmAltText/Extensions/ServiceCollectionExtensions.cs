@@ -8,21 +8,21 @@ using Mostlylucid.LlmAltText.Services;
 namespace Mostlylucid.LlmAltText.Extensions;
 
 /// <summary>
-/// Extension methods for registering alt text services
+///     Extension methods for registering alt text services
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Add AI-powered alt text generation services to the service collection
+    ///     Add AI-powered alt text generation services to the service collection
     /// </summary>
     /// <param name="services">Service collection</param>
     /// <param name="configure">Optional configuration action</param>
     /// <returns>Service collection for chaining</returns>
     /// <example>
-    /// <code>
+    ///     <code>
     /// // Basic usage with defaults
     /// services.AddAltTextGeneration();
-    ///
+    /// 
     /// // With custom configuration
     /// services.AddAltTextGeneration(options =>
     /// {
@@ -30,7 +30,7 @@ public static class ServiceCollectionExtensions
     ///     options.EnableDiagnosticLogging = true;
     ///     options.MaxWords = 100;
     /// });
-    ///
+    /// 
     /// // Enable TagHelper with SQLite caching
     /// services.AddAltTextGeneration(options =>
     /// {
@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
     ///     options.DbProvider = AltTextDbProvider.Sqlite;
     ///     options.SqliteDbPath = "./alttext.db";
     /// });
-    ///
+    /// 
     /// // Enable TagHelper with PostgreSQL
     /// services.AddAltTextGeneration(options =>
     /// {
@@ -60,13 +60,9 @@ public static class ServiceCollectionExtensions
 
         // Configure options
         if (configure != null)
-        {
             services.Configure(configure);
-        }
         else
-        {
             services.Configure<AltTextOptions>(opt => { });
-        }
 
         // Register the image analysis service as a singleton
         // (model initialization is expensive, so we share one instance)
@@ -86,18 +82,14 @@ public static class ServiceCollectionExtensions
 
         // Register HttpClient for image fetching (needed by TagHelper)
         if (options.EnableTagHelper)
-        {
-            services.AddHttpClient("AltTextImageFetcher", client =>
-            {
-                client.DefaultRequestHeaders.Add("User-Agent", "MostlylucidAltTextBot/1.0");
-            });
-        }
+            services.AddHttpClient("AltTextImageFetcher",
+                client => { client.DefaultRequestHeaders.Add("User-Agent", "MostlylucidAltTextBot/1.0"); });
 
         return services;
     }
 
     /// <summary>
-    /// Configure the DbContext based on provider settings
+    ///     Configure the DbContext based on provider settings
     /// </summary>
     private static void ConfigureDbContext(DbContextOptionsBuilder options, AltTextOptions altTextOptions)
     {
@@ -112,10 +104,8 @@ public static class ServiceCollectionExtensions
 
             case AltTextDbProvider.PostgreSql:
                 if (string.IsNullOrEmpty(connectionString))
-                {
                     throw new InvalidOperationException(
                         "PostgreSQL connection string is required. Set AltTextOptions.ConnectionString.");
-                }
                 options.UseNpgsql(connectionString);
                 break;
 
@@ -125,7 +115,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Migrate the alt text database (call during application startup)
+    ///     Migrate the alt text database (call during application startup)
     /// </summary>
     /// <param name="serviceProvider">Service provider</param>
     /// <returns>Task</returns>
@@ -133,10 +123,7 @@ public static class ServiceCollectionExtensions
     {
         var options = serviceProvider.GetRequiredService<IOptions<AltTextOptions>>().Value;
 
-        if (!options.EnableDatabase || !options.AutoMigrateDatabase)
-        {
-            return;
-        }
+        if (!options.EnableDatabase || !options.AutoMigrateDatabase) return;
 
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AltTextDbContext>();
@@ -144,7 +131,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Update alt text generation options after initial registration
+    ///     Update alt text generation options after initial registration
     /// </summary>
     /// <param name="services">Service collection</param>
     /// <param name="configure">Configuration action</param>

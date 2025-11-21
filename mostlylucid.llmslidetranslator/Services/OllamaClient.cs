@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using mostlylucid.llmslidetranslator.Models;
@@ -8,13 +7,13 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Client for Ollama LLM API
+///     Client for Ollama LLM API
 /// </summary>
 public class OllamaClient : IOllamaClient
 {
-    private readonly ILogger<OllamaClient> _logger;
-    private readonly HttpClient _httpClient;
     private readonly LlmSlideTranslatorConfig _config;
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<OllamaClient> _logger;
 
     public OllamaClient(
         ILogger<OllamaClient> logger,
@@ -60,12 +59,9 @@ public class OllamaClient : IOllamaClient
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<OllamaResponse>(
-                cancellationToken: cancellationToken);
+                cancellationToken);
 
-            if (result?.Response == null)
-            {
-                throw new InvalidOperationException("Ollama returned null response");
-            }
+            if (result?.Response == null) throw new InvalidOperationException("Ollama returned null response");
 
             _logger.LogDebug("Ollama translation completed for block {BlockId}",
                 context.CurrentBlock.BlockId);
@@ -103,7 +99,7 @@ public class OllamaClient : IOllamaClient
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<OllamaModelsResponse>(
-                cancellationToken: cancellationToken);
+                cancellationToken);
 
             return result?.Models?.Select(m => m.Name).ToList() ?? new List<string>();
         }
@@ -137,7 +133,7 @@ public class OllamaClient : IOllamaClient
         if (context.SimilarBlocks.Count > 0)
         {
             sb.AppendLine("Context from earlier in the same document (use the same terminology):");
-            for (int i = 0; i < context.SimilarBlocks.Count; i++)
+            for (var i = 0; i < context.SimilarBlocks.Count; i++)
             {
                 var similarBlock = context.SimilarBlocks[i];
                 if (!string.IsNullOrEmpty(similarBlock.TranslatedText))

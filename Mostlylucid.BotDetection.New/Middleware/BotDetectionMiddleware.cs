@@ -8,18 +8,17 @@ using Mostlylucid.BotDetection.Services;
 namespace Mostlylucid.BotDetection.Middleware;
 
 /// <summary>
-/// Middleware that detects bots and adds detection result to HttpContext
+///     Middleware that detects bots and adds detection result to HttpContext
 /// </summary>
 public class BotDetectionMiddleware(
     RequestDelegate next,
     ILogger<BotDetectionMiddleware> logger,
     IOptions<BotDetectionOptions> options)
 {
-    private readonly RequestDelegate _next = next;
-    private readonly ILogger<BotDetectionMiddleware> _logger = logger;
-    private readonly BotDetectionOptions _options = options.Value;
-
     public const string BotDetectionResultKey = "BotDetectionResult";
+    private readonly ILogger<BotDetectionMiddleware> _logger = logger;
+    private readonly RequestDelegate _next = next;
+    private readonly BotDetectionOptions _options = options.Value;
 
     public async Task InvokeAsync(HttpContext context, IBotDetectionService botDetectionService)
     {
@@ -43,7 +42,7 @@ public class BotDetectionMiddleware(
                     ConfidenceScore = 0.0,
                     Reasons = new List<DetectionReason>
                     {
-                        new DetectionReason
+                        new()
                         {
                             Category = "Test Mode",
                             Detail = "Bot detection disabled via test header",
@@ -111,7 +110,7 @@ public class BotDetectionMiddleware(
                 ConfidenceScore = 0.0,
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated human traffic",
@@ -127,7 +126,7 @@ public class BotDetectionMiddleware(
                 BotName = "Test Bot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated bot traffic",
@@ -143,7 +142,7 @@ public class BotDetectionMiddleware(
                 BotName = "Googlebot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated Googlebot",
@@ -159,7 +158,7 @@ public class BotDetectionMiddleware(
                 BotName = "Bingbot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated Bingbot",
@@ -175,7 +174,7 @@ public class BotDetectionMiddleware(
                 BotName = "Test Scraper",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated scraper bot",
@@ -191,7 +190,7 @@ public class BotDetectionMiddleware(
                 BotName = "Test Malicious Bot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated malicious bot",
@@ -207,7 +206,7 @@ public class BotDetectionMiddleware(
                 BotName = "Test Social Bot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated social media bot",
@@ -223,7 +222,7 @@ public class BotDetectionMiddleware(
                 BotName = "Test Monitoring Bot",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = "Simulated monitoring bot",
@@ -239,7 +238,7 @@ public class BotDetectionMiddleware(
                 BotName = $"Test {testMode}",
                 Reasons = new List<DetectionReason>
                 {
-                    new DetectionReason
+                    new()
                     {
                         Category = "Test Mode",
                         Detail = $"Simulated '{testMode}' bot",
@@ -252,12 +251,12 @@ public class BotDetectionMiddleware(
 }
 
 /// <summary>
-/// Extension methods for adding bot detection middleware
+///     Extension methods for adding bot detection middleware
 /// </summary>
 public static class BotDetectionMiddlewareExtensions
 {
     /// <summary>
-    /// Add bot detection middleware to the pipeline
+    ///     Add bot detection middleware to the pipeline
     /// </summary>
     public static IApplicationBuilder UseBotDetection(this IApplicationBuilder builder)
     {

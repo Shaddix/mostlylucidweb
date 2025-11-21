@@ -3,7 +3,7 @@ using Mostlylucid.GeoDetection.Models;
 namespace Mostlylucid.GeoDetection.Test.Models;
 
 /// <summary>
-/// Comprehensive tests for GeoRoutingOptions
+///     Comprehensive tests for GeoRoutingOptions
 /// </summary>
 public class GeoRoutingOptionsTests
 {

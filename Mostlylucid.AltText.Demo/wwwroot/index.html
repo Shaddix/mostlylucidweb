@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Image Alt Text & OCR Demo - Florence 2</title>
     <style>
         * {
@@ -33,7 +33,7 @@
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .subtitle {
@@ -45,7 +45,7 @@
             background: white;
             border-radius: 12px;
             padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -147,7 +147,7 @@
         .preview-image img {
             max-width: 100%;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .results {
@@ -197,8 +197,12 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .error {
@@ -258,238 +262,244 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🖼️ Image Alt Text & OCR Demo</h1>
-            <p class="subtitle">Powered by Microsoft Florence-2 via C# & ONNX Runtime</p>
-        </header>
+<div class="container">
+    <header>
+        <h1>🖼️ Image Alt Text & OCR Demo</h1>
+        <p class="subtitle">Powered by Microsoft Florence-2 via C# & ONNX Runtime</p>
+    </header>
 
-        <div class="card">
-            <div class="drop-zone" id="dropZone">
-                <div class="drop-zone-icon">📸</div>
-                <div class="drop-zone-text">Drop your image here</div>
-                <div class="drop-zone-hint">or click to browse, or press Ctrl+V to paste (JPG, PNG, GIF, WebP - max 10MB)</div>
-            </div>
-            <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp">
-
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Analyzing your image with AI...</p>
-            </div>
-
-            <div class="preview-section" id="previewSection">
-                <div class="preview-image">
-                    <img id="imagePreview" src="" alt="Preview">
-                    <p class="drop-hint">Drop a new image here, click the image, or press Ctrl+V to paste</p>
-                    <button class="btn" onclick="reset()">Clear & Start Over</button>
-                </div>
-                <div class="results">
-                    <div class="result-card">
-                        <h3>🎯 Image Type <span class="badge" id="contentTypeBadge">Detection</span></h3>
-                        <p id="contentType">Waiting for analysis...</p>
-                    </div>
-                    <div class="result-card">
-                        <h3>🏷️ Generated Alt Text <span class="badge">AI</span></h3>
-                        <p id="altText">Waiting for analysis...</p>
-                    </div>
-                    <div class="result-card">
-                        <h3>📝 Extracted Text <span class="badge">OCR</span></h3>
-                        <p id="ocrText">Waiting for analysis...</p>
-                    </div>
-                </div>
+    <div class="card">
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">📸</div>
+            <div class="drop-zone-text">Drop your image here</div>
+            <div class="drop-zone-hint">or click to browse, or press Ctrl+V to paste (JPG, PNG, GIF, WebP - max 10MB)
             </div>
         </div>
+        <input accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" id="fileInput" type="file">
 
-        <div class="card info-section">
-            <h3>ℹ️ About This Demo</h3>
-            <ul>
-                <li><strong>Image Captioning:</strong> Uses Microsoft Florence-2, a state-of-the-art vision-language model for generating descriptive alt text</li>
-                <li><strong>OCR:</strong> Extracts text content from images using Florence-2's built-in OCR capabilities</li>
-                <li><strong>Technology:</strong> C# + ONNX Runtime for efficient CPU/GPU inference</li>
-                <li><strong>Privacy:</strong> All processing happens server-side (or locally). No data is sent to third parties</li>
-                <li><strong>Use Cases:</strong> Accessibility, content management, automated metadata generation</li>
-            </ul>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your image with AI...</p>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-image">
+                <img alt="Preview" id="imagePreview" src="">
+                <p class="drop-hint">Drop a new image here, click the image, or press Ctrl+V to paste</p>
+                <button class="btn" onclick="reset()">Clear & Start Over</button>
+            </div>
+            <div class="results">
+                <div class="result-card">
+                    <h3>🎯 Image Type <span class="badge" id="contentTypeBadge">Detection</span></h3>
+                    <p id="contentType">Waiting for analysis...</p>
+                </div>
+                <div class="result-card">
+                    <h3>🏷️ Generated Alt Text <span class="badge">AI</span></h3>
+                    <p id="altText">Waiting for analysis...</p>
+                </div>
+                <div class="result-card">
+                    <h3>📝 Extracted Text <span class="badge">OCR</span></h3>
+                    <p id="ocrText">Waiting for analysis...</p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const loading = document.getElementById('loading');
-        const previewSection = document.getElementById('previewSection');
-        const imagePreview = document.getElementById('imagePreview');
-        const altText = document.getElementById('altText');
-        const ocrText = document.getElementById('ocrText');
-        const contentType = document.getElementById('contentType');
-        const contentTypeBadge = document.getElementById('contentTypeBadge');
-        const previewImageContainer = document.querySelector('.preview-image');
+    <div class="card info-section">
+        <h3>ℹ️ About This Demo</h3>
+        <ul>
+            <li><strong>Image Captioning:</strong> Uses Microsoft Florence-2, a state-of-the-art vision-language model
+                for generating descriptive alt text
+            </li>
+            <li><strong>OCR:</strong> Extracts text content from images using Florence-2's built-in OCR capabilities
+            </li>
+            <li><strong>Technology:</strong> C# + ONNX Runtime for efficient CPU/GPU inference</li>
+            <li><strong>Privacy:</strong> All processing happens server-side (or locally). No data is sent to third
+                parties
+            </li>
+            <li><strong>Use Cases:</strong> Accessibility, content management, automated metadata generation</li>
+        </ul>
+    </div>
+</div>
 
-        // Click to select file
-        dropZone.addEventListener('click', () => fileInput.click());
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const loading = document.getElementById('loading');
+    const previewSection = document.getElementById('previewSection');
+    const imagePreview = document.getElementById('imagePreview');
+    const altText = document.getElementById('altText');
+    const ocrText = document.getElementById('ocrText');
+    const contentType = document.getElementById('contentType');
+    const contentTypeBadge = document.getElementById('contentTypeBadge');
+    const previewImageContainer = document.querySelector('.preview-image');
 
-        // Click on preview image to select new file
-        if (previewImageContainer) {
-            previewImageContainer.addEventListener('click', (e) => {
-                if (e.target === imagePreview) {
-                    fileInput.click();
+    // Click to select file
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // Click on preview image to select new file
+    if (previewImageContainer) {
+        previewImageContainer.addEventListener('click', (e) => {
+            if (e.target === imagePreview) {
+                fileInput.click();
+            }
+        });
+    }
+
+    // Drag and drop handlers
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+
+    // File input change handler
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
+    });
+
+    // Drag and drop on preview image (allows dropping new image without reset)
+    document.addEventListener('DOMContentLoaded', () => {
+        const previewImg = document.querySelector('.preview-image');
+        if (previewImg) {
+            previewImg.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                previewImg.classList.add('drag-over');
+            });
+
+            previewImg.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                previewImg.classList.remove('drag-over');
+            });
+
+            previewImg.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                previewImg.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0]);
                 }
             });
         }
+    });
 
-        // Drag and drop handlers
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
+    // Ctrl+V paste from clipboard
+    document.addEventListener('paste', async (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
-
-        // File input change handler
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
-
-        // Drag and drop on preview image (allows dropping new image without reset)
-        document.addEventListener('DOMContentLoaded', () => {
-            const previewImg = document.querySelector('.preview-image');
-            if (previewImg) {
-                previewImg.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    previewImg.classList.add('drag-over');
-                });
-
-                previewImg.addEventListener('dragleave', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    previewImg.classList.remove('drag-over');
-                });
-
-                previewImg.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    previewImg.classList.remove('drag-over');
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                        handleFile(files[0]);
-                    }
-                });
-            }
-        });
-
-        // Ctrl+V paste from clipboard
-        document.addEventListener('paste', async (e) => {
-            const items = e.clipboardData?.items;
-            if (!items) return;
-
-            for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    e.preventDefault();
-                    const file = item.getAsFile();
-                    if (file) {
-                        handleFile(file);
-                    }
-                    break;
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (file) {
+                    handleFile(file);
                 }
+                break;
             }
-        });
+        }
+    });
 
-        async function handleFile(file) {
-            // Validate file type
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                alert('Please upload a valid image file (JPG, PNG, GIF, or WebP)');
-                return;
+    async function handleFile(file) {
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            alert('Please upload a valid image file (JPG, PNG, GIF, or WebP)');
+            return;
+        }
+
+        // Validate file size (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB');
+            return;
+        }
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
+        // Show loading state
+        dropZone.style.display = 'none';
+        loading.classList.add('active');
+        previewSection.classList.remove('active');
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            // Call the API
+            const response = await fetch('/api/ImageAnalysis/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.statusText}`);
             }
 
-            // Validate file size (10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                alert('File size must be less than 10MB');
-                return;
-            }
+            const result = await response.json();
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
+            // Display results
+            altText.textContent = result.altText || 'No description available';
+            ocrText.textContent = result.extractedText || 'No text found';
+
+            // Display content type classification
+            const typeEmoji = {
+                'Photograph': '📷',
+                'Document': '📄',
+                'Screenshot': '🖥️',
+                'Chart': '📊',
+                'Illustration': '🎨',
+                'Diagram': '📐',
+                'Unknown': '❓'
             };
-            reader.readAsDataURL(file);
+            const emoji = typeEmoji[result.contentType] || '❓';
+            const confidence = Math.round((result.contentTypeConfidence || 0) * 100);
+            contentType.textContent = `${emoji} ${result.contentType} (${confidence}% confidence)${result.hasSignificantText ? ' - Contains text' : ''}`;
+            contentTypeBadge.textContent = result.contentType;
 
-            // Show loading state
-            dropZone.style.display = 'none';
-            loading.classList.add('active');
-            previewSection.classList.remove('active');
-
-            // Create form data
-            const formData = new FormData();
-            formData.append('image', file);
-
-            try {
-                // Call the API
-                const response = await fetch('/api/ImageAnalysis/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-
-                // Display results
-                altText.textContent = result.altText || 'No description available';
-                ocrText.textContent = result.extractedText || 'No text found';
-
-                // Display content type classification
-                const typeEmoji = {
-                    'Photograph': '📷',
-                    'Document': '📄',
-                    'Screenshot': '🖥️',
-                    'Chart': '📊',
-                    'Illustration': '🎨',
-                    'Diagram': '📐',
-                    'Unknown': '❓'
-                };
-                const emoji = typeEmoji[result.contentType] || '❓';
-                const confidence = Math.round((result.contentTypeConfidence || 0) * 100);
-                contentType.textContent = `${emoji} ${result.contentType} (${confidence}% confidence)${result.hasSignificantText ? ' - Contains text' : ''}`;
-                contentTypeBadge.textContent = result.contentType;
-
-                // Show results
-                loading.classList.remove('active');
-                previewSection.classList.add('active');
-            } catch (error) {
-                console.error('Error analyzing image:', error);
-                alert(`Error analyzing image: ${error.message}`);
-                reset();
-            }
-        }
-
-        function reset() {
-            dropZone.style.display = 'block';
+            // Show results
             loading.classList.remove('active');
-            previewSection.classList.remove('active');
-            fileInput.value = '';
-            imagePreview.src = '';
-            altText.textContent = 'Waiting for analysis...';
-            ocrText.textContent = 'Waiting for analysis...';
-            contentType.textContent = 'Waiting for analysis...';
-            contentTypeBadge.textContent = 'Detection';
+            previewSection.classList.add('active');
+        } catch (error) {
+            console.error('Error analyzing image:', error);
+            alert(`Error analyzing image: ${error.message}`);
+            reset();
         }
-    </script>
+    }
+
+    function reset() {
+        dropZone.style.display = 'block';
+        loading.classList.remove('active');
+        previewSection.classList.remove('active');
+        fileInput.value = '';
+        imagePreview.src = '';
+        altText.textContent = 'Waiting for analysis...';
+        ocrText.textContent = 'Waiting for analysis...';
+        contentType.textContent = 'Waiting for analysis...';
+        contentTypeBadge.textContent = 'Detection';
+    }
+</script>
 </body>
 </html>

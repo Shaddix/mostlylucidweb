@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mostlylucid.GeoDetection.Extensions;
 using Mostlylucid.GeoDetection.Models;
 using Mostlylucid.GeoDetection.Services;
@@ -6,10 +7,31 @@ using Mostlylucid.GeoDetection.Services;
 namespace Mostlylucid.GeoDetection.Test.Extensions;
 
 /// <summary>
-/// Comprehensive tests for GeoDetection ServiceCollectionExtensions
+///     Comprehensive tests for GeoDetection ServiceCollectionExtensions
 /// </summary>
 public class ServiceCollectionExtensionsTests
 {
+    #region Chaining Tests
+
+    [Fact]
+    public void AddGeoRouting_CanBeChained()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act - Chain multiple registrations
+        services
+            .AddLogging()
+            .AddMemoryCache()
+            .AddGeoRouting(options => options.BlockVpns = true);
+
+        // Assert
+        var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider.GetService<IGeoLocationService>());
+    }
+
+    #endregion
+
     #region AddGeoRouting Tests
 
     [Fact]
@@ -39,7 +61,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.NotNull(options);
     }
 
@@ -60,7 +82,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.True(options!.Value.Enabled);
         Assert.True(options.Value.BlockVpns);
         Assert.Equal(403, options.Value.BlockedStatusCode);
@@ -108,7 +130,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.True(options!.Value.Enabled); // Default
         Assert.Equal(451, options.Value.BlockedStatusCode); // Default
     }
@@ -129,7 +151,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.NotNull(options!.Value.AllowedCountries);
         Assert.Equal(3, options.Value.AllowedCountries.Length);
         Assert.Contains("US", options.Value.AllowedCountries);
@@ -149,7 +171,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.True(options!.Value.Enabled);
     }
 
@@ -165,7 +187,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.Single(options!.Value.AllowedCountries!);
     }
 
@@ -198,7 +220,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.NotNull(options!.Value.BlockedCountries);
         Assert.Equal(3, options.Value.BlockedCountries.Length);
         Assert.Contains("KP", options.Value.BlockedCountries);
@@ -218,7 +240,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.True(options!.Value.Enabled);
     }
 
@@ -234,7 +256,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<GeoRoutingOptions>>();
+        var options = provider.GetService<IOptions<GeoRoutingOptions>>();
         Assert.Single(options!.Value.BlockedCountries!);
     }
 
@@ -249,27 +271,6 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         Assert.Same(services, result);
-    }
-
-    #endregion
-
-    #region Chaining Tests
-
-    [Fact]
-    public void AddGeoRouting_CanBeChained()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act - Chain multiple registrations
-        services
-            .AddLogging()
-            .AddMemoryCache()
-            .AddGeoRouting(options => options.BlockVpns = true);
-
-        // Assert
-        var provider = services.BuildServiceProvider();
-        Assert.NotNull(provider.GetService<IGeoLocationService>());
     }
 
     #endregion

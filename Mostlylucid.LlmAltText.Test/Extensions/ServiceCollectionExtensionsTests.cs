@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mostlylucid.LlmAltText.Extensions;
 using Mostlylucid.LlmAltText.Models;
 using Mostlylucid.LlmAltText.Services;
@@ -6,10 +7,52 @@ using Mostlylucid.LlmAltText.Services;
 namespace Mostlylucid.LlmAltText.Test.Extensions;
 
 /// <summary>
-/// Comprehensive tests for LlmAltText ServiceCollectionExtensions
+///     Comprehensive tests for LlmAltText ServiceCollectionExtensions
 /// </summary>
 public class ServiceCollectionExtensionsTests
 {
+    #region Chaining Tests
+
+    [Fact]
+    public void AddAltTextGeneration_CanBeChained()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act - Chain multiple registrations
+        services
+            .AddLogging()
+            .AddAltTextGeneration(options => options.MaxWords = 100)
+            .ConfigureAltTextGeneration(options => options.EnableDiagnosticLogging = false);
+
+        // Assert
+        var provider = services.BuildServiceProvider();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
+        Assert.Equal(100, options!.Value.MaxWords);
+        Assert.False(options.Value.EnableDiagnosticLogging);
+    }
+
+    #endregion
+
+    #region Multiple Registration Tests
+
+    [Fact]
+    public void AddAltTextGeneration_CalledMultipleTimes_DoesNotThrow()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        // Act - Should not throw
+        services.AddAltTextGeneration();
+        var exception = Record.Exception(() => services.AddAltTextGeneration());
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    #endregion
+
     #region AddAltTextGeneration Tests
 
     [Fact]
@@ -39,7 +82,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
         Assert.NotNull(options);
     }
 
@@ -60,7 +103,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
         Assert.Equal("/custom/path", options!.Value.ModelPath);
         Assert.Equal(150, options.Value.MaxWords);
         Assert.False(options.Value.EnableDiagnosticLogging);
@@ -108,7 +151,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
         Assert.Equal("./models", options!.Value.ModelPath); // Default
         Assert.Equal(90, options.Value.MaxWords); // Default
         Assert.True(options.Value.EnableDiagnosticLogging); // Default
@@ -145,7 +188,7 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
         Assert.Equal(200, options!.Value.MaxWords);
     }
 
@@ -182,53 +225,11 @@ public class ServiceCollectionExtensionsTests
 
         // Assert
         var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
+        var options = provider.GetService<IOptions<AltTextOptions>>();
         Assert.Equal("/new/path", options!.Value.ModelPath);
         Assert.Equal("CAPTION", options.Value.DefaultTaskType);
         Assert.False(options.Value.EnableDiagnosticLogging);
         Assert.Equal("Custom prompt", options.Value.AltTextPrompt);
-    }
-
-    #endregion
-
-    #region Chaining Tests
-
-    [Fact]
-    public void AddAltTextGeneration_CanBeChained()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Act - Chain multiple registrations
-        services
-            .AddLogging()
-            .AddAltTextGeneration(options => options.MaxWords = 100)
-            .ConfigureAltTextGeneration(options => options.EnableDiagnosticLogging = false);
-
-        // Assert
-        var provider = services.BuildServiceProvider();
-        var options = provider.GetService<Microsoft.Extensions.Options.IOptions<AltTextOptions>>();
-        Assert.Equal(100, options!.Value.MaxWords);
-        Assert.False(options.Value.EnableDiagnosticLogging);
-    }
-
-    #endregion
-
-    #region Multiple Registration Tests
-
-    [Fact]
-    public void AddAltTextGeneration_CalledMultipleTimes_DoesNotThrow()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        services.AddLogging();
-
-        // Act - Should not throw
-        services.AddAltTextGeneration();
-        var exception = Record.Exception(() => services.AddAltTextGeneration());
-
-        // Assert
-        Assert.Null(exception);
     }
 
     #endregion

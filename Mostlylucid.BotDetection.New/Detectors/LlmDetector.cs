@@ -9,18 +9,18 @@ using OllamaSharp;
 namespace Mostlylucid.BotDetection.Detectors;
 
 /// <summary>
-/// Advanced LLM-based bot detection with learning capabilities
-/// Uses a small language model (like qwen2.5:1.5b) to analyze request patterns
+///     Advanced LLM-based bot detection with learning capabilities
+///     Uses a small language model (like qwen2.5:1.5b) to analyze request patterns
 /// </summary>
 public class LlmDetector(
     ILogger<LlmDetector> logger,
     IOptions<BotDetectionOptions> options)
     : IDetector
 {
+    private static readonly SemaphoreSlim _fileLock = new(1, 1);
+    private readonly string _learnedPatternsPath = Path.Combine(AppContext.BaseDirectory, "learned_bot_patterns.json");
     private readonly ILogger<LlmDetector> _logger = logger;
     private readonly BotDetectionOptions _options = options.Value;
-    private readonly string _learnedPatternsPath = Path.Combine(AppContext.BaseDirectory, "learned_bot_patterns.json");
-    private static readonly SemaphoreSlim _fileLock = new(1, 1);
 
     public string Name => "LLM Detector";
 
@@ -28,10 +28,7 @@ public class LlmDetector(
     {
         var result = new DetectorResult();
 
-        if (!_options.EnableLlmDetection || string.IsNullOrEmpty(_options.OllamaEndpoint))
-        {
-            return result;
-        }
+        if (!_options.EnableLlmDetection || string.IsNullOrEmpty(_options.OllamaEndpoint)) return result;
 
         try
         {
@@ -51,10 +48,7 @@ public class LlmDetector(
                 result.BotType = analysis.BotType;
 
                 // Learn from this detection
-                if (analysis.Confidence > 0.8)
-                {
-                    await LearnPattern(requestInfo, analysis, cancellationToken);
-                }
+                if (analysis.Confidence > 0.8) await LearnPattern(requestInfo, analysis, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -74,16 +68,10 @@ public class LlmDetector(
 
         var headers = new[] { "Accept", "Accept-Language", "Accept-Encoding", "Referer", "Connection" };
         foreach (var header in headers)
-        {
             if (context.Request.Headers.ContainsKey(header))
-            {
                 sb.AppendLine($"{header}: {context.Request.Headers[header]}");
-            }
             else
-            {
                 sb.AppendLine($"{header}: (missing)");
-            }
-        }
 
         sb.AppendLine($"Has-Cookies: {context.Request.Cookies.Any()}");
         sb.AppendLine($"Client-IP: {context.Connection.RemoteIpAddress}");
@@ -100,7 +88,8 @@ public class LlmDetector(
         {
             var ollama = new OllamaApiClient(_options.OllamaEndpoint!);
 
-            var prompt = $@"You are an expert at detecting bot traffic from HTTP requests. Analyze this request and determine if it's likely from a bot or legitimate user.
+            var prompt =
+                $@"You are an expert at detecting bot traffic from HTTP requests. Analyze this request and determine if it's likely from a bot or legitimate user.
 
 Request Information:
 {requestInfo}
@@ -128,7 +117,11 @@ Important:
             _logger.LogWarning("LlmDetector requires OllamaSharp API update - currently disabled");
 
             // Temporary: Return early to avoid compilation errors
-            return Task.FromResult(new LlmAnalysis { IsBot = false, Confidence = 0.0, Reasoning = "LLM detection temporarily disabled due to API compatibility" });
+            return Task.FromResult(new LlmAnalysis
+            {
+                IsBot = false, Confidence = 0.0,
+                Reasoning = "LLM detection temporarily disabled due to API compatibility"
+            });
 
             /* Original code - requires OllamaSharp API fix:
             var chat = new OllamaSharp.Models.Chat.ChatRequest
@@ -198,7 +191,7 @@ Important:
             if (File.Exists(_learnedPatternsPath))
             {
                 var json = await File.ReadAllTextAsync(_learnedPatternsPath, cancellationToken);
-                learnedPatterns = JsonSerializer.Deserialize<List<LearnedPattern>>(json) ?? new();
+                learnedPatterns = JsonSerializer.Deserialize<List<LearnedPattern>>(json) ?? new List<LearnedPattern>();
             }
 
             // Add new pattern if not already learned
@@ -280,7 +273,7 @@ Important:
 }
 
 /// <summary>
-/// Learned bot pattern stored in JSON
+///     Learned bot pattern stored in JSON
 /// </summary>
 public class LearnedPattern
 {

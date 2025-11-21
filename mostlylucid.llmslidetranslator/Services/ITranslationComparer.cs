@@ -3,12 +3,12 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Service for comparing translations
+///     Service for comparing translations
 /// </summary>
 public interface ITranslationComparer
 {
     /// <summary>
-    /// Compare two translation results
+    ///     Compare two translation results
     /// </summary>
     /// <param name="result1">First translation result</param>
     /// <param name="result2">Second translation result</param>
@@ -20,7 +20,7 @@ public interface ITranslationComparer
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Calculate Levenshtein edit distance between two strings
+    ///     Calculate Levenshtein edit distance between two strings
     /// </summary>
     /// <param name="text1">First text</param>
     /// <param name="text2">Second text</param>
@@ -28,7 +28,7 @@ public interface ITranslationComparer
     int CalculateEditDistance(string text1, string text2);
 
     /// <summary>
-    /// Calculate BLEU score between reference and candidate translation
+    ///     Calculate BLEU score between reference and candidate translation
     /// </summary>
     /// <param name="reference">Reference translation</param>
     /// <param name="candidate">Candidate translation</param>

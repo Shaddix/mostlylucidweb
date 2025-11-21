@@ -6,16 +6,16 @@ using mostlylucid.llmslidetranslator.Models;
 namespace mostlylucid.llmslidetranslator.Services;
 
 /// <summary>
-/// Client for NMT (Neural Machine Translation) service
-/// Based on https://github.com/scottgal/mostlyucid-nmt (Opus-MT)
+///     Client for NMT (Neural Machine Translation) service
+///     Based on https://github.com/scottgal/mostlyucid-nmt (Opus-MT)
 /// </summary>
 public class NmtClient : INmtClient
 {
-    private readonly ILogger<NmtClient> _logger;
-    private readonly HttpClient _httpClient;
     private readonly LlmSlideTranslatorConfig _config;
-    private int _currentEndpointIndex = 0;
     private readonly object _endpointLock = new();
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<NmtClient> _logger;
+    private int _currentEndpointIndex;
 
     public NmtClient(
         ILogger<NmtClient> logger,
@@ -33,10 +33,7 @@ public class NmtClient : INmtClient
         string targetLanguage,
         CancellationToken cancellationToken = default)
     {
-        if (!_config.Nmt.Enabled)
-        {
-            throw new InvalidOperationException("NMT is not enabled in configuration");
-        }
+        if (!_config.Nmt.Enabled) throw new InvalidOperationException("NMT is not enabled in configuration");
 
         _logger.LogDebug("Translating text from {Source} to {Target} using NMT",
             sourceLanguage, targetLanguage);
@@ -60,12 +57,9 @@ public class NmtClient : INmtClient
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<NmtResponse>(
-                cancellationToken: cancellationToken);
+                cancellationToken);
 
-            if (result?.TranslatedText == null)
-            {
-                throw new InvalidOperationException("NMT returned null translation");
-            }
+            if (result?.TranslatedText == null) throw new InvalidOperationException("NMT returned null translation");
 
             return result.TranslatedText;
         }
@@ -117,10 +111,7 @@ public class NmtClient : INmtClient
 
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
-        if (!_config.Nmt.Enabled || _config.Nmt.ServiceEndpoints.Count == 0)
-        {
-            return false;
-        }
+        if (!_config.Nmt.Enabled || _config.Nmt.ServiceEndpoints.Count == 0) return false;
 
         try
         {
@@ -138,9 +129,7 @@ public class NmtClient : INmtClient
     private string GetNextEndpoint()
     {
         if (_config.Nmt.ServiceEndpoints.Count == 0)
-        {
             throw new InvalidOperationException("No NMT service endpoints configured");
-        }
 
         lock (_endpointLock)
         {

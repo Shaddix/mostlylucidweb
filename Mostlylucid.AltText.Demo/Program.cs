@@ -20,8 +20,8 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -33,10 +33,7 @@ builder.Logging.AddDebug();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-}
+if (app.Environment.IsDevelopment()) app.UseDeveloperExceptionPage();
 
 app.UseStaticFiles();
 app.UseCors();
