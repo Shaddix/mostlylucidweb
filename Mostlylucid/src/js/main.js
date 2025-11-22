@@ -377,13 +377,10 @@ function renderButton(element) {
         google.accounts.id.renderButton(
             element,
             {
-                type: "standard",
-                size: "large",
-                width: 200,
+                type: "icon",
+                size: "medium",
                 theme: "filled_black",
-                text: "sign_in_with",
-                shape: "rectangular",
-                logo_alignment: "left"
+                shape: "circle"
             }
         );
         // Mark the element as initialized
