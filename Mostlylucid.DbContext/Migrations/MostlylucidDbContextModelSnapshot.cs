@@ -131,6 +131,78 @@ namespace Mostlylucid.Migrations
                     b.ToTable("BlogPosts", "mostlylucid");
                 });
 
+            modelBuilder.Entity("Mostlylucid.Shared.Entities.BrokenLinkEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("ArchiveChecked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("archive_checked");
+
+                    b.Property<DateTimeOffset?>("ArchiveCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archive_checked_at");
+
+                    b.Property<string>("ArchiveUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("archive_url");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer")
+                        .HasColumnName("consecutive_failures");
+
+                    b.Property<DateTimeOffset>("DiscoveredAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("discovered_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsBroken")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_broken");
+
+                    b.Property<DateTimeOffset?>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_checked_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_status_code");
+
+                    b.Property<string>("OriginalUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("original_url");
+
+                    b.Property<string>("SourcePageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("source_page_url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastCheckedAt");
+
+                    b.HasIndex("OriginalUrl")
+                        .IsUnique();
+
+                    b.HasIndex("IsBroken", "ArchiveChecked");
+
+                    b.ToTable("broken_links", "mostlylucid");
+                });
+
             modelBuilder.Entity("Mostlylucid.Shared.Entities.CategoryEntity", b =>
                 {
                     b.Property<int>("Id")

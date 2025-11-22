@@ -76,4 +76,12 @@ public class BrokenLinkEntity
     [Column("last_error")]
     [MaxLength(1000)]
     public string? LastError { get; set; }
+
+    /// <summary>
+    /// The page URL where this link was first discovered (e.g., /blog/my-post)
+    /// Used to look up publish date for archive.org timestamp
+    /// </summary>
+    [Column("source_page_url")]
+    [MaxLength(500)]
+    public string? SourcePageUrl { get; set; }
 }

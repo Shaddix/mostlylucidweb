@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.SemanticSearch.Config;
@@ -17,8 +18,8 @@ namespace Mostlylucid.Services.SemanticSearch;
 public class SemanticIndexingBackgroundService : BackgroundService
 {
     private readonly ILogger<SemanticIndexingBackgroundService> _logger;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ISemanticSearchService _semanticSearchService;
-    private readonly MarkdownRenderingService _markdownRenderingService;
     private readonly MarkdownConfig _markdownConfig;
     private readonly SemanticSearchConfig _semanticSearchConfig;
     private readonly TimeSpan _indexInterval = TimeSpan.FromHours(1);
@@ -26,14 +27,14 @@ public class SemanticIndexingBackgroundService : BackgroundService
 
     public SemanticIndexingBackgroundService(
         ILogger<SemanticIndexingBackgroundService> logger,
+        IServiceProvider serviceProvider,
         ISemanticSearchService semanticSearchService,
-        MarkdownRenderingService markdownRenderingService,
         MarkdownConfig markdownConfig,
         SemanticSearchConfig semanticSearchConfig)
     {
         _logger = logger;
+        _serviceProvider = serviceProvider;
         _semanticSearchService = semanticSearchService;
-        _markdownRenderingService = markdownRenderingService;
         _markdownConfig = markdownConfig;
         _semanticSearchConfig = semanticSearchConfig;
     }
@@ -106,6 +107,10 @@ public class SemanticIndexingBackgroundService : BackgroundService
         var skippedCount = 0;
         var errorCount = 0;
 
+        // Create a scope to resolve scoped services
+        using var scope = _serviceProvider.CreateScope();
+        var markdownRenderingService = scope.ServiceProvider.GetRequiredService<MarkdownRenderingService>();
+
         foreach (var filePath in markdownFiles)
         {
             if (stoppingToken.IsCancellationRequested)
@@ -113,7 +118,7 @@ public class SemanticIndexingBackgroundService : BackgroundService
 
             try
             {
-                var result = await IndexMarkdownFileAsync(filePath, stoppingToken);
+                var result = await IndexMarkdownFileAsync(filePath, markdownRenderingService, stoppingToken);
                 if (result == IndexResult.Indexed)
                     indexedCount++;
                 else if (result == IndexResult.Skipped)
@@ -134,7 +139,7 @@ public class SemanticIndexingBackgroundService : BackgroundService
             indexedCount, skippedCount, errorCount);
     }
 
-    private async Task<IndexResult> IndexMarkdownFileAsync(string filePath, CancellationToken stoppingToken)
+    private async Task<IndexResult> IndexMarkdownFileAsync(string filePath, MarkdownRenderingService markdownRenderingService, CancellationToken stoppingToken)
     {
         var fileName = Path.GetFileNameWithoutExtension(filePath);
 
@@ -153,7 +158,7 @@ public class SemanticIndexingBackgroundService : BackgroundService
         var fileInfo = new FileInfo(filePath);
 
         // Parse the markdown to get blog post data
-        var blogPost = _markdownRenderingService.GetPageFromMarkdown(markdown, fileInfo.LastWriteTimeUtc, filePath);
+        var blogPost = markdownRenderingService.GetPageFromMarkdown(markdown, fileInfo.LastWriteTimeUtc, filePath);
 
         // Skip hidden posts
         if (blogPost.IsHidden)

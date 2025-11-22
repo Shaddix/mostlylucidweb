@@ -20,7 +20,7 @@ public class BrokenLinkService : IBrokenLinkService
     }
 
     /// <inheritdoc />
-    public async Task RegisterUrlsAsync(IEnumerable<string> urls, CancellationToken cancellationToken = default)
+    public async Task RegisterUrlsAsync(IEnumerable<string> urls, string? sourcePageUrl = null, CancellationToken cancellationToken = default)
     {
         var urlList = urls.Distinct().ToList();
         if (urlList.Count == 0) return;
@@ -38,13 +38,14 @@ public class BrokenLinkService : IBrokenLinkService
         var entities = newUrls.Select(url => new BrokenLinkEntity
         {
             OriginalUrl = url,
-            DiscoveredAt = DateTimeOffset.UtcNow
+            DiscoveredAt = DateTimeOffset.UtcNow,
+            SourcePageUrl = sourcePageUrl
         }).ToList();
 
         _dbContext.BrokenLinks.AddRange(entities);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Registered {Count} new URLs for broken link tracking", newUrls.Count);
+        _logger.LogInformation("Registered {Count} new URLs for broken link tracking from {SourcePage}", newUrls.Count, sourcePageUrl ?? "unknown");
     }
 
     /// <inheritdoc />
@@ -119,5 +120,16 @@ public class BrokenLinkService : IBrokenLinkService
             .OrderBy(x => x.DiscoveredAt)
             .Take(batchSize)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<HashSet<string>> GetBrokenLinksWithoutArchiveAsync(CancellationToken cancellationToken = default)
+    {
+        var urls = await _dbContext.BrokenLinks
+            .Where(x => x.IsBroken && x.ArchiveChecked && x.ArchiveUrl == null)
+            .Select(x => x.OriginalUrl)
+            .ToListAsync(cancellationToken);
+
+        return urls.ToHashSet();
     }
 }

@@ -179,6 +179,7 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
         {
             // Tokenize the input text
             var tokens = Tokenize(text);
+            var actualLength = Math.Min(tokens.Count, MaxSequenceLength);
 
             // Create input tensors
             var inputIds = CreateInputTensor(tokens, "input_ids");
@@ -195,12 +196,13 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
             using var results = _session!.Run(inputs);
 
-            // Extract the output tensor (sentence embedding)
-            // For sentence transformers, we typically use mean pooling of the last hidden state
+            // Extract the output tensor - shape is [1, sequence_length, hidden_size]
+            // For all-MiniLM-L6-v2: [1, 256, 384]
             var output = results.First().AsTensor<float>();
+            var dimensions = output.Dimensions.ToArray();
 
-            // Convert to array and normalize
-            var embedding = output.ToArray();
+            // Apply mean pooling over the sequence dimension (considering attention mask)
+            var embedding = MeanPooling(output, actualLength, dimensions);
             return NormalizeVector(embedding);
         }
         catch (Exception ex)
@@ -208,6 +210,51 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
             _logger.LogError(ex, "Error generating embedding for text: {Text}", text[..Math.Min(100, text.Length)]);
             return new float[_config.VectorSize];
         }
+    }
+
+    /// <summary>
+    /// Mean pooling: average the token embeddings, only considering non-padded tokens
+    /// </summary>
+    private float[] MeanPooling(Tensor<float> output, int actualLength, int[] dimensions)
+    {
+        // Handle different output shapes
+        // Shape could be [1, seq_len, hidden_size] or [1, hidden_size]
+        if (dimensions.Length == 2)
+        {
+            // Already pooled - just return as is
+            var result = new float[dimensions[1]];
+            for (int i = 0; i < dimensions[1]; i++)
+            {
+                result[i] = output[0, i];
+            }
+            return result;
+        }
+
+        // Shape is [batch, seq_len, hidden_size]
+        var seqLen = dimensions[1];
+        var hiddenSize = dimensions[2];
+        var pooled = new float[hiddenSize];
+
+        // Sum all token embeddings (only for actual tokens, not padding)
+        var tokensToPool = Math.Min(actualLength, seqLen);
+        for (int t = 0; t < tokensToPool; t++)
+        {
+            for (int h = 0; h < hiddenSize; h++)
+            {
+                pooled[h] += output[0, t, h];
+            }
+        }
+
+        // Average by dividing by number of actual tokens
+        if (tokensToPool > 0)
+        {
+            for (int h = 0; h < hiddenSize; h++)
+            {
+                pooled[h] /= tokensToPool;
+            }
+        }
+
+        return pooled;
     }
 
     private List<int> Tokenize(string text)

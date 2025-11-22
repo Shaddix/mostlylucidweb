@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Mapper;
 using Mostlylucid.Shared.Models;
@@ -8,7 +9,7 @@ using SerilogTracing;
 
 namespace Mostlylucid.Services.Blog;
 
-public class BlogSearchService(MostlylucidDbContext context)
+public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchService semanticSearchService)
 {
 
     public async Task<BasePagingModel<BlogPostDto>> GetPosts(string? query, int page = 1, int pageSize = 10)
@@ -110,4 +111,90 @@ public class BlogSearchService(MostlylucidDbContext context)
     }
 
     public record SearchResults(string Title, string Slug, string Url);
+
+    /// <summary>
+    /// Hybrid search: tries semantic search first, falls back to PostgreSQL full-text search
+    /// </summary>
+    public async Task<List<SearchResults>> HybridSearchAsync(string query, int limit = 5)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return new List<SearchResults>();
+
+        // Try semantic search first
+        var semanticResults = await semanticSearchService.SearchAsync(query, limit);
+
+        if (semanticResults.Count > 0)
+        {
+            return semanticResults.Select(r => new SearchResults(
+                r.Title,
+                r.Slug,
+                $"/blog/{r.Slug}"
+            )).ToList();
+        }
+
+        // Fall back to PostgreSQL full-text search
+        var pgResults = query.Contains(" ")
+            ? await GetSearchResultForQuery(query)
+            : await GetSearchResultForComplete(query);
+
+        return pgResults.Select(r => new SearchResults(
+            r.Title,
+            r.Slug,
+            $"/blog/{r.Slug}"
+        )).ToList();
+    }
+
+    /// <summary>
+    /// Hybrid search with paging: tries semantic search first, falls back to PostgreSQL
+    /// </summary>
+    public async Task<BasePagingModel<BlogPostDto>> HybridSearchWithPagingAsync(string? query, int page = 1, int pageSize = 10)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return new BasePagingModel<BlogPostDto>();
+
+        using var activity = Log.Logger.StartActivity("HybridSearchWithPaging");
+        activity.AddProperty("Query", query);
+        activity.AddProperty("Page", page);
+        activity.AddProperty("PageSize", pageSize);
+
+        // Try semantic search first
+        var semanticResults = await semanticSearchService.SearchAsync(query, pageSize * 2); // Get more for potential filtering
+
+        if (semanticResults.Count > 0)
+        {
+            // Get full blog posts for the semantic results
+            var slugs = semanticResults.Select(r => r.Slug).ToList();
+            var now = DateTimeOffset.UtcNow;
+
+            var posts = await context.BlogPosts
+                .Include(x => x.Categories)
+                .Include(x => x.LanguageEntity)
+                .AsNoTracking()
+                .Where(x => slugs.Contains(x.Slug)
+                            && !x.IsHidden
+                            && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
+                            && x.LanguageEntity.Name == "en")
+                .ToListAsync();
+
+            // Order by semantic search ranking
+            var orderedPosts = slugs
+                .Select(slug => posts.FirstOrDefault(p => p.Slug == slug))
+                .Where(p => p != null)
+                .Cast<BlogPostEntity>()
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new BasePagingModel<BlogPostDto>
+            {
+                Data = orderedPosts.Select(x => x.ToDto()).ToList(),
+                TotalItems = posts.Count,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
+        // Fall back to PostgreSQL full-text search
+        return await GetPosts(query, page, pageSize);
+    }
 }

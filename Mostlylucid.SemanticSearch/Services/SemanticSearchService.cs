@@ -220,9 +220,14 @@ public class SemanticSearchService : ISemanticSearchService
 
     private string PrepareTextForEmbedding(BlogPostDocument document)
     {
-        // Combine title and content with a separator
-        // We give more weight to the title by including it twice
-        var text = $"{document.Title}. {document.Title}. {document.Content}";
+        // Convert slug to readable text (e.g., "my-blog-post" -> "my blog post")
+        // This helps match broken links with typos in the URL
+        var slugAsText = document.Slug.Replace("-", " ").Replace("_", " ");
+
+        // Combine slug, title and content
+        // Slug and title get extra weight by including them multiple times
+        // This optimizes 404 lookup for broken internal links
+        var text = $"{slugAsText}. {document.Title}. {slugAsText}. {document.Title}. {document.Content}";
 
         // Truncate to a reasonable length (embedding models have token limits)
         // For all-MiniLM-L6-v2, max tokens is 256, which is roughly 1000-1500 characters

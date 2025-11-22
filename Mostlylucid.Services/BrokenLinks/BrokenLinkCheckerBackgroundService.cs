@@ -1,8 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Mostlylucid.DbContext.EntityFramework;
 
 namespace Mostlylucid.Services.BrokenLinks;
 
@@ -121,6 +124,7 @@ public class BrokenLinkCheckerBackgroundService : BackgroundService
 
         using var scope = _serviceProvider.CreateScope();
         var brokenLinkService = scope.ServiceProvider.GetRequiredService<IBrokenLinkService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MostlylucidDbContext>();
 
         var brokenLinks = await brokenLinkService.GetBrokenLinksNeedingArchiveAsync(BatchSize, cancellationToken);
         _logger.LogInformation("Found {Count} broken links needing archive.org lookup", brokenLinks.Count);
@@ -131,8 +135,21 @@ public class BrokenLinkCheckerBackgroundService : BackgroundService
 
             try
             {
-                var archiveUrl = await GetArchiveUrlAsync(link.OriginalUrl, cancellationToken);
+                // Look up the blog post's publish date based on source page URL
+                DateTime? publishDate = null;
+                if (!string.IsNullOrEmpty(link.SourcePageUrl))
+                {
+                    publishDate = await GetBlogPostPublishDateAsync(dbContext, link.SourcePageUrl, cancellationToken);
+                }
+
+                var archiveUrl = await GetArchiveUrlAsync(link.OriginalUrl, publishDate, cancellationToken);
                 await brokenLinkService.UpdateArchiveUrlAsync(link.Id, archiveUrl, cancellationToken);
+
+                if (archiveUrl != null && publishDate.HasValue)
+                {
+                    _logger.LogInformation("Found archive.org snapshot at or before {PublishDate} for {Url}",
+                        publishDate.Value.ToString("yyyy-MM-dd"), link.OriginalUrl);
+                }
 
                 // Respect archive.org rate limits
                 await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
@@ -146,10 +163,45 @@ public class BrokenLinkCheckerBackgroundService : BackgroundService
         }
     }
 
-    private async Task<string?> GetArchiveUrlAsync(string originalUrl, CancellationToken cancellationToken)
+    private static async Task<DateTime?> GetBlogPostPublishDateAsync(MostlylucidDbContext dbContext, string sourcePageUrl, CancellationToken cancellationToken)
     {
-        // Use Wayback Machine Availability API
-        var apiUrl = $"https://archive.org/wayback/available?url={Uri.EscapeDataString(originalUrl)}";
+        // Extract slug from URL like /blog/my-post-slug or /blog/my-post-slug/en
+        var match = Regex.Match(sourcePageUrl, @"/blog/([^/]+)", RegexOptions.IgnoreCase);
+        if (!match.Success) return null;
+
+        var slug = match.Groups[1].Value;
+
+        // Look up the blog post's publish date
+        var publishDate = await dbContext.BlogPosts
+            .Where(bp => bp.Slug == slug)
+            .Select(bp => bp.PublishedDate)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return publishDate == default ? null : publishDate.DateTime;
+    }
+
+    private async Task<string?> GetArchiveUrlAsync(string originalUrl, DateTime? beforeDate, CancellationToken cancellationToken)
+    {
+        // Use CDX API to find snapshots at or before the publish date
+        // This ensures we get content that was current when the blog post was written
+        var queryParams = new List<string>
+        {
+            $"url={Uri.EscapeDataString(originalUrl)}",
+            "output=json",
+            "fl=timestamp,original,statuscode",
+            "filter=statuscode:200",  // Only successful responses
+            "limit=1"  // We only need the closest one
+        };
+
+        // If we have a publish date, filter to snapshots at or before that date
+        if (beforeDate.HasValue)
+        {
+            queryParams.Add($"to={beforeDate.Value:yyyyMMdd}");
+            queryParams.Add("sort=closest");  // Get the closest to the end date
+            queryParams.Add($"closest={beforeDate.Value:yyyyMMdd}");  // Find closest to this date
+        }
+
+        var apiUrl = $"https://web.archive.org/cdx/search/cdx?{string.Join("&", queryParams)}";
 
         try
         {
@@ -157,19 +209,21 @@ public class BrokenLinkCheckerBackgroundService : BackgroundService
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            using var document = JsonDocument.Parse(json);
+            if (string.IsNullOrWhiteSpace(json) || json == "[]") return null;
 
-            var root = document.RootElement;
-            if (root.TryGetProperty("archived_snapshots", out var snapshots) &&
-                snapshots.TryGetProperty("closest", out var closest) &&
-                closest.TryGetProperty("available", out var available) &&
-                available.GetBoolean() &&
-                closest.TryGetProperty("url", out var urlElement))
-            {
-                return urlElement.GetString();
-            }
+            // Parse CDX JSON response
+            var jsonArray = JsonSerializer.Deserialize<string[][]>(json);
+            if (jsonArray == null || jsonArray.Length < 2) return null;  // Need header + at least one record
 
-            return null;
+            // Skip header row (first row), get first data row
+            var record = jsonArray[1];
+            if (record.Length < 2) return null;
+
+            var timestamp = record[0];
+            var original = record[1];
+
+            // Build Wayback URL
+            return $"https://web.archive.org/web/{timestamp}/{original}";
         }
         catch (Exception ex)
         {
