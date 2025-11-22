@@ -13,7 +13,7 @@ namespace Mostlylucid.Controllers;
 public class HomeController(BaseControllerService baseControllerService, ILogger<HomeController> logger)
     : BaseController(baseControllerService, logger)
 {
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" },
+    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest", "Cookie" },
         VaryByQueryKeys = new[] { "page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null,

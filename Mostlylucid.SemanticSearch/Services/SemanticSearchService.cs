@@ -38,6 +38,11 @@ public class SemanticSearchService : ISemanticSearchService
 
         try
         {
+            // Initialize embedding service (downloads model if needed)
+            _logger.LogInformation("Initializing embedding service...");
+            await _embeddingService.EnsureInitializedAsync(cancellationToken);
+
+            // Initialize vector store
             await _vectorStoreService.InitializeCollectionAsync(cancellationToken);
             _logger.LogInformation("Semantic search initialized successfully");
         }

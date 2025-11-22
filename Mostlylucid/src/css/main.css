@@ -21,6 +21,16 @@
 .mermaid { visibility: hidden; }
 .mermaid[data-processed="true"] { visibility: visible; }
 
+/* Google Sign-In button - hide white border/background */
+#google_button {
+    border-radius: 50%;
+    overflow: hidden;
+}
+#google_button > div,
+#google_button iframe {
+    border-radius: 50% !important;
+}
+
 .bg-red {
     --tw-bg-opacity: 1;
     background-color: rgb(128 0 0 / var(--tw-bg-opacity));
@@ -387,7 +397,16 @@ nav.ml_toc,
     margin-top: 1.6em;
     padding-inline-start: 1em;
     padding: 1rem 1.5rem;
-    quotes: "\201C" "\201D" "\2018" "\2019";
+    quotes: none;
+}
+
+/* Remove auto-generated quotation marks from blockquotes */
+.prose :where(blockquote p:first-of-type):not(:where([class~=not-prose],[class~=not-prose] *))::before {
+    content: none;
+}
+
+.prose :where(blockquote p:last-of-type):not(:where([class~=not-prose],[class~=not-prose] *))::after {
+    content: none;
 }
 
 /* Dark theme styling for Note-like blockquotes */
@@ -405,7 +424,7 @@ nav.ml_toc,
     margin-top: 1.6em;
     padding-inline-start: 1em;
     padding: 1rem 1.5rem;
-    quotes: "\201C" "\201D" "\2018" "\2019";
+    quotes: none;
 }
 
 /*

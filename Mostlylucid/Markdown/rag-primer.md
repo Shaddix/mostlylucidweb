@@ -7,10 +7,12 @@ Ever searched for "deployment guide" and got nothing, even though there's an art
 
 # Introduction
 
-**📖 Series Navigation:** This article is Part 1 of a three-part series on RAG (Retrieval-Augmented Generation):
+**📖 Series Navigation:** This is Part 1 of a five-part series on RAG (Retrieval-Augmented Generation):
 - **Part 1: Origins and Fundamentals** (this article) - History, motivation, and core concepts
 - [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
+- [Part 4: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search
+- [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
 
 RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving LLMs access to information they weren't trained on. But here's what's interesting: the technology opens opportunities far beyond AI chatbots. It powers semantic search on websites, content recommendation, writing assistance, and knowledge management.
 
@@ -33,9 +35,9 @@ This three-part series shows you how to build RAG systems with working C# code. 
 - **Part 3**: Building real systems with code examples
 
 Later, I'll also show you how to build complete RAG systems including:
-- CPU-friendly semantic search with ONNX embeddings (coming soon)
-- Self-hosted vector databases with Qdrant (coming soon)
-- A complete RAG writing assistant (coming soon)
+- [CPU-friendly semantic search with ONNX embeddings](/blog/semantic-search-with-onnx-and-qdrant) (Part 4)
+- [Self-hosted vector databases with Qdrant](/blog/semantic-search-with-onnx-and-qdrant) (Part 4)
+- [Hybrid search and automatic indexing](/blog/rag-hybrid-search-and-indexing) (Part 5)
 
 [TOC]
 

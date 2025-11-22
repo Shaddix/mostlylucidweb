@@ -115,7 +115,7 @@
             <div class="flex items-center">
                 @if (Model?.Authenticated == true)
                 {
-                    <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="flex items-center gap-1 hover:opacity-80 transition-opacity" title="Sign out">
+                    <a data-logout-link asp-action="Logout" asp-controller="Login" class="flex items-center gap-1 hover:opacity-80 transition-opacity" title="Sign out">
                         @if (Model.AvatarUrl != null)
                         {
                             <img src="@Model.AvatarUrl" width="28" height="28" class="h-7 w-7 rounded-full" alt="@Model.Name"/>
@@ -125,8 +125,8 @@
                 }
                 else
                 {
-                    <div class="w-[36px] h-[36px] overflow-hidden rounded-full" title="Sign in with Google">
-                        <div id="google_button"></div>
+                    <div class="w-[32px] h-[32px] rounded-full overflow-hidden flex items-center justify-center [&_iframe]:!rounded-full" title="Sign in with Google">
+                        <div id="google_button" class="scale-[1.3] -m-1"></div>
                     </div>
                 }
             </div>

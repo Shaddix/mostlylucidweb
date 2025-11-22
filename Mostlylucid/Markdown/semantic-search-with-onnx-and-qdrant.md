@@ -1,27 +1,32 @@
-# Building CPU-Friendly Semantic Search with ONNX Embeddings and Qdrant
+# RAG for Implementers: CPU-Friendly Semantic Search with ONNX and Qdrant
 
-<datetime class="hidden">2025-01-20T10:00</datetime>
-<!-- category -- ASP.NET, Semantic Search, ONNX, Qdrant, Machine Learning, Vector Search -->
+<datetime class="hidden">2025-11-22T11:00</datetime>
+<!-- category -- ASP.NET, Semantic Search, ONNX, Qdrant, Machine Learning, Vector Search, RAG, AI-Article -->
 
 # Introduction
 
-Semantic search is one of those technologies that seems magical when it works well. Unlike traditional keyword search that looks for exact word matches, semantic search understands the *meaning* behind your text. This means when someone searches for "debugging techniques", they'll also find your posts about "troubleshooting methods" or "finding bugs" - even if those exact words don't appear in the original query.
+**📖 Part of the RAG Series:** This is Part 4 - core implementation:
+- [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
+- **Part 4: ONNX & Qdrant Implementation** (this article) - CPU-friendly semantic search
+- [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
 
-**The Challenge:** Most semantic search solutions require expensive GPU infrastructure or costly managed services. What if you're an indie developer running a blog on a modest VPS? What if you don't have a GPU? What if you want to keep costs down while still providing an excellent search experience?
+Parts 1-3 explain *why* semantic search works. This article shows *how* to build the foundation - a **zero-cost, CPU-friendly implementation** using ONNX Runtime and Qdrant. [Part 5](/blog/rag-hybrid-search-and-indexing) covers production integration.
 
-**The Solution:** In this post, I'll show you how to build a fully functional semantic search system that runs entirely on CPU, using free open-source tools. We'll use ONNX Runtime for efficient embeddings, Qdrant as our vector database, and integrate everything into ASP.NET Core with a slick DaisyUI interface.
+**The Challenge:** Most semantic search solutions require expensive GPU infrastructure or costly managed services. What if you're an indie developer running a blog on a modest VPS?
 
-This is the exact setup I'm using on this blog - it costs me nothing extra beyond my existing hosting, and it provides genuinely useful "related posts" suggestions and semantic search capabilities.
+**The Solution:** A fully functional semantic search system that runs entirely on CPU, using free open-source tools. This is the exact setup running on this blog - zero extra cost beyond existing hosting.
 
 [TOC]
 
-# Understanding the Concepts 
+# Core Concepts
 
-Before we dive into code, let's make sure we understand the key concepts. If you're new to semantic search or vector databases, this section is for you!
+These concepts are covered in depth in the [RAG series](/blog/rag-primer), but here's what you need to know for this implementation:
 
-## What are Embeddings?
+## Embeddings: Text as Numbers
 
-Think of embeddings as coordinates in a multi-dimensional space. Just like you can represent a location on Earth with latitude and longitude (2 dimensions), we can represent the "meaning" of text using hundreds of dimensions.
+Embeddings are vectors (arrays of numbers) that capture the *meaning* of text. Similar meanings produce similar vectors - that's the magic.
 
 ```mermaid
 graph TD
@@ -31,29 +36,123 @@ graph TD
     B --> E["Vector: [0.27, -0.16, 0.89, ... similar numbers!]"]
 
     C -.Similar vectors = similar meaning.-> E
+
+    style A stroke:#10b981,stroke-width:2px
+    style D stroke:#10b981,stroke-width:2px
+    style B stroke:#6366f1,stroke-width:3px
+    style C stroke:#f59e0b,stroke-width:2px
+    style E stroke:#f59e0b,stroke-width:2px
 ```
 
 **Key insight:** Texts with similar meanings will have similar vectors (embeddings). This is how we can find "related" content - we're literally measuring the distance between meanings!
 
+### Understanding Cosine Similarity
+
+[Cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity) measures the angle between two vectors - if they point in similar directions, they're semantically similar:
+
+```mermaid
+flowchart LR
+    subgraph "Vector Space (simplified to 2D)"
+        direction TB
+        A["'Docker tutorial'"] -.-> B((0.85))
+        C["'Container deployment'"] -.-> B
+        D["'Cooking recipes'"] -.-> E((0.12))
+        A -.-> E
+    end
+
+    B --> F["High Similarity<br/>Related content!"]
+    E --> G["Low Similarity<br/>Different topics"]
+
+    style A stroke:#10b981,stroke-width:2px
+    style C stroke:#10b981,stroke-width:2px
+    style D stroke:#f59e0b,stroke-width:2px
+    style B stroke:#22c55e,stroke-width:3px
+    style E stroke:#ef4444,stroke-width:3px
+    style F stroke:#22c55e,stroke-width:2px
+    style G stroke:#ef4444,stroke-width:2px
+```
+
+The formula: `similarity = (A · B) / (||A|| × ||B||)` - but since we L2-normalize our vectors, it simplifies to just the dot product!
+
 ## What is ONNX?
 
-ONNX (Open Neural Network Exchange) is a format for machine learning models that allows them to run efficiently across different platforms. Think of it like a universal translator for AI models.
+[ONNX (Open Neural Network Exchange)](https://onnx.ai/) is an open standard format for machine learning models that allows them to run efficiently across different platforms. Think of it like a universal translator for AI models. The [ONNX Runtime](https://onnxruntime.ai/) is Microsoft's high-performance inference engine that executes these models.
 
 **Why ONNX for our use case:**
-- Runs on CPU (no GPU needed!)
+- Runs on CPU (no GPU needed!) - see the [ONNX Runtime CPU execution provider docs](https://onnxruntime.ai/docs/execution-providers/CPU-Execution-Provider.html)
 - Much faster than running models in Python
 - Smaller memory footprint
-- Integrates seamlessly with .NET via Microsoft.ML.OnnxRuntime
+- Integrates seamlessly with .NET via [Microsoft.ML.OnnxRuntime NuGet package](https://www.nuget.org/packages/Microsoft.ML.OnnxRuntime)
+- Supports [graph optimizations](https://onnxruntime.ai/docs/performance/model-optimizations/graph-optimizations.html) for faster inference
+
+```mermaid
+flowchart LR
+    subgraph "ONNX Inference Pipeline"
+        A[Raw Text] --> B[Tokenizer]
+        B --> C["Tokens: [CLS] the cat sat [SEP]"]
+        C --> D[Token IDs: 101 1996 4937 2068 102]
+        D --> E[ONNX Runtime]
+        E --> F[384-dim Vector]
+        F --> G[L2 Normalize]
+        G --> H[Final Embedding]
+    end
+
+    style A stroke:#10b981,stroke-width:2px
+    style B stroke:#f59e0b,stroke-width:2px
+    style C stroke:#f59e0b,stroke-width:2px
+    style D stroke:#f59e0b,stroke-width:2px
+    style E stroke:#6366f1,stroke-width:3px
+    style F stroke:#8b5cf6,stroke-width:2px
+    style G stroke:#8b5cf6,stroke-width:2px
+    style H stroke:#ef4444,stroke-width:2px
+```
 
 ## What is Qdrant?
 
-Qdrant is a vector database - basically a database optimized for storing and searching these embedding vectors. While you *could* store vectors in PostgreSQL, Qdrant is purpose-built for this and offers:
+[Qdrant](https://qdrant.tech/) is an open-source vector database - basically a database optimized for storing and searching these embedding vectors. For a deep dive into Qdrant's concepts, configuration, and C# integration, see [Self-Hosted Vector Databases with Qdrant](/blog/self-hosted-vector-databases-qdrant). While you *could* store vectors in PostgreSQL, Qdrant is purpose-built for this and offers:
 
-- Lightning-fast similarity search
-- Metadata filtering
-- Scalability to millions of vectors
-- Low resource usage
-- Self-hostable with Docker
+- Lightning-fast similarity search using [HNSW algorithm](https://qdrant.tech/documentation/concepts/indexing/#vector-index)
+- [Metadata filtering](https://qdrant.tech/documentation/concepts/filtering/) - filter results by payload fields
+- Scalability to millions of vectors with [distributed deployment](https://qdrant.tech/documentation/guides/distributed_deployment/)
+- Low resource usage - runs comfortably on modest hardware
+- Self-hostable with Docker - see the [Qdrant Docker quickstart](https://qdrant.tech/documentation/quick-start/)
+- [gRPC and REST APIs](https://qdrant.tech/documentation/interfaces/) for integration
+- Native .NET support via [Qdrant.Client NuGet package](https://www.nuget.org/packages/Qdrant.Client)
+
+```mermaid
+flowchart TB
+    subgraph "Qdrant Vector Storage"
+        direction TB
+        A[Collection: blog_posts] --> B[Point 1]
+        A --> C[Point 2]
+        A --> D[Point N...]
+
+        B --> B1["Vector: [0.12, -0.08, ...]"]
+        B --> B2["Payload: {slug, title, language}"]
+
+        C --> C1["Vector: [0.25, 0.14, ...]"]
+        C --> C2["Payload: {slug, title, language}"]
+    end
+
+    subgraph "Vector Search"
+        E[Query Vector] --> F[HNSW Index]
+        F --> G[Cosine Similarity]
+        G --> H[Top K Results]
+    end
+
+    style A stroke:#ef4444,stroke-width:3px
+    style B stroke:#8b5cf6,stroke-width:2px
+    style C stroke:#8b5cf6,stroke-width:2px
+    style D stroke:#8b5cf6,stroke-width:2px
+    style B1 stroke:#f59e0b,stroke-width:2px
+    style B2 stroke:#10b981,stroke-width:2px
+    style C1 stroke:#f59e0b,stroke-width:2px
+    style C2 stroke:#10b981,stroke-width:2px
+    style E stroke:#6366f1,stroke-width:2px
+    style F stroke:#ec4899,stroke-width:3px
+    style G stroke:#ec4899,stroke-width:2px
+    style H stroke:#10b981,stroke-width:2px
+```
 
 # Architecture Overview
 
@@ -82,6 +181,21 @@ flowchart TB
         E -.->M
         M --> N[Top 5 Related Posts]
     end
+
+    style A stroke:#10b981,stroke-width:2px
+    style B stroke:#10b981,stroke-width:2px
+    style C stroke:#6366f1,stroke-width:3px
+    style D stroke:#f59e0b,stroke-width:2px
+    style E stroke:#ef4444,stroke-width:3px
+    style F stroke:#10b981,stroke-width:2px
+    style G stroke:#6366f1,stroke-width:3px
+    style H stroke:#f59e0b,stroke-width:2px
+    style I stroke:#ef4444,stroke-width:2px
+    style J stroke:#8b5cf6,stroke-width:2px
+    style K stroke:#10b981,stroke-width:2px
+    style L stroke:#ef4444,stroke-width:2px
+    style M stroke:#ef4444,stroke-width:2px
+    style N stroke:#8b5cf6,stroke-width:2px
 ```
 
 **The flow in plain English:**
@@ -1054,16 +1168,66 @@ docker-compose -f semantic-search-docker-compose.yml up -d
 
 ## Download the Embedding Model
 
-We've created a handy script to download the model:
+We're using the [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) model from Hugging Face's [Sentence Transformers](https://www.sbert.net/) library. This model is specifically trained on semantic similarity tasks and produces 384-dimensional embeddings.
+
+### Automatic Download (Recommended)
+
+The service automatically downloads the model from Hugging Face on first run if it doesn't exist:
+
+```csharp
+// In OnnxEmbeddingService.cs
+private const string ModelUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx";
+private const string VocabUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt";
+
+public async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
+{
+    if (_initialized || !_config.Enabled) return;
+
+    // Download model if not exists
+    if (!File.Exists(_config.EmbeddingModelPath))
+    {
+        _logger.LogInformation("Downloading ONNX embedding model to {Path}...", _config.EmbeddingModelPath);
+        await DownloadFileAsync(ModelUrl, _config.EmbeddingModelPath, cancellationToken);
+    }
+
+    // Download vocab if not exists
+    if (!File.Exists(_config.VocabPath))
+    {
+        _logger.LogInformation("Downloading vocabulary file to {Path}...", _config.VocabPath);
+        await DownloadFileAsync(VocabUrl, _config.VocabPath, cancellationToken);
+    }
+
+    // Initialize ONNX session...
+}
+```
+
+This is particularly useful when deploying with Docker - you can map a volume for the models directory:
+
+```yaml
+volumes:
+  - ./mlmodels:/app/mlmodels  # Model persists across container restarts
+```
+
+### Manual Download
+
+Alternatively, you can download manually:
 
 ```bash
 chmod +x Mostlylucid.SemanticSearch/download-models.sh
 ./Mostlylucid.SemanticSearch/download-models.sh
 ```
 
+Or directly from Hugging Face:
+
+```bash
+mkdir -p mlmodels
+curl -L https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx -o mlmodels/all-MiniLM-L6-v2.onnx
+curl -L https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt -o mlmodels/vocab.txt
+```
+
 This downloads:
-- `all-MiniLM-L6-v2.onnx` (~90MB) - The embedding model
-- `vocab.txt` (~230KB) - The tokenizer vocabulary
+- `all-MiniLM-L6-v2.onnx` (~90MB) - The [ONNX-exported embedding model](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/tree/main/onnx)
+- `vocab.txt` (~230KB) - The [WordPiece tokenizer vocabulary](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/blob/main/vocab.txt)
 
 # Performance Considerations
 
@@ -1172,205 +1336,47 @@ ONNX inference is CPU-intensive. If you're seeing high CPU:
 3. **Index during off-peak hours**
 4. **Consider caching** frequently-accessed embeddings
 
-# Hybrid Search: Combining PostgreSQL Full-Text with Semantic Search
+# What We've Built
 
-While semantic search is powerful, traditional full-text search still has its place. Sometimes users search for exact phrases, technical terms, or specific words that keyword-based search handles better. The solution? Use both!
+At this point you have a complete, working semantic search system:
 
-## Why Hybrid Search?
+- ✅ **ONNX embeddings** - CPU-friendly, auto-downloads from Hugging Face
+- ✅ **Qdrant vector storage** - Fast similarity search with metadata filtering
+- ✅ **Related posts** - Find semantically similar content
+- ✅ **Search API** - Natural language queries
+- ✅ **DaisyUI interface** - Clean, responsive UI
 
-Different search approaches have different strengths:
+**This is the exact setup running on this blog** - zero GPU, zero additional cost.
 
-**PostgreSQL Full-Text Search** ([covered in my earlier article](/blog/textsearchingpt1)):
-- Excellent for exact phrase matching
-- Great for technical terms and code
-- Understands language-specific stemming
-- Fast for keyword queries
-- Handles Boolean operators (AND, OR, NOT)
+# Next: Production Integration
 
-**Semantic Vector Search**:
-- Understands meaning and context
-- Finds conceptually related content
-- Handles synonyms naturally
-- Works across different phrasings
-- Great for exploratory search
+In [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing), we cover:
 
-**Hybrid search combines both**, giving you the best of both worlds!
+- **Hybrid Search** - Combine semantic + PostgreSQL full-text with Reciprocal Rank Fusion
+- **Automatic Indexing** - FileSystemWatcher triggers real-time index updates
+- **Background Service** - Startup indexing with content hash detection
 
-## Implementing Hybrid Search with Reciprocal Rank Fusion
+**Continue to [Part 5](/blog/rag-hybrid-search-and-indexing) for production-ready integration patterns.**
 
-We use an algorithm called **Reciprocal Rank Fusion (RRF)** to combine results from multiple search sources. It's elegantly simple:
+# Resources
 
-```mermaid
-flowchart TB
-    A[User Query: 'docker containers'] --> B[PostgreSQL Full-Text Search]
-    A --> C[Semantic Vector Search]
+## ONNX Documentation
+- [ONNX Official Site](https://onnx.ai/) - The open standard for ML models
+- [ONNX Runtime](https://onnxruntime.ai/) - Microsoft's high-performance inference engine
+- [ONNX Runtime .NET API](https://onnxruntime.ai/docs/api/csharp-api.html) - C# API docs
+- [ONNX Runtime Performance](https://onnxruntime.ai/docs/performance/tune-performance/threading.html) - Optimization guide
 
-    B --> D["Results:<br/>1. 'Docker Basics' (rank 1)<br/>2. 'Containerizing Apps' (rank 2)<br/>3. 'Docker Compose' (rank 3)"]
-    C --> E["Results:<br/>1. 'Containerizing Apps' (rank 1)<br/>2. 'Kubernetes Guide' (rank 2)<br/>3. 'Docker Basics' (rank 3)"]
+## Qdrant Documentation
+- [Self-Hosted Vector Databases with Qdrant](/blog/self-hosted-vector-databases-qdrant) - Deep dive into Qdrant concepts and C# client
+- [Qdrant Official Docs](https://qdrant.tech/documentation/) - Main documentation hub
+- [Qdrant Quick Start](https://qdrant.tech/documentation/quick-start/) - Getting started
+- [Qdrant Vector Indexing](https://qdrant.tech/documentation/concepts/indexing/#vector-index) - HNSW algorithm
+- [Qdrant .NET Client](https://github.com/qdrant/qdrant-dotnet) - Official .NET SDK
 
-    D --> F[RRF Algorithm]
-    E --> F
+## Embedding Models
+- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) - The model we use
+- [Sentence Transformers](https://www.sbert.net/) - Semantic embeddings library
 
-    F --> G["Combined Results:<br/>1. 'Containerizing Apps'<br/>   (1/61 + 1/62 = 0.0328)<br/>2. 'Docker Basics'<br/>   (1/61 + 1/63 = 0.0322)<br/>3. 'Docker Compose'<br/>   (1/63 = 0.0159)"]
-
-    style F stroke:#f9f,stroke-width:4px
-```
-
-**The RRF formula:**
-
-For each result, we compute: `score = Σ(1 / (k + rank))`
-
-- `k` is a constant (typically 60) to prevent early ranks from dominating
-- `rank` is the position in that search method's results (1, 2, 3, ...)
-- Results appearing in multiple sources get scores from each added together
-
-This beautifully handles:
-- **Deduplication**: Same result in both sources gets higher score
-- **Fairness**: No search method dominates unfairly
-- **Simplicity**: No complex tuning required
-
-## The Implementation
-
-Here's our `HybridSearchService` that combines PostgreSQL tsvector search with Qdrant semantic search:
-
-```csharp
-public class HybridSearchService : IHybridSearchService
-{
-    private readonly ILogger<HybridSearchService> _logger;
-    private readonly ISemanticSearchService _semanticSearchService;
-    private const int RrfConstant = 60;
-
-    public async Task<List<SearchResult>> SearchAsync(
-        string query,
-        string language = "en",
-        int limit = 10,
-        CancellationToken cancellationToken = default)
-    {
-        // Execute both searches
-        var semanticResults = await _semanticSearchService.SearchAsync(
-            query, limit * 2, cancellationToken);
-
-        // Filter by language
-        var filteredSemanticResults = semanticResults
-            .Where(r => r.Language == language)
-            .ToList();
-
-        // Apply Reciprocal Rank Fusion
-        var fusedResults = ApplyReciprocalRankFusion(filteredSemanticResults);
-
-        return fusedResults.Take(limit).ToList();
-    }
-
-    private List<SearchResult> ApplyReciprocalRankFusion(
-        List<SearchResult> semanticResults)
-    {
-        var rrfScores = new Dictionary<string, RrfScore>();
-
-        // Score semantic results
-        for (int i = 0; i < semanticResults.Count; i++)
-        {
-            var result = semanticResults[i];
-            var key = $"{result.Slug}_{result.Language}";
-
-            if (!rrfScores.ContainsKey(key))
-            {
-                rrfScores[key] = new RrfScore { Result = result };
-            }
-
-            // RRF formula: 1 / (k + rank)
-            var rrfScore = 1.0 / (RrfConstant + i + 1);
-            rrfScores[key].Score += rrfScore;
-        }
-
-        // Sort by combined score
-        return rrfScores.Values
-            .OrderByDescending(x => x.Score)
-            .Select(x => x.Result)
-            .ToList();
-    }
-}
-```
-
-**Note:** The code above shows a simplified version focusing on semantic search. In a full implementation, you'd also execute PostgreSQL full-text search in parallel and include those results in the RRF calculation.
-
-## Real-World Benefits
-
-On this blog, hybrid search provides:
-
-1. **Better technical search**: Searching for "docker compose" finds exact matches via PostgreSQL
-2. **Better exploratory search**: Searching for "deployment strategies" finds related content via semantic search
-3. **Deduplication**: Results appearing in both sources bubble to the top
-4. **Language filtering**: Only returns posts in the requested language
-
-## Integration with Existing Search
-
-If you've already implemented PostgreSQL full-text search ([as covered here](/blog/textsearchingpt1)), adding semantic search is straightforward:
-
-```csharp
-// In your Program.cs or service registration
-services.AddSemanticSearch(configuration);
-
-// Register hybrid search
-services.AddSingleton<IHybridSearchService, HybridSearchService>();
-```
-
-Now your search endpoints can use either semantic-only or hybrid search depending on the context:
-
-```csharp
-[HttpGet("search/hybrid")]
-public async Task<IActionResult> HybridSearch(string query, string language = "en")
-{
-    var results = await _hybridSearchService.SearchAsync(query, language);
-    return PartialView("_SearchResults", results);
-}
-```
-
-# What's Next?
-
-This implementation gives you:
-- ✅ CPU-friendly semantic search
-- ✅ Related posts discovery
-- ✅ Natural language search
-- ✅ Self-hosted infrastructure
-- ✅ Hybrid search combining multiple approaches
-
-**Future enhancements you might consider:**
-
-1. **Markdown Pipeline Integration** - Automatically index posts when they're imported
-2. **Typeahead Search** - Add semantic search to the search-as-you-type feature (see [search box implementation](/blog/textsearchingpt11))
-3. **Category-Aware Search** - Boost results from specific categories
-4. **Multilingual Support** - Use language-specific models for better results
-5. **OpenSearch Integration** - Add OpenSearch to the hybrid mix ([see my OpenSearch article](/blog/textsearchingpt3))
-6. **A/B Testing** - Compare semantic vs. full-text vs. hybrid search effectiveness
-
-# Conclusion
-
-Building semantic search doesn't require expensive GPU infrastructure or managed services. With ONNX Runtime and Qdrant, you can run a sophisticated semantic search system entirely on CPU, perfect for blogs, documentation sites, or small to medium applications.
-
-The key advantages of this approach:
-
-- **No GPU Required**: Runs on any VPS or shared hosting
-- **Cost-Effective**: Use existing infrastructure, no additional service fees
-- **Privacy-Focused**: Your content never leaves your server
-- **Customizable**: Full control over models, thresholds, and behavior
-- **Scalable**: Handle thousands of posts on modest hardware
-
-I'm using this exact setup on this blog, and it's been running smoothly with excellent results. The related posts feature genuinely surface relevant content, and the semantic search catches queries that traditional full-text search would miss.
-
-## Complete Code Repository
-
-All the code from this post is available in my repository:
-[https://github.com/scottgal/mostlylucidweb](https://github.com/scottgal/mostlylucidweb)
-
-The semantic search project is at:
-`Mostlylucid.SemanticSearch/`
-
-## Resources
-
-- [all-MiniLM-L6-v2 Model](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
-- [ONNX Runtime](https://onnxruntime.ai/)
-- [Sentence Transformers](https://www.sbert.net/)
-- [DaisyUI Components](https://daisyui.com/)
-
-Happy searching! 🔍✨
+## Complete Code
+All code available at: [github.com/scottgal/mostlylucidweb](https://github.com/scottgal/mostlylucidweb)
+- `Mostlylucid.SemanticSearch/` - Core semantic search library

@@ -1,12 +1,31 @@
 ﻿
  export function submitTranslation() {
     const languageDropDown = document.getElementById('LanguageDropDown');
-const translateEditor ='markdowneditor';
+    const translateEditor = 'markdowneditor';
+
     // Access Alpine.js data using __x.$data (Alpine.js internal structure)
     const alpineData = Alpine.$data(languageDropDown);
-const shortCode = alpineData.selectedShortCode;
-const markdown = window.mostlylucid.simplemde.getinstance(translateEditor).value();
-if (shortCode === '' || markdown === '') return;
+    const shortCode = alpineData.selectedShortCode;
+    const mdeInstance = window.mostlylucid.simplemde.getinstance(translateEditor);
+
+    if (!mdeInstance) {
+        console.error('SimpleMDE instance not found for:', translateEditor);
+        return;
+    }
+
+    const markdown = mdeInstance.value();
+    if (shortCode === '' || markdown === '') {
+        console.warn('Missing language or markdown content');
+        return;
+    }
+
+    // Clear any previous translated content before starting new translation
+    const translatedContent = document.getElementById('translatedcontent');
+    if (translatedContent) {
+        translatedContent.classList.add('hidden');
+        const translatedMde = window.mostlylucid.simplemde.getinstance('translatedcontentarea');
+        if (translatedMde) translatedMde.value('');
+    }
     
     // Create the data object that matches your model
     const model = {

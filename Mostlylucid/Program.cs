@@ -11,6 +11,7 @@ using Mostlylucid.EmailSubscription;
 using Mostlylucid.Services.Email;
 using Mostlylucid.Services.Umami;
 using Mostlylucid.Shared.Config;
+using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Extensions;
 using Mostlylucid.SemanticSearch.Services;
 
@@ -162,6 +163,7 @@ try
     Mostlylucid.Markdig.FetchExtension.FetchMarkdownExtension.ConfigureServiceProvider(app.Services);
 
     app.UseResponseCompression();
+    app.UseContentSecurityPolicy();
     app.UseSerilogRequestLogging();
     app.UseHealthChecks("/healthz");
     app.MapPrometheusScrapingEndpoint();
@@ -243,11 +245,20 @@ try
 
     await app.PopulateBlog();
 
-    // Initialize semantic search
-    using (var scope = app.Services.CreateScope())
+    // Initialize semantic search (if enabled and Qdrant is available)
+    try
     {
-        var semanticSearch = scope.ServiceProvider.GetRequiredService<ISemanticSearchService>();
-        await semanticSearch.InitializeAsync();
+        using var scope = app.Services.CreateScope();
+        var semanticConfig = scope.ServiceProvider.GetRequiredService<SemanticSearchConfig>();
+        if (semanticConfig.Enabled)
+        {
+            var semanticSearch = scope.ServiceProvider.GetRequiredService<ISemanticSearchService>();
+            await semanticSearch.InitializeAsync();
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to initialize semantic search - continuing without it");
     }
 
     app.MapGet("/robots.txt", async httpContext =>

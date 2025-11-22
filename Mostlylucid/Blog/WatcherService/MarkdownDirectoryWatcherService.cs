@@ -1,8 +1,11 @@
 ﻿using Mostlylucid.Blog.ViewServices;
+using Mostlylucid.SemanticSearch.Models;
+using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Models;
 using Polly;
 using Serilog.Events;
 
@@ -124,6 +127,13 @@ public class MarkdownDirectoryWatcherService(
                 activity?.Activity?.SetTag("Page Processed", savedModel.Slug);
                 activity?.Activity?.SetTag("Page Saved", savedModel.Slug);
 
+                // Index in semantic search ONLY if file is in main Markdown directory (not subdirectories)
+                // Check if e.Name contains no directory separators - meaning it's in the root directory
+                if (!e.Name.Contains(Path.DirectorySeparatorChar) && !e.Name.Contains(Path.AltDirectorySeparatorChar))
+                {
+                    await IndexPostForSemanticSearchAsync(scope, savedModel, language);
+                }
+
                 if (language == MarkdownBaseService.EnglishLanguage && !string.IsNullOrEmpty(savedModel.Markdown))
                 {
                     var translateService = scope.ServiceProvider.GetRequiredService<IBackgroundTranslateService>();
@@ -171,6 +181,13 @@ public class MarkdownDirectoryWatcherService(
             using var scope = serviceScopeFactory.CreateScope();
             var blogService = scope.ServiceProvider.GetRequiredService<IBlogViewService>();
             await blogService.Delete(slug, language);
+
+            // Delete from semantic search ONLY if file was in main Markdown directory (not subdirectories)
+            if (!e.Name.Contains(Path.DirectorySeparatorChar) && !e.Name.Contains(Path.AltDirectorySeparatorChar))
+            {
+                await DeletePostFromSemanticSearchAsync(scope, slug, language);
+            }
+
             activity?.Activity?.SetTag("Page Deleted", slug);
             activity?.Complete();
             logger.LogInformation("Deleted blog post {Slug} in {Language}", slug, language);
@@ -220,6 +237,12 @@ public class MarkdownDirectoryWatcherService(
             await blogService.Delete(oldSlug, oldLanguage);
             logger.LogInformation("Deleted old blog post {OldSlug} in {Language}", oldSlug, oldLanguage);
 
+            // Delete from semantic search ONLY if old file was in main Markdown directory
+            if (!e.OldName.Contains(Path.DirectorySeparatorChar) && !e.OldName.Contains(Path.AltDirectorySeparatorChar))
+            {
+                await DeletePostFromSemanticSearchAsync(scope, oldSlug, oldLanguage);
+            }
+
             // Now process the new file as if it was created
             await OnChangedAsync(new WaitForChangedResult
             {
@@ -235,6 +258,63 @@ public class MarkdownDirectoryWatcherService(
         {
             activity?.Complete(LogEventLevel.Error, exception);
             logger.LogError(exception, "Error handling renamed file from {OldName} to {NewName}", e.OldName, e.Name);
+        }
+    }
+
+    /// <summary>
+    /// Index a blog post in the semantic search index
+    /// </summary>
+    private async Task IndexPostForSemanticSearchAsync(IServiceScope scope, BlogPostDto post, string language)
+    {
+        try
+        {
+            var semanticSearchService = scope.ServiceProvider.GetService<ISemanticSearchService>();
+            if (semanticSearchService == null)
+            {
+                // Semantic search not configured
+                return;
+            }
+
+            var document = new BlogPostDocument
+            {
+                Id = $"{post.Slug}_{language}",
+                Slug = post.Slug,
+                Title = post.Title,
+                Content = post.PlainTextContent,
+                Language = language,
+                Categories = post.Categories?.ToList() ?? new List<string>(),
+                PublishedDate = post.PublishedDate
+            };
+
+            await semanticSearchService.IndexPostAsync(document);
+            logger.LogInformation("Indexed post {Slug} ({Language}) in semantic search", post.Slug, language);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to index post {Slug} ({Language}) in semantic search", post.Slug, language);
+        }
+    }
+
+    /// <summary>
+    /// Remove a blog post from the semantic search index
+    /// </summary>
+    private async Task DeletePostFromSemanticSearchAsync(IServiceScope scope, string slug, string language)
+    {
+        try
+        {
+            var semanticSearchService = scope.ServiceProvider.GetService<ISemanticSearchService>();
+            if (semanticSearchService == null)
+            {
+                // Semantic search not configured
+                return;
+            }
+
+            await semanticSearchService.DeletePostAsync(slug, language);
+            logger.LogInformation("Deleted post {Slug} ({Language}) from semantic search index", slug, language);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete post {Slug} ({Language}) from semantic search", slug, language);
         }
     }
 }

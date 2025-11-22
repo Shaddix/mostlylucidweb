@@ -43,9 +43,11 @@ public class TranslateAPI(
     [HttpGet("ping")]
     public async Task<Results<Ok<string>, BadRequest<string>>> Ping()
     {
-        if (backgroundTranslateService.TranslationServiceUp)
+        // Do a live ping to the translation service, not just check cached status
+        var isUp = await backgroundTranslateService.Ping(HttpContext.RequestAborted);
+        if (isUp)
             return TypedResults.Ok<string>("Good");
-        return TypedResults.BadRequest("bad");
+        return TypedResults.BadRequest("Translation service is not available");
     }
 
     [HttpGet("check-status/{taskId}")]

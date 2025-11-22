@@ -1,6 +1,6 @@
 # Playing with Code: An Efficient Agile Approach
 
-<datetime class="hidden">2025-11-22T10:00</datetime>
+<datetime class="hidden">2025-11-23T10:00</datetime>
 <!-- category -- Software Development, Agile, Best Practices, Craftsmanship -->
 
 **Why treating your branch as a sandbox—and play as legitimate work—produces better software with less stress.**
@@ -15,7 +15,8 @@ Over the years, I've noticed something: the best code I've ever written came fro
 
 This isn't accidental. **Creativity and pressure don't mix well.**
 
-So I've developed an approach that separates the messy, creative exploration from the polished, production-ready delivery. I call it "Make it work, make it pretty, lock it down" — but really, it's about giving yourself permission to experiment without the weight of perfection hanging over you.
+So I've developed an approach that separates the messy, creative exploration from the polished, production-ready delivery. I call it "[Make it work, make it pretty, lock it down](/blog/makeitworkthenmakeitpretty)" — but really, it's about giving yourself permission to experiment without the weight of perfection hanging over you.
+
 
 [TOC]
 
@@ -65,9 +66,11 @@ What you're trying to figure out:
 - What are the actual requirements, not the ones written in the ticket?
 - Is this a two-hour problem or a two-week problem?
 
-**The critical insight:** Until you raise a PR, your branch is *yours*. It's your experimental laboratory. Nobody needs to see your false starts, your commented-out debugging code, your "TODO: this is terrible, fix later" comments.
+**The critical insight:** Until you raise a PR, your branch is *yours*. It's your experimental laboratory. Nobody needs to see your false starts, your commented-out debugging code, your "TODO: this is terrible, fix later" comments. But check in OFTEN—every time you have something that works, commit and push. Hook into your CI pipeline; a good pipeline will give you more information (integration tests, breaking changes elsewhere, etc.). It's FINE to check in ugly, barely stitched together franken-code. That's the POINT. Even as a three-decade veteran, I still do this. It frees my mind.
 
-This psychological freedom is essential. When you know you can throw everything away and start fresh, you make bolder decisions. You try that weird approach that probably won't work. Sometimes it works brilliantly.
+**Side benefit:** Frequent commits are a heartbeat. In remote/async teams, a steady trail of "ugly but progressing" commits reassures everyone that work is moving—without you having to perform productivity in Slack.
+
+This psychological freedom is essential. When you know you can throw everything away and start fresh, you make bolder decisions. You try that weird approach that probably won't work. Sometimes it works brilliantly. Sometimes you need to read an article, watch a YouTube video, think for a while. Remember: your job is to deliver good software and good decisions, not to type fast. Good managers understand you're **NOT A TYPIST**.
 
 ```csharp
 // Phase 1 code looks like this - and THAT'S OKAY
@@ -87,6 +90,16 @@ public async Task<Result> ProcessThing(Request req)
 ```
 
 Is this production code? God no. Is it useful? Absolutely. It tells you whether your approach is even viable before you invest hours polishing something that won't work.
+
+**A note on feedback:** You can get feedback at *any* point in Phase 1—the key is choosing *who* gives it. The goal is to build the best feature, not to follow a rigid process.
+
+Building an API that another team will consume? Get them involved early. A quick "does this shape make sense?" conversation can save days of rework. Building something user-facing? Maybe hold off showing the business stakeholder until it's less rough—some people get hung up on how something *looks* rather than whether it *works*. That's fine; they give feedback in Phase 2.
+
+Use your judgement. Sometimes you need feedback to **clarify**, not to approve—the spec already did that. "The spec says 'handle errors gracefully'—does that mean retry three times, or fail fast and notify?" That's a Phase 1 conversation.
+
+If a stakeholder's input is critical but they'd struggle with rough code, build a trivial demo. A hardcoded happy-path that shows the concept can unlock valuable feedback without the distraction of missing edge cases.
+
+Be pragmatic. The aim is the best feature, not process purity.
 
 ### Phase 2: Make It Pretty
 
@@ -203,7 +216,7 @@ This phase also includes:
 
 ## Feedback Choreography
 
-One of the key insights I've developed over the years is that *different people should be involved at different stages*. Getting this wrong causes endless friction.
+Different people should be involved at different stages. Get this wrong and you'll drown in friction.
 
 ```mermaid
 graph TB
@@ -233,23 +246,11 @@ graph TB
     style O1 stroke:#ef4444,stroke-width:2px
 ```
 
-**Phase 1 feedback: Technical voices only**
+**Phase 1:** Technical voices only—senior devs, architects. They can see past the mess to the shape of the solution. Non-technical stakeholders will panic at rough code and ask about button colours when you're still figuring out the data model.
 
-At this stage, you want people who can look at messy code and see the shape of the solution. Senior developers, architects, tech leads. They're asking: "Does this approach make sense? Are there obvious pitfalls?"
+**Phase 2:** Non-technical voices welcome. The feature is usable, buttons do things. Get product owners and designers involved now—changes are still cheap, you haven't written tests yet.
 
-You do NOT want non-technical stakeholders seeing Phase 1 code. They'll panic at the roughness. They'll ask about button colours when you're still figuring out if the data model works.
-
-**Phase 2 feedback: Non-technical voices welcome**
-
-Now the feature is usable. The UI exists. Buttons do things. This is when you get product owners, designers, and end users involved. They can see the actual experience and give meaningful feedback.
-
-Getting this feedback NOW is critical. Changes are still cheap. You haven't written comprehensive tests yet. If the product owner says "actually, we need this to work completely differently," you can pivot without too much pain.
-
-**Phase 3 feedback: Ops and security voices**
-
-Now you want the people who ask uncomfortable questions. "What happens if this gets 10x the expected traffic?" "What if someone passes malicious input?" "How will we debug this at 3am when it breaks?"
-
-These voices come last because their concerns only matter once the feature actually works correctly. There's no point hardening something that's going to change shape.
+**Phase 3:** Ops and security voices. "What if this gets 10x traffic?" "What if someone passes malicious input?" These concerns only matter once the feature actually works.
 
 ## Branches as Sandboxes
 
@@ -303,23 +304,19 @@ Then, before you raise a PR:
 
 The PR reviewers see clean, professional code with a clear narrative. They don't see the six false starts, the 3am "why doesn't this bloody work" commits, or the "undo undo undo" history.
 
-**The sandbox stays private. The polished work goes public.**
+> **The sandbox stays private. The polished work goes public.**
 
 ## Why This Reduces Stress
 
-Traditional "be professional at all times" development creates a particular kind of stress. Every line of code feels permanent. Every decision feels consequential. The weight of getting it right *first time* is crushing.
+Traditional "be professional at all times" development is crushing. Every line feels permanent. Every decision feels consequential. This approach removes that pressure by containing the chaos: **play is legitimate work** in Phase 1, feedback comes when pivoting is cheap in Phase 2, and tests are written once correctly in Phase 3 because you finally know what you're testing.
 
-This approach removes that pressure:
+> **"Play is legitimate work."**
 
-**Play is legitimate work.** Phase 1 is explicitly about experimentation. You're not "wasting time" when you try something that doesn't work—you're *learning what doesn't work*, which is valuable information.
-
-**Feedback comes at the right time.** Nothing's more demoralising than getting a PR comment saying your entire approach is wrong after you've spent days polishing it. With this approach, you get that feedback in Phase 1, when pivoting is cheap.
-
-**Tests are written once, correctly.** TDD purists will tell you to write tests first. But when you don't understand the problem yet, you're writing tests for the wrong thing. Then you rewrite them. Then you rewrite them again. With this approach, you write tests once the implementation is stable—they're correct the first time.
-
-**The messiness is contained.** Instead of stress bleeding into every phase, the "acceptable chaos" is contained to Phase 1. Phases 2 and 3 are calm, methodical, and professional. You know what you're building and you're just executing.
+TDD works brilliantly when the domain is well understood or you're pinning down a known bug. But when the problem is still fuzzy, writing tests first often means testing the wrong thing three times in a row. This approach sidesteps that: explore first, test when stable.
 
 ## Pragmatic SOLID (And DRY's Dirty Secret)
+
+So what does this three-phase mindset do to your design principles? In short: it kills dogma. Here's how it changes my thinking about SOLID, DRY, and interfaces in C#.
 
 I mentioned applying SOLID principles "pragmatically" in Phase 2. Let me be specific about what I mean.
 
@@ -404,25 +401,108 @@ The DRY version is a nightmare to maintain because it's trying to be all things 
 
 Duplication is far cheaper than the wrong abstraction. You can always deduplicate later when the pattern is clear. You can't easily undo a bad abstraction that's woven through your codebase.
 
+### The Interface Problem in C#
+
+Here's another sacred cow that needs slaughtering: **the "every class needs an interface" pattern**.
+
+Back in the early days of .NET dependency injection, someone decided that to make code testable, you needed to inject interfaces everywhere. The logic was: you can't mock a concrete class, so every service needs `IService` and `ServiceImpl`. Suddenly every C# codebase was littered with single-implementation interfaces that existed purely for testing.
+
+```csharp
+// The interface tax - early 2010s style
+public interface IUserService { }
+public interface IOrderService { }
+public interface IEmailService { }
+public interface INotificationService { }
+public interface IPaymentProcessor { }
+public interface IInventoryManager { }
+
+// Each with exactly ONE implementation
+public class UserService : IUserService { }
+public class OrderService : IOrderService { }
+// ... you get the idea
+```
+
+This was cargo cult programming. We were paying a complexity tax for *theoretical* testability and *theoretical* future flexibility that rarely materialised.
+
+**Here's the thing: you don't need this anymore.**
+
+Modern mocking frameworks like [NSubstitute](https://nsubstitute.github.io/) and [Moq](https://github.com/moq/moq4) can mock concrete classes (with virtual methods). More importantly, ASP.NET Core's DI container works perfectly well with concrete types:
+
+```csharp
+// Modern approach - just register the concrete type
+services.AddScoped<UserService>();
+services.AddScoped<OrderService>();
+services.AddScoped<EmailService>();
+
+// In your controller or service
+public class OrderController(OrderService orderService, UserService userService)
+{
+    // Primary constructor injection - clean and simple
+}
+```
+
+No interfaces. No `IOrderService`. Just the service you need, injected directly.
+
+**"But what about testing?"** I hear you cry.
+
+For unit tests, you have options:
+1. Make key methods `virtual` and use a mocking framework
+2. Use the real service with a test database (integration tests are often more valuable anyway)
+3. Add an interface *when you actually need it for testing*
+
+That third point is crucial: **refactoring tools are extraordinarily good at extracting interfaces**.
+
+In Rider or Visual Studio, it's literally `Ctrl+.` → "Extract Interface" and you're done. Every method gets extracted, the class gets updated to implement it, and you can find/replace all usages if needed. It takes seconds.
+
+```csharp
+// Phase 1 & 2: Just write the class
+public class OrderService
+{
+    public async Task<Order> CreateOrderAsync(CreateOrderRequest request) { ... }
+    public async Task<Order?> GetOrderAsync(int orderId) { ... }
+    public async Task CancelOrderAsync(int orderId) { ... }
+}
+
+// Phase 3: Need to mock it for testing? Extract interface in 2 seconds
+public interface IOrderService
+{
+    Task<Order> CreateOrderAsync(CreateOrderRequest request);
+    Task<Order?> GetOrderAsync(int orderId);
+    Task CancelOrderAsync(int orderId);
+}
+
+public class OrderService : IOrderService { ... }
+```
+
+My workflow now: **interfaces come in Phase 3, not Phase 1**.
+
+During "make it work" and "make it pretty", I just write classes. No premature abstraction. No interface tax on every type. The code is simpler, easier to navigate (no jumping between `IFoo` and `Foo`), and faster to write.
+
+When I hit "lock it down" and need to write tests, *then* I decide which services actually need mocking. Usually it's fewer than you'd think—often just external integrations like HTTP clients, databases, and message queues.
+
+For internal business logic services? Half the time I just test them directly with real dependencies. The tests are more valuable anyway because they test the actual behaviour, not a mock of what I *think* the behaviour should be.
+
+```csharp
+// Services I typically DO extract interfaces for (external boundaries)
+public interface IPaymentGateway { }      // Third-party API
+public interface IEmailSender { }         // External service
+public interface IBlobStorage { }         // Cloud storage
+
+// Services I typically DON'T need interfaces for (internal logic)
+public class OrderValidator { }           // Pure logic, test directly
+public class PriceCalculator { }          // Pure logic, test directly
+public class OrderService { }             // Test with real repo + in-memory DB
+```
+
+**The point is:** stop writing interfaces upfront "just in case". Write concrete classes. If you need an interface for testing or genuine polymorphism later, extracting one takes literally seconds with modern tooling.
+
+Your codebase will be simpler, more navigable, and you won't have the maintenance burden of keeping interfaces in sync with implementations for no benefit.
+
 ## The Agile Connection
 
-I find it ironic that this approach is more aligned with the original Agile manifesto than most "Agile" processes I've encountered in the wild.
+Ironically, this approach is more aligned with the *original* Agile manifesto than most "Agile" processes I've encountered. Working software fast (Phase 1). Responding to change (Phases 1-2). Customer collaboration when the feature is demonstrable (Phase 2). No sprint points, no velocity tracking, no bloody burndown charts.
 
-**"Working software over comprehensive documentation"**
-Phase 1 gets to working software *fast*. Documentation comes when you know what you're documenting.
-
-**"Responding to change over following a plan"**
-Phases 1 and 2 embrace change. Phase 3 locks it down only when the shape is clear.
-
-**"Individuals and interactions over processes and tools"**
-No sprint points, no velocity tracking, no burndown charts. Just: make it work, make it pretty, lock it down.
-
-**"Customer collaboration over contract negotiation"**
-Non-technical feedback in Phase 2, when change is still cheap and the feature is actually demonstrable.
-
-The problem with modern "Agile" is that it's been captured by process enthusiasts who've added so many ceremonies that there's no time left for actual exploration. Standups, retrospectives, sprint planning, backlog grooming, story pointing... where's the time to *play* with the code?
-
-This approach brings play back into the process, not as an indulgence but as a legitimate, essential phase of creative work.
+Modern "Agile" has been captured by process enthusiasts who've added so many ceremonies there's no time left for exploration. This approach brings play back—not as an indulgence, but as a legitimate phase of creative work.
 
 ## When NOT to Use This Approach
 
@@ -438,17 +518,23 @@ I should be honest: this isn't always the right approach.
 
 But for *most* feature development—where requirements are a bit fuzzy, the technical approach isn't obvious, and you need space to think—this approach works brilliantly.
 
+## A Note for Junior Developers
+
+If you're early in your career, you might feel pressure to show "perfect" code all the time. You don't have to. Use this three-phase approach—just be clear about which phase you're in, and always finish the job all the way to Phase 3. Nobody will fault you for messy exploration code if it leads to polished, tested, production-ready code at the end.
+
 ## Bottom Line
 
 **Make it work, make it pretty, lock it down.**
 
 Start simple. Design with foresight but not speculation. Iterate quickly. Only add complexity when it pays off.
 
+> **"Duplication is far cheaper than the wrong abstraction."**
+
 The exploration phase isn't a guilty secret—it's a defined part of the process. Your branch is your sandbox until you raise a PR. Technical feedback comes early, non-technical feedback comes mid, ops and security feedback comes late.
 
 This keeps creativity alive, reduces stress, and produces systems that scale elegantly—because you understood the problem before you committed to the solution.
 
-**Stop trying to be perfect from minute one. Give yourself permission to play.**
+> **Stop trying to be perfect from minute one. Give yourself permission to play.**
 
 ---
 

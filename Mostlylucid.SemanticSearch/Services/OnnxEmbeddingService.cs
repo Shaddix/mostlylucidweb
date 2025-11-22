@@ -14,16 +14,22 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 {
     private readonly ILogger<OnnxEmbeddingService> _logger;
     private readonly SemanticSearchConfig _config;
-    private readonly InferenceSession? _session;
+    private InferenceSession? _session;
     private readonly Dictionary<string, int> _vocabulary;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly SemaphoreSlim _initSemaphore = new(1, 1);
     private bool _disposed;
+    private bool _initialized;
 
     private const int MaxSequenceLength = 256;
     private const string PadToken = "[PAD]";
     private const string UnkToken = "[UNK]";
     private const string ClsToken = "[CLS]";
     private const string SepToken = "[SEP]";
+
+    // Hugging Face model URLs
+    private const string ModelUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx";
+    private const string VocabUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt";
 
     public OnnxEmbeddingService(
         ILogger<OnnxEmbeddingService> logger,
@@ -32,47 +38,82 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
         _logger = logger;
         _config = config;
         _vocabulary = new Dictionary<string, int>();
+    }
 
-        if (!_config.Enabled)
-        {
-            _logger.LogInformation("Semantic search is disabled");
-            return;
-        }
+    /// <summary>
+    /// Ensures the model is initialized, downloading if necessary
+    /// </summary>
+    public async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
+    {
+        if (_initialized || !_config.Enabled) return;
 
+        await _initSemaphore.WaitAsync(cancellationToken);
         try
         {
-            // Check if model file exists
-            if (!File.Exists(_config.EmbeddingModelPath))
+            if (_initialized) return;
+
+            // Ensure directory exists
+            var modelDir = Path.GetDirectoryName(_config.EmbeddingModelPath);
+            if (!string.IsNullOrEmpty(modelDir) && !Directory.Exists(modelDir))
             {
-                _logger.LogWarning("Embedding model not found at {Path}. Semantic search will be disabled.", _config.EmbeddingModelPath);
-                return;
+                Directory.CreateDirectory(modelDir);
+                _logger.LogInformation("Created model directory: {Path}", modelDir);
             }
 
-            // Load vocabulary if it exists
+            // Download model if not exists
+            if (!File.Exists(_config.EmbeddingModelPath))
+            {
+                _logger.LogInformation("Downloading ONNX embedding model to {Path}...", _config.EmbeddingModelPath);
+                await DownloadFileAsync(ModelUrl, _config.EmbeddingModelPath, cancellationToken);
+                _logger.LogInformation("ONNX model downloaded successfully");
+            }
+
+            // Download vocab if not exists
+            if (!File.Exists(_config.VocabPath))
+            {
+                _logger.LogInformation("Downloading vocabulary file to {Path}...", _config.VocabPath);
+                await DownloadFileAsync(VocabUrl, _config.VocabPath, cancellationToken);
+                _logger.LogInformation("Vocabulary file downloaded successfully");
+            }
+
+            // Load vocabulary
             if (File.Exists(_config.VocabPath))
             {
                 LoadVocabulary(_config.VocabPath);
             }
-            else
-            {
-                _logger.LogWarning("Vocabulary file not found at {Path}. Using basic tokenization.", _config.VocabPath);
-            }
 
-            // Create ONNX session with CPU execution provider
+            // Create ONNX session
             var sessionOptions = new SessionOptions
             {
-                // Use CPU for inference (much more resource-efficient)
                 ExecutionMode = ExecutionMode.ORT_SEQUENTIAL,
                 GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL
             };
 
             _session = new InferenceSession(_config.EmbeddingModelPath, sessionOptions);
             _logger.LogInformation("ONNX embedding model loaded successfully from {Path}", _config.EmbeddingModelPath);
+            _initialized = true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize ONNX embedding service");
         }
+        finally
+        {
+            _initSemaphore.Release();
+        }
+    }
+
+    private static async Task DownloadFileAsync(string url, string destinationPath, CancellationToken cancellationToken)
+    {
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromMinutes(10); // Large file timeout
+
+        using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+        await contentStream.CopyToAsync(fileStream, cancellationToken);
     }
 
     private void LoadVocabulary(string vocabPath)
@@ -91,9 +132,17 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
     public async Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
-        if (_session == null || !_config.Enabled)
+        if (!_config.Enabled)
         {
-            // Return zero vector if service is not available
+            return new float[_config.VectorSize];
+        }
+
+        // Ensure model is downloaded and initialized
+        await EnsureInitializedAsync(cancellationToken);
+
+        if (_session == null)
+        {
+            // Return zero vector if initialization failed
             return new float[_config.VectorSize];
         }
 

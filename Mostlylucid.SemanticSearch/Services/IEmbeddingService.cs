@@ -6,6 +6,11 @@ namespace Mostlylucid.SemanticSearch.Services;
 public interface IEmbeddingService
 {
     /// <summary>
+    /// Ensures the embedding model is initialized, downloading if necessary
+    /// </summary>
+    Task EnsureInitializedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Generate an embedding vector for the given text
     /// </summary>
     /// <param name="text">Text to embed</param>

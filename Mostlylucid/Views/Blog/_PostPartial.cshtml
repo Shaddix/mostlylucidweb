@@ -32,23 +32,23 @@
             <p class="pl-2 font-body text-sm font-light text-primary dark:text-white">
                 @Model.ReadingTime
             </p>
-            <div class="pl-4 flex flex-wrap gap-2 print:hidden">
-                <a href="#commentsection" class="btn btn-outline btn-xs">
-                    <i class="bx bx-mail-send text-lg"></i> Comments
+            <div class="pl-4 flex flex-wrap gap-2 items-center print:hidden">
+                <a href="#commentsection" class="btn btn-outline btn-xs inline-flex items-center">
+                    <i class="bx bx-mail-send"></i> Comments
                 </a>
 
                 <a href="/api/raw/@Model.Slug?language=@Model.Language"
                    target="_blank" rel="noopener"
-                   class="btn btn-outline btn-xs"
+                   class="btn btn-outline btn-xs inline-flex items-center"
                    title="View raw Markdown">
-                    <i class="bx bx-code-alt text-lg"></i> Raw
+                    <i class="bx bx-code-alt"></i> Raw
                 </a>
 
                 <a asp-action="Edit"
                    asp-controller="Editor"
                    asp-route-slug="@Model.Slug"
                    asp-route-language="@Model.Language"
-                   class="btn btn-outline btn-xs btn-primary">
+                   class="btn btn-outline btn-xs btn-primary inline-flex items-center">
                     <i class="bx bx-edit"></i> Edit
                 </a>
             </div>
@@ -117,6 +117,7 @@
     <div class="print:hidden"
          hx-get="/search/related/@Model.Slug/@Model.Language"
          hx-trigger="load delay:300ms"
+         hx-target="this"
          hx-swap="innerHTML">
         @* Loading placeholder *@
         <div class="mt-6 mb-6">

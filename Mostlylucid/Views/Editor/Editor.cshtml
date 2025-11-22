@@ -1,8 +1,33 @@
 ﻿@using MarkdownBaseService = Mostlylucid.Services.Markdown.MarkdownBaseService
 @model Mostlylucid.Models.Editor.EditorModel
 
-<div class="min-h-screen bg-gray-300 dark:bg-gray-800"  x-data
-     x-init="$nextTick(() =>{ window.mostlylucid.simplemde.setupCodeEditor('markdowneditor') })">
+<div class="min-h-screen bg-gray-300 dark:bg-gray-800"  x-data="{ currentLanguage: '' }"
+     x-init="$nextTick(() =>{
+         window.mostlylucid.simplemde.setupCodeEditor('markdowneditor');
+         // Watch for language changes and clear translation results
+         const langSelect = document.getElementById('languageSelect');
+         if (langSelect) {
+             langSelect.addEventListener('change', (e) => {
+                 const newLang = e.target.value;
+                 if (currentLanguage && currentLanguage !== newLang) {
+                     // Language changed - clear previous translation results
+                     const translationsDiv = document.getElementById('translations');
+                     const translatedContent = document.getElementById('translatedcontent');
+                     if (translationsDiv) {
+                         translationsDiv.classList.add('hidden');
+                         translationsDiv.innerHTML = '';
+                     }
+                     if (translatedContent) {
+                         translatedContent.classList.add('hidden');
+                         // Clear the SimpleMDE content if it exists
+                         const mde = window.mostlylucid.simplemde.getinstance('translatedcontentarea');
+                         if (mde) mde.value('');
+                     }
+                 }
+                 currentLanguage = newLang;
+             });
+         }
+     })">
     @if (!string.IsNullOrEmpty(Model.PostViewModel.Slug))
     {
     @if (Model.PostViewModel.Language != MarkdownBaseService.EnglishLanguage)

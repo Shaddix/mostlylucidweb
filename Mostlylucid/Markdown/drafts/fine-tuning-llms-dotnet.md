@@ -7,7 +7,6 @@
 
 Right, here's the thing: fine-tuning LLMs is genuinely fascinating technology that's become remarkably accessible. You can now tweak a small model to do very specific things on consumer hardware. Brilliant stuff. But—and there's always a but—before you dive headfirst into training loops and gradient accumulation, you should ask yourself whether you *actually* need to fine-tune at all.
 
-> NOTE: This is part of my experiments with AI (assisted drafting) + my own editing. Same voice, same pragmatism; just faster fingers.
 
 This article covers both sides honestly:
 
