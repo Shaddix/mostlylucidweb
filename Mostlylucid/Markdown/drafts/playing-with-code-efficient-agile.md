@@ -452,4 +452,11 @@ This keeps creativity alive, reduces stress, and produces systems that scale ele
 
 ---
 
-*If this resonates, you might also enjoy my related post on [How I Build Software](/blog/makeitworkthenmakeitpretty), which goes deeper into the testing philosophy behind this approach.*
+## Related Reading
+
+If this resonates, you might also enjoy these related posts:
+
+- **[How I Build Software](/blog/makeitworkthenmakeitpretty)** - Goes deeper into the testing philosophy behind this approach, with detailed code examples of the three phases.
+- **[Daily Standups Are Bullshit (Unless They Earn Their Pay)](/blog/agile-standups-ceremony-tax)** - My take on why ceremony is tax, and how to evaluate whether your agile rituals are earning their keep.
+- **[Agile Speccing: Writing Feature Specs That Actually Work](/blog/writingfeaturespecs)** - Because specs are tools, not bibles—and treating them as living documents is the only way to build the right thing.
+- **[Working on Legacy Codebases](/blog/workingonlegacysystems)** - Practical lessons from decades of contractor life, including how to apply these principles when you're learning a system you didn't build.
