@@ -37,6 +37,15 @@ module.exports = {
         },
 
         extend: {
+            keyframes: {
+                expandIn: {
+                    '0%': { opacity: '0', transform: 'translateY(-4px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' }
+                }
+            },
+            animation: {
+                expandIn: 'expandIn 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            },
             colors: {
                 // Spread all Tailwind colors (deprecated ones already removed above)
                 ...colors,

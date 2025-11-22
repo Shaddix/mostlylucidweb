@@ -11,7 +11,12 @@
       "Bash(Select-Object -Last 10)",
       "Bash(dotnet test:*)",
       "Bash(Select-String -Pattern \"Passed|Failed|Total|Duration\")",
-      "Bash(Select-String -Pattern \"Passed|Failed|Total|Error|Duration\")"
+      "Bash(Select-String -Pattern \"Passed|Failed|Total|Error|Duration\")",
+      "Bash(dotnet run:*)",
+      "Bash(Select-Object -First 50)",
+      "Bash(npm run build:*)",
+      "Bash(Select-Object -Last 20)",
+      "WebFetch(domain:www.mostlylucid.net)"
     ],
     "deny": [],
     "ask": []

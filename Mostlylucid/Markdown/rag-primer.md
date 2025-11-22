@@ -1,16 +1,16 @@
 # RAG Explained: Origins and Fundamentals
 
-> Ever searched for "deployment guide" and got nothing, even though there's an article about "publishing to production"? RAG (Retrieval-Augmented Generation) solves this by understanding meaning, not just keywords. This three-part series shows you how RAG came about, how it works under the hood, and how to build production systems. From semantic search to AI-powered Q&A with citations—all with working C# code examples.
+Ever searched for "deployment guide" and got nothing, even though there's an article about "publishing to production"? RAG (Retrieval-Augmented Generation) solves this by understanding meaning, not just keywords. This three-part series shows you how RAG came about, how it works under the hood, and how to build production systems. From semantic search to AI-powered Q&A with citations—all with working C# code examples.
 
 <datetime class="hidden">2025-11-22T09:00</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
 
 # Introduction
 
-> **📖 Series Navigation:** This article is Part 1 of a three-part series on RAG (Retrieval-Augmented Generation):
-> - **Part 1: Origins and Fundamentals** (this article) - History, motivation, and core concepts
-> - [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
-> - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
+**📖 Series Navigation:** This article is Part 1 of a three-part series on RAG (Retrieval-Augmented Generation):
+- **Part 1: Origins and Fundamentals** (this article) - History, motivation, and core concepts
+- [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
+- [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
 
 RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving LLMs access to information they weren't trained on. But here's what's interesting: the technology opens opportunities far beyond AI chatbots. It powers semantic search on websites, content recommendation, writing assistance, and knowledge management.
 

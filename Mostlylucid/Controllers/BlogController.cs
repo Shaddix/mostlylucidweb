@@ -3,16 +3,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.Blog.ViewServices;
 using Mostlylucid.Controllers;
+using Mostlylucid.Mapper;
 using Mostlylucid.Models.Comments;
 using Mostlylucid.Services;
+using Mostlylucid.Services.Markdown;
+using Mostlylucid.Shared.Config.Markdown;
 using MarkdownBaseService = Mostlylucid.Services.Markdown.MarkdownBaseService;
 
 namespace Mostlylucidblog.Controllers;
 
 [Route("blog")]
-public class BlogController(BaseControllerService baseControllerService, 
+public class BlogController(BaseControllerService baseControllerService,
     IBlogViewService blogViewService,
     CommentViewService commentViewService,
+    MarkdownRenderingService markdownRenderingService,
+    MarkdownConfig markdownConfig,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
     // Temporarily disabled for development - re-enable for production
@@ -185,7 +190,49 @@ public class BlogController(BaseControllerService baseControllerService,
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Language(string slug, string language)
     {
-        
+
         return await Show(slug, language);
+    }
+
+    /// <summary>
+    /// View a draft post - NOT indexed, NOT cached, NOT listed anywhere.
+    /// For author preview only.
+    /// </summary>
+    [Route("drafts/{slug}")]
+    [HttpGet]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> Draft(string slug)
+    {
+        if (slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            slug = slug[..^3];
+
+        slug = slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
+
+        var draftsPath = Path.Combine(markdownConfig.MarkdownPath, "drafts");
+        var filePath = Path.Combine(draftsPath, $"{slug}.md");
+
+        if (!System.IO.File.Exists(filePath))
+            return NotFound($"Draft '{slug}' not found");
+
+        try
+        {
+            var markdown = await System.IO.File.ReadAllTextAsync(filePath);
+            var fileInfo = new FileInfo(filePath);
+            var blogPost = markdownRenderingService.GetPageFromMarkdown(markdown, fileInfo.LastWriteTimeUtc, filePath);
+
+            var post = blogPost.ToViewModel();
+            post.Categories = blogPost.Categories.ToArray();
+
+            // Mark as draft for UI indication
+            ViewBag.IsDraft = true;
+
+            if (Request.IsHtmx()) return PartialView("_PostPartial", post);
+            return View("Post", post);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error reading draft {Slug}", slug);
+            return StatusCode(500, "Error reading draft");
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿<div x-data="window.mostlylucid.typeahead()"  class="relative" id="searchelement" x-on:click.outside="results = []">
+@* Typeahead search component - width is adaptive: min-w-[280px] on mobile, wider on larger screens *@
+<div x-data="window.mostlylucid.typeahead()" class="relative" id="searchelement" x-on:click.outside="results = []">
     <label class="input input-sm bg-neutral-500 bg-opacity-10 input-bordered flex items-center gap-2">
         <input
             type="text"
@@ -11,15 +12,15 @@
             class="border-0 grow input-sm text-black dark:text-white bg-transparent w-full"/>
         <i class="bx bx-search"></i>
     </label>
-    <!-- Dropdown -->
-    <ul  :class="{
+    <!-- Dropdown - adaptive width: fits content, min 280px, max based on viewport -->
+    <ul :class="{
         'hidden': !(results && results.length > 0 && query.length > 2),
         'block': results && results.length > 0 && query.length > 2
     }"
         id="searchresults"
-        class="absolute z-100 my-2 w-full bg-white dark:bg-custom-dark-bg border border-1 text-black dark:text-white border-neutral-600 rounded-lg shadow-lg">
+        class="absolute z-100 my-2 right-0 min-w-[280px] sm:min-w-[360px] md:min-w-[420px] lg:min-w-[500px] max-w-[90vw] w-max bg-white dark:bg-custom-dark-bg border border-1 text-black dark:text-white border-neutral-600 rounded-lg shadow-lg overflow-hidden">
         <template x-for="(result, index) in results" :key="result.slug">
-            <li  x-on:click.prevent="selectResult(index)" hx-boost="true" hx-swap="show:window:top"   hx-target="#contentcontainer" :class="{
+            <li x-on:click.prevent="selectResult(index)" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" :class="{
                 'dark:bg-blue-dark bg-blue-light': index === highlightedIndex,
                 'dark:hover:bg-blue-dark hover:bg-blue-light': true
             }"
@@ -27,10 +28,9 @@
                 <a
                     :href="result.url"
                     x-text="result.title"
-                   >
+                    class="block truncate">
                 </a>
             </li>
         </template>
     </ul>
-
 </div>

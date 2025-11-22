@@ -4,9 +4,11 @@ using Mostlylucid.Blog.WatcherService;
 using Mostlylucid.Blog.ValidationService;
 using Mostlylucid.DbContext;
 using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
+using Mostlylucid.Services.SemanticSearch;
 using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Config;
@@ -55,6 +57,13 @@ public static class BlogSetup
 
                 // Register markdown fetch polling service (only in database mode)
                 services.AddHostedService<MarkdownFetchPollingService>();
+
+                // Register semantic indexing background service if semantic search is enabled
+                var semanticConfig = configuration.GetSection(SemanticSearchConfig.Section).Get<SemanticSearchConfig>();
+                if (semanticConfig?.Enabled == true)
+                {
+                    services.AddHostedService<SemanticIndexingBackgroundService>();
+                }
                 break;
         }
         services.AddScoped<IMarkdownBlogService, MarkdownBlogPopulator>();

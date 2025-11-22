@@ -1,16 +1,16 @@
 # RAG Architecture and Internals: How It Really Works
 
-> In [Part 1](/blog/rag-primer), we covered RAG's origins, fundamentals, and why it matters. You understand the high-level concept: retrieve relevant information, then use it to generate responses. Now we dive deep into the technical architecture—exactly how RAG systems work under the hood, from chunking strategies to LLM internals like tokens and KV caches.
+In [Part 1](/blog/rag-primer), we covered RAG's origins, fundamentals, and why it matters. You understand the high-level concept: retrieve relevant information, then use it to generate responses. Now we dive deep into the technical architecture—exactly how RAG systems work under the hood, from chunking strategies to LLM internals like tokens and KV caches.
 
 <datetime class="hidden">2025-11-22T09:30</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
 
 # Introduction
 
-> **📖 Series Navigation:** This is Part 2 of a three-part series on RAG:
-> - [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
-> - **Part 2: Architecture and Internals** (this article) - Technical deep dive into how RAG works
-> - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
+**📖 Series Navigation:** This is Part 2 of a three-part series on RAG:
+- [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
+- **Part 2: Architecture and Internals** (this article) - Technical deep dive into how RAG works
+- [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
 
 If you haven't read Part 1, I recommend starting there to understand:
 - What RAG is and why it matters

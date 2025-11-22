@@ -1,16 +1,16 @@
 # RAG in Practice: Building Real-World Applications
 
-> In [Part 1](/blog/rag-primer) and [Part 2](/blog/rag-architecture) of this series, we covered RAG's origins, fundamentals, and technical architecture. You understand what RAG is, why it matters, and how it works under the hood. Now it's time to put that knowledge into practice. This article shows you how to build real RAG systems with working C# code, solve common challenges, and use advanced techniques from recent research.
+In [Part 1](/blog/rag-primer) and [Part 2](/blog/rag-architecture) of this series, we covered RAG's origins, fundamentals, and technical architecture. You understand what RAG is, why it matters, and how it works under the hood. Now it's time to put that knowledge into practice. This article shows you how to build real RAG systems with working C# code, solve common challenges, and use advanced techniques from recent research.
 
 <datetime class="hidden">2025-11-22T10:00</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
 
 # Introduction
 
-> **📖 Series Navigation:** This is Part 3 of a three-part series on RAG:
-> - [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
-> - [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
-> - **Part 3: RAG in Practice** (this article) - Building real systems, challenges, and advanced techniques
+**📖 Series Navigation:** This is Part 3 of a three-part series on RAG:
+- [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
+- [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
+- **Part 3: RAG in Practice** (this article) - Building real systems, challenges, and advanced techniques
 
 If you haven't read Parts 1 and 2, I recommend starting there to understand:
 - What RAG is and why it matters (Part 1)

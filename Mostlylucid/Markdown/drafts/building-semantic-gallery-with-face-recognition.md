@@ -73,9 +73,9 @@ graph TB
 
     E -.-> J
 
-    style B fill:#f9f,stroke:#333,stroke-width:2px
-    style E fill:#bbf,stroke:#333,stroke-width:2px
-    style J fill:#bfb,stroke:#333,stroke-width:2px
+    style B stroke:#f9f,stroke-width:4px
+    style E stroke:#bbf,stroke-width:4px
+    style J stroke:#bfb,stroke-width:4px
 ```
 
 ### Key Components Explained
@@ -166,8 +166,8 @@ graph LR
     I --> J[Search by Person]
     I --> K[Cluster Similar Faces]
 
-    style D fill:#fbb,stroke:#333,stroke-width:2px
-    style I fill:#bbf,stroke:#333,stroke-width:2px
+    style D stroke:#fbb,stroke-width:4px
+    style I stroke:#bbf,stroke-width:4px
 ```
 
 **The Process:**

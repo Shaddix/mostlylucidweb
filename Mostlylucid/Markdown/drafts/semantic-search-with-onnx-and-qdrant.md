@@ -1213,7 +1213,7 @@ flowchart TB
 
     F --> G["Combined Results:<br/>1. 'Containerizing Apps'<br/>   (1/61 + 1/62 = 0.0328)<br/>2. 'Docker Basics'<br/>   (1/61 + 1/63 = 0.0322)<br/>3. 'Docker Compose'<br/>   (1/63 = 0.0159)"]
 
-    style F fill:#f9f,stroke:#333,stroke-width:2px
+    style F stroke:#f9f,stroke-width:4px
 ```
 
 **The RRF formula:**
