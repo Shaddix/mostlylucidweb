@@ -14,6 +14,7 @@ using Mostlylucid.Shared.Config;
 using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Extensions;
 using Mostlylucid.SemanticSearch.Services;
+using Mostlylucid.Services.BrokenLinks;
 
 try
 {  Log.Logger = new LoggerConfiguration()
@@ -102,6 +103,11 @@ try
 
     // Popular posts polling service
     services.AddHostedService<PopularPostsPollingService>();
+
+    // Broken link detection and archive.org replacement service
+    services.AddHttpClient("BrokenLinkChecker");
+    services.AddScoped<IBrokenLinkService, BrokenLinkService>();
+    services.AddHostedService<BrokenLinkCheckerBackgroundService>();
 
     services.AddImageSharp().Configure<PhysicalFileSystemCacheOptions>(options => options.CacheFolder = "cache");
     services.SetupEmail(config);
@@ -236,6 +242,9 @@ try
     app.UseCors("AllowMostlylucid");
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // Broken link archive middleware - collects external links and replaces broken ones with archive.org URLs
+    app.UseBrokenLinkArchive();
 
     if (app.Environment.IsDevelopment())
     {
