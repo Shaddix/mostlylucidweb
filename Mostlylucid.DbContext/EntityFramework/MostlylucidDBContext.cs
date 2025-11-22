@@ -30,6 +30,8 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     public DbSet<SlugSuggestionClickEntity> SlugSuggestionClicks { get; set; }
 
+    public DbSet<BrokenLinkEntity> BrokenLinks { get; set; }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder
@@ -221,6 +223,23 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
             entity.HasIndex(x => x.ClickedAt);
 
             entity.Property(x => x.ClickedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<BrokenLinkEntity>(entity =>
+        {
+            entity.ToTable("broken_links");
+            entity.HasKey(x => x.Id);
+
+            // Unique index on original URL - each URL should only be tracked once
+            entity.HasIndex(x => x.OriginalUrl).IsUnique();
+
+            // Index for finding broken links that need archive URLs
+            entity.HasIndex(x => new { x.IsBroken, x.ArchiveChecked });
+
+            // Index for finding links that need checking
+            entity.HasIndex(x => x.LastCheckedAt);
+
+            entity.Property(x => x.DiscoveredAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }
 }

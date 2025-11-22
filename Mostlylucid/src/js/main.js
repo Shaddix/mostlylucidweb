@@ -33,6 +33,7 @@ import { codeeditor } from "./simplemde_editor";
 import { globalSetup } from "./global";
 import  {comments} from  "./comments";
 import { queryParamClearer, queryParamToggler } from "./query-params";
+import { initBrokenLinks } from "./broken-links";
 // removed bare import of package to avoid TS source resolution
 
 window.mostlylucid.comments = comments();
@@ -53,6 +54,7 @@ window.queryParamToggler = queryParamToggler;
 // Also expose on mostlylucid namespace for backwards compatibility
 window.mostlylucid.queryParamClearer = queryParamClearer;
 window.mostlylucid.queryParamToggler = queryParamToggler;
+window.mostlylucid.initBrokenLinks = initBrokenLinks;
 
 // Track Alpine initialization to prevent duplicate starts
 let alpineStarted = false;
@@ -209,6 +211,13 @@ function registerHTMXListener() {
             console.error('Failed to set logout link:', err);
         }
 
+        // Rewrite any broken links in the swapped content
+        try {
+            initBrokenLinks(evt.detail.target);
+        } catch (err) {
+            console.error('Failed to rewrite broken links:', err);
+        }
+
         console.log('HTMX afterSettle complete for:', targetId);
     }, { once: false }); // Don't use once - we need this for all HTMX swaps
 
@@ -281,6 +290,13 @@ async function initializePage() {
         updateMetaUrls();
     } catch (err) {
         console.error('Failed to set logout link or update meta URLs:', err);
+    }
+
+    // Initialize broken link rewriter (runs in background, non-blocking)
+    try {
+        initBrokenLinks();
+    } catch (err) {
+        console.error('Failed to initialize broken links:', err);
     }
 
     console.log('Document is ready - all initializations complete');
