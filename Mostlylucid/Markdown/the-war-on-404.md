@@ -9,11 +9,13 @@ When you've been blogging since 2004 (yes, really), you accumulate a lot of digi
 
 The problem breaks down into three parts:
 
-1. **Internal links** - Fixed during the import process itself. My old posts referenced each other using the old URL scheme, so I rewrote those as part of the migration.
+1. **Internal links** - Fixed during the import process itself using my [ArchiveOrg importer tool](https://github.com/scottgal/mostlylucid.nugetpackages/tree/main/Mostlylucid.ArchiveOrg). My old posts referenced each other using the old URL scheme, so I rewrote those as part of the migration.
 
 2. **External links (outgoing)** - This is the big one. Links to external resources that have since vanished, moved, or become completely different sites. A link to some documentation from 2006? Gone. A reference to a blog post by someone who's long since taken their site down? Dead. These need runtime handling.
 
 3. **Incoming requests** - People (and search engines) still try to access old URLs like `/archive/2006/05/15/123.aspx`. The semantic search system can often figure out what they were after, even without an exact slug match.
+
+Now, I *could* have baked the archive.org lookups into the import process. But here's the thing: links break over time. A site that's working today might be gone next month. By handling this at runtime with periodic re-checking, the system automatically catches *future* breakages, not just the ones that existed at import time.
 
 This article covers my approach:
 - **Outgoing links**: `BrokenLinkArchiveMiddleware` - replaces dead external links with archive.org snapshots
@@ -232,7 +234,13 @@ html = RemoveHref(html, brokenUrl);
 
 ## Part 2: Background Link Checking
 
-The `BrokenLinkCheckerBackgroundService` runs hourly to check links and fetch archive.org URLs.
+The middleware doesn't check links during the request - that would be far too slow. Instead, it queues discovered links for background processing via a database table, and a `BrokenLinkCheckerBackgroundService` handles the actual checking.
+
+The service runs hourly and does two things:
+1. **Check link validity** - HEAD requests to see if links are still alive
+2. **Fetch archive.org URLs** - For broken links, find the closest historical snapshot
+
+Crucially, links are **periodically re-checked**. A link that was working last week might be dead today. The service picks up links that haven't been checked in the last 24 hours and verifies them again. However, once we've found an archive.org replacement for a broken link, we don't re-check the original - it's already dead and we have a working replacement.
 
 ```mermaid
 sequenceDiagram
@@ -242,19 +250,19 @@ sequenceDiagram
     participant Archive as Archive.org CDX API
 
     loop Every Hour
-        BG->>DB: Get unchecked links (batch of 20)
+        BG->>DB: Get links not checked in 24h (batch of 20)
         loop For each link
             BG->>Web: HEAD request
             Web-->>BG: Status code
-            BG->>DB: Update link status
+            BG->>DB: Update link status + LastCheckedAt
         end
 
-        BG->>DB: Get broken links needing archive
+        BG->>DB: Get broken links needing archive lookup
         loop For each broken link
             BG->>DB: Look up source post publish date
             BG->>Archive: CDX API query (filtered by date)
             Archive-->>BG: Closest snapshot
-            BG->>DB: Store archive URL
+            BG->>DB: Store archive URL (permanent)
         end
     end
 ```
@@ -314,6 +322,25 @@ public class BrokenLinkEntity
     public string? SourcePageUrl { get; set; }  // For publish date lookup
 }
 ```
+
+### Periodic Re-checking
+
+The key to catching future breakages is re-checking. The service queries for links that haven't been validated recently:
+
+```csharp
+public async Task<List<BrokenLinkEntity>> GetLinksToCheckAsync(int batchSize, CancellationToken cancellationToken)
+{
+    var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+
+    return await _dbContext.BrokenLinks
+        .Where(x => x.LastCheckedAt == null || x.LastCheckedAt < cutoff)
+        .OrderBy(x => x.LastCheckedAt ?? DateTimeOffset.MinValue)  // Oldest first
+        .Take(batchSize)
+        .ToListAsync(cancellationToken);
+}
+```
+
+This means every link gets re-validated at least once a day. If a previously working link starts returning 404s, we'll catch it and start looking for an archive.org replacement. The `ConsecutiveFailures` field lets us be a bit forgiving - we don't mark a link as broken after one transient error.
 
 ## Part 3: Handling Incoming Requests
 
