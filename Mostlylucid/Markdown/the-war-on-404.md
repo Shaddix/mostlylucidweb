@@ -1,7 +1,7 @@
 # The War on 404
 
-<!--category-- ASP.NET, Middleware, C# -->
-<datetime class="hidden">2025-05-23T09:00</datetime>
+<!--category-- ASP.NET, C# -->
+<datetime class="hidden">2025-11-23T09:00</datetime>
 
 ## The War On 404: Making Old Stuff Work Again
 
@@ -9,7 +9,7 @@ When you've been blogging since 2004 (yes, really), you accumulate a lot of digi
 
 This article covers my approach to keeping old content alive:
 - **Outgoing links**: `BrokenLinkArchiveMiddleware` - replaces dead external links with archive.org snapshots
-- **Incoming links**: `SlugRedirectMiddleware` - learns from user behaviour to redirect mistyped or old URLs
+- **Incoming links**: The 404 handler - learns from user behaviour to redirect mistyped or old URLs
 - **The learning system**: How the site gets smarter over time
 - **Background processing**: Checking links without blocking requests
 
@@ -41,19 +41,20 @@ The system has two main components working in tandem:
 ```mermaid
 flowchart TB
     subgraph Incoming["Incoming Requests"]
-        A[User Request] --> B[SlugRedirectMiddleware]
-        B --> C{Known redirect?}
-        C -->|Yes| D[301 Permanent Redirect]
-        C -->|No| E[Continue to App]
-        E --> F{Page exists?}
-        F -->|No| G[404 Handler]
-        G --> H[Show suggestions]
-        H --> I[User clicks suggestion]
-        I --> J[Learn redirect]
+        A[User Request] --> B{Page exists?}
+        B -->|Yes| C[Render Page]
+        B -->|No| D[404 Handler]
+        D --> E{Learned redirect?}
+        E -->|Yes| F[301 Permanent Redirect]
+        E -->|No| G{High-confidence match?}
+        G -->|Yes| H[302 Temporary Redirect]
+        G -->|No| I[Show suggestions]
+        I --> J[User clicks suggestion]
+        J --> K[Learn redirect]
     end
 
     subgraph Outgoing["Outgoing Links"]
-        K[Page Renders] --> L[BrokenLinkArchiveMiddleware]
+        C --> L[BrokenLinkArchiveMiddleware]
         L --> M[Extract all links]
         M --> N[Register for checking]
         L --> O[Replace broken links]
@@ -62,7 +63,8 @@ flowchart TB
         O --> R[Remove dead links]
     end
 
-    style D stroke:#10b981,stroke-width:3px
+    style F stroke:#10b981,stroke-width:3px
+    style H stroke:#f59e0b,stroke-width:3px
     style P stroke:#3b82f6,stroke-width:3px
     style Q stroke:#8b5cf6,stroke-width:3px
 ```
@@ -309,6 +311,34 @@ public class BrokenLinkEntity
 
 Now for the other side of the coin: people requesting URLs that don't exist.
 
+### Why Not Middleware?
+
+My first instinct was to handle redirects in middleware - intercept requests early, check for known redirects, and redirect before the routing even kicks in. This *could* work, and here's what it would look like:
+
+```csharp
+// DON'T DO THIS - runs on EVERY request
+public class SlugRedirectMiddleware(RequestDelegate next)
+{
+    public async Task InvokeAsync(HttpContext context, ISlugSuggestionService? service)
+    {
+        if (context.Request.Path.StartsWithSegments("/blog"))
+        {
+            var targetSlug = await service.GetAutoRedirectSlugAsync(slug, language);
+            if (!string.IsNullOrWhiteSpace(targetSlug))
+            {
+                context.Response.Redirect($"/blog/{targetSlug}", permanent: true);
+                return;
+            }
+        }
+        await next(context);
+    }
+}
+```
+
+The problem? This runs on *every single request* to `/blog/*`. That's a database query on every page view, even for perfectly valid URLs. For a blog with decent traffic, you're hammering the database for no good reason 99% of the time.
+
+The much better approach: hook into the 404 handler. If ASP.NET has already determined the page doesn't exist, *then* we check for redirects. No wasted queries on valid pages.
+
 ### The Learning System
 
 When someone hits a 404, we show them suggestions using fuzzy string matching and (optionally) semantic search. If they click a suggestion, we record that. After enough clicks with sufficient confidence, we start auto-redirecting.
@@ -316,15 +346,18 @@ When someone hits a 404, we show them suggestions using fuzzy string matching an
 ```mermaid
 stateDiagram-v2
     [*] --> RequestReceived
-    RequestReceived --> CheckAutoRedirect
+    RequestReceived --> RoutingCheck
 
-    CheckAutoRedirect --> Redirect301: Has learned redirect
-    CheckAutoRedirect --> Continue: No auto-redirect
+    RoutingCheck --> PageFound: Exists
+    RoutingCheck --> NotFound: 404
 
-    Continue --> PageFound: Exists
-    Continue --> NotFound: 404
+    PageFound --> [*]
 
-    NotFound --> CheckHighConfidence
+    NotFound --> ErrorController
+    ErrorController --> CheckLearnedRedirect
+    CheckLearnedRedirect --> Redirect301: Has learned redirect
+    CheckLearnedRedirect --> CheckHighConfidence: No learned redirect
+
     CheckHighConfidence --> Redirect302: Score >= 0.85 & gap >= 0.15
     CheckHighConfidence --> ShowSuggestions: Lower confidence
 
@@ -339,43 +372,81 @@ stateDiagram-v2
     EnableAutoRedirect --> [*]
 ```
 
-### The SlugRedirectMiddleware
+### The 404 Handler
 
-This runs early in the pipeline, before the 404 handler:
+All the redirect logic lives in the `ErrorController`. ASP.NET's `UseStatusCodePagesWithReExecute` middleware re-executes the request through our error handler when a 404 occurs:
 
 ```csharp
-public class SlugRedirectMiddleware(
-    RequestDelegate next,
-    ILogger<SlugRedirectMiddleware> logger)
+public class ErrorController(
+    BaseControllerService baseControllerService,
+    ILogger<ErrorController> logger,
+    ISlugSuggestionService? slugSuggestionService = null) : BaseController(baseControllerService, logger)
 {
-    public async Task InvokeAsync(
-        HttpContext context,
-        ISlugSuggestionService? slugSuggestionService)
+    [Route("/error/{statusCode}")]
+    [HttpGet]
+    public async Task<IActionResult> HandleError(int statusCode, CancellationToken cancellationToken = default)
     {
-        if (context.Request.Path.StartsWithSegments("/blog", StringComparison.OrdinalIgnoreCase))
+        var statusCodeReExecuteFeature = HttpContext.Features.Get<IStatusCodeReExecuteFeature>();
+
+        switch (statusCode)
         {
-            if (slugSuggestionService != null)
-            {
-                var (slug, language) = ExtractSlugAndLanguage(context.Request.Path);
+            case 404:
+                // Check for auto-redirects before showing 404 page
+                var autoRedirectResult = await TryAutoRedirectAsync(statusCodeReExecuteFeature, cancellationToken);
+                if (autoRedirectResult != null)
+                    return autoRedirectResult;
 
-                var targetSlug = await slugSuggestionService.GetAutoRedirectSlugAsync(
-                    slug, language, context.RequestAborted);
+                var model = await CreateNotFoundModel(statusCodeReExecuteFeature, cancellationToken);
+                return View("NotFound", model);
 
-                if (!string.IsNullOrWhiteSpace(targetSlug))
-                {
-                    var redirectUrl = language == "en"
-                        ? $"/blog/{targetSlug}"
-                        : $"/blog/{language}/{targetSlug}";
+            case 500:
+                return View("ServerError");
 
-                    // 301 Permanent Redirect - this is a learned, confident redirect
-                    context.Response.Redirect(redirectUrl, permanent: true);
-                    return;
-                }
-            }
+            default:
+                return View("Error");
         }
-
-        await next(context);
     }
+}
+```
+
+The `TryAutoRedirectAsync` method handles both learned redirects and high-confidence first-time matches:
+
+```csharp
+private async Task<IActionResult?> TryAutoRedirectAsync(
+    IStatusCodeReExecuteFeature? statusCodeReExecuteFeature,
+    CancellationToken cancellationToken)
+{
+    if (slugSuggestionService == null || statusCodeReExecuteFeature == null)
+        return null;
+
+    var originalPath = statusCodeReExecuteFeature.OriginalPath ?? string.Empty;
+    var (slug, language) = ExtractSlugAndLanguage(originalPath);
+
+    // First: check for learned redirects (user previously clicked a suggestion)
+    // These get 301 Permanent Redirect - confirmed patterns
+    var learnedTargetSlug = await slugSuggestionService.GetAutoRedirectSlugAsync(
+        slug, language, cancellationToken);
+
+    if (!string.IsNullOrWhiteSpace(learnedTargetSlug))
+    {
+        var redirectUrl = BuildRedirectUrl(learnedTargetSlug, language);
+        logger.LogInformation("Learned auto-redirect (301): {Original} -> {Target}", originalPath, redirectUrl);
+        return RedirectPermanent(redirectUrl);
+    }
+
+    // Second: check for high-confidence first-time matches
+    // These get 302 Temporary Redirect until confirmed by user clicks
+    var firstTimeTargetSlug = await slugSuggestionService.GetFirstTimeAutoRedirectSlugAsync(
+        slug, language, cancellationToken);
+
+    if (!string.IsNullOrWhiteSpace(firstTimeTargetSlug))
+    {
+        var redirectUrl = BuildRedirectUrl(firstTimeTargetSlug, language);
+        logger.LogInformation("First-time auto-redirect (302): {Original} -> {Target}", originalPath, redirectUrl);
+        return Redirect(redirectUrl);
+    }
+
+    return null;  // No redirect - show suggestions
 }
 ```
 
@@ -504,15 +575,19 @@ public async Task<string?> GetFirstTimeAutoRedirectSlugAsync(
 
 ## Putting It All Together
 
-The middleware registration order matters. Slug redirects need to run before the static file middleware and before MVC routing:
+### When Middleware Makes Sense (and When It Doesn't)
+
+For **outgoing links**, middleware is the right choice. The `BrokenLinkArchiveMiddleware` needs to intercept the HTML response *after* it's been rendered but *before* it's sent to the client. There's no other sensible place to do this - we need to modify the response stream, and middleware is designed for exactly that.
+
+For **incoming redirects**, middleware is the wrong choice. We'd be running database queries on every `/blog/*` request just to check if maybe, possibly, this URL might need a redirect. The 404 handler approach only runs that logic when we've already determined the page doesn't exist - much more efficient.
 
 ```csharp
 // In Program.cs
-app.UseSlugRedirect();  // Check for learned redirects early
+app.UseStatusCodePagesWithReExecute("/error/{0}");  // Handles 404s through ErrorController
 app.UseStaticFiles();
 app.UseRouting();
 // ... other middleware
-app.UseBrokenLinkArchive();  // Process outgoing links in responses
+app.UseBrokenLinkArchive();  // Process outgoing links in responses (ONLY for middleware)
 ```
 
 The flow looks like this:
@@ -521,32 +596,36 @@ The flow looks like this:
 flowchart LR
     subgraph Request["Request Processing"]
         direction TB
-        A[Request] --> B[SlugRedirectMiddleware]
-        B --> C[Static Files]
-        C --> D[Routing]
-        D --> E[MVC/Endpoints]
+        A[Request] --> B[Static Files]
+        B --> C[Routing]
+        C --> D{Page exists?}
+        D -->|Yes| E[MVC/Endpoints]
+        D -->|No| F[ErrorController 404]
+        F --> G{Auto-redirect?}
+        G -->|Yes| H[Redirect]
+        G -->|No| I[Show suggestions]
     end
 
     subgraph Response["Response Processing"]
         direction TB
-        E --> F[BrokenLinkArchiveMiddleware]
-        F --> G[Link Extraction]
-        G --> H[Link Replacement]
-        H --> I[Response]
+        E --> J[BrokenLinkArchiveMiddleware]
+        J --> K[Link Extraction]
+        K --> L[Link Replacement]
+        L --> M[Response]
     end
 
     subgraph Background["Background Processing"]
         direction TB
-        J[BrokenLinkCheckerService] --> K[Check URLs]
-        K --> L[Fetch Archive.org]
-        L --> M[Update Database]
+        N[BrokenLinkCheckerService] --> O[Check URLs]
+        O --> P[Fetch Archive.org]
+        P --> Q[Update Database]
     end
 
-    G -.->|Register links| J
+    K -.->|Register links| N
 
-    style B stroke:#3b82f6,stroke-width:3px
-    style F stroke:#8b5cf6,stroke-width:3px
-    style J stroke:#f59e0b,stroke-width:3px
+    style F stroke:#ef4444,stroke-width:3px
+    style J stroke:#8b5cf6,stroke-width:3px
+    style N stroke:#f59e0b,stroke-width:3px
 ```
 
 ## Conclusion
