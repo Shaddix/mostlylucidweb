@@ -6,17 +6,8 @@ namespace Mostlylucid.Middleware;
 /// Middleware to handle automatic redirects for learned slug mappings
 /// This runs before the 404 handler and provides 301 Permanent Redirects
 /// </summary>
-public class SlugRedirectMiddleware
+public class SlugRedirectMiddleware(RequestDelegate next, ILogger<SlugRedirectMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<SlugRedirectMiddleware> _logger;
-
-    public SlugRedirectMiddleware(RequestDelegate next, ILogger<SlugRedirectMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context, ISlugSuggestionService? slugSuggestionService)
     {
         // Only process blog post requests
@@ -52,7 +43,7 @@ public class SlugRedirectMiddleware
                         else
                         {
                             // Continue to next middleware
-                            await _next(context);
+                            await next(context);
                             return;
                         }
 
@@ -69,7 +60,7 @@ public class SlugRedirectMiddleware
                                 ? $"/blog/{targetSlug}"
                                 : $"/blog/{language}/{targetSlug}";
 
-                            _logger.LogInformation(
+                            logger.LogInformation(
                                 "Auto-redirecting {OriginalPath} to {RedirectUrl}",
                                 context.Request.Path, redirectUrl);
 
@@ -82,13 +73,13 @@ public class SlugRedirectMiddleware
                 catch (Exception ex)
                 {
                     // Log error but don't break the request
-                    _logger.LogError(ex, "Error in slug redirect middleware");
+                    logger.LogError(ex, "Error in slug redirect middleware");
                 }
             }
         }
 
         // Continue to next middleware
-        await _next(context);
+        await next(context);
     }
 }
 
