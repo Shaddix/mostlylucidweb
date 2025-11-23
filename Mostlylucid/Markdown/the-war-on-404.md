@@ -242,6 +242,15 @@ The service runs hourly and does two things:
 1. **Check link validity** - HEAD requests to see if links are still alive
 2. **Fetch archive.org URLs** - For broken links, find the closest historical snapshot
 
+We're good citizens about this - the checker uses a custom User-Agent that identifies itself and links back to the site:
+
+```csharp
+request.Headers.UserAgent.ParseAdd(
+    "Mozilla/5.0 (compatible; MostlylucidBot/1.0; +https://www.mostlylucid.net)");
+```
+
+This lets site admins see what's hitting their server, and they can look us up if they're curious. We also throttle requests (2 seconds between checks) to avoid hammering anyone's server.
+
 Crucially, links are **periodically re-checked**. A link that was working last week might be dead today. The service picks up links that haven't been checked in the last 24 hours and verifies them again. However, once we've found an archive.org replacement for a broken link, we don't re-check the original - it's already dead and we have a working replacement.
 
 ```mermaid
