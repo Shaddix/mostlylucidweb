@@ -23,7 +23,7 @@ If you want to see them all use the 'Imported' tag https://www.mostlylucid.net/b
 
 I think you can say that nearly 22 years later I DID settle on the web site writing thing 🤓
 
-They're not sizzling content but surprisingly I STILL get 404 links for old pages so the eventual goal will be once I have the semantic 404 thing it'd auto handle those. 
+They're not sizzling content but surprisingly I STILL get 404 links for old pages so the eventual goal will be once I have the semantic 404 thing it'd auto handle those. Coming soon, it does stuff with a midddleware where it replaces old link swith *the closest archive.org* link in time, so they'll contemporary!. 
 
 Anyway it's the end of a LONG quest for me to resurrect those articles, they have a TON of dead links which I'll handle in future (new blog article about auto handling old links coming soon!)
 

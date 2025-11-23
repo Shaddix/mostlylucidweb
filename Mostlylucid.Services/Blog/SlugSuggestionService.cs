@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Models.Blog;
 
@@ -14,16 +15,21 @@ public class SlugSuggestionService : ISlugSuggestionService
 {
     private readonly MostlylucidDbContext _context;
     private readonly ILogger<SlugSuggestionService> _logger;
+    private readonly ISemanticSearchService? _semanticSearchService;
     private const int MaxLevenshteinDistance = 5; // Maximum edit distance for suggestions
     private const double MinSimilarityThreshold = 0.4; // Minimum similarity score (0-1)
     private const double LearnedWeightBoost = 0.3; // Boost for learned redirects
+    private const double AutoRedirectScoreThreshold = 0.85; // Score threshold for auto-redirect on first-time typos
+    private const double AutoRedirectScoreGap = 0.15; // Gap between top match and second to auto-redirect
 
     public SlugSuggestionService(
         MostlylucidDbContext context,
-        ILogger<SlugSuggestionService> logger)
+        ILogger<SlugSuggestionService> logger,
+        ISemanticSearchService? semanticSearchService = null)
     {
         _context = context;
         _logger = logger;
+        _semanticSearchService = semanticSearchService;
     }
 
     /// <inheritdoc />
@@ -376,6 +382,178 @@ public class SlugSuggestionService : ISlugSuggestionService
         }
 
         return prefixLength;
+    }
+
+    /// <inheritdoc />
+    public async Task<List<SlugSuggestionWithScore>> GetSuggestionsWithScoreAsync(
+        string requestedSlug,
+        string language = "en",
+        int maxSuggestions = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(requestedSlug))
+        {
+            return new List<SlugSuggestionWithScore>();
+        }
+
+        var normalizedSlug = NormalizeSlug(requestedSlug);
+        var searchTerm = normalizedSlug.Replace("-", " ");
+
+        _logger.LogInformation("Finding suggestions with scores for slug: {RequestedSlug} (search term: {SearchTerm})",
+            requestedSlug, searchTerm);
+
+        var results = new List<SlugSuggestionWithScore>();
+
+        // Try semantic search first if available
+        if (_semanticSearchService != null)
+        {
+            try
+            {
+                var semanticResults = await _semanticSearchService.SearchAsync(searchTerm, maxSuggestions, cancellationToken);
+
+                foreach (var sr in semanticResults)
+                {
+                    results.Add(new SlugSuggestionWithScore(
+                        new PostListModel
+                        {
+                            Slug = sr.Slug,
+                            Title = sr.Title,
+                            Language = sr.Language,
+                            PublishedDate = sr.PublishedDate,
+                            Categories = sr.Categories.ToArray()
+                        },
+                        sr.Score
+                    ));
+                }
+
+                if (results.Count > 0)
+                {
+                    _logger.LogInformation("Found {Count} semantic search suggestions for: {RequestedSlug}",
+                        results.Count, requestedSlug);
+                    return results;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Semantic search failed for slug suggestion: {RequestedSlug}", requestedSlug);
+            }
+        }
+
+        // Fall back to Levenshtein-based matching
+        var learnedRedirects = await _context.SlugRedirects
+            .AsNoTracking()
+            .Where(r => r.FromSlug == normalizedSlug && r.Language == language)
+            .ToDictionaryAsync(r => r.ToSlug, r => r, cancellationToken);
+
+        var allPosts = await _context.BlogPosts
+            .AsNoTracking()
+            .Where(p => p.LanguageEntity.Name == language && !p.IsHidden)
+            .Select(p => new
+            {
+                p.Id,
+                p.Slug,
+                p.Title,
+                p.PublishedDate,
+                p.Categories,
+                Language = p.LanguageEntity.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        if (!allPosts.Any())
+        {
+            return results;
+        }
+
+        var scoredPosts = allPosts
+            .Select(post =>
+            {
+                var baseScore = CalculateSimilarity(normalizedSlug, post.Slug);
+
+                if (learnedRedirects.TryGetValue(post.Slug, out var redirect))
+                {
+                    baseScore += LearnedWeightBoost * redirect.ConfidenceScore;
+                    baseScore = Math.Min(1.0, baseScore);
+                }
+
+                return new
+                {
+                    Post = post,
+                    Score = baseScore
+                };
+            })
+            .Where(x => x.Score >= MinSimilarityThreshold)
+            .OrderByDescending(x => x.Score)
+            .Take(maxSuggestions)
+            .ToList();
+
+        results = scoredPosts.Select(x => new SlugSuggestionWithScore(
+            new PostListModel
+            {
+                Id = x.Post.Id.ToString(),
+                Slug = x.Post.Slug,
+                Title = x.Post.Title,
+                PublishedDate = x.Post.PublishedDate.DateTime,
+                Categories = x.Post.Categories.Select(c => c.Name).ToArray(),
+                Language = x.Post.Language
+            },
+            x.Score
+        )).ToList();
+
+        _logger.LogInformation("Found {Count} Levenshtein suggestions for slug: {RequestedSlug}",
+            results.Count, requestedSlug);
+
+        return results;
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> GetFirstTimeAutoRedirectSlugAsync(
+        string requestedSlug,
+        string language,
+        CancellationToken cancellationToken = default)
+    {
+        var suggestions = await GetSuggestionsWithScoreAsync(requestedSlug, language, 2, cancellationToken);
+
+        if (suggestions.Count == 0)
+        {
+            return null;
+        }
+
+        var topMatch = suggestions[0];
+
+        // Check if the top match has a high enough score
+        if (topMatch.Score < AutoRedirectScoreThreshold)
+        {
+            _logger.LogDebug(
+                "Top match score {Score:F2} for {RequestedSlug} -> {TargetSlug} below auto-redirect threshold {Threshold:F2}",
+                topMatch.Score, requestedSlug, topMatch.Post.Slug, AutoRedirectScoreThreshold);
+            return null;
+        }
+
+        // If there's only one suggestion with high score, redirect
+        if (suggestions.Count == 1)
+        {
+            _logger.LogInformation(
+                "Auto-redirect (single high-confidence match): {RequestedSlug} -> {TargetSlug} (score: {Score:F2})",
+                requestedSlug, topMatch.Post.Slug, topMatch.Score);
+            return topMatch.Post.Slug;
+        }
+
+        // If there are multiple suggestions, only redirect if there's a significant gap
+        var secondMatch = suggestions[1];
+        var scoreGap = topMatch.Score - secondMatch.Score;
+
+        if (scoreGap >= AutoRedirectScoreGap)
+        {
+            _logger.LogInformation(
+                "Auto-redirect (clear winner): {RequestedSlug} -> {TargetSlug} (score: {Score:F2}, gap: {Gap:F2})",
+                requestedSlug, topMatch.Post.Slug, topMatch.Score, scoreGap);
+            return topMatch.Post.Slug;
+        }
+
+        _logger.LogDebug(
+            "No auto-redirect for {RequestedSlug}: scores too close ({TopScore:F2} vs {SecondScore:F2})",
+            requestedSlug, topMatch.Score, secondMatch.Score);
+        return null;
     }
 
     /// <summary>

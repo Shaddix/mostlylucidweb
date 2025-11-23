@@ -12,29 +12,41 @@
         </p>
     }
 
-    @if (Model?.Suggestions?.Any() == true)
+    @if (Model?.SuggestionsWithScores?.Any() == true)
     {
         <div class="mt-8">
             <h2 class="text-2xl font-semibold mb-4">Did you mean one of these?</h2>
             <div class="space-y-4">
-                @for (var i = 0; i < Model.Suggestions.Count; i++)
+                @for (var i = 0; i < Model.SuggestionsWithScores.Count; i++)
                 {
-                    var suggestion = Model.Suggestions[i];
+                    var suggestionWithScore = Model.SuggestionsWithScores[i];
+                    var suggestion = suggestionWithScore.Post;
+                    var score = suggestionWithScore.Score;
                     var suggestionUrl = $"/blog/{(suggestion.Language != "en" ? suggestion.Language + "/" : "")}{suggestion.Slug}";
 
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <h3 class="text-xl font-semibold mb-2">
-                            <a href="@suggestionUrl"
-                               class="text-blue-600 dark:text-blue-400 hover:underline suggestion-link"
-                               data-requested-slug="@Model.OriginalPath"
-                               data-clicked-slug="@suggestion.Slug"
-                               data-language="@suggestion.Language"
-                               data-position="@i"
-                               data-score="0.5"
-                               onclick="trackSuggestionClick(this, event)">
-                                @suggestion.Title
-                            </a>
-                        </h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-semibold">
+                                <a href="@suggestionUrl"
+                                   class="text-blue-600 dark:text-blue-400 hover:underline suggestion-link"
+                                   data-requested-slug="@Model.OriginalPath"
+                                   data-clicked-slug="@suggestion.Slug"
+                                   data-language="@suggestion.Language"
+                                   data-position="@i"
+                                   data-score="@score.ToString("F2")"
+                                   onclick="trackSuggestionClick(this, event)">
+                                    @suggestion.Title
+                                </a>
+                            </h3>
+                            @if (score >= 0.7)
+                            {
+                                <span class="badge badge-success text-xs">High match</span>
+                            }
+                            else if (score >= 0.5)
+                            {
+                                <span class="badge badge-warning text-xs">Possible match</span>
+                            }
+                        </div>
                         @if (suggestion.Categories?.Any() == true)
                         {
                             <div class="flex flex-wrap gap-2 mb-2">
