@@ -26,9 +26,7 @@
     action="@Url.Action("Search", "Search")"
     hx-push-url="true"
     hx-boost="true"
-    hx-target="#content"
-    hx-swap="outerHTML show:window:top"
-    hx-headers='{"pagerequest": "true"}'>
+    hx-swap="show:window:top">
 
     <!-- Main search bar -->
     <div class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg">
@@ -91,7 +89,14 @@
                 <option value="">All Languages</option>
                 @foreach (var lang in Model.AvailableLanguages)
                 {
-                    <option value="@lang" @(Model.Filters.Language == lang ? "selected" : "")>@lang.ToUpper()</option>
+                    if (Model.Filters.Language == lang)
+                    {
+                        <option value="@lang" selected>@lang.ToUpper()</option>
+                    }
+                    else
+                    {
+                        <option value="@lang">@lang.ToUpper()</option>
+                    }
                 }
             </select>
         </div>
@@ -106,11 +111,11 @@
                 x-model="dateRange"
                 x-on:change="if(dateRange != 4) { startDate = ''; endDate = ''; }"
                 class="select select-sm select-bordered w-36">
-                <option value="0" @(Model.Filters.DateRange == DateRangeOption.AllTime ? "selected" : "")>All Time</option>
-                <option value="1" @(Model.Filters.DateRange == DateRangeOption.LastWeek ? "selected" : "")>Last Week</option>
-                <option value="2" @(Model.Filters.DateRange == DateRangeOption.LastMonth ? "selected" : "")>Last Month</option>
-                <option value="3" @(Model.Filters.DateRange == DateRangeOption.LastYear ? "selected" : "")>Last Year</option>
-                <option value="4" @(Model.Filters.DateRange == DateRangeOption.Custom ? "selected" : "")>Custom</option>
+                <option value="0" selected="@(Model.Filters.DateRange == DateRangeOption.AllTime)">All Time</option>
+                <option value="1" selected="@(Model.Filters.DateRange == DateRangeOption.LastWeek)">Last Week</option>
+                <option value="2" selected="@(Model.Filters.DateRange == DateRangeOption.LastMonth)">Last Month</option>
+                <option value="3" selected="@(Model.Filters.DateRange == DateRangeOption.LastYear)">Last Year</option>
+                <option value="4" selected="@(Model.Filters.DateRange == DateRangeOption.Custom)">Custom</option>
             </select>
         </div>
 
