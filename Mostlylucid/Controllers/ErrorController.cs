@@ -86,20 +86,37 @@ public class ErrorController(
 
         try
         {
-            var targetSlug = await slugSuggestionService.GetFirstTimeAutoRedirectSlugAsync(slug, language, cancellationToken);
+            // First check for learned redirects (user previously clicked a suggestion)
+            // These get 301 Permanent Redirect as they're confirmed patterns
+            var learnedTargetSlug = await slugSuggestionService.GetAutoRedirectSlugAsync(slug, language, cancellationToken);
 
-            if (!string.IsNullOrWhiteSpace(targetSlug))
+            if (!string.IsNullOrWhiteSpace(learnedTargetSlug))
             {
                 var redirectUrl = language == "en"
-                    ? $"/blog/{targetSlug}"
-                    : $"/blog/{language}/{targetSlug}";
+                    ? $"/blog/{learnedTargetSlug}"
+                    : $"/blog/{language}/{learnedTargetSlug}";
+
+                logger.LogInformation(
+                    "Learned auto-redirect (301): {OriginalPath} -> {RedirectUrl}",
+                    originalPath, redirectUrl);
+
+                return RedirectPermanent(redirectUrl);
+            }
+
+            // Then check for high-confidence first-time matches
+            // These get 302 Temporary Redirect until the pattern is confirmed by user clicks
+            var firstTimeTargetSlug = await slugSuggestionService.GetFirstTimeAutoRedirectSlugAsync(slug, language, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(firstTimeTargetSlug))
+            {
+                var redirectUrl = language == "en"
+                    ? $"/blog/{firstTimeTargetSlug}"
+                    : $"/blog/{language}/{firstTimeTargetSlug}";
 
                 logger.LogInformation(
                     "First-time auto-redirect (302): {OriginalPath} -> {RedirectUrl}",
                     originalPath, redirectUrl);
 
-                // Use 302 Found (temporary redirect) for first-time matches
-                // Once the pattern is learned, SlugRedirectMiddleware will use 301
                 return Redirect(redirectUrl);
             }
         }

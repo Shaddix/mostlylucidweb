@@ -232,10 +232,6 @@ try
         }
     });
 
-    // Add slug redirect middleware before status code pages
-    // This allows automatic redirects for learned slug mappings
-    app.UseSlugRedirect();
-
     app.UseStatusCodePagesWithReExecute("/error/{0}");
 
     app.UseRouting();
