@@ -16,7 +16,13 @@
       "Bash(Select-Object -First 50)",
       "Bash(npm run build:*)",
       "Bash(Select-Object -Last 20)",
-      "WebFetch(domain:www.mostlylucid.net)"
+      "WebFetch(domain:www.mostlylucid.net)",
+      "Bash(dotnet ef migrations list:*)",
+      "Bash(dotnet ef migrations has-pending-model-changes:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef migrations remove:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(Select-String -Pattern \"error|warning|Build succeeded|Build FAILED\")"
     ],
     "deny": [],
     "ask": []

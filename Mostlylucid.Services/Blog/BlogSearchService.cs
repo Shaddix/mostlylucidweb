@@ -11,6 +11,14 @@ namespace Mostlylucid.Services.Blog;
 
 public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchService semanticSearchService)
 {
+    public async Task<List<string>> GetAvailableLanguagesAsync()
+    {
+        return await context.Languages
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .Select(x => x.Name)
+            .ToListAsync();
+    }
 
     public async Task<BasePagingModel<BlogPostDto>> GetPosts(string? query, int page = 1, int pageSize = 10)
     {
@@ -180,16 +188,33 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
     /// </summary>
     public async Task<BasePagingModel<BlogPostDto>> HybridSearchWithPagingAsync(string? query, int page = 1, int pageSize = 10)
     {
+        return await HybridSearchWithPagingAsync(query, null, null, null, page, pageSize);
+    }
+
+    /// <summary>
+    /// Hybrid search with paging and filters: tries semantic search first, falls back to PostgreSQL
+    /// </summary>
+    public async Task<BasePagingModel<BlogPostDto>> HybridSearchWithPagingAsync(
+        string? query,
+        string? language,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page = 1,
+        int pageSize = 10)
+    {
         if (string.IsNullOrWhiteSpace(query))
             return new BasePagingModel<BlogPostDto>();
 
         using var activity = Log.Logger.StartActivity("HybridSearchWithPaging");
         activity.AddProperty("Query", query);
+        activity.AddProperty("Language", language ?? "all");
         activity.AddProperty("Page", page);
         activity.AddProperty("PageSize", pageSize);
 
+        var targetLanguage = string.IsNullOrEmpty(language) ? "en" : language;
+
         // Try semantic search first
-        var semanticResults = await semanticSearchService.SearchAsync(query, pageSize * 2); // Get more for potential filtering
+        var semanticResults = await semanticSearchService.SearchAsync(query, pageSize * 3); // Get more for potential filtering
 
         if (semanticResults.Count > 0)
         {
@@ -197,15 +222,22 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
             var slugs = semanticResults.Select(r => r.Slug).ToList();
             var now = DateTimeOffset.UtcNow;
 
-            var posts = await context.BlogPosts
+            var postsQuery = context.BlogPosts
                 .Include(x => x.Categories)
                 .Include(x => x.LanguageEntity)
                 .AsNoTracking()
                 .Where(x => slugs.Contains(x.Slug)
                             && !x.IsHidden
                             && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
-                            && x.LanguageEntity.Name == "en")
-                .ToListAsync();
+                            && x.LanguageEntity.Name == targetLanguage);
+
+            // Apply date filters
+            if (startDate.HasValue)
+                postsQuery = postsQuery.Where(x => x.PublishedDate >= startDate.Value);
+            if (endDate.HasValue)
+                postsQuery = postsQuery.Where(x => x.PublishedDate <= endDate.Value);
+
+            var posts = await postsQuery.ToListAsync();
 
             // Order by semantic search ranking
             var orderedPosts = slugs
@@ -225,7 +257,69 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
             };
         }
 
-        // Fall back to PostgreSQL full-text search
-        return await GetPosts(query, page, pageSize);
+        // Fall back to PostgreSQL full-text search with filters
+        return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize);
+    }
+
+    private async Task<BasePagingModel<BlogPostDto>> GetPostsWithFilters(
+        string query,
+        string language,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var baseQuery = context.BlogPosts
+            .Include(x => x.Categories)
+            .Include(x => x.LanguageEntity)
+            .AsNoTracking()
+            .Where(x =>
+                !x.IsHidden
+                && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
+                && x.LanguageEntity.Name == language);
+
+        // Apply date filters
+        if (startDate.HasValue)
+            baseQuery = baseQuery.Where(x => x.PublishedDate >= startDate.Value);
+        if (endDate.HasValue)
+            baseQuery = baseQuery.Where(x => x.PublishedDate <= endDate.Value);
+
+        // Apply text search
+        IQueryable<BlogPostEntity> searchQuery;
+        if (query.Contains(" "))
+        {
+            searchQuery = baseQuery.Where(x =>
+                x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", query))
+                || x.Categories.Any(c =>
+                    EF.Functions.ToTsVector("english", c.Name)
+                        .Matches(EF.Functions.WebSearchToTsQuery("english", query))))
+                .OrderByDescending(x =>
+                    x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", query)));
+        }
+        else
+        {
+            searchQuery = baseQuery.Where(x =>
+                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", query + ":*"))
+                || x.Categories.Any(c =>
+                    EF.Functions.ToTsVector("english", c.Name)
+                        .Matches(EF.Functions.ToTsQuery("english", query + ":*"))))
+                .OrderByDescending(x =>
+                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", query + ":*")));
+        }
+
+        var totalPosts = await searchQuery.CountAsync();
+        var results = await searchQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new BasePagingModel<BlogPostDto>
+        {
+            Data = results.Select(x => x.ToDto()).ToList(),
+            TotalItems = totalPosts,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 }

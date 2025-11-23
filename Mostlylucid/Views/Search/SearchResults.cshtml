@@ -1,4 +1,5 @@
 ﻿@model Mostlylucid.Models.Search.SearchResultsModel
+@using Mostlylucid.Models.Search
 
 @{
     ViewBag.Title = "Search Results";
@@ -9,14 +10,19 @@
 <form
     x-data="{
         query: '@Model.Query',
-        autoSearch: true, 
-        checkSubmit() { 
-            if (this.autoSearch && this.query.length > 2) { 
-                $refs.searchButton.click(); 
-            } 
+        autoSearch: true,
+        showFilters: false,
+        language: '@(Model.Filters.Language ?? "")',
+        dateRange: '@((int)Model.Filters.DateRange)',
+        startDate: '@(Model.Filters.StartDate?.ToString("yyyy-MM-dd") ?? "")',
+        endDate: '@(Model.Filters.EndDate?.ToString("yyyy-MM-dd") ?? "")',
+        checkSubmit() {
+            if (this.autoSearch && this.query.length > 2) {
+                $refs.searchButton.click();
+            }
         }
     }"
-    class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg"
+    class="space-y-2"
     action="@Url.Action("Search", "Search")"
     hx-push-url="true"
     hx-boost="true"
@@ -24,33 +30,172 @@
     hx-swap="outerHTML show:window:top"
     hx-headers='{"pagerequest": "true"}'>
 
-    <button
-        type="submit"
-        x-ref="searchButton"
-        class="btn btn-outline btn-sm flex items-center gap-2 text-black dark:text-white">
-        Search
-        <i class="bx bx-search text-lg"></i>
-    </button>
-    <label class="flex items-center gap-2">
+    <!-- Main search bar -->
+    <div class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg">
+        <button
+            type="submit"
+            x-ref="searchButton"
+            class="btn btn-outline btn-sm flex items-center gap-2 text-black dark:text-white">
+            Search
+            <i class="bx bx-search text-lg"></i>
+        </button>
+        <label class="flex items-center gap-2">
+            <input
+                type="checkbox"
+                x-model="autoSearch"
+                class="checkbox checkbox-primary checkbox-sm"
+            />
+            <span class="text-black dark:text-white text-sm">Auto</span>
+        </label>
         <input
-            type="checkbox"
-            x-model="autoSearch"
-            class="checkbox checkbox-primary"
+            type="text"
+            placeholder="Search..."
+            name="query"
+            value="@Model.Query"
+            x-model="query"
+            x-on:input.debounce.200ms="checkSubmit"
+            x-on:keydown.enter.prevent="$refs.searchButton.click()"
+            class="input input-sm border-0 grow text-black dark:text-white bg-transparent focus:outline-none"
         />
-        <span class="text-black dark:text-white">Auto</span>
-    </label>
-    <input
-        type="text"
-        placeholder="Search..."
-        name="query"
-        value="@Model.Query"
-        x-model="query"
-        x-on:input.debounce.200ms="checkSubmit"
-        x-on:keydown.enter.prevent="$refs.searchButton.click()"
-        class="input input-sm border-0 grow text-black dark:text-white bg-transparent focus:outline-none"
-    />
+        <!-- Filter toggle button -->
+        <button
+            type="button"
+            x-on:click="showFilters = !showFilters"
+            class="btn btn-ghost btn-sm flex items-center gap-1"
+            x-bind:class="showFilters ? 'btn-active' : ''">
+            <i class="bx bx-filter text-lg"></i>
+            <span class="hidden sm:inline text-sm">Filters</span>
+        </button>
+    </div>
 
+    <!-- Filter bar (collapsible) -->
+    <div
+        x-show="showFilters"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform -translate-y-2"
+        x-transition:enter-end="opacity-100 transform translate-y-0"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 transform translate-y-0"
+        x-transition:leave-end="opacity-0 transform -translate-y-2"
+        class="flex flex-wrap items-center gap-3 bg-base-200 p-3 rounded-lg">
 
+        <!-- Language filter -->
+        <div class="form-control">
+            <label class="label py-0">
+                <span class="label-text text-xs">Language</span>
+            </label>
+            <select
+                name="language"
+                x-model="language"
+                class="select select-sm select-bordered w-32">
+                <option value="">All Languages</option>
+                @foreach (var lang in Model.AvailableLanguages)
+                {
+                    <option value="@lang" @(Model.Filters.Language == lang ? "selected" : "")>@lang.ToUpper()</option>
+                }
+            </select>
+        </div>
+
+        <!-- Date range filter -->
+        <div class="form-control">
+            <label class="label py-0">
+                <span class="label-text text-xs">Date Range</span>
+            </label>
+            <select
+                name="dateRange"
+                x-model="dateRange"
+                x-on:change="if(dateRange != 4) { startDate = ''; endDate = ''; }"
+                class="select select-sm select-bordered w-36">
+                <option value="0" @(Model.Filters.DateRange == DateRangeOption.AllTime ? "selected" : "")>All Time</option>
+                <option value="1" @(Model.Filters.DateRange == DateRangeOption.LastWeek ? "selected" : "")>Last Week</option>
+                <option value="2" @(Model.Filters.DateRange == DateRangeOption.LastMonth ? "selected" : "")>Last Month</option>
+                <option value="3" @(Model.Filters.DateRange == DateRangeOption.LastYear ? "selected" : "")>Last Year</option>
+                <option value="4" @(Model.Filters.DateRange == DateRangeOption.Custom ? "selected" : "")>Custom</option>
+            </select>
+        </div>
+
+        <!-- Custom date inputs (shown when Custom is selected) -->
+        <template x-if="dateRange == 4">
+            <div class="flex items-center gap-2">
+                <div class="form-control">
+                    <label class="label py-0">
+                        <span class="label-text text-xs">From</span>
+                    </label>
+                    <input
+                        type="date"
+                        name="startDate"
+                        x-model="startDate"
+                        class="input input-sm input-bordered w-36"
+                    />
+                </div>
+                <div class="form-control">
+                    <label class="label py-0">
+                        <span class="label-text text-xs">To</span>
+                    </label>
+                    <input
+                        type="date"
+                        name="endDate"
+                        x-model="endDate"
+                        class="input input-sm input-bordered w-36"
+                    />
+                </div>
+            </div>
+        </template>
+
+        <!-- Apply filters button -->
+        <div class="form-control mt-4">
+            <button
+                type="submit"
+                class="btn btn-primary btn-sm">
+                <i class="bx bx-check mr-1"></i>
+                Apply
+            </button>
+        </div>
+
+        <!-- Clear filters button -->
+        <div class="form-control mt-4">
+            <button
+                type="button"
+                x-on:click="language = ''; dateRange = '0'; startDate = ''; endDate = ''; $refs.searchButton.click();"
+                class="btn btn-ghost btn-sm">
+                <i class="bx bx-x mr-1"></i>
+                Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Active filters badges -->
+    @if (!string.IsNullOrEmpty(Model.Filters.Language) || Model.Filters.DateRange != DateRangeOption.AllTime)
+    {
+        <div class="flex flex-wrap gap-2">
+            @if (!string.IsNullOrEmpty(Model.Filters.Language))
+            {
+                <span class="badge badge-primary gap-1">
+                    Language: @Model.Filters.Language.ToUpper()
+                </span>
+            }
+            @if (Model.Filters.DateRange != DateRangeOption.AllTime)
+            {
+                <span class="badge badge-secondary gap-1">
+                    @switch (Model.Filters.DateRange)
+                    {
+                        case DateRangeOption.LastWeek:
+                            @:Last Week
+                            break;
+                        case DateRangeOption.LastMonth:
+                            @:Last Month
+                            break;
+                        case DateRangeOption.LastYear:
+                            @:Last Year
+                            break;
+                        case DateRangeOption.Custom:
+                            @:@(Model.Filters.StartDate?.ToString("MMM d, yyyy") ?? "Start") - @(Model.Filters.EndDate?.ToString("MMM d, yyyy") ?? "End")
+                            break;
+                    }
+                </span>
+            }
+        </div>
+    }
 </form>
 
 
