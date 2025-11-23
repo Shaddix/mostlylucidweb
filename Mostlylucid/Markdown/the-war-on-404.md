@@ -5,12 +5,20 @@
 
 ## The War On 404: Making Old Stuff Work Again
 
-When you've been blogging since 2004 (yes, really), you accumulate a lot of digital detritus. I recently imported my old posts from 2004-2009 and discovered that approximately *everything* was broken. External links pointing to sites that vanished a decade ago, internal links to slugs that no longer exist, the whole lot. Rather than manually fixing thousands of links (life's too short), I built a system to handle it automatically.
+When you've been blogging since 2004 (yes, really), you accumulate a lot of digital detritus. I recently imported my old posts from 2004-2009 and discovered that approximately *everything* was broken. External links pointing to sites that vanished a decade ago, old URL schemes that no longer match the current structure, the whole lot.
 
-This article covers my approach to keeping old content alive:
+The problem breaks down into three parts:
+
+1. **Internal links** - Fixed during the import process itself. My old posts referenced each other using the old URL scheme, so I rewrote those as part of the migration.
+
+2. **External links (outgoing)** - This is the big one. Links to external resources that have since vanished, moved, or become completely different sites. A link to some documentation from 2006? Gone. A reference to a blog post by someone who's long since taken their site down? Dead. These need runtime handling.
+
+3. **Incoming requests** - People (and search engines) still try to access old URLs like `/archive/2006/05/15/123.aspx`. The semantic search system can often figure out what they were after, even without an exact slug match.
+
+This article covers my approach:
 - **Outgoing links**: `BrokenLinkArchiveMiddleware` - replaces dead external links with archive.org snapshots
-- **Incoming links**: The 404 handler - learns from user behaviour to redirect mistyped or old URLs
-- **The learning system**: How the site gets smarter over time
+- **Incoming links**: The 404 handler with semantic search - finds the right content even from old URL schemes
+- **The learning system**: How the site gets smarter over time from user clicks
 - **Background processing**: Checking links without blocking requests
 
 [TOC]
@@ -309,7 +317,13 @@ public class BrokenLinkEntity
 
 ## Part 3: Handling Incoming Requests
 
-Now for the other side of the coin: people requesting URLs that don't exist.
+Now for the other side of the coin: people (and search engines) requesting URLs that don't exist. This includes:
+
+- **Old URL schemes** - My ancient blog used paths like `/archive/2006/05/15/123.aspx`. Some of these are still indexed, bookmarked, or linked from other sites.
+- **Typos** - Someone fat-fingers the URL or copies it incorrectly.
+- **Partial slugs** - Search engines sometimes index weird fragments.
+
+The semantic search system is particularly helpful here. Even without a direct slug match, we can extract meaningful terms from the requested URL and find content that semantically matches. The system knows both the slug and has embedding data for each post, so it can find "close enough" matches even for completely different URL structures.
 
 ### Why Not Middleware?
 
