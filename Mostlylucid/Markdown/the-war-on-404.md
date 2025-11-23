@@ -194,9 +194,11 @@ if (allLinks.Count > 0)
 
 Note the `IServiceScopeFactory` - we need a new scope because the original request's scoped services will be disposed before our background task completes.
 
+**Important**: This is an *eventual consistency* model. When a new link is first discovered, it's not fixed on that request - the user sees the original (possibly broken) link. The link gets queued, the background service checks it (finding it's broken), fetches the archive.org replacement, and stores it in the database. The *next* visitor to that page will see the fixed link. For a blog with regular traffic, this typically means broken links get fixed within hours of first discovery.
+
 ### Replacing Broken Links
 
-Once we know a link is broken and have an archive.org replacement, we swap them out with a helpful tooltip:
+Once we know a link is broken and have an archive.org replacement (from a previous background check), we swap them out with a helpful tooltip:
 
 ```csharp
 foreach (var (originalUrl, archiveUrl) in archiveMappings)
