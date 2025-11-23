@@ -344,3 +344,4 @@ This completes the practical implementation of RAG-style semantic search. Combin
 All code is available at: [github.com/scottgal/mostlylucidweb](https://github.com/scottgal/mostlylucidweb)
 - `Mostlylucid.SemanticSearch/` - Core semantic search library
 - `Mostlylucid/Blog/WatcherService/` - File watcher with semantic indexing
+ 

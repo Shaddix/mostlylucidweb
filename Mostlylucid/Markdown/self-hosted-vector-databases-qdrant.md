@@ -1,6 +1,6 @@
 # Self-Hosted Vector Databases with Qdrant: A Deep Dive
 
-<datetime class="hidden">2025-11-22T13:00</datetime>
+<datetime class="hidden">2025-11-23T13:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, Vector Databases, Qdrant, RAG, AI-Article -->
 
 # Introduction
