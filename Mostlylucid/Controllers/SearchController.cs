@@ -36,7 +36,7 @@ public class SearchController(
             if (Request.IsHtmx()) return PartialView("SearchResults", emptyModel);
             return View("SearchResults", emptyModel);
         }
-        var searchResults = await searchService.GetPosts(query, page, pageSize);
+        var searchResults = await searchService.HybridSearchWithPagingAsync(query, page, pageSize);
  
         var searchModel = new SearchResultsModel
         {

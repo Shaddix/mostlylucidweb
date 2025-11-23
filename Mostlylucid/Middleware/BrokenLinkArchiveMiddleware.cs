@@ -10,7 +10,7 @@ namespace Mostlylucid.Middleware;
 /// - External broken links: Uses archive.org URL if available, otherwise removes href (plain text)
 /// - Internal broken links: Uses semantic search to find matching content
 /// </summary>
-public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<BrokenLinkArchiveMiddleware> logger)
+public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<BrokenLinkArchiveMiddleware> logger, IServiceScopeFactory serviceScopeFactory)
 {
     // Regex to extract full anchor tags with href
     [GeneratedRegex(@"<a\s+([^>]*\shref\s*=\s*[""']([^""']+)[""'][^>]*)>([^<]*)</a>", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
@@ -75,11 +75,14 @@ public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<B
                     if (allLinks.Count > 0)
                     {
                         // Fire and forget - don't block the response
+                        // Must create a new scope since the original scoped services will be disposed
                         _ = Task.Run(async () =>
                         {
                             try
                             {
-                                await brokenLinkService.RegisterUrlsAsync(allLinks, sourcePageUrl);
+                                using var scope = serviceScopeFactory.CreateScope();
+                                var scopedBrokenLinkService = scope.ServiceProvider.GetRequiredService<IBrokenLinkService>();
+                                await scopedBrokenLinkService.RegisterUrlsAsync(allLinks, sourcePageUrl);
                             }
                             catch (Exception ex)
                             {

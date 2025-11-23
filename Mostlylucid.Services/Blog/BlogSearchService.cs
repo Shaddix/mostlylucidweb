@@ -110,38 +110,69 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         return posts.Select(x => (x.Title, x.Slug)).ToList();
     }
 
-    public record SearchResults(string Title, string Slug, string Url);
+    public record SearchResults(string Title, string Slug, string Url, float Score = 1.0f);
 
     /// <summary>
     /// Hybrid search: tries semantic search first, falls back to PostgreSQL full-text search
+    /// Results are ordered by match quality (score)
     /// </summary>
-    public async Task<List<SearchResults>> HybridSearchAsync(string query, int limit = 5)
+    public async Task<List<SearchResults>> HybridSearchAsync(string query, int limit = 10)
     {
         if (string.IsNullOrWhiteSpace(query))
             return new List<SearchResults>();
 
-        // Try semantic search first
-        var semanticResults = await semanticSearchService.SearchAsync(query, limit);
-
-        if (semanticResults.Count > 0)
+        // Try semantic search first (with graceful fallback on error)
+        try
         {
-            return semanticResults.Select(r => new SearchResults(
-                r.Title,
-                r.Slug,
-                $"/blog/{r.Slug}"
-            )).ToList();
+            var semanticResults = await semanticSearchService.SearchAsync(query, limit);
+
+            if (semanticResults.Count > 0)
+            {
+                // Semantic results are already sorted by score
+                return semanticResults.Select(r => new SearchResults(
+                    r.Title,
+                    r.Slug,
+                    $"/blog/{r.Slug}",
+                    r.Score
+                )).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail - fall back to PostgreSQL
+            Log.Logger.Warning(ex, "Semantic search failed, falling back to PostgreSQL full-text search");
         }
 
         // Fall back to PostgreSQL full-text search
         var pgResults = query.Contains(" ")
-            ? await GetSearchResultForQuery(query)
-            : await GetSearchResultForComplete(query);
+            ? await GetSearchResultForQueryWithLimit(query, limit)
+            : await GetSearchResultForCompleteWithLimit(query, limit);
 
-        return pgResults.Select(r => new SearchResults(
+        // PostgreSQL results are already ranked by ts_rank
+        return pgResults.Select((r, index) => new SearchResults(
             r.Title,
             r.Slug,
-            $"/blog/{r.Slug}"
+            $"/blog/{r.Slug}",
+            1.0f - (index * 0.05f) // Approximate score based on ranking
         )).ToList();
+    }
+
+    private async Task<List<(string Title, string Slug)>> GetSearchResultForQueryWithLimit(string query, int limit)
+    {
+        var posts = await QueryForSpaces(query)
+            .Select(x => new { x.Title, x.Slug })
+            .Take(limit)
+            .ToListAsync();
+        return posts.Select(x => (x.Title, x.Slug)).ToList();
+    }
+
+    private async Task<List<(string Title, string Slug)>> GetSearchResultForCompleteWithLimit(string query, int limit)
+    {
+        var posts = await QueryForWildCard(query)
+            .Select(x => new { x.Title, x.Slug })
+            .Take(limit)
+            .ToListAsync();
+        return posts.Select(x => (x.Title, x.Slug)).ToList();
     }
 
     /// <summary>
