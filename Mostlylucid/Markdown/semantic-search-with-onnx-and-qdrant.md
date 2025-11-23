@@ -5,14 +5,15 @@
 
 # Introduction
 
-**📖 Part of the RAG Series:** This is Part 4 - core implementation:
+**📖 Part of the RAG Series:** This is Part 4a - core implementation:
 - [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
 - [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
-- **Part 4: ONNX & Qdrant Implementation** (this article) - CPU-friendly semantic search
+- **Part 4a: ONNX & Qdrant Implementation** (this article) - CPU-friendly semantic search foundation
+- [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
 
-Parts 1-3 explain *why* semantic search works. This article shows *how* to build the foundation - a **zero-cost, CPU-friendly implementation** using ONNX Runtime and Qdrant. [Part 5](/blog/rag-hybrid-search-and-indexing) covers production integration.
+Parts 1-3 explain *why* semantic search works. This article shows *how* to build the foundation - a **zero-cost, CPU-friendly implementation** using ONNX Runtime and Qdrant. [Part 4b](/blog/semantic-search-in-action) covers the search UI and hybrid search implementation, and [Part 5](/blog/rag-hybrid-search-and-indexing) covers production auto-indexing.
 
 **The Challenge:** Most semantic search solutions require expensive GPU infrastructure or costly managed services. What if you're an indie developer running a blog on a modest VPS?
 
@@ -980,145 +981,6 @@ using (var scope = app.Services.CreateScope())
 }
 ```
 
-# The User Interface
-
-## DaisyUI Related Posts Component
-
-We've created a beautiful, collapsible related posts panel using DaisyUI:
-
-```cshtml
-@model List<Mostlylucid.SemanticSearch.Models.SearchResult>
-
-@if (Model != null && Model.Any())
-{
-    <div class="mt-8 mb-8">
-        <div class="collapse collapse-arrow bg-base-200">
-            <input type="checkbox" class="peer" />
-            <div class="collapse-title text-xl font-medium">
-                <i class='bx bx-brain text-2xl mr-2'></i>
-                Related Posts
-                <span class="badge badge-secondary badge-sm ml-2">@Model.Count</span>
-            </div>
-            <div class="collapse-content">
-                <div class="divider mt-0"></div>
-                <div class="space-y-2">
-                    @foreach (var post in Model)
-                    {
-                        <div class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow duration-200">
-                            <div class="card-body p-4">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <a hx-boost="true"
-                                           hx-target="#contentcontainer"
-                                           hx-swap="show:window:top"
-                                           asp-action="Show"
-                                           asp-controller="Blog"
-                                           asp-route-slug="@post.Slug"
-                                           asp-route-language="@post.Language"
-                                           class="card-title text-base hover:text-secondary transition-colors">
-                                            @post.Title
-                                        </a>
-
-                                        @if (post.Categories?.Any() == true)
-                                        {
-                                            <div class="flex flex-wrap gap-1 mt-2">
-                                                @foreach (var category in post.Categories.Take(3))
-                                                {
-                                                    <span class="badge badge-outline badge-sm">@category</span>
-                                                }
-                                            </div>
-                                        }
-
-                                        <div class="flex items-center gap-3 mt-2 text-sm opacity-70">
-                                            <span>
-                                                <i class='bx bx-calendar text-sm'></i>
-                                                @post.PublishedDate.ToString("MMM dd, yyyy")
-                                            </span>
-                                            <span>
-                                                <i class='bx bx-planet text-sm'></i>
-                                                @post.Language.ToUpper()
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="flex flex-col items-end ml-4">
-                                        <div class="radial-progress text-primary text-xs"
-                                             style="--value:@(post.Score * 100); --size:3rem; --thickness: 3px;"
-                                             role="progressbar">
-                                            @((post.Score * 100).ToString("F0"))%
-                                        </div>
-                                        <span class="text-xs opacity-60 mt-1">similarity</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-}
-```
-
-## HTMX Integration
-
-Add this to your blog post partial view to load related posts dynamically:
-
-```cshtml
-@* Related Posts Section - Loaded via HTMX *@
-<div class="print:hidden"
-     hx-get="/search/related/@Model.Slug/@Model.Language"
-     hx-trigger="load delay:500ms"
-     hx-swap="innerHTML">
-    @* Loading placeholder *@
-    <div class="mt-8 mb-8 text-center opacity-50">
-        <span class="loading loading-spinner loading-md"></span>
-        <p class="text-sm mt-2">Finding related posts...</p>
-    </div>
-</div>
-```
-
-**Why delay the load?** This improves initial page load performance - the related posts load after the main content is visible.
-
-## Controller Endpoints
-
-```csharp
-[HttpGet]
-[Route("related/{slug}/{language}")]
-[OutputCache(Duration = 7200, VaryByRouteValueNames = new[] {"slug", "language"})]
-public async Task<IActionResult> RelatedPosts(string slug, string language, int limit = 5)
-{
-    var results = await semanticSearchService.GetRelatedPostsAsync(slug, language, limit);
-
-    if (Request.IsHtmx())
-    {
-        return PartialView("_RelatedPosts", results);
-    }
-
-    return Json(results);
-}
-
-[HttpGet]
-[Route("semantic")]
-[OutputCache(Duration = 3600, VaryByQueryKeys = new[] {"query", "limit"})]
-public async Task<IActionResult> SemanticSearch(string? query, int limit = 10)
-{
-    if (string.IsNullOrWhiteSpace(query))
-    {
-        return BadRequest("Query cannot be empty");
-    }
-
-    var results = await semanticSearchService.SearchAsync(query, limit);
-
-    if (Request.IsHtmx())
-    {
-        return PartialView("_SemanticSearchResults", results);
-    }
-
-    return Json(results);
-}
-```
-
 # Setting Up Infrastructure
 
 ## Docker Compose for Qdrant
@@ -1253,110 +1115,31 @@ We use ASP.NET Core output caching:
 
 This caches related posts for 2 hours, significantly reducing load.
 
-# Practical Tips for Your Implementation
-
-## Start Simple
-
-1. **Index a few posts first** - Don't index your entire blog immediately
-2. **Test similarity scores** - Adjust the `MinimumSimilarityScore` to find what works
-3. **Monitor resource usage** - Check CPU and memory during indexing
-
-## Optimize Indexing
-
-```csharp
-// Index posts in batches to avoid overwhelming the system
-public async Task IndexAllPostsAsync(IEnumerable<BlogPostDocument> posts)
-{
-    const int batchSize = 20;
-    var batches = posts.Chunk(batchSize);
-
-    foreach (var batch in batches)
-    {
-        var tasks = batch.Select(post => IndexPostAsync(post));
-        await Task.WhenAll(tasks);
-
-        // Small delay between batches to prevent CPU spikes
-        await Task.Delay(100);
-    }
-}
-```
-
-## Content Preparation Tips
-
-**DO:**
-- Include the title multiple times (it's the most important signal)
-- Use plain text (strip HTML/markdown)
-- Keep content under 2000 characters for better embeddings
-
-**DON'T:**
-- Include code blocks (they skew the embeddings)
-- Index navigation text or boilerplate
-- Include the same content in multiple languages without marking them properly
-
-# Troubleshooting Common Issues
-
-## "Model not found" Error
-
-```bash
-# Check model file exists
-ls -la Mostlylucid/models/
-
-# Re-download if missing
-./Mostlylucid.SemanticSearch/download-models.sh
-```
-
-## Low Similarity Scores
-
-If everything gets a score < 0.3, you might have:
-- Different embedding models for indexing vs. searching
-- Text that's too short
-- Code/technical content that doesn't embed well
-
-**Solution:** Lower the threshold temporarily, inspect what's being indexed.
-
-## Qdrant Connection Issues
-
-```bash
-# Check Qdrant is running
-docker ps | grep qdrant
-
-# Check logs
-docker logs mostlylucid-qdrant
-
-# Test the API
-curl http://localhost:6333/health
-```
-
-## High CPU Usage
-
-ONNX inference is CPU-intensive. If you're seeing high CPU:
-
-1. **Reduce batch size** during indexing
-2. **Add delays** between operations
-3. **Index during off-peak hours**
-4. **Consider caching** frequently-accessed embeddings
-
 # What We've Built
 
-At this point you have a complete, working semantic search system:
+At this point you have a complete, working semantic search foundation:
 
 - ✅ **ONNX embeddings** - CPU-friendly, auto-downloads from Hugging Face
 - ✅ **Qdrant vector storage** - Fast similarity search with metadata filtering
 - ✅ **Related posts** - Find semantically similar content
 - ✅ **Search API** - Natural language queries
-- ✅ **DaisyUI interface** - Clean, responsive UI
+- ✅ **Content indexing** - Store blog posts as vectors
 
 **This is the exact setup running on this blog** - zero GPU, zero additional cost.
 
-# Next: Production Integration
+# Next: Semantic Search in Action
 
-In [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing), we cover:
+In [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action), we cover:
 
-- **Hybrid Search** - Combine semantic + PostgreSQL full-text with Reciprocal Rank Fusion
-- **Automatic Indexing** - FileSystemWatcher triggers real-time index updates
-- **Background Service** - Startup indexing with content hash detection
+- **Typeahead Search** - How the search-as-you-type works with Alpine.js
+- **Hybrid Search** - Combining semantic + PostgreSQL full-text with Reciprocal Rank Fusion
+- **Search API** - Complete API documentation with filters
+- **Related Posts UI** - DaisyUI components with HTMX lazy loading
+- **Advanced Filters** - Language and date range filtering
 
-**Continue to [Part 5](/blog/rag-hybrid-search-and-indexing) for production-ready integration patterns.**
+**Continue to [Part 4b](/blog/semantic-search-in-action) for the search UI and hybrid search implementation.**
+
+Then [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) covers production integration patterns.
 
 # Resources
 

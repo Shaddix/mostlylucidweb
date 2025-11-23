@@ -7,11 +7,12 @@ In [Part 1](/blog/rag-primer) and [Part 2](/blog/rag-architecture) of this serie
 
 # Introduction
 
-**📖 Series Navigation:** This is Part 3 of a five-part series on RAG:
+**📖 Series Navigation:** This is Part 3 of the RAG series:
 - [Part 1: Origins and Fundamentals](/blog/rag-primer) - History, motivation, and core concepts
 - [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
 - **Part 3: RAG in Practice** (this article) - Building real systems, challenges, and advanced techniques
-- [Part 4: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search
+- [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
+- [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
 
 If you haven't read Parts 1 and 2, I recommend starting there to understand:

@@ -5,14 +5,15 @@
 
 # Introduction
 
-**📖 Part of the RAG Series:** This is Part 5 - advanced integration patterns:
+**📖 Part of the RAG Series:** This is Part 5 - production integration patterns:
 - [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
 - [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
-- [Part 4: Implementation with ONNX & Qdrant](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search
+- [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
+- [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - **Part 5: Hybrid Search & Auto-Indexing** (this article) - Production integration patterns
 
-In [Part 4](/blog/semantic-search-with-onnx-and-qdrant), we built the foundation: ONNX embeddings, Qdrant storage, and basic search. Now we'll make it production-ready with **hybrid search** (combining semantic + full-text) and **automatic indexing** (zero-touch content updates).
+In [Part 4a](/blog/semantic-search-with-onnx-and-qdrant), we built the foundation: ONNX embeddings and Qdrant storage. In [Part 4b](/blog/semantic-search-in-action), we covered the search UI and hybrid search implementation. Now we'll make it production-ready with **automatic indexing** (zero-touch content updates) via FileSystemWatcher.
 
 [TOC]
 
@@ -300,7 +301,7 @@ public class SemanticIndexingBackgroundService : BackgroundService
 
 # What We've Built
 
-Across Parts 4 and 5, we now have:
+Across Parts 4a, 4b, and 5, we now have:
 
 - ✅ **CPU-friendly semantic search** - No GPU required
 - ✅ **Related posts discovery** - Semantically similar content
@@ -310,21 +311,21 @@ Across Parts 4 and 5, we now have:
 - ✅ **Self-hosted** - Your data stays on your server
 
 **Future enhancements:**
-- **Typeahead Search** - Semantic search-as-you-type ([see search box implementation](/blog/textsearchingpt11))
 - **Category-Aware Search** - Boost results from specific categories
-- **Multilingual Support** - Language-specific embedding models
+- **Multilingual Embeddings** - Language-specific embedding models
 - **OpenSearch Integration** - Add OpenSearch to the hybrid mix ([see my OpenSearch article](/blog/textsearchingpt3))
 
 # Conclusion
 
-This completes the practical implementation of RAG-style semantic search. Combined with [Part 4](/blog/semantic-search-with-onnx-and-qdrant), you have everything needed to add intelligent search to your .NET application - running entirely on CPU, at zero additional cost.
+This completes the practical implementation of RAG-style semantic search. Combined with [Part 4a](/blog/semantic-search-with-onnx-and-qdrant) (foundation) and [Part 4b](/blog/semantic-search-in-action) (search UI), you have everything needed to add intelligent search to your .NET application - running entirely on CPU, at zero additional cost.
 
 ## Continue Learning
 
 - **[RAG Part 1: Origins and Fundamentals](/blog/rag-primer)** - The theory behind embeddings
 - **[RAG Part 2: Architecture and Internals](/blog/rag-architecture)** - Deep dive into RAG systems
 - **[RAG Part 3: Practical Applications](/blog/rag-practical-applications)** - Complete RAG with LLM integration
-- **[Part 4: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant)** - Foundation for this article
+- **[Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant)** - Foundation: embeddings and vector storage
+- **[Part 4b: Semantic Search in Action](/blog/semantic-search-in-action)** - Typeahead, hybrid search, and UI
 - **[Full-Text Search with PostgreSQL](/blog/textsearchingpt1)** - The full-text side of hybrid search
 
 ## Resources
