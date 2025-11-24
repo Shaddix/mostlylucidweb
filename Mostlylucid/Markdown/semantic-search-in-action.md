@@ -1,6 +1,6 @@
 # RAG for Implementers: Semantic Search in Action
 
-<datetime class="hidden">2025-11-23T09:00</datetime>
+<datetime class="hidden">2025-11-25Add T09:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, Alpine.js, HTMX, Hybrid Search, RAG, AI-Article -->
 
 # Introduction

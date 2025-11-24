@@ -1,6 +1,6 @@
 # RAG for Implementers: CPU-Friendly Semantic Search with ONNX and Qdrant
 
-<datetime class="hidden">2025-11-22T11:00</datetime>
+<datetime class="hidden">2025-11-25T11:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, ONNX, Qdrant, Machine Learning, Vector Search, RAG, AI-Article -->
 
 # Introduction

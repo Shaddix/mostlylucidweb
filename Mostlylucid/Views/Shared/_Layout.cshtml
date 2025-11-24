@@ -207,9 +207,12 @@ bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
                     <img src="/img/logo.svg" asp-append-version="true" width="180px" height="30px" alt="logo" :class="{ 'img-filter-dark': !isDarkMode }"/>
                 </div>
             </a>
-            <p class="pt-5 font-body font-light text-primary dark:text-white sm:pt-0">
-                ©2024 Scott Galloway
-            </p>
+<p class="pt-5 font-body font-light text-primary dark:text-white sm:pt-0">
+    &copy; @DateTime.UtcNow.Year Scott Galloway — 
+    <a href="https://unlicense.org" target="_blank" rel="noopener noreferrer">Unlicense</a> — 
+    All content and source code on this site is free to use, copy, modify, and sell.
+</p>
+
         </div>
         <partial name="_Socials"/>
     </div>

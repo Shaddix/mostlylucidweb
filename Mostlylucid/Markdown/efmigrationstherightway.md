@@ -6,18 +6,13 @@ Running `MigrateAsync()` at startup? You're giving your app database owner right
 <!--category--  Entity Framework, Migrations, GitHub, CI -->
 
 
-# Introduction
-Well, I was doing it wrong! This article discusses EF bundles and how they work with your CI to make EF migrations safer, more predictable and secure.
-
-For the official documentation, see:
-- [EF Core Migrations Overview](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/?tabs=dotnet-core-cli)
-- [Applying Migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying?tabs=dotnet-core-cli)
-- [Migration Bundles](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying?tabs=dotnet-core-cli#bundles)
+**Official docs:** [Migrations Overview](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/) | [Applying Migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying) | [Bundles](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying?tabs=dotnet-core-cli#bundles)
 
 [TOC]
 
-# The Wrong Way
-Well, this very blog uses the "WRONG" way to do EF migrations but for a reason.
+# The "Wrong" Way (That I Use)
+
+This blog uses `MigrateAsync()` at startup - the approach I'm about to tell you not to use. Here's why that's okay for me, and why it probably isn't for you.
 
 In my `Program.cs` file I have the following:
 
@@ -29,64 +24,39 @@ In my `Program.cs` file I have the following:
     }
 ```
 
-This uses the [`MigrateAsync()`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.relationaldatabasefacadeextensions.migrateasync) method which applies any pending migrations and creates the database if it doesn't exist.
+[`MigrateAsync()`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.relationaldatabasefacadeextensions.migrateasync) applies pending migrations and creates the database if needed. Simple - but problematic:
 
-Simple, right? However this has two main issues:
+1. **Startup dependency** - Database down? Migration fails? Your app won't start.
+2. **Security violation** - Your app needs `db_owner` rights. You just gave your runtime app the keys to drop tables.
 
-1. **It runs at startup** - If your database is down (or takes a while to start with new deployments), or the migration fails for any reason your app won't start.
-2. **It's insecure** - Your app needs to have `db_owner` rights to be able to run migrations. This is a MAJOR security risk.
+Why I get away with it: public data, single Docker network, personal project. **You probably can't.**
 
-Really the second point is the most critical for most REAL uses of EF migrations. You just shouldn't be giving your app that level of access to the database.
+## When Runtime Migrations Are Fine
 
-**You broke the security boundary**
+- **Local dev** - Fast iteration beats ceremony
+- **Personal projects** - Low blast radius, no sensitive data
+- **Docker-compose dev environments** - Convenience wins
+- **Prototyping** - Schema is changing constantly anyway
 
-So why do I do it for this blog:
-1. ALL the data for the blog (except comments) is public
-2. I deploy the site using Docker pulls (a tool called Watchtower does this automagically) so the app and DB are on the same Docker network which isn't expsed to the internet. There ARE ways around this but for the simplicity this won *but in a real app it shouldnt*
+## When They're Not
 
-## When "Wrong" is Actually Right
+- **Multiple app instances** - Race conditions galore
+- **Sensitive data** - PII, financial, regulated = proper separation required
+- **Production with real users** - Failed migration = outage
 
-Before we dive into the "right" way, let's be honest: the approach above isn't *always* wrong. Context matters.
+# The Right Way: EF Bundles
 
-### Scenarios Where Runtime Migrations Make Sense
+An EF bundle is a self-contained executable containing your compiled migrations. Think `dotnet ef database update` packaged into a standalone `.exe`.
 
-1. **Local Development** - When you're iterating quickly on your schema, having migrations run automatically on startup is incredibly convenient. You don't want to manually run migration commands every time you pull changes from a colleague.
+**Why bundles win:**
 
-2. **Small Personal Projects** - For a blog like this one, where I'm the only developer and the security boundary is less critical, the convenience outweighs the risks. The database and app run on the same Docker network, and I'm not handling sensitive customer data.
+- **No runtime dependencies** - Target doesn't need SDK or EF CLI
+- **Proper separation** - App never needs `db_owner`; only CI runner does, only during deployment
+- **CI visibility** - Failures show in pipeline logs, not buried in app startup
+- **Rollback safety** - Migration fails? Deployment stops before bad code deploys
+- **Idempotent** - Tracks what's applied, runs only what's needed
 
-3. **Containerized Dev Environments** - When spinning up `docker-compose` for development, automatic migrations mean your database is always in sync without extra steps.
-
-4. **Prototyping / POC Work** - When you're exploring ideas and the schema is changing rapidly, ceremony-free migrations keep you moving.
-
-### The Key Questions to Ask
-
-- **Who has access to this database?** If it's just you on a personal project, the security argument is less compelling.
-- **What's the blast radius if something goes wrong?** A failed migration on your personal blog is annoying. A failed migration on a production e-commerce site is catastrophic.
-- **Do you have multiple instances?** Runtime migrations with multiple app instances can cause race conditions where instances compete to run migrations simultaneously.
-- **Is there sensitive data?** If your app handles PII, financial data, or anything regulated, you absolutely need proper separation of concerns.
-
-# The Right Way
-
-Note: even in the code below it STILL isn't the perfect security level; ideally we shouldn't store the connection string here at all - using [Managed Identity](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) would be better. But this is a significant step up from runtime migrations.
-
-## What is an EF Bundle?
-
-An EF migration bundle is a self-contained executable that includes all your migrations. It's essentially a compiled version of your migrations that can be run independently of your application. Think of it as packaging up `dotnet ef database update` into a standalone `.exe`.
-
-The key benefits:
-
-1. **No EF tools required at runtime** - The target environment doesn't need the .NET SDK or EF CLI tools installed
-2. **Atomic deployment artifact** - The bundle is versioned alongside your application code
-3. **Separation of concerns** - Your application code never needs database owner permissions
-4. **Idempotent** - The bundle tracks which migrations have been applied and only runs what's needed
-
-## Why is This Right?
-
-1. **Where it runs** - It runs entirely within the CI system, not during application startup
-2. **Controlled timing** - Migrations are a discrete step in your deployment pipeline, not a side effect of starting the app
-3. **Proper permissions** - Only the CI runner needs elevated database permissions, and only during deployment
-4. **Visibility** - Migration failures are visible in your CI logs, not buried in application startup logs
-5. **Rollback potential** - If migrations fail, deployment stops before the new app version is deployed
+> **Note:** For production-grade security, use [Managed Identity](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview) instead of connection strings. But bundles are still a major step up from runtime migrations.
 
 ## GitHub Actions Example
 
@@ -115,61 +85,40 @@ The key benefits:
           AdminSite__ConnectionString: ${{ secrets.PROD_SQL_CONNECTIONSTRING }}
 ```
 
-The bundle executable reads the connection string from the environment variable and applies any pending migrations. If all migrations are already applied, it simply exits successfully.
+The bundle reads connection strings from environment variables and applies pending migrations. Already applied? It just exits successfully.
 
-# Local EF Bundles
+# Local Bundles
 
-You don't need a CI system to use EF bundles. They're equally useful for local development when you want more control than `MigrateAsync()` provides. In fact, building bundles locally is a great way to test your migrations before they hit CI.
+No CI? Want to test before pushing? Build bundles locally.
 
-## Why Build Bundles Locally?
+**Use cases:** Test before CI, DBA handoff (self-contained exe, no SDK needed), staging deploys, debugging with `--verbose`.
 
-There are several compelling reasons to build and run EF bundles on your local machine:
-
-1. **Test before you push** - Catch migration issues before they fail in CI. Nothing's worse than waiting for a 10-minute pipeline only to discover your migration has a syntax error or constraint violation.
-
-2. **No CI? No problem** - Not every project has a full CI/CD pipeline. Maybe you're working on a side project, or your organisation hasn't adopted CI yet. Local bundles give you the same benefits without the infrastructure.
-
-3. **Faster feedback loop** - Building and running a bundle locally takes seconds. You can iterate on a tricky migration much faster than pushing to CI each time.
-
-4. **DBA handoff** - In organisations where developers don't have production database access, you can build a self-contained bundle and hand it to a DBA to run. They don't need the .NET SDK installed.
-
-5. **Staging/QA deployments** - Apply migrations to non-production environments without triggering a full deployment pipeline.
-
-6. **Debugging migration issues** - When something goes wrong, running the bundle locally with `--verbose` gives you much better insight than CI logs.
-
-## Creating a Local Bundle
-
-First, make sure you have the [EF Core CLI tools](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) installed:
+## Creating a Bundle
 
 ```bash
+# Install EF CLI (once)
 dotnet tool install --global dotnet-ef
-```
 
-Then create your bundle:
-
-```bash
-# Basic bundle (requires .NET runtime on target machine)
+# Basic bundle
 dotnet ef migrations bundle \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid \
     --output efbundle.exe
 
-# Self-contained bundle (includes .NET runtime - larger but portable)
+# Self-contained (includes runtime - portable to machines without .NET)
 dotnet ef migrations bundle \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid \
     --output efbundle.exe \
     --self-contained
 
-# For a specific runtime (e.g., Linux deployment from Windows)
+# Cross-platform (e.g., build on Windows, deploy to Linux)
 dotnet ef migrations bundle \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid \
     --output efbundle \
     --runtime linux-x64
 ```
-
-The `--self-contained` flag creates a bundle that includes the .NET runtime, making it portable to machines without .NET installed. This is particularly useful when handing bundles to DBAs or deploying to locked-down environments.
 
 ## Running Your Bundle
 
@@ -204,60 +153,41 @@ export ConnectionStrings__DefaultConnection="Host=localhost;..." # Bash
 
 ## Local Testing Workflow
 
-Here's a practical workflow for testing migrations locally before pushing to CI:
-
 ```bash
-# 1. Create your migration
+# 1. Create migration
 dotnet ef migrations add AddNewFeature \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid
 
-# 2. Build a bundle to test it
+# 2. Build bundle
 dotnet ef migrations bundle \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid \
     --output efbundle.exe
 
-# 3. Test against a local database (dry run first)
+# 3. Dry run first
 ./efbundle.exe --dry-run --verbose
 
-# 4. If it looks good, run it for real
+# 4. Run for real
 ./efbundle.exe --verbose
 
-# 5. If something went wrong, remove the migration and try again
+# 5. Broken? Remove and retry
 dotnet ef migrations remove \
     --project Mostlylucid.DbContext \
     --startup-project Mostlylucid
 ```
 
-This workflow catches issues like:
-- Invalid SQL syntax
-- Constraint violations
-- Missing foreign key relationships
-- Data type mismatches
+Catches syntax errors, constraint violations, FK issues - all *before* CI or production.
 
-All *before* your code hits CI or production.
+## Build Performance
 
-## A Word on Build Performance
+**Bundle generation is slow** - 30+ seconds on large projects. Don't generate on every build.
 
-One thing to be aware of: **EF bundle generation is slow**. It needs to build your project, load all migrations, and compile them into an executable. On a large project this can take 30 seconds or more.
+- Generate manually when testing locally
+- Generate in CI only during deployment, not every PR
+- Cache bundles if migrations haven't changed
 
-This is why you typically don't want to generate bundles on every build. Instead:
-- Generate bundles manually when testing migrations locally
-- Generate bundles in CI only during deployment (not on every PR build)
-- Consider caching the bundle in CI if migrations haven't changed
-
-### If You Really Want Auto-Generated Bundles
-
-That said, if you *do* want to automatically generate a bundle on build (maybe for a small project or specific workflow), you can add a post-build target to your `.csproj`:
-
-```xml
-<Target Name="GenerateEfBundle" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
-  <Exec Command="dotnet ef migrations bundle --output $(OutputPath)efbundle.exe --force --no-build" />
-</Target>
-```
-
-Or for more control, create a separate target you can invoke explicitly:
+If you really want auto-generation, add a MSBuild target:
 
 ```xml
 <Target Name="BuildMigrationBundle">
@@ -265,24 +195,11 @@ Or for more control, create a separate target you can invoke explicitly:
 </Target>
 ```
 
-Then run it with:
-
-```bash
-dotnet build -t:BuildMigrationBundle
-```
-
-The `--force` flag overwrites any existing bundle, and `--no-build` skips rebuilding the project (useful if you've just built it).
-
-**My recommendation**: Don't auto-generate on build. The slowdown isn't worth it for most workflows. Generate bundles explicitly when you need them - either locally for testing or in your CI deployment step.
+Then: `dotnet build -t:BuildMigrationBundle`
 
 # Hybrid Approach
 
-For many teams, a hybrid approach works well:
-
-- **Development**: Use `MigrateAsync()` for convenience during local development
-- **CI/Production**: Use EF bundles for controlled, auditable deployments
-
-You can achieve this with a simple environment check:
+Best of both worlds: convenience locally, security in production.
 
 ```csharp
 if (builder.Environment.IsDevelopment())
@@ -291,35 +208,185 @@ if (builder.Environment.IsDevelopment())
     var context = scope.ServiceProvider.GetRequiredService<IMostlylucidDBContext>();
     await context.Database.MigrateAsync();
 }
-// In production, migrations are handled by the CI pipeline
+// Production: CI pipeline runs the bundle
 ```
 
-This gives you the best of both worlds: fast iteration locally, and proper security boundaries in production.
+# Alternatives to Bundles
+
+## SQL Scripts
+
+Generate plain SQL instead of an executable. Great for DBA review and existing change management processes.
+
+```bash
+# All migrations
+dotnet ef migrations script --output migrations.sql
+
+# Idempotent (safe to run multiple times) - USE THIS
+dotnet ef migrations script --idempotent --output migrations.sql
+
+# Range of migrations
+dotnet ef migrations script FromMigration ToMigration --output migrations.sql
+```
+
+**Pros:** Full visibility, any SQL client can run it, version control friendly, DBA approval workflows.
+
+**Cons:** No auto-tracking (use `--idempotent`), manual execution, potential drift if scripts are modified.
+
+See [official docs on SQL scripts](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying?tabs=dotnet-core-cli#sql-scripts).
+
+### SQL Scripts in CI
+
+```yaml
+- name: Generate and apply migrations
+  run: |
+    dotnet ef migrations script --idempotent --output migrations.sql
+    # SQL Server
+    sqlcmd -S ${{ secrets.DB_SERVER }} -d ${{ secrets.DB_NAME }} -i migrations.sql
+    # Or PostgreSQL
+    PGPASSWORD=${{ secrets.DB_PASSWORD }} psql -h ${{ secrets.DB_HOST }} -f migrations.sql
+```
+
+## DACPAC (SQL Server Only)
+
+[DACPACs](https://learn.microsoft.com/en-us/sql/relational-databases/data-tier-applications/data-tier-applications) are *state-based* not *migration-based*. You define the desired schema, and SqlPackage diffs it against the target database.
+
+```bash
+SqlPackage.exe /Action:Publish /SourceFile:MyDatabase.dacpac /TargetConnectionString:"..."
+```
+
+**Pros:** Schema as code, auto-diff generation, handles everything (tables, views, SPs, indexes), enterprise tooling.
+
+**Cons:** SQL Server only, schema in two places (EF models + SQL project), diff engine makes questionable choices, column renames look like drop+add.
+
+See [SqlPackage docs](https://learn.microsoft.com/en-us/sql/tools/sqlpackage/sqlpackage).
+
+## Comparison Table
+
+| Approach | Best For | Requires .NET | Auto-tracks Applied | DBA Friendly | Cross-platform DB |
+|----------|----------|---------------|---------------------|--------------|-------------------|
+| `MigrateAsync()` | Dev/small projects | Yes (runtime) | Yes | No | Yes |
+| EF Bundles | CI/CD pipelines | No (self-contained) | Yes | Somewhat | Yes |
+| SQL Scripts | DBA-controlled environments | No | With `--idempotent` | Yes | Yes |
+| DACPAC | SQL Server enterprise | No | Yes (state-based) | Yes | No |
 
 # Tips
 
 ## The Designer File Gotcha
-If your migrations seem to work locally but NOT when you check into GitHub, **check you're adding the designer part of the generated migration**. YOU NEED BOTH files:
+
+Migrations work locally but not in CI? **Check you committed both files:**
 
 - `20231115_AddUserTable.cs` - The migration code
 - `20231115_AddUserTable.Designer.cs` - The model snapshot
 
-It'll seem to run but no migration will happen if the Designer file is missing.
+Missing the Designer file = silent failure.
 
 ## Multiple DbContexts
-
-If you have multiple DbContexts, specify which one when creating bundles:
 
 ```bash
 dotnet ef migrations bundle --context BlogDbContext --output blog-migrations.exe
 dotnet ef migrations bundle --context IdentityDbContext --output identity-migrations.exe
 ```
 
-## Connection String Sources
+## Connection String Priority
 
-The bundle looks for connection strings in this order:
-1. `--connection` command line argument
-2. Environment variable matching your configuration key
-3. `appsettings.json` in the current directory
+1. `--connection` argument
+2. Environment variable
+3. `appsettings.json`
 
-For CI, environment variables are preferred as they keep secrets out of logs and config files. 
+Use environment variables in CI.
+
+## IDesignTimeDbContextFactory
+
+EF tools need to instantiate your DbContext. If your DbContext is in a separate project or has complex startup, implement [`IDesignTimeDbContextFactory<T>`](https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation?tabs=dotnet-core-cli#from-a-design-time-factory):
+
+```csharp
+public class AdminDbContextFactory : IDesignTimeDbContextFactory<AdminDbContext>
+{
+    public AdminDbContext CreateDbContext(string[] args)
+    {
+        var config = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .AddUserSecrets<AdminDbContextFactory>()
+            .Build();
+
+        var connectionString = config["AdminSite:ConnectionString"]
+            ?? throw new InvalidOperationException("Missing connection string");
+
+        var optionsBuilder = new DbContextOptionsBuilder<AdminDbContext>();
+        optionsBuilder.UseSqlServer(connectionString, sql => sql.CommandTimeout(120));
+
+        return new AdminDbContext(optionsBuilder.Options);
+    }
+}
+```
+
+Use when: DbContext in separate project, complex startup, need User Secrets for design-time.
+
+# What About...?
+
+Common questions and pushback I've received.
+
+## "Why not just run `dotnet ef database update` in CI?"
+
+Covered above, but the short version: bundles are portable artifacts. Your deployment step doesn't need EF CLI, source code, or design-time resolution. Same bundle runs in test, staging, and prod - zero drift.
+
+## "Isn't this overkill for a small app?"
+
+Maybe. If you're solo, data is public, and blast radius is low - `MigrateAsync()` is fine. But the moment you add a second developer, sensitive data, or multiple environments, bundles pay for themselves.
+
+## "What about rollbacks?"
+
+EF doesn't do automatic rollbacks. Options:
+- Generate a `Down()` migration and run it (but you have to have written it)
+- Restore from backup
+- Write a manual migration to undo changes
+
+For critical systems: test migrations against a database clone first.
+
+## "Can I run migrations in a Kubernetes init container?"
+
+Yes. Bundle + init container is a solid pattern:
+
+```yaml
+initContainers:
+  - name: migrate
+    image: myapp:latest
+    command: ["./efbundle.exe"]
+    env:
+      - name: ConnectionStrings__Default
+        valueFrom:
+          secretKeyRef:
+            name: db-secrets
+            key: connection-string
+```
+
+App container waits for init to complete.
+
+## "What about FluentMigrator / DbUp / other tools?"
+
+They work great. EF bundles are the EF-native solution, but [FluentMigrator](https://fluentmigrator.github.io/) and [DbUp](https://dbup.readthedocs.io/) have their fans. Key difference: those are migration-specific tools, while EF bundles come from your existing EF model.
+
+## "My DBA wants to review all SQL before it runs"
+
+Use `--idempotent` scripts:
+
+```bash
+dotnet ef migrations script --idempotent --output migrations.sql
+```
+
+DBA reviews and approves. Then either:
+- Run the script manually, or
+- Once approved, run the bundle (which does the same thing)
+
+## "How do I handle migrations with zero downtime?"
+
+That's a deployment strategy question, not a migrations question. Generally:
+1. Make migrations backwards-compatible (add columns nullable, don't rename)
+2. Deploy new code that handles both old and new schema
+3. Run migration
+4. Deploy code that uses new schema only
+5. Clean up (drop old columns in a later migration)
+
+Bundles don't solve this - they just make step 3 more predictable.

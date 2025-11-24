@@ -1,11 +1,13 @@
-# The War on 404
+# The War on 404: Making Old Stuff Work Again
 
-<!--category-- ASP.NET, C# -->
-<datetime class="hidden">2025-11-23T09:00</datetime>
+<!--category-- ASP.NET, C# , Middleware, 404s-->
+<datetime class="hidden">2025-11-23T10:35</datetime>
 
-## The War On 404: Making Old Stuff Work Again
+## Introduction
 
-When you've been blogging since 2004 (yes, really), you accumulate a lot of digital detritus. I recently imported my old posts from 2004-2009 and discovered that approximately *everything* was broken. External links pointing to sites that vanished a decade ago, old URL schemes that no longer match the current structure, the whole lot.
+When you've been blogging since 2004 (yes, really), you accumulate a lot of digital detritus. I recently imported my old posts from 2004-2009 ( https://www.mostlylucid.net/blog/category/Imported) and discovered that approximately *everything* was broken. External links pointing to sites that vanished a decade ago, old URL schemes that no longer match the current structure, the whole lot.
+
+> NOTE: This is coming soon, along with the Semantic Search series AND functionality on the blog. Just a BIG change and I had a few smaller articles to get out first. Enjoy (but stuff is still broken right now 🤓)
 
 The problem breaks down into three parts:
 
@@ -171,6 +173,7 @@ private List<string> ExtractAllLinks(string html, HttpRequest request)
     return links.Distinct().ToList();
 }
 ```
+Now you COULD quite reasonably use [HtmlAgilityPack](https://html-agility-pack.net/) / https://github.com/AngleSharp/AngleSharp or similar HTML (and other) parsers here for more complex scenarios but it was overkill for this purpose - we just need to extract hrefs quickly.
 
 ### Registering Links for Background Checking
 
@@ -390,6 +393,8 @@ public class SlugRedirectMiddleware(RequestDelegate next)
 The problem? This runs on *every single request* to `/blog/*`. That's a database query on every page view, even for perfectly valid URLs. For a blog with decent traffic, you're hammering the database for no good reason 99% of the time.
 
 The much better approach: hook into the 404 handler. If ASP.NET has already determined the page doesn't exist, *then* we check for redirects. No wasted queries on valid pages.
+
+> Fun fact: In the early days of ASP.NET MVC this was how we made friendly URLs worked. Scott Guthrie's plane demo that started MVC used this approach; hook into the IIS 404 handling system , read the URL and serve the right content. It was ALSO what I used in a system I built in WebForms 3 years pervious...and how I got a PM gig on the ASP.NET team! 
 
 ### The Learning System
 
