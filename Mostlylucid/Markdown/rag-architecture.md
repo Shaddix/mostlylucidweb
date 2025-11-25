@@ -42,7 +42,7 @@ flowchart TB
     B -.Metadata.-> E
 
     subgraph "Example: Blog Post"
-        F["# Title: Understanding Docker\n\nDocker is a containerization platform...\n\n## Benefits\n- Isolation\n- Portability"]
+        F["Understanding Docker: A containerization platform..."]
     end
 
     subgraph "Chunks"
@@ -51,8 +51,8 @@ flowchart TB
     end
 
     subgraph "Embeddings"
-        I["[0.234, -0.891, 0.567, ...]"]
-        J["[0.445, -0.123, 0.789, ...]"]
+        I["0.234, 0.891, 0.567, ..."]
+        J["0.445, 0.123, 0.789, ..."]
     end
 
     F --> G

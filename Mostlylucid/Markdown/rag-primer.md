@@ -1,6 +1,6 @@
 # RAG Explained: Origins and Fundamentals
 
-Ever searched for "deployment guide" and got nothing, even though there's an article about "publishing to production"? RAG (Retrieval-Augmented Generation) solves this by understanding meaning, not just keywords. This three-part series shows you how RAG came about, how it works under the hood, and how to build production systems. From semantic search to AI-powered Q&A with citations—all with working C# code examples.
+Ever searched for "deployment guide" and got nothing, even though there's an article about "publishing to production"? RAG (Retrieval-Augmented Generation) solves this by understanding meaning, not just keywords. This series shows you how RAG came about, how it works under the hood, and how to build production systems. From semantic search to AI-powered Q&A with citations—all with working C# code examples.
 
 <datetime class="hidden">2025-11-22T09:00</datetime>
 <!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, AI-Article -->
@@ -8,11 +8,11 @@ Ever searched for "deployment guide" and got nothing, even though there's an art
 # Introduction
 
 **📖 Series Navigation:** This is Part 1 of the RAG (Retrieval-Augmented Generation) series:
-- **Part 1: Origins and Fundamentals** (this article) - History, motivation, and core concepts
-- [Part 2: Architecture and Internals](/blog/rag-architecture) - Technical deep dive into how RAG works
-- [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building real systems, challenges, and advanced techniques
+- **Part 1: RAG Origins and Fundamentals** (this article) - What embeddings are, why they matter
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
 - [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
-- [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI
+- [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
 
 RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving LLMs access to information they weren't trained on. But here's what's interesting: the technology opens opportunities far beyond AI chatbots. It powers semantic search on websites, content recommendation, writing assistance, and knowledge management.
@@ -28,7 +28,7 @@ RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving L
 
 That's it. The rest is implementation details.
 
-This three-part series shows you how to build RAG systems with working C# code. No handwaving. No assumptions. Just the pieces and how they fit together.
+This series shows you how to build RAG systems with working C# code. No handwaving. No assumptions. Just the pieces and how they fit together.
 
 **What you'll learn in this series:**
 - **Part 1 (this article)**: How RAG came about and why it matters

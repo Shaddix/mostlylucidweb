@@ -63,7 +63,7 @@
     "highlightjs-cshtml-razor": "^2.1.1",
     "html-to-image": "^1.11.13",
     "htmx.org": "^2.0.1",
-    "mermaid": "^11.0.2",
+    "mermaid": "^11.12.1",
     "regenerator-runtime": "^0.14.1",
     "svg-pan-zoom": "^3.6.2"
   }

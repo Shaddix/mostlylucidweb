@@ -43,10 +43,17 @@ public class QdrantVectorStoreService : IVectorStoreService
             // If port is 6333 (HTTP), we need to use gRPC port 6334
             var port = uri.Port > 0 && uri.Port != 6333 ? uri.Port : 6334;
 
-            // Create Qdrant client
-            _client = new QdrantClient(host, port, https: uri.Scheme == "https");
+            // Create Qdrant client with API key
+            // Use WriteApiKey for full access (read + write operations)
+            // If only ReadApiKey is set, use that (read-only mode)
+            var apiKey = !string.IsNullOrEmpty(_config.WriteApiKey)
+                ? _config.WriteApiKey
+                : _config.ReadApiKey;
 
-            _logger.LogInformation("Connected to Qdrant at {Host}:{Port} (gRPC)", host, port);
+            _client = new QdrantClient(host, port, https: uri.Scheme == "https", apiKey: apiKey);
+
+            _logger.LogInformation("Connected to Qdrant at {Host}:{Port} (gRPC), API key: {HasKey}",
+                host, port, !string.IsNullOrEmpty(apiKey) ? "configured" : "not set");
         }
         catch (Exception ex)
         {

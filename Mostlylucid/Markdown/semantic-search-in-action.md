@@ -247,27 +247,30 @@ Different search approaches have different strengths:
 
 ```mermaid
 flowchart TB
-    subgraph "Semantic Results"
-        S1["1. Docker Containers (score: 0.92)"]
-        S2["2. Kubernetes Basics (score: 0.87)"]
-        S3["3. Container Security (score: 0.81)"]
+    subgraph Semantic[Semantic Results]
+        S1[Docker Containers - 0.92]
+        S2[Kubernetes Basics - 0.87]
+        S3[Container Security - 0.81]
     end
 
-    subgraph "Full-Text Results"
-        F1["1. Container Security (rank: 1)"]
-        F2["2. Docker Containers (rank: 2)"]
-        F3["3. CI/CD Pipelines (rank: 3)"]
+    subgraph FullText[Full-Text Results]
+        F1[Container Security - rank 1]
+        F2[Docker Containers - rank 2]
+        F3[CI/CD Pipelines - rank 3]
     end
 
-    subgraph "RRF Calculation"
-        R1["Container Security: 1/(60+1) + 1/(60+3) = 0.0327"]
-        R2["Docker Containers: 1/(60+2) + 1/(60+1) = 0.0325"]
-        R3["Kubernetes Basics: 1/(60+2) = 0.0161"]
-        R4["CI/CD Pipelines: 1/(60+3) = 0.0159"]
+    subgraph RRF[RRF Scores]
+        R1[Container Security = 0.0327]
+        R2[Docker Containers = 0.0325]
+        R3[Kubernetes Basics = 0.0161]
+        R4[CI/CD Pipelines = 0.0159]
     end
 
-    subgraph "Final Ranking"
-        Final["1. Container Security<br/>2. Docker Containers<br/>3. Kubernetes Basics<br/>4. CI/CD Pipelines"]
+    subgraph Final[Final Ranking]
+        O1[Container Security]
+        O2[Docker Containers]
+        O3[Kubernetes Basics]
+        O4[CI/CD Pipelines]
     end
 
     S1 --> R2
@@ -276,18 +279,10 @@ flowchart TB
     F1 --> R1
     F2 --> R2
     F3 --> R4
-    R1 --> Final
-    R2 --> Final
-    R3 --> Final
-    R4 --> Final
-
-    style S1 stroke:#6366f1,stroke-width:2px
-    style S2 stroke:#6366f1,stroke-width:2px
-    style S3 stroke:#6366f1,stroke-width:2px
-    style F1 stroke:#10b981,stroke-width:2px
-    style F2 stroke:#10b981,stroke-width:2px
-    style F3 stroke:#10b981,stroke-width:2px
-    style Final stroke:#ec4899,stroke-width:3px
+    R1 --> O1
+    R2 --> O2
+    R3 --> O3
+    R4 --> O4
 ```
 
 **The formula:** `score = Σ(1 / (k + rank))`
@@ -441,7 +436,7 @@ Beyond typeahead, there's a full search results page with advanced filtering:
 
 ```mermaid
 flowchart LR
-    subgraph "Search Page"
+    subgraph SearchPage[Search Page]
         A[Query Input] --> B{Filters}
         B --> C[Language Filter]
         B --> D[Date Range Filter]
