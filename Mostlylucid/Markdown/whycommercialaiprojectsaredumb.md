@@ -11,6 +11,8 @@ And you know what most of them are building? The same bloody thing. Over and ove
 
 Here's the dirty secret that nobody in management wants to hear: **most commercial AI projects aren't innovative. They're commodity plumbing with a fancy label.**
 
+Before I go further, a disclaimer: I'm not an "AI visionary" or whatever the hype-driven title of the moment is (mostly former "blockchain visionaries" who've pivoted). I'm a software engineer who's been building these kinds of systems—search, knowledge management, natural language processing, decision support—for close to three decades. I've seen this movie before with expert systems, with semantic web, with big data, with blockchain. The technology changes; the pattern of overpromising and underdelivering doesn't.
+
 Let me explain.
 
 [TOC]
