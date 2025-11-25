@@ -32,6 +32,8 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     public DbSet<BrokenLinkEntity> BrokenLinks { get; set; }
 
+    public DbSet<AnnouncementEntity> Announcements { get; set; }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder
@@ -240,6 +242,24 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
             entity.HasIndex(x => x.LastCheckedAt);
 
             entity.Property(x => x.DiscoveredAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<AnnouncementEntity>(entity =>
+        {
+            entity.ToTable("announcements");
+            entity.HasKey(x => x.Id);
+
+            // Unique index on key + language (one announcement per key per language)
+            entity.HasIndex(x => new { x.Key, x.Language }).IsUnique();
+
+            // Index for finding active announcements
+            entity.HasIndex(x => new { x.IsActive, x.Language, x.Priority });
+
+            // Index for date-based filtering
+            entity.HasIndex(x => new { x.StartDate, x.EndDate });
+
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(x => x.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }
 }

@@ -1,7 +1,7 @@
 # Why Most Commercial 'AI' Projects Are Dumb
 
 <!--category-- AI, Opinion, Software Development, LLM -->
-<datetime class="hidden">2025-11-25T09:00</datetime>
+<datetime class="hidden">2025-11-26T09:00</datetime>
 
 > "We're building an AI-powered knowledge assistant that will revolutionise how our employees access information..."
 > — Every job advert, pitch deck, and consultancy proposal in 2024-2025
@@ -257,7 +257,7 @@ flowchart TD
     style J stroke:#ff0000,stroke-width:3px
 ```
 
-<img src="https://media1.tenor.com/m/Nly5DfV0atkAAAAC/money-cash.gif" height="250"/>
+<img src="https://media1.tenor.com/m/r53R8b0im3kAAAAd/hasbulla.gif" height="250"/>
 
 I've seen this pattern dozens of times. The consultancy gets paid. The executives get to say they "did AI." The engineers get stuck maintaining something that barely works. And the actual business problem remains unsolved.
 
@@ -479,7 +479,7 @@ For **coding tasks**:
 - **DeepSeek Coder** - Excellent code understanding
 - **StarCoder** - Good for many languages
 
-Running these locally isn't as hard as you'd think. Tools like **Ollama**, **llama.cpp**, **vLLM**, or **text-generation-inference** make it straightforward. I've built a [complete cross-platform chat app with Avalonia and LLamaSharp](/blog/avalonia-tinyllm-chat) that demonstrates this running on consumer hardware.
+Running these locally isn't as hard as you'd think. Tools like **Ollama**, **llama.cpp**, **vLLM**, or **text-generation-inference** make it straightforward. I've built a number of apps (see the bottom of the article)  that demonstrates this running on consumer hardware.
 
 #### The Hybrid Approach
 
@@ -669,15 +669,15 @@ The companies that figure this out will build AI systems that actually work. The
 
 I've written extensively about these patterns:
 
-| Topic | Article | What You'll Learn |
-|-------|---------|-------------------|
-| **Architecture** | [DiSE vs Voyager](/blog/disejustvoyager) | Why structured orchestration beats monolithic models |
-| **Multi-Model** | [Synthetic Decision Engines](/blog/semantidintelligence) | Building pipelines of specialised models |
-| **RAG Fundamentals** | [RAG Series](/blog/rag-primer) | From embeddings to production systems |
-| **Local Embeddings** | [Semantic Search with ONNX](/blog/semantic-search-with-onnx-and-qdrant) | CPU-friendly local vector search |
-| **Local LLMs** | [Avalonia + LLamaSharp](/blog/avalonia-tinyllm-chat) | Cross-platform desktop chat with local models |
-| **API Simulation** | [LLMApi](/blog/llmapi) | Using local LLMs to simulate APIs for testing |
-| **Practical RAG** | [Building a Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) | Complete RAG implementation walkthrough |
+| Topic | Article                                                                  | What You'll Learn                                               |
+|-------|--------------------------------------------------------------------------|-----------------------------------------------------------------|
+| **Architecture** | [DiSE vs Voyager](/blog/disejustvoyager)                                 | Why structured orchestration beats monolithic models            |
+| **Multi-Model** | [Synthetic Decision Engines](/blog/semantidintelligence)                 | Building pipelines of specialised models                        |
+| **RAG Fundamentals** | [RAG Series](/blog/rag-primer)                                           | From embeddings to production systems                           |
+| **Local Embeddings** | [Semantic Search with ONNX](/blog/semantic-search-with-onnx-and-qdrant)  | CPU-friendly local vector search                                |
+| **Local LLMs** | [DiSE](/blog/semanticintelligence-part10)                                | A selkf evolvign workflow system using local models connected together |
+| **API Simulation** | [LLMApi](/blog/llmapi)                                                   | Using local LLMs to simulate APIs for testing                   |
+| **Practical RAG** | [Building a Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) | Complete RAG implementation walkthrough                         |
 
 The technology exists. The patterns are emerging. The question is whether your organisation will build something sensible or another dumb AI project.
 

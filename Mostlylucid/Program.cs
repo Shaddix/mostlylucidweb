@@ -15,6 +15,7 @@ using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Extensions;
 using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.BrokenLinks;
+using Mostlylucid.Services.Announcement;
 
 try
 {  Log.Logger = new LoggerConfiguration()
@@ -108,6 +109,10 @@ try
     services.AddHttpClient("BrokenLinkChecker");
     services.AddScoped<IBrokenLinkService, BrokenLinkService>();
     services.AddHostedService<BrokenLinkCheckerBackgroundService>();
+
+    // Announcement service
+    builder.Configure<AnnouncementConfig>();
+    services.AddScoped<IAnnouncementService, AnnouncementService>();
 
     services.AddImageSharp().Configure<PhysicalFileSystemCacheOptions>(options => options.CacheFolder = "cache");
     services.SetupEmail(config);

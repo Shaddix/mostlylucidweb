@@ -1,0 +1,191 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Mostlylucid.Announcement.Manager.ViewModels"
+        xmlns:ae="https://github.com/avaloniaui/avaloniaedit"
+        xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+        x:Class="Mostlylucid.Announcement.Manager.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Mostlylucid Announcement Manager"
+        Width="1200" Height="800"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0" Background="{DynamicResource SystemAccentColor}" Padding="10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5">
+                    <Button Content="&#xE117;" FontFamily="Segoe MDL2 Assets" ToolTip.Tip="Refresh"
+                            Command="{Binding LoadAnnouncementsCommand}"
+                            IsEnabled="{Binding !IsLoading}"/>
+                    <Button Content="&#xE109;" FontFamily="Segoe MDL2 Assets" ToolTip.Tip="New"
+                            Command="{Binding NewAnnouncementCommand}"/>
+                    <Button Content="&#xE105;" FontFamily="Segoe MDL2 Assets" ToolTip.Tip="Save"
+                            Command="{Binding SaveAnnouncementCommand}"
+                            IsEnabled="{Binding !IsLoading}"/>
+                    <Button Content="&#xE107;" FontFamily="Segoe MDL2 Assets" ToolTip.Tip="Delete"
+                            Command="{Binding DeleteAnnouncementCommand}"
+                            IsEnabled="{Binding SelectedAnnouncement, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="Announcement Manager"
+                           FontSize="16" FontWeight="SemiBold"
+                           Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <Button Grid.Column="2" Content="&#xE115;" FontFamily="Segoe MDL2 Assets"
+                        ToolTip.Tip="Settings"
+                        Command="{Binding ToggleSettingsCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="1" ColumnDefinitions="300,*">
+            <!-- Left Panel - Announcements List -->
+            <Border Grid.Column="0" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="Announcements" FontWeight="SemiBold"
+                               Margin="15,10" FontSize="14"/>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Announcements}"
+                             SelectedItem="{Binding SelectedAnnouncement}"
+                             Margin="5">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10,8" CornerRadius="4">
+                                    <Grid RowDefinitions="Auto,Auto,Auto">
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding Key}" FontWeight="SemiBold" FontSize="13"/>
+                                            <Border Background="{Binding IsActive, Converter={StaticResource ActiveColorConverter}}"
+                                                    CornerRadius="3" Padding="5,2">
+                                                <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveTextConverter}}"
+                                                           FontSize="10" Foreground="White"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Grid.Row="1" Text="{Binding Language}"
+                                                   FontSize="11" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   Margin="0,2,0,0"/>
+                                        <TextBlock Grid.Row="2"
+                                                   Text="{Binding UpdatedAt, StringFormat='Updated: {0:MMM dd, HH:mm}'}"
+                                                   FontSize="10" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                                                   Margin="0,2,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Right Panel - Editor -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <!-- Editor Header -->
+                <Border Grid.Row="0" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="15,10">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                            <TextBlock Text="Key:" VerticalAlignment="Center"/>
+                            <TextBox Text="{Binding EditorKey}" Width="200" Watermark="announcement-key"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" Margin="15,0">
+                            <TextBlock Text="Language:" VerticalAlignment="Center"/>
+                            <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding EditorLanguage}" Width="80"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" Margin="15,0">
+                            <TextBlock Text="Priority:" VerticalAlignment="Center"/>
+                            <NumericUpDown Value="{Binding EditorPriority}" Minimum="0" Maximum="100" Width="80"/>
+                        </StackPanel>
+
+                        <ToggleSwitch Grid.Column="3" IsChecked="{Binding EditorIsActive}"
+                                      OnContent="Active" OffContent="Inactive" Margin="15,0"/>
+
+                        <Button Grid.Column="4" Content="Upload Image" Click="UploadImage_Click" Margin="5,0"/>
+                        <Button Grid.Column="5" Content="Insert Link" Click="InsertLink_Click" Margin="5,0"/>
+                    </Grid>
+                </Border>
+
+                <!-- Editor Content - Split View -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                    <!-- Markdown Editor -->
+                    <Border Grid.Column="0" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="0,0,1,0">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="Markdown" FontWeight="SemiBold" Margin="10,5" FontSize="12"/>
+                            <ae:TextEditor Grid.Row="1"
+                                          x:Name="MarkdownEditor"
+                                          FontFamily="Cascadia Code,Consolas,Courier New"
+                                          FontSize="14"
+                                          ShowLineNumbers="True"
+                                          WordWrap="True"
+                                          Margin="5"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Preview -->
+                    <Border Grid.Column="1">
+                        <Grid RowDefinitions="Auto,*">
+                            <TextBlock Grid.Row="0" Text="Preview" FontWeight="SemiBold" Margin="10,5" FontSize="12"/>
+                            <ScrollViewer Grid.Row="1" Margin="10">
+                                <md:MarkdownScrollViewer x:Name="MarkdownPreview"
+                                                         Markdown="{Binding EditorMarkdown}"/>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" Padding="10,5">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                    <Ellipse Width="10" Height="10"
+                             Fill="{Binding IsConnected, Converter={StaticResource ConnectedColorConverter}}"/>
+                    <TextBlock Text="{Binding IsConnected, Converter={StaticResource ConnectedTextConverter}}"
+                               FontSize="12"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" FontSize="12" HorizontalAlignment="Center"/>
+
+                <ProgressBar Grid.Column="2" IsIndeterminate="True" Width="100"
+                             IsVisible="{Binding IsLoading}"/>
+            </Grid>
+        </Border>
+
+        <!-- Settings Overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                Background="#80000000"
+                IsVisible="{Binding ShowSettings}">
+            <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                    CornerRadius="8" Padding="20"
+                    Width="400" Height="300"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <TextBlock Grid.Row="0" Text="Settings" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                    <StackPanel Grid.Row="1" Spacing="15">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="API Base URL"/>
+                            <TextBox Text="{Binding BaseUrl}" Watermark="https://localhost:7240"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="API Token"/>
+                            <TextBox Text="{Binding ApiToken}" PasswordChar="*" Watermark="Your API token"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                        <Button Content="Cancel" Command="{Binding ToggleSettingsCommand}"/>
+                        <Button Content="Save" Command="{Binding SaveSettingsCommand}" Classes="accent"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

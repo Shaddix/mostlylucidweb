@@ -11,7 +11,7 @@ In this article, I'll show you how to build a proper cross-platform desktop chat
 
 I'm developing this on my workstation - a Ryzen 9950X with 96GB of RAM and an NVIDIA A4000 (16GB VRAM). While that might sound like overkill for running tiny models, it means I can test everything from TinyLlama to much larger models without breaking a sweat. The beauty of this approach is that the same code runs brilliantly on far more modest hardware too.
 
-This is the kind of application you might build as a starting point for more sophisticated integrations - perhaps connecting it to the [mostlyucid.llmbackend](https://github.com/scottgal/mostlyucid.llmbackend) universal LLM/NMT backend I'm working on, or using it as a test bed for your own AI experiments.
+This is the kind of application you might build as a starting point for more sophisticated integrations - perhaps connecting it to the [mostlyucid.llmbackend](https://github.com/scottgal/mostlyucid.llmbackend) universal LLM/NMT backend I'm working on, or using it as a test bed for your own AI experiments. 
 
 [TOC]
 
