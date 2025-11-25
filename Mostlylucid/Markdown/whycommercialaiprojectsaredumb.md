@@ -664,7 +664,7 @@ Each model is smaller, faster, and cheaper than using GPT-4 for everything. But 
 
 #### The Agentic Future
 
-The real game-changer is what we're seeing with **agentic AI**—models that can use tools, execute code, and orchestrate their own workflows. This is what Anthropic's latest models (including the Claude Opus 4 I'm literally using to write this via Claude Code) demonstrate so effectively.
+The real game-changer is what we're seeing with **agentic AI**—models that can use tools, execute code, and orchestrate their own workflows. This is what Anthropic's latest models (including [Claude Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5) that I'm literally using to write this via Claude Code) demonstrate so effectively.
 
 Here's the thing that makes the fine-tuning crowd uncomfortable: **if you describe tools well enough, you don't need expensive fine-tuning to use them.** Modern foundation models are remarkably good at tool use out of the box—you just need clear function schemas and good documentation in the context.
 
