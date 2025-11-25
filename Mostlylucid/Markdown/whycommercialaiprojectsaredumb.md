@@ -664,7 +664,11 @@ Each model is smaller, faster, and cheaper than using GPT-4 for everything. But 
 
 #### The Agentic Future
 
-The real game-changer is what we're seeing with **agentic AI**—models that can use tools, execute code, and orchestrate their own workflows. This is what Anthropic's latest models (including [Claude Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5) that I'm literally using to write this via Claude Code) demonstrate so effectively.
+The term "agentic" is borrowed from psychology—my original field before I fell into software. In psychology, agency refers to the capacity to act independently, to make choices and execute them in the world. An agentic person doesn't just respond to stimuli; they initiate action, pursue goals, and adapt their behaviour based on outcomes.
+
+**Agentic AI** applies this concept to language models. Instead of the traditional pattern—you ask a question, the model generates text—an agentic system can actually *do things*. It can use tools, execute code, query databases, call APIs, write files, and orchestrate multi-step workflows. It's the difference between asking someone for directions and hiring someone to drive you there.
+
+This is what Anthropic's latest models (including [Claude Opus 4.5](https://www.anthropic.com/news/claude-opus-4-5) that I'm literally using to write this via Claude Code) demonstrate so effectively.
 
 Here's the thing that makes the fine-tuning crowd uncomfortable: **if you describe tools well enough, you don't need expensive fine-tuning to use them.** Modern foundation models are remarkably good at tool use out of the box—you just need clear function schemas and good documentation in the context.
 
