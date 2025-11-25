@@ -3,17 +3,22 @@
 <!--category-- AI, Opinion, Software Development, LLM -->
 <datetime class="hidden">2025-11-25T09:00</datetime>
 
+> "We're building an AI-powered knowledge assistant that will revolutionise how our employees access information..."
+> — Every job advert, pitch deck, and consultancy proposal in 2024-2025
+
 ## Introduction
 
-I've been watching the "AI" gold rush with a mixture of amusement and despair. Every company suddenly has an "AI strategy." Every startup is "AI-powered." Every consultant is selling "AI transformation."
+I've spent the past month or so properly immersing myself in the commercial AI space. Read copious amounts of marketing bumf. Pored over dozens of job adverts. Sat through more product demos than I care to admit. And I've come to a rather depressing conclusion.
 
-And you know what most of them are building? The same bloody thing. Over and over. With varying degrees of competence (mostly on the lower end).
+**It's almost all the same thing.**
+
+"AI-powered company knowledge base." "Intelligent document search." "Customer chatbot with enterprise knowledge." Strip away the breathless marketing copy and you'll find the same architecture, the same failure modes, and the same disappointed stakeholders about six months down the line.
+
+The customer chatbot variants are particularly entertaining—they can become PR disasters remarkably quickly when developers who don't understand guardrails let them loose on the public. Nothing quite like your support bot cheerfully offering refunds you don't give, making up product features that don't exist, or going on a philosophical tangent about the meaning of existence when someone asks about shipping times. Without proper constraints, these bots will happily promise anything, admit to crimes your company didn't commit, or develop strong opinions about competitors. The canonical example remains Air Canada's chatbot confidently inventing a bereavement policy that didn't exist—and the company being held to it in court.
 
 Here's the dirty secret that nobody in management wants to hear: **most commercial AI projects aren't innovative. They're commodity plumbing with a fancy label.**
 
-Before I go further, a disclaimer: I'm not an "AI visionary" or whatever the hype-driven title of the moment is (mostly former "blockchain visionaries" who've pivoted). I'm a software engineer who's been building these kinds of systems—search, knowledge management, natural language processing, decision support—for close to three decades. I've seen this movie before with expert systems, with semantic web, with big data, with blockchain. The technology changes; the pattern of overpromising and underdelivering doesn't.
-
-Let me explain.
+Before I go further, a disclaimer: I'm not an "AI visionary" or whatever the hype-driven title of the moment is (mostly former "blockchain visionaries" who've conveniently pivoted). I'm a software engineer who's been building these kinds of systems—search, knowledge management, natural language processing, decision support—for close to three decades. I've seen this picture before with expert systems, with semantic web, with big data, with blockchain. The technology changes; the pattern of overpromising and underdelivering doesn't.
 
 [TOC]
 
@@ -607,7 +612,7 @@ Each model is smaller, faster, and cheaper than using GPT-4 for everything. But 
 
 #### The Agentic Future
 
-The real game-changer is what we're seeing with **agentic AI**—models that can use tools, execute code, and orchestrate their own workflows. This is what Anthropic's latest models (including the Opus 4.5 I'm literally using to write this) demonstrate so effectively.
+The real game-changer is what we're seeing with **agentic AI**—models that can use tools, execute code, and orchestrate their own workflows. This is what Anthropic's latest models (including the Claude Opus 4 I'm literally using to write this via Claude Code) demonstrate so effectively.
 
 Here's the thing that makes the fine-tuning crowd uncomfortable: **if you describe tools well enough, you don't need expensive fine-tuning to use them.** Modern foundation models are remarkably good at tool use out of the box—you just need clear function schemas and good documentation in the context.
 
