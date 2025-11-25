@@ -34,8 +34,7 @@ flowchart LR
     E --> F[Hybrid Search]
     F --> G[Response to User]
 
-    style B fill:#ff6b6b,color:#fff
-    style B stroke:#ff0000,stroke-width:3px
+    style B stroke:#ff0000,stroke-width:4px
 ```
 
 That red box? That's where everything breaks. More on that in a moment.
@@ -165,25 +164,31 @@ Most companies fine-tune once and then just live with the drift. The model slowl
 
 ## What "AI" Projects Are Actually Good For
 
-Don't get me wrong. There are legitimate use cases where these patterns make sense:
+Don't get me wrong. There are legitimate use cases:
 
-### RAG Actually Works When:
+```mermaid
+flowchart TD
+    subgraph RAGWorks["✅ RAG Works When"]
+        R1[Well-structured docs]
+        R2[Clear metadata]
+        R3[Search + synthesis use case]
+        R4[Heavy ingestion investment]
+        R5[Feedback loops exist]
+    end
 
-- Your documents are well-structured and consistent
-- You have clear metadata and organisation
-- Your use case is genuinely search + synthesis (not complex reasoning)
-- You've invested heavily in the ingestion pipeline
-- You have good feedback loops to improve retrieval quality
-- You're honest about the limitations
+    subgraph FTWorks["✅ Fine-Tuning Works When"]
+        F1[Large high-quality dataset]
+        F2[Base model truly struggles]
+        F3[Ongoing maintenance budget]
+        F4[Clear eval metrics]
+        F5[Already tried prompting + RAG]
+    end
 
-### Fine-Tuning Actually Works When:
+    style R4 stroke:#00aa00,stroke-width:2px
+    style F5 stroke:#00aa00,stroke-width:2px
+```
 
-- You have large amounts of high-quality, domain-specific data
-- The base model genuinely struggles with your domain (rare with modern models)
-- You have resources for ongoing maintenance
-- You have clear evaluation metrics
-- The task is specific enough that fine-tuning helps
-- You've already optimised prompting and RAG and still need more
+The green boxes are the prerequisites most projects skip. **"We've already optimised prompting and RAG"** is the bar for fine-tuning. **"Heavy ingestion investment"** is the bar for RAG. Skip these and you're building on sand.
 
 ## The Real Problems Nobody's Solving
 
@@ -227,22 +232,65 @@ But those are hard. RAG pipelines are easy (well, easier). So that's what everyo
 
 ## The Consultancy Industrial Complex
 
-A significant driver of dumb AI projects is the consultancy ecosystem. Here's how it works:
+A significant driver of dumb AI projects is the consultancy ecosystem:
 
-1. **Big consultancy** tells C-suite that they need an AI strategy or they'll be left behind
-2. **C-suite panics** and authorises a big AI initiative
-3. **Consultancy deploys** an army of juniors to "assess AI readiness"
-4. **Recommendations** always include building a RAG system and/or fine-tuning experiments
-5. **Consultancy builds** the same thing they've built for the last 20 clients
-6. **Demo goes well** because demos always go well
-7. **Reality sets in** when it hits real data and real users
-8. **Consultancy moves on** to the next client, leaving behind a system nobody knows how to maintain
-9. **Internal team struggles** to make it actually work
-10. **Project quietly fails** but nobody admits it because careers are on the line
+```mermaid
+flowchart TD
+    A[Big Consultancy Tells C-Suite: You Need AI!] --> B[C-Suite Panics]
+    B --> C[Consultancy Deploys Army of Juniors]
+    C --> D[Recommendations: RAG + Fine-Tuning]
+    D --> E[Build Same Thing as Last 20 Clients]
+    E --> F[Demo Goes Well]
+    F --> G[Reality: Real Data Breaks Everything]
+    G --> H[Consultancy Moves On]
+    H --> I[Internal Team Struggles]
+    I --> J[Project Quietly Fails]
+    J --> K[Nobody Admits It]
+    K --> A
+
+    style G stroke:#ff0000,stroke-width:3px
+    style J stroke:#ff0000,stroke-width:3px
+```
 
 <img src="https://media1.tenor.com/m/Nly5DfV0atkAAAAC/money-cash.gif" height="250"/>
 
 I've seen this pattern dozens of times. The consultancy gets paid. The executives get to say they "did AI." The engineers get stuck maintaining something that barely works. And the actual business problem remains unsolved.
+
+## The VC-Driven AI Requirement
+
+Startups fall into a slightly different trap. It's not consultancies driving the dysfunction—it's the funding environment.
+
+```mermaid
+timeline
+    title Technology Requirements for VC Funding
+    2005 : Web 2.0 : "You need social features"
+    2010 : Mobile : "You need an app"
+    2015 : Cloud : "You need to be cloud-native"
+    2018 : Blockchain : "You need a token"
+    2023 : AI : "You need an AI strategy"
+```
+
+Sound familiar? Every few years, there's a new technology that VCs decide is essential. If your pitch deck doesn't mention it prominently, you're not getting funded. The technology might be irrelevant to your actual product—doesn't matter. You need the buzzword.
+
+I watched this happen with blockchain in 2017-2018. Companies that had no business being on a blockchain were shoehorning tokens into their products because that's what got funding. Most of those blockchain features quietly disappeared once the money was secured.
+
+**Now it's happening with AI.**
+
+Startups are bolting LLM features onto products that don't need them because:
+- Investors won't look at decks without "AI" mentioned
+- Valuations are 3-5x higher for "AI companies"
+- The press only covers AI stories
+- "AI-powered" is table stakes for marketing
+
+The result? Products with awkward AI features that users ignore. Burned runway on fine-tuning experiments that go nowhere. Engineering time wasted on RAG systems when a simple database query would work better.
+
+**The worst part:** many founders know this is silly. They're building AI features they don't believe in because they need to survive long enough to build what they actually care about. Some succeed at this game. Most don't.
+
+If you're a startup founder being pushed to add AI, ask yourself:
+- Does AI genuinely improve my product's core value proposition?
+- Or am I just checking a box for investors?
+
+If it's the latter, build the minimum viable AI feature that ticks the box, then focus on what actually matters. Don't let the funding environment distract you from building something valuable.
 
 ## What Should You Actually Do?
 
@@ -395,7 +443,7 @@ For **coding tasks**:
 - **DeepSeek Coder** - Excellent code understanding
 - **StarCoder** - Good for many languages
 
-Running these locally isn't as hard as you'd think. Tools like **Ollama**, **llama.cpp**, **vLLM**, or **text-generation-inference** make it straightforward.
+Running these locally isn't as hard as you'd think. Tools like **Ollama**, **llama.cpp**, **vLLM**, or **text-generation-inference** make it straightforward. I've built a [complete cross-platform chat app with Avalonia and LLamaSharp](/blog/avalonia-tinyllm-chat) that demonstrates this running on consumer hardware.
 
 #### The Hybrid Approach
 
@@ -416,25 +464,30 @@ This hybrid approach gives you the cost benefits of local inference with the cap
 
 ### Build Incremental Value, Not Big Bang Transformations
 
-The projects that actually work follow this pattern:
+```mermaid
+flowchart LR
+    subgraph Waterfall["❌ The Waterfall AI Project"]
+        W1[Month 1-3: Requirements] --> W2[Month 4-6: Build Platform]
+        W2 --> W3[Month 7-9: Integration]
+        W3 --> W4[Month 10: Demo - Looks Great!]
+        W4 --> W5[Month 11: Real Users Break It]
+        W5 --> W6[Month 12: Project Shelved]
+    end
 
-**Week 1-2**: Solve one small, specific problem with AI. Maybe it's auto-categorising incoming documents. Measure the results.
+    subgraph Incremental["✅ The Incremental Approach"]
+        I1[Week 1-2: One Small Problem] --> I2[Week 3-4: Refine + Measure]
+        I2 --> I3[Week 5-6: Add Capability]
+        I3 --> I4[Week 7-8: Refine + Measure]
+        I4 --> I5[Repeat...]
+        I5 --> I6[Continuous Value Delivery]
+    end
 
-**Week 3-4**: Refine based on feedback. Fix the edge cases. Improve accuracy.
+    style W5 stroke:#ff0000,stroke-width:3px
+    style W6 stroke:#ff0000,stroke-width:3px
+    style I6 stroke:#00aa00,stroke-width:3px
+```
 
-**Week 5-6**: Add another small capability. Maybe now it extracts key dates and entities.
-
-**Week 7-8**: Refine. Measure. Improve.
-
-Each step delivers measurable value. Each step teaches you something about what works and what doesn't. If something fails, you've lost weeks, not months.
-
-Compare this to the typical failed approach:
-- Month 1-3: Massive requirements gathering
-- Month 4-6: Building the "platform"
-- Month 7-9: Integration and testing
-- Month 10: Demo to stakeholders (looks great!)
-- Month 11: Real users discover it doesn't work with real data
-- Month 12: Project quietly shelved
+Each step in the incremental approach delivers measurable value. Each step teaches you something. If something fails, you've lost weeks, not months.
 
 ### Make Document Ingestion a First-Class Concern
 
@@ -566,14 +619,29 @@ The results are often better because:
 - **The model benefits from its general reasoning** - not just memorised patterns
 - **You can use any capable model** - not a specifically fine-tuned one
 
-The pattern isn't "ask LLM question, get answer." It's:
-1. LLM understands the task
-2. LLM breaks it into steps
-3. LLM selects and uses appropriate tools (from well-described schemas)
-4. LLM evaluates results
-5. LLM iterates until done
+```mermaid
+flowchart TD
+    subgraph RAG["Traditional RAG Chatbot"]
+        R1[User Question] --> R2[Search Documents]
+        R2 --> R3[Construct Prompt]
+        R3 --> R4[LLM Generates Answer]
+        R4 --> R5[Return to User]
+    end
 
-This is fundamentally different from the RAG chatbot pattern. And it's where the real value lies.
+    subgraph Agentic["Agentic AI Pattern"]
+        A1[User Task] --> A2[LLM Understands Task]
+        A2 --> A3[Break Into Steps]
+        A3 --> A4{Select Tool}
+        A4 --> A5[Execute Tool]
+        A5 --> A6{Evaluate Results}
+        A6 -->|Need More| A4
+        A6 -->|Done| A7[Return to User]
+    end
+
+    style A6 stroke:#00aa00,stroke-width:3px
+```
+
+This agentic pattern is fundamentally different from RAG chatbots. And it's where the real value lies.
 
 **Frameworks like LangChain, LlamaIndex, and Semantic Kernel make this possible today.** You can build systems where:
 - A small fast model handles routing and classification
@@ -586,10 +654,16 @@ The companies that figure this out will build AI systems that actually work. The
 #### Where to Learn More
 
 I've written extensively about these patterns:
-- [DiSE vs Voyager](/blog/disejustvoyager) - Why structured orchestration beats monolithic models
-- [Multi-LLM Synthetic Decision Engines](/blog/semantidintelligence) - Building pipelines of specialised models
-- [RAG Series](/blog/rag-primer) - The fundamentals of retrieval-augmented generation
-- [Semantic Search Implementation](/blog/semantic-search-with-onnx-and-qdrant) - Practical local embeddings with ONNX
+
+| Topic | Article | What You'll Learn |
+|-------|---------|-------------------|
+| **Architecture** | [DiSE vs Voyager](/blog/disejustvoyager) | Why structured orchestration beats monolithic models |
+| **Multi-Model** | [Synthetic Decision Engines](/blog/semantidintelligence) | Building pipelines of specialised models |
+| **RAG Fundamentals** | [RAG Series](/blog/rag-primer) | From embeddings to production systems |
+| **Local Embeddings** | [Semantic Search with ONNX](/blog/semantic-search-with-onnx-and-qdrant) | CPU-friendly local vector search |
+| **Local LLMs** | [Avalonia + LLamaSharp](/blog/avalonia-tinyllm-chat) | Cross-platform desktop chat with local models |
+| **API Simulation** | [LLMApi](/blog/llmapi) | Using local LLMs to simulate APIs for testing |
+| **Practical RAG** | [Building a Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) | Complete RAG implementation walkthrough |
 
 The technology exists. The patterns are emerging. The question is whether your organisation will build something sensible or another dumb AI project.
 
