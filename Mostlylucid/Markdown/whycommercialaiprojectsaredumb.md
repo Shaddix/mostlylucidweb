@@ -297,6 +297,58 @@ If you're a startup founder being pushed to add AI, ask yourself:
 
 If it's the latter, build the minimum viable AI feature that ticks the box, then focus on what actually matters. Don't let the funding environment distract you from building something valuable.
 
+## The Hype Industrial Complex
+
+Here's the uncomfortable truth nobody in AI wants to discuss: **almost everyone in the ecosystem has a financial incentive to keep the hype going.**
+
+```mermaid
+flowchart TD
+    subgraph Researchers["🔬 Frontier Labs"]
+        R1[Need billions for compute]
+        R2[Must show progress to justify spend]
+        R3[Hype generates investment]
+    end
+
+    subgraph Companies["🏢 Tech Companies"]
+        C1[Need AI angle for valuation]
+        C2[Must justify AI team costs]
+        C3[Hype drives stock price]
+    end
+
+    subgraph Investors["💰 Financial Backers"]
+        I1[Massive capital deployed]
+        I2[Need exits and returns]
+        I3[Hype maintains valuations]
+    end
+
+    subgraph Media["📰 Tech Media"]
+        M1[AI stories get clicks]
+        M2[Access depends on positive coverage]
+        M3[Hype drives engagement]
+    end
+
+    R3 --> I1
+    C3 --> I1
+    I3 --> R1
+    I3 --> C1
+    M3 --> R3
+    M3 --> C3
+```
+
+**The researchers** at frontier labs need billions in compute to train the next generation of models. That money comes from investors and big tech. To justify that spend, they need to demonstrate progress—and "progress" gets translated into breathless announcements about capabilities that may or may not materialise in practical applications. If the hype dies, the funding dries up.
+
+**The companies** (both the AI labs and everyone using AI) need the narrative to continue. OpenAI's valuation depends on the belief that AGI is around the corner. Every "AI-powered" startup's multiple depends on AI remaining the hot sector. The moment sentiment shifts, billions in paper wealth evaporates.
+
+**The investors** have deployed staggering amounts of capital into AI. They need exits. They need the music to keep playing long enough to realise returns. A realistic assessment of near-term AI capabilities would crater valuations across the sector.
+
+**The media** has discovered that AI stories generate massive engagement. Nuanced coverage doesn't get clicks. "AI will take your job" and "AI breakthrough solves X" do. Access to AI companies often depends on maintaining positive relationships—which means critical coverage is career-limiting.
+
+The result? A self-reinforcing hype cycle where everyone has reasons to keep inflating expectations, and very few people benefit from telling the truth.
+
+This doesn't mean AI isn't genuinely useful—it absolutely is, as I've discussed throughout this article. But the gap between what's being promised and what's being delivered is vast, and the incentives are all aligned to keep that gap hidden.
+
+When someone tells you AI will revolutionise your business, ask yourself: what do they gain from you believing that?
+
 ## What Should You Actually Do?
 
 If you're considering an AI project, here's my honest advice:
