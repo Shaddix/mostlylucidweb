@@ -381,30 +381,9 @@ Building the system is maybe 30% of the effort. Maintaining it, improving it, an
 
 Maybe what you need is just better use of off-the-shelf tools. ChatGPT with some custom instructions might be enough. Not everything needs a bespoke AI platform.
 
-## The Path Forward
-
-I'm not saying commercial AI is worthless. I'm saying most implementations are dumb because they're:
-
-- Solving the wrong problems
-- Using technology for technology's sake
-- Ignoring the hard parts (data quality, document ingestion)
-- Following a template instead of thinking critically
-- Driven by FOMO rather than genuine need
-
-The companies getting real value from AI are:
-- Relentlessly focused on specific, measurable problems
-- Investing in data quality before AI capabilities
-- Building feedback loops and continuous improvement
-- Being honest about what works and what doesn't
-- Treating AI as a tool, not a magic wand
-
-If your AI project is "build a RAG system on our documents" or "fine-tune a model for our domain" without deeper thinking about why and how, you're probably building something dumb.
-
-And that's fine, I suppose. Just don't be surprised when it doesn't deliver the transformation you were promised.
-
 ## But They Don't Have to Be Dumb
 
-Right, I've spent 2000 words slagging off commercial AI projects. Now for the hopeful bit: **these projects can actually work, if you approach them sensibly.**
+Right, I've spent a fair few words slagging off commercial AI projects. Now for the hopeful bit: **these projects can actually work, if you approach them sensibly.**
 
 The problem isn't RAG or fine-tuning as concepts. The problem is lazy implementation, unrealistic expectations, and ignoring the fundamentals. Here's how to do it better.
 
@@ -586,32 +565,6 @@ You can't improve what you can't measure. Every AI system should track:
 - **Failure modes**: When does it break? Track error rates by document type, query type, etc.
 
 This data tells you where to invest effort. Maybe your retrieval is great but generation is hallucinating. Maybe certain document types always fail. You can't fix what you can't see.
-
-### The Realistic Path to Value
-
-Here's what an actually-sensible AI project looks like:
-
-**Phase 1: Foundation (1-2 months)**
-- Set up local LLM infrastructure (Ollama + a capable open model)
-- Build a basic document ingestion pipeline for ONE document type
-- Create a simple retrieval system with hybrid search
-- Deploy internally, gather feedback
-
-**Phase 2: Iteration (2-3 months)**
-- Expand to more document types based on Phase 1 learnings
-- Improve ingestion quality based on real failures
-- Add human-in-the-loop review for high-stakes queries
-- Track metrics religiously
-
-**Phase 3: Scale (ongoing)**
-- Gradually expand capabilities based on proven patterns
-- Consider cloud APIs for specific complex tasks
-- Build self-improving feedback loops
-- Continuously measure ROI
-
-Notice what's missing? A six-month "platform build" phase. A massive up-front investment. A big bang launch.
-
-The successful AI projects I've seen all followed this incremental pattern. They started small, proved value, and expanded based on evidence.
 
 ### The End of "Big LLM Solves Everything"
 
