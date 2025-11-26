@@ -75,7 +75,7 @@ public class MarkdownDirectoryWatcherService(
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        // ✅ Proper cleanup
+        // Proper cleanup
         _fileSystemWatcher.EnableRaisingEvents = false;
         _fileSystemWatcher.Dispose();
 
@@ -331,7 +331,7 @@ public class EmailSenderHostedService : IEmailSenderHostedService
     {
         _logger.LogInformation("Stopping background e-mail delivery");
 
-        // ✅ Proper shutdown sequence
+        // Proper shutdown sequence
         await _cancellationTokenSource.CancelAsync();
         _mailMessages.Writer.Complete(); // Critical: complete the channel
 
@@ -465,7 +465,7 @@ public class UmamiBackgroundSender(
     {
         logger.LogInformation("UmamiBackgroundSender is stopping.");
 
-        // ✅ Standard shutdown pattern
+        // Standard shutdown pattern
         await _cancellationTokenSource.CancelAsync();
         _channel.Writer.Complete();
 
@@ -898,7 +898,7 @@ public class MarkdownReAddPostsService(
         if (!markdownConfig.ReAddPosts)
         {
             logger.LogInformation("ReAddPosts is disabled, skipping bulk post re-add");
-            // ✅ Signal ready immediately since we're not doing anything
+            // Signal ready immediately since we're not doing anything
             startupCoordinator.SignalReady(StartupServiceNames.MarkdownReAddPosts);
             return;
         }
@@ -916,7 +916,7 @@ public class MarkdownReAddPostsService(
             }
             finally
             {
-                // ✅ Signal ready when complete (even if there were errors)
+                // Signal ready when complete (even if there were errors)
                 startupCoordinator.SignalReady(StartupServiceNames.MarkdownReAddPosts);
             }
         }, cancellationToken);

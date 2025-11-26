@@ -166,24 +166,7 @@ resources:
 
 This means a runaway background task can't starve your web tier.
 
-## The Modern Trade-off
-
-Today, the question isn't "Can we run background services in our web app?" but rather "**Should we?**"
-
-**You can safely run background services in-process when:**
-- ✅ You have multiple CPU cores
-- ✅ The work is async/await and I/O-bound
-- ✅ You set appropriate resource limits
-- ✅ The work is lightweight and non-critical
-- ✅ You're using modern hosting (Docker, K8s, etc.)
-
-**You should still split to separate workers when:**
-- ❌ CPU-intensive work (video encoding, ML inference)
-- ❌ Long-running tasks (hours)
-- ❌ Different scaling requirements
-- ❌ Critical work that needs independent deployment
-
-We'll explore this decision matrix in detail in the "When NOT to Use Background Services" section later in this article.
+The question is no longer "Can we run background services in our web app?" but "**Should we?**" We'll explore this decision in the "When NOT to Use Background Services" section later.
 
 # The Built-in Options
 
@@ -291,7 +274,7 @@ public class BrokenService : IHostedService
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        // ❌ WRONG: The channel is still open, ProcessMessagesAsync
+        // WRONG: The channel is still open, ProcessMessagesAsync
         // will hang on WaitToReadAsync forever!
         return Task.CompletedTask;
     }
@@ -332,7 +315,7 @@ public class CorrectService : IHostedService
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        // ✅ CORRECT: Signal cancellation and complete the channel
+        // CORRECT: Signal cancellation and complete the channel
         await _cts.CancelAsync();
         _channel.Writer.Complete();
 
@@ -574,7 +557,7 @@ Background services running in your web application share resources with your HT
 **Problem:** Your background service consumes significant CPU, memory, or database connections.
 
 ```csharp
-// ❌ This will starve your web application
+// This will starve your web application
 public class VideoTranscodingService : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -640,7 +623,7 @@ Every deployment interrupts the import. Move it to a separate worker service tha
 **Problem:** A bug in your background service crashes the entire web application.
 
 ```csharp
-// ❌ This null reference exception crashes your web app
+// This null reference exception crashes your web app
 public class BuggyBackgroundService : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -792,7 +775,7 @@ Each worker can:
 
 Despite the above, some scenarios are perfectly fine for in-process background services:
 
-### ✅ Lightweight Periodic Tasks
+### Lightweight Periodic Tasks
 ```csharp
 // Fine to keep in web app
 public class CacheWarmingService : BackgroundService
@@ -808,7 +791,7 @@ public class CacheWarmingService : BackgroundService
 }
 ```
 
-### ✅ Event Listeners
+### Event Listeners
 ```csharp
 // Fine to keep in web app
 public class FileWatcherService : IHostedService
@@ -826,7 +809,7 @@ public class FileWatcherService : IHostedService
 }
 ```
 
-### ✅ Channel-Based Queues (for non-critical work)
+### Channel-Based Queues (for non-critical work)
 ```csharp
 // Fine to keep in web app if work is quick and not critical
 public class EmailQueueService : BackgroundService
@@ -836,7 +819,7 @@ public class EmailQueueService : BackgroundService
 }
 ```
 
-### ✅ Startup Coordination
+### Startup Coordination
 ```csharp
 // Fine to keep in web app
 public class WarmupService : IHostedService
@@ -867,17 +850,17 @@ public class WarmupService : IHostedService
 In the blog platform whose code we examine in Part 2:
 
 **Kept in web app:**
-- ✅ `MarkdownDirectoryWatcherService` - Lightweight file watcher
-- ✅ `UmamiBackgroundSender` - Quick analytics events
-- ✅ `EmailSenderHostedService` - Small volume, non-critical
-- ✅ `MarkdownReAddPostsService` - Startup-only, configuration-gated
+- `MarkdownDirectoryWatcherService` - Lightweight file watcher
+- `UmamiBackgroundSender` - Quick analytics events
+- `EmailSenderHostedService` - Small volume, non-critical
+- `MarkdownReAddPostsService` - Startup-only, configuration-gated
 
 **Should move to worker service if scale increases:**
-- ⚠️ `BrokenLinkCheckerBackgroundService` - Makes many HTTP requests
-- ⚠️ `SemanticIndexingBackgroundService` - Calls external embedding API
+- `BrokenLinkCheckerBackgroundService` - Makes many HTTP requests
+- `SemanticIndexingBackgroundService` - Calls external embedding API
 
 **Already in separate service:**
-- ✅ `Mostlylucid.SchedulerService` - Hangfire dashboard and newsletter sending
+- `Mostlylucid.SchedulerService` - Hangfire dashboard and newsletter sending
 
 This is a pragmatic approach: start simple (in-process), split when you have evidence you need to.
 
