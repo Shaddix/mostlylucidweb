@@ -4,6 +4,10 @@
 
 <!--category-- PuppeteerSharp, E2E Testing, xUnit, Testing -->
 
+## Lead
+
+Modern E2E testing doesn't have to be painful. This comprehensive guide shows you how to use PuppeteerSharp for fast, reliable browser automation in .NET - covering everything from basic testing to PDF generation and web scraping. Whilst Microsoft's Playwright is the more modern multi-browser solution, I chose PuppeteerSharp for this blog because it's what I knew and Chrome-only testing was sufficient for my needs. If you need Firefox and Safari support, check out my [Playwright guide](/blog/playwright-e2e-testing) instead.
+
 ## Introduction
 
 If you've ever worked with [Selenium](https://www.selenium.dev/) for end-to-end testing, you'll know it can be a right pain in the backside. Between wrestling with driver versions, dealing with flaky tests that work on your machine but nowhere else, and the general sluggishness of the WebDriver protocol, it's enough to make you want to chuck it all in and test manually instead.
