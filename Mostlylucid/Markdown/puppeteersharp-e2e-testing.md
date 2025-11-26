@@ -6,17 +6,17 @@
 
 ## Introduction
 
-If you've ever worked with Selenium for end-to-end testing, you'll know it can be a right pain in the backside. Between wrestling with driver versions, dealing with flaky tests that work on your machine but nowhere else, and the general sluggishness of the WebDriver protocol, it's enough to make you want to chuck it all in and just test manually with a cup of tea in hand.
+If you've ever worked with [Selenium](https://www.selenium.dev/) for end-to-end testing, you'll know it can be a right pain in the backside. Between wrestling with driver versions, dealing with flaky tests that work on your machine but nowhere else, and the general sluggishness of the WebDriver protocol, it's enough to make you want to chuck it all in and test manually instead.
 
-Enter PuppeteerSharp - the .NET port of Google's Puppeteer library. It's like Selenium's younger, faster cousin who actually bothers to show up on time and doesn't require you to download seventeen different browser drivers just to run a simple test.
+Enter [PuppeteerSharp](https://www.puppeteersharp.com/) - the .NET port of Google's [Puppeteer](https://pptr.dev/) library. It's like Selenium's younger, faster cousin who actually bothers to show up on time and doesn't require you to download seventeen different browser drivers.
 
-In this article, I'll walk you through how I've implemented PuppeteerSharp for E2E testing on this very blog, complete with real code examples from the repo. We'll also have a look at how it stacks up against Selenium and other alternatives.
+In this article, I'll walk you through how I've implemented PuppeteerSharp for E2E testing on this very blog, complete with real code examples from the repo. We'll cover testing, PDF generation, web scraping, and compare it with the alternatives.
 
 [TOC]
 
 ## What's PuppeteerSharp Then?
 
-PuppeteerSharp is a .NET library that provides a high-level API to control Chrome or Chromium browsers using the Chrome DevTools Protocol. Unlike Selenium, which uses the WebDriver protocol (a rather clunky HTTP-based JSON wire protocol), PuppeteerSharp talks directly to the browser through DevTools. This makes it significantly faster and more reliable.
+[PuppeteerSharp](https://www.puppeteersharp.com/) is a .NET library providing a high-level API to control Chrome or Chromium browsers using the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). Unlike [Selenium](https://www.selenium.dev/), which uses the [WebDriver protocol](https://www.w3.org/TR/webdriver/) (a rather clunky HTTP-based JSON wire protocol), PuppeteerSharp talks directly to the browser through DevTools.
 
 Think of it this way:
 - **Selenium**: Like sending letters through the post to communicate with your browser
@@ -84,7 +84,7 @@ graph TB
 
 **When You NEED E2E Tests:**
 1. **Critical user journeys** - Login, checkout, payment processing. If these break, your business stops.
-2. **JavaScript-heavy UIs** - Modern SPAs (React, Vue, Angular) where the UI is rendered client-side.
+2. **JavaScript-heavy UIs** - Modern SPAs ([React](https://react.dev/), [Vue](https://vuejs.org/), [Angular](https://angular.dev/)) where the UI is rendered client-side.
 3. **Cross-browser issues** - Different browsers render things differently (though with PuppeteerSharp you're Chrome-only).
 4. **Complex interactions** - Multi-step wizards, drag-and-drop, file uploads.
 
@@ -111,13 +111,13 @@ Let me count the ways:
 
 ## Setting Up PuppeteerSharp
 
-First things first, you'll need to add the NuGet package to your test project:
+First, add the [PuppeteerSharp](https://www.nuget.org/packages/PuppeteerSharp) NuGet package:
 
 ```bash
 dotnet add package PuppeteerSharp
 ```
 
-Here's the relevant section from my test project file:
+Here's my test project configuration (`Mostlylucid.Test/Mostlylucid.Test.csproj:23`):
 
 ```xml
 <PackageReference Include="PuppeteerSharp" Version="20.2.4" />
@@ -128,24 +128,20 @@ Here's the relevant section from my test project file:
 </PackageReference>
 ```
 
-I'm using xUnit for my tests (because it's what ASP.NET Core uses by default and I'm not one to rock the boat unnecessarily), but PuppeteerSharp works just fine with NUnit or MSTest if that's your cup of tea.
+I'm using [xUnit](https://xunit.net/) (ASP.NET Core's default), but PuppeteerSharp works equally well with [NUnit](https://nunit.org/) or [MSTest](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-mstest).
 
 ## Creating a Base Test Class
 
-Rather than repeating the same setup and teardown code in every test, I've created a base class that handles all the browser lifecycle management. This is the sort of thing that makes your life much easier:
+Rather than repeating setup/teardown code in every test, I've created a base class (`Mostlylucid.Test/E2E/E2ETestBase.cs:12`) that handles browser lifecycle management:
+
+### The Class Structure
 
 ```csharp
 using PuppeteerSharp;
-using PuppeteerSharp.Input;
 using Xunit.Abstractions;
 
 namespace Mostlylucid.Test.E2E;
 
-/// <summary>
-/// Base class for E2E tests using PuppeteerSharp.
-/// NOTE: These tests require the site to be running locally.
-/// Run the site first with: dotnet run --project Mostlylucid --launch-profile https
-/// </summary>
 public abstract class E2ETestBase : IAsyncLifetime
 {
     protected readonly ITestOutputHelper Output;
@@ -159,17 +155,23 @@ public abstract class E2ETestBase : IAsyncLifetime
     {
         Output = output;
     }
+```
 
+We implement [IAsyncLifetime](https://xunit.net/docs/shared-context#async-lifetime) from xUnit, which provides async setup/teardown. Unlike traditional constructors, this lets us properly await browser initialization.
+
+### Browser Initialization
+
+```csharp
     public async Task InitializeAsync()
     {
-        Output.WriteLine("Downloading Chromium if needed...");
+        // Download Chromium on first run
         var browserFetcher = new BrowserFetcher();
         await browserFetcher.DownloadAsync();
 
-        Output.WriteLine("Launching browser...");
+        // Launch browser with sensible defaults
         Browser = await Puppeteer.LaunchAsync(new LaunchOptions
         {
-            Headless = true, // Set to false for debugging
+            Headless = true, // Set false for debugging
             DefaultViewport = new ViewPortOptions
             {
                 Width = 1400,
@@ -184,92 +186,40 @@ public abstract class E2ETestBase : IAsyncLifetime
 
         Page = await Browser.NewPageAsync();
         Page.DefaultTimeout = DefaultTimeout;
-
-        Output.WriteLine("Browser ready");
     }
+```
 
+The `BrowserFetcher` automatically downloads a compatible Chromium version on first run - no manual driver management needed. The `--no-sandbox` flags are required for Docker/CI environments.
+
+### Cleanup
+
+```csharp
     public async Task DisposeAsync()
     {
-        if (Page != null)
-        {
-            await Page.CloseAsync();
-        }
-
-        if (Browser != null)
-        {
-            await Browser.CloseAsync();
-        }
+        if (Page != null) await Page.CloseAsync();
+        if (Browser != null) await Browser.CloseAsync();
     }
 }
 ```
 
-Let's break down what's happening here:
+Proper disposal is critical to avoid memory leaks. Each browser instance uses 100-200MB of RAM.
 
-### The IAsyncLifetime Interface
+## Helper Methods
 
-```csharp
-public abstract class E2ETestBase : IAsyncLifetime
-```
-
-This is xUnit's way of handling async setup and teardown. Unlike the traditional constructor/dispose pattern, `IAsyncLifetime` gives us `InitializeAsync` and `DisposeAsync` methods that can be awaited. This is crucial because launching a browser and creating pages are async operations.
-
-### Browser Fetcher
+The base class includes helper methods to reduce boilerplate (`Mostlylucid.Test/E2E/E2ETestBase.cs:72-172`):
 
 ```csharp
-var browserFetcher = new BrowserFetcher();
-await browserFetcher.DownloadAsync();
-```
-
-This is where the magic happens. The `BrowserFetcher` will download a compatible version of Chromium the first time you run your tests. It's stored in your user profile directory, so you only download it once. No more "works on my machine" issues because everyone's using slightly different Chrome versions.
-
-### Launch Options
-
-```csharp
-Browser = await Puppeteer.LaunchAsync(new LaunchOptions
-{
-    Headless = true, // Set to false for debugging
-    DefaultViewport = new ViewPortOptions
-    {
-        Width = 1400,
-        Height = 900
-    },
-    Args = new[]
-    {
-        "--no-sandbox",
-        "--disable-setuid-sandbox"
-    }
-});
-```
-
-A few important bits here:
-
-- **Headless mode**: When `true`, the browser runs without a GUI. Brilliant for CI/CD pipelines. Set it to `false` when you're debugging and you want to see what's actually happening.
-- **Viewport size**: I've set a sensible desktop size. This matters for responsive design testing - you don't want to test on a tiny viewport when you mean to test desktop layouts.
-- **Sandbox arguments**: The `--no-sandbox` flags are needed for running in Docker containers or CI environments where you don't have a proper display server.
-
-## Helper Methods - Making Life Easier
-
-I've added a bunch of helper methods to the base class to make common operations less verbose. Here are some of my favourites from `Mostlylucid.Test/E2E/E2ETestBase.cs:72-172`:
-
-```csharp
-/// <summary>
-/// Navigate to a page and wait for it to load
-/// </summary>
+// Navigation with automatic network idle waiting
 protected async Task NavigateAsync(string path)
 {
     var url = path.StartsWith("http") ? path : $"{BaseUrl}{path}";
-    Output.WriteLine($"Navigating to: {url}");
-
     await Page.GoToAsync(url, new NavigationOptions
     {
-        WaitUntil = new[] { WaitUntilNavigation.Networkidle2 },
-        Timeout = DefaultTimeout
+        WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
     });
 }
 
-/// <summary>
-/// Wait for an element to appear
-/// </summary>
+// Safe element waiting with timeout handling
 protected async Task<IElementHandle?> WaitForSelectorAsync(string selector, int timeout = 5000)
 {
     try
@@ -282,42 +232,27 @@ protected async Task<IElementHandle?> WaitForSelectorAsync(string selector, int 
     }
     catch (WaitTaskTimeoutException)
     {
-        return null;
+        return null; // Graceful degradation
     }
 }
 
-/// <summary>
-/// Check if an element exists on the page
-/// </summary>
-protected async Task<bool> ElementExistsAsync(string selector)
-{
-    var element = await Page.QuerySelectorAsync(selector);
-    return element != null;
-}
+// Common element operations
+protected async Task<bool> ElementExistsAsync(string selector) =>
+    await Page.QuerySelectorAsync(selector) != null;
 
-/// <summary>
-/// Get text content of an element
-/// </summary>
 protected async Task<string?> GetTextContentAsync(string selector)
 {
     var element = await Page.QuerySelectorAsync(selector);
-    if (element == null) return null;
-
-    return await Page.EvaluateFunctionAsync<string>("el => el.textContent", element);
+    return element == null ? null :
+        await Page.EvaluateFunctionAsync<string>("el => el.textContent", element);
 }
 
-/// <summary>
-/// Type text into an input element
-/// </summary>
 protected async Task TypeAsync(string selector, string text, int delay = 50)
 {
     await Page.WaitForSelectorAsync(selector);
     await Page.TypeAsync(selector, text, new TypeOptions { Delay = delay });
 }
 
-/// <summary>
-/// Click an element
-/// </summary>
 protected async Task ClickAsync(string selector)
 {
     await Page.WaitForSelectorAsync(selector);
@@ -325,7 +260,7 @@ protected async Task ClickAsync(string selector)
 }
 ```
 
-These methods do the boring stuff for you - waiting for elements to exist before clicking them, handling timeouts gracefully, and logging what's happening (which is invaluable when a test fails in CI and you're trying to figure out what went wrong).
+These handle the tedious bits - waiting for elements to exist, graceful timeout handling, and automatic logging for when tests fail in CI.
 
 ## Writing Actual Tests
 
@@ -397,7 +332,7 @@ Compare this to Selenium where you'd need to:
 
 ### Testing HTMX Interactions
 
-My blog uses HTMX extensively (because I'm a fan of server-side rendering and not writing JavaScript unless absolutely necessary). Here's a test that checks sorting functionality (`Mostlylucid.Test/E2E/FilterBarTests.cs:98-126`):
+My blog uses [HTMX](https://htmx.org/) extensively (server-side rendering without writing JavaScript). Here's a test that checks sorting functionality (`Mostlylucid.Test/E2E/FilterBarTests.cs:98-126`):
 
 ```csharp
 [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
@@ -613,14 +548,14 @@ Selenium has been around since 2004 and it shows. It's mature, well-documented, 
 
 **The New Kid on the Block**
 
-Playwright is Microsoft's answer to Puppeteer, with .NET support baked in from the start. It's essentially PuppeteerSharp but with multi-browser support:
+[Playwright](https://playwright.dev/) is Microsoft's answer to Puppeteer, with [.NET support](https://playwright.dev/dotnet/) baked in from the start. It's essentially PuppeteerSharp but with multi-browser support:
 
 **Pros:**
 - Supports Chrome, Firefox, Safari (WebKit)
 - Modern API similar to Puppeteer
 - Auto-downloads browsers
 - Built-in network interception, screenshots, etc.
-- Good .NET support
+- Excellent .NET support
 
 **Cons:**
 - Newer, so smaller ecosystem
@@ -1651,7 +1586,7 @@ public class ProductScraper
 - Content behind login walls
 
 **When NOT to Use It:**
-- Simple HTML scraping (use HtmlAgilityPack or AngleSharp instead - much faster)
+- Simple HTML scraping (use [HtmlAgilityPack](https://html-agility-pack.net/) or [AngleSharp](https://anglesharp.github.io/) instead - much faster)
 - High-volume scraping (browser overhead is significant)
 - When there's an API available (always prefer APIs!)
 
@@ -1820,9 +1755,9 @@ Each browser instance:
 - Takes 2-5 seconds to generate a PDF (depending on complexity)
 
 Compare this to dedicated PDF libraries like:
-- **iTextSharp** (now iText 7) - ~£500-3000/year licensing, but generates PDFs in milliseconds with tiny memory footprint
-- **QuestPDF** - Free and open source, generates PDFs from code (no HTML), blazing fast
-- **PdfSharpCore** - Free, but more limited in capabilities
+- **[iText 7](https://itextpdf.com/)** (formerly iTextSharp) - ~£500-3000/year licensing, but generates PDFs in milliseconds with tiny memory footprint
+- **[QuestPDF](https://www.questpdf.com/)** - Free and open source, generates PDFs from code (no HTML), blazing fast
+- **[PdfSharpCore](https://github.com/ststeiger/PdfSharpCore)** - Free, but more limited in capabilities
 
 **When to Use PuppeteerSharp for PDFs:**
 - You already have HTML templates and don't want to rewrite in PDF layout code
