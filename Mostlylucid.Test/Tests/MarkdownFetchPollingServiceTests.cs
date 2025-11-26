@@ -12,6 +12,7 @@ using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Entities;
 using Mostlylucid.Shared.Models;
 using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Services;
 using Mostlylucid.Test.Extensions;
 
 namespace Mostlylucid.Test.Tests;
@@ -60,7 +61,8 @@ public class MarkdownFetchPollingServiceTests
         var scopeFactory = _serviceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = _serviceProvider.GetRequiredService<ILogger<MarkdownFetchPollingService>>();
         var markdownConfig = new MarkdownConfig { MarkdownPath = ".", MarkdownTranslatedPath = "." };
-        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig);
+        var startupCoordinator = CreateMockStartupCoordinator();
+        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig, startupCoordinator);
 
         // Can't easily test the background service directly, but we can verify setup
         Assert.NotNull(service);
@@ -75,7 +77,8 @@ public class MarkdownFetchPollingServiceTests
 
         // Act
         var markdownConfig = new MarkdownConfig { MarkdownPath = ".", MarkdownTranslatedPath = "." };
-        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig);
+        var startupCoordinator = CreateMockStartupCoordinator();
+        var service = new MarkdownFetchPollingService(scopeFactory, logger, markdownConfig, startupCoordinator);
 
         // Assert
         Assert.NotNull(service);
@@ -222,5 +225,19 @@ public class MarkdownFetchPollingServiceTests
         var bytes = System.Text.Encoding.UTF8.GetBytes(content);
         var hash = sha256.ComputeHash(bytes);
         return Convert.ToHexString(hash);
+    }
+
+    private static IStartupCoordinator CreateMockStartupCoordinator()
+    {
+        var mock = new Mock<IStartupCoordinator>();
+        // Setup to return immediately (all services already ready)
+        mock.Setup(x => x.AllServicesReady).Returns(true);
+        mock.Setup(x => x.WaitForAllServicesAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        mock.Setup(x => x.WaitForAllServicesAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        mock.Setup(x => x.WaitForServiceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        return mock.Object;
     }
 }
