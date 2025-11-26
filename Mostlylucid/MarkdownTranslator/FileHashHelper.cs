@@ -53,6 +53,13 @@ public static class FileHashHelper
 
     private static async Task WriteHashFile(string filePath, string hash)
     {
+        // Ensure the directory exists
+        var directory = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
         await using var stream = File.OpenWrite(filePath);
         var bytes = Encoding.UTF8.GetBytes(hash);
         await stream.WriteAsync(bytes);

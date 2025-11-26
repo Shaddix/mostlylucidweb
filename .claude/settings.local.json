@@ -31,7 +31,8 @@
       "Bash(dotnet list:*)",
       "Bash(findstr:*)",
       "Bash(npm install:*)",
-      "Bash(Select-String -Pattern \"error|warning|Build|successfully|webpack\")"
+      "Bash(Select-String -Pattern \"error|warning|Build|successfully|webpack\")",
+      "Bash(Select-String -Pattern \"error CS\")"
     ],
     "deny": [],
     "ask": []

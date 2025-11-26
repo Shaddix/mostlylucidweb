@@ -1,5 +1,11 @@
+using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.BrokenLinks;
 
@@ -10,18 +16,82 @@ namespace Mostlylucid.Middleware;
 /// - External broken links: Uses archive.org URL if available, otherwise removes href (plain text)
 /// - Internal broken links: Uses semantic search to find matching content
 /// </summary>
-public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<BrokenLinkArchiveMiddleware> logger, IServiceScopeFactory serviceScopeFactory)
+public partial class BrokenLinkArchiveMiddleware(
+    RequestDelegate next,
+    ILogger<BrokenLinkArchiveMiddleware> logger,
+    IServiceScopeFactory serviceScopeFactory,
+    IMemoryCache memoryCache)
 {
+    private const string BrokenLinkMappingsCacheKey = "BrokenLinkMappings";
+    private const string BrokenLinksWithoutArchiveCacheKey = "BrokenLinksWithoutArchive";
+    private static readonly TimeSpan MappingsCacheDuration = TimeSpan.FromMinutes(5);
+
     // Regex to extract full anchor tags with href
-    [GeneratedRegex(@"<a\s+([^>]*\shref\s*=\s*[""']([^""']+)[""'][^>]*)>([^<]*)</a>", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    [GeneratedRegex(@"<a\s+([^>]*\shref\s*=\s*[""']([^""']+)[""'][^>]*)>([^<]*)</a>", RegexOptions.IgnoreCase)]
     private static partial Regex AnchorTagRegex();
 
     // Regex to extract href attributes from anchor tags (for link collection)
-    [GeneratedRegex(@"<a[^>]*\shref\s*=\s*[""']([^""']+)[""'][^>]*>", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    [GeneratedRegex(@"<a[^>]*\shref\s*=\s*[""']([^""']+)[""'][^>]*>", RegexOptions.IgnoreCase)]
     private static partial Regex HrefRegex();
 
+    // Regex for removing broken link anchors
+    [GeneratedRegex(@"<a\s+[^>]*href\s*=\s*[""'](?<url>[^""']+)[""'][^>]*>(?<text>[^<]*)</a>", RegexOptions.IgnoreCase)]
+    private static partial Regex BrokenLinkAnchorRegex();
+
     // List of special URL patterns to skip
-    private static readonly string[] SkipPatterns = { "#", "mailto:", "tel:", "javascript:" };
+    private static readonly string[] SkipPatterns = ["#", "mailto:", "tel:", "javascript:"];
+
+    /// <summary>
+    /// Get broken link mappings from cache, refreshing if needed
+    /// </summary>
+    private async Task<Dictionary<string, string>> GetCachedBrokenLinkMappingsAsync(
+        IBrokenLinkService brokenLinkService, CancellationToken cancellationToken)
+    {
+        if (memoryCache.TryGetValue(BrokenLinkMappingsCacheKey, out Dictionary<string, string>? cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var mappings = await brokenLinkService.GetBrokenLinkMappingsAsync(cancellationToken);
+        memoryCache.Set(BrokenLinkMappingsCacheKey, mappings, MappingsCacheDuration);
+        return mappings;
+    }
+
+    /// <summary>
+    /// Get broken links without archive from cache, refreshing if needed
+    /// </summary>
+    private async Task<HashSet<string>> GetCachedBrokenLinksWithoutArchiveAsync(
+        IBrokenLinkService brokenLinkService, CancellationToken cancellationToken)
+    {
+        if (memoryCache.TryGetValue(BrokenLinksWithoutArchiveCacheKey, out HashSet<string>? cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var links = await brokenLinkService.GetBrokenLinksWithoutArchiveAsync(cancellationToken);
+        memoryCache.Set(BrokenLinksWithoutArchiveCacheKey, links, MappingsCacheDuration);
+        return links;
+    }
+
+    /// <summary>
+    /// Invalidate all caches (call when markdown files change or broken links are updated)
+    /// </summary>
+    public static void InvalidateAllCaches(IMemoryCache cache)
+    {
+        cache.Remove(BrokenLinkMappingsCacheKey);
+        cache.Remove(BrokenLinksWithoutArchiveCacheKey);
+        // Note: individual page caches will expire naturally or be invalidated by slug
+    }
+
+    /// <summary>
+    /// Invalidate broken link caches (call when markdown file changes)
+    /// Note: Page-level caching is handled by OutputCache with tag-based eviction
+    /// </summary>
+    public static void InvalidateLinkCaches(IMemoryCache cache)
+    {
+        cache.Remove(BrokenLinkMappingsCacheKey);
+        cache.Remove(BrokenLinksWithoutArchiveCacheKey);
+    }
 
     public async Task InvokeAsync(HttpContext context, IBrokenLinkService? brokenLinkService, ISemanticSearchService? semanticSearchService)
     {
@@ -38,6 +108,11 @@ public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<B
             await next(context);
             return;
         }
+
+        var pageUrl = context.Request.Path.Value ?? "";
+
+        // Note: Page-level caching is handled by OutputCache (before this middleware)
+        // This middleware only processes cache misses, and the result is then cached by OutputCache
 
         // Capture the original response body stream
         var originalBodyStream = context.Response.Body;
@@ -69,48 +144,79 @@ public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<B
 
                 if (!string.IsNullOrEmpty(html))
                 {
-                    // Extract and register all links (both internal and external)
+                    // Extract links and fire-and-forget background processing
                     var allLinks = ExtractAllLinks(html, context.Request);
                     var sourcePageUrl = context.Request.Path.Value;
+
                     if (allLinks.Count > 0)
                     {
-                        // Fire and forget - don't block the response
-                        // Must create a new scope since the original scoped services will be disposed
+                        // Fire and forget - register, check, and lookup archive URLs in background
                         _ = Task.Run(async () =>
                         {
                             try
                             {
                                 using var scope = serviceScopeFactory.CreateScope();
                                 var scopedBrokenLinkService = scope.ServiceProvider.GetRequiredService<IBrokenLinkService>();
+                                var dbContext = scope.ServiceProvider.GetRequiredService<MostlylucidDbContext>();
+                                var outputCacheStore = scope.ServiceProvider.GetService<IOutputCacheStore>();
+
                                 await scopedBrokenLinkService.RegisterUrlsAsync(allLinks, sourcePageUrl);
+
+                                var externalLinks = allLinks
+                                    .Where(url => Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+                                                  !uri.Host.Contains("localhost") &&
+                                                  !uri.Host.Contains("mostlylucid"))
+                                    .ToList();
+
+                                if (externalLinks.Count > 0)
+                                {
+                                    var linksUpdated = await CheckAndProcessLinksAsync(externalLinks, sourcePageUrl, scopedBrokenLinkService, dbContext, logger);
+
+                                    if (linksUpdated)
+                                    {
+                                        // Invalidate caches so next request picks up changes
+                                        memoryCache.Remove(BrokenLinkMappingsCacheKey);
+                                        memoryCache.Remove(BrokenLinksWithoutArchiveCacheKey);
+
+                                        // Evict OutputCache so the cached response is refreshed
+                                        if (outputCacheStore != null)
+                                        {
+                                            await outputCacheStore.EvictByTagAsync("blog", CancellationToken.None);
+                                        }
+                                    }
+                                }
                             }
                             catch (Exception ex)
                             {
-                                logger.LogError(ex, "Error registering URLs");
+                                logger.LogError(ex, "Error registering/checking URLs");
                             }
                         });
                     }
 
-                    // Get broken link data
-                    var archiveMappings = await brokenLinkService.GetBrokenLinkMappingsAsync(context.RequestAborted);
-                    var brokenWithoutArchive = await brokenLinkService.GetBrokenLinksWithoutArchiveAsync(context.RequestAborted);
+                    // Get broken link data from cache (non-blocking for most requests)
+                    var archiveMappings = await GetCachedBrokenLinkMappingsAsync(brokenLinkService, context.RequestAborted);
+                    var brokenWithoutArchive = await GetCachedBrokenLinksWithoutArchiveAsync(brokenLinkService, context.RequestAborted);
 
-                    // Replace broken links
+                    // Replace broken links (fast string operations)
                     if (archiveMappings.Count > 0 || brokenWithoutArchive.Count > 0)
                     {
-                        html = await ReplaceBrokenLinksAsync(html, archiveMappings, brokenWithoutArchive, semanticSearchService, context.Request, context.RequestAborted);
+                        html = ReplaceBrokenLinks(html, archiveMappings, brokenWithoutArchive, context.Request.Host.Host);
                     }
-                }
 
-                // Write the potentially modified response
-                var modifiedContent = Encoding.UTF8.GetBytes(html);
-                context.Response.ContentLength = modifiedContent.Length;
-                await originalBodyStream.WriteAsync(modifiedContent);
+                    // Write processed response - OutputCache will cache this result
+                    var outputBytes = Encoding.UTF8.GetBytes(html);
+                    context.Response.ContentLength = outputBytes.Length;
+                    await originalBodyStream.WriteAsync(outputBytes);
+                }
+                else
+                {
+                    responseBody.Seek(0, SeekOrigin.Begin);
+                    await responseBody.CopyToAsync(originalBodyStream);
+                }
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing broken links in response");
-                // On error, copy original response
                 responseBody.Seek(0, SeekOrigin.Begin);
                 await responseBody.CopyToAsync(originalBodyStream);
             }
@@ -182,136 +288,199 @@ public partial class BrokenLinkArchiveMiddleware(RequestDelegate next, ILogger<B
         return links.Distinct().ToList();
     }
 
-    private async Task<string> ReplaceBrokenLinksAsync(
+    /// <summary>
+    /// Fast synchronous replacement of broken links - uses string operations and cached regex
+    /// </summary>
+    private static string ReplaceBrokenLinks(
         string html,
         Dictionary<string, string> archiveMappings,
         HashSet<string> brokenWithoutArchive,
-        ISemanticSearchService? semanticSearchService,
-        HttpRequest request,
-        CancellationToken cancellationToken)
+        string host)
     {
-        var archiveReplacements = 0;
-        var semanticReplacements = 0;
-        var removedLinks = 0;
-        var host = request.Host.Host;
+        // Fast path: nothing to do
+        if (archiveMappings.Count == 0 && brokenWithoutArchive.Count == 0)
+            return html;
 
-        // Process archive.org replacements for external links
+        var sb = new StringBuilder(html);
+
+        // Process archive.org replacements for external links (simple string replace)
         foreach (var (originalUrl, archiveUrl) in archiveMappings)
         {
-            if (html.Contains(originalUrl))
-            {
-                // Use DaisyUI tooltip to inform user about the archive.org replacement
-                var tooltipText = $"Original link ({originalUrl}) is dead - archive.org version used";
-                var originalPattern = $"href=\"{originalUrl}\"";
-                var archivePattern = $"href=\"{archiveUrl}\" class=\"tooltip tooltip-warning\" data-tip=\"{tooltipText}\" data-original-url=\"{originalUrl}\"";
+            // Double quotes
+            sb.Replace(
+                $"href=\"{originalUrl}\"",
+                $"href=\"{archiveUrl}\" class=\"archived-link\" data-original=\"{originalUrl}\" title=\"Archived version - original link was broken\"");
 
-                var newHtml = html.Replace(originalPattern, archivePattern);
-
-                // Also handle single quotes
-                var originalPatternSingle = $"href='{originalUrl}'";
-                var archivePatternSingle = $"href='{archiveUrl}' class='tooltip tooltip-warning' data-tip='{tooltipText}' data-original-url='{originalUrl}'";
-
-                newHtml = newHtml.Replace(originalPatternSingle, archivePatternSingle);
-
-                if (newHtml != html)
-                {
-                    archiveReplacements++;
-                    html = newHtml;
-                }
-            }
+            // Single quotes
+            sb.Replace(
+                $"href='{originalUrl}'",
+                $"href='{archiveUrl}' class='archived-link' data-original='{originalUrl}' title='Archived version - original link was broken'");
         }
 
-        // Process broken links without archive
+        // Process broken links without archive - mark them as broken
         foreach (var brokenUrl in brokenWithoutArchive)
         {
-            if (!html.Contains(brokenUrl)) continue;
-
-            var isInternal = IsInternalUrl(brokenUrl, host);
-
-            if (isInternal && semanticSearchService != null)
+            // Skip internal links (they're handled separately)
+            if (Uri.TryCreate(brokenUrl, UriKind.Absolute, out var uri) &&
+                (uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+                 uri.Host.EndsWith(".mostlylucid.net", StringComparison.OrdinalIgnoreCase)))
             {
-                // Try semantic search for internal broken links
-                var replacement = await TryFindSemanticReplacementAsync(brokenUrl, semanticSearchService, request, cancellationToken);
-                if (replacement != null)
-                {
-                    html = ReplaceHref(html, brokenUrl, replacement);
-                    semanticReplacements++;
-                    continue;
-                }
+                continue;
             }
 
-            // Remove href for broken links without replacement (convert to plain text)
-            html = RemoveHref(html, brokenUrl);
-            removedLinks++;
+            // Mark external broken links without archive
+            sb.Replace(
+                $"href=\"{brokenUrl}\"",
+                $"href=\"{brokenUrl}\" class=\"broken-link\" title=\"This link may be broken\"");
+
+            sb.Replace(
+                $"href='{brokenUrl}'",
+                $"href='{brokenUrl}' class='broken-link' title='This link may be broken'");
         }
 
-        if (archiveReplacements > 0 || semanticReplacements > 0 || removedLinks > 0)
-        {
-            logger.LogInformation(
-                "Processed broken links: {Archive} archive replacements, {Semantic} semantic replacements, {Removed} removed",
-                archiveReplacements, semanticReplacements, removedLinks);
-        }
-
-        return html;
+        return sb.ToString();
     }
 
-    private static bool IsInternalUrl(string url, string host)
+    /// <summary>
+    /// Check external links and look up archive.org URLs for broken ones.
+    /// Returns true if any links were updated.
+    /// </summary>
+    private static async Task<bool> CheckAndProcessLinksAsync(
+        List<string> externalLinks,
+        string? sourcePageUrl,
+        IBrokenLinkService brokenLinkService,
+        MostlylucidDbContext dbContext,
+        Microsoft.Extensions.Logging.ILogger logger)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
-        return uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
-               uri.Host.EndsWith(".mostlylucid.net", StringComparison.OrdinalIgnoreCase);
+        var anyUpdated = false;
+        // Get publication date for archive.org lookup (period-correct archives)
+        DateTime? publishDate = null;
+        if (!string.IsNullOrEmpty(sourcePageUrl))
+        {
+            var slugMatch = Regex.Match(sourcePageUrl, @"/blog/([^/]+)", RegexOptions.IgnoreCase);
+            if (slugMatch.Success)
+            {
+                var slug = slugMatch.Groups[1].Value;
+                publishDate = await dbContext.BlogPosts
+                    .Where(bp => bp.Slug == slug)
+                    .Select(bp => bp.PublishedDate.DateTime)
+                    .FirstOrDefaultAsync();
+            }
+        }
+
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; MostlylucidBot/1.0; +https://www.mostlylucid.net)");
+
+        foreach (var url in externalLinks.Take(20)) // Limit to avoid blocking too long
+        {
+            try
+            {
+                // Get the link entity
+                var linkEntity = await dbContext.BrokenLinks
+                    .FirstOrDefaultAsync(x => x.OriginalUrl == url);
+
+                if (linkEntity == null) continue;
+
+                // Skip if already checked recently (within 24 hours)
+                if (linkEntity.LastCheckedAt.HasValue &&
+                    linkEntity.LastCheckedAt.Value > DateTimeOffset.UtcNow.AddHours(-24))
+                {
+                    continue;
+                }
+
+                // Check if link is broken
+                int statusCode;
+                bool isBroken;
+                string? error = null;
+
+                try
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Head, url);
+                    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+                    statusCode = (int)response.StatusCode;
+                    isBroken = response.StatusCode == HttpStatusCode.NotFound ||
+                               response.StatusCode == HttpStatusCode.Gone ||
+                               statusCode >= 500;
+                }
+                catch (Exception ex)
+                {
+                    statusCode = 0;
+                    isBroken = true;
+                    error = ex.Message;
+                }
+
+                await brokenLinkService.UpdateLinkStatusAsync(linkEntity.Id, statusCode, isBroken, error);
+                anyUpdated = true;
+
+                // If broken and not yet checked for archive, look up archive.org
+                if (isBroken && !linkEntity.ArchiveChecked)
+                {
+                    var archiveUrl = await GetArchiveUrlAsync(httpClient, url, publishDate, logger);
+                    await brokenLinkService.UpdateArchiveUrlAsync(linkEntity.Id, archiveUrl);
+
+                    if (archiveUrl != null)
+                    {
+                        logger.LogInformation("Found archive.org URL for broken link {Url}: {ArchiveUrl}", url, archiveUrl);
+                    }
+                }
+
+                // Small delay to be respectful to servers
+                await Task.Delay(500);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Error checking link: {Url}", url);
+            }
+        }
+
+        return anyUpdated;
     }
 
-    private async Task<string?> TryFindSemanticReplacementAsync(
-        string brokenUrl,
-        ISemanticSearchService semanticSearchService,
-        HttpRequest request,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Look up archive.org URL for a broken link, preferring snapshots from at/before the publication date
+    /// </summary>
+    private static async Task<string?> GetArchiveUrlAsync(HttpClient httpClient, string originalUrl, DateTime? beforeDate, Microsoft.Extensions.Logging.ILogger logger)
     {
         try
         {
-            // Extract search terms from the URL path
-            if (!Uri.TryCreate(brokenUrl, UriKind.Absolute, out var uri)) return null;
-
-            var pathSegments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (pathSegments.Length == 0) return null;
-
-            // Use the last path segment as search query (usually the slug)
-            var searchTerm = pathSegments[^1].Replace("-", " ").Replace("_", " ");
-
-            var results = await semanticSearchService.SearchAsync(searchTerm, 1, cancellationToken);
-            if (results.Count > 0 && results[0].Score > 0.5) // Only use if confidence is reasonable
+            var queryParams = new List<string>
             {
-                var baseUri = new UriBuilder(request.Scheme, request.Host.Host, request.Host.Port ?? (request.Scheme == "https" ? 443 : 80));
-                return new Uri(baseUri.Uri, $"/blog/{results[0].Slug}").ToString();
+                $"url={Uri.EscapeDataString(originalUrl)}",
+                "output=json",
+                "fl=timestamp,original,statuscode",
+                "filter=statuscode:200",
+                "limit=1"
+            };
+
+            // If we have a publication date, get snapshot at or before that date (period-correct)
+            if (beforeDate.HasValue)
+            {
+                queryParams.Add($"to={beforeDate.Value:yyyyMMdd}");
+                queryParams.Add("sort=closest");
+                queryParams.Add($"closest={beforeDate.Value:yyyyMMdd}");
             }
+
+            var apiUrl = $"https://web.archive.org/cdx/search/cdx?{string.Join("&", queryParams)}";
+
+            using var response = await httpClient.GetAsync(apiUrl);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var json = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(json) || json == "[]") return null;
+
+            var jsonArray = JsonSerializer.Deserialize<string[][]>(json);
+            if (jsonArray == null || jsonArray.Length < 2 || jsonArray[1].Length < 2) return null;
+
+            var timestamp = jsonArray[1][0];
+            var original = jsonArray[1][1];
+            return $"https://web.archive.org/web/{timestamp}/{original}";
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to find semantic replacement for {Url}", brokenUrl);
+            logger.LogWarning(ex, "Failed to get archive.org URL for {Url}", originalUrl);
+            return null;
         }
-
-        return null;
-    }
-
-    private static string ReplaceHref(string html, string oldUrl, string newUrl)
-    {
-        // Use DaisyUI tooltip for semantic search replacements
-        var tooltipText = $"Original link ({oldUrl}) was broken - similar content found";
-        // Replace double-quoted href
-        html = html.Replace($"href=\"{oldUrl}\"", $"href=\"{newUrl}\" class=\"tooltip tooltip-info\" data-tip=\"{tooltipText}\" data-original-url=\"{oldUrl}\"");
-        // Replace single-quoted href
-        html = html.Replace($"href='{oldUrl}'", $"href='{newUrl}' class='tooltip tooltip-info' data-tip='{tooltipText}' data-original-url='{oldUrl}'");
-        return html;
-    }
-
-    private static string RemoveHref(string html, string brokenUrl)
-    {
-        // Match anchor tags with the broken URL and convert to span with DaisyUI tooltip
-        var tooltipText = $"Link no longer available: {brokenUrl}";
-        var pattern = $@"<a\s+[^>]*href\s*=\s*[""']{Regex.Escape(brokenUrl)}[""'][^>]*>([^<]*)</a>";
-        var replacement = $"<span class=\"broken-link tooltip tooltip-error\" data-tip=\"{tooltipText}\">$1</span>";
-        return Regex.Replace(html, pattern, replacement, RegexOptions.IgnoreCase);
     }
 }
 

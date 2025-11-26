@@ -5,6 +5,9 @@
 @model List<string>
 
 @{
+    // Get all supported languages from LanguageConverter (includes pt, pl, etc.)
+    var allSupportedLanguages = LanguageConverter.LanguageMap.Keys.ToList();
+
     // Build a robust, sanitized languages list: prefer the incoming model; if empty, fall back to cached pages
     var inputLangs = (Model ?? new List<string>());
     if (inputLangs.Count == 0)
@@ -22,8 +25,10 @@
             inputLangs = new List<string>{"en"};
         }
     }
-    // sanitize: trim, lowercase, distinct, and sort
+
+    // Merge with all supported languages so the dropdown always shows all options
     inputLangs = inputLangs
+        .Concat(allSupportedLanguages)
         .Where(s => !string.IsNullOrWhiteSpace(s))
         .Select(s => s.Trim().ToLowerInvariant())
         .Distinct()

@@ -187,7 +187,11 @@ public class BackgroundTranslateService(
             }
 
             var markdownFiles = Directory.GetFiles(markdownConfig.MarkdownPath, "*.md");
-            logger.LogInformation("Queuing {Count} markdown files for translation", markdownFiles.Length);
+            logger.LogInformation("Found {Count} markdown files to check for translation", markdownFiles.Length);
+            logger.LogInformation("Configured languages: {Languages}", string.Join(", ", translateServiceConfig.Languages));
+
+            // Log summary of missing translations per language
+            await LogMissingTranslationsSummary(markdownFiles);
 
             foreach (var file in markdownFiles)
                 await TranslateForAllLanguages(new PageTranslationModel
@@ -201,6 +205,43 @@ public class BackgroundTranslateService(
         {
             Console.WriteLine(e);
             throw;
+        }
+    }
+
+    private async Task LogMissingTranslationsSummary(string[] markdownFiles)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var fileBlogService = scope.ServiceProvider.GetRequiredService<IMarkdownFileBlogService>();
+
+        var missingByLanguage = new Dictionary<string, int>();
+
+        foreach (var language in translateServiceConfig.Languages)
+        {
+            missingByLanguage[language] = 0;
+            foreach (var file in markdownFiles)
+            {
+                var slug = Path.GetFileNameWithoutExtension(file);
+                if (!await fileBlogService.EntryExists(slug, language))
+                {
+                    missingByLanguage[language]++;
+                }
+            }
+        }
+
+        foreach (var kvp in missingByLanguage.Where(x => x.Value > 0))
+        {
+            logger.LogInformation("Language {Language}: {Count} missing translations will be queued",
+                kvp.Key, kvp.Value);
+        }
+
+        var totalMissing = missingByLanguage.Values.Sum();
+        if (totalMissing > 0)
+        {
+            logger.LogInformation("Total translations to process: {Total}", totalMissing);
+        }
+        else
+        {
+            logger.LogInformation("All translations are up to date");
         }
     }
 

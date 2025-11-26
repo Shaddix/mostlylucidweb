@@ -26,7 +26,8 @@
     action="@Url.Action("Search", "Search")"
     hx-push-url="true"
     hx-boost="true"
-    hx-swap="show:window:top">
+    hx-target="#contentcontainer"
+    hx-swap="innerHTML show:window:top">
 
     <!-- Main search bar -->
     <div class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg">

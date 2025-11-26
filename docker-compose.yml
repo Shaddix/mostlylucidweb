@@ -2,11 +2,6 @@
   mostlylucid:
     image: scottgal/mostlylucid:latest
     restart: always
-    healthcheck:
-      test: [ "CMD", "curl", "-f -K", "https://mostlylucid:7240/healthy" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     env_file:
@@ -27,10 +22,6 @@
       - Markdown__MarkdownPath=${MARKDOWN_MARKDOWNPATH}
       - Markdown__MarkdownTranslatedPath=${MARKDOWN_MARKDOWNTRANSLATEDPATH}
       - CertPassword=${CERT_PASSWORD}
-      - SemanticSearch__Enabled=true
-      - SemanticSearch__QdrantUrl=http://qdrant:6333
-      - SemanticSearch__ReadApiKey=${QDRANT_READ_API_KEY}
-      - SemanticSearch__WriteApiKey=${QDRANT_WRITE_API_KEY}
     volumes:
       - /mnt/imagecache:/app/wwwroot/cache
       - /mnt/logs:/app/logs
@@ -38,29 +29,8 @@
       - ./mostlylucid.pfx:/app/mostlylucid.pfx
       - /mnt/articleimages:/app/wwwroot/articleimages
       - /mnt/mostlylucid/uploads:/app/wwwroot/uploads
-      - /mnt/mostlylucid/models:/app/models
     networks:
       - app_network
-    depends_on:
-      - db
-      - qdrant
-#  mostlylucid-scheduler:
-#    image: scottgal/mostlylucid-scheduler:latest
-#    restart: always
-#    environment:
-#      - SmtpSettings__UserName=${SMTPSETTINGS_USERNAME}
-#      - SmtpSettings__Password=${SMTPSETTINGS_PASSWORD}
-#      - ConnectionStrings__DefaultConnection=${POSTGRES_CONNECTIONSTRING}
-#      - Serilog__WriteTo__0__Args__apiKey=${SEQ_API_KEY}
-#      - CertPassword=${CERT_PASSWORD}
-#    labels:
-#      - "com.centurylinklabs.watchtower.enable=true"
-#    env_file:
-#      - .env
-#    volumes:
-#      - /mnt/logs:/app/logs
-#    depends_on:
-#      - mostlylucid
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
@@ -73,8 +43,8 @@
     command: --interval 300 # Check for updates every 300 seconds (5 minutes)
   db:
     image: postgres:16-alpine
-    ports:
-      - 5266:5432
+    #    ports:
+    #      - 5266:5432
     env_file:
       - .env
     networks:
@@ -87,6 +57,7 @@
     volumes:
       - /mnt/umami/postgres:/var/lib/postgresql/data
     restart: always
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
@@ -113,9 +84,8 @@
       - app_network
     restart: always
   easynmt:
-    image: easynmt/api:2.0.2-cpu
-    volumes:
-      - /mnt/easynmt:/cache/
+    container_name: easynmt
+    image: scottgal/mostlylucid-nmt:cpu
     deploy:
       resources:
         limits:
@@ -182,31 +152,20 @@
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
-    restart: unless-stopped
+    restart: always
     volumes:
-      - qdrant_storage:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__HTTP_PORT=6333
-      - QDRANT__SERVICE__GRPC_PORT=6334
-      - QDRANT__SERVICE__API_KEY=${QDRANT_WRITE_API_KEY}
-      - QDRANT__SERVICE__READ_ONLY_API_KEY=${QDRANT_READ_API_KEY}
+      - qdrant-data:/qdrant/storage
     networks:
       - app_network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
 volumes:
   grafana-data:
   caddy_data:
   caddy_config:
   prometheus-data:
-  qdrant_storage:
+  qdrant-data:
 networks:
   app_network:
     driver: bridge
-    
-    
-    
+

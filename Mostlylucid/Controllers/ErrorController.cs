@@ -94,6 +94,37 @@ public class ErrorController(
 
         try
         {
+            // Check if the slug is a pure numeric ID (legacy blog post ID)
+            if (int.TryParse(slug, out _))
+            {
+                logger.LogInformation("Detected numeric slug: {Slug}, attempting archive ID lookup", slug);
+                var suggestions = await slugSuggestionService.GetSuggestionsForArchiveIdAsync(slug, language, 2, cancellationToken);
+
+                if (suggestions.Count > 0)
+                {
+                    var topMatch = suggestions[0];
+
+                    // Auto-redirect if score is high enough and there's a clear winner
+                    if (topMatch.Score >= 0.85)
+                    {
+                        var hasSignificantGap = suggestions.Count == 1 || (suggestions[1].Score < topMatch.Score - 0.15);
+
+                        if (hasSignificantGap)
+                        {
+                            var redirectUrl = language == "en"
+                                ? $"/blog/{topMatch.Post.Slug}"
+                                : $"/blog/{language}/{topMatch.Post.Slug}";
+
+                            logger.LogInformation(
+                                "Numeric slug auto-redirect (302): {OriginalPath} -> {RedirectUrl} (score: {Score:F2})",
+                                originalPath, redirectUrl, topMatch.Score);
+
+                            return Redirect(redirectUrl);
+                        }
+                    }
+                }
+            }
+
             // First check for learned redirects (user previously clicked a suggestion)
             // These get 301 Permanent Redirect as they're confirmed patterns
             var learnedTargetSlug = await slugSuggestionService.GetAutoRedirectSlugAsync(slug, language, cancellationToken);
@@ -282,6 +313,23 @@ public class ErrorController(
 
             if (!string.IsNullOrWhiteSpace(slug))
             {
+                // Check if the slug is a pure numeric ID (legacy blog post ID)
+                if (int.TryParse(slug, out _))
+                {
+                    logger.LogInformation("Searching for archive ID suggestions for numeric slug: {Slug}", slug);
+                    var archiveSuggestionsForNumeric = await slugSuggestionService.GetSuggestionsForArchiveIdAsync(slug, language, 5, cancellationToken);
+                    if (archiveSuggestionsForNumeric.Count > 0)
+                    {
+                        model.SuggestionsWithScores = archiveSuggestionsForNumeric.Select(s => new Mostlylucid.Models.Error.SuggestionWithScore
+                        {
+                            Post = s.Post,
+                            Score = s.Score
+                        }).ToList();
+                        logger.LogInformation("Found {Count} archive ID suggestions for numeric slug: {Slug}", model.SuggestionsWithScores.Count, slug);
+                        return model;
+                    }
+                }
+
                 logger.LogInformation("Searching for suggestions for slug: {Slug} in language: {Language}", slug, language);
                 var suggestionsWithScores = await slugSuggestionService.GetSuggestionsWithScoreAsync(slug, language, 5, cancellationToken);
                 model.SuggestionsWithScores = suggestionsWithScores.Select(s => new Mostlylucid.Models.Error.SuggestionWithScore

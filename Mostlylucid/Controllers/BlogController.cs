@@ -20,11 +20,9 @@ public class BlogController(BaseControllerService baseControllerService,
     MarkdownConfig markdownConfig,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
-    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) },
         Location = ResponseCacheLocation.Any)]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
-        VaryByQueryKeys = new[] { nameof(page), nameof(pageSize), nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) })]
+    [OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
         string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc")
@@ -96,10 +94,9 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("{slug}")]
     [HttpGet]
-    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
+    [OutputCache(PolicyName = "BlogPost", VaryByHeaderNames = new[] { "hx-request" },
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Show(string slug, string language = MarkdownBaseService.EnglishLanguage)
     {
@@ -153,12 +150,10 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("category/{category}")]
     [HttpGet]
-    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(category), nameof(page), nameof(pageSize) },
         Location = ResponseCacheLocation.Any)]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
-        VaryByQueryKeys = new[] { nameof(category), nameof(page), nameof(pageSize) })]
+    [OutputCache(PolicyName = "BlogCategory", VaryByHeaderNames = new[] { "hx-request" })]
     public async Task<IActionResult> Category(string category, int page = 1, int pageSize = 10)
     {
         ViewBag.Category = category;
@@ -183,10 +178,9 @@ public class BlogController(BaseControllerService baseControllerService,
 
     [Route("{language}/{slug}")]
     [HttpGet]
-    // Temporarily disabled for development - re-enable for production
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" },
+    [OutputCache(PolicyName = "BlogPost", VaryByHeaderNames = new[] { "hx-request" },
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Language(string slug, string language)
     {

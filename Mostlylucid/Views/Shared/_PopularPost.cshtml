@@ -49,10 +49,10 @@
                 </span>
                 if (blogPost.Categories != null && blogPost.Categories.Any())
                 {
-              foreach (var category in Model.Categories)
-            {
-                <partial name="_Category" model="category"/>
-            }
+                    foreach (var category in blogPost.Categories)
+                    {
+                        <partial name="_Category" model="category"/>
+                    }
                 }
             }
         </div>

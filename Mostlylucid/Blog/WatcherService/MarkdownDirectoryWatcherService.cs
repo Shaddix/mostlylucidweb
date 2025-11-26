@@ -1,4 +1,7 @@
-﻿using Mostlylucid.Blog.ViewServices;
+﻿using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Caching.Memory;
+using Mostlylucid.Blog.ViewServices;
+using Mostlylucid.Middleware;
 using Mostlylucid.SemanticSearch.Models;
 using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.Blog;
@@ -16,6 +19,8 @@ public class MarkdownDirectoryWatcherService(
     MarkdownConfig markdownConfig,
     IServiceScopeFactory serviceScopeFactory,
     IStartupCoordinator startupCoordinator,
+    IMemoryCache memoryCache,
+    IOutputCacheStore outputCacheStore,
     ILogger<MarkdownDirectoryWatcherService> logger)
     : IHostedService
 {
@@ -130,6 +135,13 @@ public class MarkdownDirectoryWatcherService(
                 var savedModel = await blogService.SavePost(slug, language, markdown);
                 activity?.Activity?.SetTag("Page Processed", savedModel.Slug);
                 activity?.Activity?.SetTag("Page Saved", savedModel.Slug);
+
+                // Invalidate broken link mapping caches
+                BrokenLinkArchiveMiddleware.InvalidateLinkCaches(memoryCache);
+
+                // Evict OutputCache for all blog pages (tag-based eviction)
+                await outputCacheStore.EvictByTagAsync("blog", CancellationToken.None);
+                logger.LogDebug("Invalidated broken link cache and OutputCache for slug {Slug}", savedModel.Slug);
 
                 // Index in semantic search ONLY if file is in main Markdown directory (not subdirectories)
                 // Check if e.Name contains no directory separators - meaning it's in the root directory

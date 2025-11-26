@@ -86,7 +86,28 @@ try
 
 // Add services to
 // the container.
-    services.AddOutputCache();
+    services.AddOutputCache(options =>
+    {
+        // Default policy for most endpoints
+        options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromMinutes(5)));
+
+        // Blog post policy - shorter duration with tag-based eviction
+        options.AddPolicy("BlogPost", builder => builder
+            .Expire(TimeSpan.FromMinutes(10))
+            .Tag("blog"));
+
+        // Blog list policy
+        options.AddPolicy("BlogList", builder => builder
+            .Expire(TimeSpan.FromMinutes(5))
+            .Tag("blog")
+            .SetVaryByQuery("page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir"));
+
+        // Category policy
+        options.AddPolicy("BlogCategory", builder => builder
+            .Expire(TimeSpan.FromMinutes(10))
+            .Tag("blog")
+            .SetVaryByQuery("category", "page", "pageSize"));
+    });
     services.AddResponseCaching();
     services.AddOpenApi();
     services.SetupTranslateService();
@@ -210,6 +231,7 @@ try
 
         await next();
     });
+
     app.UseOutputCache();
     app.UseResponseCaching();
     app.UseImageSharp();
@@ -244,7 +266,9 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // Broken link archive middleware - collects external links and replaces broken ones with archive.org URLs
+    // Broken link archive middleware - AFTER OutputCache so processed pages get cached
+    // On cache miss: BrokenLink processes response, then OutputCache caches the processed result
+    // On cache hit: OutputCache serves already-processed content directly (BrokenLink doesn't run)
     app.UseBrokenLinkArchive();
 
     if (app.Environment.IsDevelopment())
