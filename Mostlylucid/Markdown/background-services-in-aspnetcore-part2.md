@@ -1,7 +1,9 @@
 # Background Services in ASP.NET Core - Part 2: Practical Examples
 
 <!--category-- ASP.NET Core, IHostedService, BackgroundService, Channels, Polly -->
-<datetime class="hidden">2025-11-26T09:30</datetime>
+<datetime class="hidden">2025-11-27T09:30</datetime>
+
+Theory is one thing; production code is another. In Part 1 we covered the abstractions—now let's see how they're applied in a real codebase. This article walks through actual background services from this blog platform: file watchers with Polly retry policies, channel-based email queues with circuit breakers, semantic search indexers with hash-based change detection, and more.
 
 # Introduction
 
@@ -15,6 +17,7 @@ Now it's time to see these patterns in action. In this article, we'll examine re
 - Semantic search indexers with hash-based change detection
 - Broken link checkers that periodically validate external URLs
 - Startup coordination between dependent services
+- Scoping and Entity Framework lifecycle management
 
 Each example illustrates practical solutions to common problems you'll encounter when building production background services.
 
@@ -34,7 +37,7 @@ When a markdown file is created or modified:
 5. Trigger translation to other languages
 6. Index for semantic search
 
-The challenge: file system events can fire whilst the file is still being written, causing `IOException` when you try to read it.
+The challenge: [`FileSystemWatcher`](https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemwatcher) events can fire whilst the file is still being written, causing `IOException` when you try to read it.
 
 ## The Solution: MarkdownDirectoryWatcherService
 
@@ -117,13 +120,14 @@ Notice a few key patterns:
 
 ## Handling File Lock Issues with Polly
 
-The most interesting part is how we handle files that are still being written:
+The most interesting part is how we handle files that are still being written. [Polly](https://github.com/App-vNext/Polly) is a .NET resilience library that provides retry policies, circuit breakers, and more:
 
 ```csharp
 private async Task OnChangedAsync(WaitForChangedResult e)
 {
     if (e.Name == null) return;
 
+    // Serilog activity for distributed tracing
     using var activity = Log.Logger.StartActivity("Markdown File Changed {Name}", e.Name);
 
     // Define a retry policy for file access issues
@@ -210,7 +214,7 @@ private async Task OnChangedAsync(WaitForChangedResult e)
 1. **Polly retry policy** - Exponential backoff (500ms, 1s, 1.5s, 2s, 2.5s)
 2. **Only retry IOException** - Other exceptions bubble up
 3. **Scoped services** - Create a scope per file to avoid lifecycle issues
-4. **Structured logging** - Using Serilog activities for tracing
+4. **Structured logging** - Using [Serilog](https://serilog.net/) activities for tracing
 5. **Cascading operations** - Save → Index → Translate
 
 The retry policy handles the common case where a text editor is still writing the file when the change event fires.
@@ -242,7 +246,13 @@ graph TD
     style M stroke:#d97706,stroke-width:3px,color:#f59e0b
 ```
 
-This service is available at: `Mostlylucid/Blog/WatcherService/MarkdownDirectoryWatcherService.cs:1`
+Register it in `Program.cs` (all hosted services follow this pattern):
+
+```csharp
+builder.Services.AddHostedService<MarkdownDirectoryWatcherService>();
+```
+
+[See the full implementation  here.](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Blog/WatcherService/MarkdownDirectoryWatcherService.cs)
 
 # Example 2: Channel-Based Email Queue
 
@@ -259,7 +269,7 @@ When a user submits a comment or contact form:
 
 ## The Solution: EmailSenderHostedService
 
-This service uses a `Channel<T>` for the queue and Polly for resilience:
+This service uses a [`Channel<T>`](https://learn.microsoft.com/en-us/dotnet/core/extensions/channels) for the queue and Polly for resilience:
 
 ```csharp
 public class EmailSenderHostedService : IEmailSenderHostedService
@@ -439,11 +449,9 @@ This demonstrates a production-grade pattern:
 - **Circuit breaker** prevents cascading failures (if SMTP is down, don't keep hammering it)
 - **Channel** provides natural backpressure (if we can't send, messages queue up)
 
-This service is available at: `Mostlylucid.Services/Email/HostedEmailService.cs:1`
-
 # Example 3: Analytics Event Sender (Umami)
 
-This service queues analytics events and sends them to an Umami analytics server. It's similar to the email service but simpler—no retry policy needed, just fire and forget.
+This service queues analytics events and sends them to an [Umami](https://umami.is/) analytics server. It's similar to the email service but simpler—no retry policy needed, just fire and forget.
 
 ```csharp
 public class UmamiBackgroundSender(
@@ -534,8 +542,6 @@ public class UmamiBackgroundSender(
 3. **Scoped service creation** - Each send gets a fresh scope for the HTTP client
 
 This demonstrates that not all background services need complex error handling. For non-critical telemetry, simple logging might be enough.
-
-This service is available at: `Umami.Net/UmamiBackgroundSender.cs:1`
 
 # Example 4: Periodic Background Work with BackgroundService
 
@@ -667,8 +673,6 @@ public class BrokenLinkCheckerBackgroundService : BackgroundService
 4. **Rate limiting** - 2-second delay between checks to be polite
 5. **Scoped service creation** - New scope per batch
 6. **Cancellation token checking** - Break early if shutdown requested
-
-This service is available at: `Mostlylucid.Services/BrokenLinks/BrokenLinkCheckerBackgroundService.cs:15`
 
 # Example 5: Semantic Search Indexing with Hash-Based Change Detection
 
@@ -880,8 +884,6 @@ public class SemanticIndexingBackgroundService : BackgroundService
 4. **Filtered processing** - Skip translated files and hidden posts
 5. **Detailed metrics** - Track indexed/skipped/error counts
 
-This service is available at: `Mostlylucid.Services/SemanticSearch/SemanticIndexingBackgroundService.cs:18`
-
 # Example 6: Startup Coordination
 
 The final example shows how services can coordinate their startup. The `MarkdownReAddPostsService` re-processes all markdown files on startup (useful after schema changes), but signals when it's ready so other services know they can proceed.
@@ -1083,7 +1085,164 @@ graph TD
     style J stroke:#7c3aed,stroke-width:3px,color:#8b5cf6
 ```
 
-This service is available at: `Mostlylucid/Blog/WatcherService/MarkdownReAddPostsService.cs:18`
+You'll notice every example above uses `IServiceScopeFactory` to create scopes. This isn't optional—it's essential for working with Entity Framework and other scoped services. Let's dig into why.
+
+# Background Services and Scoping
+
+One of the trickiest aspects of background services is managing service lifetimes—particularly with [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/). Here's what you need to know.
+
+## The Problem: Singleton vs Scoped
+
+Background services registered with `AddHostedService<T>()` are **singletons**. They're created once and live for the entire application lifetime. But many services you'll want to use are **scoped**:
+
+- `DbContext` - Scoped by default (and for good reason)
+- `IHttpContextAccessor` - Scoped to the HTTP request
+- Any service registered with `AddScoped<T>()`
+
+If you try to inject a scoped service into a singleton, you'll get this exception:
+
+```
+Cannot consume scoped service 'YourDbContext' from singleton 'YourBackgroundService'
+```
+
+## Why DbContext is Scoped
+
+Entity Framework's `DbContext` tracks entities and manages database connections. It's designed to be short-lived:
+
+```csharp
+// BAD: DbContext lives forever, accumulates tracked entities,
+// connections may timeout, change tracking becomes stale
+public class BrokenService : BackgroundService
+{
+    private readonly MyDbContext _dbContext; // Injected once, lives forever
+
+    public BrokenService(MyDbContext dbContext)
+    {
+        _dbContext = dbContext; // This context will never be disposed!
+    }
+}
+```
+
+Problems with a long-lived DbContext:
+- **Memory leaks** - Tracked entities accumulate
+- **Stale data** - Change tracker doesn't see external changes
+- **Connection issues** - Connections may timeout or be recycled
+- **Concurrency bugs** - DbContext isn't thread-safe
+
+## The Solution: IServiceScopeFactory
+
+Every example in this article uses the same pattern—create a scope for each unit of work:
+
+```csharp
+public class CorrectService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public CorrectService(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory; // This is a singleton, safe to inject
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            // Create a new scope for each iteration
+            using var scope = _scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+
+            // DbContext is fresh, will be disposed when scope ends
+            await ProcessWorkAsync(dbContext, stoppingToken);
+
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        }
+        // Scope disposed here - DbContext disposed, connections returned to pool
+    }
+}
+```
+
+## Scope Granularity
+
+How often should you create a new scope? It depends on your workload:
+
+**Per iteration** (most common):
+```csharp
+while (!stoppingToken.IsCancellationRequested)
+{
+    using var scope = _scopeFactory.CreateScope();
+    // Process batch...
+}
+```
+
+**Per item** (when processing a queue):
+```csharp
+await foreach (var item in channel.Reader.ReadAllAsync(stoppingToken))
+{
+    using var scope = _scopeFactory.CreateScope();
+    // Process single item...
+}
+```
+
+**Per batch** (when you need transaction semantics):
+```csharp
+var items = await GetBatchAsync(100);
+using var scope = _scopeFactory.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+
+await using var transaction = await dbContext.Database.BeginTransactionAsync();
+foreach (var item in items)
+{
+    // Process within same transaction...
+}
+await transaction.CommitAsync();
+```
+
+## Async Scopes
+
+For async operations, prefer `CreateAsyncScope()` which properly handles async disposal:
+
+```csharp
+await using var scope = _scopeFactory.CreateAsyncScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+await dbContext.SaveChangesAsync(stoppingToken);
+// Scope disposed asynchronously
+```
+
+## Common Mistakes
+
+**1. Capturing scoped services in closures:**
+```csharp
+// BAD: dbContext captured, will outlive its scope
+var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+_ = Task.Run(async () =>
+{
+    await Task.Delay(10000);
+    await dbContext.SaveChangesAsync(); // Scope already disposed!
+});
+```
+
+**2. Reusing a scope across async boundaries:**
+```csharp
+// BAD: Scope should match unit of work
+using var scope = _scopeFactory.CreateScope();
+while (!stoppingToken.IsCancellationRequested)
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+    await ProcessAsync(dbContext); // Same stale context every iteration
+    await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+}
+```
+
+**3. Forgetting to dispose:**
+```csharp
+// BAD: Scope never disposed, DbContext leaks
+var scope = _scopeFactory.CreateScope();
+var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+await ProcessAsync(dbContext);
+// Where's the dispose?
+```
+
+Always use `using` statements or `await using` for async scopes.
 
 # Summary: Patterns Across All Examples
 

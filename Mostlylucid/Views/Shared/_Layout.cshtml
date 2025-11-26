@@ -29,27 +29,48 @@
 
     @{
         var currentUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+        var defaultDescription = "Scott Galloway is a lead developer and software engineer with a passion for building web applications.";
+        var pageDescription = ViewBag.Description as string ?? defaultDescription;
+        var defaultImage = "https://mostlylucid.net/img/social2.jpg";
+        var pageImage = ViewBag.OgImage as string ?? defaultImage;
     }
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="@currentUrl" />
+
     <!-- Facebook Meta Tags -->
     <meta property="og:url" content="@currentUrl" id="metaOgUrl">
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="@(ViewBag.OgType ?? "website")">
     <meta property="og:title" content="@ViewBag.Title">
-    <meta property="og:description" content="Scott Galloway is a lead developer and software engineer with a passion for building web applications.">
-    <meta property="og:image" content="https://mostlylucid.net/img/social2.jpg">
+    <meta property="og:description" content="@pageDescription">
+    <meta property="og:image" content="@pageImage">
     <meta property="og:locale" content="en_GB" />
+    <meta property="og:site_name" content="Mostly Lucid" />
+
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta property="twitter:domain" content="mostlylucid.net">
     <meta property="twitter:url" content="@currentUrl" id="metaTwitterUrl">
     <meta name="twitter:title" content="@ViewBag.Title">
-    <meta name="twitter:description" content="Scott Galloway is a lead developer and software engineer with a passion for building web applications.">
-    <meta name="twitter:image" content="https://mostlylucid.net/img/social2.jpg">
-    
+    <meta name="twitter:description" content="@pageDescription">
+    <meta name="twitter:image" content="@pageImage">
 
-    <meta
-        name="description"
-        content="Scott Galloway is a lead developer and software engineer with a passion for building web applications."
-    />
+    <!-- Meta Description -->
+    <meta name="description" content="@pageDescription" />
+
+    <!-- Article metadata for blog posts -->
+    @if (ViewBag.PublishedDate != null)
+    {
+        <meta property="article:published_time" content="@(((DateTime)ViewBag.PublishedDate).ToString("yyyy-MM-ddTHH:mm:ssZ"))" />
+        <meta property="article:author" content="Scott Galloway" />
+    }
+    @if (ViewBag.Categories != null)
+    {
+        foreach (var category in ViewBag.Categories)
+        {
+            <meta property="article:tag" content="@category" />
+        }
+    }
     <link rel="icon" type="image/png" href="/img/smalllogo.svg" />
 
     <script src="https://accounts.google.com/gsi/client"  data-cfasync="false" async defer></script>

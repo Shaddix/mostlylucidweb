@@ -16,7 +16,9 @@ public static class LanguageConverter
         { "fi", "Suomi (Finnish)"  },  // Finnish
         { "sv", "Svenska (Swedish)" },  // Swedish
         { "en", "English" },
-        {"el", " ελληνικά (Greek_"}
+        { "el", "ελληνικά (Greek)" },
+        { "pt", "Português (Portuguese)" },
+        { "pl", "Polski (Polish)" }
     };
     
     private static readonly Dictionary<string, string> LanguageLocaleMap = new Dictionary<string, string>
@@ -32,7 +34,10 @@ public static class LanguageConverter
         { "uk", "uk-UA" },  // Ukrainian - Ukraine
         { "fi", "fi-FI" },  // Finnish - Finland
         { "sv", "sv-SE" },  // Swedish - Sweden
-        { "en", "en-US" }   // English - United States
+        { "en", "en-US" },  // English - United States
+        { "el", "el-GR" },  // Greek - Greece
+        { "pt", "pt-PT" },  // Portuguese - Portugal
+        { "pl", "pl-PL" }   // Polish - Poland
     };
 
     private static readonly Dictionary<string, string> LanguageNameMap = new Dictionary<string, string>
@@ -49,7 +54,9 @@ public static class LanguageConverter
         { "fi", "finnish"  },  // Finnish
         { "sv", "swedish" },  // Swedish
         { "en", "english" },
-        {"el", "greek"}
+        { "el", "greek" },
+        { "pt", "portuguese" },
+        { "pl", "polish" }
     };
 
 

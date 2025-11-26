@@ -183,9 +183,6 @@
     image: qdrant/qdrant:latest
     container_name: qdrant
     restart: unless-stopped
-#    ports:
-#      - "6333:6333"  # REST API
-#      - "6334:6334"  # gRPC API
     volumes:
       - qdrant_storage:/qdrant/storage
     environment:
@@ -210,3 +207,6 @@ volumes:
 networks:
   app_network:
     driver: bridge
+    
+    
+    

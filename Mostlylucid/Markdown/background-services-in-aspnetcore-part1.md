@@ -1,10 +1,13 @@
 # Background Services in ASP.NET Core - Part 1: The Approaches
 
 <!--category-- ASP.NET Core, IHostedService, BackgroundService, Hangfire -->
-<datetime class="hidden">2025-11-26T09:00</datetime>
+<datetime class="hidden">2025-11-27T09:00</datetime>
+
+Every modern web application has work that shouldn't block an HTTP request—sending emails, processing files, syncing with external services, running scheduled maintenance. ASP.NET Core provides multiple approaches for handling this background work, from simple `IHostedService` implementations to sophisticated frameworks like Hangfire. In this first part, we'll explore the fundamental patterns and when to use each one.
 
 # Introduction
 
+Confession; I like Background Services a LOT, this site (a BLOG site!) has over a half-dozen of them doing carious background tasks, but like everything they have some ODDITIES and practices which will make your use of them a lot more pleasant.
 Background services are the unsung heroes of modern web applications. Whilst your controllers handle HTTP requests in the foreground, background services quietly process queued emails, index content for search, check external APIs, clean up temporary files, and handle countless other tasks that would otherwise block your request pipeline.
 
 In this two-part series, we'll explore the different approaches to implementing background services in ASP.NET Core, from the built-in `IHostedService` and `BackgroundService` abstractions to more sophisticated solutions like Hangfire. In Part 1, we'll examine the fundamental approaches and their characteristics. In [Part 2](/blog/background-services-in-aspnetcore-part2), we'll dive into real-world implementations from a production codebase.
@@ -33,7 +36,7 @@ This wasn't just cargo-cult wisdom—it was based on real technical limitations:
 
 ## The Single-Core Era
 
-Early web servers typically ran on **single-core or dual-core CPUs**. If you ran a CPU-intensive background task, it directly competed with web requests for the same core:
+Early web servers (and honestly now, 'cheap' Azure services) typically ran on **single-core or dual-core CPUs**. If you ran a CPU-intensive background task, it directly competed with web requests for the same core:
 
 ```
 Single Core (2005):
@@ -77,7 +80,7 @@ IIS would aggressively recycle application pools (restart your app) based on mem
 
 ## Limited Async/Await Support
 
-Before .NET 4.5 (2012), async programming was painful. Background tasks often blocked threads unnecessarily:
+Before .NET 4.5 (2012), async programming was (relatively) painful. Background tasks often blocked threads unnecessarily:
 
 ```csharp
 // Pre-async (2008)
@@ -95,9 +98,9 @@ void ProcessEmails()
 
 Today's landscape is dramatically different:
 
-### 1. Multi-Core is Standard
+### 1. Multi-Core is Affordable
 
-Even modest cloud VMs have 2-8 cores. A background task on one core doesn't significantly impact web requests on other cores:
+The economics have flipped. Cloud VMs with multiple cores are reasonably priced, and bare metal servers are surprisingly cheap. This blog runs on a dedicated 8-core server that costs less than a comparable Azure VM—and I get all those cores to myself, no noisy neighbours. A background task on one core doesn't significantly impact web requests on other cores:
 
 ```
 8-Core Server (2024):
@@ -129,17 +132,17 @@ async Task ProcessEmailsAsync(CancellationToken ct)
 
 ### 3. Better Process Hosting
 
-- **Docker** - Background services in containers don't get arbitrarily recycled
-- **Kubernetes** - Proper graceful shutdown handling with `SIGTERM`
-- **systemd** - Linux services that restart reliably
+- [**Docker**](https://www.docker.com/) - Background services in containers don't get arbitrarily recycled
+- [**Kubernetes**](https://kubernetes.io/) - Proper graceful shutdown handling with `SIGTERM`
+- [**systemd**](https://systemd.io/) - Linux services that restart reliably
 - **Windows Services** - Proper long-running process model
 
 ### 4. Channels and Modern Primitives
 
-.NET now has first-class support for concurrent programming:
+.NET now has first-class support for concurrent programming with [`System.Threading.Channels`](https://learn.microsoft.com/en-us/dotnet/core/extensions/channels):
 
 ```csharp
-// System.Threading.Channels (2024)
+// System.Threading.Channels
 var channel = Channel.CreateBounded<Email>(100);
 
 // Producer (web request)
@@ -172,7 +175,7 @@ The question is no longer "Can we run background services in our web app?" but "
 
 ## IHostedService: The Foundation
 
-At its core, every background service in ASP.NET Core implements `IHostedService`. This interface is beautifully simple:
+At its core, every background service in ASP.NET Core implements [`IHostedService`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.ihostedservice). This interface is beautifully simple:
 
 ```csharp
 public interface IHostedService
@@ -183,6 +186,12 @@ public interface IHostedService
 ```
 
 That's it. Two methods. `StartAsync` is called when your application starts, and `StopAsync` when it shuts down.
+
+Register your service in `Program.cs`:
+
+```csharp
+builder.Services.AddHostedService<MyBackgroundService>();
+```
 
 Here's the lifecycle visualised:
 
@@ -256,7 +265,14 @@ public class NonBlockingStartService : IHostedService
 
 ### StopAsync: The Common Pitfall
 
-Here's where things get interesting—and where many developers encounter problems. When your application shuts down, ASP.NET Core calls `StopAsync` on all hosted services. You have a limited window (default 5 seconds, configurable via `HostOptions.ShutdownTimeout`) to clean up gracefully.
+Here's where things get interesting—and where many developers encounter problems. When your application shuts down, ASP.NET Core calls `StopAsync` on all hosted services. You have a limited window (default 5 seconds) to clean up gracefully. You can extend this in `Program.cs`:
+
+```csharp
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+});
+```
 
 **The most common mistake:**
 
@@ -359,7 +375,7 @@ public class CorrectService : IHostedService
 
 ## BackgroundService: The Convenient Base Class
 
-Writing `IHostedService` implementations can be repetitive. You always need a background task, a cancellation token source, and the same cleanup pattern. `BackgroundService` handles this boilerplate for you:
+Writing `IHostedService` implementations can be repetitive. You always need a background task, a cancellation token source, and the same cleanup pattern. [`BackgroundService`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.backgroundservice) handles this boilerplate for you:
 
 ```csharp
 public abstract class BackgroundService : IHostedService, IDisposable
@@ -543,6 +559,109 @@ public class DependentService : IHostedService
 ```
 
 This pattern becomes especially useful when you have multiple background services with interdependencies.
+
+# Distributed Coordination with Redis
+
+The startup coordinator works within a single application instance. But what happens when you scale to multiple instances? You don't want three instances all running the same scheduled task simultaneously.
+
+[Redis](https://redis.io/) provides a simple solution: use flags (keys) to coordinate who does what.
+
+## Simple Leader Election
+
+```csharp
+public class DistributedBackgroundService : BackgroundService
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly ILogger<DistributedBackgroundService> _logger;
+    private readonly string _instanceId = Guid.NewGuid().ToString();
+    private const string LeaderKey = "background:newsletter:leader";
+
+    public DistributedBackgroundService(
+        IConnectionMultiplexer redis,
+        ILogger<DistributedBackgroundService> logger)
+    {
+        _redis = redis;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var db = _redis.GetDatabase();
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            // Try to become the leader (SET NX with expiry)
+            var acquired = await db.StringSetAsync(
+                LeaderKey,
+                _instanceId,
+                TimeSpan.FromMinutes(5),
+                When.NotExists);
+
+            if (acquired)
+            {
+                _logger.LogInformation("This instance is the leader, running task");
+
+                try
+                {
+                    await DoScheduledWorkAsync(stoppingToken);
+                }
+                finally
+                {
+                    // Release leadership
+                    await db.KeyDeleteAsync(LeaderKey);
+                }
+            }
+            else
+            {
+                var leader = await db.StringGetAsync(LeaderKey);
+                _logger.LogDebug("Another instance ({Leader}) is the leader", leader);
+            }
+
+            await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        }
+    }
+}
+```
+
+## Distributed Locking for Critical Sections
+
+For tasks that must not run concurrently across instances:
+
+```csharp
+public async Task ProcessWithLockAsync(CancellationToken cancellationToken)
+{
+    var db = _redis.GetDatabase();
+    var lockKey = "locks:critical-task";
+    var lockValue = _instanceId;
+
+    // Try to acquire lock
+    if (await db.LockTakeAsync(lockKey, lockValue, TimeSpan.FromMinutes(10)))
+    {
+        try
+        {
+            _logger.LogInformation("Lock acquired, processing...");
+            await DoCriticalWorkAsync(cancellationToken);
+        }
+        finally
+        {
+            await db.LockReleaseAsync(lockKey, lockValue);
+        }
+    }
+    else
+    {
+        _logger.LogDebug("Could not acquire lock, another instance is processing");
+    }
+}
+```
+
+## When to Use Distributed Coordination
+
+- **Scheduled tasks** - Only one instance should send the daily newsletter
+- **Queue processing with ordering** - Ensure messages are processed in order
+- **Resource-intensive operations** - Prevent multiple instances from overwhelming an external API
+- **Database migrations** - Only one instance should run migrations on startup
+
+For more complex scenarios (multi-step jobs, reliable scheduling across restarts), consider Hangfire which handles distributed locking automatically with its database backend.
 
 # When NOT to Use Background Services
 
@@ -748,10 +867,10 @@ public class VideoWorker : BackgroundService
 ```
 
 **Popular message queue options:**
-- **RabbitMQ** - Most popular, feature-rich
-- **Azure Service Bus** - If you're on Azure
-- **AWS SQS** - If you're on AWS
-- **Redis Streams** - Simpler, good for smaller scale
+- [**RabbitMQ**](https://www.rabbitmq.com/) - Most popular, feature-rich
+- [**Azure Service Bus**](https://azure.microsoft.com/en-us/products/service-bus/) - If you're on Azure
+- [**AWS SQS**](https://aws.amazon.com/sqs/) - If you're on AWS
+- [**Redis Streams**](https://redis.io/docs/data-types/streams/) - Simpler, good for smaller scale
 
 ### Option 3: Multiple Specialised Workers
 
@@ -970,19 +1089,19 @@ graph TD
 
 Whilst Hangfire is popular, there are other libraries worth considering:
 
-**Quartz.NET:**
+[**Quartz.NET**](https://www.quartz-scheduler.net/):
 - More flexible scheduling than Hangfire
 - Supports cron expressions and calendar-based scheduling
 - Can persist to multiple databases
 - More complex API but more powerful
 
-**MassTransit/NServiceBus:**
+[**MassTransit**](https://masstransit.io/)/[**NServiceBus**](https://particular.net/nservicebus):
 - Full-featured message bus implementations
 - Better for distributed systems and microservices
 - Support sagas (long-running workflows)
 - Steeper learning curve
 
-**Azure Functions/AWS Lambda:**
+[**Azure Functions**](https://azure.microsoft.com/en-us/products/functions/)/[**AWS Lambda**](https://aws.amazon.com/lambda/):
 - If you're in the cloud, consider serverless
 - Pay per execution rather than keeping a service running
 - Automatic scaling
@@ -995,7 +1114,8 @@ In Part 1, we've covered the fundamental approaches to background services in AS
 1. **IHostedService** - The foundation, maximum flexibility
 2. **BackgroundService** - Convenient base class for long-running loops
 3. **Startup coordination** - Making services wait for each other
-4. **Hangfire** - When you need persistent jobs and sophisticated scheduling
+4. **Distributed coordination** - Using Redis for multi-instance scenarios
+5. **Hangfire** - When you need persistent jobs and sophisticated scheduling
 
 The most important lessons:
 
@@ -1020,3 +1140,4 @@ These examples demonstrate the patterns from Part 1 in action, including the sta
 - [Hangfire Documentation](https://docs.hangfire.io/)
 - [Channels in C#](https://learn.microsoft.com/en-us/dotnet/core/extensions/channels)
 - [Quartz.NET Documentation](https://www.quartz-scheduler.net/)
+- [StackExchange.Redis](https://stackexchange.github.io/StackExchange.Redis/) - Redis client for .NET
