@@ -37,6 +37,62 @@ graph LR
     style G stroke:#0066cc,stroke-width:3px
 ```
 
+### Where E2E Testing Fits In Your Testing Strategy
+
+Before we dive deeper, let's talk about where E2E testing fits in the grand scheme of things. You've probably heard of the testing pyramid - here's how it actually works in practice:
+
+```mermaid
+graph TB
+    subgraph "Testing Pyramid"
+        E2E[E2E Tests<br/>Few, Slow, High Confidence<br/>Test full user journeys]
+        INT[Integration Tests<br/>Medium number, Medium speed<br/>Test component interactions]
+        UNIT[Unit Tests<br/>Many, Fast, Low Cost<br/>Test individual functions]
+    end
+
+    subgraph "Trade-offs"
+        SPEED[Speed ⚡]
+        CONF[Confidence 🎯]
+        COST[Cost 💰]
+    end
+
+    subgraph "When to Use E2E"
+        W1[Critical user journeys<br/>e.g. checkout, login]
+        W2[Cross-browser compatibility]
+        W3[JavaScript-heavy UIs]
+        W4[Complex user interactions]
+    end
+
+    E2E -.->|Slow but high confidence| CONF
+    INT -.->|Balanced| SPEED
+    UNIT -.->|Fast and cheap| SPEED
+
+    E2E -.->|Expensive to run| COST
+    UNIT -.->|Cheap to run| COST
+
+    style E2E stroke:#cc0000,stroke-width:3px
+    style INT stroke:#ff9900,stroke-width:2px
+    style UNIT stroke:#00aa00,stroke-width:2px
+    style CONF stroke:#0066cc,stroke-width:2px
+    style SPEED stroke:#00aa00,stroke-width:2px
+    style COST stroke:#cc0000,stroke-width:2px
+```
+
+**The Reality Check:**
+- **Unit Tests** (80% of your tests): Fast, cheap, test individual functions. But they don't tell you if the system actually works as a whole.
+- **Integration Tests** (15% of your tests): Test how different parts work together. Faster than E2E but don't test the full UI.
+- **E2E Tests** (5% of your tests): Slow, expensive, but test the system exactly as users experience it. This is where PuppeteerSharp shines.
+
+**When You NEED E2E Tests:**
+1. **Critical user journeys** - Login, checkout, payment processing. If these break, your business stops.
+2. **JavaScript-heavy UIs** - Modern SPAs (React, Vue, Angular) where the UI is rendered client-side.
+3. **Cross-browser issues** - Different browsers render things differently (though with PuppeteerSharp you're Chrome-only).
+4. **Complex interactions** - Multi-step wizards, drag-and-drop, file uploads.
+
+**When You DON'T Need E2E Tests:**
+1. **Simple CRUD operations** - Integration tests are enough.
+2. **Pure logic** - That's what unit tests are for.
+3. **Every edge case** - E2E tests are too slow and expensive for exhaustive testing.
+
 ### Why PuppeteerSharp Over Selenium?
 
 Let me count the ways:
@@ -1071,6 +1127,761 @@ public abstract class IntegratedE2ETestBase : E2ETestBase, IClassFixture<E2EWebA
         // Application is automatically started by WebApplicationFactory
         // Override BaseUrl to use the factory's address
         BaseUrl = "http://localhost:5050";
+    }
+}
+```
+
+## Beyond Testing - PuppeteerSharp for PDF Generation and Automation
+
+Whilst E2E testing is brilliant, PuppeteerSharp is a Swiss Army knife that can do a lot more. One of its most popular uses is generating PDFs from web content - and it's bloody useful for that, though not without its gotchas.
+
+### Generating PDFs - The Promise and the Pain
+
+The idea is simple: render a web page in Chrome and save it as a PDF. Perfect for generating invoices, reports, certificates, or any dynamic content that needs to be distributed in PDF format.
+
+Here's the basic approach:
+
+```csharp
+public class PdfGeneratorService
+{
+    public async Task<byte[]> GeneratePdfFromUrlAsync(string url)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true,
+            Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" }
+        });
+
+        await using var page = await browser.NewPageAsync();
+        await page.GoToAsync(url, new NavigationOptions
+        {
+            WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+        });
+
+        var pdfData = await page.PdfDataAsync(new PdfOptions
+        {
+            Format = PaperFormat.A4,
+            PrintBackground = true,
+            MarginOptions = new MarginOptions
+            {
+                Top = "20mm",
+                Right = "20mm",
+                Bottom = "20mm",
+                Left = "20mm"
+            }
+        });
+
+        return pdfData;
+    }
+}
+```
+
+Looks dead simple, right? Well, it is... until it isn't. Let me walk you through the landmines.
+
+### PDF Generation Gotchas - What Nobody Tells You
+
+#### 1. Font Embedding Nightmares
+
+**The Problem:** Your beautiful custom fonts don't appear in the PDF, or worse, they're there but look absolutely rubbish.
+
+**Why It Happens:** Chrome needs access to the font files during PDF generation. If your fonts are loaded via external CDN and Chrome can't reach them (firewall, network issues, timing), you're stuffed.
+
+**The Solution:**
+
+```csharp
+await page.GoToAsync(url, new NavigationOptions
+{
+    WaitUntil = new[]
+    {
+        WaitUntilNavigation.Networkidle0,  // Wait for network to be idle
+        WaitUntilNavigation.Load           // Wait for fonts to load
+    },
+    Timeout = 60000  // Give it time to load fonts
+});
+
+// Extra insurance - wait for fonts to actually load
+await page.EvaluateFunctionAsync(@"async () => {
+    await document.fonts.ready;
+}");
+
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Format = PaperFormat.A4,
+    PrintBackground = true  // CRUCIAL for @font-face fonts
+});
+```
+
+Even better, host your fonts locally or embed them as base64 in your CSS. Yes, it's a faff, but it's reliable.
+
+#### 2. CSS Print Media Queries
+
+**The Problem:** Your PDF looks nothing like your web page because Chrome applies print media queries.
+
+This is actually **correct behaviour** - PDFs are print media. But it catches everyone out the first time.
+
+**The Solution:**
+
+Use `@media print` CSS rules appropriately:
+
+```css
+/* Show on screen, hide in PDF */
+.no-print {
+    display: block;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    /* Prevent page breaks inside elements */
+    .keep-together {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Force page breaks */
+    .page-break {
+        page-break-before: always;
+    }
+}
+```
+
+Or, if you want the screen version in your PDF (useful for generating "screenshots" as PDFs):
+
+```csharp
+await page.EmulateMediaTypeAsync(MediaType.Screen);  // Force screen media
+var pdfData = await page.PdfDataAsync();
+```
+
+#### 3. Page Breaks - The Bane of Your Existence
+
+**The Problem:** Your content gets awkwardly split across pages, with headings orphaned at the bottom or tables cut in half.
+
+**The Reality:** You're fighting against Chrome's internal pagination algorithm, and it's going to win most of the time.
+
+**What You Can Do:**
+
+```css
+@media print {
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    table, figure, img {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Force specific breaks */
+    .new-page {
+        page-break-before: always;
+    }
+}
+```
+
+And in your PuppeteerSharp code:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Format = PaperFormat.A4,
+    PrintBackground = true,
+    PreferCSSPageSize = true,  // Respect CSS @page rules
+    DisplayHeaderFooter = false
+});
+```
+
+**Pro Tip:** For complex layouts, sometimes it's easier to structure your HTML with explicit page breaks rather than fighting the browser:
+
+```html
+<div class="page">
+    <!-- First page content -->
+</div>
+<div class="page-break"></div>
+<div class="page">
+    <!-- Second page content -->
+</div>
+```
+
+#### 4. Headers and Footers - More Complex Than You'd Think
+
+You can add headers and footers, but the API is a bit wonky:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Format = PaperFormat.A4,
+    DisplayHeaderFooter = true,
+    HeaderTemplate = @"
+        <div style='font-size: 10px; text-align: center; width: 100%;'>
+            <span class='title'></span>
+        </div>
+    ",
+    FooterTemplate = @"
+        <div style='font-size: 10px; text-align: center; width: 100%;'>
+            Page <span class='pageNumber'></span> of <span class='totalPages'></span>
+        </div>
+    ",
+    MarginOptions = new MarginOptions
+    {
+        Top = "30mm",     // Must be larger to accommodate header
+        Bottom = "25mm"   // Must be larger to accommodate footer
+    }
+});
+```
+
+**Gotchas:**
+- Header/footer templates must be valid HTML but are extremely limited - no external CSS, no JavaScript
+- You only get specific variables: `date`, `title`, `url`, `pageNumber`, `totalPages`
+- Styling is inline only
+- The margins must be large enough to accommodate headers/footers or they'll overlap your content
+
+#### 5. Background Graphics
+
+By default, Chrome doesn't print background images or colours (this is a browser default for saving ink). You **must** enable it:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    PrintBackground = true  // Without this, your beautiful backgrounds vanish
+});
+```
+
+#### 6. Memory Leaks with Large Documents
+
+**The Problem:** Generating lots of PDFs causes your application's memory to balloon and eventually crash.
+
+**Why:** Each browser instance uses significant memory (100-200MB), and if you're not disposing properly, they stack up.
+
+**The Solution:**
+
+Always use `await using` or proper disposal:
+
+```csharp
+// Good - automatic disposal
+await using var browser = await Puppeteer.LaunchAsync(options);
+await using var page = await browser.NewPageAsync();
+
+// Or manually
+IBrowser? browser = null;
+try
+{
+    browser = await Puppeteer.LaunchAsync(options);
+    // ... use browser
+}
+finally
+{
+    if (browser != null)
+    {
+        await browser.CloseAsync();
+        await browser.DisposeAsync();
+    }
+}
+```
+
+For high-volume PDF generation, consider reusing browser instances:
+
+```csharp
+public class PdfGeneratorService : IDisposable
+{
+    private IBrowser? _browser;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+
+    public async Task<byte[]> GeneratePdfAsync(string url)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            // Reuse browser instance
+            _browser ??= await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true
+            });
+
+            await using var page = await _browser.NewPageAsync();
+            await page.GoToAsync(url);
+            return await page.PdfDataAsync();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_browser != null)
+        {
+            await _browser.CloseAsync();
+            await _browser.DisposeAsync();
+        }
+        _semaphore.Dispose();
+    }
+
+    public void Dispose()
+    {
+        DisposeAsync().AsTask().Wait();
+    }
+}
+```
+
+#### 7. The Scale Option - Smaller Text, More Content
+
+Sometimes you need to fit more content on a page:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Format = PaperFormat.A4,
+    Scale = 0.8m,  // 80% scale - fits more content
+    PrintBackground = true
+});
+```
+
+But be careful - too small and it's unreadable.
+
+### Real-World PDF Generation Pattern
+
+Here's how I actually do PDF generation in production:
+
+```csharp
+public class InvoicePdfGenerator
+{
+    private readonly ILogger<InvoicePdfGenerator> _logger;
+
+    public InvoicePdfGenerator(ILogger<InvoicePdfGenerator> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<byte[]> GenerateInvoicePdfAsync(Invoice invoice)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true,
+            Args = new[]
+            {
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage"  // Overcome limited resource problems
+            }
+        });
+
+        await using var page = await browser.NewPageAsync();
+
+        // Set up console logging to debug issues
+        page.Console += (_, e) =>
+        {
+            _logger.LogInformation("Browser console: {Message}", e.Message.Text);
+        };
+
+        try
+        {
+            // Generate HTML content (using Razor, or however you do it)
+            var htmlContent = await GenerateInvoiceHtmlAsync(invoice);
+
+            // Set content directly rather than navigating to URL
+            await page.SetContentAsync(htmlContent, new NavigationOptions
+            {
+                WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
+            });
+
+            // Wait for fonts to load
+            await page.EvaluateFunctionAsync("() => document.fonts.ready");
+
+            // Force screen media type to avoid print media queries changing layout
+            await page.EmulateMediaTypeAsync(MediaType.Screen);
+
+            // Generate PDF
+            var pdfData = await page.PdfDataAsync(new PdfOptions
+            {
+                Format = PaperFormat.A4,
+                PrintBackground = true,
+                MarginOptions = new MarginOptions
+                {
+                    Top = "10mm",
+                    Right = "10mm",
+                    Bottom = "10mm",
+                    Left = "10mm"
+                },
+                PreferCSSPageSize = false
+            });
+
+            _logger.LogInformation("Generated PDF for invoice {InvoiceId}, size: {Size} bytes",
+                invoice.Id, pdfData.Length);
+
+            return pdfData;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate PDF for invoice {InvoiceId}", invoice.Id);
+
+            // Take a screenshot for debugging
+            try
+            {
+                var screenshot = await page.ScreenshotDataAsync();
+                _logger.LogWarning("Captured screenshot of failed PDF generation: {Size} bytes",
+                    screenshot.Length);
+                // Could save this to blob storage for debugging
+            }
+            catch
+            {
+                // Swallow screenshot errors
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<string> GenerateInvoiceHtmlAsync(Invoice invoice)
+    {
+        // Your HTML generation logic here
+        // Could use Razor, or templating engine
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {{
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }}
+
+        @media print {{
+            .page-break {{
+                page-break-before: always;
+            }}
+
+            .no-break {{
+                page-break-inside: avoid;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class='no-break'>
+        <h1>Invoice #{invoice.Number}</h1>
+        <p>Date: {invoice.Date:yyyy-MM-dd}</p>
+    </div>
+
+    <!-- Invoice content -->
+</body>
+</html>";
+    }
+}
+```
+
+### Landscape vs Portrait
+
+Simple but often needed:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Format = PaperFormat.A4,
+    Landscape = true,  // Horizontal orientation
+    PrintBackground = true
+});
+```
+
+### Custom Page Sizes
+
+Not limited to standard formats:
+
+```csharp
+var pdfData = await page.PdfDataAsync(new PdfOptions
+{
+    Width = "210mm",   // Custom width
+    Height = "297mm",  // Custom height (this is A4, but you can use any size)
+    PrintBackground = true
+});
+```
+
+## Other Practical Uses for PuppeteerSharp
+
+### Web Scraping for Data Extraction
+
+PuppeteerSharp is brilliant for scraping JavaScript-heavy sites that Selenium struggles with:
+
+```csharp
+public class ProductScraper
+{
+    public async Task<List<Product>> ScrapeProductsAsync(string url)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+        await page.GoToAsync(url, new NavigationOptions
+        {
+            WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
+        });
+
+        // Wait for products to render (adjust selector as needed)
+        await page.WaitForSelectorAsync(".product-item");
+
+        // Extract product data using JavaScript
+        var products = await page.EvaluateFunctionAsync<List<Product>>(@"() => {
+            return Array.from(document.querySelectorAll('.product-item')).map(item => ({
+                name: item.querySelector('.product-name')?.textContent?.trim(),
+                price: parseFloat(item.querySelector('.product-price')?.textContent?.replace('£', '')),
+                imageUrl: item.querySelector('img')?.src,
+                inStock: !item.querySelector('.out-of-stock')
+            }));
+        }");
+
+        return products;
+    }
+}
+```
+
+**When to Use It:**
+- Scraping single-page applications (React, Vue, Angular)
+- Sites with infinite scroll or lazy loading
+- When you need to interact with the page (click buttons, fill forms) before scraping
+- Content behind login walls
+
+**When NOT to Use It:**
+- Simple HTML scraping (use HtmlAgilityPack or AngleSharp instead - much faster)
+- High-volume scraping (browser overhead is significant)
+- When there's an API available (always prefer APIs!)
+
+### Automated Screenshot Generation
+
+Beyond testing, screenshots are useful for thumbnails, previews, or archiving:
+
+```csharp
+public class ScreenshotService
+{
+    public async Task<byte[]> CaptureWebsiteAsync(string url, int width = 1920, int height = 1080)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+        await page.SetViewportAsync(new ViewPortOptions
+        {
+            Width = width,
+            Height = height
+        });
+
+        await page.GoToAsync(url, new NavigationOptions
+        {
+            WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
+        });
+
+        // Full page screenshot
+        return await page.ScreenshotDataAsync(new ScreenshotOptions
+        {
+            FullPage = true,
+            Type = ScreenshotType.Png
+        });
+    }
+
+    public async Task<byte[]> CaptureElementAsync(string url, string selector)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+        await page.GoToAsync(url);
+
+        var element = await page.WaitForSelectorAsync(selector);
+        if (element == null)
+        {
+            throw new InvalidOperationException($"Element {selector} not found");
+        }
+
+        // Screenshot of specific element
+        return await element.ScreenshotDataAsync();
+    }
+}
+```
+
+**Practical Uses:**
+- Generating og:image tags for blog posts
+- Creating thumbnails for website galleries
+- Archiving web pages for compliance
+- Generating preview images for link sharing
+
+### Performance Monitoring
+
+Measure page load performance:
+
+```csharp
+public class PerformanceMonitor
+{
+    public async Task<PerformanceMetrics> MeasurePagePerformanceAsync(string url)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+
+        var stopwatch = Stopwatch.StartNew();
+        await page.GoToAsync(url, new NavigationOptions
+        {
+            WaitUntil = new[] { WaitUntilNavigation.Networkidle2 }
+        });
+        stopwatch.Stop();
+
+        // Get performance metrics from the browser
+        var metrics = await page.MetricsAsync();
+
+        // Get performance timing data
+        var performanceTiming = await page.EvaluateExpressionAsync<PerformanceTiming>(@"
+            JSON.parse(JSON.stringify(performance.timing))
+        ");
+
+        return new PerformanceMetrics
+        {
+            TotalLoadTime = stopwatch.ElapsedMilliseconds,
+            DomContentLoaded = performanceTiming.DomContentLoadedEventEnd - performanceTiming.NavigationStart,
+            FirstPaint = metrics["FirstPaint"],
+            LayoutCount = (int)metrics["LayoutCount"],
+            ScriptDuration = metrics["ScriptDuration"]
+        };
+    }
+}
+```
+
+### Automated Report Generation
+
+Combine HTML templating with PDF generation for automated reporting:
+
+```csharp
+public class MonthlyReportGenerator
+{
+    public async Task<byte[]> GenerateMonthlyReportAsync(ReportData data)
+    {
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+
+        // Generate HTML report using your preferred templating engine
+        var html = GenerateReportHtml(data);
+        await page.SetContentAsync(html);
+
+        // Wait for any charts to render (if using Chart.js, etc.)
+        await Task.Delay(2000);
+
+        return await page.PdfDataAsync(new PdfOptions
+        {
+            Format = PaperFormat.A4,
+            PrintBackground = true,
+            DisplayHeaderFooter = true,
+            HeaderTemplate = $@"
+                <div style='font-size: 9px; margin: 0 auto; text-align: center;'>
+                    Monthly Report - {data.Month:MMMM yyyy}
+                </div>
+            ",
+            FooterTemplate = @"
+                <div style='font-size: 9px; margin: 0 auto; text-align: center;'>
+                    Page <span class='pageNumber'></span> of <span class='totalPages'></span>
+                </div>
+            ",
+            MarginOptions = new MarginOptions
+            {
+                Top = "25mm",
+                Bottom = "20mm",
+                Left = "15mm",
+                Right = "15mm"
+            }
+        });
+    }
+}
+```
+
+### The Cost of "Free" PDF Generation
+
+Now, here's the thing about using PuppeteerSharp for PDF generation - it's "free" in the sense that you don't pay for a PDF library licence, but it's **not free in terms of resources**.
+
+Each browser instance:
+- Uses 100-200MB of RAM
+- Requires significant CPU for rendering
+- Takes 2-5 seconds to generate a PDF (depending on complexity)
+
+Compare this to dedicated PDF libraries like:
+- **iTextSharp** (now iText 7) - ~£500-3000/year licensing, but generates PDFs in milliseconds with tiny memory footprint
+- **QuestPDF** - Free and open source, generates PDFs from code (no HTML), blazing fast
+- **PdfSharpCore** - Free, but more limited in capabilities
+
+**When to Use PuppeteerSharp for PDFs:**
+- You already have HTML templates and don't want to rewrite in PDF layout code
+- You need pixel-perfect rendering of complex web layouts
+- Volume is low (< 100 PDFs per hour)
+- You need to generate PDFs from external websites you don't control
+
+**When to Use Dedicated PDF Libraries:**
+- High volume generation (> 100 PDFs per hour)
+- Simple layouts (invoices, receipts, reports)
+- Resource-constrained environments
+- You need advanced PDF features (forms, signatures, encryption)
+
+### A Hybrid Approach
+
+Sometimes the best solution is using both:
+
+```csharp
+public class PdfService
+{
+    private readonly ILogger<PdfService> _logger;
+
+    public async Task<byte[]> GeneratePdfAsync(PdfRequest request)
+    {
+        // Simple documents - use QuestPDF (fast, low resources)
+        if (request.IsSimpleLayout)
+        {
+            return GenerateWithQuestPdf(request);
+        }
+
+        // Complex documents with web content - use PuppeteerSharp
+        return await GenerateWithPuppeteerAsync(request);
+    }
+
+    private byte[] GenerateWithQuestPdf(PdfRequest request)
+    {
+        // QuestPDF code here - much faster for simple layouts
+        return Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(2, Unit.Centimetre);
+                page.Content().Text(request.Content);
+            });
+        }).GeneratePdf();
+    }
+
+    private async Task<byte[]> GenerateWithPuppeteerAsync(PdfRequest request)
+    {
+        // PuppeteerSharp code for complex layouts
+        await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        {
+            Headless = true
+        });
+
+        await using var page = await browser.NewPageAsync();
+        await page.SetContentAsync(request.HtmlContent);
+        return await page.PdfDataAsync();
     }
 }
 ```
