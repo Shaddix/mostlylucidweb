@@ -10,6 +10,7 @@ using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared;
 using Mostlylucid.Shared.Config.Markdown;
 using Mostlylucid.Shared.Entities;
+using Mostlylucid.Shared.Services;
 using Serilog.Events;
 
 namespace Mostlylucid.Blog.WatcherService;
@@ -20,17 +21,41 @@ namespace Mostlylucid.Blog.WatcherService;
 public class MarkdownFetchPollingService(
     IServiceScopeFactory serviceScopeFactory,
     ILogger<MarkdownFetchPollingService> logger,
-    MarkdownConfig markdownConfig)
+    MarkdownConfig markdownConfig,
+    IStartupCoordinator startupCoordinator)
     : BackgroundService
 {
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(15); // Check every 15 minutes
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("Markdown Fetch Polling Service started");
+        logger.LogInformation("Markdown Fetch Polling Service started, waiting for other services...");
 
-        // Wait a bit before starting to let the application fully initialize
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        // Wait for all other blog services to be ready with a timeout
+        try
+        {
+            var allReady = await startupCoordinator.WaitForAllServicesAsync(
+                TimeSpan.FromMinutes(10), stoppingToken);
+
+            if (allReady)
+            {
+                logger.LogInformation("All services ready, Markdown Fetch Polling Service starting");
+            }
+            else
+            {
+                var pending = startupCoordinator.GetPendingServices();
+                logger.LogWarning(
+                    "Timeout waiting for services, starting anyway. Pending: {Services}",
+                    string.Join(", ", pending));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        // Signal that we're ready
+        startupCoordinator.SignalReady(StartupServiceNames.MarkdownFetchPolling);
 
         while (!stoppingToken.IsCancellationRequested)
         {

@@ -13,6 +13,7 @@ using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Services;
 using Npgsql;
 
 namespace Mostlylucid.Blog;
@@ -42,7 +43,7 @@ public static class BlogSetup
                 break;
             case BlogMode.Database:
                 Log.Information("Using Database based blog");
-           services.SetupDatabase(configuration, env);
+                services.SetupDatabase(configuration, env);
                 services.AddScoped<IBlogViewService, BlogPostViewService>();
                 services.AddScoped<ICommentService, CommentService>();
                 services.AddScoped<IBlogPopulator, BlogPopulator>();
@@ -52,7 +53,21 @@ public static class BlogSetup
                 services.AddScoped<IBlogService, BlogService>();
                 services.AddScoped<ISlugSuggestionService, SlugSuggestionService>();
                 services.AddScoped<BlogValidationService>();
+
+                // Register startup coordinator and background services
+                services.AddSingleton<IStartupCoordinator>(sp =>
+                {
+                    var coordinator = new StartupCoordinator(sp.GetRequiredService<ILogger<StartupCoordinator>>());
+                    // Pre-register all services that will participate
+                    coordinator.RegisterService(StartupServiceNames.MarkdownDirectoryWatcher);
+                    coordinator.RegisterService(StartupServiceNames.MarkdownReAddPosts);
+                    coordinator.RegisterService(StartupServiceNames.BlogReconciliation);
+                    coordinator.RegisterService(StartupServiceNames.MarkdownFetchPolling);
+                    return coordinator;
+                });
+
                 services.AddHostedService<MarkdownDirectoryWatcherService>();
+                services.AddHostedService<MarkdownReAddPostsService>();
                 services.AddHostedService<BlogReconciliationService>();
 
                 // Register markdown fetch polling service (only in database mode)

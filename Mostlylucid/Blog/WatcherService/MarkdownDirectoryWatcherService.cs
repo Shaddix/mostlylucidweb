@@ -6,6 +6,7 @@ using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Config.Markdown;
 using Mostlylucid.Shared.Models;
+using Mostlylucid.Shared.Services;
 using Polly;
 using Serilog.Events;
 
@@ -14,6 +15,7 @@ namespace Mostlylucid.Blog.WatcherService;
 public class MarkdownDirectoryWatcherService(
     MarkdownConfig markdownConfig,
     IServiceScopeFactory serviceScopeFactory,
+    IStartupCoordinator startupCoordinator,
     ILogger<MarkdownDirectoryWatcherService> logger)
     : IHostedService
 {
@@ -36,6 +38,8 @@ public class MarkdownDirectoryWatcherService(
         _awaitChangeTask = Task.Run(() => AwaitChanges(cancellationToken), cancellationToken);
         logger.LogInformation("Started watching directory {Directory}", markdownConfig.MarkdownPath);
 
+        // Signal ready - watcher is set up and listening
+        startupCoordinator.SignalReady(StartupServiceNames.MarkdownDirectoryWatcher);
 
         return Task.CompletedTask;
     }

@@ -6,6 +6,7 @@ using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Services;
 using Serilog.Events;
 
 namespace Mostlylucid.Blog.WatcherService;
@@ -19,6 +20,7 @@ public class BlogReconciliationService(
     MarkdownConfig markdownConfig,
     TranslateServiceConfig translateServiceConfig,
     IServiceScopeFactory serviceScopeFactory,
+    IStartupCoordinator startupCoordinator,
     ILogger<BlogReconciliationService> logger)
     : BackgroundService
 {
@@ -26,8 +28,24 @@ public class BlogReconciliationService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Wait 5 minutes before first run to let the app initialize
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        // Wait for MarkdownReAddPosts to complete before reconciling
+        // This prevents reconciliation from conflicting with bulk re-add
+        logger.LogInformation("Waiting for MarkdownReAddPosts service to complete...");
+        try
+        {
+            await startupCoordinator.WaitForServiceAsync(StartupServiceNames.MarkdownReAddPosts, stoppingToken);
+            logger.LogInformation("MarkdownReAddPosts complete, starting reconciliation service");
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        // Signal that we're ready (started listening)
+        startupCoordinator.SignalReady(StartupServiceNames.BlogReconciliation);
+
+        // Small delay before first reconciliation
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {

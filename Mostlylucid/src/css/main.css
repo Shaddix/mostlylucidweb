@@ -734,3 +734,13 @@ a.archived-link::after {
 a.archived-link:hover::after {
     @apply opacity-100;
 }
+
+/* Broken Links - styling for links that are broken and have no archive.org replacement */
+span.broken-link {
+    @apply text-gray-500 dark:text-gray-400 line-through cursor-not-allowed;
+}
+
+span.broken-link::before {
+    content: '⚠';
+    @apply mr-1 text-amber-500;
+}
