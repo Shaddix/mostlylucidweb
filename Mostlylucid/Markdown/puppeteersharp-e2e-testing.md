@@ -50,9 +50,9 @@ graph TB
     end
 
     subgraph "Trade-offs"
-        SPEED[Speed ⚡]
-        CONF[Confidence 🎯]
-        COST[Cost 💰]
+        SPEED[Speed]
+        CONF[Confidence]
+        COST[Cost]
     end
 
     subgraph "When to Use E2E"
