@@ -75,7 +75,7 @@ dotnet add package Microsoft.Playwright
 dotnet add package Microsoft.Playwright.NUnit  # Or use xUnit
 ```
 
-Then install the browsers (this downloads Chromium, Firefox, and WebKit):
+Then install the browsers (this downloads [Chromium](https://www.chromium.org/), [Firefox](https://www.mozilla.org/firefox/), and [WebKit](https://webkit.org/)):
 
 ```bash
 pwsh bin/Debug/net9.0/playwright.ps1 install
@@ -86,6 +86,8 @@ Or on Linux/Mac:
 ```bash
 playwright install
 ```
+
+**Note:** The first browser install downloads around 400MB. Subsequent updates are much smaller.
 
 Here's my test project configuration:
 
@@ -99,9 +101,11 @@ Here's my test project configuration:
 </PackageReference>
 ```
 
+I'm using [xUnit](https://xunit.net/), but Playwright works equally well with [NUnit](https://nunit.org/) or [MSTest](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-mstest). In fact, Playwright has a dedicated [NUnit integration](https://playwright.dev/dotnet/docs/test-runners#nunit) with additional helpers.
+
 ## Creating a Base Test Class
 
-Similar to PuppeteerSharp, but with multi-browser support:
+Similar to [PuppeteerSharp](/blog/puppeteersharp-e2e-testing#creating-a-base-test-class), but with multi-browser support:
 
 ### The Class Structure
 
@@ -396,6 +400,8 @@ public async Task SortingDropdown_UpdatesContentViaHTMX()
 
 ### Testing Alpine.js Interactions
 
+Playwright handles [Alpine.js](https://alpinejs.dev/) reactivity and animations seamlessly:
+
 ```csharp
 [Fact]
 public async Task AlpineDropdown_OpensAndCloses()
@@ -489,7 +495,7 @@ public async Task MockAPIResponse_ForTesting()
     {
         Status = 200,
         ContentType = "application/json",
-        Body = JsonSerializer.Serialize(new
+        Body = System.Text.Json.JsonSerializer.Serialize(new
         {
             posts = new[]
             {
@@ -603,7 +609,7 @@ public async Task BlogPage_WorksOnMobile()
 }
 ```
 
-Playwright comes with device descriptors for:
+Playwright comes with [device descriptors](https://playwright.dev/dotnet/docs/emulation#devices) for:
 - iPhone 13, 13 Pro, 12, 11, SE
 - iPad, iPad Pro
 - Samsung Galaxy, Pixel
@@ -765,6 +771,8 @@ graph TD
 
 ### GitHub Actions Example
 
+Playwright works seamlessly in CI/CD pipelines. Here's a complete [GitHub Actions](https://github.com/features/actions) workflow:
+
 ```yaml
 name: Playwright Tests
 
@@ -825,6 +833,8 @@ jobs:
 ```
 
 ### Docker Support
+
+Running Playwright tests in [Docker](https://www.docker.com/) requires installing system dependencies:
 
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
@@ -926,7 +936,7 @@ await Page.Locator(".dropdown-item").ClickAsync();
 
 ## Conclusion
 
-Playwright is the more comprehensive E2E testing solution if you need multi-browser support. Yes, it's slightly more complex than [PuppeteerSharp](/blog/puppeteersharp-e2e-testing), but the benefits are substantial:
+Playwright represents the evolution of browser automation for .NET developers. If you need multi-browser support, it's the clear choice. Yes, it's slightly more complex than [PuppeteerSharp](/blog/puppeteersharp-e2e-testing), but the benefits are substantial:
 
 - Test across all major browsers with identical code
 - Better reliability with automatic waiting

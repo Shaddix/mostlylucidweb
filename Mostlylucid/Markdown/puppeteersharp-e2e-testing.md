@@ -619,7 +619,7 @@ For most .NET developers building modern web applications:
 
 ## Running Tests in CI/CD
 
-E2E tests are all well and good on your local machine, but they need to run in CI/CD pipelines too. Here's how I've set things up for GitHub Actions:
+E2E tests are all well and good on your local machine, but they need to run in CI/CD pipelines too. Here's how I've set things up for [GitHub Actions](https://github.com/features/actions):
 
 ```yaml
 name: E2E Tests
@@ -1027,7 +1027,7 @@ public async Task Can_Reorder_Items()
 
 ## Integration with ASP.NET Core Testing
 
-You can integrate PuppeteerSharp with ASP.NET Core's `WebApplicationFactory` for a more integrated testing experience:
+You can integrate PuppeteerSharp with [ASP.NET Core's WebApplicationFactory](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests) for a more integrated testing experience:
 
 ```csharp
 public class E2EWebApplicationFactory : WebApplicationFactory<Program>
@@ -1072,7 +1072,7 @@ public abstract class IntegratedE2ETestBase : E2ETestBase, IClassFixture<E2EWebA
 
 ## Beyond Testing - PuppeteerSharp for PDF Generation and Automation
 
-Whilst E2E testing is brilliant, PuppeteerSharp is a Swiss Army knife that can do a lot more. One of its most popular uses is generating PDFs from web content - and it's bloody useful for that, though not without its gotchas.
+Whilst E2E testing is brilliant, PuppeteerSharp is a Swiss Army knife that can do far more. One of its most popular uses is generating PDFs from web content - it's incredibly useful for this, though not without its gotchas. If you're building invoices, reports, or any document generation system, this section will save you hours of debugging.
 
 ### Generating PDFs - The Promise and the Pain
 
@@ -1477,7 +1477,7 @@ public class InvoicePdfGenerator
     private async Task<string> GenerateInvoiceHtmlAsync(Invoice invoice)
     {
         // Your HTML generation logic here
-        // Could use Razor, or templating engine
+        // Could use Razor views, or any templating engine
         return $@"
 <!DOCTYPE html>
 <html>
@@ -1545,9 +1545,11 @@ var pdfData = await page.PdfDataAsync(new PdfOptions
 
 ## Other Practical Uses for PuppeteerSharp
 
+Beyond testing and PDF generation, PuppeteerSharp excels at several other automation tasks. Let's explore the most common real-world applications.
+
 ### Web Scraping for Data Extraction
 
-PuppeteerSharp is brilliant for scraping JavaScript-heavy sites that Selenium struggles with:
+PuppeteerSharp is brilliant for scraping JavaScript-heavy sites where traditional HTML parsers fall short:
 
 ```csharp
 public class ProductScraper
@@ -1590,9 +1592,9 @@ public class ProductScraper
 - Content behind login walls
 
 **When NOT to Use It:**
-- Simple HTML scraping (use [HtmlAgilityPack](https://html-agility-pack.net/) or [AngleSharp](https://anglesharp.github.io/) instead - much faster)
+- Simple static HTML scraping (use [HtmlAgilityPack](https://html-agility-pack.net/) or [AngleSharp](https://anglesharp.github.io/) instead - much faster and lighter)
 - High-volume scraping (browser overhead is significant)
-- When there's an API available (always prefer APIs!)
+- When there's an API available (always prefer official APIs over scraping!)
 
 ### Automated Screenshot Generation
 
@@ -1719,7 +1721,7 @@ public class MonthlyReportGenerator
         var html = GenerateReportHtml(data);
         await page.SetContentAsync(html);
 
-        // Wait for any charts to render (if using Chart.js, etc.)
+        // Wait for any charts to render (if using Chart.js, D3.js, etc.)
         await Task.Delay(2000);
 
         return await page.PdfDataAsync(new PdfOptions
@@ -1759,9 +1761,9 @@ Each browser instance:
 - Takes 2-5 seconds to generate a PDF (depending on complexity)
 
 Compare this to dedicated PDF libraries like:
-- **[iText 7](https://itextpdf.com/)** (formerly iTextSharp) - ~£500-3000/year licensing, but generates PDFs in milliseconds with tiny memory footprint
-- **[QuestPDF](https://www.questpdf.com/)** - Free and open source, generates PDFs from code (no HTML), blazing fast
-- **[PdfSharpCore](https://github.com/ststeiger/PdfSharpCore)** - Free, but more limited in capabilities
+- **[iText](https://itextpdf.com/)** (formerly iTextSharp) - Commercial license required (~£500-3000/year), but generates PDFs in milliseconds with tiny memory footprint
+- **[QuestPDF](https://www.questpdf.com/)** - Free and open source under MIT license, generates PDFs from fluent C# code (no HTML), blazing fast
+- **[PdfSharpCore](https://github.com/ststeiger/PdfSharpCore)** - Free MIT license, but more limited in capabilities
 
 **When to Use PuppeteerSharp for PDFs:**
 - You already have HTML templates and don't want to rewrite in PDF layout code
