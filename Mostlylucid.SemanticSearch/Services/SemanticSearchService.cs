@@ -225,9 +225,10 @@ public class SemanticSearchService : ISemanticSearchService
         var slugAsText = document.Slug.Replace("-", " ").Replace("_", " ");
 
         // Combine slug, title and content
-        // Slug and title get extra weight by including them multiple times
-        // This optimizes 404 lookup for broken internal links
-        var text = $"{slugAsText}. {document.Title}. {slugAsText}. {document.Title}. {document.Content}";
+        // Slug gets highest weight (4x) for 404 typo recovery - users mistype URLs
+        // Title gets medium weight (2x) for search relevance
+        // Content gets base weight (1x)
+        var text = $"{slugAsText}. {slugAsText}. {slugAsText}. {slugAsText}. {document.Title}. {document.Title}. {document.Content}";
 
         // Truncate to a reasonable length (embedding models have token limits)
         // For all-MiniLM-L6-v2, max tokens is 256, which is roughly 1000-1500 characters

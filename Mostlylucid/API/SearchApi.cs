@@ -32,7 +32,7 @@ public class SearchApi(
 
         var host = Request.Host.Value;
         var output = results.Select(x => new BlogSearchService.SearchResults(x.Title.Trim(), x.Slug,
-            Url.ActionLink("Show", "Blog", new { x.Slug }, "https", host))).ToList();
+            Url.ActionLink("Show", "Blog", new { slug = x.Slug }, "https", host))).ToList();
         return TypedResults.Json(output);
     }
 
@@ -85,7 +85,7 @@ public class SearchApi(
         return posts.Select(x => new BlogSearchService.SearchResults(
             x.Title.Trim(),
             x.Slug,
-            Url.ActionLink("Show", "Blog", new { x.Slug }, "https", host))).ToList();
+            Url.ActionLink("Show", "Blog", new { slug = x.Slug }, "https", host))).ToList();
     }
 
     private async Task<List<BlogSearchService.SearchResults>> HybridSearchAsync(string query, string host)
@@ -143,7 +143,7 @@ public class SearchApi(
             .Select(x => new BlogSearchService.SearchResults(
                 x.Title.Trim(),
                 x.Slug,
-                Url.ActionLink("Show", "Blog", new { x.Slug }, "https", host)))
+                Url.ActionLink("Show", "Blog", new { slug = x.Slug }, "https", host)))
             .ToList();
     }
 

@@ -59,6 +59,14 @@ public class ErrorController(
         }
 
         var originalPath = statusCodeReExecuteFeature.OriginalPath ?? string.Empty;
+
+        // First, try to handle legacy archive URLs (e.g., /archite/2002/01/01/445.html)
+        var archiveResult = await TryArchiveRedirectAsync(originalPath, cancellationToken);
+        if (archiveResult != null)
+        {
+            return archiveResult;
+        }
+
         var pathSegments = originalPath.TrimStart('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         // Only handle blog posts: /blog/{slug} or /blog/{language}/{slug}
@@ -128,6 +136,93 @@ public class ErrorController(
         return null;
     }
 
+    private async Task<IActionResult?> TryArchiveRedirectAsync(string originalPath, CancellationToken cancellationToken)
+    {
+        // Extract archive identifier from legacy URLs like /archite/2002/01/01/445.html or /archive/post.aspx
+        var archiveId = ExtractArchiveIdentifier(originalPath);
+        if (string.IsNullOrEmpty(archiveId))
+        {
+            return null;
+        }
+
+        logger.LogInformation("Attempting archive redirect for path: {Path}, extracted ID: {ArchiveId}",
+            originalPath, archiveId);
+
+        try
+        {
+            var suggestions = await slugSuggestionService!.GetSuggestionsForArchiveIdAsync(archiveId, "en", 2, cancellationToken);
+
+            if (suggestions.Count == 0)
+            {
+                logger.LogDebug("No archive matches found for ID: {ArchiveId}", archiveId);
+                return null;
+            }
+
+            var topMatch = suggestions[0];
+
+            // Auto-redirect if score is high enough and there's a clear winner
+            if (topMatch.Score >= 0.85)
+            {
+                var hasSignificantGap = suggestions.Count == 1 || (suggestions[1].Score < topMatch.Score - 0.15);
+
+                if (hasSignificantGap)
+                {
+                    var redirectUrl = $"/blog/{topMatch.Post.Slug}";
+                    logger.LogInformation(
+                        "Archive auto-redirect (302): {OriginalPath} -> {RedirectUrl} (score: {Score:F2})",
+                        originalPath, redirectUrl, topMatch.Score);
+
+                    return Redirect(redirectUrl);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error during archive redirect for path: {Path}", originalPath);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Extract the archive identifier from a legacy URL
+    /// E.g., "/archite/2002/01/01/445.html" -> "445"
+    /// E.g., "/archive/my-old-post.aspx" -> "my-old-post"
+    /// </summary>
+    private static string? ExtractArchiveIdentifier(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        // Check if it's a legacy URL (ends with .html or .aspx)
+        if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase) &&
+            !path.EndsWith(".aspx", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Find the last slash
+        var lastSlashIndex = path.LastIndexOf('/');
+        if (lastSlashIndex < 0 || lastSlashIndex >= path.Length - 1)
+        {
+            return null;
+        }
+
+        // Extract the filename (between last / and .html/.aspx)
+        var filename = path[(lastSlashIndex + 1)..];
+
+        // Remove the extension
+        var dotIndex = filename.LastIndexOf('.');
+        if (dotIndex > 0)
+        {
+            filename = filename[..dotIndex];
+        }
+
+        return string.IsNullOrWhiteSpace(filename) ? null : filename;
+    }
+
     private async Task<NotFoundModel> CreateNotFoundModel(
         IStatusCodeReExecuteFeature? statusCodeReExecuteFeature,
         CancellationToken cancellationToken)
@@ -145,6 +240,24 @@ public class ErrorController(
 
         try
         {
+            // First, check if this is a legacy archive URL
+            var archiveId = ExtractArchiveIdentifier(model.OriginalPath);
+            if (!string.IsNullOrEmpty(archiveId))
+            {
+                logger.LogInformation("Searching for archive suggestions for ID: {ArchiveId}", archiveId);
+                var archiveSuggestions = await slugSuggestionService.GetSuggestionsForArchiveIdAsync(archiveId, "en", 5, cancellationToken);
+                if (archiveSuggestions.Count > 0)
+                {
+                    model.SuggestionsWithScores = archiveSuggestions.Select(s => new Mostlylucid.Models.Error.SuggestionWithScore
+                    {
+                        Post = s.Post,
+                        Score = s.Score
+                    }).ToList();
+                    logger.LogInformation("Found {Count} archive suggestions for ID: {ArchiveId}", model.SuggestionsWithScores.Count, archiveId);
+                    return model;
+                }
+            }
+
             // Extract slug from path (e.g., /blog/my-post-slug or /blog/en/my-post-slug)
             var pathSegments = model.OriginalPath.TrimStart('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 

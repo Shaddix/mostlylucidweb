@@ -34,6 +34,9 @@ import { globalSetup } from "./global";
 import  {comments} from  "./comments";
 import { queryParamClearer, queryParamToggler } from "./query-params";
 import { initBrokenLinks } from "./broken-links";
+import { showToast, showHTMXToast } from "./toast";
+import "./highlight-copy";
+import "./htmx-events";
 // removed bare import of package to avoid TS source resolution
 
 window.mostlylucid.comments = comments();
@@ -243,9 +246,11 @@ async function initializePage() {
 
     try {
         // Register highlight.js copy button plugin
-        registerHljsPlugin();
+        if (typeof window.addCopyPlugin === 'function') {
+            window.addCopyPlugin();
+        }
     } catch (err) {
-        console.error('Failed to register hljs plugin:', err);
+        console.error('Failed to register hljs copy plugin:', err);
     }
 
     try {
@@ -438,77 +443,10 @@ function handleCredentialResponse(response) {
 
 
 
-// Register highlight.js copy button plugin
-// Must be called after hljs is loaded (called from initializePage)
-let hljsPluginRegistered = false;
+// Expose toast functions globally for use in templates and other scripts
+window.showToast = showToast;
+window.showHTMXToast = showHTMXToast;
 
-function registerHljsPlugin() {
-    if (hljsPluginRegistered || typeof window.hljs === 'undefined') {
-        return;
-    }
-
-    try {
-        hljs.addPlugin({
-            "after:highlightElement": ({ el, text }) => {
-                const wrapper = el.parentElement;
-                if (wrapper == null) {
-                    return;
-                }
-
-                /**
-                 * Make the parent relative so we can absolutely
-                 * position the copy button
-                 */
-                wrapper.classList.add("relative");
-                const copyButton = document.createElement("button");
-                copyButton.classList.add(
-                    "absolute",
-                    "top-2",
-                    "right-1",
-                    "p-2",
-                    "text-gray-500",
-                    "hover:text-gray-700",
-                    "bx",
-                    "bx-copy",
-                    "text-xl",
-                    "cursor-pointer"
-                );
-                copyButton.setAttribute("aria-label", "Copy code to clipboard");
-                copyButton.setAttribute("title", "Copy code to clipboard");
-
-                copyButton.onclick = () => {
-                    navigator.clipboard.writeText(text);
-
-                    // Notify user that the content has been copied
-                    showToast("The code block content has been copied to the clipboard.", 3000, "success");
-
-                };
-                // Append the copy button to the wrapper
-                wrapper.prepend(copyButton);
-            },
-        });
-
-        hljsPluginRegistered = true;
-        console.log('Highlight.js copy plugin registered');
-    } catch (err) {
-        console.error('Failed to register highlight.js plugin:', err);
-    }
-}
-
-window.showToast = function(message, duration = 3000, type = 'success') {
-    const toast = document.getElementById('toast');
-    const toastText = document.getElementById('toast-text');
-    const toastMessage = document.getElementById('toast-message');
-
-    // Set message and type
-    toastText.innerText = message;
-    toastMessage.className = `alert alert-${type}`; // Change alert type (success, warning, error)
-
-    // Show the toast
-    toast.classList.remove('hidden');
-
-    // Hide the toast after specified duration
-    setTimeout(() => {
-        toast.classList.add('hidden');
-    }, duration);
-}
+// Also expose on mostlylucid namespace
+window.mostlylucid.showToast = showToast;
+window.mostlylucid.showHTMXToast = showHTMXToast;

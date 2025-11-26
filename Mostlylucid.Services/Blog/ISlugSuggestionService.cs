@@ -103,4 +103,19 @@ public interface ISlugSuggestionService
         string requestedSlug,
         string language,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get suggested posts by matching an archive identifier (e.g., "445" from legacy URLs)
+    /// against numeric parts of slugs. Uses Levenshtein distance for fuzzy matching.
+    /// </summary>
+    /// <param name="archiveId">The archive identifier extracted from the legacy URL</param>
+    /// <param name="language">The requested language (defaults to "en")</param>
+    /// <param name="maxSuggestions">Maximum number of suggestions to return</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of suggestions with their scores</returns>
+    Task<List<SlugSuggestionWithScore>> GetSuggestionsForArchiveIdAsync(
+        string archiveId,
+        string language = "en",
+        int maxSuggestions = 5,
+        CancellationToken cancellationToken = default);
 }

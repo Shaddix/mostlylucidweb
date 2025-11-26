@@ -582,4 +582,159 @@ public class SlugSuggestionService : ISlugSuggestionService
 
         return slug;
     }
+
+    /// <inheritdoc />
+    public async Task<List<SlugSuggestionWithScore>> GetSuggestionsForArchiveIdAsync(
+        string archiveId,
+        string language = "en",
+        int maxSuggestions = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(archiveId))
+        {
+            return new List<SlugSuggestionWithScore>();
+        }
+
+        _logger.LogInformation("Finding suggestions for archive ID: {ArchiveId}", archiveId);
+
+        // Get all blog posts
+        var allPosts = await _context.BlogPosts
+            .AsNoTracking()
+            .Where(p => p.LanguageEntity.Name == language && !p.IsHidden)
+            .Select(p => new
+            {
+                p.Id,
+                p.Slug,
+                p.Title,
+                p.PublishedDate,
+                p.Categories,
+                Language = p.LanguageEntity.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        if (!allPosts.Any())
+        {
+            return new List<SlugSuggestionWithScore>();
+        }
+
+        // Extract numbers from slugs and match against the archive ID
+        var scoredPosts = allPosts
+            .Select(post =>
+            {
+                var numbersInSlug = ExtractNumbers(post.Slug);
+                var bestScore = 0.0;
+
+                // Try matching the archive ID against each number in the slug
+                foreach (var number in numbersInSlug)
+                {
+                    var score = CalculateNumericSimilarity(archiveId, number);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                    }
+                }
+
+                // Also try matching the archive ID against the full slug (for cases like "post-445")
+                var slugWithoutDashes = post.Slug.Replace("-", "");
+                if (slugWithoutDashes.Contains(archiveId, StringComparison.OrdinalIgnoreCase))
+                {
+                    bestScore = Math.Max(bestScore, 0.9); // High score for exact substring match
+                }
+
+                return new
+                {
+                    Post = post,
+                    Score = bestScore
+                };
+            })
+            .Where(x => x.Score >= 0.5) // Only include reasonably good matches
+            .OrderByDescending(x => x.Score)
+            .Take(maxSuggestions)
+            .ToList();
+
+        var results = scoredPosts.Select(x => new SlugSuggestionWithScore(
+            new PostListModel
+            {
+                Id = x.Post.Id.ToString(),
+                Slug = x.Post.Slug,
+                Title = x.Post.Title,
+                PublishedDate = x.Post.PublishedDate.DateTime,
+                Categories = x.Post.Categories.Select(c => c.Name).ToArray(),
+                Language = x.Post.Language
+            },
+            x.Score
+        )).ToList();
+
+        _logger.LogInformation("Found {Count} archive ID suggestions for: {ArchiveId}",
+            results.Count, archiveId);
+
+        return results;
+    }
+
+    /// <summary>
+    /// Extract all numeric sequences from a string
+    /// </summary>
+    private List<string> ExtractNumbers(string input)
+    {
+        var numbers = new List<string>();
+        var currentNumber = new System.Text.StringBuilder();
+
+        foreach (var c in input)
+        {
+            if (char.IsDigit(c))
+            {
+                currentNumber.Append(c);
+            }
+            else if (currentNumber.Length > 0)
+            {
+                numbers.Add(currentNumber.ToString());
+                currentNumber.Clear();
+            }
+        }
+
+        if (currentNumber.Length > 0)
+        {
+            numbers.Add(currentNumber.ToString());
+        }
+
+        return numbers;
+    }
+
+    /// <summary>
+    /// Calculate similarity between two numeric strings
+    /// Uses Levenshtein distance but also considers numeric proximity
+    /// </summary>
+    private double CalculateNumericSimilarity(string source, string target)
+    {
+        if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+        {
+            return 1.0;
+        }
+
+        // Calculate Levenshtein distance for strings
+        var distance = CalculateLevenshteinDistance(source, target);
+        var maxLength = Math.Max(source.Length, target.Length);
+
+        if (maxLength == 0)
+        {
+            return 1.0;
+        }
+
+        var stringSimilarity = 1.0 - (double)distance / maxLength;
+
+        // Also consider numeric proximity if both are valid numbers
+        double numericSimilarity = 0;
+        if (int.TryParse(source, out var sourceNum) && int.TryParse(target, out var targetNum))
+        {
+            var numericDiff = Math.Abs(sourceNum - targetNum);
+            var maxNum = Math.Max(sourceNum, targetNum);
+            if (maxNum > 0)
+            {
+                numericSimilarity = 1.0 - Math.Min(1.0, (double)numericDiff / maxNum);
+            }
+        }
+
+        // Return the better of the two similarity measures
+        return Math.Max(stringSimilarity, numericSimilarity);
+    }
 }

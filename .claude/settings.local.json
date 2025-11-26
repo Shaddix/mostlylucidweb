@@ -27,7 +27,11 @@
       "WebFetch(domain:api.github.com)",
       "Bash(npm show:*)",
       "WebFetch(domain:github.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(dotnet list:*)",
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(Select-String -Pattern \"error|warning|Build|successfully|webpack\")"
     ],
     "deny": [],
     "ask": []

@@ -9,7 +9,11 @@ delete colors['coolGray'];
 delete colors['blueGray'];
 
 module.exports = {
-    content: ["./Views/**/*.cshtml", "./EmailSubscription/**/*.cshtml"],
+    content: [
+        "./Views/**/*.cshtml",
+        "./EmailSubscription/**/*.cshtml",
+        "./src/js/**/*.js"
+    ],
     safelist: ["dark", "light"],
     darkMode: "class", // Using class strategy for dark mode
 
