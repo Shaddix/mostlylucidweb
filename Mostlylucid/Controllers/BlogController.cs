@@ -21,7 +21,7 @@ public class BlogController(BaseControllerService baseControllerService,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) },
-        Location = ResponseCacheLocation.Any)]
+        Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
@@ -35,7 +35,7 @@ public class BlogController(BaseControllerService baseControllerService,
     }
 
     [HttpGet("calendar-days")]
-    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(year), nameof(month), nameof(language) }, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(year), nameof(month), nameof(language) }, Location = ResponseCacheLocation.Client)]
     [OutputCache(Duration = 1800, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(year), nameof(month), nameof(language) })]
     public async Task<IActionResult> CalendarDays(int year, int month, string language = MarkdownBaseService.EnglishLanguage)
     {
@@ -54,7 +54,7 @@ public class BlogController(BaseControllerService baseControllerService,
     }
 
     [HttpGet("date-range")]
-    [ResponseCache(Duration = 3600, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 3600, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Client)]
     [OutputCache(Duration = 7200, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(language) })]
     public async Task<IActionResult> DateRange(string language = MarkdownBaseService.EnglishLanguage)
     {
@@ -95,7 +95,7 @@ public class BlogController(BaseControllerService baseControllerService,
     [Route("{slug}")]
     [HttpGet]
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
-        VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
+        VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogPost", VaryByHeaderNames = new[] { "hx-request" },
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Show(string slug, string language = MarkdownBaseService.EnglishLanguage)
@@ -152,7 +152,7 @@ public class BlogController(BaseControllerService baseControllerService,
     [HttpGet]
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
         VaryByQueryKeys = new[] { nameof(category), nameof(page), nameof(pageSize) },
-        Location = ResponseCacheLocation.Any)]
+        Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogCategory", VaryByHeaderNames = new[] { "hx-request" })]
     public async Task<IActionResult> Category(string category, int page = 1, int pageSize = 10)
     {
@@ -179,7 +179,7 @@ public class BlogController(BaseControllerService baseControllerService,
     [Route("{language}/{slug}")]
     [HttpGet]
     [ResponseCache(Duration = 300, VaryByHeader = "hx-request",
-        VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Any)]
+        VaryByQueryKeys = new[] { nameof(slug), nameof(language) }, Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogPost", VaryByHeaderNames = new[] { "hx-request" },
         VaryByQueryKeys = new[] { nameof(slug), nameof(language) })]
     public async Task<IActionResult> Language(string slug, string language)

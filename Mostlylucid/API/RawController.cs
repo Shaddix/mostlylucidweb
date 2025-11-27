@@ -26,7 +26,7 @@ public class RawController(
     /// <param name="slug">The post slug (case-insensitive)</param>
     /// <param name="language">Language code, defaults to en</param>
     [HttpGet("{slug}")]
-    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Client)]
     [OutputCache(Duration = 3600, VaryByQueryKeys = new[] { nameof(language) })]
     public IActionResult GetRaw(string slug, string language = MarkdownBaseService.EnglishLanguage)
     {
