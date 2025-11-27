@@ -39,7 +39,9 @@ That's it. No build step, no npm install, no webpack configuration. Just drop in
 
 ## The HTMX.NET Library
 
-Whilst HTMX works perfectly well on its own, the [HTMX.NET](https://github.com/khalidabuhakmeh/Htmx.Net) library (also available as the `Htmx` and `Htmx.TagHelpers` NuGet packages) provides brilliant server-side integration for ASP.NET Core.
+Whilst HTMX works perfectly well on its own, the excellent [HTMX.NET](https://github.com/khalidabuhakmeh/Htmx.Net) library by [Khalid Abuhakmeh](https://khalidabuhakmeh.com/about) provides brilliant server-side integration for ASP.NET Core. Khalid has done a fantastic job creating a library that feels native to ASP.NET Core - it's available as the `Htmx` and `Htmx.TagHelpers` NuGet packages and makes working with HTMX in .NET an absolute pleasure.
+
+You can find Khalid's work on [GitHub](https://github.com/khalidabuhakmeh) where he maintains numerous excellent open-source projects.
 
 ### Installation
 
@@ -495,6 +497,8 @@ If you found this article useful, you might also enjoy these other HTMX-related 
 - [HTMX.NET GitHub](https://github.com/khalidabuhakmeh/Htmx.Net) - The HTMX.NET library source code
 - [HTMX.NET NuGet](https://www.nuget.org/packages/Htmx/) - HTMX.NET on NuGet
 - [Htmx.TagHelpers NuGet](https://www.nuget.org/packages/Htmx.TagHelpers/) - HTMX Tag Helpers on NuGet
+- [Khalid Abuhakmeh's Website](https://khalidabuhakmeh.com/) - Creator of HTMX.NET, with excellent blog posts
+- [Khalid Abuhakmeh's GitHub](https://github.com/khalidabuhakmeh) - More brilliant open-source .NET projects
 - [mostlylucid.pagingtaghelper GitHub](https://github.com/scottgal/mostlylucid.pagingtaghelper) - My paging tag helper source code
 - [mostlylucid.pagingtaghelper NuGet](https://www.nuget.org/packages/mostlylucid.pagingtaghelper/) - The package on NuGet
 
