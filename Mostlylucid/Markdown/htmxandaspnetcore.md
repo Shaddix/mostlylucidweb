@@ -3,9 +3,12 @@
 <!--category-- Javascript, HTMX, ASP.NET Core -->
 
 # Introduction
+
 HTMX is a powerful JavaScript library that allows you to create dynamic web applications with minimal JavaScript. It enables you to make AJAX requests, swap HTML content, and handle events directly in your HTML attributes. I've been using HTMX for about two years at this point and with each project I learn more and more about its capabilities; and more importantly it's limitations.
 
 However I still don't claim to have expert knowledge of it. I just wanted to share some of the things I've learned along the way.
+
+> **Companion Article:** This article focuses on HTMX's event system, extensions, and advanced customisation. For ASP.NET Core integration patterns with partial views, HTMX.NET, and pagination, see my companion article: [HTMX with ASP.NET Core Partials: The Server-Side Renaissance](/blog/htmx-aspnetcore-partials).
 
 [TOC]
 
@@ -516,4 +519,40 @@ export function showHTMXToast(event) {
 ```
 
 ## In Conclusion
-Well that's it, a whirlwind tour of HTMX and ASP.NET Core. I hope you found it useful and informative. If you have any questions or comments please feel free to comment below. 
+Well that's it, a whirlwind tour of HTMX and ASP.NET Core. I hope you found it useful and informative. If you have any questions or comments please feel free to comment below.
+
+## Related Articles on This Blog
+
+### Companion Article
+This article is part of a two-part series on HTMX with ASP.NET Core:
+
+1. **[HTMX with ASP.NET Core Partials](/blog/htmx-aspnetcore-partials)** - Focuses on ASP.NET Core integration, partial views, HTMX.NET, and pagination
+2. **This article** - Deep dive into HTMX events, lifecycle, extension architecture, and custom extensions
+
+### More HTMX Articles
+
+- [Adding Paging with HTMX](/blog/addpagingwithhtmx) - Implementing pagination with HTMX
+- [ASP.NET Core Caching with HTMX](/blog/aspnetcachingwithhtmx) - Caching strategies for HTMX requests
+- [Auto-refresh with Alpine and HTMX](/blog/autorefreshwithalpineandhtmx) - Combining Alpine.js with HTMX for reactive components
+- [Making Your Site More SPA-like with HTMX](/blog/htmxtomakeyoursitemorespalike) - SPA-like navigation without JavaScript frameworks
+- [Using SweetAlert for HX Indicators](/blog/usingsweetalertforhxindicators) - Beautiful loading indicators with HTMX
+- [Showing Toast and Swapping with HTMX](/blog/showingtoastandswappingwithhtmx) - Server-triggered toast notifications
+
+## Further Reading
+
+**Official HTMX Documentation:**
+- [HTMX Documentation](https://htmx.org/docs/) - The official HTMX documentation
+- [HTMX Events Reference](https://htmx.org/events/) - Complete list of HTMX events
+- [HTMX Extensions](https://htmx.org/extensions/) - Official HTMX extensions
+- [HTMX Examples](https://htmx.org/examples/) - Practical examples of HTMX patterns
+- [HTMX Essays](https://htmx.org/essays/) - Thoughtful articles on HTMX philosophy
+
+**Libraries & Tools:**
+- [HTMX.NET GitHub](https://github.com/khalidabuhakmeh/Htmx.Net) - The HTMX.NET library source code
+- [HTMX.NET NuGet](https://www.nuget.org/packages/Htmx/) - HTMX.NET on NuGet
+- [Khalid Abuhakmeh's Website](https://khalidabuhakmeh.com/) - Creator of HTMX.NET
+- [Alpine.js Documentation](https://alpinejs.dev/) - Official Alpine.js docs
+
+**Community Resources:**
+- [HTMX Discord](https://htmx.org/discord) - Active community support
+- [Hypermedia Systems Book](https://hypermedia.systems/) - Free online book about building hypermedia applications 

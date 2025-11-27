@@ -5,6 +5,7 @@
 
 I've been running this blog for a while now, writing detailed technical articles on ASP.NET Core, Entity Framework, HTMX, and all sorts of .NET goodness. Yet my search rankings were... underwhelming. After finally investigating why, I discovered I'd been sabotaging my own SEO with some rookie mistakes. Here's what was wrong and how I fixed it.
 
+> NOTE: This has yet to be released, the next release is HUGE (too big really!) so need to get my ducks in a row to get it all out there. BUT here's what I did...and what WILL arrive at some point!
 [TOC]
 
 # The Problem: Every Page Looked Identical to Google
@@ -62,7 +63,7 @@ The first fix was making the layout support dynamic descriptions with a sensible
 <meta property="og:type" content="@(ViewBag.OgType ?? "website")">
 <meta property="og:title" content="@ViewBag.Title">
 <meta property="og:description" content="@pageDescription">
-<meta property="og:site_name" content="Mostly Lucid" />
+<meta property="og:site_name" content="mostlylucid" />
 
 <!-- Twitter Meta Tags -->
 <meta name="twitter:card" content="summary_large_image">

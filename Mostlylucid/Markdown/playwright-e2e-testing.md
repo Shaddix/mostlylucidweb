@@ -1,10 +1,8 @@
 # Multi-Browser E2E Testing with Playwright for .NET
 
-<datetime class="hidden">2025-11-26T14:00</datetime>
+<datetime class="hidden">2025-11-27T14:00</datetime>
 
 <!--category-- Playwright, E2E Testing, xUnit, Testing, Multi-Browser -->
-
-## Lead
 
 Playwright is Microsoft's official solution for modern browser automation, offering multi-browser support (Chrome, Firefox, Safari) with a single API, built-in trace debugging, and mobile emulation. This guide covers everything from setup to advanced testing patterns, comparing it with PuppeteerSharp to help you choose the right tool. If you only need Chrome and want simpler setup, consider [PuppeteerSharp](/blog/puppeteersharp-e2e-testing) instead - but if you need comprehensive cross-browser testing, Playwright is the way forward.
 

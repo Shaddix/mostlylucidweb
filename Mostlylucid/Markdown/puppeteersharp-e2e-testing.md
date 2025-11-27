@@ -1,12 +1,10 @@
 # End-to-End Testing with PuppeteerSharp - A Proper Alternative to Selenium
 
-<datetime class="hidden">2025-11-26T12:00</datetime>
+<datetime class="hidden">2025-11-27T12:00</datetime>
 
 <!--category-- PuppeteerSharp, E2E Testing, xUnit, Testing -->
 
-## Lead
-
-Modern E2E testing doesn't have to be painful. This comprehensive guide shows you how to use PuppeteerSharp for fast, reliable browser automation in .NET - covering everything from basic testing to PDF generation and web scraping. Whilst Microsoft's Playwright is the more modern multi-browser solution, I chose PuppeteerSharp for this blog because it's what I knew and Chrome-only testing was sufficient for my needs. If you need Firefox and Safari support, check out my [Playwright guide](/blog/playwright-e2e-testing) instead.
+Modern E2E (End-To-End, using your site like users would) testing doesn't have to be painful. This comprehensive guide shows you how to use PuppeteerSharp for fast, reliable browser automation in .NET-covering everything from basic testing to PDF generation and web scraping. Whilst Microsoft's Playwright is the more modern multi-browser solution, I chose PuppeteerSharp for this blog because it's what I knew and Chrome-only testing was enough for my needs. If you need Firefox and Safari support, check out my [Playwright guide](/blog/playwright-e2e-testing) instead.
 
 ## Introduction
 

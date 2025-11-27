@@ -1,15 +1,21 @@
 # HTMX with ASP.NET Core Partials: The Server-Side Renaissance
 
-<datetime class="hidden">2025-01-27T12:00</datetime>
+<datetime class="hidden">2025-11-28T12:00</datetime>
 <!--category-- HTMX, ASP.NET Core, Web Development, HTMX.NET -->
 
 ## Introduction
 
-Whilst the JavaScript world has been busy inventing yet another framework every fortnight, ASP.NET Core developers have been quietly building robust server-side applications with partial views. Now, with HTMX, we can add dynamic, SPA-like interactions without drowning in JavaScript complexity. It's rather like having your cake and eating it too.
+If you've built traditional ASP.NET Core MVC applications, you know the problem: that dreaded "click flash" when users navigate between pages. Full page reloads, the browser chrome flickering, content jumping around as the new page renders. It works, but it doesn't *feel* modern.
+
+The technique of returning partial HTML fragments from the server and swapping them into the DOM solves this - and it isn't new. I've been using this pattern since the jQuery days, and even before that with vanilla JavaScript and `XMLHttpRequest`. What's changed is how *elegant* it's become with HTMX.
+
+HTMX gives us a declarative way to do what we've always done: return server-rendered HTML and swap it into the page. No more writing custom JavaScript for every interaction. No more choosing between "proper" server-side development and smooth user experience. With HTMX, we get both.
+
+> **Companion Article:** This article focuses on the ASP.NET Core integration side. For a deep dive into HTMX events, lifecycle, and custom extensions, see my companion article: [A Whistle-stop Tour of HTMX Extensions and Using HTMX with ASP.NET Core](/blog/htmxandaspnetcore).
 
 In this article, I'll show you how HTMX integrates beautifully with ASP.NET Core partials, how the excellent **HTMX.NET** library makes it even better, and how my [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pagingtaghelper) NuGet package provides powerful pagination with zero configuration.
 
-As a cheeky aside: Django only got proper partial template rendering in version 6.0 (released December 2024), whilst ASP.NET Core has had partial views since day one. Sometimes the old dogs know a few tricks!
+The approach is framework-agnostic too - Django added template fragments in version 6.0, Rails has Turbo Frames, and the broader web ecosystem is embracing HTML-over-the-wire patterns. It's a good time to be building server-rendered applications.
 
 [TOC]
 
@@ -26,6 +32,43 @@ The key attributes you'll use most often:
 - `hx-push-url` - Update the browser URL without a full page reload
 
 Here's the beauty of it: you're still writing server-side code, returning server-rendered HTML. No JSON APIs, no client-side templates, no build pipelines. Just good old-fashioned HTML over the wire.
+
+## A Pattern as Old as AJAX Itself
+
+Before HTMX, we achieved the same effect with considerably more ceremony. Here's what partial updates looked like in the jQuery era:
+
+```javascript
+// jQuery circa 2010
+$('#load-more').click(function() {
+    $.ajax({
+        url: '/posts/page/' + currentPage,
+        success: function(html) {
+            $('#posts-container').append(html);
+            currentPage++;
+        }
+    });
+});
+```
+
+And even earlier, with vanilla JavaScript:
+
+```javascript
+// Vanilla JS circa 2005
+var xhr = new XMLHttpRequest();
+xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+        document.getElementById('content').innerHTML = xhr.responseText;
+    }
+};
+xhr.open('GET', '/partial-content', true);
+xhr.send();
+```
+
+The server-side pattern was identical - return HTML fragments, swap them into the DOM. HTMX just moves this logic from JavaScript into HTML attributes, making it declarative, discoverable, and far less error-prone. The innovation isn't the technique; it's the interface.
+
+ASP.NET developers have been doing this for years. UpdatePanels in WebForms (2005), `PartialView()` in MVC since day one, `Html.RenderAction()` for composable fragments - the capability has always been there. What we lacked was an elegant, standardised way to wire it up on the client side. HTMX fills that gap perfectly.
+
+The broader industry has been rediscovering these patterns too. Terms like "SSR" (Server-Side Rendering), "hybrid rendering", and "islands architecture" are essentially describing what server-side frameworks have always done, but with fresh eyes. It's validation that the server-rendered approach scales, performs, and - with the right tools - provides excellent user experience.
 
 ## Setting Up HTMX in ASP.NET Core
 
@@ -97,6 +140,8 @@ This pattern is absolutely brilliant. A single controller action serves both:
 - Partial updates (when HTMX makes the request)
 
 No separate API endpoints, no duplicated logic, no JSON serialisation overhead.
+
+> **A common misconception:** Many ASP.NET developers think you need the `_` prefix (like `_BlogSummaryList.cshtml`) to get partial rendering. You don't! The `PartialView()` method itself tells ASP.NET Core to skip the layout - it's saying "forget the layout, just render this bit". You can use `return PartialView("SearchResults", model)` with a regular view file and it works perfectly. The underscore convention originated from ASP.NET Web Pages (WebMatrix) where it prevented files from being served directly via URL - but MVC has always protected all views from direct access anyway. It's purely a naming convention to help identify views *intended* as partials.
 
 ### HTMX.NET Tag Helpers
 
@@ -279,14 +324,9 @@ graph TB
 
 ## Comparing to Other Frameworks
 
-### Django's Late Arrival to Partials
+### Django Template Fragments
 
-It's worth noting that Django only added proper partial template rendering in version 6.0 (December 2024) with the introduction of template fragments. Before that, Django developers had to either:
-- Return entire templates (wasteful)
-- Use inclusion tags (clunky)
-- Install third-party packages like django-render-block
-
-Meanwhile, ASP.NET Core has had `PartialView()` since version 1.0 in 2016. We've been doing this dance for nearly a decade!
+Django added proper partial template rendering in version 6.0 (December 2024) with template fragments. Before that, Django developers typically used inclusion tags or third-party packages like django-render-block. ASP.NET Core has had `PartialView()` since version 1.0 in 2016 - different frameworks, different timelines, but the same destination: HTML fragments for HTMX.
 
 ### Rails Turbo Frames
 
@@ -345,13 +385,40 @@ The count updates immediately (optimistic), then syncs with the server response.
 <div id="notification-count" hx-swap-oob="true"><span>5 new</span></div>
 ```
 
-Perfect for notification badges, cart counts, etc.
+Perfect for notification badges, cart counts, etc. I cover this pattern in depth in [Showing Toast and Swapping with HTMX](/blog/showingtoastandswappingwithhtmx).
+
+**Client-Side Templates with WebAPI** - Sometimes you want a mid-way experience: server-rendered HTML for most things, but JSON from a WebAPI for specific dynamic content. HTMX's [client-side-templates extension](https://htmx.org/extensions/client-side-templates/) lets you do exactly this:
+
+```html
+<script src="https://unpkg.com/htmx-ext-client-side-templates@2.0.0/client-side-templates.js"></script>
+<script src="https://unpkg.com/mustache@latest"></script>
+
+<div hx-ext="client-side-templates">
+    <template id="post-template" type="text/mustache">
+        {{#posts}}
+        <div class="post">
+            <h3>{{title}}</h3>
+            <p>{{excerpt}}</p>
+        </div>
+        {{/posts}}
+    </template>
+
+    <button hx-get="/api/posts"
+            hx-target="#post-list"
+            mustache-template="post-template">
+        Load Posts
+    </button>
+    <div id="post-list"></div>
+</div>
+```
+
+This approach works with Mustache, Handlebars, or Nunjucks templates. Your WebAPI returns JSON, but HTMX handles the rendering client-side. It's particularly useful when you have an existing API or need to share data with mobile apps. For more details on HTMX extensions including client-side-templates, see [the companion article](/blog/htmxandaspnetcore).
 
 ## Common Gotchas
 
 ### CSRF Tokens
 
-ASP.NET Core's antiforgery tokens work differently with AJAX. You need to configure HTMX to send the token:
+ASP.NET Core's antiforgery tokens work differently with AJAX. The manual approach is to listen for HTMX requests and inject the token:
 
 ```javascript
 document.addEventListener('htmx:configRequest', (event) => {
@@ -359,6 +426,26 @@ document.addEventListener('htmx:configRequest', (event) => {
         document.querySelector('[name="__RequestVerificationToken"]').value;
 });
 ```
+
+**HTMX.NET's better approach:** The library provides several cleaner options. The recommended way is to use `HtmxAntiforgeryScriptEndpoint` which maps the script to an endpoint (default `_htmx/antiforgery.js`):
+
+```csharp
+// In Program.cs
+app.MapHtmxAntiforgeryScript();
+```
+
+```html
+<!-- In your layout head -->
+<script src="@HtmxAntiforgeryScriptEndpoints.Path" defer></script>
+```
+
+Or use the tag helper with a meta tag in your `<head>`:
+
+```html
+<meta name="htmx-config" includeAspNetAntiforgeryToken="true" />
+```
+
+There's also `@Html.HtmxAntiforgeryScript()` if you prefer an inline approach. See [Khalid's article on HTMX Anti-Forgery Tokens](https://khalidabuhakmeh.com/htmx-requests-with-aspnet-core-anti-forgery-tokens) for the full details.
 
 ### Alpine.js @ Shorthand in Razor
 
@@ -410,18 +497,24 @@ HTMX with ASP.NET Core partials represents a return to server-side simplicity wi
 - Type-safe routing with HTMX.NET
 - Zero-config pagination with mostlylucid.pagingtaghelper
 
-Whilst the JavaScript world continues its framework-of-the-week cycle, we can build robust, performant web applications using patterns that have worked for decades. Sometimes the old ways are the best ways - they've just been waiting for the right tool to make them shine again.
-
-And as for Django finally getting partials in 2024? Well, better late than never!
+The server-rendered approach has stood the test of time, and with HTMX, it finally has the elegant client-side tooling it deserves. You can build robust, performant web applications using patterns that have worked for decades - they've just been waiting for the right tool to make them shine again.
 
 ## Related Articles on This Blog
 
-If you found this article useful, you might also enjoy these other HTMX-related articles from this blog:
+### Companion Article
+This article is part of a two-part series on HTMX with ASP.NET Core:
+
+1. **This article** - Focuses on ASP.NET Core integration, partial views, HTMX.NET, and pagination
+2. **[A Whistle-stop Tour of HTMX Extensions](/blog/htmxandaspnetcore)** - Deep dive into HTMX events, lifecycle, extension architecture, and custom extensions
+
+### More HTMX Articles
 
 - [Adding Paging with HTMX](/blog/addpagingwithhtmx) - The original article on implementing pagination with the older PaginationTagHelper
 - [ASP.NET Core Caching with HTMX](/blog/aspnetcachingwithhtmx) - Deep dive into caching strategies for HTMX requests
-- [A Whistle-stop Tour of HTMX Extensions](/blog/htmxandaspnetcore) - Comprehensive guide to HTMX events and lifecycle
 - [Auto-refresh with Alpine and HTMX](/blog/autorefreshwithalpineandhtmx) - Combining Alpine.js with HTMX for reactive components
+- [Making Your Site More SPA-like with HTMX](/blog/htmxtomakeyoursitemorespalike) - SPA-like navigation without JavaScript frameworks
+- [Using SweetAlert for HX Indicators](/blog/usingsweetalertforhxindicators) - Beautiful loading indicators with HTMX
+- [Showing Toast and Swapping with HTMX](/blog/showingtoastandswappingwithhtmx) - Server-triggered toast notifications
 
 ## Further Reading
 
