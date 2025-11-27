@@ -473,9 +473,32 @@ Whilst the JavaScript world continues its framework-of-the-week cycle, we can bu
 
 And as for Django finally getting partials in 2024? Well, better late than never! 😏
 
+## Related Articles on This Blog
+
+If you found this article useful, you might also enjoy these other HTMX-related articles from this blog:
+
+- [Adding Paging with HTMX](/blog/addpagingwithhtmx) - The original article on implementing pagination with the older PaginationTagHelper
+- [ASP.NET Core Caching with HTMX](/blog/aspnetcachingwithhtmx) - Deep dive into caching strategies for HTMX requests
+- [A Whistle-stop Tour of HTMX Extensions](/blog/htmxandaspnetcore) - Comprehensive guide to HTMX events and lifecycle
+- [Auto-refresh with Alpine and HTMX](/blog/autorefreshwithalpineandhtmx) - Combining Alpine.js with HTMX for reactive components
+
 ## Further Reading
 
-- [HTMX Documentation](https://htmx.org/docs/)
-- [HTMX.NET GitHub](https://github.com/khalidabuhakmeh/Htmx.Net)
-- [mostlylucid.pagingtaghelper GitHub](https://github.com/scottgal/mostlylucid.pagingtaghelper)
-- [ASP.NET Core Partial Views](https://learn.microsoft.com/en-us/aspnet/core/mvc/views/partial)
+**Official Documentation:**
+- [HTMX Documentation](https://htmx.org/docs/) - The official HTMX documentation
+- [HTMX Examples](https://htmx.org/examples/) - Practical examples of HTMX patterns
+- [HTMX Extensions](https://htmx.org/extensions/) - Official HTMX extensions
+- [ASP.NET Core Partial Views](https://learn.microsoft.com/en-us/aspnet/core/mvc/views/partial) - Microsoft's guide to partial views
+- [ASP.NET Core Output Caching](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output) - Official caching documentation
+
+**Libraries & Tools:**
+- [HTMX.NET GitHub](https://github.com/khalidabuhakmeh/Htmx.Net) - The HTMX.NET library source code
+- [HTMX.NET NuGet](https://www.nuget.org/packages/Htmx/) - HTMX.NET on NuGet
+- [Htmx.TagHelpers NuGet](https://www.nuget.org/packages/Htmx.TagHelpers/) - HTMX Tag Helpers on NuGet
+- [mostlylucid.pagingtaghelper GitHub](https://github.com/scottgal/mostlylucid.pagingtaghelper) - My paging tag helper source code
+- [mostlylucid.pagingtaghelper NuGet](https://www.nuget.org/packages/mostlylucid.pagingtaghelper/) - The package on NuGet
+
+**Community Resources:**
+- [HTMX Discord](https://htmx.org/discord) - Active community support
+- [HTMX Essays](https://htmx.org/essays/) - Thoughtful articles on HTMX philosophy
+- [Hypermedia Systems Book](https://hypermedia.systems/) - Free online book about building hypermedia applications
