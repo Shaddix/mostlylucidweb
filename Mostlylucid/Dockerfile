@@ -25,6 +25,7 @@ COPY ["Mostlylucid.Test/Mostlylucid.Test.csproj", "Mostlylucid.Test/"]
 COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
 COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
 COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
+COPY ["Mostlylucid.SemanticSearch/Mostlylucid.SemanticSearch.csproj", "Mostlylucid.SemanticSearch/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension/"]
 COPY ["Mostlylucid.Markdig.Extensions/Mostlylucid.Markdig.Extensions.csproj", "Mostlylucid.Markdig.Extensions/"]
 COPY ["Mostlylucid.Workflow.Engine/Mostlylucid.Workflow.Engine.csproj", "Mostlylucid.Workflow.Engine/"]
@@ -47,6 +48,7 @@ COPY ./Mostlylucid/ ./Mostlylucid/
 COPY ./Mostlylucid.Test/ ./Mostlylucid.Test/
 COPY ./Mostlylucid.Shared/ ./Mostlylucid.Shared/
 COPY ./Mostlylucid.Services/ ./Mostlylucid.Services/
+COPY ./Mostlylucid.SemanticSearch/ ./Mostlylucid.SemanticSearch/
 COPY ./Mostlylucid.DbContext/ ./Mostlylucid.DbContext/
 COPY ./Mostlylucid.Markdig.FetchExtension/ ./Mostlylucid.Markdig.FetchExtension/
 COPY ./Mostlylucid.Markdig.Extensions/ ./Mostlylucid.Markdig.Extensions/
