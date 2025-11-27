@@ -51,7 +51,7 @@ The beauty of Alpine.js is how naturally it works alongside HTMX:
 
 ```razor
 <div x-data="{ open: false }">
-    <button @click="open = !open">Toggle</button>
+    <button x-on:click="open = !open">Toggle</button>
     <div x-show="open" x-transition>
         <button
             hx-get="/api/data"
