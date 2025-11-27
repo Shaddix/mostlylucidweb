@@ -32,7 +32,18 @@
       "Bash(findstr:*)",
       "Bash(npm install:*)",
       "Bash(Select-String -Pattern \"error|warning|Build|successfully|webpack\")",
-      "Bash(Select-String -Pattern \"error CS\")"
+      "Bash(Select-String -Pattern \"error CS\")",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" status)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" log --oneline -5)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" add Mostlylucid/package.json Mostlylucid/package-lock.json)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nfix: upgrade htmx.org from 2.0.1 to 2.0.8\n\nAddresses history/navigation bugs causing phantom hx-request headers on refresh.\nKey fixes in 2.0.7-2.0.8:\n- Corrected regression where nested links triggered full page refreshes\n- Fixed long-standing bug in history support with relative paths\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" push)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" add Mostlylucid/Views/Shared/_Layout.cshtml)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nfix: replace hx-boost with hx-controller/hx-action on home links\n\nhx-boost was causing phantom hx-request headers on browser refresh.\nUsing explicit HTMX.NET tag helpers avoids the buggy history restoration.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff Mostlylucid/Controllers/HomeController.cs)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" checkout -- Mostlylucid/Controllers/HomeController.cs)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nadd: WebSite JSON-LD structured data for rich results\n\nAdds site-wide schema.org markup with:\n- WebSite type with name, URL, description\n- SearchAction for potential sitelinks search box\n- Publisher (Person) with social profile sameAs links\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
