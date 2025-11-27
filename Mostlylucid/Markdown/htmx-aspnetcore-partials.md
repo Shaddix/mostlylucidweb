@@ -39,41 +39,28 @@ That's it. No build step, no npm install, no webpack configuration. Just drop in
 
 ## Alpine.js: The Client-Side Component
 
-Whilst HTMX handles the server interactions brilliantly, sometimes you need a touch of client-side reactivity - showing/hiding elements, toggling states, or managing local UI state. This is where [Alpine.js](https://alpinejs.dev/) comes in.
-
-Alpine.js is a minimal JavaScript framework that gives you the reactive and declarative nature of big frameworks like Vue or React, but at a fraction of the size. At just 15KB gzipped, it's the perfect companion to HTMX.
+For client-side reactivity (showing/hiding elements, toggling states, local UI state), [Alpine.js](https://alpinejs.dev/) complements HTMX perfectly. At just 15KB gzipped, it provides Vue/React-like declarative reactivity without the bloat.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 ```
 
-The beauty of Alpine.js is how naturally it works alongside HTMX:
+Here's how they work together:
 
 ```razor
 <div x-data="{ open: false }">
     <button x-on:click="open = !open">Toggle</button>
     <div x-show="open" x-transition>
-        <button
-            hx-get="/api/data"
-            hx-target="#results">
-            Load Data
-        </button>
+        <button hx-get="/api/data" hx-target="#results">Load Data</button>
     </div>
 </div>
 ```
 
-In this example:
-- Alpine handles the local UI state (showing/hiding the content)
-- HTMX handles the server communication (fetching data)
-- No build step, no npm packages, no complexity
-
-Throughout this article, you'll see examples where Alpine and HTMX work together seamlessly - Alpine for client-side reactivity, HTMX for server-side interactions. It's a wonderfully productive combination.
+Alpine handles local UI (the toggle), HTMX handles server calls (the data fetch). Throughout this article, you'll see this pattern - Alpine for client reactivity, HTMX for server interactions.
 
 ## The HTMX.NET Library
 
-Whilst HTMX works perfectly well on its own, the excellent [HTMX.NET](https://github.com/khalidabuhakmeh/Htmx.Net) library by [Khalid Abuhakmeh](https://khalidabuhakmeh.com/about) provides brilliant server-side integration for ASP.NET Core. Khalid has done a fantastic job creating a library that feels native to ASP.NET Core - it's available as the `Htmx` and `Htmx.TagHelpers` NuGet packages and makes working with HTMX in .NET an absolute pleasure.
-
-You can find Khalid's work on [GitHub](https://github.com/khalidabuhakmeh) where he maintains numerous excellent open-source projects.
+[Khalid Abuhakmeh](https://khalidabuhakmeh.com/about)'s [HTMX.NET](https://github.com/khalidabuhakmeh/Htmx.Net) library provides first-class ASP.NET Core integration. Available as `Htmx` and `Htmx.TagHelpers` NuGet packages, it feels native to .NET and makes working with HTMX an absolute pleasure. You'll find more of Khalid's excellent open-source work on his [GitHub](https://github.com/khalidabuhakmeh).
 
 ### Installation
 
@@ -156,31 +143,19 @@ The library also provides:
 
 ## Real-World Example: Search with Partials
 
-Let's look at a real example from this blog's search functionality. Here's the controller:
+Here's the search controller from this blog, showing the three-tier return pattern:
 
 ```csharp
 [HttpGet]
-[Route("")]
 [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
 public async Task<IActionResult> Search(
     string? query,
     int page = 1,
     int pageSize = 10,
-    string? language = null,
-    DateRangeOption dateRange = DateRangeOption.AllTime,
-    DateTime? startDate = null,
-    DateTime? endDate = null,
     [FromHeader] bool pagerequest = false)
 {
-    // Build search model...
-    var searchModel = new SearchResultsModel
-    {
-        Query = query,
-        SearchResults = searchResults.ToPostListViewModel(),
-        // ... other properties
-    };
+    var searchModel = await BuildSearchModel(query, page, pageSize);
 
-    // Return appropriate view based on request type
     if (pagerequest && Request.IsHtmx())
         return PartialView("_SearchResultsPartial", searchModel.SearchResults);
 
@@ -191,10 +166,10 @@ public async Task<IActionResult> Search(
 }
 ```
 
-Notice the three different return paths:
-1. Just the paged results (for pagination requests)
-2. The search results section (for HTMX filter changes)
-3. The full page (for direct navigation)
+Three return paths for three scenarios:
+1. Pagination requests - minimal partial (just the results list)
+2. Filter changes - section partial (results with filters)
+3. Direct navigation - full page (layout + everything)
 
 The partial view (`_SearchResultsPartial.cshtml`) uses the paging tag helper:
 
@@ -227,16 +202,15 @@ The partial view (`_SearchResultsPartial.cshtml`) uses the paging tag helper:
 </div>
 ```
 
-Let's unpack what's happening here:
-
-1. The `hx-boost="true"` intercepts the pagination links and makes them AJAX requests
-2. `hx-target="#content"` specifies where to inject the response
-3. `hx-headers` passes a custom header so the controller knows it's a pagination request
-4. The controller sees both `Request.IsHtmx()` and `pagerequest`, returning just the partial
+Breaking down the pager tag helper:
+- `hx-boost="true"` - Intercepts links, converts to AJAX
+- `hx-target="#content"` - Where to inject the response
+- `hx-headers='{"pagerequest": "true"}'` - Custom header tells the controller it's pagination
+- The controller checks `Request.IsHtmx() && pagerequest` to return just the minimal partial
 
 ## The mostlylucid.pagingtaghelper Package
 
-I wrote [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pagingtaghelper) because I was tired of writing pagination code over and over. It's designed to work brilliantly with HTMX whilst supporting traditional navigation too.
+I wrote [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pagingtaghelper) to avoid repetitive pagination code. It's HTMX-first but works without JavaScript too.
 
 ### Installation
 
@@ -244,16 +218,14 @@ I wrote [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pa
 dotnet add package mostlylucid.pagingtaghelper
 ```
 
-In `_ViewImports.cshtml`:
-
+Add to `_ViewImports.cshtml`:
 ```razor
 @addTagHelper *, mostlylucid.pagingtaghelper
 ```
 
 ### Key Features
 
-**Zero Configuration Required**
-Just implement `IPagingModel<T>` and you're sorted:
+Implement `IPagingModel<T>` and you're done:
 
 ```csharp
 public class BasePagingModel<T> : IPagingModel<T> where T : class
@@ -266,61 +238,16 @@ public class BasePagingModel<T> : IPagingModel<T> where T : class
 }
 ```
 
-**Multiple UI Frameworks**
-Out of the box support for:
-- TailwindCSS + DaisyUI (with dark mode)
-- Pure TailwindCSS
-- Bootstrap 5
-- Plain CSS
-- Custom views
-
-**HTMX-First Design**
-The default mode uses HTMX for AJAX pagination without page reloads:
-
-```razor
-<paging
-    model="@Model"
-    hx-boost="true"
-    hx-target="#content"
-    hx-swap="outerHTML">
-</paging>
-```
-
-**Alternative JavaScript Modes**
-- HTMX + Alpine.js for reactivity
-- Standalone Alpine.js
-- Vanilla JavaScript
-- No JavaScript (progressive enhancement with forms)
-
-**Built-in Localisation**
-Supports 8 languages (English, German, Spanish, French, Italian, Japanese, Portuguese, Chinese) with customisable text templates.
-
-**Additional Components**
-- Sortable table headers with visual indicators
-- Page size selectors
+**What you get:**
+- Zero configuration required
+- Multiple UI frameworks (TailwindCSS + DaisyUI, Bootstrap 5, custom views)
+- Dark mode support
+- 8 languages built-in
+- Sortable headers, page size selectors
+- Progressive enhancement (works without JavaScript)
 - Continuation token support for NoSQL databases
 
-### Real Usage Example
-
-Here's how it's used in the blog listing:
-
-```razor
-<paging
-    hx-boost="true"
-    class="shrink-0"
-    hx-target="#content"
-    hx-push-url="false"
-    hx-swap="show:none"
-    hx-headers='{"pagerequest": "true"}'
-    model="@Model">
-</paging>
-```
-
-The tag helper generates pagination links that:
-- Preserve query string parameters (search terms, filters, etc.)
-- Work with or without JavaScript
-- Update the URL history (unless `hx-push-url="false"`)
-- Support custom HTMX headers for controller routing
+The tag helper generates links that preserve query strings, support custom headers, and integrate seamlessly with HTMX (see the example above).
 
 ## HTMX Flow Diagram
 
@@ -387,79 +314,38 @@ LiveView is brilliant for real-time applications, but it requires WebSocket infr
 
 ## Performance Considerations
 
-### Output Caching
-
-Notice the `OutputCache` attribute on the search controller:
+**Output Caching**: The `OutputCache` attribute varies by `hx-request` header, caching full pages and partials separately:
 
 ```csharp
 [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
 ```
 
-This caches both full page responses and partial responses separately. HTMX requests hit the cache just like regular requests, making subsequent loads blazingly fast.
+**Network Efficiency**: Server-rendered HTML is often smaller than JSON + client-side templates, requires fewer round trips, and caches properly.
 
-### Network Efficiency
-
-Returning partials instead of JSON + client-side rendering means:
-- **Smaller payloads**: Rendered HTML is often smaller than JSON + JavaScript template
-- **Fewer round trips**: No separate API calls for data then assets
-- **Better caching**: HTTP caching works properly with HTML responses
-
-### Bundle Size
-
-Here's what you need to ship to the client:
-- HTMX: 14KB (gzipped)
-- Alpine.js (optional): 15KB (gzipped)
-- My paging tag helper: 0KB (server-side only)
-
-Compare that to a typical React app bundle (200KB+) and there's no contest for a content-focused site.
+**Bundle Size**: HTMX (14KB) + optional Alpine.js (15KB) + paging tag helper (0KB, server-side) = under 30KB total. Compare that to a typical React app (200KB+).
 
 ## Advanced Patterns
 
-### Optimistic UI Updates
-
-You can combine HTMX with Alpine.js for optimistic updates:
+**Optimistic UI Updates** - Combine HTMX and Alpine for instant feedback:
 
 ```razor
 <div x-data="{ count: @Model.CommentCount }">
-    <button
-        hx-post="/comment/like"
-        x-on:click="count++"
-        hx-on::after-request="count = $event.detail.xhr.response">
+    <button hx-post="/comment/like" x-on:click="count++" hx-on::after-request="count = $event.detail.xhr.response">
         Likes: <span x-text="count"></span>
     </button>
 </div>
 ```
 
-The count increments immediately (optimistic), then gets corrected when the response arrives.
+The count updates immediately (optimistic), then syncs with the server response.
 
-### Out-of-Band Swaps
-
-HTMX can update multiple parts of the page from one response:
+**Out-of-Band Swaps** - Update multiple page sections from one response:
 
 ```razor
-<div id="main-content">
-    <!-- Main response goes here -->
-</div>
-
-<!-- Response can include this to update header -->
-<div id="notification-count" hx-swap-oob="true">
-    <span>5 new notifications</span>
-</div>
+<div id="main-content"><!-- Main response --></div>
+<div id="notification-count" hx-swap-oob="true"><span>5 new</span></div>
 ```
 
-This is brilliant for updating notification badges, shopping cart counts, etc.
-
-### Progressive Enhancement
-
-Here's the beautiful bit: remove JavaScript and the paging tag helper falls back to regular links. It's proper progressive enhancement:
-
-```razor
-<paging model="@Model"></paging>
-```
-
-Without JavaScript: Standard pagination links that cause full page loads
-With HTMX: AJAX pagination with smooth transitions
-With HTMX + Alpine: Reactive UI updates and animations
+Perfect for notification badges, cart counts, etc.
 
 ## Common Gotchas
 
