@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>12</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Mostlylucid.DbContext\Mostlylucid.DbContext.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
+      <ProjectReference Include="..\Mostlylucid.SemanticSearch\Mostlylucid.SemanticSearch.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Markdig.Extensions\Mostlylucid.Markdig.Extensions.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Workflow.Engine\Mostlylucid.Workflow.Engine.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Workflow.Shared\Mostlylucid.Workflow.Shared.csproj" />
+      <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Markdown\MarkDigExtensions\FetchMarkdownExtension.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FluentEmail.Razor" Version="3.0.2" />
+      <PackageReference Include="FluentEmail.Smtp" Version="3.0.2" />
+      <PackageReference Include="Markdig" Version="0.43.0" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
+      <PackageReference Include="Polly" Version="8.6.3" />
+      <PackageReference Include="Polly.Contrib.WaitAndRetry" Version="1.1.1" />
+      <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
+      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+      <!-- <PackageReference Include="Umami.Net" Version="1.0.0-preview5" /> -->
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Email\Templates\CommentMailTemplate.template" />
+      <EmbeddedResource Include="Email\Templates\CommentMailTemplate.cshtml" />
+      <None Remove="Email\Templates\ConfirmMailTemplate.template" />
+      <EmbeddedResource Include="Email\Templates\ConfirmMailTemplate.cshtml" />
+      <None Remove="Email\Templates\ContactEmailModel.template" />
+      <EmbeddedResource Include="Email\Templates\ContactEmailModel.cshtml" />
+      <None Remove="Email\Templates\NewsletterTemplate.cshtml" />
+      <EmbeddedResource Include="Email\Templates\NewsletterTemplate.cshtml" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Update="Email\Templates\NewsletterTemplate.cshtml">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
+</Project>

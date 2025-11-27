@@ -1,4 +1,4 @@
-﻿using Mostlylucid.Config;
+﻿using Mostlylucid.Shared.Config;
 
 namespace Mostlylucid.Blog;
 

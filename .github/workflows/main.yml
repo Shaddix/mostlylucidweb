@@ -1,0 +1,46 @@
+name: Publish Umami.NET
+
+on:
+  push:
+    tags:
+      - 'umamiv*.*.*'  # Triggers on tags like umamiv1.0.0, umamiv2.1.3, etc.
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for MinVer to calculate version from tags
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            9.x
+
+      - name: Restore dependencies
+        run: dotnet restore ./Umami.Net/Umami.Net.csproj
+
+      - name: Build project (net8.0)
+        run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net8.0 --no-restore
+
+      - name: Build project (net9.0)
+        run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net9.0 --no-restore
+
+      - name: Run tests
+        run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj
+
+      - name: Pack project
+        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --no-build --output ./nupkg
+
+      - name: List generated packages
+        run: ls -la ./nupkg
+
+      - name: Publish to NuGet
+        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }} --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.UMAMI_NUGET_API_KEY }}

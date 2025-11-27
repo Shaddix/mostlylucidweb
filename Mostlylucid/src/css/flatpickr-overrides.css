@@ -1,0 +1,182 @@
+/* Flatpickr Dark Mode Overrides */
+/* Ensures proper contrast and readability in dark mode */
+
+/* Style the alternate input (the visible one) */
+.flatpickr-input[readonly] {
+    cursor: pointer;
+}
+
+/* Make sure the alt input inherits styling from the original input */
+input.flatpickr-input.flatpickr-mobile {
+    background-color: inherit;
+    color: inherit;
+    border-color: inherit;
+}
+
+/* Dark mode calendar container */
+html.dark .flatpickr-calendar {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+    border-color: #374151 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Dark mode months header and weekdays */
+html.dark .flatpickr-months,
+html.dark .flatpickr-weekdays {
+    background-color: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+}
+
+/* Dark mode month navigation arrows */
+html.dark .flatpickr-months .flatpickr-prev-month,
+html.dark .flatpickr-months .flatpickr-next-month {
+    color: #e5e7eb !important;
+    fill: #e5e7eb !important;
+}
+
+html.dark .flatpickr-months .flatpickr-prev-month:hover,
+html.dark .flatpickr-months .flatpickr-next-month:hover {
+    color: #60a5fa !important;
+    fill: #60a5fa !important;
+}
+
+/* Dark mode current month text */
+html.dark .flatpickr-current-month {
+    color: #e5e7eb !important;
+}
+
+html.dark .flatpickr-current-month .flatpickr-monthDropdown-months {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+html.dark .flatpickr-current-month .numInputWrapper input {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+/* Dark mode weekday names */
+html.dark .flatpickr-weekday {
+    color: #9ca3af !important;
+    font-weight: 600;
+}
+
+/* Ensure weekday names have proper spacing */
+.flatpickr-weekday {
+    font-size: 90%;
+    font-weight: 600;
+}
+
+.flatpickr-weekdays {
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+span.flatpickr-weekday {
+    flex: 1;
+    text-align: center;
+}
+
+/* Dark mode day cells */
+html.dark .flatpickr-day {
+    color: #e5e7eb !important;
+    border-color: transparent !important;
+}
+
+html.dark .flatpickr-day:hover {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+    border-color: #374151 !important;
+}
+
+/* Dark mode today indicator */
+html.dark .flatpickr-day.today {
+    border-color: #60a5fa !important;
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+}
+
+html.dark .flatpickr-day.today:hover {
+    background-color: #1e3a8a !important;
+    border-color: #60a5fa !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode selected dates */
+html.dark .flatpickr-day.selected,
+html.dark .flatpickr-day.startRange,
+html.dark .flatpickr-day.endRange {
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+html.dark .flatpickr-day.selected:hover,
+html.dark .flatpickr-day.startRange:hover,
+html.dark .flatpickr-day.endRange:hover {
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode range dates (between start and end) */
+html.dark .flatpickr-day.inRange {
+    background-color: #1e3a8a !important;
+    border-color: transparent !important;
+    color: #e5e7eb !important;
+    box-shadow: -5px 0 0 #1e3a8a, 5px 0 0 #1e3a8a !important;
+}
+
+html.dark .flatpickr-day.inRange:hover {
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+}
+
+/* Dark mode disabled/out-of-range days */
+html.dark .flatpickr-day.flatpickr-disabled,
+html.dark .flatpickr-day.prevMonthDay,
+html.dark .flatpickr-day.nextMonthDay {
+    color: #4b5563 !important;
+}
+
+html.dark .flatpickr-day.flatpickr-disabled:hover {
+    background-color: transparent !important;
+    color: #4b5563 !important;
+    cursor: not-allowed;
+}
+
+/* Dark mode time picker (if enabled) */
+html.dark .flatpickr-time {
+    border-color: #374151 !important;
+}
+
+html.dark .flatpickr-time input {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+html.dark .flatpickr-time .flatpickr-time-separator,
+html.dark .flatpickr-time .flatpickr-am-pm {
+    color: #e5e7eb !important;
+}
+
+/* Dark mode custom styles for calendar with posts (from blog-index.js) */
+html.dark .flatpickr-day.has-post {
+    background: rgba(76, 175, 80, 0.35) !important;
+    border-radius: 6px;
+    color: #ffffff !important;
+}
+
+html.dark .flatpickr-day.has-post.selected,
+html.dark .flatpickr-day.has-post.startRange,
+html.dark .flatpickr-day.has-post.endRange {
+    background-color: #2563eb !important;
+}
+
+/* Ensure proper text contrast on all interactive elements */
+html.dark .flatpickr-calendar * {
+    box-sizing: border-box;
+}

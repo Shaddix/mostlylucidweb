@@ -1,0 +1,53 @@
+name: Publish Markdig.FetchExtension.Sqlite
+
+on:
+  push:
+    tags:
+      - 'fetchextension-sqlite-v*.*.*'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        TAG=${GITHUB_REF#refs/tags/fetchextension-sqlite-v}
+        echo "VERSION=$TAG" >> $GITHUB_OUTPUT
+        echo "Publishing version: $TAG"
+
+    - name: Restore dependencies
+      run: dotnet restore Mostlylucid.Markdig.FetchExtension.Sqlite/Mostlylucid.Markdig.FetchExtension.Sqlite.csproj
+
+    - name: Build base package
+      run: dotnet build Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj --configuration Release --no-restore
+
+    - name: Build
+      run: dotnet build Mostlylucid.Markdig.FetchExtension.Sqlite/Mostlylucid.Markdig.FetchExtension.Sqlite.csproj --configuration Release --no-restore -p:Version=${{ steps.get_version.outputs.VERSION }}
+
+    - name: Run tests
+      run: dotnet test Mostlylucid.Markdig.FetchExtension.Tests/Mostlylucid.Markdig.FetchExtension.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Pack
+      run: dotnet pack Mostlylucid.Markdig.FetchExtension.Sqlite/Mostlylucid.Markdig.FetchExtension.Sqlite.csproj --configuration Release --no-build -p:PackageVersion=${{ steps.get_version.outputs.VERSION }} --output ./artifacts
+
+    - name: Login to NuGet (OIDC)
+      uses: NuGet/login@v1
+      with:
+        user: 'mostlylucid'
+
+    - name: Publish to NuGet
+      run: dotnet nuget push ./artifacts/*.nupkg --source nuget.org --skip-duplicate

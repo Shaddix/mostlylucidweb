@@ -1,0 +1,20 @@
+﻿@using RazorLight
+@inherits TemplatePage<Mostlylucid.Shared.Models.Email.ContactEmailModel>
+<!DOCTYPE html>
+<html class="dark">
+<head>
+    <title>Comment Email</title>
+</head>
+<body>
+<h1>Comment Email</h1>
+<p>New comment from email @Model.SenderEmail name @Model.SenderName</p>
+
+
+<p>Here is the comment:</p>
+<div>
+    @Raw( @Model.Content)</div>
+<p>Thanks,</p>
+
+
+</body>
+</html>

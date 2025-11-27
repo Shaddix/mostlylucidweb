@@ -1,0 +1,64 @@
+mostlylucid.Markdig.FetchExtension.Sqlite v1.0.0
+================================================
+
+Initial release of the SQLite storage provider for Markdig FetchExtension.
+
+OVERVIEW
+--------
+
+This plugin provides persistent SQLite database storage for fetched Markdown content,
+allowing the cache to survive application restarts with minimal setup.
+
+KEY FEATURES
+------------
+
+* Persistent storage: Cache survives application restarts
+* Lightweight: Single SQLite file, no server required
+* Zero configuration: Automatic database and schema creation
+* Stale-while-revalidate: Returns cached content if fetch fails
+* Multi-post support: Same URL can have different cache per blog post
+* Thread-safe: Safe for concurrent access
+
+PERFECT FOR
+-----------
+
+* Single-server applications
+* Small to medium traffic sites
+* Development and testing environments
+* Applications needing simple persistence without database server
+
+INSTALLATION
+------------
+
+dotnet add package mostlylucid.Markdig.FetchExtension.Sqlite
+
+USAGE
+-----
+
+services.AddSqliteMarkdownFetch("Data Source=markdown-cache.db");
+serviceProvider.EnsureMarkdownCacheDatabase();
+
+CONFIGURATION OPTIONS
+---------------------
+
+* Relative path: Data Source=./cache/markdown.db
+* Absolute path: Data Source=C:/MyApp/Data/cache.db
+* In-memory (testing): Data Source=:memory:
+* WAL mode (performance): Data Source=cache.db;Journal Mode=WAL;
+
+REQUIREMENTS
+------------
+
+* .NET 9.0+
+* mostlylucid.Markdig.FetchExtension 1.0.0+
+* Microsoft.EntityFrameworkCore.Sqlite 9.0+
+
+DOCUMENTATION
+-------------
+
+Repository: https://github.com/scottgal/mostlylucidweb
+
+LICENSE
+-------
+
+Unlicense (public domain)

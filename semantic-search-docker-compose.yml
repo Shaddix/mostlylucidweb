@@ -1,0 +1,48 @@
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mostlylucid-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - mostlylucid_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Qdrant Web UI for development/debugging
+  qdrant-web-ui:
+    image: qdrant/qdrant:latest
+    container_name: mostlylucid-qdrant-ui
+    restart: unless-stopped
+    ports:
+      - "6335:6333"
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__WEB_UI__ENABLED=true
+    networks:
+      - mostlylucid_network
+    depends_on:
+      - qdrant
+    profiles:
+      - dev  # Only run in dev profile
+
+volumes:
+  qdrant_storage:
+    driver: local
+
+networks:
+  mostlylucid_network:
+    name: mostlylucidweb_app_network
+    external: true

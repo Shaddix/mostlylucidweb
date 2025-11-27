@@ -1,0 +1,65 @@
+@model List<Mostlylucid.SemanticSearch.Models.SearchResult>
+
+@if (Model != null && Model.Any())
+{
+    <div class="mt-6 mb-6 print:hidden" x-data="{ open: false }">
+        <div class="border border-base-300 rounded-lg overflow-hidden bg-gradient-to-r from-base-200/80 to-base-200/40 backdrop-blur-sm">
+            @* Header - always visible *@
+            <button @@click="open = !open"
+                    type="button"
+                    class="w-full flex items-center justify-between px-4 py-2.5 hover:bg-base-300/30 transition-all duration-200 group">
+                <div class="flex items-center gap-2">
+                    <i class='bx bx-brain text-xl text-secondary group-hover:scale-110 transition-transform'></i>
+                    <span class="font-medium text-sm">Related Posts</span>
+                    <span class="badge badge-secondary badge-xs font-mono">@Model.Count</span>
+                </div>
+                <i class='bx bx-chevron-down text-xl transition-transform duration-300 ease-out'
+                   :class="open ? 'rotate-180' : ''"></i>
+            </button>
+
+            @* Collapsible content with smooth height animation *@
+            <div class="grid transition-all duration-300 ease-out"
+                 :style="open ? 'grid-template-rows: 1fr' : 'grid-template-rows: 0fr'">
+                <div class="overflow-hidden">
+                    <div class="border-t border-base-300/50">
+                        @foreach (var (post, index) in Model.Take(3).Select((p, i) => (p, i)))
+                        {
+                            <a hx-boost="true"
+                               hx-target="#contentcontainer"
+                               hx-swap="show:window:top"
+                               asp-action="Show"
+                               asp-controller="Blog"
+                               asp-route-slug="@post.Slug"
+                               asp-route-language="@post.Language"
+                               class="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/10 transition-all duration-150 group/item @(index < Model.Take(3).Count() - 1 ? "border-b border-base-300/30" : "")">
+                                <div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center shrink-0">
+                                    <span class="text-xs font-bold text-secondary">@(index + 1)</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-sm font-medium truncate group-hover/item:text-secondary transition-colors duration-150">
+                                        @post.Title
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs opacity-50 mt-0.5">
+                                        <span>@post.PublishedDate.ToString("MMM d, yyyy")</span>
+                                        @if (post.Categories?.Any() == true)
+                                        {
+                                            <span class="opacity-30">•</span>
+                                            <span class="truncate max-w-[150px]">@string.Join(", ", post.Categories.Take(2))</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0 opacity-60 group-hover/item:opacity-100 transition-opacity">
+                                    <div class="w-8 h-1.5 bg-base-300 rounded-full overflow-hidden">
+                                        <div class="h-full bg-secondary rounded-full transition-all duration-300"
+                                             style="width: @((post.Score * 100).ToString("F0"))%"></div>
+                                    </div>
+                                    <span class="text-[10px] font-mono w-7 text-right">@((post.Score * 100).ToString("F0"))%</span>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

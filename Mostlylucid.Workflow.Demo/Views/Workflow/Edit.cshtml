@@ -1,0 +1,337 @@
+@model WorkflowDefinition
+@{
+    ViewData["Title"] = $"Edit {Model.Name}";
+}
+
+<div x-data="workflowEditor(@Html.Raw(Json.Serialize(Model)))" x-init="init()" class="h-screen flex flex-col">
+    <div class="bg-white shadow">
+        <div class="px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div>
+                    <h1 class="text-2xl font-semibold text-gray-900" x-text="workflow.name"></h1>
+                    <p class="text-sm text-gray-500" x-text="workflow.description"></p>
+                </div>
+                <div class="flex space-x-2">
+                    <button
+                        @@click="saveWorkflow()"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        Save
+                    </button>
+                    <button
+                        @@click="executeWorkflow()"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Execute
+                    </button>
+                    <a href="/Workflow"
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Node Palette -->
+        <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-4">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Node Types</h2>
+                <div class="space-y-2">
+                    <template x-for="nodeType in nodeTypes" :key="nodeType.type">
+                        <button
+                            @@click="addNode(nodeType.type)"
+                            class="w-full text-left px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50"
+                            :class="{'bg-blue-50': nodeType.type === selectedNodeType}">
+                            <div class="font-medium text-sm" x-text="nodeType.label"></div>
+                            <div class="text-xs text-gray-500" x-text="nodeType.description"></div>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="flex-1 bg-gray-50 overflow-auto p-8" id="workflow-canvas">
+            <div class="min-w-full min-h-full relative">
+                <template x-for="(node, index) in workflow.nodes" :key="node.nodeId">
+                    <div
+                        :id="`node-${node.nodeId}`"
+                        @@click="selectNode(index)"
+                        class="absolute bg-white rounded-lg shadow-md p-4 w-64 cursor-move border-2"
+                        :class="{'border-indigo-500': selectedNodeIndex === index, 'border-gray-200': selectedNodeIndex !== index}"
+                        :style="`left: ${node.position?.x || index * 300}px; top: ${node.position?.y || index * 150}px;`"
+                        x-init="makeDraggable($el, node)">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="font-medium text-sm" x-text="node.nodeType"></div>
+                                <input
+                                    type="text"
+                                    x-model="node.name"
+                                    placeholder="Node name"
+                                    class="mt-1 text-xs w-full border-gray-300 rounded-md" />
+                            </div>
+                            <button
+                                @@click.stop="removeNode(index)"
+                                class="text-red-600 hover:text-red-900">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="text-xs text-gray-500 mb-2">
+                            Inputs: <span x-text="Object.keys(node.inputs || {}).length"></span> |
+                            Outputs: <span x-text="Object.keys(node.outputs || {}).length"></span>
+                        </div>
+                        <div x-show="node.nextNodes && node.nextNodes.length > 0" class="text-xs text-gray-400">
+                            → <span x-text="node.nextNodes.join(', ')"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="w-80 bg-white border-l border-gray-200 overflow-y-auto">
+            <div class="p-4" x-show="selectedNodeIndex !== null">
+                <template x-if="selectedNode">
+                    <div>
+                        <h2 class="text-lg font-medium text-gray-900 mb-4">Node Properties</h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Name</label>
+                                <input
+                                    type="text"
+                                    x-model="selectedNode.name"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea
+                                    x-model="selectedNode.description"
+                                    rows="2"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Inputs</label>
+                                <div class="space-y-2">
+                                    <template x-for="(value, key) in selectedNode.inputs" :key="key">
+                                        <div class="flex gap-2">
+                                            <input
+                                                type="text"
+                                                :value="key"
+                                                readonly
+                                                class="flex-1 rounded-md border-gray-300 bg-gray-50 text-sm" />
+                                            <input
+                                                type="text"
+                                                x-model="selectedNode.inputs[key]"
+                                                placeholder="Value"
+                                                class="flex-1 rounded-md border-gray-300 text-sm" />
+                                        </div>
+                                    </template>
+                                    <button
+                                        @@click="addInput()"
+                                        class="text-sm text-indigo-600 hover:text-indigo-900">
+                                        + Add Input
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Next Nodes</label>
+                                <select
+                                    x-model="nextNodeToAdd"
+                                    @@change="addNextNode()"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <option value="">Select node...</option>
+                                    <template x-for="node in workflow.nodes" :key="node.nodeId">
+                                        <option :value="node.nodeId" x-text="node.name || node.nodeType"></option>
+                                    </template>
+                                </select>
+                                <div class="mt-2 space-y-1">
+                                    <template x-for="(nextId, index) in selectedNode.nextNodes" :key="index">
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span x-text="getNodeName(nextId)"></span>
+                                            <button
+                                                @@click="removeNextNode(index)"
+                                                class="text-red-600 hover:text-red-900">
+                                                ×
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function workflowEditor(initialWorkflow) {
+            return {
+                workflow: initialWorkflow,
+                selectedNodeIndex: null,
+                nextNodeToAdd: '',
+                nodeTypes: [
+                    { type: 'HttpRequest', label: 'HTTP Request', description: 'Make HTTP API calls' },
+                    { type: 'Transform', label: 'Transform', description: 'Transform data' },
+                    { type: 'Condition', label: 'Condition', description: 'Conditional branching' },
+                    { type: 'SetVariable', label: 'Set Variable', description: 'Set a variable' },
+                    { type: 'Log', label: 'Log', description: 'Log a message' }
+                ],
+
+                init() {
+                    // Ensure all nodes have positions
+                    this.workflow.nodes = this.workflow.nodes || [];
+                    this.workflow.nodes.forEach((node, i) => {
+                        if (!node.position) {
+                            node.position = { x: i * 300 + 50, y: i * 150 + 50 };
+                        }
+                        if (!node.inputs) node.inputs = {};
+                        if (!node.outputs) node.outputs = {};
+                        if (!node.nextNodes) node.nextNodes = [];
+                    });
+                },
+
+                get selectedNode() {
+                    return this.selectedNodeIndex !== null ? this.workflow.nodes[this.selectedNodeIndex] : null;
+                },
+
+                addNode(type) {
+                    const newNode = {
+                        nodeId: `node-${Date.now()}`,
+                        nodeType: type,
+                        name: `${type} ${this.workflow.nodes.length + 1}`,
+                        description: '',
+                        inputs: {},
+                        outputs: {},
+                        nextNodes: [],
+                        position: {
+                            x: this.workflow.nodes.length * 300 + 50,
+                            y: this.workflow.nodes.length * 150 + 50
+                        }
+                    };
+                    this.workflow.nodes.push(newNode);
+                },
+
+                selectNode(index) {
+                    this.selectedNodeIndex = index;
+                },
+
+                removeNode(index) {
+                    if (confirm('Remove this node?')) {
+                        const nodeId = this.workflow.nodes[index].nodeId;
+                        // Remove references to this node
+                        this.workflow.nodes.forEach(node => {
+                            if (node.nextNodes) {
+                                node.nextNodes = node.nextNodes.filter(id => id !== nodeId);
+                            }
+                        });
+                        this.workflow.nodes.splice(index, 1);
+                        this.selectedNodeIndex = null;
+                    }
+                },
+
+                addInput() {
+                    const key = prompt('Input key:');
+                    if (key && this.selectedNode) {
+                        this.selectedNode.inputs[key] = '';
+                    }
+                },
+
+                addNextNode() {
+                    if (this.nextNodeToAdd && this.selectedNode) {
+                        if (!this.selectedNode.nextNodes.includes(this.nextNodeToAdd)) {
+                            this.selectedNode.nextNodes.push(this.nextNodeToAdd);
+                        }
+                        this.nextNodeToAdd = '';
+                    }
+                },
+
+                removeNextNode(index) {
+                    if (this.selectedNode) {
+                        this.selectedNode.nextNodes.splice(index, 1);
+                    }
+                },
+
+                getNodeName(nodeId) {
+                    const node = this.workflow.nodes.find(n => n.nodeId === nodeId);
+                    return node ? (node.name || node.nodeType) : nodeId;
+                },
+
+                makeDraggable(el, node) {
+                    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+                    el.onmousedown = dragMouseDown;
+
+                    function dragMouseDown(e) {
+                        e.preventDefault();
+                        pos3 = e.clientX;
+                        pos4 = e.clientY;
+                        document.onmouseup = closeDragElement;
+                        document.onmousemove = elementDrag;
+                    }
+
+                    function elementDrag(e) {
+                        e.preventDefault();
+                        pos1 = pos3 - e.clientX;
+                        pos2 = pos4 - e.clientY;
+                        pos3 = e.clientX;
+                        pos4 = e.clientY;
+                        node.position.x = el.offsetLeft - pos1;
+                        node.position.y = el.offsetTop - pos2;
+                        el.style.left = node.position.x + "px";
+                        el.style.top = node.position.y + "px";
+                    }
+
+                    function closeDragElement() {
+                        document.onmouseup = null;
+                        document.onmousemove = null;
+                    }
+                },
+
+                async saveWorkflow() {
+                    try {
+                        const response = await fetch('/Workflow/Save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.workflow)
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('Workflow saved!');
+                        } else {
+                            alert('Error: ' + result.message);
+                        }
+                    } catch (error) {
+                        alert('Error saving workflow: ' + error);
+                    }
+                },
+
+                async executeWorkflow() {
+                    try {
+                        const response = await fetch(`/Workflow/Execute?id=${this.workflow.id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            alert(`Execution started! ID: ${result.executionId}\nStatus: ${result.status}`);
+                        } else {
+                            alert('Error: ' + result.message);
+                        }
+                    } catch (error) {
+                        alert('Error executing workflow: ' + error);
+                    }
+                }
+            };
+        }
+    </script>
+}

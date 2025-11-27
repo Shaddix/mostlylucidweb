@@ -1,0 +1,31 @@
+/*
+ * Highlight.js theme switching using Tailwind's .dark class
+ * No JavaScript timing issues - pure CSS solution
+ *
+ * Both themes loaded, dark theme has higher specificity with .dark class
+ */
+
+/* Light theme (default) */
+@import 'highlight.js/styles/default.css' layer(hljs-light);
+
+/* Dark theme (higher specificity when .dark class present) */
+@import 'highlight.js/styles/atom-one-dark-reasonable.css' layer(hljs-dark);
+
+/* Make dark theme only apply when .dark class is present */
+@layer hljs-dark {
+    pre code.hljs {
+        /* Dark styles will only show when html.dark exists */
+        html:not(.dark) & {
+            display: none;
+        }
+    }
+}
+
+@layer hljs-light {
+    pre code.hljs {
+        /* Light styles hidden when dark mode active */
+        html.dark & {
+            display: none;
+        }
+    }
+}

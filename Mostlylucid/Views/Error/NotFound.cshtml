@@ -1,8 +1,82 @@
-﻿
+﻿@model Mostlylucid.Models.Error.NotFoundModel
 
-<h1>404 - Page not found</h1>
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold mb-4">404 - Page not found</h1>
 
-<p>Sorry that Url doesn't look valid</p>
+    <p class="text-lg mb-6">Sorry, that URL doesn't look valid.</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model?.OriginalPath))
+    {
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Requested path: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">@Model.OriginalPath</code>
+        </p>
+    }
+
+    @if (Model?.SuggestionsWithScores?.Any() == true)
+    {
+        <div class="mt-8">
+            <h2 class="text-2xl font-semibold mb-4">Did you mean one of these?</h2>
+            <div class="space-y-4">
+                @for (var i = 0; i < Model.SuggestionsWithScores.Count; i++)
+                {
+                    var suggestionWithScore = Model.SuggestionsWithScores[i];
+                    var suggestion = suggestionWithScore.Post;
+                    var score = suggestionWithScore.Score;
+                    var suggestionUrl = $"/blog/{(suggestion.Language != "en" ? suggestion.Language + "/" : "")}{suggestion.Slug}";
+
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-semibold">
+                                <a href="@suggestionUrl"
+                                   class="text-blue-600 dark:text-blue-400 hover:underline suggestion-link"
+                                   data-requested-slug="@Model.OriginalPath"
+                                   data-clicked-slug="@suggestion.Slug"
+                                   data-language="@suggestion.Language"
+                                   data-position="@i"
+                                   data-score="@score.ToString("F2")"
+                                   onclick="trackSuggestionClick(this, event)">
+                                    @suggestion.Title
+                                </a>
+                            </h3>
+                            @if (score >= 0.7)
+                            {
+                                <span class="badge badge-success text-xs">High match</span>
+                            }
+                            else if (score >= 0.5)
+                            {
+                                <span class="badge badge-warning text-xs">Possible match</span>
+                            }
+                        </div>
+                        @if (suggestion.Categories?.Any() == true)
+                        {
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                @foreach (var category in suggestion.Categories)
+                                {
+                                    <span class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded">
+                                        @category
+                                    </span>
+                                }
+                            </div>
+                        }
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            Published: @suggestion.PublishedDate.ToString("MMMM dd, yyyy")
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="mt-8">
+            <p class="text-gray-600 dark:text-gray-400">
+                Try visiting the <a href="/" class="text-blue-600 dark:text-blue-400 hover:underline">home page</a>
+                or use the search feature to find what you're looking for.
+            </p>
+        </div>
+    }
+</div>
+
 @section Scripts {
     <script>
             document.addEventListener('DOMContentLoaded', function () {
@@ -12,5 +86,36 @@
                 }
             });
 
+            // Track suggestion clicks for machine learning
+            function trackSuggestionClick(link, event) {
+                const requestedSlug = link.getAttribute('data-requested-slug');
+                const clickedSlug = link.getAttribute('data-clicked-slug');
+                const language = link.getAttribute('data-language');
+                const position = parseInt(link.getAttribute('data-position'));
+                const score = parseFloat(link.getAttribute('data-score'));
+
+                // Send tracking request asynchronously (don't wait for response)
+                fetch('/api/slugsuggestion/track-click', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        requestedSlug: requestedSlug,
+                        clickedSlug: clickedSlug,
+                        language: language,
+                        suggestionPosition: position,
+                        originalScore: score
+                    }),
+                    keepalive: true // Ensure request completes even if user navigates away
+                }).catch(err => {
+                    // Silently fail - don't interrupt navigation
+                    console.debug('Failed to track suggestion click:', err);
+                });
+
+                // Allow navigation to proceed
+                return true;
+            }
     </script>
 }

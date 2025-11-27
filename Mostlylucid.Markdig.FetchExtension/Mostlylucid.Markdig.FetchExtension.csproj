@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>mostlylucid.Markdig.FetchExtension</PackageId>
+        <Version>1.1.1</Version>
+        <Authors>mostlylucid</Authors>
+        <Company>mostlylucid</Company>
+        <Product>mostlylucid.Markdig.FetchExtension</Product>
+        <Description>Markdig preprocessor that enables fetching remote Markdown via a &lt;fetch markdownurl="..." pollfrequency="..."/&gt; directive, with DI integration. Also TOC generation,</Description>
+        <PackageTags>markdig;markdown;extension;fetch;mostlylucid</PackageTags>
+        <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension</RepositoryUrl>
+
+        <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <AssemblyName>mostlylucid.Markdig.FetchExtension</AssemblyName>
+        <RootNamespace>mostlylucid.Markdig.FetchExtension</RootNamespace>
+
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Markdig" Version="0.43.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.10" />
+        <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include=".\icon.png" Pack="true" PackagePath="">
+            <Link>Properties\icon.png</Link>
+        </None>
+        <None Include=".\README.md" Pack="true" PackagePath="">
+            <Link>Properties\README.md</Link>
+        </None>
+        <None Include=".\release-notes.txt" Pack="true" PackagePath="">
+            <Link>Properties\release-notes.txt</Link>
+        </None>
+    </ItemGroup>
+</Project>

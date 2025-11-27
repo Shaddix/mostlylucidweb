@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -Command \"Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Middleware\\BotDetectionMiddleware.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Middleware\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Models\\BotDetectionOptions.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Models\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Models\\BotDetectionResult.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Models\\'' -Force\")",
+      "Bash(powershell.exe -Command \"Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Services\\BotDetectionService.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Services\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Services\\BotListUpdateService.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Services\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Services\\IBotDetectionService.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection.New\\Services\\'' -Force; echo ''✓ Copied Services''\")",
+      "Bash(powershell.exe -Command \"Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Extensions\\EndpointGeoRoutingExtensions.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.GeoDetection\\Extensions\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Extensions\\GeoRoutingExtensions.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.GeoDetection\\Extensions\\'' -Force; Copy-Item ''C:\\Blog\\mostlylucidweb\\Mostlylucid.BotDetection\\Filters\\GeoRouteAttribute.cs'' ''C:\\Blog\\mostlylucidweb\\Mostlylucid.GeoDetection\\Filters\\'' -Force\")",
+      "Bash(powershell.exe:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet build:*)",
+      "Bash(Select-String -Pattern \"error|Build succeeded|Build FAILED\")",
+      "Bash(Select-Object -Last 10)",
+      "Bash(dotnet test:*)",
+      "Bash(Select-String -Pattern \"Passed|Failed|Total|Duration\")",
+      "Bash(Select-String -Pattern \"Passed|Failed|Total|Error|Duration\")",
+      "Bash(dotnet run:*)",
+      "Bash(Select-Object -First 50)",
+      "Bash(npm run build:*)",
+      "Bash(Select-Object -Last 20)",
+      "WebFetch(domain:www.mostlylucid.net)",
+      "Bash(dotnet ef migrations list:*)",
+      "Bash(dotnet ef migrations has-pending-model-changes:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef migrations remove:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(Select-String -Pattern \"error|warning|Build succeeded|Build FAILED\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(npm show:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(dotnet list:*)",
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(Select-String -Pattern \"error|warning|Build|successfully|webpack\")",
+      "Bash(Select-String -Pattern \"error CS\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

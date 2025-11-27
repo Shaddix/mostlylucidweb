@@ -1,10 +1,20 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Mostlylucid.Blog.EntityFramework;
-using Mostlylucid.Blog.Markdown;
-using Mostlylucid.Config;
-using Mostlylucid.Config.Markdown;
-using Mostlylucid.EntityFramework;
-using Serilog;
+﻿using Mostlylucid.Blog.Markdown;
+using Mostlylucid.Blog.ViewServices;
+using Mostlylucid.Blog.WatcherService;
+using Mostlylucid.Blog.ValidationService;
+using Mostlylucid.DbContext;
+using Mostlylucid.DbContext.EntityFramework;
+using Mostlylucid.SemanticSearch.Config;
+using Mostlylucid.Services.Blog;
+using Mostlylucid.Services.Interfaces;
+using Mostlylucid.Services.Markdown;
+using Mostlylucid.Services.SemanticSearch;
+using Mostlylucid.Markdig.FetchExtension;
+using Mostlylucid.Markdig.FetchExtension.Services;
+using Mostlylucid.Shared.Config;
+using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Services;
+using Npgsql;
 
 namespace Mostlylucid.Blog;
 
@@ -14,28 +24,61 @@ public static class BlogSetup
     {
         var config = services.ConfigurePOCO<BlogConfig>(configuration.GetSection(BlogConfig.Section));
        services.ConfigurePOCO<MarkdownConfig>(configuration.GetSection(MarkdownConfig.Section));
-       services.AddScoped<CommentService>();
+
+        // Register HttpClient factory for fetching remote markdown
+        services.AddHttpClient();
+
+        // Register blog post processing context (scoped to track current blog post during rendering)
+        services.AddScoped<BlogPostProcessingContext>();
+
+        // Register markdown fetch service
+        services.AddScoped<IMarkdownFetchService, MarkdownFetchService>();
+
         switch (config.Mode)
         {
             case BlogMode.File:
                 Log.Information("Using file based blog");
-                services.AddScoped<IBlogService, MarkdownBlogService>();
+                services.AddScoped<IBlogViewService, MarkdownBlogViewService>();
                 services.AddScoped<IBlogPopulator, MarkdownBlogPopulator>();
                 break;
             case BlogMode.Database:
                 Log.Information("Using Database based blog");
-                services.AddDbContext<MostlylucidDbContext>(options =>
+                services.SetupDatabase(configuration, env);
+                services.AddScoped<IBlogViewService, BlogPostViewService>();
+                services.AddScoped<ICommentService, CommentService>();
+                services.AddScoped<IBlogPopulator, BlogPopulator>();
+                services.AddScoped<BlogSearchService>();
+                services.AddScoped<CommentViewService>();
+                services.AddSingleton<BlogUpdater>();
+                services.AddScoped<IBlogService, BlogService>();
+                services.AddScoped<ISlugSuggestionService, SlugSuggestionService>();
+                services.AddScoped<BlogValidationService>();
+
+                // Register startup coordinator and background services
+                services.AddSingleton<IStartupCoordinator>(sp =>
                 {
-                    if (env.IsDevelopment())
-                    {
-                        options.EnableSensitiveDataLogging(true);
-                    }
-                    options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
+                    var coordinator = new StartupCoordinator(sp.GetRequiredService<ILogger<StartupCoordinator>>());
+                    // Pre-register all services that will participate
+                    coordinator.RegisterService(StartupServiceNames.MarkdownDirectoryWatcher);
+                    coordinator.RegisterService(StartupServiceNames.MarkdownReAddPosts);
+                    coordinator.RegisterService(StartupServiceNames.BlogReconciliation);
+                    coordinator.RegisterService(StartupServiceNames.MarkdownFetchPolling);
+                    return coordinator;
                 });
-                services.AddScoped<IBlogService, EFBlogService>();
-            
-                services.AddScoped<IBlogPopulator, EFBlogPopulator>();
-                services.AddHostedService<BackgroundEFBlogUpdater>();
+
+                services.AddHostedService<MarkdownDirectoryWatcherService>();
+                services.AddHostedService<MarkdownReAddPostsService>();
+                services.AddHostedService<BlogReconciliationService>();
+
+                // Register markdown fetch polling service (only in database mode)
+                services.AddHostedService<MarkdownFetchPollingService>();
+
+                // Register semantic indexing background service if semantic search is enabled
+                var semanticConfig = configuration.GetSection(SemanticSearchConfig.Section).Get<SemanticSearchConfig>();
+                if (semanticConfig?.Enabled == true)
+                {
+                    services.AddHostedService<SemanticIndexingBackgroundService>();
+                }
                 break;
         }
         services.AddScoped<IMarkdownBlogService, MarkdownBlogPopulator>();
@@ -48,19 +91,12 @@ public static class BlogSetup
         await using var scope = app.Services.CreateAsyncScope();
     
         var config = scope.ServiceProvider.GetRequiredService<BlogConfig>();
-        if(config.Mode == BlogMode.Database)
-        {
-        
-           var blogContext = scope.ServiceProvider.GetRequiredService<MostlylucidDbContext>();
-           Log.Information("Migrating database");
-         
-           await blogContext.Database.MigrateAsync();
-        }
+        var cancellationToken = scope.ServiceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
 
         if (config.Mode == BlogMode.File)
         {
             var context = scope.ServiceProvider.GetRequiredService<IBlogPopulator>();
-            await context.Populate();
+            await context.Populate(cancellationToken);
         }
      
     }

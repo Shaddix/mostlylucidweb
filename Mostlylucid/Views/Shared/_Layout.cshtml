@@ -1,6 +1,6 @@
 ﻿@model Mostlylucid.Models.BaseViewModel
 <!DOCTYPE html>
-<html lang="en" >
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
@@ -15,6 +15,7 @@
           title="RSS Feed for mostlylucid.net"
           href="https://@Context.Request.Host/rss" />
 
+    <link rel="prefetch" href="https://accounts.google.com/gsi/client"/>
     <!-- Dynamic RSS Feed Links for each category -->
     @if (ViewBag.Categories != null)
     {
@@ -26,188 +27,228 @@
         }
     }
 
+    @{
+        var currentUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+        var defaultDescription = "Scott Galloway is a lead developer and software engineer with a passion for building web applications.";
+        var pageDescription = ViewBag.Description as string ?? defaultDescription;
+        var defaultImage = "https://mostlylucid.net/img/social2.jpg";
+        var pageImage = ViewBag.OgImage as string ?? defaultImage;
+    }
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="@currentUrl" />
+
     <!-- Facebook Meta Tags -->
-    <meta property="og:url" content="https://www.mostlylucid.net" id="metaOgUrl">
-    <meta property="og:type" content="website">
+    <meta property="og:url" content="@currentUrl" id="metaOgUrl">
+    <meta property="og:type" content="@(ViewBag.OgType ?? "website")">
     <meta property="og:title" content="@ViewBag.Title">
-    <meta property="og:description" content="Scott Galloway is a lead developer and software engineer with a passion for building web applications.">
-    <meta property="og:image" content="https://mostlylucid.net/img/social2.jpg">
+    <meta property="og:description" content="@pageDescription">
+    <meta property="og:image" content="@pageImage">
     <meta property="og:locale" content="en_GB" />
+    <meta property="og:site_name" content="mostlylucid" />
+
     <!-- Twitter Meta Tags -->
     <meta name="twitter:card" content="summary_large_image">
     <meta property="twitter:domain" content="mostlylucid.net">
-    <meta property="twitter:url" content="https://www.mostlylucid.net" id="metaTwitterUrl">
+    <meta property="twitter:url" content="@currentUrl" id="metaTwitterUrl">
     <meta name="twitter:title" content="@ViewBag.Title">
-    <meta name="twitter:description" content="Scott Galloway is a lead developer and software engineer with a passion for building web applications.">
-    <meta name="twitter:image" content="https://mostlylucid.net/img/social2.jpg">
-    
+    <meta name="twitter:description" content="@pageDescription">
+    <meta name="twitter:image" content="@pageImage">
 
-    <meta
-        name="description"
-        content="Scott Galloway is a lead developer and software engineer with a passion for building web applications."
-    />
-    <link rel="icon" type="image/png" href="/img/favicon.png" />
+    <!-- Meta Description -->
+    <meta name="description" content="@pageDescription" />
+
+    <!-- Article metadata for blog posts -->
+    @if (ViewBag.PublishedDate != null)
+    {
+        <meta property="article:published_time" content="@(((DateTime)ViewBag.PublishedDate).ToString("yyyy-MM-ddTHH:mm:ssZ"))" />
+        <meta property="article:author" content="Scott Galloway" />
+    }
+    @if (ViewBag.Categories != null)
+    {
+        foreach (var category in ViewBag.Categories)
+        {
+            <meta property="article:tag" content="@category" />
+        }
+    }
+    <link rel="icon" type="image/png" href="/img/smalllogo.svg" />
+
     <script src="https://accounts.google.com/gsi/client"  data-cfasync="false" async defer></script>
-
-    <link
-        crossorigin="crossorigin"
-        href="https://fonts.gstatic.com"
-        rel="preconnect"
-    />
-
-    <link
-        as="style"
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="preload"
-    />
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet"
-    />
-
     <link
         rel="stylesheet"
         href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
     />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css"/>
- 
+    <link rel="prefetch" href="/css/dist/main.css"  asp-append-version="true">
     <link
-        crossorigin="anonymous"
         href="/css/dist/main.css" asp-append-version="true"
-        media="screen"
+        media="screen, print"
         rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/default.min.css">
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-dark.min.css">
-    <link rel="stylesheet" href="https://cdn.rawgit.com/xcatliu/simplemde-theme-dark/master/dist/simplemde-theme-dark.min.css">
-
-    <!--Alpine Js V3-->
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
+    <!-- Highlight.js themes now bundled in main.css - no separate requests needed -->
+    <link rel="manifest" href="~/manifest.json" />
 </head>
-
 <body
-    x-data="global()"
+    x-data="globalSetup()"
     x-init="themeInit()"
     :class="isMobileMenuOpen ? 'max-h-screen overflow-hidden relative' : ''"
-    class="bg-custom-light-bg dark:bg-custom-dark-bg "
-    
->
+    class="bg-custom-light-bg dark:bg-custom-dark-bg ">
+<partial name="_Toast"  />
+<header class="sticky top-0 z-40 bg-white  dark:bg-custom-dark-bg shadow-md  container mx-auto flex flex-wrap items-center justify-between px-4 mb-3 py-1 w-full rounded border-b border-x border-l-neutral-600 border-r-neutral-600 border-b-neutral-600 print:!hidden" id="header">
 
-<div id="main">
-    <div class="container mx-auto">
-        <div class="flex flex-wrap items-center justify-between py-4 lg:py-4 w-full">
-            <a href="/" class="flex items-center mb-4 lg:mb-0">
-                <span class="bx bx-home text-2xl font-bold  mr-4 mt-1 transition-colors group-hover:text-green 
-dark:text-white dark:group-hover:text-secondary"></span>
-                <div class="mr-2">
-                    <div class="svg-container">
-                        <img src="/img/logo.svg" alt="mostlylucid limited" :class="{ 'img-filter-dark': isDarkMode }"/>
-                    </div>
+    <ul class="flex items-center w-full print:hidden gap-1 sm:gap-2">
+        <!-- Logo + Home Icon - Always visible (last to hide) -->
+        <li>
+            <a asp-action="Index" asp-controller="Home" hx-swap="show:window:top" hx-target="#contentcontainer" hx-boost="true" class="flex items-center">
+                <span class="bx bx-home-alt-2 text-xl lg:text-2xl font-semibold mr-1 sm:mr-2 transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary print:hidden"></span>
+
+                <div class="svg-container">
+                    <!-- Large screen logo (shown on large screens) -->
+                    <img
+                        src="/img/logo.svg"
+                        asp-append-version="true"
+                        width="180px"
+                        height="30px"
+                        alt="mostlylucid limited"
+                        class="hidden lg:block img-filter-dark"
+                        :class="{ 'img-filter-dark': !isDarkMode }"/>
+
+                    <!-- Small screen logo (shown on small/medium screens) -->
+                    <img
+                        src="/img/smalllogo.svg"
+                        asp-append-version="true"
+                        width="30px"
+                        height="20px"
+                        alt="mostlylucid limited"
+                        class="block lg:hidden"/>
                 </div>
-                <!-- <img src="img/3-dots-bounce.svg"  :class="{ 'img-filter-dark': isDarkMode }"/>-->
             </a>
+        </li>
 
-            <div class="w-full lg:w-auto">
-                <ul class="flex flex-wrap items-center justify-end space-x-4">
-                    <li class="group relative mb-1">
-                        <partial name="_TypeAhead"/>
-                    </li>
-                    <li class="group relative mb-1">
-                        <div class="flex items-center space-x-4">
-                            @if (Model != null)
-                            {
+        <!-- Search Typeahead - Expands to fill available space -->
+        <li class="group relative mb-1 hidden lg:flex flex-1 mx-4 max-w-xl" id="typeaheadelement">
+            <div class="w-full" hx-trigger="load" hx-get="/typeahead" hx-target="#typeaheadelement" hx-swap="innerHTML"></div>
+        </li>
 
+        <li class="ml-auto lg:hidden"></li>
 
-                                if (Model.Authenticated)
-                                {
-                                    <div class="flex items-center space-x-4">
-                                        @if (Model.AvatarUrl != null)
-                                        {
-                                            <img src="@Model.AvatarUrl" class="h-6 w-6 rounded-full" alt="User Avatar"/>
-                                        }
-                                        <span class="text-blue-dark dark:text-white">Logged in as @Model.Name</span>
-                                        <a data-logout-link asp-action="Logout" asp-controller="Login" target="_blank" class="btn btn-outline btn-sm text-blue-dark dark:text-white">
-                                            <i class="bx bx-log-out"></i> Logout
-                                        </a>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="w-[200px] h-[39px] overflow-hidden rounded">
-                                        <div id="google_button"></div>
-                                    </div>
-                                }
-                            }
-                        </div>
-                    </li>
-                    <li class="group relative mb-1">
-                        <partial name="_Socials"/>
-                    </li>
-                    <li class="group relative mb-1">
-                        <div class="absolute left-0 bottom-0 z-20 h-0 w-full opacity-75 transition-all group-hover:h-2 group-hover:bg-yellow"></div>
-                        <a href="/blog/aboutme" class="relative z-30 block px-2 font-body text-lg font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Intro</a>
-                    </li>
-                    <li class="group relative mb-1">
-                        <div class="absolute left-0 bottom-0 z-20 h-0 w-full opacity-75 transition-all group-hover:h-2 group-hover:bg-yellow"></div>
-                        <a href="/blog" class="relative z-30 block px-2 font-body text-lg font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Blog</a>
-                    </li>
-                    <li class="group relative mb-1">
-                        <a href="/rss" target="_blank" class="flex items-center">
-                            <i class="text-4xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors bx bx-rss"></i>
-                            RSS
-                        </a>
-                    </li>
-                    <li class="group relative mb-1">
-                        <div class="absolute left-0 bottom-0 z-20 h-0 w-full opacity-75 transition-all group-hover:h-2 group-hover:bg-yellow"></div>
-                        <a asp-action="Index" asp-controller="Contact" class="relative z-30 block px-2 font-body text-lg font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary" data-umami-event="Contact Click">Contact</a>
-                    </li>
-                    <li class="group relative mb-1">
-                        <div class="flex items-center">
-                            <i
-                                class="bx mr-8 cursor-pointer text-3xl text-primary dark:text-white"
-                                x-on:click="themeSwitch()"
-                                :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-    </div>
-</div>
-<div>
-  <div class="container mx-auto" id="contentcontainer">
-   @RenderBody()
-    </div>
-    <div class="container pb-8 mx-auto">
-        <div
-            class="flex flex-col items-center justify-between  sm:flex-row sm:py-2">
-            <div class="mr-auto flex flex-col items-center sm:flex-row">
-                <a href="/" class="mr-auto sm:mr-6">
-                    <div class="svg-container">
-                        <img src="/img/logo.svg" alt="logo"  :class="{ 'img-filter-dark': isDarkMode }"/>
+        <!-- Login/User Avatar - Hide on medium screens (lg+) -->
+        <li class="group relative mb-1 hidden lg:block">
+            <div class="flex items-center">
+                @if (Model?.Authenticated == true)
+                {
+                    <a data-logout-link asp-action="Logout" asp-controller="Login" class="flex items-center gap-1 hover:opacity-80 transition-opacity" title="Sign out">
+                        @if (Model.AvatarUrl != null)
+                        {
+                            <img src="@Model.AvatarUrl" width="28" height="28" class="h-7 w-7 rounded-full" alt="@Model.Name"/>
+                        }
+                        <i class="bx bx-log-out text-lg text-primary dark:text-white"></i>
+                    </a>
+                }
+                else
+                {
+                    <div class="w-[32px] h-[32px] rounded-full overflow-hidden flex items-center justify-center [&_iframe]:!rounded-full" title="Sign in with Google">
+                        <div id="google_button" class="scale-[1.3] -m-1"></div>
                     </div>
-                </a>
-                <p class="pt-5 font-body font-light text-primary dark:text-white sm:pt-0">
-                    ©2024 Scott Galloway
-                </p>
+                }
             </div>
+        </li>
+
+        <!-- Social Icons - Hide on medium screens (lg+) -->
+        <li class="group relative my-1 px-2 hidden lg:block border-neutral-400 dark:border-neutral-600 border rounded-lg">
             <partial name="_Socials"/>
+        </li>
+
+        <!-- RSS - Icon only -->
+        <li class="group relative mb-1 hidden md:block">
+            <a href="/rss" target="_blank" class="flex items-center text-lg hover:text-secondary dark:hover:text-secondary transition-colors" title="RSS Feed">
+                <i class="text-xl bx bx-rss"></i>
+            </a>
+        </li>
+
+        <!-- NuGet - Hide on small/medium (md+) -->
+        <li class="group relative mb-1 hidden md:block">
+            <a href="https://www.nuget.org/profiles/mostlylucid" target="_blank" rel="noopener noreferrer" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">
+                <span class="hidden lg:inline">NuGet</span>
+                <i class="bx bxl-nuget text-xl lg:hidden"></i>
+            </a>
+        </li>
+
+        <!-- Blog - Hide on small screens (sm+) -->
+        <li class="group relative mb-1 hidden sm:block">
+            <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Blog</a>
+        </li>
+
+        <!-- Résumé - Hide on small screens (sm+) -->
+        <li class="group relative mb-1 hidden sm:block">
+            <a href="/blog/aboutme" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">Résumé</a>
+        </li>
+
+        <!-- Search - Always show icon, hide text on small -->
+        <li class="group relative mb-1">
+            <a href="/search" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="flex items-center text-l lg:text-xl font-medium text-primary group-hover:text-green dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors">
+                <i class="text-xl lg:text-2xl bx bx-search"></i>
+                <span class="ml-1 hidden lg:inline">Search</span>
+            </a>
+        </li>
+
+        <!-- Contact - Always show icon, hide text on small -->
+        <li class="group relative mb-0.5">
+            <a asp-action="Index" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-controller="Contact" class="flex items-center text-l lg:text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors" data-umami-event="Contact Click">
+                <i class='bx bx-mail-send text-xl lg:text-2xl'></i>
+                <span class="ml-0.5 hidden lg:inline">Contact</span>
+            </a>
+        </li>
+
+        <!-- Theme Toggle - Always visible -->
+        <li class="group relative mb-1">
+            <div class="flex items-center">
+                <i class="bx cursor-pointer text-xl lg:text-3xl text-primary dark:text-white transition-colors" x-on:click="themeSwitch()" :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
+            </div>
+        </li>
+    </ul>
+
+</header>
+<div id="announcement-container" hx-get="/announcement/banner" hx-trigger="load" hx-swap="innerHTML"></div>
+<span class="hidden btn btn-sm btn-active btn-disabled select select-primary select-sm
+        text-sm text-gray-600 text-neutral-500 border rounded flex items-center
+        justify-center min-w-[80px] pr-4 pt-0 mt-0 mr-2 btn-primary btn-outline
+bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
+        dark:bg-blue-500 dark:border-blue-400 dark:text-white dark:hover:bg-blue-600 
+        dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700
+        dark:btn-accent dark:btn-outline dark:btn-disabled dark:btn-primary dark:btn-active gap-2 whitespace-nowrap cursor-pointer">
+</span>
+<div class="container mx-auto" id="contentcontainer">
+    @RenderBody()
+</div>
+<div class="container pb-8 mx-auto print:hidden">
+    <div
+        class="flex flex-col items-center justify-between  sm:flex-row sm:py-2">
+        <div class="mr-auto flex flex-col items-center sm:flex-row">
+            <a asp-action="Index" asp-controller="Home" hx-swap="show:window:top" hx-target="#contentcontainer" hx-boost="true" class="mr-auto sm:mr-6">
+                <div class="svg-container">
+                    <img src="/img/logo.svg" asp-append-version="true" width="180px" height="30px" alt="logo" :class="{ 'img-filter-dark': !isDarkMode }"/>
+                </div>
+            </a>
+<p class="pt-5 font-body font-light text-primary dark:text-white sm:pt-0">
+    &copy; @DateTime.UtcNow.Year Scott Galloway — 
+    <a href="https://unlicense.org" target="_blank" rel="noopener noreferrer">Unlicense</a> — 
+    All content and source code on this site is free to use, copy, modify, and sell.
+</p>
+
         </div>
-        
+        <partial name="_Socials"/>
     </div>
 
 </div>
-
-<script src="~/js/dist/htmx.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-<script type="text/javascript" src="https://unpkg.com/highlightjs-cshtml-razor/dist/cshtml-razor.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
-<script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
-<script defer src="@(ViewBag.UmamiPath + "/" +ViewBag.UmamiScript)" data-website-id="@ViewBag.UmamiWebsiteId"></script>
-<script src="~/js/dist/main.js" asp-append-version="true"> </script>
+<noscript>
+    <style>
+        [x-cloak] {
+            display: block !important;
+        }
+    </style>
+</noscript>
+<script src="~/js/dist/main.js" type="module" asp-append-version="true"  data-cfasync="false"> </script>
+<script src="@(ViewBag.UmamiPath + "/" + ViewBag.UmamiScript)" data-website-id="@ViewBag.UmamiWebsiteId"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

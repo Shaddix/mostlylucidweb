@@ -1,11 +1,11 @@
 ﻿services:
   mostlylucid:
     image: scottgal/mostlylucid:latest
-    ports:
-      - 8080:8080
     restart: always
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    env_file:
+      - .env
     environment:
       - Auth__GoogleClientId=${AUTH_GOOGLECLIENTID}
       - Auth__GoogleClientSecret=${AUTH_GOOGLECLIENTSECRET}
@@ -14,11 +14,21 @@
       - SmtpSettings__Password=${SMTPSETTINGS_PASSWORD}
       - Analytics__UmamiPath=${ANALYTICS_UMAMIPATH}
       - Analytics__WebsiteId=${ANALYTICS_WEBSITEID}
+      - Analytics__User=${ANALYTICS_USER}
+      - Analytics__Password=${ANALYTICS_PASSWORD}
       - ConnectionStrings__DefaultConnection=${POSTGRES_CONNECTIONSTRING}
+      - TranslateService__ServiceIPs=${EASYNMT_IPS}
+      - Serilog__WriteTo__0__Args__apiKey=${SEQ_API_KEY}
+      - Markdown__MarkdownPath=${MARKDOWN_MARKDOWNPATH}
+      - Markdown__MarkdownTranslatedPath=${MARKDOWN_MARKDOWNTRANSLATEDPATH}
+      - CertPassword=${CERT_PASSWORD}
     volumes:
       - /mnt/imagecache:/app/wwwroot/cache
-      - /mnt/markdown/comments:/app/Markdown/comments
       - /mnt/logs:/app/logs
+      - /mnt/markdown:/app/markdown
+      - ./mostlylucid.pfx:/app/mostlylucid.pfx
+      - /mnt/articleimages:/app/wwwroot/articleimages
+      - /mnt/mostlylucid/uploads:/app/wwwroot/uploads
     networks:
       - app_network
   watchtower:
@@ -30,9 +40,11 @@
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_LABEL_ENABLE=true
-    command: --interval 60 # Check for updates every 300 seconds (5 minutes)
+    command: --interval 300 # Check for updates every 300 seconds (5 minutes)
   db:
     image: postgres:16-alpine
+    #    ports:
+    #      - 5266:5432
     env_file:
       - .env
     networks:
@@ -54,14 +66,6 @@
     restart: always
     networks:
       - app_network
-  cloudflaredumami:
-    image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_UMAMI_TOKEN}
-    env_file:
-      - .env
-    restart: always
-    networks:
-      - app_network
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest
     env_file: .env
@@ -72,17 +76,27 @@
       APP_SECRET: ${APP_SECRET}
       TRACKER_SCRIPT_NAME: getinfo
       API_COLLECT_ENDPOINT: all
-    ports:
-      - "3000:3000"
     depends_on:
       - db
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     networks:
       - app_network
     restart: always
+  easynmt:
+    container_name: easynmt
+    image: scottgal/mostlylucid-nmt:cpu
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+    networks:
+      - app_network
   caddy:
     image: caddy:latest
     ports:
       - 80:80
+      - 443:443
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -90,17 +104,68 @@
     networks:
       - app_network
     restart: always
-  easynmt:
-    image: easynmt/api:2.0.2-cpu
+  seq:
+    image: datalust/seq
+    container_name: seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_ADMINPASSWORDHASH: ${SEQ_DEFAULT_HASH}
     volumes:
-      - /mnt/easynmt:/cache/
-    deploy:
-      resources:
-        limits:
-          cpus: "4.0"
+      - /mnt/seq:/data
+    networks:
+      - app_network
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - app_network
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - app_network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=testpassword1234
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    networks:
+      - app_network
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: always
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - app_network
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+volumes:
+  grafana-data:
+  caddy_data:
+  caddy_config:
+  prometheus-data:
+  qdrant-data:
 networks:
   app_network:
     driver: bridge
-volumes:
-  caddy_data:
-  caddy_config:
+

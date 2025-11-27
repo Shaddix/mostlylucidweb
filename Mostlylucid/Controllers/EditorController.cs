@@ -1,68 +1,67 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Mostlylucid.Blog;
-using Mostlylucid.Config;
-using Mostlylucid.Config.Markdown;
+﻿using Htmx;
+using Microsoft.AspNetCore.Mvc;
+using Mostlylucid.MarkdownTranslator.Models;
 using Mostlylucid.Models.Editor;
+using Mostlylucid.Services;
+using Mostlylucid.Shared.Config;
 
 namespace Mostlylucid.Controllers;
 
 [Route("editor")]
 public class EditorController(
-    IBlogService blogService,
-    AuthSettings authSettings,
-    AnalyticsSettings analyticsSettings,
+    BaseControllerService baseControllerService,
+    TranslateCacheService translateCacheService,
     TranslateServiceConfig translateServiceConfig,
-    ILogger<EditorController> logger) : BaseController(authSettings,
-    analyticsSettings, blogService, logger)
+    ILogger<EditorController> logger) : BaseController(baseControllerService, logger)
 {
-    private string GetUserId()
-    {
-        var userId = Request.Cookies["UserIdentifier"];
-        if (userId == null)
-        {
-            userId = Guid.NewGuid().ToString();
-            var cookieOptions = new CookieOptions
-            {
-                Expires = DateTimeOffset.UtcNow.AddMinutes(60),
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict
-            };
-            Response.Cookies.Append("UserIdentifier", userId, cookieOptions);
-        }
-
-        return userId;
-    }
-    
     [HttpGet]
     [Route("edit")]
     public async Task<IActionResult> Edit(string? slug = null, string language = "")
     {
-        var userInRole = GetUserInfo();
-        var editorModel = new EditorModel();
-        editorModel.Languages= translateServiceConfig.Languages.ToList();
-        editorModel.Name = userInRole.Name;
-        editorModel.Authenticated = userInRole.LoggedIn;
-       editorModel.IsAdmin = userInRole.IsAdmin;
-        editorModel.AvatarUrl = userInRole.AvatarUrl;
-
-        GetUserId();
-        
-     
-        
+        var userId = UserId;
+        var tasks = translateCacheService.GetTasks(userId);
+        var translations = tasks.Select(x => new TranslateResultTask(x)).ToList();
+        var userInRole = await GetUserInfo();
+        var editorModel = new EditorModel
+        {
+            Languages = translateServiceConfig.Languages.ToList(),
+            Name = userInRole.Name,
+            Authenticated = userInRole.LoggedIn,
+            IsAdmin = userInRole.IsAdmin,
+            AvatarUrl = userInRole.AvatarUrl,
+            UserSessionId = UserId,
+            TranslationTasks = translations
+        };
         if (slug == null)
         {
+            
+            editorModel.IsNew = true;
+            if(Request.IsHtmx())
+            {
+                return PartialView("Editor", editorModel);
+            }
             return View("Editor", editorModel);
         }
 
-        var blogPost = await blogService.GetPost(slug, language);
-        if (blogPost == null)
-        {
-            return NotFound();
-        }
+        var blogPost = await BlogViewService.GetPost(slug, language);
+        if (blogPost == null) return NotFound();
 
-        editorModel.Markdown = blogPost.OriginalMarkdown;
+        editorModel.Markdown = blogPost.Markdown;
         editorModel.PostViewModel = blogPost;
+        if(Request.IsHtmx())
+        {
+            return PartialView("Editor", editorModel);
+        }
         return View("Editor", editorModel);
+    }
+
+    [HttpGet]
+    [Route("get-translations")]
+    public IActionResult GetTranslations()
+    {
+        var userId = UserId;
+        var tasks = translateCacheService.GetTasks(userId);
+        var translations = tasks.Select(x => new TranslateResultTask(x)).ToList();
+        return PartialView("_GetTranslations", translations);
     }
 }

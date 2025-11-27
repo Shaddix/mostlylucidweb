@@ -1,0 +1,33 @@
+﻿@model Mostlylucid.Models.Blog.PostListViewModel
+<div class="pt-2" id="content">
+    @if (Model.Data?.Any() is true)
+    {
+        <div class="inline-flex w-full items-center justify-center print:!hidden pb-4">
+            @if (Model.TotalItems > Model.PageSize)
+            {
+                <pager
+                    x-ref="pager"
+                    link-url="@Model.LinkUrl"
+                    hx-boost="true"
+                    hx-target="#content"
+                    hx-swap="show:none"
+                    page="@Model.Page"
+                    page-size="@Model.PageSize"
+                    total-items="@Model.TotalItems"
+                    hx-headers='{"pagerequest": "true"}'>
+                </pager>
+            }
+            <partial name="_Pager" model="Model" />
+        </div>
+        @foreach (var post in Model.Data)
+        {
+            <partial name="_ListPost" model="post"/>
+        }
+    }
+    else
+    {
+        <div class="text-center text-lg text-black dark:text-white">
+            No results found.
+        </div>
+    }
+</div>

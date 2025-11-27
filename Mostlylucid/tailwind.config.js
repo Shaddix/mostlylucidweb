@@ -1,60 +1,85 @@
 ﻿const defaultTheme = require("tailwindcss/defaultTheme");
+const colors = require("tailwindcss/colors");
+
+// Remove deprecated color names to silence warnings
+delete colors['lightBlue'];
+delete colors['warmGray'];
+delete colors['trueGray'];
+delete colors['coolGray'];
+delete colors['blueGray'];
 
 module.exports = {
-    content: ["./**/*.html", "./**/*.cshtml"],
-    safelist: ["dark"],
-    darkMode: "class",
-    theme: {        
+    content: [
+        "./Views/**/*.cshtml",
+        "./EmailSubscription/**/*.cshtml",
+        "./src/js/**/*.js"
+    ],
+    safelist: ["dark", "light"],
+    darkMode: "class", // Using class strategy for dark mode
+
+    future: {
+        removeDeprecatedGapUtilities: true,
+        purgeLayersByDefault: true,
+        defaultLineHeights: true,
+        standardFontWeights: true,
+    },
+
+    theme: {
         fontFamily: {
-            body: ["Poppins", "sans-serif"],
+            body: ["Raleway", "sans-serif"],
         },
 
-        screens: {
-            xs: "375px",
-            ...defaultTheme.screens,
-        },
-
-        colors: {
-            'custom-light-bg': '#ffffff',
-            'custom-dark-bg': '#1d232a',
-            transparent: "transparent",
-            primary: "#072344",
-            secondary: "#00aaa1",
-            "green-light": "#cceeec",
-            green: "#007c85",
-            "green-dark": "#065a68",
-            "blue-light": "#b3d6f1",
-            blue: "#0074d1",
-            "blue-dark": "#072344",
-            black: "#000000",
-            white: "#ffffff",
-            "yellow-lighter": "#f6e8c6",
-            "yellow-light": "#f8edd0",
-            yellow: "#f4d06f",
-            "yellow-dark": "#daa512",
-            "grey-lightest": "#eff0f3",
-            "grey-lighter": "#eceef1",
-            "grey-light": "#ccd7e0",
-            "orange-light": "#f9e8e2",
-            orange: "#f9a825",
-            "orange-dark": "#f58f1e",
-            grey: "#adb6c4",
-        },
-
-        border: {
-            DEFAULT: "1px",
-            0: "0",
-            2: "2px",
-            4: "4px",
-            6: "6px",
-            8: "8px",
-        },
         container: {
             center: true,
             padding: "1rem",
         },
 
+        screens: {
+            ...defaultTheme.screens,
+            xs: "375px",
+            print: { raw: "print" },
+        },
+
         extend: {
+            keyframes: {
+                expandIn: {
+                    '0%': { opacity: '0', transform: 'translateY(-4px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' }
+                }
+            },
+            animation: {
+                expandIn: 'expandIn 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+            },
+            colors: {
+                // Spread all Tailwind colors (deprecated ones already removed above)
+                ...colors,
+
+                // Your custom colors
+                "custom-light-bg": "#ffffff",
+                "custom-dark-bg": "#1d232a",
+                primary: "#072344",
+                secondary: "#00aaa1",
+                "green-light": "#cceeec",
+                green: "#007c85",
+                "green-dark": "#065a68",
+                "blue-light": "#b3d6f1",
+                blue: "#0074d1",
+                "blue-dark": "#072344",
+                black: "#000000",
+                white: "#ffffff",
+                "yellow-lighter": "#f6e8c6",
+                "yellow-light": "#f8edd0",
+                yellow: "#f4d06f",
+                "yellow-dark": "#daa512",
+                "grey-lightest": "#eff0f3",
+                "grey-lighter": "#eceef1",
+                "grey-light": "#ccd7e0",
+                "orange-light": "#f9e8e2",
+                orange: "#f9a825",
+                "orange-dark": "#f58f1e",
+                grey: "#adb6c4",
+            },
+
             spacing: {
                 13: "3.25rem",
                 15: "3.75rem",
@@ -93,13 +118,16 @@ module.exports = {
                 200: "50rem",
                 204: "51rem",
             },
+
             inset: {
                 50: "50%",
                 100: "100%",
             },
+
             zIndex: {
                 "-1": "-1",
             },
+
             typography: (theme) => ({
                 DEFAULT: {
                     css: {
@@ -116,6 +144,10 @@ module.exports = {
                         "p, li": {
                             fontWeight: theme("fontWeight.light"),
                         },
+                        h1: { fontSize: theme("fontSize.2xl") },
+                        h2: { fontSize: theme("fontSize.xl") },
+                        h3: { fontSize: theme("fontSize.lg") },
+                        h4: { fontSize: theme("fontSize.base") },
                         "h1, h2, h3, h4, h5, h6": {
                             fontWeight: theme("fontWeight.semibold"),
                         },
@@ -135,11 +167,32 @@ module.exports = {
                                 fontWeight: theme("fontWeight.normal"),
                             },
                         },
+                        pre: {
+                            padding: "0",
+                            backgroundColor: theme('colors.gray.100'), // neutral light gray
+                            color: theme('colors.gray.800'),           // text color
+                            border: '1px solid ' + theme('colors.gray.300'),
+                            borderRadius: theme('borderRadius.lg'),
+                        },
+                        'pre code': {
+                            backgroundColor: 'transparent',
+                        },
                     },
                 },
+
                 dark: {
                     css: {
                         color: theme("colors.white"),
+                        pre: {
+                            padding: "0",
+                            backgroundColor: theme('colors.gray.800'), // neutral dark gray
+                            color: theme('colors.gray.100'),
+                            border: '1px solid ' + theme('colors.gray.600'),
+                            borderRadius: theme('borderRadius.lg'),
+                        },
+                        'pre code': {
+                            backgroundColor: 'transparent',
+                        },
                         a: {
                             color: theme("colors.secondary"),
                             "&:hover": {
@@ -157,10 +210,16 @@ module.exports = {
             }),
         },
     },
+
+    variants: {
+        extend: {
+            display: ["print"],
+        },
+    },
+
     plugins: [
-        require("@tailwindcss/forms"),
         require("@tailwindcss/aspect-ratio"),
         require("@tailwindcss/typography"),
-        require('daisyui')
+        require("daisyui"),
     ],
 };

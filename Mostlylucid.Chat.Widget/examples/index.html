@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Widget Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .feature {
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
+        .feature-description {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .cta {
+            margin-top: 40px;
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .cta h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        code {
+            background: #1f2937;
+            color: #10b981;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Chat Widget Demo</h1>
+        <p>
+            Welcome to the live demo of our embeddable chat widget!
+            Look at the bottom-right corner of your screen to see the chat button.
+        </p>
+        <p>
+            Click it to start a conversation. All you need to integrate this
+            into your own website is a single line of code!
+        </p>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">Real-Time</div>
+                <div class="feature-description">
+                    Instant messaging with SignalR
+                </div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Responsive</div>
+                <div class="feature-description">
+                    Works on all devices
+                </div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎨</div>
+                <div class="feature-title">Beautiful</div>
+                <div class="feature-description">
+                    Modern, clean design
+                </div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔔</div>
+                <div class="feature-title">Notifications</div>
+                <div class="feature-description">
+                    Browser notifications
+                </div>
+            </div>
+        </div>
+
+        <div class="cta">
+            <h3>🚀 Easy Integration</h3>
+            <p>Add this widget to your site with just one line:</p>
+            <p style="margin-top: 15px;">
+                <code>&lt;script src="https://your-server.com/widget.js" data-chat-widget&gt;&lt;/script&gt;</code>
+            </p>
+        </div>
+    </div>
+
+    <!-- Chat Widget Integration -->
+    <script
+        src="http://localhost:5100/widget.js"
+        data-chat-widget
+        data-hub-url="http://localhost:5100/chathub"
+    ></script>
+</body>
+</html>

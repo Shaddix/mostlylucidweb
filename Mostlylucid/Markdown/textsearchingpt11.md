@@ -1,9 +1,17 @@
 ﻿# Full Text Searching (Pt 1.1)
 
-<!--category-- Postgres, Alpine -->
+<!--category-- Postgres, Alpine.js -->
 <datetime class="hidden">2024-08-21T20:30</datetime>
 ## Introduction
 In the [last article](/blog/textsearchingpt1) I showed you how to set up a full text search using the built in full text search capabilities of Postgres. While I exposed a search api I didn't have a way to actually use it so...it was a bit of a tease. In this article I'll show you how to use the search api to search for text in your database.
+
+Previous parts in this series:
+- [Full Text Searching with Postgres](/blog/textsearchingpt1)
+
+
+Next parts in this series:
+- [Introduction to OpenSearch](/blog/textsearchingpt2)
+- [Opensearch with C#](/blog/textsearchingpt3)
 
 This will add a little search box to the header of the site which will allow users to search for text in the blog posts.
 

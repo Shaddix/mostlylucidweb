@@ -1,0 +1,15 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="using:Mostlylucid.Announcement.Manager.Converters"
+             x:Class="Mostlylucid.Announcement.Manager.App"
+             RequestedThemeVariant="Default">
+    <Application.Resources>
+        <converters:ActiveColorConverter x:Key="ActiveColorConverter"/>
+        <converters:ActiveTextConverter x:Key="ActiveTextConverter"/>
+        <converters:ConnectedColorConverter x:Key="ConnectedColorConverter"/>
+        <converters:ConnectedTextConverter x:Key="ConnectedTextConverter"/>
+    </Application.Resources>
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+</Application>

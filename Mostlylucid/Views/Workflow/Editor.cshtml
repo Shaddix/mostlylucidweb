@@ -1,0 +1,498 @@
+@model Mostlylucid.Workflow.Shared.Models.WorkflowDefinition
+
+@{
+    ViewBag.Title = string.IsNullOrEmpty(Model.Name) ? "Create Workflow" : $"Edit: {Model.Name}";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid px-4 py-6"
+     x-data="workflowEditor(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model)))"
+     x-init="init()">
+
+    <!-- Top Toolbar -->
+    <div class="navbar bg-base-200 rounded-box shadow-lg mb-6">
+        <div class="flex-1">
+            <input type="text"
+                   x-model="workflow.name"
+                   placeholder="Workflow Name"
+                   class="input input-ghost text-2xl font-bold w-96" />
+        </div>
+        <div class="flex-none gap-2">
+            <button @@click="saveWorkflow()" class="btn btn-success">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                </svg>
+                Save
+            </button>
+            <button @@click="runWorkflow()" class="btn btn-primary">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Run
+            </button>
+            <a href="/workflow" class="btn btn-ghost">Cancel</a>
+        </div>
+    </div>
+
+    <div class="flex gap-4 h-[calc(100vh-200px)]">
+        <!-- Left Sidebar - Node Palette -->
+        <div class="w-64 bg-base-200 rounded-box p-4 overflow-y-auto shadow-lg">
+            <h3 class="text-lg font-bold mb-4">📦 Available Nodes</h3>
+
+            <div class="space-y-3">
+                <div class="card bg-base-100 shadow cursor-pointer hover:shadow-xl transition-shadow"
+                     draggable="true"
+                     @@dragstart="dragStart($event, 'HttpRequest', '🌐', '#10B981')">
+                    <div class="card-body p-4">
+                        <h4 class="font-semibold">🌐 HTTP Request</h4>
+                        <p class="text-xs text-base-content/70">Make API calls</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow cursor-pointer hover:shadow-xl transition-shadow"
+                     draggable="true"
+                     @@dragstart="dragStart($event, 'Transform', '🔄', '#3B82F6')">
+                    <div class="card-body p-4">
+                        <h4 class="font-semibold">🔄 Transform</h4>
+                        <p class="text-xs text-base-content/70">Process data</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow cursor-pointer hover:shadow-xl transition-shadow"
+                     draggable="true"
+                     @@dragstart="dragStart($event, 'Delay', '⏱️', '#F59E0B')">
+                    <div class="card-body p-4">
+                        <h4 class="font-semibold">⏱️ Delay</h4>
+                        <p class="text-xs text-base-content/70">Wait duration</p>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 shadow cursor-pointer hover:shadow-xl transition-shadow"
+                     draggable="true"
+                     @@dragstart="dragStart($event, 'Condition', '🔀', '#8B5CF6')">
+                    <div class="card-body p-4">
+                        <h4 class="font-semibold">🔀 Condition</h4>
+                        <p class="text-xs text-base-content/70">Branch logic</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="mt-4">
+                <h4 class="font-semibold mb-2">Workflow Settings</h4>
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text">Enabled</span>
+                        <input type="checkbox"
+                               x-model="workflow.isEnabled"
+                               class="toggle toggle-success" />
+                    </label>
+                </div>
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text">Description</span>
+                    </label>
+                    <textarea x-model="workflow.description"
+                              class="textarea textarea-bordered"
+                              rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center - Canvas -->
+        <div class="flex-1 bg-base-300 rounded-box relative overflow-hidden shadow-lg"
+             @@drop="dropNode($event)"
+             @@dragover.prevent
+             id="workflow-canvas">
+
+            <div class="absolute inset-0 overflow-auto p-8" id="canvas-container">
+                <!-- Grid background -->
+                <div class="absolute inset-0 opacity-20"
+                     style="background-image: repeating-linear-gradient(0deg, transparent, transparent 19px, currentColor 20px), repeating-linear-gradient(90deg, transparent, transparent 19px, currentColor 20px); background-size: 20px 20px;"></div>
+
+                <!-- Nodes -->
+                <template x-for="node in workflow.nodes" :key="node.id">
+                    <div :id="'node-' + node.id"
+                         class="absolute card shadow-2xl cursor-move transition-all"
+                         :style="`left: ${node.position.x}px; top: ${node.position.y}px; width: ${node.style.width}px; background-color: ${node.style.backgroundColor}; border: 3px solid ${node.style.borderColor}; color: ${node.style.textColor};`"
+                         @@mousedown="selectNode(node)"
+                         draggable="true"
+                         @@dragstart="dragNode($event, node)"
+                         @@dragend="dragEnd($event)">
+
+                        <div class="card-body p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl" x-text="node.style.icon || '📦'"></span>
+                                    <h3 class="font-bold text-sm" x-text="node.name"></h3>
+                                </div>
+                                <button @@click.stop="deleteNode(node)"
+                                        class="btn btn-circle btn-xs btn-error">
+                                    ×
+                                </button>
+                            </div>
+
+                            <div class="text-xs opacity-80 mb-2" x-text="node.type"></div>
+
+                            <!-- Connection points -->
+                            <div class="flex justify-between mt-2">
+                                <div class="badge badge-sm badge-primary cursor-pointer"
+                                     @@click.stop="startConnection(node, 'input')"
+                                     title="Input">
+                                    ◀
+                                </div>
+                                <div class="badge badge-sm badge-success cursor-pointer"
+                                     @@click.stop="startConnection(node, 'output')"
+                                     title="Output">
+                                    ▶
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Connections SVG Layer -->
+                <svg class="absolute inset-0 pointer-events-none"
+                     style="width: 100%; height: 100%; z-index: 0;">
+                    <template x-for="conn in workflow.connections" :key="conn.id">
+                        <g>
+                            <path :d="getConnectionPath(conn)"
+                                  stroke="#94A3B8"
+                                  stroke-width="3"
+                                  fill="none"
+                                  marker-end="url(#arrowhead)"/>
+                            <text :x="getConnectionMidpoint(conn).x"
+                                  :y="getConnectionMidpoint(conn).y"
+                                  fill="#64748B"
+                                  font-size="12"
+                                  text-anchor="middle"
+                                  x-text="conn.label || ''">
+                            </text>
+                        </g>
+                    </template>
+                    <!-- Arrow marker -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#94A3B8" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+
+            <div class="absolute bottom-4 right-4 flex gap-2">
+                <button @@click="zoomIn()" class="btn btn-circle btn-sm">+</button>
+                <button @@click="zoomOut()" class="btn btn-circle btn-sm">-</button>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Node Inspector -->
+        <div class="w-80 bg-base-200 rounded-box p-4 overflow-y-auto shadow-lg"
+             x-show="selectedNode">
+            <h3 class="text-lg font-bold mb-4">⚙️ Node Settings</h3>
+
+            <template x-if="selectedNode">
+                <div class="space-y-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Node Name</span>
+                        </label>
+                        <input type="text"
+                               x-model="selectedNode.name"
+                               class="input input-bordered" />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Type</span>
+                        </label>
+                        <input type="text"
+                               x-model="selectedNode.type"
+                               class="input input-bordered"
+                               disabled />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Description</span>
+                        </label>
+                        <textarea x-model="selectedNode.description"
+                                  class="textarea textarea-bordered"
+                                  rows="2"></textarea>
+                    </div>
+
+                    <div class="divider">Styling</div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Background Color</span>
+                        </label>
+                        <input type="color"
+                               x-model="selectedNode.style.backgroundColor"
+                               class="input input-bordered w-full h-12" />
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Icon (emoji)</span>
+                        </label>
+                        <input type="text"
+                               x-model="selectedNode.style.icon"
+                               class="input input-bordered"
+                               maxlength="2" />
+                    </div>
+
+                    <div class="divider">Configuration</div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Inputs (JSON)</span>
+                        </label>
+                        <textarea x-model="selectedNode.inputsJson"
+                                  @@input="updateNodeInputs()"
+                                  class="textarea textarea-bordered font-mono text-xs"
+                                  rows="6"></textarea>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Mark as Start Node</span>
+                        </label>
+                        <button @@click="setStartNode(selectedNode)"
+                                class="btn btn-sm"
+                                :class="workflow.startNodeId === selectedNode.id ? 'btn-success' : 'btn-outline'">
+                            <span x-show="workflow.startNodeId === selectedNode.id">✓ Start Node</span>
+                            <span x-show="workflow.startNodeId !== selectedNode.id">Set as Start</span>
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function workflowEditor(initialWorkflow) {
+    return {
+        workflow: initialWorkflow || {
+            id: crypto.randomUUID(),
+            name: 'New Workflow',
+            nodes: [],
+            connections: [],
+            isEnabled: true
+        },
+        selectedNode: null,
+        draggedNodeType: null,
+        draggedNode: null,
+        connecting: false,
+        connectionStart: null,
+
+        init() {
+            // Initialize node inputs as JSON strings for editing
+            this.workflow.nodes.forEach(node => {
+                node.inputsJson = JSON.stringify(node.inputs || {}, null, 2);
+            });
+        },
+
+        dragStart(event, nodeType, icon, color) {
+            this.draggedNodeType = { type: nodeType, icon, color };
+        },
+
+        dropNode(event) {
+            if (!this.draggedNodeType) return;
+
+            const canvas = document.getElementById('canvas-container');
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left + canvas.scrollLeft - 100;
+            const y = event.clientY - rect.top + canvas.scrollTop - 50;
+
+            const newNode = {
+                id: crypto.randomUUID(),
+                type: this.draggedNodeType.type,
+                name: this.draggedNodeType.type,
+                inputs: {},
+                outputs: {},
+                conditions: {},
+                position: { x, y },
+                style: {
+                    backgroundColor: this.draggedNodeType.color,
+                    textColor: '#FFFFFF',
+                    borderColor: this.draggedNodeType.color,
+                    icon: this.draggedNodeType.icon,
+                    width: 200,
+                    height: 100
+                },
+                inputsJson: '{}'
+            };
+
+            this.workflow.nodes.push(newNode);
+            this.draggedNodeType = null;
+
+            // Set as start node if it's the first node
+            if (this.workflow.nodes.length === 1) {
+                this.workflow.startNodeId = newNode.id;
+            }
+        },
+
+        dragNode(event, node) {
+            this.draggedNode = node;
+            event.dataTransfer.effectAllowed = 'move';
+        },
+
+        dragEnd(event) {
+            if (!this.draggedNode) return;
+
+            const canvas = document.getElementById('canvas-container');
+            const rect = canvas.getBoundingClientRect();
+            this.draggedNode.position.x = event.clientX - rect.left + canvas.scrollLeft - 100;
+            this.draggedNode.position.y = event.clientY - rect.top + canvas.scrollTop - 50;
+
+            this.draggedNode = null;
+        },
+
+        selectNode(node) {
+            this.selectedNode = node;
+        },
+
+        deleteNode(node) {
+            if (!confirm('Delete this node?')) return;
+
+            // Remove connections
+            this.workflow.connections = this.workflow.connections.filter(
+                c => c.sourceNodeId !== node.id && c.targetNodeId !== node.id
+            );
+
+            // Remove node
+            this.workflow.nodes = this.workflow.nodes.filter(n => n.id !== node.id);
+
+            if (this.selectedNode === node) {
+                this.selectedNode = null;
+            }
+
+            if (this.workflow.startNodeId === node.id) {
+                this.workflow.startNodeId = this.workflow.nodes[0]?.id || null;
+            }
+        },
+
+        startConnection(node, type) {
+            if (this.connecting) {
+                // Complete connection
+                if (this.connectionStart.node.id !== node.id) {
+                    this.workflow.connections.push({
+                        id: crypto.randomUUID(),
+                        sourceNodeId: this.connectionStart.node.id,
+                        targetNodeId: node.id,
+                        sourceOutput: 'default',
+                        targetInput: 'default',
+                        label: ''
+                    });
+                }
+                this.connecting = false;
+                this.connectionStart = null;
+            } else {
+                // Start connection
+                this.connecting = true;
+                this.connectionStart = { node, type };
+            }
+        },
+
+        getConnectionPath(conn) {
+            const source = this.workflow.nodes.find(n => n.id === conn.sourceNodeId);
+            const target = this.workflow.nodes.find(n => n.id === conn.targetNodeId);
+            if (!source || !target) return '';
+
+            const x1 = source.position.x + (source.style?.width || 200);
+            const y1 = source.position.y + 50;
+            const x2 = target.position.x;
+            const y2 = target.position.y + 50;
+
+            // Curved path
+            const midX = (x1 + x2) / 2;
+            return `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+        },
+
+        getConnectionMidpoint(conn) {
+            const source = this.workflow.nodes.find(n => n.id === conn.sourceNodeId);
+            const target = this.workflow.nodes.find(n => n.id === conn.targetNodeId);
+            if (!source || !target) return { x: 0, y: 0 };
+
+            const x1 = source.position.x + (source.style?.width || 200);
+            const y1 = source.position.y + 50;
+            const x2 = target.position.x;
+            const y2 = target.position.y + 50;
+
+            return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 - 10 };
+        },
+
+        updateNodeInputs() {
+            if (!this.selectedNode) return;
+            try {
+                this.selectedNode.inputs = JSON.parse(this.selectedNode.inputsJson);
+            } catch (e) {
+                console.error('Invalid JSON:', e);
+            }
+        },
+
+        setStartNode(node) {
+            this.workflow.startNodeId = node.id;
+        },
+
+        async saveWorkflow() {
+            try {
+                const response = await fetch('/workflow/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.workflow)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Workflow saved successfully!');
+                    window.location.href = '/workflow';
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error saving workflow: ' + error.message);
+            }
+        },
+
+        async runWorkflow() {
+            try {
+                // Save first
+                await this.saveWorkflow();
+
+                const response = await fetch(`/workflow/execute/${this.workflow.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Workflow started! Execution ID: ${result.executionId}`);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error running workflow: ' + error.message);
+            }
+        },
+
+        zoomIn() {
+            // TODO: Implement zoom
+        },
+
+        zoomOut() {
+            // TODO: Implement zoom
+        }
+    };
+}
+</script>
+}

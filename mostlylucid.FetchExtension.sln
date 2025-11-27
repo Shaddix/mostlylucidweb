@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension", "Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj", "{F59FAF53-189D-4927-8F4B-7CE169A10125}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.Demo", "Mostlylucid.Markdig.FetchExtension.Demo\Mostlylucid.Markdig.FetchExtension.Demo.csproj", "{5DD7851B-06AC-4ECE-9030-D749BE05A624}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.Postgres", "Mostlylucid.Markdig.FetchExtension.Postgres\Mostlylucid.Markdig.FetchExtension.Postgres.csproj", "{EB084E81-8528-4E08-92A5-B13BCD2EE7C3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.Sqlite", "Mostlylucid.Markdig.FetchExtension.Sqlite\Mostlylucid.Markdig.FetchExtension.Sqlite.csproj", "{F6F8013F-6D17-43FC-ACA4-737A229C7771}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.SqlServer", "Mostlylucid.Markdig.FetchExtension.SqlServer\Mostlylucid.Markdig.FetchExtension.SqlServer.csproj", "{3F3A4C8F-C2C1-4D09-9377-E0368BDBC263}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.Markdig.FetchExtension.Tests", "Mostlylucid.Markdig.FetchExtension.Tests\Mostlylucid.Markdig.FetchExtension.Tests.csproj", "{3D68CDDE-C2CA-40B5-A95F-946A219B4D55}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFolder", "SolutionFolder", "{6E370A8B-BE0C-4D91-9024-252CA93F0409}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish-fetchextension.yml = .github\workflows\publish-fetchextension.yml
+		.github\workflows\publish-fetchextension-postgres.yml = .github\workflows\publish-fetchextension-postgres.yml
+		.github\workflows\publish-fetchextension-sqlite.yml = .github\workflows\publish-fetchextension-sqlite.yml
+		.github\workflows\publish-fetchextension-sqlserver.yml = .github\workflows\publish-fetchextension-sqlserver.yml
+		Mostlylucid.Markdig.FetchExtension\INTEGRATION_GUIDE.md = Mostlylucid.Markdig.FetchExtension\INTEGRATION_GUIDE.md
+		Mostlylucid.Markdig.FetchExtension\README.md = Mostlylucid.Markdig.FetchExtension\README.md
+		Mostlylucid.Markdig.FetchExtension\readme.txt = Mostlylucid.Markdig.FetchExtension\readme.txt
+		Mostlylucid.Markdig.FetchExtension\release-notes.txt = Mostlylucid.Markdig.FetchExtension\release-notes.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F59FAF53-189D-4927-8F4B-7CE169A10125}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F59FAF53-189D-4927-8F4B-7CE169A10125}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F59FAF53-189D-4927-8F4B-7CE169A10125}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F59FAF53-189D-4927-8F4B-7CE169A10125}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5DD7851B-06AC-4ECE-9030-D749BE05A624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5DD7851B-06AC-4ECE-9030-D749BE05A624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5DD7851B-06AC-4ECE-9030-D749BE05A624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5DD7851B-06AC-4ECE-9030-D749BE05A624}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB084E81-8528-4E08-92A5-B13BCD2EE7C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB084E81-8528-4E08-92A5-B13BCD2EE7C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB084E81-8528-4E08-92A5-B13BCD2EE7C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB084E81-8528-4E08-92A5-B13BCD2EE7C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6F8013F-6D17-43FC-ACA4-737A229C7771}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6F8013F-6D17-43FC-ACA4-737A229C7771}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6F8013F-6D17-43FC-ACA4-737A229C7771}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6F8013F-6D17-43FC-ACA4-737A229C7771}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F3A4C8F-C2C1-4D09-9377-E0368BDBC263}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F3A4C8F-C2C1-4D09-9377-E0368BDBC263}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F3A4C8F-C2C1-4D09-9377-E0368BDBC263}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F3A4C8F-C2C1-4D09-9377-E0368BDBC263}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D68CDDE-C2CA-40B5-A95F-946A219B4D55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D68CDDE-C2CA-40B5-A95F-946A219B4D55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D68CDDE-C2CA-40B5-A95F-946A219B4D55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D68CDDE-C2CA-40B5-A95F-946A219B4D55}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

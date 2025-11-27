@@ -29,11 +29,13 @@ public static class FileHashHelper
         return hashString;
     }
 
-    public static async Task<bool> IsFileChanged(this string filePath, string outDir)
+    public static async Task<bool> IsFileChanged(this string filePath, string outDir, string language)
     {
-        var hashFileName = Path.GetFileNameWithoutExtension(filePath) + ".hash";
+        var slug = Path.GetFileNameWithoutExtension(filePath);
+    
         var currentHash = await ComputeHash(filePath);
-        var hashFile = Path.Combine(outDir ?? string.Empty, hashFileName);
+        var outFileName = $"{slug}.{language}.hash";
+        var hashFile = Path.Combine(outDir ?? string.Empty, outFileName);
         if (!File.Exists(hashFile))
         {
             await WriteHashFile(hashFile, currentHash);
@@ -46,12 +48,18 @@ public static class FileHashHelper
             await WriteHashFile(hashFile, currentHash);
             return true;
         }
-
         return false;
     }
 
     private static async Task WriteHashFile(string filePath, string hash)
     {
+        // Ensure the directory exists
+        var directory = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
         await using var stream = File.OpenWrite(filePath);
         var bytes = Encoding.UTF8.GetBytes(hash);
         await stream.WriteAsync(bytes);

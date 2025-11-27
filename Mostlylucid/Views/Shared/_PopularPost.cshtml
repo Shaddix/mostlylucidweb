@@ -1,0 +1,60 @@
+@using Mostlylucid.Services.Umami
+@using Mostlylucid.Services.Blog
+@inject Mostlylucid.Services.Umami.IPopularPostsService PopularPostsService
+@inject Mostlylucid.Services.Blog.IBlogService BlogService
+@{
+    var popularPost = await PopularPostsService.GetCachedPopularPost();
+    Mostlylucid.Shared.Models.BlogPostDto? blogPost = null;
+
+    // Try to get full blog post data if available
+    if (popularPost != null && !string.IsNullOrEmpty(popularPost.Url))
+    {
+        var slug = popularPost.Url.Replace("/blog/", "").Trim('/');
+        var language = Context.Request.Cookies["SelectedLanguage"] ?? "en";
+        blogPost = await BlogService.GetPost(new Mostlylucid.Shared.Models.BlogPostQueryModel(slug, language));
+    }
+}
+
+@if (popularPost != null)
+{
+
+    <div class="mt-4 mb-4 p-3 border border-grey-lighter dark:border-grey-dark rounded-lg bg-white dark:bg-custom-dark-bg">
+        <div class="flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2 shrink-0">
+                <i class="bx bx-trending-up text-xl text-secondary"></i>
+                <span class="font-body text-sm font-semibold text-blue-dark dark:text-white whitespace-nowrap">
+                    Trending:
+                </span>
+            </div>
+            <a href="@popularPost.Url"
+               hx-boost="true"
+               hx-target="#contentcontainer"
+               hx-push-url="true"
+               class="flex-1 min-w-0 group">
+                <span class="font-body text-sm font-medium text-primary dark:text-white group-hover:text-secondary dark:group-hover:text-secondary transition-colors line-clamp-1">
+                    @(blogPost?.Title ?? popularPost.Title)
+                </span>
+            </a>
+            @if (blogPost != null)
+            {
+                @if (blogPost.Languages != null && blogPost.Languages.Length > 1)
+                {
+                    var languageModel = (blogPost.Slug, blogPost.Languages, blogPost.Language);
+                    <div class="shrink-0">
+                        <partial name="_LanguageFlags" model="languageModel"/>
+                    </div>
+                }
+                <span class="text-xs text-grey-dark dark:text-grey whitespace-nowrap">
+                    @blogPost.PublishedDate.ToString("MMM dd")
+                </span>
+                if (blogPost.Categories != null && blogPost.Categories.Any())
+                {
+                    foreach (var category in blogPost.Categories)
+                    {
+                        <partial name="_Category" model="category"/>
+                    }
+                }
+            }
+        </div>
+    </div>
+}

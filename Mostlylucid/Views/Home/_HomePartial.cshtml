@@ -1,0 +1,33 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@model Mostlylucid.Models.IndexPageViewModel
+<title > @ViewBag.Title</title>
+<div class=" pb-4">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <img src="/img/author.png?format=webp&quality=15" asp-append-version="true" width="64px" height="64px" class="h-16 w-16 mask mask-circle flex-shrink-0" alt="author"/>
+        <p class="font-body text-base text-blue-dark dark:text-white flex-1">
+            <span class="font-semibold text-xl">Hi, I'm Scott Galloway</span> —
+            I'm a consulting web / internet /  systems / full-cycle, full-stack developer (it's complicated 🤓) specializing in bringing 'AI' to the masses,  .NET Core, full-stack development, cloud, and search technologies. Former Microsoft ASP.NET Program Manager with 30+ years building web applications for Fortune 500 companies and startups.
+            I share my <span class="font-semibold">work in progress (PERSONAL!)</span>  projects and how I build them.
+            Available for contract, full-time, or consultancy work — <a href="mailto:scott.galloway+ml@gmail.com" class="text-blue-dark dark:text-blue hover:underline">get in touch</a>.
+            Code on <a href="https://github.com/scottgal/mostlylucidweb" class="text-blue-dark dark:text-blue hover:underline">GitHub</a> |
+            Feedback on <a href="https://hachyderm.io/@("@")scottgal@("@")hachyderm.io" class="text-blue-dark dark:text-blue hover:underline">Mastodon</a>
+        </p>
+    </div>
+</div>
+
+
+<partial name="_PopularPost" />
+
+<div class="pt-4">
+    <!-- Navigation & Filter Section -->
+    <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4 print:!hidden">
+
+        <!-- Right: Quick Filter Bar -->
+        <div class="hidden lg:flex items-center gap-3">
+            <partial name="_FilterBar" model="Model.Posts"/>
+        </div>
+    </div>
+
+    <!-- Blog Posts List -->
+    <partial name="_BlogSummaryList" model="Model.Posts"/>
+</div>

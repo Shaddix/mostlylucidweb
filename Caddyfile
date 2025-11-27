@@ -1,0 +1,49 @@
+# HTTPS (SSL) configuration with automatic Let's Encrypt certificate
+{
+    email scott.galloway@gmail.com
+}
+
+direct.mostlylucid.net {
+    encode zstd gzip   
+    reverse_proxy https://mostlylucid:7240 {
+        transport http {
+            tls_insecure_skip_verify
+        } 
+     }  
+}
+
+# Redirect HTTP to HTTPS
+http://direct.mostlylucid.net {
+    redir https://{host}{uri}
+}
+
+seq.mostlylucid.net
+{
+   reverse_proxy seq:80
+}
+
+http://seq.mostlylucid.net
+{
+   redir https://{host}{uri}
+}
+
+umami.mostlylucid.net
+{
+   reverse_proxy umami:3000
+}
+
+http://umami.mostlylucid.net
+{
+   redir https://{host}{uri}
+}
+
+grafana.mostlylucid.net
+{
+   reverse_proxy grafana:3000
+}
+
+http://grafana.mostlyucid.net
+{
+   redir https://{host}{uri}
+}
+

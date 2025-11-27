@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Mostlylucid.Blog;
-using Umami.Net;
+using Mostlylucid.Services.Markdown;
 using Umami.Net.Models;
 
 namespace Mostlylucid.API;
@@ -14,7 +13,7 @@ public class Editor(MarkdownRenderingService markdownBlogService, UmamiClient um
     public async Task<IActionResult> GetContent([FromBody] ContentModel model)
     {
         Request.Cookies.TryGetValue("UserIdentifier", out var userId);
-        await umamiClient.Send(new UmamiPayload(){Url = "api/editor/getcontent", Referrer = Request.Headers["Referer"]});
+        await umamiClient.Send( new UmamiPayload(){Url = "api/editor/getcontent", Referrer = Request.Headers["Referer"]});
         var blogPost = markdownBlogService.GetPageFromMarkdown(model.Content, DateTime.Now, "");
         return Ok(blogPost); // Use Ok() for proper JSON responses
     }

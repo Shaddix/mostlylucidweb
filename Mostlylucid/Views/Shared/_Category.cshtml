@@ -1,0 +1,11 @@
+﻿@model string
+@{
+    var url = Url.Action("Category", "Blog", new { category = Model });
+}
+<a hx-get="@url"
+   hx-push-url="true"
+   hx-target="#contentcontainer"
+   onclick="event.stopPropagation();"
+   class="inline-block rounded-full bg-blue-light dark:bg-gray-800 bg-opacity-20 px-2 py-0.5 font-body text-xs text-black dark:text-white outline-1 outline outline-blue-light dark:outline-slate-700 cursor-pointer hover:bg-opacity-30 transition-all">
+    @Model
+</a>

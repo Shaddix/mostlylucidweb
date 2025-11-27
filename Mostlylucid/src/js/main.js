@@ -1,101 +1,390 @@
-﻿function global() {
-    return {
-        isMobileMenuOpen: false,
-        isDarkMode: false,
-        themeInit() {
-            if (
-                localStorage.theme === "dark" ||
-                (!("theme" in localStorage) &&
-                    window.matchMedia("(prefers-color-scheme: dark)").matches)
-            ) {
-                localStorage.theme = "dark";
-                document.documentElement.classList.add("dark");
-                document.documentElement.classList.remove("light");
-                this.isDarkMode = true;
-            } else {
-                localStorage.theme = "light";
-                document.documentElement.classList.remove("dark");
-                document.documentElement.classList.add("light");
-                this.isDarkMode = false;
-            }
-        },
-        themeSwitch() {
-            if (localStorage.theme === "dark") {
-                localStorage.theme = "light";
-                document.documentElement.classList.remove("dark");
-                document.documentElement.classList.add("light");
-                this.isDarkMode = false;
-            } else {
-                localStorage.theme = "dark";
-                document.documentElement.classList.add("dark");
-                document.documentElement.classList.remove("light");
-                this.isDarkMode = true;
-            }
-        },
-    };
+﻿// Initialize the mostlylucid namespace if not already defined
+import hljsRazor from "highlightjs-cshtml-razor";
+window.mostlylucid = window.mostlylucid || {};
+import mermaid from "mermaid";
+import Alpine from 'alpinejs';
+import htmx from "htmx.org";
+import hljs from "highlight.js";
+import EasyMDE from "easymde";
+import 'easymde/dist/easymde.min.css';
+import '../css/easymde-overrides.css';
+import flatpickr from "flatpickr";
+import 'flatpickr/dist/flatpickr.min.css';
+import '../css/flatpickr-overrides.css';
+import "./blog-index";
+
+
+window.EasyMDE = EasyMDE;
+window.flatpickr = flatpickr;
+
+window.Alpine = Alpine;
+window.hljs=hljs;
+window.htmx = htmx;
+window.mermaid=mermaid;
+window.mermaid.initialize({startOnLoad : false});
+import { init } from '@mostlylucid/mermaid-enhancements/min';
+import '@mostlylucid/mermaid-enhancements/styles.css';
+
+
+// Importing modules
+import { typeahead } from "./typeahead";
+import { submitTranslation, viewTranslation } from "./translations";
+import { codeeditor } from "./simplemde_editor";
+import { globalSetup } from "./global";
+import  {comments} from  "./comments";
+import { queryParamClearer, queryParamToggler } from "./query-params";
+import { initBrokenLinks } from "./broken-links";
+import { showToast, showHTMXToast } from "./toast";
+import "./highlight-copy";
+import "./htmx-events";
+// removed bare import of package to avoid TS source resolution
+
+window.mostlylucid.comments = comments();
+
+// Attach imported modules to the mostlylucid namespace
+window.mostlylucid.typeahead = typeahead;
+window.mostlylucid.translations = {
+    submitTranslation: submitTranslation,
+    viewTranslation: viewTranslation
+};
+window.mostlylucid.simplemde = codeeditor(); // Assuming simplemde() returns the instance
+window.globalSetup = globalSetup;
+
+// Expose query param utilities on window for Alpine.js
+window.queryParamClearer = queryParamClearer;
+window.queryParamToggler = queryParamToggler;
+
+// Also expose on mostlylucid namespace for backwards compatibility
+window.mostlylucid.queryParamClearer = queryParamClearer;
+window.mostlylucid.queryParamToggler = queryParamToggler;
+window.mostlylucid.initBrokenLinks = initBrokenLinks;
+
+// Track Alpine initialization to prevent duplicate starts
+let alpineStarted = false;
+
+function startAlpine() {
+    if (alpineStarted) {
+        return false;
+    }
+
+    if (window.Alpine && typeof window.Alpine.start === 'function') {
+        try {
+            window.Alpine.start();
+            alpineStarted = true;
+            console.log('Alpine.js started');
+            return true;
+        } catch (err) {
+            console.log('Alpine start failed:', err.message);
+            return false;
+        }
+    }
+    return false;
 }
 
-window.global = global;
-function setLogoutLink() {
-    // Get the logout link
-    var logoutLink = document.querySelector('a[data-logout-link]');
+// Start Alpine as soon as it's available (theme switcher needs it early)
+if (!startAlpine()) {
+    // If not ready yet, wait a bit and try again
+    setTimeout(() => {
+        startAlpine();
+    }, 100);
+}
+
+function setLogoutLink(container = document) {
+    // Get the logout link - search within container for HTMX swaps
+    var logoutLink = container.querySelector('a[data-logout-link]');
 
     if (logoutLink) {
-        // Get the current URL
-        var currentUrl = window.location.href;
+        try {
+            // Get the current URL
+            var currentUrl = window.location.href;
 
-        // Update the href attribute to include the return URL
-        var baseUrl = logoutLink.href.split('?')[0]; // Get the base URL without query parameters
-        logoutLink.href = baseUrl + '?returnUrl=' + encodeURIComponent(currentUrl);
+            // Check if link already has the return URL set to avoid duplicate updates
+            if (logoutLink.href.includes('returnUrl=' + encodeURIComponent(currentUrl))) {
+                return;
+            }
+
+            // Update the href attribute to include the return URL
+            var baseUrl = logoutLink.href.split('?')[0]; // Get the base URL without query parameters
+            logoutLink.href = baseUrl + '?returnUrl=' + encodeURIComponent(currentUrl);
+
+            console.log('Logout link updated:', logoutLink.href);
+        } catch (error) {
+            console.error('Error setting logout link:', error);
+        }
     }
 }
-let googleSignInInitialized = false;
-let simpleMDEInitialized = false;
-let mermaidInitialized = false;
-window.onload= function () {
-    console.log('Window loaded');
-    // Google Sign-In Initialization
-    if (!googleSignInInitialized) {
-       initGoogleSignIn();
-        googleSignInInitialized = true;  // Set the flag to true after initialization
+
+// Make setLogoutLink available globally for debugging and manual calls if needed
+window.setLogoutLink = setLogoutLink;
+
+window.mermaidinit =async  function() {
+
+    try {
+      await  init().then(r => console.log('Mermaid initialized'));
+    } catch (e) {
+        console.error('Failed to initialize Mermaid:', e);
     }
 
-    // Highlight.js Initialization
-    hljs.highlightAll();
-
-    // Mermaid.js Initialization
-    if (!mermaidInitialized) {
-        mermaid.initialize({ startOnLoad: true });
-        mermaidInitialized = true;  // Set the flag to true after initialization
-    }
-    updateMetaUrls();
-
-    // SimpleMDE Initialization
-    initializeSimpleMDE();
 }
-document.body.addEventListener('htmx:afterSwap', function(evt) {
-    console.log('HTMX afterSwap triggered', evt);
 
-    hljs.highlightAll();
-    initializeSimpleMDE();
 
-    const url = evt.detail.pathInfo.requestPath;
+function highlightCodeBlocks(container = document) {
+    // Only highlight code blocks that haven't been highlighted yet
+    const codeBlocks = container.querySelectorAll('pre code:not(.hljs)');
+    codeBlocks.forEach((block) => {
+        try {
+            hljs.highlightElement(block);
+        } catch (err) {
+            console.error('Failed to highlight code block:', err);
+            // Ensure block has at least basic styling even if highlighting fails
+            block.classList.add('hljs');
+        }
+    });
 
-    if (typeof umami !== 'undefined' && url) {
-        console.log('Tracking page view with Umami', url);
-        umami.track(props => ({ ...props, url:url }));
-    } else {
-        console.log('umami is not defined');
+    // Also check for any code blocks that might have lost their highlighting
+    // (e.g., after DOM manipulation) and re-highlight them
+    const unhighlightedBlocks = container.querySelectorAll('pre code.hljs:not([data-highlighted])');
+    unhighlightedBlocks.forEach((block) => {
+        try {
+            // Remove hljs class first to force re-highlight
+            block.classList.remove('hljs');
+            hljs.highlightElement(block);
+        } catch (err) {
+            console.error('Failed to re-highlight code block:', err);
+            // Re-add hljs class for styling
+            block.classList.add('hljs');
+        }
+    });
+}
+
+// Cloudflare-safe HTMX event listener registration
+function registerHTMXListener() {
+    // Defensive check: Only register if htmx is available
+    if (typeof window.htmx === 'undefined') {
+        console.warn('HTMX not loaded yet, retrying in 100ms...');
+        setTimeout(registerHTMXListener, 100);
+        return;
     }
-    updateMetaUrls();
-    initGoogleSignIn();
-    mermaid.run();
-    setLogoutLink();
-});
+
+    // Only trigger updates after HTMX swaps content in #contentcontainer or #commentlist
+    document.body.addEventListener('htmx:afterSettle', async function(evt) {
+        const targetId = evt.detail.target.id;
+        if (targetId !== 'contentcontainer' && targetId !== 'commentlist' && targetId!=="blogpost") {
+            console.log("Ignoring swap event for target:", targetId);
+            return;
+        }
+
+        console.log('HTMX afterSettle triggered for:', targetId);
+
+        try {
+            // Re-initialize Google Sign-In button if present in swapped content
+            initGoogleSignIn();
+        } catch (err) {
+            console.error('Failed to re-initialize Google Sign-In:', err);
+        }
+
+        try {
+            // Highlight code blocks in swapped content BEFORE Mermaid (important!)
+            highlightCodeBlocks(evt.detail.target);
+            console.log('Highlight.js applied after HTMX swap');
+        } catch (err) {
+            console.error('Failed to highlight after HTMX swap:', err);
+        }
+
+        try {
+            // Re-initialize Mermaid diagrams in the new content
+            await mermaidinit();
+            console.log('Mermaid applied after HTMX swap');
+        } catch (err) {
+            console.error('Failed to initialize Mermaid after HTMX swap:', err);
+        }
+
+        try {
+            // Double-check highlighting after Mermaid renders
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            highlightCodeBlocks(evt.detail.target);
+        } catch (err) {
+            console.error('Failed to re-highlight after Mermaid:', err);
+        }
+
+        try {
+            // Update logout link in the swapped content (search entire document in case it's in nav)
+            setLogoutLink(document);
+        } catch (err) {
+            console.error('Failed to set logout link:', err);
+        }
+
+        // Rewrite any broken links in the swapped content
+        try {
+            initBrokenLinks(evt.detail.target);
+        } catch (err) {
+            console.error('Failed to rewrite broken links:', err);
+        }
+
+        console.log('HTMX afterSettle complete for:', targetId);
+    }, { once: false }); // Don't use once - we need this for all HTMX swaps
+
+    console.log('HTMX event listener registered successfully');
+}
+
+async function initializePage() {
+    try {
+        initGoogleSignIn();
+    } catch (err) {
+        console.error('Failed to initialize Google Sign-In:', err);
+    }
+
+    // Wait for Alpine to be ready before initializing Mermaid
+    // This ensures themeInit() has run and the theme event has been fired
+    await new Promise(resolve => {
+        if (window.Alpine && window.Alpine.version) {
+            resolve();
+        } else {
+            document.addEventListener('alpine:init', resolve, { once: true });
+        }
+    });
+
+    try {
+        // Register highlight.js copy button plugin
+        if (typeof window.addCopyPlugin === 'function') {
+            window.addCopyPlugin();
+        }
+    } catch (err) {
+        console.error('Failed to register hljs copy plugin:', err);
+    }
+
+    try {
+        // Register Razor syntax highlighting
+        const hljsRazor = require('highlightjs-cshtml-razor');
+        hljs.registerLanguage("cshtml-razor", hljsRazor);
+    } catch (err) {
+        console.error('Failed to register Razor language:', err);
+    }
+
+    // Wait for a short delay to ensure all DOM elements are fully rendered
+    // This is especially important for server-side rendered content
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    // Initialize highlight.js first so code is styled correctly
+    try {
+        highlightCodeBlocks();
+        console.log('Highlight.js initialized on page load');
+    } catch (err) {
+        console.error('Failed to highlight code blocks:', err);
+    }
+
+    // Initialize Mermaid after theme is set and code is highlighted
+    try {
+        await mermaidinit();
+        console.log('Mermaid initialized on page load');
+    } catch (err) {
+        console.error('Failed to initialize Mermaid:', err);
+    }
+
+    // Double-check: retry highlighting after Mermaid initializes
+    // Sometimes code blocks in dynamic content need a second pass
+    try {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        highlightCodeBlocks();
+    } catch (err) {
+        console.error('Failed to re-highlight code blocks:', err);
+    }
+
+    try {
+        setLogoutLink();
+        updateMetaUrls();
+    } catch (err) {
+        console.error('Failed to set logout link or update meta URLs:', err);
+    }
+
+    // Initialize broken link rewriter (runs in background, non-blocking)
+    try {
+        initBrokenLinks();
+    } catch (err) {
+        console.error('Failed to initialize broken links:', err);
+    }
+
+    console.log('Document is ready - all initializations complete');
+
+    // Register HTMX listener with Cloudflare-safe retry mechanism
+    registerHTMXListener();
+}
+
+// Cloudflare Rocket Loader compatibility: ensure all dependencies are loaded
+function waitForDependencies(maxAttempts = 50) {
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+
+        const checkDependencies = () => {
+            attempts++;
+
+            // Check if all critical dependencies are loaded
+            const depsReady =
+                typeof window.hljs !== 'undefined' &&
+                typeof window.mermaid !== 'undefined' &&
+                typeof window.Alpine !== 'undefined' &&
+                typeof window.htmx !== 'undefined';
+
+            if (depsReady) {
+                console.log('All dependencies loaded after', attempts, 'attempts');
+
+                // Try to start Alpine if not already started
+                startAlpine();
+
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                console.warn('Timeout waiting for dependencies. Missing:', {
+                    hljs: typeof window.hljs === 'undefined',
+                    mermaid: typeof window.mermaid === 'undefined',
+                    alpine: typeof window.Alpine === 'undefined',
+                    htmx: typeof window.htmx === 'undefined'
+                });
+                // Continue anyway - individual initializations have their own error handling
+                resolve();
+            } else {
+                // Retry with exponential backoff
+                const delay = Math.min(50 * Math.pow(1.2, attempts), 500);
+                setTimeout(checkDependencies, delay);
+            }
+        };
+
+        checkDependencies();
+    });
+}
+
+// Robust initialization that handles Cloudflare Rocket Loader interference
+async function safeInitialize() {
+    try {
+        // Wait for dependencies to load (handles Rocket Loader delays)
+        await waitForDependencies();
+
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            });
+        }
+
+        // Now run initialization
+        await initializePage();
+    } catch (err) {
+        console.error('Failed to initialize page:', err);
+        // Retry once after a delay
+        setTimeout(() => {
+            initializePage().catch(e => console.error('Retry failed:', e));
+        }, 1000);
+    }
+}
+
+// Start initialization
+safeInitialize();
 
 
-function updateMetaUrls()
-{
+
+
+
+
+function updateMetaUrls() {
     var currentUrl = window.location.href;
 
     // Set the current URL in the og:url and twitter:url meta tags
@@ -103,160 +392,23 @@ function updateMetaUrls()
     document.getElementById('metaTwitterUrl').setAttribute('content', currentUrl);
 }
 
-function initializeSimpleMDE() {
-    if(simpleMDEInitialized) return;
-    const element = document.getElementsByClassName('markdowneditor')[0];
-    
-    if (!element) return;
-    if (window.simplemde) {
-        window.simplemde.toTextArea();
-        window.simplemde = null;
-    }
-
-    // Initialize a new SimpleMDE instance
-    window.simplemde = new SimpleMDE({ element: element,
-        toolbar: [
-            "bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|",
-            {
-                name: "save",
-                action: function(editor){
-                    var params = new URLSearchParams(window.location.search);
-                    var slug = params.get("slug");
-                    var language = params.get("language");
-
-                    // Check if the values exist
-                    if (!slug || !language) {
-                        console.error("Missing slug or language in the URL");
-                        return;
-                    }
-
-                    saveContentToDisk(editor.value(), slug, language);
-                   
-                },
-                className: "bx bx-save", // FontAwesome floppy disk icon
-                title: "Save",
-            },
-            "|", "preview", "side-by-side", "fullscreen"
-        ]});
-
-}
-
-window.mostlylucid = window.mostlylucid || {};
-
-window.mostlylucid.typeahead = function () {
-    return {
-        query: '',
-        results: [],
-        highlightedIndex: -1, // Tracks the currently highlighted index
-
-        search() {
-            if (this.query.length < 2) {
-                this.results = [];
-                this.highlightedIndex = -1;
-                return;
-            }
-            let token = document.querySelector('#searchelement input[name="__RequestVerificationToken"]').value;
-console.log(token);
-            fetch(`/api/search/${encodeURIComponent(this.query)}`, { // Fixed the backtick and closing bracket
-                method: 'GET', // or 'POST' depending on your needs
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': token // Attach the AntiForgery token in the headers
-                }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    this.results = data;
-                    this.highlightedIndex = -1; // Reset index on new search
-                });
-        },
-
-        moveDown() {
-            if (this.highlightedIndex < this.results.length - 1) {
-                this.highlightedIndex++;
-            }
-        },
-
-        moveUp() {
-            if (this.highlightedIndex > 0) {
-                this.highlightedIndex--;
-            }
-        },
-
-        selectHighlighted() {
-            if (this.highlightedIndex >= 0 && this.highlightedIndex < this.results.length) {
-                this.selectResult(this.results[this.highlightedIndex]);
-            }
-        },
-
-        selectResult(result) {
-            htmx.ajax('get', result.url, {
-                target: '#contentcontainer',  // The container to update
-                swap: 'innerHTML',            // Replace the content inside the target
-                
-                
-            }).then(function() {
-                history.pushState(null, '', result.url);
-            });
-         
-            this.results = []; // Clear the results
-            this.highlightedIndex = -1; // Reset the highlighted index
-            this.query = ''; // Clear the query
-        }
-    }
-}
-window.simplemde = null;
-
-function saveContentToDisk(content, slug, language) {
-    console.log("Saving content to disk...");
-
-    // Determine the filename based on the slug and language
-    var filename;
-    if (language === 'en') {
-        filename = slug + ".md";
-    } else {
-        filename = slug + "." + language + ".md";
-    }
-
-    // Create a Blob with the content
-    var blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
-
-    // Create a temporary link element to trigger the download
-    var link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-
-    // Append link to the body temporarily and click it to trigger download
-    document.body.appendChild(link);
-    link.click();
-
-    // Clean up by removing the link element
-    document.body.removeChild(link);
-
-    console.log("Download triggered for " + filename);
-}
-
-
-
 function renderButton(element) {
     // Check if the button has already been initialized
     if (!element.getAttribute('data-google-rendered')) {
         google.accounts.id.renderButton(
             element,
             {
-                type: "standard",
-                size: "large",
-                width: 200,
+                type: "icon",
+                size: "medium",
                 theme: "filled_black",
-                text: "sign_in_with",
-                shape: "rectangular",
-                logo_alignment: "left"
+                shape: "circle"
             }
         );
         // Mark the element as initialized
         element.setAttribute('data-google-rendered', 'true');
     }
 }
+
 function initGoogleSignIn() {
     google.accounts.id.initialize({
         client_id: "839055275161-u7dqn2oco2729n6i5mk0fe7gap0bmg6g.apps.googleusercontent.com",
@@ -266,11 +418,6 @@ function initGoogleSignIn() {
     if (element) {
         renderButton(element);
     }
-    const secondElement = document.getElementById('google_button2');
-    if (secondElement) {
-        renderButton(secondElement);
-    }
-
 }
 
 function handleCredentialResponse(response) {
@@ -294,71 +441,12 @@ function handleCredentialResponse(response) {
     }
 }
 
-window.codeEditorInit = function(){
-    console.log('Page loaded without refresh');
-
-    // Trigger on change event of SimpleMDE editor
-    window.simplemde.codemirror.on("keydown", function(instance, event) {
-        let triggerUpdate= false;
-        // Check if the Enter key is pressed
-        if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "r") {
-            event.preventDefault(); // Prevent the default behavior (e.g., browser refresh)
-            triggerUpdate = true;
-        }
-        if (event.key === "Enter")
-        {
-            triggerUpdate = true;
-        }
-
-        if (triggerUpdate) {
-
-            var content = simplemde.value();
-
-            // Send content to WebAPI endpoint
-            fetch('/api/editor/getcontent', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ content: content })  // JSON object with 'content' key
-            })
-                .then(response => response.json())  // Parse the JSON response
-                .then(data => {
-                    // Render the returned HTML content into the div
-                    document.getElementById('renderedcontent').innerHTML = data.htmlContent;
-                    document.getElementById('title').innerHTML  = data.title;// Assuming the returned JSON has an 'htmlContent' property
-                    const date = new Date(data.publishedDate);
-
-                    const formattedDate = new Intl.DateTimeFormat('en-GB', {
-                        weekday: 'long',  // Full weekday name
-                        day: 'numeric',   // Day of the month
-                        month: 'long',    // Full month name
-                        year: 'numeric'   // Full year
-                    }).format(date);
-
-                    document.getElementById('publishedDate').innerHTML = formattedDate;
-                    populateCategories(data.categories);
 
 
-                    mermaid.run();
-                    hljs.highlightAll();
-                })
-                .catch(error => console.error('Error:', error));
-        }
-    });
+// Expose toast functions globally for use in templates and other scripts
+window.showToast = showToast;
+window.showHTMXToast = showHTMXToast;
 
-    function populateCategories(categories) {
-        var categoriesDiv = document.getElementById('categories');
-        categoriesDiv.innerHTML = ''; // Clear the div
-
-        categories.forEach(function(category) {
-            // Create the span element
-            let span = document.createElement('span');
-            span.className = 'inline-block rounded-full dark bg-blue-dark px-2 py-1 font-body text-sm text-white outline-1 outline outline-green-dark dark:outline-white'; // Apply the style class
-            span.textContent = category;
-
-            // Append the span to the categories div
-            categoriesDiv.appendChild(span);
-        });
-    }
-}
+// Also expose on mostlylucid namespace
+window.mostlylucid.showToast = showToast;
+window.mostlylucid.showHTMXToast = showHTMXToast;

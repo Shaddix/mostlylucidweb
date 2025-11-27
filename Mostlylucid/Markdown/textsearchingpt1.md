@@ -6,6 +6,11 @@
 # Introduction
 Searching for content is a critical part of any content heavy website. It enhances discoverability and user experience. In this post I'll cover how I added full text searching for this site
 
+Next parts in this series:
+- [Search Box with Postgres](/blog/textsearchingpt11)
+- [Introduction to OpenSearch](/blog/textsearchingpt2)
+- [Opensearch with C#](/blog/textsearchingpt3)
+
 [TOC]
 
 # Approaches
@@ -120,7 +125,7 @@ To use these (in future) we can create a simple WebAPI endpoint that takes a que
 ```csharp
 [ApiController]
 [Route("api/[controller]")]
-public class SearchApi(MostlylucidDbContext context) : ControllerBase
+public class SearchApi(IMostlylucidDbContext context) : ControllerBase
 {
     [HttpGet]
     public async Task<JsonHttpResult<List<SearchResults>>> Search(string query)

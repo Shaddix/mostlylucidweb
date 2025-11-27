@@ -1,0 +1,165 @@
+mostlylucid.Markdig.FetchExtension
+==================================
+
+TABLE OF CONTENTS
+-----------------
+1. Version 1.1.0 (2025-11-07)
+2. Version 1.0.0 (Initial Release)
+3. Requirements
+4. Documentation
+5. License
+
+
+=========================================
+VERSION 1.1.0 (2025-11-07)
+=========================================
+
+MAJOR TOC EXTENSION ENHANCEMENTS
+---------------------------------
+
+For complete details, see TOC_ENHANCEMENTS_v1.1.0.md
+
+HIGHLIGHTS:
+* Smart heading level auto-detection (no more empty TOCs for blog posts!)
+* Flexible syntax: single quotes, no quotes, extra whitespace all supported
+* Improved error handling with helpful debug comments
+* Performance improvements (removed debug logging, single-pass processing)
+* Breaking change: UseToc() MUST be last in pipeline
+* Comprehensive test coverage for all new features
+
+SMART HEADING LEVEL DETECTION:
+* Auto-adjusts minimum heading level based on document structure
+* If document starts at H2 (common in blog posts), automatically uses H2 as minimum level
+* Prevents empty TOC when documents don't have H1 headers
+* Includes HTML comment showing auto-adjustment for debugging
+* Example: Document with only H2-H4 now generates proper TOC starting at H2
+
+FLEXIBLE SYNTAX PARSING:
+* [TOC cssclass="my-class"] - Double quotes (original)
+* [TOC cssclass='my-class'] - Single quotes (new)
+* [TOC cssclass=my-class] - No quotes (new)
+* [TOC  cssclass = "my-class" ] - Extra spaces around equals (new)
+* Leading/trailing whitespace now handled correctly
+* Regex pattern updated: ^\s*\[TOC(?:\s+cssclass\s*=\s*["']?([a-zA-Z0-9_-]+)["']?)?\s*\]\s*$
+
+IMPROVED ERROR HANDLING:
+* Empty documents render HTML comment instead of throwing error
+* Missing document renders helpful debug comment
+* Better feedback when no headings found within level range
+
+PERFORMANCE IMPROVEMENTS:
+* Removed debug console logging throughout (cleaner production output)
+* More efficient heading collection and filtering
+* Single-pass heading processing
+
+PIPELINE ORDER REQUIREMENT (BREAKING CHANGE):
+* UseToc() extension MUST now be registered last in the pipeline
+* This ensures proper interaction with other Markdig extensions
+* Updated MarkdownBaseService to reflect correct ordering
+
+COMPREHENSIVE TEST COVERAGE:
+* Added tests for all new syntax variations
+* Tests for auto-adjustment behavior
+* Tests for edge cases (empty documents, unusual heading structures)
+* Tests for whitespace handling
+
+
+=========================================
+VERSION 1.0.0 (Initial Release)
+=========================================
+
+Initial release of the Markdig Fetch Extension - a comprehensive solution for
+fetching remote Markdown content and generating table of contents.
+
+KEY FEATURES
+------------
+
+FETCH EXTENSION:
+* Simple inline syntax: <fetch markdownurl="URL" pollfrequency="24h"/>
+* Multiple storage backends: In-Memory, File-based, and custom implementations
+* Smart caching with configurable poll frequency (hours)
+* Stale-while-revalidate pattern: Returns cached content if fetch fails
+* Link transformation: Automatically rewrites relative links to absolute URLs
+* Fetch metadata summaries: Display when content was last fetched
+* Flexible template system for metadata display
+* Full dependency injection support
+* Thread-safe operations across all storage providers
+* Preprocessing architecture ensures fetched content flows through your entire
+  Markdig pipeline with all custom extensions
+* Documentation mode: Add disable="true" to prevent tag processing, perfect for
+  writing documentation about the extension itself
+
+TABLE OF CONTENTS (TOC) EXTENSION:
+* Simple inline syntax: [TOC], [TOC:2-4], [TOC:2-4:my-class]
+* Automatically generates hierarchical table of contents from headers
+* Configurable heading level range (e.g., H2-H4)
+* Custom CSS class support for styling
+* Semantic HTML5 nav element output
+* Automatic anchor link generation for all headings
+* Integrates seamlessly with the fetch extension
+
+FLEXIBLE TIME UNITS:
+* Poll frequency now supports multiple time units: seconds (s), minutes (m), hours (h), days (d)
+* Examples: "30s", "5m", "12h", "7d"
+* Backwards compatible - plain numbers still default to hours
+* Prevents large numbers like "1000000000s" by using appropriate units
+
+STORAGE OPTIONS
+---------------
+
+* In-Memory: Perfect for demos, testing, simple apps (no persistence)
+* File-Based: Single-server production with disk persistence
+* Database Plugins: SQLite, PostgreSQL, SQL Server (separate packages)
+* Custom: Implement IMarkdownFetchService for specialized needs
+
+USAGE EXAMPLES
+--------------
+
+Fetch Extension:
+  services.AddInMemoryMarkdownFetch();
+  FetchMarkdownExtension.ConfigureServiceProvider(serviceProvider);
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .Use<FetchMarkdownExtension>()
+      .Build();
+
+  In markdown: <fetch markdownurl="https://example.com/doc.md" pollfrequency="24h"/>
+
+TOC Extension:
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .UseToc()  // MUST be last!
+      .Build();
+
+  In markdown: [TOC] or [TOC cssclass="my-class"]
+
+Combined Usage:
+  var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .Use<FetchMarkdownExtension>()
+      .UseToc()  // MUST be last!
+      .Build();
+
+
+=========================================
+REQUIREMENTS
+=========================================
+
+* .NET 9.0+
+* Markdig 0.42.0+
+* Microsoft.Extensions.DependencyInjection 9.0+
+
+
+=========================================
+DOCUMENTATION
+=========================================
+
+Full documentation: https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension
+Integration guide: See INTEGRATION_GUIDE.md in the repository
+
+
+=========================================
+LICENSE
+=========================================
+
+Unlicense (public domain)

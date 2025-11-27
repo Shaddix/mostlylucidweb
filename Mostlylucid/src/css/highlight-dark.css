@@ -1,0 +1,5 @@
+/* Dark theme for highlight.js - scoped to .dark class using Tailwind's arbitrary properties */
+@media (min-width: 0px) {
+    /* Wrap all imported styles in .dark selector by using media query then post-processing */
+    @import 'highlight.js/styles/atom-one-dark-reasonable.css';
+}

@@ -1,0 +1,65 @@
+using Mostlylucid.Shared.Config;
+
+namespace Mostlylucid.SemanticSearch.Config;
+
+/// <summary>
+/// Configuration for semantic search functionality
+/// </summary>
+public class SemanticSearchConfig : IConfigSection
+{
+    public static string Section => "SemanticSearch";
+    /// <summary>
+    /// Enable or disable semantic search
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Qdrant server URL (e.g., http://localhost:6333)
+    /// </summary>
+    public string QdrantUrl { get; set; } = "http://localhost:6333";
+
+    /// <summary>
+    /// Optional read-only API key for Qdrant (used for search operations)
+    /// </summary>
+    public string? ReadApiKey { get; set; }
+
+    /// <summary>
+    /// Optional read-write API key for Qdrant (used for indexing operations)
+    /// </summary>
+    public string? WriteApiKey { get; set; }
+
+    /// <summary>
+    /// Collection name in Qdrant for blog posts
+    /// </summary>
+    public string CollectionName { get; set; } = "blog_posts";
+
+    /// <summary>
+    /// Path to the ONNX embedding model file
+    /// </summary>
+    public string EmbeddingModelPath { get; set; } = "models/all-MiniLM-L6-v2.onnx";
+
+    /// <summary>
+    /// Path to the tokenizer vocabulary file
+    /// </summary>
+    public string VocabPath { get; set; } = "models/vocab.txt";
+
+    /// <summary>
+    /// Embedding vector size (384 for all-MiniLM-L6-v2)
+    /// </summary>
+    public int VectorSize { get; set; } = 384;
+
+    /// <summary>
+    /// Number of related posts to return
+    /// </summary>
+    public int RelatedPostsCount { get; set; } = 5;
+
+    /// <summary>
+    /// Minimum similarity score (0-1) for related posts
+    /// </summary>
+    public float MinimumSimilarityScore { get; set; } = 0.5f;
+
+    /// <summary>
+    /// Number of search results to return
+    /// </summary>
+    public int SearchResultsCount { get; set; } = 10;
+}

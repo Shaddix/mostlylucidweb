@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
         <UserSecretsId>c720973b-30fe-465d-a96f-6c9923332a29</UserSecretsId>
+        <TargetFramework>net9.0</TargetFramework>
     </PropertyGroup>
-
+  
   <PropertyGroup>
     <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
@@ -16,55 +16,113 @@
       <PackageReference Include="FileCache" Version="3.3.0" />
       <PackageReference Include="FluentEmail.Razor" Version="3.0.2" />
       <PackageReference Include="FluentEmail.Smtp" Version="3.0.2" />
-      <PackageReference Include="Htmx" Version="1.8.0" />
-      <PackageReference Include="Htmx.TagHelpers" Version="1.8.0" />
-      <PackageReference Include="Leisn.MarkdigToc" Version="0.1.3" />
-      <PackageReference Include="Markdig" Version="0.37.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.7" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.7" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.7">
+      <PackageReference Include="Htmx" Version="1.8.3" />
+      <PackageReference Include="Htmx.TagHelpers" Version="1.8.3" />
+      <PackageReference Include="Humanizer" Version="2.14.1" />
+      <PackageReference Include="Markdig" Version="0.43.0" />
+      <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.9" />
+      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.8" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.0.1" />
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
-      <PackageReference Include="PaginationTagHelper.AspNetCore" Version="1.0.1" />
-      <PackageReference Include="PreMailer.Net" Version="2.6.0" />
-      <PackageReference Include="Serilog" Version="4.0.1" />
-      <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
-      <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-      <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
-      <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-      <PackageReference Include="SixLabors.ImageSharp.Web" Version="3.1.3" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="6.7.0" />
-      <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.7.0" />
-      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
-      <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.9.0" />
+      <PackageReference Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring" Version="9.9.0" />
+      <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.9" />
+      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.14.0" />
+      <PackageReference Include="mostlylucid.pagingtaghelper" Version="1.0.0-rc4" />
+      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+      <PackageReference Include="OpenSearch.Client" Version="1.8.0" />
+      <PackageReference Include="OpenSearch.Client.JsonNetSerializer" Version="1.8.0" />
+      <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.12.0" />
+      <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.9.0-beta.2" />
+      <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.6" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.12.0" />
+      <PackageReference Include="Polly" Version="8.6.4" />
+      <PackageReference Include="PreMailer.Net" Version="2.7.2" />
+      <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+      <PackageReference Include="Serilog" Version="4.3.0" />
+      <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+      <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+      <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+      <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+      <PackageReference Include="Serilog.Exceptions.EntityFrameworkCore" Version="8.4.0" />
+      <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+      <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
+      <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+      <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
+      <PackageReference Include="SerilogTracing.Expressions" Version="2.3.1" />
+      <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" Version="2.3.1" />
+      <PackageReference Include="SixLabors.ImageSharp.Web" Version="3.2.0" />
+      <PackageReference Include="Scalar.AspNetCore" Version="1.2.60" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+      <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
+      <!-- <PackageReference Include="Umami.Net" Version="1.0.0-preview5" /> -->
       <PackageReference Include="WebEssentials.AspNetCore.PWA" Version="1.0.85" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Markdown\comments\" />
-      <Folder Include="Markdown\notmoderatedcomments\" />
-      <Folder Include="wwwroot\css\dist\" />
-      <Folder Include="wwwroot\lib\" />
+      <Folder Include="Blog\Models\" />
+      <Folder Include="EmailSubscription\Services\" />
+      <Folder Include="wwwroot\css\dist\highlight\" />
+      <Folder Include="wwwroot\css\highlight\" />
     </ItemGroup>
     <ItemGroup>
 
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
-      </Content>    
-    </ItemGroup>
+      </Content>
 
+    </ItemGroup>
     <ItemGroup>
+      <ProjectReference Include="..\Mostlylucid.DbContext\Mostlylucid.DbContext.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Services\Mostlylucid.Services.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
+      <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
+      <ProjectReference Include="..\Mostlylucid.SemanticSearch\Mostlylucid.SemanticSearch.csproj" />
       <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\DailyTemplate.cshtml" />
+      <_ContentIncludedByDefault Remove="EmailSubscription\EmailTemplate\WeeklyTemplate.cshtml" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="wwwroot\articleimages\userrow.png" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.fi.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.es.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.el.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.de.md" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.de.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.ar.hash" />
+      <None Remove="Markdown\translated\aboutme.zh.hash" />
+      <None Remove="Markdown\translated\aboutme.nl.hash" />
+      <None Remove="Markdown\translated\aboutme.it.hash" />
+      <None Remove="Markdown\translated\aboutme.hi.hash" />
+      <None Remove="Markdown\translated\aboutme.fr.hash" />
+      <None Remove="Markdown\translated\aboutme.es.hash" />
+      <None Remove="Markdown\translated\aboutme.de.hash" />
+      <None Remove="Markdown\translated\alittleapology.nl.hash" />
+      <None Remove="Markdown\translated\alittleapology.it.hash" />
+      <None Remove="Markdown\translated\alittleapology.hi.hash" />
+      <None Remove="Markdown\translated\alittleapology.fr.hash" />
+      <None Remove="Markdown\translated\alittleapology.es.hash" />
+      <None Remove="Markdown\translated\alittleapology.de.md" />
+      <None Remove="Markdown\translated\alittleapology.de.hash" />
+      <None Remove="Markdown\translated\alittleapology.ar.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.zh.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.uk.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.sv.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.nl.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.it.hash" />
+      <None Remove="Markdown\translated\acopybuttonforhightlightjs.hi.hash" />
+      <None Remove="Markdown\translated\alittleapology.zh.hash" />
     </ItemGroup>
   
 
-    <Target Name="BuildCss" BeforeTargets="Compile">
-        <Exec Command="npm run dev" Condition=" '$(Configuration)' == 'Debug' " />
-        <Exec Command="npm run build" Condition=" '$(Configuration)' == 'Release' " EnvironmentVariables="NODE_ENV=production" />
-    </Target>
 </Project>

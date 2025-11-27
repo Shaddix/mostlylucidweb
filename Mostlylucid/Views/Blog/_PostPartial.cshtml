@@ -1,77 +1,170 @@
-﻿@using Microsoft.AspNetCore.Http.Extensions
-@using Mostlylucid.Helpers
+﻿@using Mostlylucid.Shared.Helpers
 @model Mostlylucid.Models.Blog.BlogPostViewModel
-
-
-
 <title>@($"{Model.Title} ({Model.Language.ConvertCodeToLanguage()})")</title>
-<div class="pt-2 lg:pt-2">
-    <div class="border-b border-grey-lighter pb-2 sm:pb-2">
+<div class="pt-2 lg:pt-2" id="blogpost" hx-boost="true"  hx-target="#contentcontainer" hx-swap="show:window:top">
+    <div class="border-b border-grey-lighter pb-3 sm:pb-3">
 
-        <h2
-            class="pb-2 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white sm:text-4xl md:text-5xl">
+        <h2 class="pb-2 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white">
             @Model.Title
         </h2>
-        <div class="border-b border-grey-lighter pb-2 pt-2 sm:pb-2">
-            @foreach (var category in Model.Categories)
-            {
 
-                <a hx-boost="true"   hx-target="#contentcontainer"  asp-action="Category" asp-controller="Blog" asp-route-category="@category">
-                    <span
-                        class="inline-block rounded-full dark bg-blue-dark px-2 py-1 font-body text-sm text-white outline-1 outline outline-green-dark dark:outline-white">@category</span>
-                </a>
-            }
-            <a asp-action="Edit" class="ml-4 text-sm  btn-sm btn btn-outline btn-primary" asp-controller="Editor" asp-route-slug="@Model.Slug" asp-route-language="@Model.Language" ><i class=" bx bx-edit"></i> edit</a>
-        </div>
-     
-            @if (Model.Languages.Length > 1)
-            {
-                var languageModel = (Model.Slug, Model.Languages, Model.Language);
-                <div class="border-b border-grey-lighter pb-2 pt-2 sm:pb-2">
-                    <p class="font-body  font-bold text-primary dark:text-white">NOTE: Apart from  
-                        <a hx-boost="true" hx-target="#contentcontainer" asp-action="Language" asp-controller="Blog" asp-route-slug="@Model.Slug" asp-route-language="en" class="rounded-full outline outline-1 outline-white inline-block">
-                            <img src="~/img/flags/en.svg" alt="@("en".ConvertCodeToLanguage())" class="w-4 h-4 rounded" />
-                        </a>   (and even then it's questionable, I'm Scottish).  These are machine translated in languages I don't read. If they're terrible please <a asp-controller="Contact" class="text-blue-dark dark:text-blue" asp-action="Index">contact me. </a>  <br/>
-                        You can see how this translation was done in <a href="/blog/autotranslatingmarkdownfiles" class="text-blue-dark dark:text-blue" >this article. </a> </p>
-                    <div class="flex space-x-2 items-center pb-4 pt-2">
-                   
-                        <partial name="_LanguageList" model="languageModel"/>
-                    </div>
-                </div>
-            }
-        <div class="flex items-center pt-1 sm:pt-1">
-            <p class="pr-2 font-body font-light text-primary dark:text-white">
+        @* Language Flags - Compact capsule right after title *@
+        @if (Model.Languages.Length > 1)
+        {
+            var languageModel = (Model.Slug, Model.Languages, Model.Language);
+            <div class="pb-2">
+                <partial name="_LanguageFlags" model="languageModel"/>
+            </div>
+        }
+
+        <div class="flex flex-wrap border-b border-grey-lighter items-center gap-x-2 gap-y-1 pb-2 pt-1 sm:pt-1">
+            <p class="pr-2 font-body text-sm font-light text-primary dark:text-white">
                 @Model.PublishedDate.ToString("D")
             </p>
-            <span class="vdark:text-white font-body text-grey">//</span>
-            <p class="pl-2 font-body font-light text-primary dark:text-white">
+            @if (Model.ShowUpdatedDate && Model.UpdatedDate.HasValue)
+            {
+                <span class="dark:text-white font-body text-grey text-sm">//</span>
+                <p class="px-2 font-body text-sm font-light text-primary dark:text-white italic">
+                    @UpdatedDateFormatter.Format(Model.UpdatedDate, Model.UpdatedTemplate)
+                </p>
+            }
+            <span class="dark:text-white font-body text-grey text-sm">//</span>
+            <p class="pl-2 font-body text-sm font-light text-primary dark:text-white">
                 @Model.ReadingTime
             </p>
+            <div class="pl-4 flex flex-wrap gap-2 items-center print:hidden">
+                <a href="#commentsection" class="btn btn-outline btn-xs inline-flex items-center">
+                    <i class="bx bx-mail-send"></i> Comments
+                </a>
+
+                <a href="/api/raw/@Model.Slug?language=@Model.Language"
+                   target="_blank" rel="noopener"
+                   class="btn btn-outline btn-xs inline-flex items-center"
+                   title="View raw Markdown">
+                    <i class="bx bx-code-alt"></i> Raw
+                </a>
+
+                <a asp-action="Edit"
+                   asp-controller="Editor"
+                   asp-route-slug="@Model.Slug"
+                   asp-route-language="@Model.Language"
+                   class="btn btn-outline btn-xs btn-primary inline-flex items-center">
+                    <i class="bx bx-edit"></i> Edit
+                </a>
+            </div>
         </div>
+        @if (Model.PreviousPost != null || Model.NextPost != null)
+        {
+            <nav class="flex items-center justify-between text-sm text-primary dark:text-white my-2 print:hidden" aria-label="Post navigation">
+                <div>
+                    @if (Model.PreviousPost != null)
+                    {
+                        <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.PreviousPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                            <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
+                            <span>Newer: @Model.PreviousPost.Title</span>
+                        </a>
+                    }
+                </div>
+                <div>
+                    @if (Model.NextPost != null)
+                    {
+                        <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.NextPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                            <span>Older: @Model.NextPost.Title</span>
+                            <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
+                        </a>
+                    }
+                </div>
+            </nav>
+        }
+
+        @* Compact Categories *@
+        <div class="pb-2 pt-2 print:hidden flex flex-wrap gap-1.5">
+            @foreach (var category in Model.Categories)
+            {
+                <partial name="_Category" model="category"/>
+            }
+        </div>
+
     </div>
-    <div
-        class="prose prose max-w-none border-b py-2 text-black dark:prose-dark sm:py-2">
+    <div class="prose  dark:text-white text-black  max-w-none  py-2 mt-4 sm:py-2" >
         @Html.Raw(Model.HtmlContent)
     </div>
-@if (Model.Authenticated)
+    @if (Model.PreviousPost != null || Model.NextPost != null)
     {
-        
-  
-        <div class=" max-w-none border-b border-grey-lighter py-8 dark:prose-dark sm:py-12">
-            <p class="font-body text-lg font-medium text-primary dark:text-white">Welcome @Model.Name please comment below.</p>
-            <textarea class="markdowneditor hidden"></textarea>
-         <!--   <button class="btn btn-primary" hx-action="Comment" hx-controller="Blog" hx-post hx-vals="js:{comment: simplemde.value()}" hx-route-slug="@Model.Slug" hx-swap="outerHTML" hx-target="#comment" onclick="prepareForSubmission()">Comment</button> -->
-           COMING SOON!
-        </div>
+        <nav class="flex items-center justify-between text-sm text-primary dark:text-white mb-2 print:hidden" aria-label="Post navigation">
+            <div>
+                @if (Model.PreviousPost != null)
+                {
+                    <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.PreviousPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                        <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
+                        <span>Newer: @Model.PreviousPost.Title</span>
+                    </a>
+                }
+            </div>
+            <div>
+                @if (Model.NextPost != null)
+                {
+                    <a hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" asp-action="Show" asp-controller="Blog" asp-route-slug="@Model.NextPost.Slug" asp-route-language="@Model.Language" class="inline-flex items-center hover:text-secondary">
+                        <span>Older: @Model.NextPost.Title</span>
+                        <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
+                    </a>
+                }
+            </div>
+        </nav>
     }
-    else
-    {
-        <div class=" max-w-none border-b border-grey-lighter py-8 dark:prose-dark sm:py-12">
-            <p class="font-body text-lg font-medium text-primary dark:text-white">Please login to comment</p>
-            <div class="w-[200px] h-[39px] overflow-hidden rounded">
-                <div id="google_button2">
+
+    @* Related Posts Section - Loaded via HTMX *@
+    <div class="print:hidden"
+         hx-get="/search/related/@Model.Slug/@Model.Language"
+         hx-trigger="load delay:300ms"
+         hx-target="this"
+         hx-swap="innerHTML">
+        @* Loading placeholder *@
+        <div class="mt-6 mb-6">
+            <div class="border border-base-300 rounded-lg overflow-hidden bg-gradient-to-r from-base-200/80 to-base-200/40">
+                <div class="flex items-center gap-2 px-4 py-2.5">
+                    <span class="loading loading-spinner loading-xs text-secondary"></span>
+                    <span class="text-sm opacity-60">Finding related posts...</span>
                 </div>
             </div>
         </div>
-    }
+    </div>
+
+    <div x-data="{ showNewElement: false }" x-init="
+    document.addEventListener('htmx:afterSwap', (event) => {
+        if (event.detail.target.id === 'contentformarea') {
+            $data.showNewElement = true;  // Use $data to reference Alpine component's state
+        }
+    });
+"  class="pt-6 print:!hidden" id="commentsection">
+        <!-- Button that will disappear once showNewElement is true -->
+        <a x-show="!showNewElement"
+           class="btn btm-sm btn-outline mb-6"
+           href="javascript:void(0)"
+           role="button"
+           x-on:click.prevent
+           hx-boost="false"
+           hx-controller="Comment"
+           hx-action="GetCommentForm"
+           hx-route-postId="@(Int32.Parse(Model.Id))"
+           hx-get
+           hx-push-url="false"
+           hx-swap="innerHTML"
+           hx-target="#contentformarea">
+            <i class='bx bx-message-rounded-add'></i> Add Comment
+        </a>
+
+        <!-- The target for HTMX content swap -->
+        <div id="contentformarea"
+             x-show="showNewElement"
+             class="border border-b-neutral-600 border-1 rounded-xl p-4 mb-4">
+        </div>
+    </div>
+
+    <div id="commentlist">
+        
+    
+        <partial name="_ListComments" for="Comments"/>
+    </div>
+ 
 </div>

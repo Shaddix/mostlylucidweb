@@ -1,0 +1,24 @@
+﻿@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using Mostlylucid.Models.Comments
+@model Mostlylucid.Models.Comments.CommentViewList
+
+@functions {
+    // Recursive method to render a comment and its child comments
+    async Task RenderComments(List<CommentViewModel> comments, int parentId)
+    {
+        var childComments = comments.Where(c => c.ParentId == parentId).ToList();
+
+        foreach (var comment in childComments)
+        {
+            <partial name="_CommentDisplayModel" for="@comment" />
+
+            // Recursive call to render child comments
+            await RenderComments(comments, comment.Id);
+        }
+    }
+}
+
+@{
+    // Start by rendering the top-level comments (parentId = 0)
+   await  RenderComments(Model.Comments, 0);
+}

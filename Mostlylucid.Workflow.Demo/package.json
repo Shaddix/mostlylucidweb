@@ -1,0 +1,28 @@
+﻿{
+  "name": "mostlylucid-workflow-demo",
+  "version": "1.0.0",
+  "description": "Workflow Engine Demo",
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:tw": "tailwindcss -i ./Styles/site.css -o ./wwwroot/css/site.css --watch",
+    "dev:js": "webpack --mode development --watch",
+    "build": "npm-run-all build:*",
+    "build:tw": "tailwindcss -i ./Styles/site.css -o ./wwwroot/css/site.css --minify",
+    "build:js": "webpack --mode production"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "daisyui": "^4.4.19",
+    "npm-run-all": "^4.1.5",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "htmx.org": "^1.9.10",
+    "sortablejs": "^1.15.1"
+  }
+}

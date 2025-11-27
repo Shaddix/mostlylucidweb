@@ -1,21 +1,66 @@
+@import "raleway.css";
+
+/*
+ * Highlight.js themes - Scoped approach
+ * Light theme scoped to non-dark, dark theme scoped to .dark
+ * Prevents style bleeding and ensures proper cascading
+ */
+@import "highlight.js/styles/default.css" layer(hljs-light);
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Ensure light theme only applies outside .dark context */
+@layer hljs-light {
+    :not(.dark) pre code.hljs,
+    :not(.dark) code.hljs {
+        /* Light theme from default.css will apply here */
+    }
+}
+.mermaid { visibility: hidden; }
+.mermaid[data-processed="true"] { visibility: visible; }
+
+/* Google Sign-In button - hide white border/background */
+#google_button {
+    border-radius: 50%;
+    overflow: hidden;
+}
+#google_button > div,
+#google_button iframe {
+    border-radius: 50% !important;
+}
 
 .bg-red {
     --tw-bg-opacity: 1;
     background-color: rgb(128 0 0 / var(--tw-bg-opacity));
 }
 
+.prose ul {
+    list-style-type: none; /* This hides the bullet points */
+    padding-left: 0; /* Optional: Removes the default indentation */
+}
+
+.prose ul ul {
+    padding-left: 1rem; /* Keeps indentation for nested lists if needed */
+}
+
+
+.text-red-500 {
+    --tw-text-opacity: 1;
+    color: rgb(209 0 0 / var(--tw-text-opacity));
+}
 .hover\:bg-red:hover {
     --tw-bg-opacity: 1;
     background-color: rgb(128 0 0 / var(--tw-bg-opacity));
 }
-.svg-container
-{
-    width:20rem;
+
+.text-primary {
+    --tw-text-opacity: 1;
+    color: #2a2a2a;
 }
 
+[x-cloak] { display: none !important; }
 
 #contentcontainer {
     height: 100%;
@@ -32,21 +77,7 @@
     @apply flex items-center ml-4 mb-2 bg-blue-dark outline outline-1 p-2 mt-4 text-center rounded-btn font-body text-xl font-semibold text-white transition-colors hover:bg-red sm:inline-block sm:text-left sm:text-xl;
 }
 
-@media print {
-    .svg-container {
-        width: 20rem;
-        height: auto;
-    }
-    body {
-        margin: 0;
-        padding: 0;
-    }
-    img, svg {
-        max-width: 100%;
-        height: auto;
-    }
-    /* Other print-specific styles */
-}
+
 .img-filter-dark {
     filter: invert(1) hue-rotate(180deg);
 }
@@ -58,57 +89,658 @@ html {
 }
 
 
-
+.text-red-500 {
+    --tw-text-opacity: 1;
+    color: rgb(209 0 0 / var(--tw-text-opacity));
+}
 
 .twitter-card {
     @apply mt-8 mb-8 rounded bg-yellow-lighter px-6 py-8 sm:mt-10 sm:mb-10 md:px-10;
+    
+}
 
-    & &-title {
-        @apply mt-0 font-body text-lg font-normal text-blue-dark dark:text-blue-dark sm:text-xl;
+
+
+.border-gray-light {
+    @apply border border-grey;
+}
+
+.editor-toolbar.fullscreen
+{
+    top:55px !important;
+}
+.CodeMirror-fullscreen
+{
+    top:110px !important;
+}
+
+.dark select[class~="bg-gray-800"] {
+    background-color: #2d3748 !important;
+}
+
+.collapse-arrow .collapse-title:after {
+    top: 50% !important;
+    transform: translateY(-60%) rotate(45deg) !important;
+    right: 1.5rem !important;
+}
+
+.collapse-arrow > input:checked ~ .collapse-title:after {
+    transform: translateY(-60%) rotate(225deg) !important;
+}
+
+/* Mermaid containers themed to match light/dark theme */
+.prose pre.mermaid,
+pre.mermaid,
+.prose div.mermaid,
+div.mermaid {
+    @apply p-0 rounded-lg border border-gray-300 bg-gray-100 text-gray-800;
+}
+
+.dark .prose pre.mermaid,
+.dark pre.mermaid,
+.dark .prose div.mermaid,
+.dark div.mermaid {
+    @apply p-0 rounded-lg border border-gray-600 bg-gray-800 text-gray-100;
+}
+
+/* Ensure the rendered SVG stays transparent so container bg shows through */
+.mermaid svg {
+    background-color: transparent !important;
+}
+
+/* Mermaid diagram wrapper and controls */
+.mermaid-wrapper {
+    @apply relative rounded-lg overflow-hidden w-full;
+    margin: 1rem 0;
+}
+
+.mermaid-wrapper .mermaid {
+    @apply m-0 w-full;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.mermaid-wrapper .mermaid svg {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 450px;
+}
+
+.mermaid-controls {
+    @apply absolute top-2 right-2 flex gap-1 z-10;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .mermaid-controls {
+    background: rgba(31, 41, 55, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.mermaid-control-btn {
+    @apply p-2 rounded cursor-pointer transition-all duration-200;
+    background: transparent;
+    border: none;
+    color: #4b5563;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.mermaid-control-btn:hover {
+    background: rgba(37, 99, 235, 0.1);
+    color: #2563eb;
+    transform: scale(1.1);
+}
+
+.dark .mermaid-control-btn {
+    color: #9ca3af;
+}
+
+.dark .mermaid-control-btn:hover {
+    background: rgba(55, 65, 81, 0.8);
+    color: #60a5fa;
+}
+
+.mermaid-control-btn.active {
+    background: #3b82f6;
+    color: white;
+}
+
+.dark .mermaid-control-btn.active {
+    background: #2563eb;
+    color: white;
+}
+
+/* SVG pan-zoom cursor states */
+.svg-pan-zoom-control-pan-enabled {
+    cursor: grab;
+}
+
+.svg-pan-zoom-control-pan-enabled:active {
+    cursor: grabbing;
+}
+
+/* Mermaid Lightbox */
+.mermaid-lightbox {
+    @apply fixed inset-0 z-50 flex items-center justify-center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.dark .mermaid-lightbox {
+    background: rgba(0, 0, 0, 0.95);
+}
+
+.mermaid-lightbox-content {
+    @apply relative w-11/12 h-5/6 bg-white rounded-lg shadow-2xl;
+    max-width: 1400px;
+}
+
+.dark .mermaid-lightbox-content {
+    @apply bg-gray-800;
+}
+
+.mermaid-lightbox-close {
+    @apply absolute top-4 right-4 z-10 p-2 rounded-full cursor-pointer transition-all;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    font-size: 2rem;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-lightbox-close:hover {
+    background: rgba(220, 38, 38, 0.8);
+    transform: scale(1.1);
+}
+
+.mermaid-lightbox-diagram-wrapper {
+    @apply relative w-full h-full;
+    padding: 3rem;
+    box-sizing: border-box;
+}
+
+.mermaid-lightbox-diagram {
+    @apply w-full h-full;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-lightbox-diagram svg {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Table of Contents Styling - supports both nav.ml_toc and .prose nav */
+nav.ml_toc,
+.prose nav {
+    @apply my-6 p-4 rounded-lg border-l-2;
+    background: #f8f9fa;
+    border-left-color: #cbd5e0;
+    min-width: 280px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.dark nav.ml_toc,
+.dark .prose nav {
+    background: rgba(255, 255, 255, 0.03);
+    border-left-color: #4a5568;
+}
+
+.ml_toc .toc-title,
+.prose nav .toc-title {
+    @apply font-semibold text-sm uppercase tracking-wide mb-3 pb-2 border-b;
+    color: #4a5568;
+    border-bottom-color: #e2e8f0;
+}
+
+.dark .ml_toc .toc-title,
+.dark .prose nav .toc-title {
+    color: #a0aec0;
+    border-bottom-color: #2d3748;
+}
+
+.ml_toc ul,
+.prose nav ul {
+    @apply list-none m-0 p-0;
+}
+
+.ml_toc ul ul,
+.prose nav ul ul {
+    @apply pl-4 mt-1;
+}
+
+.ml_toc li,
+.prose nav li {
+    @apply my-1;
+    line-height: 1.2;
+}
+
+.ml_toc a,
+.prose nav a {
+    @apply no-underline transition-colors duration-200;
+    color: #718096;
+    font-size: 0.95rem;
+    display: inline-block;
+    padding: 0.125rem 0;
+}
+
+.ml_toc a:hover,
+.prose nav a:hover {
+    color: #2d3748;
+    text-decoration: underline;
+}
+
+.dark .ml_toc a,
+.dark .prose nav a {
+    color: #a0aec0;
+}
+
+.dark .ml_toc a:hover,
+.dark .prose nav a:hover {
+    color: #cbd5e0;
+    text-decoration: underline;
+}
+
+/* Nested list styling for hierarchical display */
+.ml_toc ul ul a,
+.prose nav ul ul a {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+.ml_toc ul ul ul a,
+.prose nav ul ul ul a {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+
+.prose :where(blockquote):not(:where([class~=not-prose],[class~=not-prose] *)) {
+    background-color: #cceeec;
+    border-inline-start-color: var(--tw-prose-quote-borders);
+    border-color: #065a68;
+    border-inline-start-width: .25rem;
+    border-left-width: 1rem;
+    border-radius: 3px;
+    color: #007c85;
+    font-style: normal;
+    font-weight: 500;
+    margin-bottom: 1.6em;
+    margin-top: 1.6em;
+    padding-inline-start: 1em;
+    padding: 1rem 1.5rem;
+    quotes: none;
+}
+
+/* Remove auto-generated quotation marks from blockquotes */
+.prose :where(blockquote p:first-of-type):not(:where([class~=not-prose],[class~=not-prose] *))::before {
+    content: none;
+}
+
+.prose :where(blockquote p:last-of-type):not(:where([class~=not-prose],[class~=not-prose] *))::after {
+    content: none;
+}
+
+/* Dark theme styling for Note-like blockquotes */
+.dark .prose :where(blockquote):not(:where([class~=not-prose],[class~=not-prose] *)) {
+    background-color: #07343a; /* dark teal surface to read well on dark bg */
+    border-inline-start-color: #22d3ee; /* cyan accent for the left border */
+    border-color: #164e63; /* subtle border on other sides */
+    border-inline-start-width: .25rem;
+    border-left-width: 1rem;
+    border-radius: 3px;
+    color: #e6fffb; /* high-contrast text with a soft teal tint */
+    font-style: normal;
+    font-weight: 500;
+    margin-bottom: 1.6em;
+    margin-top: 1.6em;
+    padding-inline-start: 1em;
+    padding: 1rem 1.5rem;
+    quotes: none;
+}
+
+/*
+ * Dark theme for code highlighting (Atom One Dark)
+ * Scoped to .dark class - completely overrides light theme when dark mode active
+ * Based on atom-one-dark-reasonable theme with comprehensive coverage
+ */
+.dark pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    color: #abb2bf !important;
+    background: #282c34 !important;
+}
+
+.dark code.hljs {
+    padding: 3px 5px;
+    color: #abb2bf !important;
+    background: #282c34 !important;
+}
+
+/* Defensive default: ensure all code elements in dark mode have readable color */
+.dark pre code,
+.dark code {
+    color: #abb2bf;
+    background: #282c34;
+}
+
+/* Comments and documentation */
+.dark .hljs-comment,
+.dark .hljs-quote {
+    color: #bbb !important;
+    font-style: italic;
+}
+
+/* Keywords and special symbols */
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-formula {
+    color: #c678dd !important;
+}
+
+/* Tags, names, deletions */
+.dark .hljs-section,
+.dark .hljs-name,
+.dark .hljs-selector-tag,
+.dark .hljs-deletion,
+.dark .hljs-subst {
+    color: #e06c75 !important;
+}
+
+/* Literals and constants */
+.dark .hljs-literal {
+    color: #56b6c2 !important;
+}
+
+/* Strings and additions */
+.dark .hljs-string,
+.dark .hljs-regexp,
+.dark .hljs-addition,
+.dark .hljs-attribute,
+.dark .hljs-meta .hljs-string {
+    color: #98c379 !important;
+}
+
+/* Attributes, variables, numbers */
+.dark .hljs-attr,
+.dark .hljs-variable,
+.dark .hljs-template-variable,
+.dark .hljs-type,
+.dark .hljs-selector-class,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-pseudo,
+.dark .hljs-number {
+    color: #d19a66 !important;
+}
+
+/* Symbols, links, metadata */
+.dark .hljs-symbol,
+.dark .hljs-bullet,
+.dark .hljs-link,
+.dark .hljs-meta,
+.dark .hljs-selector-id,
+.dark .hljs-title {
+    color: #61aeee !important;
+}
+
+/* Built-ins and class names */
+.dark .hljs-built_in,
+.dark .hljs-title.class_,
+.dark .hljs-class .hljs-title {
+    color: #e6c07b !important;
+}
+
+/* Additional coverage for commonly missed classes */
+.dark .hljs-tag,
+.dark .hljs-params,
+.dark .hljs-function {
+    color: #61aeee !important;
+}
+
+.dark .hljs-property,
+.dark .hljs-code {
+    color: #abb2bf !important;
+}
+
+.dark .hljs-operator {
+    color: #56b6c2 !important;
+}
+
+.dark .hljs-punctuation {
+    color: #abb2bf !important;
+}
+
+/* Formatting */
+.dark .hljs-emphasis {
+    font-style: italic;
+}
+
+.dark .hljs-strong {
+    font-weight: bold;
+}
+
+.dark .hljs-link {
+    text-decoration: underline;
+}
+
+/* Catch-all for any unmapped hljs classes - ensures readability */
+.dark [class*="hljs-"]:not([class*="hljs-comment"]):not([class*="hljs-quote"]) {
+    color: #abb2bf;
+}
+
+
+/* ===== Pager base ===== */
+.pager-container {
+    @apply flex flex-col items-center justify-center gap-3;
+}
+
+.page-size-container label {
+    @apply text-sm font-medium text-gray-700;
+}
+
+.select#pageSize-pager {
+    @apply border-gray-300   select-bordered select-sm  !important;
+}
+
+/* Pagination buttons */
+.join-item.btn {
+    @apply  btn-sm border border-gray-300 text-gray-700 bg-white hover:bg-gray-100;
+}
+
+.join-item.btn-active {
+    @apply bg-indigo-600 text-white border-indigo-600;
+}
+
+.join-item.btn-disabled {
+    @apply bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed;
+}
+
+/* Info badge */
+.badge {
+    @apply  badge-ghost badge-sm text-gray-600 bg-gray-100 border border-gray-200;
+}
+
+/* ===== Dark mode ===== */
+.dark .page-size-container label {
+    @apply text-gray-300;
+}
+
+.dark .join-item.btn {
+    @apply border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700;
+}
+
+.dark .join-item.btn-active {
+    @apply bg-indigo-500 border-indigo-500 text-white;
+}
+
+.dark .join-item.btn-disabled {
+    @apply bg-gray-800 text-gray-600 border-gray-700;
+}
+
+.dark .badge {
+    @apply bg-gray-800 border-gray-700 text-gray-300;
+}
+
+/* Light mode */
+select[name="pageSize"] {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;   /* gray-800 */
+    color-scheme: light;          /* prevents OS dark rendering */
+}
+
+/* Dark mode */
+.dark select[name="pageSize"] {
+    background-color: #1f2937 !important; /* gray-800 */
+    color: #f3f4f6 !important;            /* gray-100 */
+    border: 1px solid #374151 !important; /* gray-700 */
+    color-scheme: dark;
+}
+
+/* Optional: consistent hover/focus ring */
+select[name="pageSize"]:focus {
+    outline: 2px solid #4f46e5; /* indigo-600 */
+    outline-offset: 1px;
+}
+
+.dark select[name="pageSize"]:focus {
+    outline: 2px solid #4f46e5; /* indigo-600 */
+    outline-offset: 1px;
+}
+
+.dark select[name="pageSize"]:focus {
+    outline: 2px solid #818cf8; /* indigo-400 */
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    /* Remove all padding and margins from containers */
+    body,
+    .container,
+    #contentcontainer {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
 
-    & &-source {
-        @apply block pt-2 font-body text-sm font-light text-blue-dark underline;
+    /* Hide elements marked with print:hidden */
+    .print\:hidden,
+    .print\:\!hidden {
+        display: none !important;
     }
 
-    & &-btn {
-        @apply mt-8 mb-0 inline-block border border-blue-dark px-5 py-2 font-body font-semibold text-blue-dark no-underline transition-colors hover:bg-primary hover:text-white sm:mb-4;
+    /* Remove header and footer shadows/borders */
+    header,
+    footer {
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Ensure prose content takes full width without margins */
+    .prose {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Remove rounded corners and borders for print */
+    * {
+        border-radius: 0 !important;
+    }
+
+    /* Optimize page breaks */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+
+    img, pre, blockquote {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* Remove background colors for print (saves ink) */
+    * {
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    /* Keep text colors readable */
+    body {
+        color: black !important;
+    }
+
+    a {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+
+    /* Code blocks should keep their background for readability */
+    pre, code {
+        background-color: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+    }
+
+    /* Force logo to dark mode (readable on white paper) */
+    img[src*="logo.svg"],
+    img[src*="smalllogo.svg"] {
+        filter: invert(1) hue-rotate(180deg) !important;
     }
 }
 
-.pagination {
-    @apply py-2 flex list-none p-0 m-0 justify-center items-center flex-wrap; /* Added flex-wrap */
+/* Archived Links - visual indicator for links that have been replaced with archive.org versions */
+a.archived-link {
+    @apply relative;
 }
 
-.page-item {
-    @apply mx-1 text-black dark:text-white rounded;
+a.archived-link::after {
+    content: '';
+    @apply inline-block w-3 h-3 ml-1 opacity-60;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
 }
 
-.page-item a {
-    @apply block rounded-md transition duration-300 ease-in-out text-sm sm:text-base px-2 sm:px-4; /* Responsive font size and padding */
+a.archived-link:hover::after {
+    @apply opacity-100;
 }
 
-.page-item a:hover {
-    @apply bg-blue-dark text-white;
+/* Broken Links - styling for links that are broken and have no archive.org replacement */
+span.broken-link {
+    @apply text-gray-500 dark:text-gray-400 line-through cursor-not-allowed;
 }
 
-.page-item.disabled a {
-    @apply text-blue-dark pointer-events-none cursor-not-allowed;
-}
-
-.page-item.active {
-    @apply bg-blue-dark;
-}
-
-.page-item.active a {
-    @apply text-white border border-blue-dark;
-}
-
-.page-link {
-    @apply block px-2 sm:px-4 py-2 text-blue-dark dark:text-blue-light text-sm sm:text-base; /* Responsive padding and font size */
-}
-
-.page-item:focus a,
-.page-item a:focus {
-    @apply outline-none; /* Tailwind's outline class could be used if custom color needed */
+span.broken-link::before {
+    content: '⚠';
+    @apply mr-1 text-amber-500;
 }

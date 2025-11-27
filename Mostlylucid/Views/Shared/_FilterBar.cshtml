@@ -1,0 +1,52 @@
+﻿@model Mostlylucid.Models.Blog.PostListViewModel
+
+            <!-- Top row: Filters (hidden on mobile, shown on lg+) -->
+            <div class="hidden lg:flex flex-row w-full gap-3 items-center justify-center">
+
+                <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-push-url="true"
+                   class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden xl:inline-flex">
+                    <i class='bx bx-book-reader mr-2'></i>Blog Posts
+                </a>
+                <a href="/rss" target="_blank"
+                   class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden 2xl:inline-flex">
+                    <i class="bx bx-rss mr-2"></i>RSS
+                </a>
+                <a asp-action="Edit" asp-controller="Editor"
+                   class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden 2xl:inline-flex">
+                    <i class="bx bx-edit mr-2"></i>New Post(ish)
+                </a>
+                <!-- Clear All Button (far left) -->
+                <div class="shrink-0">
+                    <clear-param all="true" target="#content">Clear All</clear-param>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:block">Date:</label>
+                    <input id="dateRange" type="text" placeholder="Filter by date range"
+                           class="input input-bordered input-sm w-64 bg-white text-gray-800 border-gray-300 placeholder-gray-500 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:placeholder-gray-400 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"/>
+                </div>
+
+                <!-- Language & Order Filters -->
+                <div class="flex items-center gap-2 shrink-0 relative">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:block">Language:</label>
+                    @{
+                        var langs = Model?.Data?.SelectMany(p => p.Languages ?? Array.Empty<string>()).Concat(new[] { "en" }).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string> { "en" };
+                    }
+                    <partial name="_LanguageDropDown" model="langs"/>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:block">Sort:</label>
+                    <select id="orderSelect"
+                            class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 transition-colors cursor-pointer">
+                        <option value="date_desc">Newest first</option>
+                        <option value="date_asc">Oldest first</option>
+                        <option value="title_asc">Title A–Z</option>
+                        <option value="title_desc">Title Z–A</option>
+                    </select>
+                </div>
+
+                <!-- Filter Summary -->
+                <div class="flex items-center text-sm text-gray-700 dark:text-gray-300 lg:ml-4 px-3 py-1.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600" id="filterSummary" aria-live="polite"></div>
+            </div>

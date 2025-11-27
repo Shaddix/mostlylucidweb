@@ -1,9 +1,63 @@
-﻿@using Microsoft.EntityFrameworkCore.Metadata.Internal
-@using Mostlylucid.Helpers
+﻿@using Mostlylucid.Shared.Helpers
 @model Mostlylucid.Models.Blog.BlogPostViewModel
 
 @{
     Layout = "_Layout";
     ViewBag.Title = $"{Model.Title} ({Model.Language.ConvertCodeToLanguage()})";
+
+    // Generate description from plain text content (first 155 chars, truncate at word boundary)
+    var plainText = Model.PlainTextContent ?? "";
+    var description = plainText.Length > 155
+        ? plainText.Substring(0, plainText.LastIndexOf(' ', 155)) + "..."
+        : plainText;
+    description = description.Replace("\n", " ").Replace("\r", "").Trim();
+    ViewBag.Description = description;
+
+    // Set article metadata
+    ViewBag.OgType = "article";
+    ViewBag.PublishedDate = Model.PublishedDate;
+    ViewBag.Categories = Model.Categories;
+
+    // Build canonical URL (without language suffix for English)
+    var canonicalUrl = Model.Language == "en"
+        ? $"https://{Context.Request.Host}/blog/{Model.Slug}"
+        : $"https://{Context.Request.Host}/blog/{Model.Slug}/{Model.Language}";
 }
+
+<!-- JSON-LD Structured Data for Blog Post -->
+<script type="application/ld+json">
+{
+    "@@context": "https://schema.org",
+    "@@type": "BlogPosting",
+    "headline": "@Model.Title",
+    "description": "@description",
+    "datePublished": "@Model.PublishedDate.ToString("yyyy-MM-ddTHH:mm:ssZ")",
+    @if (Model.UpdatedDate.HasValue)
+    {
+        @:"dateModified": "@Model.UpdatedDate.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")",
+    }
+    "author": {
+        "@@type": "Person",
+        "name": "Scott Galloway",
+        "url": "https://mostlylucid.net/blog/aboutme"
+    },
+    "publisher": {
+        "@@type": "Organization",
+        "name": "Mostly Lucid",
+        "logo": {
+            "@@type": "ImageObject",
+            "url": "https://mostlylucid.net/img/logo.svg"
+        }
+    },
+    "mainEntityOfPage": {
+        "@@type": "WebPage",
+        "@@id": "@canonicalUrl"
+    },
+    "wordCount": @Model.WordCount,
+    "inLanguage": "@Model.Language",
+    "keywords": "@string.Join(", ", Model.Categories)",
+    "image": "https://mostlylucid.net/img/social2.jpg"
+}
+</script>
+
 <partial name="_PostPartial" model="Model"/>

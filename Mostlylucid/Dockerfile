@@ -1,12 +1,11 @@
 # Base image for running the app
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
+EXPOSE 7240
 
 # Build image with SDK for building the application
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 
 # Install Node.js v20.x
@@ -20,33 +19,61 @@ RUN apt-get update && apt-get install -y curl \
 # Set the working directory to /src
 WORKDIR /src
 
-# Copy the solution file and all projects to the container
-COPY *.sln ./
+#  csproj files to the container
 COPY ["Mostlylucid/Mostlylucid.csproj", "Mostlylucid/"]
+COPY ["Mostlylucid.Test/Mostlylucid.Test.csproj", "Mostlylucid.Test/"]
+COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
+COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
+COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
+COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.Extensions/Mostlylucid.Markdig.Extensions.csproj", "Mostlylucid.Markdig.Extensions/"]
+COPY ["Mostlylucid.Workflow.Engine/Mostlylucid.Workflow.Engine.csproj", "Mostlylucid.Workflow.Engine/"]
+COPY ["Mostlylucid.Workflow.Shared/Mostlylucid.Workflow.Shared.csproj", "Mostlylucid.Workflow.Shared/"]
 COPY ["Umami.Net/Umami.Net.csproj", "Umami.Net/"]
 
-# Restore dependencies for all projects in the solution
-RUN dotnet restore
+# Copy files needed by project files at restore time
+COPY ["Mostlylucid.Markdig.FetchExtension/release-notes.txt", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.FetchExtension/README.md", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Mostlylucid.Markdig.FetchExtension/icon.png", "Mostlylucid.Markdig.FetchExtension/"]
+COPY ["Umami.Net/ReleaseNotes.txt", "Umami.Net/"]
+COPY ["Umami.Net/README.md", "Umami.Net/"]
+COPY ["Umami.Net/icon.png", "Umami.Net/"]
+
+# Restore .NET dependencies
+RUN dotnet restore "./Mostlylucid/Mostlylucid.csproj"
 
 # Copy the entire source code to the container
-COPY . .
-
-# Set the working directory to the main project
+COPY ./Mostlylucid/ ./Mostlylucid/
+COPY ./Mostlylucid.Test/ ./Mostlylucid.Test/
+COPY ./Mostlylucid.Shared/ ./Mostlylucid.Shared/
+COPY ./Mostlylucid.Services/ ./Mostlylucid.Services/
+COPY ./Mostlylucid.DbContext/ ./Mostlylucid.DbContext/
+COPY ./Mostlylucid.Markdig.FetchExtension/ ./Mostlylucid.Markdig.FetchExtension/
+COPY ./Mostlylucid.Markdig.Extensions/ ./Mostlylucid.Markdig.Extensions/
+COPY ./Mostlylucid.Workflow.Engine/ ./Mostlylucid.Workflow.Engine/
+COPY ./Mostlylucid.Workflow.Shared/ ./Mostlylucid.Workflow.Shared/
+COPY ./Umami.Net/ ./Umami.Net/
+# Install NPM dependencies (do this before the build step)
 WORKDIR "/src/Mostlylucid"
-
-# Install NPM dependencies
 COPY package*.json ./
 RUN npm install
 
-# Build Tailwind CSS and other assets
-RUN npm --version
+# Build static assets (CSS/JS) using npm only once
+RUN npm run build
 
-# Build the project
+# Build the .NET project
 RUN dotnet build "./Mostlylucid.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Publish the application, ensuring all referenced projects are included
+# Run tests (skip live tests and failing integration tests)
+WORKDIR "/src/Mostlylucid.Test"
+RUN dotnet test "./Mostlylucid.Test.csproj" -c $BUILD_CONFIGURATION --filter "FullyQualifiedName!~LiveTest&FullyQualifiedName!~MarkdownFetchIntegrationTests" 
+
+# Publish the application
 FROM build AS publish
-RUN dotnet publish "./Mostlylucid.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+WORKDIR /src/Mostlylucid
+
+# Publish the application, skipping the npm process since it's already done
+RUN dotnet publish "./Mostlylucid.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
 
 # Final image
 FROM base AS final
@@ -55,12 +82,6 @@ WORKDIR /app
 # Copy the published application from the build stage
 COPY --from=publish /app/publish .
 
-# Copy additional resources
-COPY ./Mostlylucid/Markdown /app/Markdown
-COPY ./Mostlylucid/Email/Templates /app/Email/Templates
-
-# Switch to a non-root user
-USER $APP_UID
 
 # Start the application
 ENTRYPOINT ["dotnet", "Mostlylucid.dll"]

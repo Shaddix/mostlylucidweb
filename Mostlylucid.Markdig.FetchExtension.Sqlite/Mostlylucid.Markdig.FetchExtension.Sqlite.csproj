@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>mostlylucid.Markdig.FetchExtension.Sqlite</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>mostlylucid</Authors>
+    <Company>mostlylucid</Company>
+    <Product>mostlylucid.Markdig.FetchExtension.Sqlite</Product>
+    <Description>SQLite storage provider for mostlylucid.Markdig.FetchExtension - enables persistent caching of fetched markdown in SQLite databases.</Description>
+    <PackageTags>markdig;markdown;extension;fetch;sqlite;database;mostlylucid</PackageTags>
+    <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/release-notes.txt"))</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <AssemblyName>mostlylucid.Markdig.FetchExtension.Sqlite</AssemblyName>
+    <RootNamespace>mostlylucid.Markdig.FetchExtension.Sqlite</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/"/>
+    <None Include="..\Mostlylucid.Markdig.FetchExtension\icon.png" Pack="true" PackagePath="/"/>
+    <None Include="release-notes.txt" Pack="true" PackagePath="/"/>
+  </ItemGroup>
+
+</Project>

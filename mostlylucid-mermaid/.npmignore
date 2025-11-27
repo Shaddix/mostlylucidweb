@@ -1,0 +1,39 @@
+# Development files
+examples/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+tsconfig.json
+
+# Build artifacts
+node_modules/
+.cache/
+.temp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation development
+docs/
+
+# Miscellaneous
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

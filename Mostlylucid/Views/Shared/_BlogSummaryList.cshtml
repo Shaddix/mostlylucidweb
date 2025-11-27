@@ -1,36 +1,66 @@
 ﻿@model Mostlylucid.Models.Blog.PostListViewModel
 <div class="pt-2" id="content">
 
-    @if (Model.TotalItems > Model.PageSize)
-    {
-        <pager
-            x-ref="pager"
-            link-url="@Model.LinkUrl"
-               hx-boost="true"
-               hx-push-url="true"
-               hx-target="#content"
-               hx-swap="show:none"
-               page="@Model.Page"
-               page-size="@Model.PageSize"
-               total-items="@Model.TotalItems"
-            class="w-full"></pager>
-    }
-    @if(ViewBag.Categories != null)
-{
-    <div class="pb-3">
-        <h4 class="font-body text-lg text-primary dark:text-white">Categories</h4>
-        <div class="flex flex-wrap gap-2 pt-2">
-            @foreach (var category in ViewBag.Categories)
-            {
-                <a hx-controller="Blog" hx-action="Category" hx-push-url="true" hx-get hx-target="#contentcontainer" hx-route-category="@category" href>
-                    <span class="inline-block rounded-full dark bg-blue-dark px-2 py-1 font-body text-sm text-white outline-1 outline outline-green-dark dark:outline-white">@category</span>
-                </a>
-            }
-        </div>
+    <!-- Top Pagination -->
+    <div class="flex items-center justify-center w-full mb-4 print:!hidden">
+        <paging
+            hx-boost="true"
+            class="shrink-0"
+            hx-target="#content"
+            hx-push-url="false"
+            hx-swap="show:none"
+            hx-headers='{"pagerequest": "true"}'
+            model="@Model">
+        </paging>
     </div>
-}
-@foreach (var post in Model.Posts)
-{
-    <partial name="_ListPost" model="post"/>
-}
+
+    @if (ViewBag.Categories != null)
+    {
+        <div class="mb-6 mt-2" x-data="blogCategories()">
+            <div class="collapse collapse-arrow border border-neutral-400 dark:border-neutral-600 rounded-lg bg-gray-200 dark:bg-gray-800">
+                <input 
+                    type="checkbox" 
+                    x-model="openCategories"
+                    class="sr-only"
+                />
+            
+                <!-- Added flex and items-center to collapse-title -->
+                <div class="collapse-title p-0 min-h-0 text-lg font-medium text-base-content flex items-center">
+                    <div class="px-5 py-2 bg-neutral-500 bg-opacity-10 rounded-lg font-body text-primary dark:text-white w-full cursor-pointer"
+                         x-on:click="openCategories = !openCategories">
+                        Categories
+                    </div>
+                </div>
+            
+                <div class="collapse-content flex flex-wrap pl-5 pr-5 bg-gray-200 dark:bg-gray-700" hx-boost="false">
+                    <div class="pt-2 pb-2 gap-2 flex flex-wrap">
+                        @foreach (var category in ViewBag.Categories)
+                        {
+                            <partial name="_Category" model="category"/>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    <text>
+    @foreach (var post in Model.Data)
+    {
+        <partial name="_ListPost" model="post"/>
+    }
+    </text>
+
+    <!-- Bottom Pagination -->
+    <div class="flex items-center justify-center w-full mt-4 mb-2 print:!hidden">
+        <paging
+            hx-boost="true"
+            class="shrink-0"
+            hx-target="#content"
+            hx-push-url="false"
+            hx-swap="show:none"
+            hx-headers='{"pagerequest": "true"}'
+            model="@Model">
+        </paging>
+    </div>
 </div>

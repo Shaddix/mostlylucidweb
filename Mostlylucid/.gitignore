@@ -265,3 +265,11 @@ __pycache__/
 *.pyc
 /wwwroot/cache/
 /logs/
+/wwwroot/js/dist/
+/wwwroot/css/dist/
+translated/
+/wwwroot/css/highlight/atom-one-dark-reasonable.min.css
+/wwwroot/css/highlight/default.min.css
+/Mostlylucid.AltText.Demo/models/
+
+/wwwroot/externalimages/
