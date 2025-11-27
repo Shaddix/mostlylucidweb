@@ -58,6 +58,35 @@
     <!-- Meta Description -->
     <meta name="description" content="@pageDescription" />
 
+    <!-- Site-wide Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@@context": "https://schema.org",
+        "@@type": "WebSite",
+        "name": "Mostly Lucid",
+        "url": "https://www.mostlylucid.net",
+        "description": "Technical blog covering ASP.NET Core, C#, Entity Framework, HTMX, Docker, and modern web development.",
+        "potentialAction": {
+            "@@type": "SearchAction",
+            "target": {
+                "@@type": "EntryPoint",
+                "urlTemplate": "https://www.mostlylucid.net/search?query={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+        },
+        "publisher": {
+            "@@type": "Person",
+            "name": "Scott Galloway",
+            "url": "https://www.mostlylucid.net/blog/aboutme",
+            "sameAs": [
+                "https://github.com/scottgal",
+                "https://twitter.com/scottgal",
+                "https://www.linkedin.com/in/scottgalloway/"
+            ]
+        }
+    }
+    </script>
+
     <!-- Article metadata for blog posts -->
     @if (ViewBag.PublishedDate != null)
     {
