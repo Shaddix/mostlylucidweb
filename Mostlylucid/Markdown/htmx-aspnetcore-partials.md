@@ -37,6 +37,38 @@ First, include HTMX in your layout. You can use a CDN or serve it locally:
 
 That's it. No build step, no npm install, no webpack configuration. Just drop in a script tag and you're off to the races.
 
+## Alpine.js: The Client-Side Component
+
+Whilst HTMX handles the server interactions brilliantly, sometimes you need a touch of client-side reactivity - showing/hiding elements, toggling states, or managing local UI state. This is where [Alpine.js](https://alpinejs.dev/) comes in.
+
+Alpine.js is a minimal JavaScript framework that gives you the reactive and declarative nature of big frameworks like Vue or React, but at a fraction of the size. At just 15KB gzipped, it's the perfect companion to HTMX.
+
+```html
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+```
+
+The beauty of Alpine.js is how naturally it works alongside HTMX:
+
+```razor
+<div x-data="{ open: false }">
+    <button @click="open = !open">Toggle</button>
+    <div x-show="open" x-transition>
+        <button
+            hx-get="/api/data"
+            hx-target="#results">
+            Load Data
+        </button>
+    </div>
+</div>
+```
+
+In this example:
+- Alpine handles the local UI state (showing/hiding the content)
+- HTMX handles the server communication (fetching data)
+- No build step, no npm packages, no complexity
+
+Throughout this article, you'll see examples where Alpine and HTMX work together seamlessly - Alpine for client-side reactivity, HTMX for server-side interactions. It's a wonderfully productive combination.
+
 ## The HTMX.NET Library
 
 Whilst HTMX works perfectly well on its own, the excellent [HTMX.NET](https://github.com/khalidabuhakmeh/Htmx.Net) library by [Khalid Abuhakmeh](https://khalidabuhakmeh.com/about) provides brilliant server-side integration for ASP.NET Core. Khalid has done a fantastic job creating a library that feels native to ASP.NET Core - it's available as the `Htmx` and `Htmx.TagHelpers` NuGet packages and makes working with HTMX in .NET an absolute pleasure.
@@ -490,6 +522,8 @@ If you found this article useful, you might also enjoy these other HTMX-related 
 - [HTMX Documentation](https://htmx.org/docs/) - The official HTMX documentation
 - [HTMX Examples](https://htmx.org/examples/) - Practical examples of HTMX patterns
 - [HTMX Extensions](https://htmx.org/extensions/) - Official HTMX extensions
+- [Alpine.js Documentation](https://alpinejs.dev/) - Official Alpine.js docs
+- [Alpine.js Examples](https://alpinejs.dev/examples) - Practical Alpine.js patterns
 - [ASP.NET Core Partial Views](https://learn.microsoft.com/en-us/aspnet/core/mvc/views/partial) - Microsoft's guide to partial views
 - [ASP.NET Core Output Caching](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/output) - Official caching documentation
 
