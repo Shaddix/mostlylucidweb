@@ -474,6 +474,27 @@ document.addEventListener('htmx:configRequest', (event) => {
 });
 ```
 
+### Alpine.js @ Shorthand in Razor
+
+Alpine.js has a shorthand syntax using `@` (e.g., `@click` instead of `x-on:click`), but this conflicts with Razor's `@` syntax. You have three options:
+
+**Option 1: Use explicit syntax (recommended)**
+```razor
+<button x-on:click="doSomething()">Click me</button>
+```
+
+**Option 2: Escape with @@**
+```razor
+<button @@click="doSomething()">Click me</button>
+```
+
+**Option 3: Use x-bind for attributes**
+```razor
+<div x-bind:class="isOpen ? 'block' : 'hidden'"></div>
+```
+
+I prefer the explicit `x-on:click` syntax as it's clearer and avoids any confusion with Razor syntax.
+
 ### History Management
 
 By default, HTMX pushes every request to history. For pagination, you might want:
@@ -495,17 +516,17 @@ Install the HTMX devtools browser extension. It shows you every request, respons
 
 HTMX with ASP.NET Core partials represents a return to server-side simplicity without sacrificing modern UX. You get:
 
-- ✅ Dynamic, SPA-like interactions
-- ✅ Server-side rendering (great for SEO)
-- ✅ Proper HTTP caching
-- ✅ Minimal JavaScript
-- ✅ Progressive enhancement
-- ✅ Type-safe routing with HTMX.NET
-- ✅ Zero-config pagination with mostlylucid.pagingtaghelper
+- Dynamic, SPA-like interactions
+- Server-side rendering (great for SEO)
+- Proper HTTP caching
+- Minimal JavaScript
+- Progressive enhancement
+- Type-safe routing with HTMX.NET
+- Zero-config pagination with mostlylucid.pagingtaghelper
 
 Whilst the JavaScript world continues its framework-of-the-week cycle, we can build robust, performant web applications using patterns that have worked for decades. Sometimes the old ways are the best ways - they've just been waiting for the right tool to make them shine again.
 
-And as for Django finally getting partials in 2024? Well, better late than never! 😏
+And as for Django finally getting partials in 2024? Well, better late than never!
 
 ## Related Articles on This Blog
 
