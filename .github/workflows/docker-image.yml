@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'release-*'
+      - 'local-*'
 
 jobs:
   build-and-push:
@@ -21,27 +22,30 @@ jobs:
         run: |
           TIMESTAMP=$(date +%s)
           echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
-          
-          # Default tags
-          TAGS="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:latest"
-          ADDITIONAL_TAG="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:$TIMESTAMP"
 
-          # If the branch is 'local', modify the tags
-          if [ "${{ github.ref }}" == "refs/heads/local" ]; then
+          # Extract the tag name
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+
+          # Determine Docker tags based on git tag pattern
+          if [[ "$TAG_NAME" == local-* ]]; then
+            # local-* tags go to :local
             TAGS="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:local"
             ADDITIONAL_TAG="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:$TIMESTAMP-local"
+            echo "IS_LOCAL=true" >> $GITHUB_ENV
+          else
+            # release-* tags go to :latest
+            TAGS="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:latest"
+            ADDITIONAL_TAG="${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:$TIMESTAMP"
+            echo "IS_LOCAL=false" >> $GITHUB_ENV
           fi
-          
+
+          echo "TAGS=$TAGS" >> $GITHUB_ENV
+          echo "ADDITIONAL_TAG=$ADDITIONAL_TAG" >> $GITHUB_ENV
+
           # Build the Docker image
           docker build . --file Mostlylucid/Dockerfile --tag $TAGS --tag $ADDITIONAL_TAG
 
       - name: Push the Docker image to Docker Hub
         run: |
-          # Push the appropriate tags
-          if [ "${{ github.ref }}" == "refs/heads/local" ]; then
-            docker push ${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:local
-            docker push ${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:${{ env.TIMESTAMP }}-local
-          else
-            docker push ${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:latest
-            docker push ${{ secrets.DOCKER_HUB_USER_NAME }}/mostlylucid:${{ env.TIMESTAMP }}
-          fi
+          docker push ${{ env.TAGS }}
+          docker push ${{ env.ADDITIONAL_TAG }}
