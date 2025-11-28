@@ -33,6 +33,7 @@ public class BlogServiceFetchTests
         // Add BlogPostProcessingContext - required by BlogService and MarkdownRenderingService
         services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
+        services.AddMemoryCache();
         // 4. Build the service provider
         _serviceProvider = services.BuildServiceProvider();
     }

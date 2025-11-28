@@ -33,6 +33,7 @@ public class BlogVisibilityFeaturesTests
         services.AddLogging();
         services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
+        services.AddMemoryCache();
 
         // Mock IWebHostEnvironment
         var mockWebHostEnvironment = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();

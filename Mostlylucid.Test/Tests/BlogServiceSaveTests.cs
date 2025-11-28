@@ -34,6 +34,7 @@ public class BlogServiceSaveTests
         // Add BlogPostProcessingContext - required by BlogService and MarkdownRenderingService
         services.AddScoped<BlogPostProcessingContext>();
         services.AddScoped<MarkdownRenderingService>();
+        services.AddMemoryCache();
 
         // Mock IWebHostEnvironment
         var mockWebHostEnvironment = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
