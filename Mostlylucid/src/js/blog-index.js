@@ -586,6 +586,51 @@
     return { openCategories: false };
   };
 
+  // Global filter change handler for inline onchange attributes
+  window.handleFilterChange = function(type, value) {
+    console.log('handleFilterChange:', type, value);
+    const u = new URL(window.location.href);
+    const langSelect = document.querySelector('#languageSelect');
+    const orderSelect = document.querySelector('#orderSelect');
+    const categorySelect = document.querySelector('#categorySelect');
+    const dateInput = document.querySelector('#dateRange');
+
+    if (type === 'category') {
+      if (value) {
+        u.searchParams.set('category', value);
+      } else {
+        u.searchParams.delete('category');
+      }
+    } else if (type === 'order') {
+      const [ob, od] = value.split('_');
+      u.searchParams.set('orderBy', ob);
+      u.searchParams.set('orderDir', od);
+    }
+
+    // Always reset to page 1
+    u.searchParams.set('page', '1');
+
+    // Preserve language
+    if (langSelect) u.searchParams.set('language', langSelect.value);
+
+    // Preserve order (if not changing it)
+    if (type !== 'order' && orderSelect) {
+      const ord = orderSelect.value || 'date_desc';
+      const [ob, od] = ord.split('_');
+      u.searchParams.set('orderBy', ob);
+      u.searchParams.set('orderDir', od);
+    }
+
+    // Preserve dates from flatpickr
+    if (dateInput && dateInput._flatpickr && dateInput._flatpickr.selectedDates.length === 2) {
+      const [start, end] = dateInput._flatpickr.selectedDates;
+      u.searchParams.set('startDate', formatYMD(start));
+      u.searchParams.set('endDate', formatYMD(end));
+    }
+
+    applyNavigation(u);
+  };
+
   // Expose init function globally for manual or external calls
   window.blogIndexInit = initFromRoot;
 
