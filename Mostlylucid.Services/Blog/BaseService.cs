@@ -51,9 +51,11 @@ public class BaseService(IMostlylucidDBContext context, ILogger<BaseService> log
         var postLanguageEntity = languages.FirstOrDefault(x => x.Name == post.Language);
         if (postLanguageEntity == null)
         {
-            activity?.AddTag("Language Not Found", post.Language);
-            Logger.LogError("Language {Language} not found", post.Language);
-            return null;
+            // Auto-create the language if it doesn't exist
+            Logger.LogInformation("Creating new language entity for {Language}", post.Language);
+            postLanguageEntity = new LanguageEntity { Name = post.Language };
+            Context.Languages.Add(postLanguageEntity);
+            await Context.SaveChangesAsync(); // Save immediately so it gets an ID
         }
 
         categories ??= await Context.Categories.Where(x => post.Categories.Contains(x.Name)).ToListAsync();

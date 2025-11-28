@@ -136,13 +136,26 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
 
             if (semanticResults.Count > 0)
             {
-                // Semantic results are already sorted by score
-                return semanticResults.Select(r => new SearchResults(
-                    r.Title,
-                    r.Slug,
-                    $"/blog/{r.Slug}",
-                    r.Score
-                )).ToList();
+                // Get slugs from semantic search, look up titles from PostgreSQL
+                var slugs = semanticResults.Select(r => r.Slug).ToList();
+                var posts = await context.BlogPosts
+                    .Where(p => slugs.Contains(p.Slug))
+                    .Select(p => new { p.Slug, p.Title })
+                    .ToListAsync();
+
+                // Match back with semantic scores, preserving order
+                return semanticResults
+                    .Select(r =>
+                    {
+                        var post = posts.FirstOrDefault(p => p.Slug == r.Slug);
+                        return new SearchResults(
+                            post?.Title ?? r.Slug,
+                            r.Slug,
+                            $"/blog/{r.Slug}",
+                            r.Score
+                        );
+                    })
+                    .ToList();
             }
         }
         catch (Exception ex)

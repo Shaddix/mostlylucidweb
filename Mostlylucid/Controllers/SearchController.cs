@@ -136,14 +136,38 @@ public class SearchController(
     [OutputCache(Duration = 7200, VaryByRouteValueNames = new[] {"slug", "language"})]
     public async Task<IActionResult> RelatedPosts(string slug, string language, int limit = 5)
     {
-        var results = await semanticSearchService.GetRelatedPostsAsync(slug, language, limit);
+        var semanticResults = await semanticSearchService.GetRelatedPostsAsync(slug, limit);
+
+        // Enrich with details from PostgreSQL
+        var enrichedResults = new List<RelatedPostViewModel>();
+        if (semanticResults.Count > 0)
+        {
+            var slugs = semanticResults.Select(r => r.Slug).ToList();
+            var posts = await BlogViewService.GetPostsBySlugAsync(slugs, language);
+
+            foreach (var sr in semanticResults)
+            {
+                var post = posts.FirstOrDefault(p => p.Slug == sr.Slug);
+                if (post != null)
+                {
+                    enrichedResults.Add(new RelatedPostViewModel
+                    {
+                        Slug = sr.Slug,
+                        Title = post.Title,
+                        PublishedDate = post.PublishedDate,
+                        Categories = post.Categories,
+                        Score = sr.Score
+                    });
+                }
+            }
+        }
 
         if (Request.IsHtmx())
         {
-            return PartialView("_RelatedPosts", results);
+            return PartialView("_RelatedPosts", enrichedResults);
         }
 
-        return Json(results);
+        return Json(enrichedResults);
     }
 
 }

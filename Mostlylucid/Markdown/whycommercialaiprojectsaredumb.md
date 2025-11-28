@@ -268,11 +268,11 @@ Startups fall into a slightly different trap. It's not consultancies driving the
 ```mermaid
 timeline
     title Technology Requirements for VC Funding
-    2005 : Web 2.0 : "You need social features"
-    2010 : Mobile : "You need an app"
-    2015 : Cloud : "You need to be cloud-native"
-    2018 : Blockchain : "You need a token"
-    2023 : AI : "You need an AI strategy"
+    2005 : Web 2.0 - "You need social features"
+    2010 : Mobile - "You need an app"
+    2015 : Cloud - "You need to be cloud-native"
+    2018 : Blockchain - "You need a token"
+    2023 : AI - "You need an AI strategy"
 ```
 
 Sound familiar? Every few years, there's a new technology that VCs decide is essential. If your pitch deck doesn't mention it prominently, you're not getting funded. The technology might be irrelevant to your actual product—doesn't matter. You need the buzzword.

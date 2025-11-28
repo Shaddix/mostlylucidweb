@@ -106,4 +106,10 @@ public class BlogPostViewService(IBlogService blogPostService) : IBlogViewServic
     {
         return await blogPostService.GetSlug(id);
     }
+
+    public async Task<List<PostListModel>> GetPostsBySlugAsync(List<string> slugs, string language)
+    {
+        var posts = await blogPostService.GetPostsBySlugsAsync(slugs, language);
+        return posts.Select(p => p.ToPostListModel()).ToList();
+    }
 }

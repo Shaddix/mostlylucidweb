@@ -38,25 +38,22 @@ public interface ISemanticSearchService
     /// Get related posts for a specific blog post
     /// </summary>
     /// <param name="slug">Blog post slug</param>
-    /// <param name="language">Language code</param>
     /// <param name="limit">Maximum number of related posts</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task<List<SearchResult>> GetRelatedPostsAsync(string slug, string language, int limit = 5, CancellationToken cancellationToken = default);
+    Task<List<SearchResult>> GetRelatedPostsAsync(string slug, int limit = 5, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete a blog post from the index
     /// </summary>
     /// <param name="slug">Blog post slug</param>
-    /// <param name="language">Language code</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeletePostAsync(string slug, string language, CancellationToken cancellationToken = default);
+    Task DeletePostAsync(string slug, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Check if a post needs re-indexing based on content hash
     /// </summary>
     /// <param name="slug">Blog post slug</param>
-    /// <param name="language">Language code</param>
     /// <param name="currentHash">Current content hash</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task<bool> NeedsReindexingAsync(string slug, string language, string currentHash, CancellationToken cancellationToken = default);
+    Task<bool> NeedsReindexingAsync(string slug, string currentHash, CancellationToken cancellationToken = default);
 }

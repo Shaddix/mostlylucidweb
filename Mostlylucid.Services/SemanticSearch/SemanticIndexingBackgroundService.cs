@@ -173,7 +173,6 @@ public class SemanticIndexingBackgroundService : BackgroundService
         // Check if reindexing is needed
         var needsReindex = await _semanticSearchService.NeedsReindexingAsync(
             blogPost.Slug,
-            MarkdownBaseService.EnglishLanguage,
             contentHash,
             stoppingToken);
 
@@ -183,17 +182,19 @@ public class SemanticIndexingBackgroundService : BackgroundService
             return IndexResult.Skipped;
         }
 
-        // Create document for indexing
+        // Get available languages for this post
+        var languages = GetAvailableLanguages(blogPost.Slug);
+
+        // Create document for indexing (ID is just slug since only English is indexed)
         var document = new BlogPostDocument
         {
-            Id = $"{blogPost.Slug}_{MarkdownBaseService.EnglishLanguage}",
+            Id = blogPost.Slug,
             Slug = blogPost.Slug,
             Title = blogPost.Title,
             Content = blogPost.PlainTextContent,
-            Language = MarkdownBaseService.EnglishLanguage,
-            Categories = blogPost.Categories.ToList(),
+            ContentHash = contentHash,
             PublishedDate = blogPost.PublishedDate,
-            ContentHash = contentHash
+            Languages = languages
         };
 
         await _semanticSearchService.IndexPostAsync(document, stoppingToken);
@@ -208,6 +209,37 @@ public class SemanticIndexingBackgroundService : BackgroundService
         var bytes = Encoding.UTF8.GetBytes(content);
         var hashBytes = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hashBytes);
+    }
+
+    /// <summary>
+    /// Get all available languages for a given post slug by scanning the translated directory
+    /// </summary>
+    private string[] GetAvailableLanguages(string slug)
+    {
+        var languages = new List<string> { "en" }; // English is always available (the source)
+
+        var translatedPath = _markdownConfig.MarkdownTranslatedPath;
+        if (!Directory.Exists(translatedPath))
+            return languages.ToArray();
+
+        // Look for files matching pattern: {slug}.{lang}.md
+        var translatedFiles = Directory.GetFiles(translatedPath, $"{slug}.*.md", SearchOption.TopDirectoryOnly);
+
+        foreach (var file in translatedFiles)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            var parts = fileName.Split('.');
+            if (parts.Length >= 2)
+            {
+                var langCode = parts[^1];
+                if (langCode.Length == 2 && langCode != "en")
+                {
+                    languages.Add(langCode);
+                }
+            }
+        }
+
+        return languages.OrderBy(l => l).ToArray();
     }
 
     private enum IndexResult

@@ -23,6 +23,10 @@ public interface IBlogViewService : IMarkdownFileBlogService
     Task<bool> Delete(string slug, string language);
     Task<string> GetSlug(int id);
 
+    /// <summary>
+    /// Get posts by a list of slugs for a specific language
+    /// </summary>
+    Task<List<PostListModel>> GetPostsBySlugAsync(List<string> slugs, string language);
 }
 
 public interface IMarkdownFileBlogService

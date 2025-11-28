@@ -1,4 +1,4 @@
-@model List<Mostlylucid.SemanticSearch.Models.SearchResult>
+@model List<Mostlylucid.Models.Search.RelatedPostViewModel>
 
 @if (Model != null && Model.Any())
 {
@@ -30,7 +30,7 @@
                                asp-action="Show"
                                asp-controller="Blog"
                                asp-route-slug="@post.Slug"
-                               asp-route-language="@post.Language"
+                               asp-route-language="en"
                                class="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/10 transition-all duration-150 group/item @(index < Model.Take(3).Count() - 1 ? "border-b border-base-300/30" : "")">
                                 <div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center shrink-0">
                                     <span class="text-xs font-bold text-secondary">@(index + 1)</span>

@@ -118,18 +118,15 @@ public class QdrantVectorStoreService : IVectorStoreService
             var payload = new Dictionary<string, Value>
             {
                 ["slug"] = document.Slug,
-                ["title"] = document.Title,
-                ["language"] = document.Language,
-                ["categories"] = new Value
+                ["content_hash"] = document.ContentHash ?? "",
+                ["published_date"] = document.PublishedDate.ToUnixTimeSeconds(),
+                ["languages"] = new Value
                 {
                     ListValue = new ListValue
                     {
-                        Values = { document.Categories.Select(c => new Value { StringValue = c }) }
+                        Values = { document.Languages.Select(lang => new Value { StringValue = lang }) }
                     }
-                },
-                ["published_date"] = document.PublishedDate.ToString("O"),
-                ["content_hash"] = document.ContentHash ?? "",
-                ["id"] = document.Id
+                }
             };
 
             var point = new PointStruct
@@ -172,18 +169,15 @@ public class QdrantVectorStoreService : IVectorStoreService
                 var payload = new Dictionary<string, Value>
                 {
                     ["slug"] = doc.Document.Slug,
-                    ["title"] = doc.Document.Title,
-                    ["language"] = doc.Document.Language,
-                    ["categories"] = new Value
+                    ["content_hash"] = doc.Document.ContentHash ?? "",
+                    ["published_date"] = doc.Document.PublishedDate.ToUnixTimeSeconds(),
+                    ["languages"] = new Value
                     {
                         ListValue = new ListValue
                         {
-                            Values = { doc.Document.Categories.Select(c => new Value { StringValue = c }) }
+                            Values = { doc.Document.Languages.Select(lang => new Value { StringValue = lang }) }
                         }
-                    },
-                    ["published_date"] = doc.Document.PublishedDate.ToString("O"),
-                    ["content_hash"] = doc.Document.ContentHash ?? "",
-                    ["id"] = doc.Document.Id
+                    }
                 };
 
                 return new PointStruct
@@ -228,13 +222,7 @@ public class QdrantVectorStoreService : IVectorStoreService
             return searchResults.Select(result => new SearchResult
             {
                 Slug = result.Payload["slug"].StringValue,
-                Title = result.Payload["title"].StringValue,
-                Language = result.Payload["language"].StringValue,
-                Categories = result.Payload.TryGetValue("categories", out var cats)
-                    ? cats.ListValue.Values.Select(v => v.StringValue).ToList()
-                    : new List<string>(),
-                Score = result.Score,
-                PublishedDate = DateTime.Parse(result.Payload["published_date"].StringValue)
+                Score = result.Score
             }).ToList();
         }
         catch (Exception ex)
@@ -244,14 +232,14 @@ public class QdrantVectorStoreService : IVectorStoreService
         }
     }
 
-    public async Task<List<SearchResult>> FindRelatedPostsAsync(string slug, string language, int limit = 5, CancellationToken cancellationToken = default)
+    public async Task<List<SearchResult>> FindRelatedPostsAsync(string slug, int limit = 5, CancellationToken cancellationToken = default)
     {
         if (_client == null || !_config.Enabled)
             return new List<SearchResult>();
 
         try
         {
-            // Find the document by slug and language
+            // Find the document by slug
             var scrollResults = await _client.ScrollAsync(
                 collectionName: _config.CollectionName,
                 filter: new Filter
@@ -265,14 +253,6 @@ public class QdrantVectorStoreService : IVectorStoreService
                                 Key = "slug",
                                 Match = new Match { Keyword = slug }
                             }
-                        },
-                        new Condition
-                        {
-                            Field = new FieldCondition
-                            {
-                                Key = "language",
-                                Match = new Match { Keyword = language }
-                            }
                         }
                     }
                 },
@@ -283,7 +263,7 @@ public class QdrantVectorStoreService : IVectorStoreService
             var point = scrollResults.Result.FirstOrDefault();
             if (point == null)
             {
-                _logger.LogWarning("Post {Slug} ({Language}) not found in vector store", slug, language);
+                _logger.LogWarning("Post {Slug} not found in vector store", slug);
                 return new List<SearchResult>();
             }
 
@@ -298,24 +278,18 @@ public class QdrantVectorStoreService : IVectorStoreService
 
             // Filter out the original post and return top N similar posts
             return searchResults
-                .Where(r => r.Payload["slug"].StringValue != slug || r.Payload["language"].StringValue != language)
+                .Where(r => r.Payload["slug"].StringValue != slug)
                 .Take(limit)
                 .Select(result => new SearchResult
                 {
                     Slug = result.Payload["slug"].StringValue,
-                    Title = result.Payload["title"].StringValue,
-                    Language = result.Payload["language"].StringValue,
-                    Categories = result.Payload.TryGetValue("categories", out var cats)
-                        ? cats.ListValue.Values.Select(v => v.StringValue).ToList()
-                        : new List<string>(),
-                    Score = result.Score,
-                    PublishedDate = DateTime.Parse(result.Payload["published_date"].StringValue)
+                    Score = result.Score
                 })
                 .ToList();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to find related posts for {Slug} ({Language})", slug, language);
+            _logger.LogError(ex, "Failed to find related posts for {Slug}", slug);
             return new List<SearchResult>();
         }
     }
@@ -390,6 +364,51 @@ public class QdrantVectorStoreService : IVectorStoreService
         {
             _logger.LogError(ex, "Failed to get document hash for {Id}", id);
             return null;
+        }
+    }
+
+    public async Task UpdateLanguagesAsync(string slug, string[] languages, CancellationToken cancellationToken = default)
+    {
+        if (_client == null || !_config.Enabled)
+            return;
+
+        try
+        {
+            // Update the payload for documents matching this slug
+            await _client.SetPayloadAsync(
+                collectionName: _config.CollectionName,
+                payload: new Dictionary<string, Value>
+                {
+                    ["languages"] = new Value
+                    {
+                        ListValue = new ListValue
+                        {
+                            Values = { languages.Select(lang => new Value { StringValue = lang }) }
+                        }
+                    }
+                },
+                filter: new Filter
+                {
+                    Must =
+                    {
+                        new Condition
+                        {
+                            Field = new FieldCondition
+                            {
+                                Key = "slug",
+                                Match = new Match { Keyword = slug }
+                            }
+                        }
+                    }
+                },
+                cancellationToken: cancellationToken
+            );
+
+            _logger.LogDebug("Updated languages for {Slug}: {Languages}", slug, string.Join(", ", languages));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update languages for {Slug}", slug);
         }
     }
 

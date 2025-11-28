@@ -30,7 +30,7 @@ public interface IVectorStoreService
     /// <summary>
     /// Find related posts for a given blog post
     /// </summary>
-    Task<List<SearchResult>> FindRelatedPostsAsync(string slug, string language, int limit = 5, CancellationToken cancellationToken = default);
+    Task<List<SearchResult>> FindRelatedPostsAsync(string slug, int limit = 5, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete a document from the index
@@ -41,4 +41,9 @@ public interface IVectorStoreService
     /// Check if a document exists and get its content hash
     /// </summary>
     Task<string?> GetDocumentHashAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update the languages array for an existing document (when a new translation is added)
+    /// </summary>
+    Task UpdateLanguagesAsync(string slug, string[] languages, CancellationToken cancellationToken = default);
 }

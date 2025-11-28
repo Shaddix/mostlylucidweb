@@ -23,7 +23,6 @@ public class HybridSearchService : IHybridSearchService
 
     public async Task<List<SearchResult>> SearchAsync(
         string query,
-        string language = "en",
         int limit = 10,
         CancellationToken cancellationToken = default)
     {
@@ -39,17 +38,11 @@ public class HybridSearchService : IHybridSearchService
                 cancellationToken);
 
             _logger.LogDebug(
-                "Hybrid search for '{Query}' ({Language}): Semantic={SemanticCount}",
-                query, language, semanticResults.Count);
-
-            // Filter semantic results by language
-            var filteredSemanticResults = semanticResults
-                .Where(r => r.Language == language)
-                .ToList();
+                "Hybrid search for '{Query}': Semantic={SemanticCount}",
+                query, semanticResults.Count);
 
             // Apply Reciprocal Rank Fusion
-            var fusedResults = ApplyReciprocalRankFusion(
-                filteredSemanticResults);
+            var fusedResults = ApplyReciprocalRankFusion(semanticResults);
 
             // Return top results
             var finalResults = fusedResults
@@ -57,16 +50,14 @@ public class HybridSearchService : IHybridSearchService
                 .ToList();
 
             _logger.LogInformation(
-                "Hybrid search returned {Count} results for '{Query}' ({Language})",
-                finalResults.Count, query, language);
+                "Hybrid search returned {Count} results for '{Query}'",
+                finalResults.Count, query);
 
             return finalResults;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Hybrid search failed for query '{Query}' ({Language})",
-                query, language);
+            _logger.LogError(ex, "Hybrid search failed for query '{Query}'", query);
             return new List<SearchResult>();
         }
     }
@@ -120,11 +111,11 @@ public class HybridSearchService : IHybridSearchService
     }
 
     /// <summary>
-    /// Generates a unique key for deduplication based on slug and language
+    /// Generates a unique key for deduplication based on slug
     /// </summary>
     private string GetResultKey(SearchResult result)
     {
-        return $"{result.Slug}_{result.Language}";
+        return result.Slug;
     }
 
     /// <summary>

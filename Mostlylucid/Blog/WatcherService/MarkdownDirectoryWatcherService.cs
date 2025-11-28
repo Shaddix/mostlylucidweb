@@ -291,24 +291,85 @@ public class MarkdownDirectoryWatcherService(
                 return;
             }
 
+            // Only index English posts for semantic search
+            if (language != MarkdownBaseService.EnglishLanguage)
+            {
+                // For translated posts, update the languages array on the existing document
+                await UpdateLanguagesInSemanticSearchAsync(scope, post.Slug);
+                return;
+            }
+
             var document = new BlogPostDocument
             {
-                Id = $"{post.Slug}_{language}",
+                Id = post.Slug,
                 Slug = post.Slug,
                 Title = post.Title,
                 Content = post.PlainTextContent,
-                Language = language,
-                Categories = post.Categories?.ToList() ?? new List<string>(),
-                PublishedDate = post.PublishedDate
+                PublishedDate = post.PublishedDate,
+                Languages = GetAvailableLanguages(post.Slug)
             };
 
             await semanticSearchService.IndexPostAsync(document);
-            logger.LogInformation("Indexed post {Slug} ({Language}) in semantic search", post.Slug, language);
+            logger.LogInformation("Indexed post {Slug} in semantic search", post.Slug);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to index post {Slug} ({Language}) in semantic search", post.Slug, language);
         }
+    }
+
+    /// <summary>
+    /// Update the languages array in semantic search when a translation is added
+    /// </summary>
+    private async Task UpdateLanguagesInSemanticSearchAsync(IServiceScope scope, string slug)
+    {
+        try
+        {
+            var vectorStoreService = scope.ServiceProvider.GetService<IVectorStoreService>();
+            if (vectorStoreService == null)
+            {
+                return;
+            }
+
+            var languages = GetAvailableLanguages(slug);
+            await vectorStoreService.UpdateLanguagesAsync(slug, languages);
+            logger.LogDebug("Updated languages for {Slug} in semantic search: {Languages}", slug, string.Join(", ", languages));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to update languages for {Slug} in semantic search", slug);
+        }
+    }
+
+    /// <summary>
+    /// Get all available languages for a given post slug by scanning the translated directory
+    /// </summary>
+    private string[] GetAvailableLanguages(string slug)
+    {
+        var languages = new List<string> { "en" }; // English is always available (the source)
+
+        var translatedPath = markdownConfig.MarkdownTranslatedPath;
+        if (!Directory.Exists(translatedPath))
+            return languages.ToArray();
+
+        // Look for files matching pattern: {slug}.{lang}.md
+        var translatedFiles = Directory.GetFiles(translatedPath, $"{slug}.*.md", SearchOption.TopDirectoryOnly);
+
+        foreach (var file in translatedFiles)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            var parts = fileName.Split('.');
+            if (parts.Length >= 2)
+            {
+                var langCode = parts[^1];
+                if (langCode.Length == 2 && langCode != "en")
+                {
+                    languages.Add(langCode);
+                }
+            }
+        }
+
+        return languages.OrderBy(l => l).ToArray();
     }
 
     /// <summary>
@@ -325,12 +386,12 @@ public class MarkdownDirectoryWatcherService(
                 return;
             }
 
-            await semanticSearchService.DeletePostAsync(slug, language);
-            logger.LogInformation("Deleted post {Slug} ({Language}) from semantic search index", slug, language);
+            await semanticSearchService.DeletePostAsync(slug);
+            logger.LogInformation("Deleted post {Slug} from semantic search index", slug);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to delete post {Slug} ({Language}) from semantic search", slug, language);
+            logger.LogWarning(ex, "Failed to delete post {Slug} from semantic search", slug);
         }
     }
 }

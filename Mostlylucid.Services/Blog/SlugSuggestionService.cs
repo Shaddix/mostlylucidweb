@@ -411,26 +411,39 @@ public class SlugSuggestionService : ISlugSuggestionService
             {
                 var semanticResults = await _semanticSearchService.SearchAsync(searchTerm, maxSuggestions, cancellationToken);
 
-                foreach (var sr in semanticResults)
+                if (semanticResults.Count > 0)
                 {
-                    results.Add(new SlugSuggestionWithScore(
-                        new PostListModel
+                    // Get slugs from semantic search, then look up details from PostgreSQL
+                    var slugs = semanticResults.Select(sr => sr.Slug).ToList();
+                    var posts = await _context.BlogPosts
+                        .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == language)
+                        .Select(p => new PostListModel
                         {
-                            Slug = sr.Slug,
-                            Title = sr.Title,
-                            Language = sr.Language,
-                            PublishedDate = sr.PublishedDate,
-                            Categories = sr.Categories.ToArray()
-                        },
-                        sr.Score
-                    ));
-                }
+                            Id = p.Id.ToString(),
+                            Slug = p.Slug,
+                            Title = p.Title,
+                            Language = p.LanguageEntity.Name,
+                            PublishedDate = p.PublishedDate.DateTime,
+                            Categories = p.Categories.Select(c => c.Name).ToArray()
+                        })
+                        .ToListAsync(cancellationToken);
 
-                if (results.Count > 0)
-                {
-                    _logger.LogInformation("Found {Count} semantic search suggestions for: {RequestedSlug}",
-                        results.Count, requestedSlug);
-                    return results;
+                    // Match back with semantic scores
+                    foreach (var post in posts)
+                    {
+                        var semanticResult = semanticResults.FirstOrDefault(sr => sr.Slug == post.Slug);
+                        if (semanticResult != null)
+                        {
+                            results.Add(new SlugSuggestionWithScore(post, semanticResult.Score));
+                        }
+                    }
+
+                    if (results.Count > 0)
+                    {
+                        _logger.LogInformation("Found {Count} semantic search suggestions for: {RequestedSlug}",
+                            results.Count, requestedSlug);
+                        return results;
+                    }
                 }
             }
             catch (Exception ex)

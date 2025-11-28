@@ -319,6 +319,14 @@ public class BlogService(
         return posts.Select(p => p.ToDto()).ToList();
     }
 
+    public async Task<List<BlogPostDto>> GetPostsBySlugsAsync(List<string> slugs, string language)
+    {
+        var posts = await NoTrackingQuery()
+            .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == language)
+            .ToListAsync();
+        return posts.Select(p => p.ToDto()).ToList();
+    }
+
     private async Task<List<CategoryEntity>> GetCategories(string slug, bool noTracking = false)
     {
         var query = noTracking ? PostsQuery().AsNoTracking() : PostsQuery();

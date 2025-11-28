@@ -74,11 +74,11 @@ public class SemanticSearchService : ISemanticSearchService
             // Store in vector database
             await _vectorStoreService.IndexDocumentAsync(document, embedding, cancellationToken);
 
-            _logger.LogInformation("Indexed post {Slug} ({Language})", document.Slug, document.Language);
+            _logger.LogInformation("Indexed post {Slug}", document.Slug);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to index post {Slug} ({Language})", document.Slug, document.Language);
+            _logger.LogError(ex, "Failed to index post {Slug}", document.Slug);
         }
     }
 
@@ -113,7 +113,7 @@ public class SemanticSearchService : ISemanticSearchService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to generate embedding for {Slug} ({Language})", document.Slug, document.Language);
+                    _logger.LogError(ex, "Failed to generate embedding for {Slug}", document.Slug);
                 }
             }
 
@@ -157,7 +157,7 @@ public class SemanticSearchService : ISemanticSearchService
         }
     }
 
-    public async Task<List<SearchResult>> GetRelatedPostsAsync(string slug, string language, int limit = 5, CancellationToken cancellationToken = default)
+    public async Task<List<SearchResult>> GetRelatedPostsAsync(string slug, int limit = 5, CancellationToken cancellationToken = default)
     {
         if (!_config.Enabled)
             return new List<SearchResult>();
@@ -166,54 +166,51 @@ public class SemanticSearchService : ISemanticSearchService
         {
             var results = await _vectorStoreService.FindRelatedPostsAsync(
                 slug,
-                language,
                 Math.Min(limit, _config.RelatedPostsCount),
                 cancellationToken);
 
-            _logger.LogDebug("Found {Count} related posts for {Slug} ({Language})", results.Count, slug, language);
+            _logger.LogDebug("Found {Count} related posts for {Slug}", results.Count, slug);
 
             return results;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get related posts for {Slug} ({Language})", slug, language);
+            _logger.LogError(ex, "Failed to get related posts for {Slug}", slug);
             return new List<SearchResult>();
         }
     }
 
-    public async Task DeletePostAsync(string slug, string language, CancellationToken cancellationToken = default)
+    public async Task DeletePostAsync(string slug, CancellationToken cancellationToken = default)
     {
         if (!_config.Enabled)
             return;
 
         try
         {
-            var documentId = GetDocumentId(slug, language);
-            await _vectorStoreService.DeleteDocumentAsync(documentId, cancellationToken);
-            _logger.LogInformation("Deleted post {Slug} ({Language}) from index", slug, language);
+            await _vectorStoreService.DeleteDocumentAsync(slug, cancellationToken);
+            _logger.LogInformation("Deleted post {Slug} from index", slug);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete post {Slug} ({Language})", slug, language);
+            _logger.LogError(ex, "Failed to delete post {Slug}", slug);
         }
     }
 
-    public async Task<bool> NeedsReindexingAsync(string slug, string language, string currentHash, CancellationToken cancellationToken = default)
+    public async Task<bool> NeedsReindexingAsync(string slug, string currentHash, CancellationToken cancellationToken = default)
     {
         if (!_config.Enabled)
             return false;
 
         try
         {
-            var documentId = GetDocumentId(slug, language);
-            var existingHash = await _vectorStoreService.GetDocumentHashAsync(documentId, cancellationToken);
+            var existingHash = await _vectorStoreService.GetDocumentHashAsync(slug, cancellationToken);
 
             // If document doesn't exist or hash is different, needs reindexing
             return existingHash == null || existingHash != currentHash;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check reindexing status for {Slug} ({Language})", slug, language);
+            _logger.LogError(ex, "Failed to check reindexing status for {Slug}", slug);
             return true; // Err on the side of reindexing
         }
     }
@@ -247,10 +244,5 @@ public class SemanticSearchService : ISemanticSearchService
         var bytes = Encoding.UTF8.GetBytes(content);
         var hashBytes = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hashBytes);
-    }
-
-    private string GetDocumentId(string slug, string language)
-    {
-        return $"{slug}_{language}";
     }
 }

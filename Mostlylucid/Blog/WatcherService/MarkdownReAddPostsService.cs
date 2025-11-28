@@ -173,15 +173,18 @@ public class MarkdownReAddPostsService(
     {
         try
         {
+            // Only index English posts for semantic search
+            if (language != MarkdownBaseService.EnglishLanguage)
+            {
+                return;
+            }
+
             var document = new BlogPostDocument
             {
-                Id = $"{post.Slug}_{language}",
+                Id = post.Slug,
                 Slug = post.Slug,
                 Title = post.Title,
-                Content = post.PlainTextContent,
-                Language = language,
-                Categories = post.Categories?.ToList() ?? new List<string>(),
-                PublishedDate = post.PublishedDate
+                Content = post.PlainTextContent
             };
 
             await semanticSearchService.IndexPostAsync(document);

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.SemanticSearch.Config;
-using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Markdown;
 using Serilog.Events;
@@ -17,10 +16,8 @@ public class SearchApi(
     BlogSearchService searchService,
     UmamiBackgroundSender umamiBackgroundSender,
     SearchService indexService,
-    ISemanticSearchService semanticSearchService,
     SemanticSearchConfig semanticSearchConfig) : ControllerBase
 {
-    private const int RrfConstant = 60; // Reciprocal Rank Fusion constant
 
     [HttpGet]
     [Route("osearch/{query}")]
@@ -90,68 +87,15 @@ public class SearchApi(
 
     private async Task<List<BlogSearchService.SearchResults>> HybridSearchAsync(string query, string host)
     {
-        // Run both searches in parallel
-        var fullTextTask = GetFullTextResultsAsync(query);
-        var semanticTask = semanticSearchService.SearchAsync(query, limit: 20);
+        // Use the BlogSearchService which handles PostgreSQL lookups for titles
+        var results = await searchService.HybridSearchAsync(query);
 
-        await Task.WhenAll(fullTextTask, semanticTask);
-
-        var fullTextResults = await fullTextTask;
-        var semanticResults = await semanticTask;
-
-        // Apply Reciprocal Rank Fusion to combine results
-        var rrfScores = new Dictionary<string, (double Score, string Title, string Slug)>();
-
-        // Score full-text results
-        for (int i = 0; i < fullTextResults.Count; i++)
-        {
-            var (title, slug) = fullTextResults[i];
-            var key = slug.ToLowerInvariant();
-            var rrfScore = 1.0 / (RrfConstant + i + 1);
-
-            if (rrfScores.TryGetValue(key, out var existing))
-            {
-                rrfScores[key] = (existing.Score + rrfScore, title, slug);
-            }
-            else
-            {
-                rrfScores[key] = (rrfScore, title, slug);
-            }
-        }
-
-        // Score semantic results
-        for (int i = 0; i < semanticResults.Count; i++)
-        {
-            var result = semanticResults[i];
-            var key = result.Slug.ToLowerInvariant();
-            var rrfScore = 1.0 / (RrfConstant + i + 1);
-
-            if (rrfScores.TryGetValue(key, out var existing))
-            {
-                rrfScores[key] = (existing.Score + rrfScore, existing.Title, existing.Slug);
-            }
-            else
-            {
-                rrfScores[key] = (rrfScore, result.Title, result.Slug);
-            }
-        }
-
-        // Sort by combined RRF score and return top results
-        return rrfScores.Values
-            .OrderByDescending(x => x.Score)
-            .Take(15)
-            .Select(x => new BlogSearchService.SearchResults(
-                x.Title.Trim(),
-                x.Slug,
-                Url.ActionLink("Show", "Blog", new { slug = x.Slug }, "https", host)))
-            .ToList();
-    }
-
-    private async Task<List<(string Title, string Slug)>> GetFullTextResultsAsync(string query)
-    {
-        if (!query.Contains(' '))
-            return await searchService.GetSearchResultForComplete(query);
-        else
-            return await searchService.GetSearchResultForQuery(query);
+        // Add full URLs
+        return results.Select(r => new BlogSearchService.SearchResults(
+            r.Title,
+            r.Slug,
+            Url.ActionLink("Show", "Blog", new { slug = r.Slug }, "https", host),
+            r.Score
+        )).ToList();
     }
 }

@@ -270,4 +270,14 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
         model.Data = posts.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return await Task.FromResult(model);
     }
+
+    public Task<List<PostListModel>> GetPostsBySlugAsync(List<string> slugs, string language)
+    {
+        var cache = PageCacheHelper.GetPageCache();
+        var posts = cache
+            .Where(x => slugs.Contains(x.Value.Slug) && x.Value.Language == language)
+            .Select(x => x.Value.ToPostListModel())
+            .ToList();
+        return Task.FromResult(posts);
+    }
 }
