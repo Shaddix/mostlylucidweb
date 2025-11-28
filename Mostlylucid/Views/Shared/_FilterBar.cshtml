@@ -35,8 +35,14 @@
                 <!-- Category -->
                 <div class="flex items-center gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Cat:</label>
-                    <select id="categorySelect"
-                            onchange="window.handleFilterChange && window.handleFilterChange('category', this.value)"
+                    <select id="categorySelect" name="category"
+                            hx-get="/blog"
+                            hx-target="#content"
+                            hx-swap="outerHTML show:none"
+                            hx-trigger="change"
+                            hx-push-url="true"
+                            hx-include="#languageSelect, #orderSelect"
+                            hx-vals='{"page": "1"}'
                             class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 transition-colors cursor-pointer">
                         <option value="">All</option>
                         @foreach (var cat in Model?.AllCategories ?? new List<Mostlylucid.Shared.Models.CategoryWithCount>())
@@ -49,8 +55,14 @@
                 <!-- Sort -->
                 <div class="flex items-center gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Sort:</label>
-                    <select id="orderSelect"
-                            onchange="window.handleFilterChange && window.handleFilterChange('order', this.value)"
+                    <select id="orderSelect" name="order"
+                            hx-get="/blog"
+                            hx-target="#content"
+                            hx-swap="outerHTML show:none"
+                            hx-trigger="change"
+                            hx-push-url="true"
+                            hx-include="#languageSelect, #categorySelect"
+                            hx-vals='{"page": "1"}'
                             class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 transition-colors cursor-pointer">
                         <option value="date_desc">Newest</option>
                         <option value="date_asc">Oldest</option>

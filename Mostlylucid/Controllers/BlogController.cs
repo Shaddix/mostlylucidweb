@@ -25,11 +25,34 @@ public class BlogController(BaseControllerService baseControllerService,
     [OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
-        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", string? category = null)
+        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", string? order = null, string? category = null)
     {
+        // Support combined order parameter (e.g., "date_desc") for simpler HTMX forms
+        if (!string.IsNullOrEmpty(order) && order.Contains('_'))
+        {
+            var parts = order.Split('_', 2);
+            orderBy = parts[0];
+            orderDir = parts.Length > 1 ? parts[1] : "desc";
+        }
+
         var posts = !string.IsNullOrEmpty(category)
             ? await blogViewService.GetPostsByCategory(category, page, pageSize, language)
             : await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy: orderBy, orderDir: orderDir);
+
+        // If category filter results in exactly 1 post, show it directly
+        if (!string.IsNullOrEmpty(category) && posts.TotalItems == 1 && posts.Data?.Count == 1)
+        {
+            var singlePost = posts.Data[0];
+            var post = await blogViewService.GetPost(singlePost.Slug, language);
+            if (post != null)
+            {
+                var postUrl = Url.Action("Show", "Blog", new { slug = singlePost.Slug, language });
+                Response.Headers["HX-Push-Url"] = postUrl;
+                if (Request.IsHtmx())
+                    return PartialView("_PostPartial", post);
+                return View("Post", post);
+            }
+        }
 
         // Get all categories for the filter dropdown
         posts.AllCategories = await blogViewService.GetCategoriesWithCount(language);

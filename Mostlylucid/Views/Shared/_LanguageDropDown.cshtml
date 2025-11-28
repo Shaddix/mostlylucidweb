@@ -115,8 +115,8 @@
         }
      }"
      class="relative inline-block">
-    <!-- Hidden input used by existing JS listeners -->
-    <input type="hidden" id="languageSelect" />
+    <!-- Hidden input used by existing JS listeners and hx-include -->
+    <input type="hidden" id="languageSelect" name="language" />
 
     <!-- Dropdown Button -->
     <button x-on:click="open = !open"
