@@ -95,11 +95,132 @@ function initialize(elementId, reducedToolbar = false) {
 
     let easymdeInstance = {};
 
+    // Custom toolbar buttons using BoxIcons (Font Awesome not loaded)
+    const toolbarButtons = {
+        bold: {
+            name: "bold",
+            action: EasyMDE.toggleBold,
+            className: "bx bx-bold",
+            title: "Bold (Ctrl+B)"
+        },
+        italic: {
+            name: "italic",
+            action: EasyMDE.toggleItalic,
+            className: "bx bx-italic",
+            title: "Italic (Ctrl+I)"
+        },
+        heading: {
+            name: "heading",
+            action: EasyMDE.toggleHeadingSmaller,
+            className: "bx bx-heading",
+            title: "Heading (Ctrl+H)"
+        },
+        quote: {
+            name: "quote",
+            action: EasyMDE.toggleBlockquote,
+            className: "bx bx-quote-left",
+            title: "Quote (Ctrl+')"
+        },
+        unorderedList: {
+            name: "unordered-list",
+            action: EasyMDE.toggleUnorderedList,
+            className: "bx bx-list-ul",
+            title: "Unordered List (Ctrl+L)"
+        },
+        orderedList: {
+            name: "ordered-list",
+            action: EasyMDE.toggleOrderedList,
+            className: "bx bx-list-ol",
+            title: "Ordered List (Ctrl+Alt+L)"
+        },
+        link: {
+            name: "link",
+            action: EasyMDE.drawLink,
+            className: "bx bx-link",
+            title: "Insert Link (Ctrl+K)"
+        },
+        image: {
+            name: "image",
+            action: EasyMDE.drawImage,
+            className: "bx bx-image",
+            title: "Insert Image (Ctrl+Alt+I)"
+        },
+        code: {
+            name: "code",
+            action: EasyMDE.toggleCodeBlock,
+            className: "bx bx-code-block",
+            title: "Code Block (Ctrl+Alt+C)"
+        },
+        preview: {
+            name: "preview",
+            action: EasyMDE.togglePreview,
+            className: "bx bx-show no-disable",
+            title: "Toggle Preview (Ctrl+P)"
+        },
+        sideBySide: {
+            name: "side-by-side",
+            action: EasyMDE.toggleSideBySidePreview,
+            className: "bx bx-columns no-disable",
+            title: "Side by Side (F9)"
+        },
+        fullscreen: {
+            name: "fullscreen",
+            action: EasyMDE.toggleFullScreen,
+            className: "bx bx-fullscreen no-disable",
+            title: "Fullscreen (F11)"
+        },
+        save: {
+            name: "save",
+            action: function (editor) {
+                var params = new URLSearchParams(window.location.search);
+                var slug = params.get("slug");
+                var language = params.get("language") || "en";
+                saveContentToDisk(editor.value(), slug, language);
+            },
+            className: "bx bx-save",
+            title: "Save to Disk"
+        },
+        insertCategory: {
+            name: "insert-category",
+            action: function (editor) {
+                var category = prompt("Enter categories separated by commas", "EasyNMT, ASP.NET, C#");
+                if (category) {
+                    var currentContent = editor.value();
+                    var categoryTag = `<!--category-- ${category} -->\n\n`;
+                    editor.value(currentContent + categoryTag);
+                }
+            },
+            className: "bx bx-purchase-tag",
+            title: "Insert Categories"
+        },
+        update: {
+            name: "update",
+            action: function () {
+                updateContent(getinstance(elementId));
+            },
+            className: "bx bx-refresh",
+            title: "Update Preview (Ctrl+Alt+R)"
+        },
+        insertDatetime: {
+            name: "insert-datetime",
+            action: function (editor) {
+                var now = new Date();
+                var formattedDateTime = now.toISOString().slice(0, 16);
+                var datetimeTag = `<datetime class="hidden">${formattedDateTime}</datetime>\n\n`;
+                var currentContent = editor.value();
+                editor.value(currentContent + datetimeTag);
+            },
+            className: "bx bx-calendar",
+            title: "Insert Datetime"
+        }
+    };
+
     if (reducedToolbar) {
         easymdeInstance = new EasyMDE({
             element: element,
             toolbar: [
-                "bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|"
+                toolbarButtons.bold, toolbarButtons.italic, toolbarButtons.heading, "|",
+                toolbarButtons.quote, toolbarButtons.unorderedList, toolbarButtons.orderedList
             ]
         });
     } else {
@@ -110,58 +231,13 @@ function initialize(elementId, reducedToolbar = false) {
                 codeSyntaxHighlighting: true,
             },
             element: element,
+            minHeight: "400px",
             toolbar: [
-                "bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|",
-                {
-                    name: "save",
-                    action: function (editor) {
-                        var params = new URLSearchParams(window.location.search);
-                        var slug = params.get("slug");
-                        var language = params.get("language") || "en";
-
-                        saveContentToDisk(editor.value(), slug, language);
-                    },
-                    className: "bx bx-save",
-                    title: "Save"
-                },
-                "|",
-                {
-                    name: "insert-category",
-                    action: function (editor) {
-                        var category = prompt("Enter categories separated by commas", "EasyNMT, ASP.NET, C#");
-                        if (category) {
-                            var currentContent = editor.value();
-                            var categoryTag = `<!--category-- ${category} -->\n\n`;
-                            editor.value(currentContent + categoryTag);
-                        }
-                    },
-                    className: "bx bx-tag",
-                    title: "Insert Categories"
-                },
-                "|",
-                {
-                    name: "update",
-                    action: function () {
-                        updateContent(getinstance(elementId));
-                    },
-                    className: "bx bx-refresh",
-                    title: "Update"
-                },
-                "|",
-                {
-                    name: "insert-datetime",
-                    action: function (editor) {
-                        var now = new Date();
-                        var formattedDateTime = now.toISOString().slice(0, 16);
-                        var datetimeTag = `<datetime class="hidden">${formattedDateTime}</datetime>\n\n`;
-
-                        var currentContent = editor.value();
-                        editor.value(currentContent + datetimeTag);
-                    },
-                    className: "bx bx-calendar",
-                    title: "Insert Datetime"
-                },
-                "|", "preview", "side-by-side", "fullscreen"
+                toolbarButtons.bold, toolbarButtons.italic, toolbarButtons.heading, "|",
+                toolbarButtons.quote, toolbarButtons.unorderedList, toolbarButtons.orderedList, "|",
+                toolbarButtons.link, toolbarButtons.image, toolbarButtons.code, "|",
+                toolbarButtons.save, toolbarButtons.insertCategory, toolbarButtons.update, toolbarButtons.insertDatetime, "|",
+                toolbarButtons.preview, toolbarButtons.sideBySide, toolbarButtons.fullscreen
             ]
         });
     }

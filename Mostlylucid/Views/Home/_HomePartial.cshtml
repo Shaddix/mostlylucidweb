@@ -19,13 +19,9 @@
 <partial name="_PopularPost" />
 
 <div>
-    <!-- Navigation & Filter Section -->
-    <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between mb-4 print:!hidden">
-
-        <!-- Right: Quick Filter Bar -->
-        <div class="hidden lg:flex items-center gap-3">
-            <partial name="_FilterBar" model="Model.Posts"/>
-        </div>
+    <!-- Filter Bar - centered -->
+    <div class="flex justify-center mb-4 print:!hidden">
+        <partial name="_FilterBar" model="Model.Posts"/>
     </div>
 
     <!-- Blog Posts List -->

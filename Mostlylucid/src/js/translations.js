@@ -1,21 +1,47 @@
-﻿
+
  export function submitTranslation() {
+    console.log('submitTranslation called');
+
     const languageDropDown = document.getElementById('LanguageDropDown');
+    if (!languageDropDown) {
+        console.error('Language dropdown element not found');
+        window.showToast && window.showToast('Language dropdown not found', 'error');
+        return;
+    }
+
     const translateEditor = 'markdowneditor';
 
-    // Access Alpine.js data using __x.$data (Alpine.js internal structure)
-    const alpineData = Alpine.$data(languageDropDown);
-    const shortCode = alpineData.selectedShortCode;
-    const mdeInstance = window.mostlylucid.simplemde.getinstance(translateEditor);
+    // Access Alpine.js data
+    let shortCode = '';
+    try {
+        const alpineData = Alpine.$data(languageDropDown);
+        shortCode = alpineData?.selectedShortCode || '';
+        console.log('Selected language:', shortCode);
+    } catch (e) {
+        console.error('Failed to get Alpine data:', e);
+        window.showToast && window.showToast('Failed to get language selection', 'error');
+        return;
+    }
 
+    const mdeInstance = window.mostlylucid.simplemde.getinstance(translateEditor);
     if (!mdeInstance) {
-        console.error('SimpleMDE instance not found for:', translateEditor);
+        console.error('EasyMDE instance not found for:', translateEditor);
+        window.showToast && window.showToast('Editor not initialized', 'error');
         return;
     }
 
     const markdown = mdeInstance.value();
-    if (shortCode === '' || markdown === '') {
-        console.warn('Missing language or markdown content');
+    console.log('Markdown length:', markdown?.length || 0);
+
+    if (!shortCode || shortCode === 'en') {
+        console.warn('Please select a target language (not English)');
+        window.showToast && window.showToast('Please select a target language', 'warning');
+        return;
+    }
+
+    if (!markdown || markdown.trim() === '') {
+        console.warn('No markdown content to translate');
+        window.showToast && window.showToast('No content to translate', 'warning');
         return;
     }
 
@@ -33,39 +59,41 @@
         OriginalMarkdown: markdown
     };
 
-// Perform the fetch request to start the translation using POST
+    // Show loading state
+    window.showToast && window.showToast('Starting translation...', 'info');
+
+    // Perform the fetch request to start the translation using POST
     fetch('/api/translate/start-translation', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'  // The content type should be JSON
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify(model)  // Send the data object as JSON
+        body: JSON.stringify(model)
     })
         .then(function(response) {
             if (response.ok) {
-                // Process the returned task ID
-                return response.json();  // Parse the JSON response (assuming the task ID is returned in JSON)
+                return response.json();
             } else {
-                console.error('Failed to start the translation');
+                throw new Error(`Translation failed: ${response.status} ${response.statusText}`);
             }
         })
         .then(function(taskId) {
             if (taskId) {
                 console.log("Task ID:", taskId);
+                window.showToast && window.showToast('Translation started', 'success');
 
                 // Trigger an HTMX request to get the translations after saving
                 htmx.ajax('get', "/editor/get-translations", {
-                    target: '#translations',  // Update this element with the response
-                    swap: 'innerHTML',        // Replace the content inside the target
+                    target: '#translations',
+                    swap: 'innerHTML',
                 }).then(function () {
-                    // Remove the hidden class after the content is updated
                     document.getElementById('translations').classList.remove('hidden');
                 });
             }
         })
         .catch(function(error) {
-            // Handle any errors that occur during the fetch
-            console.error('An error occurred:', error);
+            console.error('Translation error:', error);
+            window.showToast && window.showToast('Translation failed: ' + error.message, 'error');
         });
 }
 

@@ -447,6 +447,18 @@
     langSelect && langSelect.addEventListener('change', async function(){
       console.log('Language changed to:', langSelect.value);
 
+      // Only trigger navigation on blog/search pages, not on editor or other pages
+      const isBlogPage = window.location.pathname === '/blog' ||
+                         window.location.pathname === '/' ||
+                         window.location.pathname.startsWith('/search') ||
+                         document.querySelector('#content[data-blog-list]') !== null ||
+                         document.querySelector('[data-search-page]') !== null;
+
+      if (!isBlogPage) {
+        console.log('Not on blog/search page, skipping navigation');
+        return;
+      }
+
       // Clear caches when language changes
       clearHighlightCache();
       clearDateRangeCache();

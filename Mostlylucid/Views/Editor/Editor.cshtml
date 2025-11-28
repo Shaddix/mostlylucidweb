@@ -1,7 +1,7 @@
 ﻿@using MarkdownBaseService = Mostlylucid.Services.Markdown.MarkdownBaseService
 @model Mostlylucid.Models.Editor.EditorModel
 
-<div class="min-h-screen bg-gray-300 dark:bg-gray-800"  x-data="{ currentLanguage: '' }"
+<div class="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900"  x-data="{ currentLanguage: '' }"
      x-init="$nextTick(() =>{
          window.mostlylucid.simplemde.setupCodeEditor('markdowneditor');
          // Watch for language changes and clear translation results
@@ -41,48 +41,50 @@
     }
 
 
-    <p class="text-blue-dark dark:text-blue-light">This is a viewer only at the moment <a asp-action="Show" asp-controller="Blog" asp-route-slug="markdownprevieweditor" class="text-green-dark dark:text-green"> see the article</a> on how this works.</p>
-    <div class="container mx-auto p-0">
+    <p class="text-blue-dark dark:text-blue-light px-4 py-2">This is a viewer only at the moment <a asp-action="Show" asp-controller="Blog" asp-route-slug="markdownprevieweditor" class="text-green-dark dark:text-green"> see the article</a> on how this works.</p>
+    <div class="container mx-auto p-2 flex-1 flex flex-col">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Column 1 -->
-            <div class="bg-white dark:bg-custom-dark-bg  p-0 pb-4 rounded shadow-md">
-                <p class="text-blue-dark dark:text-blue-light">To update the preview hit Ctrl-Alt-R (or ⌘-Alt-R on Mac) or Enter to refresh. The Save <i class="bx bx-save"></i> icon lets you save the markdown file to disk </p>
-                <textarea class="markdowneditor hidden" id="markdowneditor">@Model.Markdown</textarea>
-
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+            <!-- Column 1 - Editor -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col min-h-[600px]">
+                <p class="text-blue-dark dark:text-blue-light text-sm px-4 py-2 border-b border-gray-200 dark:border-gray-700">To update the preview hit Ctrl-Alt-R (or ⌘-Alt-R on Mac) or Enter to refresh. The Save <i class="bx bx-save"></i> icon lets you save the markdown file to disk </p>
+                <div class="flex-1 flex flex-col">
+                    <textarea class="markdowneditor hidden" id="markdowneditor">@Model.Markdown</textarea>
+                </div>
             </div>
 
-            <!-- Column 2 -->
-            <div class="bg-white dark:bg-custom-dark-bg dark:text-white text-black p-0 rounded shadow-md">
-                <p class="text-blue-dark dark:text-blue-light">This is a preview from the server running through my markdig pipeline</p>
+            <!-- Column 2 - Preview -->
+            <div class="bg-white dark:bg-gray-800 dark:text-white text-black rounded-lg shadow-lg flex flex-col min-h-[600px] overflow-hidden">
+                <p class="text-blue-dark dark:text-blue-light text-sm px-4 py-2 border-b border-gray-200 dark:border-gray-700">This is a preview from the server running through my markdig pipeline</p>
                 @if (Model.IsNew)
                 {
                 var translationHidden = Model.TranslationTasks.Any() ? "" : "hidden";
 
-                <p class="text-blue-dark dark:text-blue-light inline-flex  items-center justify-center space-x-2">
+                <div class="flex items-center gap-3 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                     <partial name="_LanguageDropDown" for="Languages"/>
-                    <button class="btn btn-outline btn-sm mt-1" x-on:click="window.mostlylucid.translations.submitTranslation"><i class='bx bx-send'></i>Translate</button>
-                </p>
-                <div id="translations" class="@translationHidden">
+                    <button class="btn btn-primary btn-sm gap-1" x-on:click="window.mostlylucid.translations.submitTranslation">
+                        <i class='bx bx-send'></i>Translate
+                    </button>
+                </div>
+                <div id="translations" class="@translationHidden px-4 py-2">
                     <partial name="_GetTranslations" model="Model.TranslationTasks" />
                 </div>
-                <div id="translatedcontent" class="hidden">
-                    <textarea class="hidden w-full h-44 dark:bg-custom-dark-bg bg-white text-black dark:text-white rounded-2xl " id="translatedcontentarea"></textarea>
+                <div id="translatedcontent" class="hidden px-4">
+                    <textarea class="hidden w-full h-44 dark:bg-gray-700 bg-gray-50 text-black dark:text-white rounded-lg" id="translatedcontentarea"></textarea>
                 </div>
                 }
-                <div id="htmlcontent">
-                    <div class="border-b border-grey-lighter pb-2 pt-2 sm:pb-2 " id="categories">
+                <div id="htmlcontent" class="flex-1 overflow-y-auto px-4 py-2">
+                    <div class="border-b border-gray-200 dark:border-gray-700 pb-2 pt-2" id="categories">
                         @foreach (var category in Model.PostViewModel.Categories)
                         {
-                        <span
-                            class="inline-block rounded-full dark bg-blue-dark px-2 py-1 mr-2 font-body text-sm text-white outline-1 outline outline-green-dark dark:outline-white">
-                                @category
-                            </span>
+                        <span class="inline-block rounded-full bg-blue-600 dark:bg-blue-700 px-3 py-1 mr-2 mb-1 font-body text-sm text-white">
+                            @category
+                        </span>
                         }
                     </div>
-                    <h2 class="pb-2 block font-body text-3xl font-semibold leading-tight text-primary dark:text-white sm:text-3xl md:text-3xl" id="title">@Model.PostViewModel?.Title</h2>
-                    <date id="publishedDate" class="py-2">@(Model.PostViewModel?.PublishedDate  > default(DateTime) ? Model.PostViewModel?.PublishedDate.ToString("D")  : "")</date>
-                    <div class="prose prose max-w-none border-b py-2 text-black dark:prose-dark sm:py-2" id="renderedcontent">
+                    <h2 class="py-3 block font-body text-2xl font-semibold leading-tight text-gray-900 dark:text-white" id="title">@Model.PostViewModel?.Title</h2>
+                    <p id="publishedDate" class="text-sm text-gray-500 dark:text-gray-400 pb-3">@(Model.PostViewModel?.PublishedDate  > default(DateTime) ? Model.PostViewModel?.PublishedDate.ToString("D")  : "")</p>
+                    <div class="prose prose-sm max-w-none text-gray-800 dark:prose-invert dark:text-gray-200" id="renderedcontent">
                         @Html.Raw(Model.PostViewModel?.HtmlContent)
                     </div>
                 </div>

@@ -1,4 +1,102 @@
-/* EASYMDE DARK MODE SUPPORT with Tailwind's .dark class */
+/* ============================================
+   EASYMDE LAYOUT - Fill vertical space
+   ============================================ */
+.EasyMDEContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 500px;
+}
+
+.EasyMDEContainer .CodeMirror {
+    flex: 1;
+    height: auto !important;
+    min-height: 400px;
+}
+
+.EasyMDEContainer .CodeMirror-scroll {
+    min-height: 400px;
+}
+
+/* ============================================
+   TOOLBAR STYLING - BoxIcons support
+   ============================================ */
+.editor-toolbar {
+    padding: 8px;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-items: center;
+}
+
+.editor-toolbar button {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.editor-toolbar button i,
+.editor-toolbar button .bx {
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* Separator styling - hide the pipe character */
+.editor-toolbar i.separator {
+    display: inline-block;
+    width: 1px;
+    height: 24px;
+    margin: 0 6px;
+    border: none;
+    background-color: #d1d5db;
+    vertical-align: middle;
+}
+
+.editor-toolbar i.separator::before {
+    content: none !important;
+}
+
+/* ============================================
+   LIGHT MODE
+   ============================================ */
+.EasyMDEContainer,
+.editor-toolbar,
+.CodeMirror,
+.editor-preview,
+.editor-statusbar {
+    background-color: #ffffff;
+    color: #1f2937;
+    border-color: #e5e7eb;
+}
+
+.editor-toolbar {
+    background-color: #f3f4f6;
+}
+
+.editor-toolbar button {
+    background-color: transparent;
+    color: #374151;
+}
+
+.editor-toolbar button:hover {
+    background-color: #e5e7eb;
+}
+
+.editor-toolbar button.active {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* ============================================
+   DARK MODE SUPPORT with Tailwind's .dark class
+   ============================================ */
 .dark .EasyMDEContainer,
 .dark .editor-toolbar,
 .dark .editor-toolbar button,
@@ -10,13 +108,27 @@
     border-color: #374151; /* Tailwind's gray-700 */
 }
 
+.dark .editor-toolbar {
+    background-color: #111827; /* Tailwind's gray-900 */
+}
+
+.dark .editor-toolbar button {
+    background-color: transparent;
+    color: #e5e7eb;
+}
+
 .dark .editor-toolbar button.active,
 .dark .editor-toolbar button:hover {
     background-color: #374151; /* Tailwind gray-700 */
 }
 
-.dark .editor-toolbar i {
+.dark .editor-toolbar i,
+.dark .editor-toolbar .bx {
     color: #f9fafb; /* Tailwind gray-100 */
+}
+
+.dark .editor-toolbar i.separator {
+    background-color: #4b5563;
 }
 
 .dark .CodeMirror-cursor {

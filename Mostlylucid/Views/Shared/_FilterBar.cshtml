@@ -1,7 +1,29 @@
-﻿@model Mostlylucid.Models.Blog.PostListViewModel
+@model Mostlylucid.Models.Blog.PostListViewModel
+@{
+    var isSearchPage = ViewContext.RouteData.Values["controller"]?.ToString()?.Equals("Search", StringComparison.OrdinalIgnoreCase) == true;
+    var targetUrl = isSearchPage ? "/search" : "/blog";
+    var langs = Model?.Data?.SelectMany(p => p.Languages ?? Array.Empty<string>()).Concat(new[] { "en" }).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string> { "en" };
+}
+<div x-data="{ showFilters: false }" @(isSearchPage ? "data-search-page" : "")>
+    <!-- Mobile Filter Toggle (shown on mobile only) -->
+    <div class="flex lg:hidden items-center justify-center gap-2 mb-2">
+        <button type="button"
+                x-on:click="showFilters = !showFilters"
+                class="btn btn-outline btn-sm flex items-center gap-1"
+                x-bind:class="showFilters ? 'btn-active' : ''">
+            <i class="bx bx-filter text-lg"></i>
+            <span class="text-sm">Filters</span>
+            <i class="bx" x-bind:class="showFilters ? 'bx-chevron-up' : 'bx-chevron-down'"></i>
+        </button>
+        <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-push-url="true"
+           class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600">
+            <i class='bx bx-book-reader'></i>
+        </a>
+    </div>
 
-            <!-- Filters (hidden on mobile, shown on lg+) - allows wrapping -->
-            <div class="hidden lg:flex flex-wrap gap-2 items-center justify-center">
+    <!-- Filter Controls - collapsible on mobile, always visible on desktop -->
+    <div x-bind:class="showFilters ? '' : 'hidden lg:flex'"
+         class="flex-wrap gap-2 items-center justify-center lg:flex bg-base-200 lg:bg-transparent dark:bg-gray-800 lg:dark:bg-transparent p-3 lg:p-0 rounded-lg lg:rounded-none mb-3 lg:mb-0">
                 <a href="/blog" hx-boost="true" hx-target="#contentcontainer" hx-push-url="true"
                    class="btn btn-outline btn-sm text-gray-700 border-gray-300 dark:text-gray-100 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all hidden xl:inline-flex">
                     <i class='bx bx-book-reader mr-2'></i>Blog Posts
@@ -26,17 +48,16 @@
                 <!-- Language -->
                 <div class="flex items-center gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Lang:</label>
-                    @{
-                        var langs = Model?.Data?.SelectMany(p => p.Languages ?? Array.Empty<string>()).Concat(new[] { "en" }).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string> { "en" };
-                    }
                     <partial name="_LanguageDropDown" model="langs"/>
                 </div>
 
-                <!-- Category -->
+                @if (!isSearchPage)
+                {
+                <!-- Category (blog only) -->
                 <div class="flex items-center gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Cat:</label>
                     <select id="categorySelect" name="category"
-                            hx-get="/blog"
+                            hx-get="@targetUrl"
                             hx-target="#content"
                             hx-swap="outerHTML show:none"
                             hx-trigger="change"
@@ -51,17 +72,18 @@
                         }
                     </select>
                 </div>
+                }
 
                 <!-- Sort -->
                 <div class="flex items-center gap-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Sort:</label>
                     <select id="orderSelect" name="order"
-                            hx-get="/blog"
+                            hx-get="@targetUrl"
                             hx-target="#content"
                             hx-swap="outerHTML show:none"
                             hx-trigger="change"
                             hx-push-url="true"
-                            hx-include="#languageSelect, #categorySelect"
+                            hx-include="#languageSelect@(!isSearchPage ? ", #categorySelect" : "")"
                             hx-vals='{"page": "1"}'
                             class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 transition-colors cursor-pointer">
                         <option value="date_desc">Newest</option>
@@ -71,3 +93,4 @@
                     </select>
                 </div>
             </div>
+</div>
