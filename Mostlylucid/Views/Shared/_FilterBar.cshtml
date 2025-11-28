@@ -39,34 +39,46 @@
                 <!-- Category Filter -->
                 <div class="flex items-center gap-2 shrink-0 relative" x-data="categoryDropdown()">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400 hidden lg:block">Category:</label>
-                    <div class="relative">
+                    <div class="relative inline-block">
                         <button type="button"
                                 x-on:click="open = !open"
-                                class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 focus:border-blue-500 dark:focus:border-blue-400 transition-colors cursor-pointer min-w-[140px] flex items-center justify-between">
-                            <span x-text="selectedCategory || 'All Categories'" class="truncate"></span>
-                            <i class='bx bx-chevron-down text-lg'></i>
+                                class="btn btn-sm btn-outline flex items-center gap-2 bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors min-w-[140px]">
+                            <span x-text="selectedCategory || 'All'" class="flex-1 text-left truncate"></span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
                         <div x-show="open"
                              x-on:click.away="open = false"
-                             x-transition
-                             class="absolute z-50 mt-1 w-64 max-h-64 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-                            <div class="p-1">
-                                <button type="button"
-                                        x-on:click="selectCategory(null); open = false"
-                                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                                        :class="{ 'bg-gray-100 dark:bg-gray-700': !selectedCategory }">
-                                    All Categories
-                                </button>
+                             x-transition:enter="transition ease-out duration-100"
+                             x-transition:enter-start="transform opacity-0 scale-95"
+                             x-transition:enter-end="transform opacity-100 scale-100"
+                             x-transition:leave="transition ease-in duration-75"
+                             x-transition:leave-start="transform opacity-100 scale-100"
+                             x-transition:leave-end="transform opacity-0 scale-95"
+                             class="absolute left-0 mt-2 w-64 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-600 z-50 max-h-64 overflow-y-auto"
+                             style="display: none;">
+                            <ul class="p-2">
+                                <li>
+                                    <a href="#"
+                                       x-on:click.prevent="selectCategory(null); open = false"
+                                       class="flex items-center justify-between p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white text-gray-800 transition-colors"
+                                       :class="{ 'bg-gray-100 dark:bg-gray-700': !selectedCategory }">
+                                        <span>All Categories</span>
+                                    </a>
+                                </li>
                                 <template x-for="cat in categories" :key="cat.name">
-                                    <button type="button"
-                                            x-on:click="selectCategory(cat.name); open = false"
-                                            class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors flex justify-between items-center"
-                                            :class="{ 'bg-gray-100 dark:bg-gray-700': selectedCategory === cat.name }">
-                                        <span x-text="cat.name" class="truncate"></span>
-                                        <span class="badge badge-sm badge-ghost ml-2" x-text="cat.postCount"></span>
-                                    </button>
+                                    <li>
+                                        <a href="#"
+                                           x-on:click.prevent="selectCategory(cat.name); open = false"
+                                           class="flex items-center justify-between p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-white text-gray-800 transition-colors"
+                                           :class="{ 'bg-gray-100 dark:bg-gray-700': selectedCategory === cat.name }">
+                                            <span x-text="cat.name" class="truncate"></span>
+                                            <span class="badge badge-sm badge-ghost" x-text="cat.postCount"></span>
+                                        </a>
+                                    </li>
                                 </template>
-                            </div>
+                            </ul>
                         </div>
                     </div>
                 </div>
