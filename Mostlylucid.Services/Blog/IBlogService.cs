@@ -14,6 +14,7 @@ public interface IBlogService
     Task<BlogPostDto?> GetPost(BlogPostQueryModel model);
     Task<List<string>> GetCategories(bool noTracking = false);
     Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = "en");
+    void InvalidateCategoriesCache();
     Task<List<BlogPostDto>> GetAllPosts();
     Task<List<BlogPostDto>> GetPostsBySlugsAsync(List<string> slugs, string language);
 }

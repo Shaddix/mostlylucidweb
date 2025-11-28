@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Markdown;
@@ -16,10 +17,12 @@ public class BlogService(
     IMostlylucidDBContext context,
     MarkdownRenderingService markdownRenderingService,
     BlogPostProcessingContext processingContext,
+    IMemoryCache memoryCache,
     ILogger<BlogService> logger)
     : BaseService(context, logger), IBlogService
 {
     private readonly BlogPostProcessingContext _processingContext = processingContext;
+    private const string CategoriesCacheKeyPrefix = "categories_";
     private IQueryable<BlogPostEntity> NoTrackingQuery() => PostsQuery().AsNoTrackingWithIdentityResolution();
 
     public async Task<BasePagingModel<BlogPostDto>?> Get(PostListQueryModel model)
@@ -258,6 +261,9 @@ public class BlogService(
             Logger.LogError(e, "Error saving post {Slug} in {Language}", model.Slug, model.Language);
         }
 
+        // Invalidate categories cache since post categories may have changed
+        InvalidateCategoriesCache();
+
         return model;
     }
 
@@ -285,6 +291,7 @@ public class BlogService(
             }
 
             await Context.SaveChangesAsync();
+            InvalidateCategoriesCache();
             return true;
         }
         catch (Exception e)
@@ -321,23 +328,42 @@ public class BlogService(
 
     public async Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = Constants.EnglishLanguage)
     {
+        var cacheKey = $"{CategoriesCacheKeyPrefix}{language}";
+
+        if (memoryCache.TryGetValue(cacheKey, out List<CategoryWithCount>? cached) && cached != null)
+        {
+            return cached;
+        }
+
         var now = DateTimeOffset.UtcNow;
 
-        // Get posts for the specified language that are not hidden and not scheduled for future
-        var postsQuery = PostsQuery()
+        // Query from Categories side - counts posts per category
+        var categoryCounts = await Context.Categories
             .AsNoTracking()
-            .Where(x => x.LanguageEntity.Name == language)
-            .Where(x => !x.IsHidden && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
-
-        // Get all categories with their post counts
-        var categoryCounts = await postsQuery
-            .SelectMany(p => p.Categories)
-            .GroupBy(c => c.Name)
-            .Select(g => new CategoryWithCount(g.Key, g.Count()))
+            .Select(c => new CategoryWithCount(
+                c.Name,
+                c.BlogPosts.Count(p =>
+                    p.LanguageEntity.Name == language &&
+                    !p.IsHidden &&
+                    (p.ScheduledPublishDate == null || p.ScheduledPublishDate <= now))
+            ))
+            .Where(c => c.PostCount > 0)
             .OrderBy(c => c.Name)
             .ToListAsync();
 
+        // Cache for 1 hour - will be invalidated on post save
+        memoryCache.Set(cacheKey, categoryCounts, TimeSpan.FromHours(1));
+
         return categoryCounts;
+    }
+
+    public void InvalidateCategoriesCache()
+    {
+        // Invalidate all language variants
+        foreach (var lang in new[] { "en", "es", "fr", "de", "it", "pt", "nl", "sv", "fi", "pl", "uk", "zh" })
+        {
+            memoryCache.Remove($"{CategoriesCacheKeyPrefix}{lang}");
+        }
     }
 
     public async Task<List<BlogPostDto>> GetPostsBySlugsAsync(List<string> slugs, string language)
