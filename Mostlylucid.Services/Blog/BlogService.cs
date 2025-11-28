@@ -337,19 +337,25 @@ public class BlogService(
 
         var now = DateTimeOffset.UtcNow;
 
-        // Query from Categories side - counts posts per category
-        var categoryCounts = await Context.Categories
+        // Query from Categories side - project to anonymous type first (EF Core limitation)
+        var rawCounts = await Context.Categories
             .AsNoTracking()
-            .Select(c => new CategoryWithCount(
+            .Select(c => new
+            {
                 c.Name,
-                c.BlogPosts.Count(p =>
+                Count = c.BlogPosts.Count(p =>
                     p.LanguageEntity.Name == language &&
                     !p.IsHidden &&
                     (p.ScheduledPublishDate == null || p.ScheduledPublishDate <= now))
-            ))
-            .Where(c => c.PostCount > 0)
+            })
+            .Where(c => c.Count > 0)
             .OrderBy(c => c.Name)
             .ToListAsync();
+
+        // Convert to record type after materialization
+        var categoryCounts = rawCounts
+            .Select(c => new CategoryWithCount(c.Name, c.Count))
+            .ToList();
 
         // Cache for 1 hour - will be invalidated on post save
         memoryCache.Set(cacheKey, categoryCounts, TimeSpan.FromHours(1));
