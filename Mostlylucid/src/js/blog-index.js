@@ -218,12 +218,14 @@
     const clearBtn = document.querySelector('#clearDateFilter');
     const langSelect = document.querySelector('#languageSelect');
     const orderSelect = document.querySelector('#orderSelect');
+    const categorySelect = document.querySelector('#categorySelect');
 
     console.log('initFromRoot - Found elements:', {
       input: !!input,
       clearBtn: !!clearBtn,
       langSelect: !!langSelect,
       orderSelect: !!orderSelect,
+      categorySelect: !!categorySelect,
       rootId: root.id
     });
 
@@ -239,6 +241,7 @@
 
     const existingOrderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
     const existingOrderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
+    const existingCategory = url.searchParams.get('category') || '';
 
     // Helper function to get cookie
     function getCookie(name) {
@@ -262,6 +265,10 @@
     if (orderSelect) {
       orderSelect.value = `${existingOrderBy}_${existingOrderDir}`;
       console.log('Set order select to:', orderSelect.value);
+    }
+    if (categorySelect) {
+      categorySelect.value = existingCategory;
+      console.log('Set category select to:', categorySelect.value);
     }
     updateSummary();
     hookThemeObserver();
@@ -519,6 +526,29 @@
       applyNavigation(u);
     });
 
+    categorySelect && categorySelect.addEventListener('change', function(){
+      console.log('Category changed to:', categorySelect.value);
+      const u = new URL(window.location.href);
+      if(categorySelect.value) {
+        u.searchParams.set('category', categorySelect.value);
+      } else {
+        u.searchParams.delete('category');
+      }
+      u.searchParams.set('page', '1');
+      if(langSelect) u.searchParams.set('language', langSelect.value);
+      const ord = (orderSelect && orderSelect.value) || 'date_desc';
+      const [ob,od] = ord.split('_');
+      u.searchParams.set('orderBy', ob);
+      u.searchParams.set('orderDir', od);
+      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
+        const [start, end] = input._flatpickr.selectedDates;
+        u.searchParams.set('startDate', formatYMD(start));
+        u.searchParams.set('endDate', formatYMD(end));
+      }
+      updateSummary();
+      applyNavigation(u);
+    });
+
     // Helper: read published dates from posts in the content area and return sorted array of Date objects
     function getPostDates(){
       const posts = Array.from(root.querySelectorAll('[data-published-date]'));
@@ -554,78 +584,6 @@
   // Expose Alpine component for categories panel (legacy)
   window.blogCategories = function(){
     return { openCategories: false };
-  };
-
-  // Category dropdown component
-  window.categoryDropdown = function(){
-    return {
-      open: false,
-      categories: [],
-      selectedCategory: null,
-      loading: false,
-
-      async init() {
-        // Get current category from URL
-        const url = new URL(window.location.href);
-        this.selectedCategory = url.searchParams.get('category') || null;
-
-        // Get language from URL or localStorage
-        const language = url.searchParams.get('language') || localStorage.getItem('preferredLanguage') || 'en';
-
-        // Fetch categories
-        await this.fetchCategories(language);
-
-        // Watch for language changes
-        this.$watch('selectedCategory', () => {
-          this.applyFilter();
-        });
-      },
-
-      async fetchCategories(language) {
-        this.loading = true;
-        try {
-          const res = await fetch(`/blog/categories?language=${encodeURIComponent(language)}`);
-          if (res.ok) {
-            this.categories = await res.json();
-          }
-        } catch(e) {
-          console.warn('Error fetching categories:', e);
-        }
-        this.loading = false;
-      },
-
-      selectCategory(category) {
-        this.selectedCategory = category;
-      },
-
-      applyFilter() {
-        const u = new URL(window.location.href);
-
-        if (this.selectedCategory) {
-          u.searchParams.set('category', this.selectedCategory);
-        } else {
-          u.searchParams.delete('category');
-        }
-
-        // Reset to page 1 when changing category
-        u.searchParams.set('page', '1');
-
-        // Push URL
-        try { window.history.pushState({}, '', u.toString()); } catch {}
-
-        // Make HTMX request
-        const target = document.querySelector('#content');
-        if (window.htmx && target) {
-          window.htmx.ajax('GET', u.toString(), {
-            target: '#content',
-            swap: 'outerHTML show:none',
-            headers: { 'pagerequest': 'true' }
-          });
-        } else {
-          window.location.href = u.toString();
-        }
-      }
-    };
   };
 
   // Expose init function globally for manual or external calls

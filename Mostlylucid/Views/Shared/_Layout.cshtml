@@ -110,7 +110,7 @@
     <ul class="flex items-center w-full print:hidden gap-1 sm:gap-2">
         <!-- Logo + Home Icon - Always visible (last to hide) -->
         <li>
-            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="flex items-center">
+            <a href="/" hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="flex items-center">
                 <span class="bx bx-home-alt-2 text-xl lg:text-2xl font-semibold mr-1 sm:mr-2 transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary print:hidden"></span>
 
                 <div class="svg-container">
@@ -236,7 +236,7 @@ bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
     <div
         class="flex flex-col items-center justify-between  sm:flex-row sm:py-2">
         <div class="mr-auto flex flex-col items-center sm:flex-row">
-            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="mr-auto sm:mr-6">
+            <a href="/" hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="mr-auto sm:mr-6">
                 <div class="svg-container">
                     <img src="/img/logo.svg" asp-append-version="true" width="180px" height="30px" alt="logo" :class="{ 'img-filter-dark': !isDarkMode }"/>
                 </div>
