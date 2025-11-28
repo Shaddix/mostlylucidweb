@@ -1,7 +1,7 @@
 ﻿# Semantic Intelligence: Part 9 - Self-Healing Tools Through Lineage-Aware Pruning
 
 <datetime class="hidden">2025-11-18T09:00</datetime>
-<!-- category -- AI-Article, AI, Self-Healing Systems, Tool Evolution, Lineage Tracking, Python-->
+<!-- category -- AI-Article, AI, Self-Healing Systems, Tool Evolution, Lineage Tracking, Python -->
 
 **When your tools break themselves, your system should remember why and never repeat the mistake**
 

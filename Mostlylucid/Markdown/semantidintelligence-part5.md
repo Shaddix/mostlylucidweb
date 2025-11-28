@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part 5 - Evolution - From Optimization to Emergent Guilds
 
 <datetime class="hidden">2025-11-14T13:00</datetime>
-<!-- category -- AI-Article, AI, Emergent Intelligence, Multi-Agent Systems-->
+<!-- category -- AI-Article, AI, Emergent Intelligence, Multi-Agent Systems -->
 
 **When optimization systems develop culture**
 

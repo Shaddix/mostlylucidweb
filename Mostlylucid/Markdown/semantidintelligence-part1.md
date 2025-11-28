@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part 1 - Simple Rules, Complex Behavior, Emergent Intelligence?
 
 <datetime class="hidden">2025-11-13T23:00</datetime>
-<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence-->
+<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence -->
 
 **How multiple simple agents create emergent complexity**
 
