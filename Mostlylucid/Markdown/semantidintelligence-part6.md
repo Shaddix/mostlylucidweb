@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part 6 - Directed Synthetic Evolution and Global Consensus
 
 <datetime class="hidden">2025-11-14T16:00</datetime>
-<!-- category -- AI-Article, AI, Emergent Intelligence, Multi-Agent Systems, Geopolitics-->
+<!-- category -- AI-Article, AI, Emergent Intelligence, Multi-Agent Systems, Geopolitics -->
 
 **When optimization systems develop diplomacy**
 

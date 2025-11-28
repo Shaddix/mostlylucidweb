@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part  4 - The Emergence - When Optimization Becomes Intelligence
 
 <datetime class="hidden">2025-11-13T23:00</datetime>
-<!-- category -- AI-Article, AI,  Emergent Intelligence-->
+<!-- category -- AI-Article, AI, Emergent Intelligence -->
 
 **The uncomfortable question we've been avoiding**
 

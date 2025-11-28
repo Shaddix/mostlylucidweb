@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part  3 - Self-Optimization - Systems That Learn
 
 <datetime class="hidden">2025-11-13T23:00</datetime>
-<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence-->
+<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence -->
 
 **When systems start rewriting their own code**
 

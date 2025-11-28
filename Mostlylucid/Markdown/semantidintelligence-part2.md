@@ -1,7 +1,7 @@
 # Semantic Intelligence: Part  2- Collective Intelligence - When Agents Communicate
 
 <datetime class="hidden">2025-11-13T23:00</datetime>
-<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence-->
+<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence -->
 
 **How communication transforms simple agents into something greater**
 

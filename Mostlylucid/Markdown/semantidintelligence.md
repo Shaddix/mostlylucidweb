@@ -3,7 +3,7 @@
 ## Building a Multi-LLM Synthetic Decision Engine with LLMockApi
 
 <datetime class="hidden">2025-11-13T23:00</datetime>
-<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence-->
+<!-- category -- AI-Article, AI, Sci-Fi, Emergent Intelligence -->
 
 
 Hey, ever wonder what you could do if you had your own GPU farm?
