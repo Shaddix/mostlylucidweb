@@ -20,6 +20,10 @@ window.flatpickr = flatpickr;
 window.Alpine = Alpine;
 window.hljs=hljs;
 window.htmx = htmx;
+
+// Configure HTMX history behavior
+htmx.config.refreshOnHistoryMiss = true;  // Full page reload instead of restoring stale partial
+
 window.mermaid=mermaid;
 window.mermaid.initialize({startOnLoad : false});
 import { init } from '@mostlylucid/mermaid-enhancements/min';

@@ -45,7 +45,7 @@ namespace Mostlylucid.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "blogposts",
+                name: "BlogPosts",
                 schema: "mostlylucid",
                 columns: table => new
                 {
@@ -65,9 +65,9 @@ namespace Mostlylucid.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_blogposts", x => x.id);
+                    table.PrimaryKey("PK_BlogPosts", x => x.id);
                     table.ForeignKey(
-                        name: "FK_blogposts_languages_language_id",
+                        name: "FK_BlogPosts_languages_language_id",
                         column: x => x.language_id,
                         principalSchema: "mostlylucid",
                         principalTable: "languages",
@@ -87,10 +87,10 @@ namespace Mostlylucid.Migrations
                 {
                     table.PrimaryKey("PK_blogpostcategory", x => new { x.BlogPostId, x.CategoryId });
                     table.ForeignKey(
-                        name: "FK_blogpostcategory_blogposts_BlogPostId",
+                        name: "FK_blogpostcategory_BlogPosts_BlogPostId",
                         column: x => x.BlogPostId,
                         principalSchema: "mostlylucid",
-                        principalTable: "blogposts",
+                        principalTable: "BlogPosts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
@@ -122,10 +122,10 @@ namespace Mostlylucid.Migrations
                 {
                     table.PrimaryKey("PK_comments", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_comments_blogposts_blog_post_id",
+                        name: "FK_comments_BlogPosts_blog_post_id",
                         column: x => x.blog_post_id,
                         principalSchema: "mostlylucid",
-                        principalTable: "blogposts",
+                        principalTable: "BlogPosts",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -137,35 +137,35 @@ namespace Mostlylucid.Migrations
                 column: "CategoryId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_blogposts_content_hash",
+                name: "IX_BlogPosts_content_hash",
                 schema: "mostlylucid",
-                table: "blogposts",
+                table: "BlogPosts",
                 column: "content_hash",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_blogposts_language_id",
+                name: "IX_BlogPosts_language_id",
                 schema: "mostlylucid",
-                table: "blogposts",
+                table: "BlogPosts",
                 column: "language_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_blogposts_published_date",
+                name: "IX_BlogPosts_published_date",
                 schema: "mostlylucid",
-                table: "blogposts",
+                table: "BlogPosts",
                 column: "published_date");
 
             migrationBuilder.CreateIndex(
-                name: "IX_blogposts_search_vector",
+                name: "IX_BlogPosts_search_vector",
                 schema: "mostlylucid",
-                table: "blogposts",
+                table: "BlogPosts",
                 column: "search_vector")
                 .Annotation("Npgsql:IndexMethod", "GIN");
 
             migrationBuilder.CreateIndex(
-                name: "IX_blogposts_slug_language_id",
+                name: "IX_BlogPosts_slug_language_id",
                 schema: "mostlylucid",
-                table: "blogposts",
+                table: "BlogPosts",
                 columns: new[] { "slug", "language_id" });
 
             migrationBuilder.CreateIndex(
@@ -217,7 +217,7 @@ namespace Mostlylucid.Migrations
                 schema: "mostlylucid");
 
             migrationBuilder.DropTable(
-                name: "blogposts",
+                name: "BlogPosts",
                 schema: "mostlylucid");
 
             migrationBuilder.DropTable(

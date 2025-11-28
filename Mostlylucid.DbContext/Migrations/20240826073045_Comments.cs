@@ -12,7 +12,7 @@ namespace Mostlylucid.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_comments_blogposts_blog_post_id",
+                name: "FK_comments_BlogPosts_blog_post_id",
                 schema: "mostlylucid",
                 table: "comments");
 
@@ -174,12 +174,12 @@ namespace Mostlylucid.Migrations
                 column: "descendant_id");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_comments_blogposts_post_id",
+                name: "FK_comments_BlogPosts_post_id",
                 schema: "mostlylucid",
                 table: "comments",
                 column: "post_id",
                 principalSchema: "mostlylucid",
-                principalTable: "blogposts",
+                principalTable: "BlogPosts",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
 
@@ -197,7 +197,7 @@ namespace Mostlylucid.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_comments_blogposts_post_id",
+                name: "FK_comments_BlogPosts_post_id",
                 schema: "mostlylucid",
                 table: "comments");
 
@@ -338,12 +338,12 @@ namespace Mostlylucid.Migrations
                 column: "slug");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_comments_blogposts_blog_post_id",
+                name: "FK_comments_BlogPosts_blog_post_id",
                 schema: "mostlylucid",
                 table: "comments",
                 column: "blog_post_id",
                 principalSchema: "mostlylucid",
-                principalTable: "blogposts",
+                principalTable: "BlogPosts",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
         }

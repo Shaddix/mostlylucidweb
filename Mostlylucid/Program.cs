@@ -88,25 +88,30 @@ try
 // the container.
     services.AddOutputCache(options =>
     {
-        // Default policy for most endpoints
-        options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromMinutes(5)));
+        // Default policy for most endpoints - exclude HTMX requests from caching
+        options.AddBasePolicy(builder => builder
+            .Expire(TimeSpan.FromMinutes(5))
+            .With(ctx => !ctx.HttpContext.Request.Headers.ContainsKey("HX-Request")));
 
         // Blog post policy - shorter duration with tag-based eviction
         options.AddPolicy("BlogPost", builder => builder
             .Expire(TimeSpan.FromMinutes(10))
-            .Tag("blog"));
+            .Tag("blog")
+            .With(ctx => !ctx.HttpContext.Request.Headers.ContainsKey("HX-Request")));
 
         // Blog list policy
         options.AddPolicy("BlogList", builder => builder
             .Expire(TimeSpan.FromMinutes(5))
             .Tag("blog")
-            .SetVaryByQuery("page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir"));
+            .SetVaryByQuery("page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir")
+            .With(ctx => !ctx.HttpContext.Request.Headers.ContainsKey("HX-Request")));
 
         // Category policy
         options.AddPolicy("BlogCategory", builder => builder
             .Expire(TimeSpan.FromMinutes(10))
             .Tag("blog")
-            .SetVaryByQuery("category", "page", "pageSize"));
+            .SetVaryByQuery("category", "page", "pageSize")
+            .With(ctx => !ctx.HttpContext.Request.Headers.ContainsKey("HX-Request")));
     });
     services.AddResponseCaching();
     services.AddOpenApi();

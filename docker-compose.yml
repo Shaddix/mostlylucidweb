@@ -22,6 +22,15 @@
       - Markdown__MarkdownPath=${MARKDOWN_MARKDOWNPATH}
       - Markdown__MarkdownTranslatedPath=${MARKDOWN_MARKDOWNTRANSLATEDPATH}
       - CertPassword=${CERT_PASSWORD}
+      - SemanticSearch__Enabled=${SEMANTICSEARCH_ENABLED}
+      - SemanticSearch__QdrantUrl=http://qdrant:6333
+      - SemanticSearch__CollectionName=${SEMANTICSEARCH_COLLECTIONNAME}
+      - SemanticSearch__EmbeddingModelPath=${SEMANTICSEARCH_EMBEDDINGMODELPATH}
+      - SemanticSearch__VocabPath=${SEMANTICSEARCH_VOCABPATH}
+      - SemanticSearch__VectorSize=${SEMANTICSEARCH_VECTORSIZE}
+      - SemanticSearch__RelatedPostsCount=${SEMANTICSEARCH_RELATEDPOSTSCOUNT}
+      - SemanticSearch__MinimumSimilarityScore=${SEMANTICSEARCH_MINIMUMSIMILARITYSCORE}
+      - SemanticSearch__SearchResultsCount=${SEMANTICSEARCH_SEARCHRESULTSCOUNT}
     volumes:
       - /mnt/imagecache:/app/wwwroot/cache
       - /mnt/logs:/app/logs
@@ -29,6 +38,7 @@
       - ./mostlylucid.pfx:/app/mostlylucid.pfx
       - /mnt/articleimages:/app/wwwroot/articleimages
       - /mnt/mostlylucid/uploads:/app/wwwroot/uploads
+      - mlmodels:/app/mlmodels
     networks:
       - app_network
   watchtower:
@@ -165,6 +175,9 @@ volumes:
   caddy_config:
   prometheus-data:
   qdrant-data:
+  mlmodels:
+    external: true
+    name: mostlylucidweb_mlmodels
 networks:
   app_network:
     driver: bridge

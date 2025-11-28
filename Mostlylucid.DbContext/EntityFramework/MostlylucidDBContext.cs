@@ -136,7 +136,7 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
                .HasOne(cc => cc.Ancestor)
                .WithMany(c => c.Descendants)
                .HasForeignKey(cc => cc.AncestorId)
-               .OnDelete(DeleteBehavior.Restrict);
+               .OnDelete(DeleteBehavior.Cascade);
 
            modelBuilder.Entity<CommentClosure>()
                .HasOne(cc => cc.Descendant)

@@ -182,24 +182,27 @@ public class CommentService(IMostlylucidDBContext context,  ILogger<CommentServi
       await using var transaction = await context.Database.BeginTransactionAsync();
       try
       {
-          // Find all descendants of the comment to be deleted
+          // Find all descendants of the comment to be deleted (includes self at depth 0)
           var descendants = await context.CommentClosures
               .Where(cc => cc.AncestorId == commentId)
               .Select(cc => cc.DescendantId)
               .Distinct()
               .ToListAsync();
 
-          // Delete all closure records for the descendants
-          context.CommentClosures.RemoveRange(
-              context.CommentClosures.Where(cc => descendants.Contains(cc.DescendantId))
-          );
+          // Also include the comment itself if not already included
+          if (!descendants.Contains(commentId))
+              descendants.Add(commentId);
 
-          // Delete the comments themselves
-          context.Comments.RemoveRange(
-              context.Comments.Where(c => descendants.Contains(c.Id))
-          );
+          // Delete closures FIRST using ExecuteDeleteAsync (bypasses change tracker, executes directly)
+          await context.CommentClosures
+              .Where(cc => descendants.Contains(cc.DescendantId) || descendants.Contains(cc.AncestorId))
+              .ExecuteDeleteAsync();
 
-          await context.SaveChangesAsync();
+          // Delete comments using ExecuteDeleteAsync
+          await context.Comments
+              .Where(c => descendants.Contains(c.Id))
+              .ExecuteDeleteAsync();
+
           await transaction.CommitAsync();
       }
       catch (Exception)

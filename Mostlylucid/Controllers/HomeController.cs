@@ -13,11 +13,12 @@ namespace Mostlylucid.Controllers;
 public class HomeController(BaseControllerService baseControllerService, ILogger<HomeController> logger)
     : BaseController(baseControllerService, logger)
 {
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest", "Cookie" },
+    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest", "homerequest", "Cookie" },
         VaryByQueryKeys = new[] { "page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null,
-        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", [FromHeader] bool pagerequest = false)
+        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc",
+        [FromHeader] bool homerequest = false)
     {
         var authenticateResult = await GetUserInfo();
         var posts = await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate,orderBy, orderDir);
@@ -39,20 +40,24 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
         }
 
         posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir });
-        if (pagerequest && Request.IsHtmx()) return PartialView("_BlogSummaryList", posts);
+
         var indexPageViewModel = new IndexPageViewModel
         {
-            Posts = posts, Authenticated = authenticateResult.LoggedIn, Name = authenticateResult.Name,
+            Posts = posts,
+            Authenticated = authenticateResult.LoggedIn,
+            Name = authenticateResult.Name,
             AvatarUrl = authenticateResult.AvatarUrl
         };
-        if (Request.IsHtmxNonBoosted()  ||  Request.IsPageRequest())
-        {
-            return PartialView("_BlogSummaryList", indexPageViewModel.Posts);
-        }
-        if (Request.IsHtmx())
-        {
-           return PartialView("_HomePartial", indexPageViewModel);
-        }
+
+        // For paging requests (has pagerequest header)
+        if (Request.IsPageRequest())
+            return PartialView("_BlogSummaryList", posts);
+
+        // For home button click (has homerequest header)
+        if (homerequest)
+            return PartialView("_HomePartial", indexPageViewModel);
+
+        // Full page load
         return View(indexPageViewModel);
     }
 

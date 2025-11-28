@@ -10,12 +10,10 @@ public class RssController(RSSFeedService rssFeedService,UmamiClient umamiClient
 {
 
     [HttpGet]
-    [ResponseCache(Duration = 3600, VaryByQueryKeys = new [] { nameof(category), nameof(startDate) }, Location = ResponseCacheLocation.Any)]
-    [OutputCache(Duration = 3600, VaryByQueryKeys = new [] { nameof(category), nameof(startDate) })]
-
-public async Task< IActionResult> Index([FromQuery] string category = null, [FromQuery] string startDate = null)
-{
-
+    [ResponseCache(Duration = 3600, VaryByQueryKeys = new [] { nameof(language), nameof(startDate) }, Location = ResponseCacheLocation.Any)]
+    [OutputCache(Duration = 3600, VaryByQueryKeys = new [] { nameof(language), nameof(startDate) })]
+    public async Task<IActionResult> Index([FromQuery] string language = null, [FromQuery] string startDate = null)
+    {
         DateTime? startDateTime = null;
         if (DateTime.TryParseExact(startDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None,
                 out DateTime startDateTIme))
@@ -23,7 +21,7 @@ public async Task< IActionResult> Index([FromQuery] string category = null, [Fro
             logger.LogInformation("Start date is {startDate}", startDate);
         }
 
-        var rssFeed =await  rssFeedService.GenerateFeed(startDateTime, category);
+        var rssFeed = await rssFeedService.GenerateFeed(startDateTime, language);
         return Content(rssFeed, "application/rss+xml", Encoding.UTF8);
     }
 }

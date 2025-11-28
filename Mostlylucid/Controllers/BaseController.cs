@@ -34,23 +34,9 @@ public class BaseController(BaseControllerService baseControllerService, ILogger
         return model;
     }
     
-    private const string CacheKey = "Categories";
-    private async Task<List<string>> GetCategories()
+    public override void OnActionExecuting(ActionExecutingContext filterContext)
     {
-        baseControllerService.MemoryCache.TryGetValue(CacheKey, out var value);
-        
-        if (value is List<string> categories) return categories;
-        logger.LogInformation("Fetching categories from BlogService");
-        categories = (await BlogViewService.GetCategories(true)).OrderBy(x => x).ToList();
-        baseControllerService.MemoryCache.Set(CacheKey, categories, TimeSpan.FromMinutes(30));
-        return categories;
-    }
-    
-
-    public override async Task OnActionExecutionAsync(ActionExecutingContext filterContext,
-        ActionExecutionDelegate next)
-    {
-        logger.LogInformation("OnActionExecutionAsync");
+        logger.LogInformation("OnActionExecuting");
         if (!Request.IsHtmx())
         {
             ViewBag.UmamiPath = AnalyticsSettings.UmamiPath;
@@ -58,12 +44,8 @@ public class BaseController(BaseControllerService baseControllerService, ILogger
             ViewBag.UmamiScript = AnalyticsSettings.UmamiScript;
         }
 
-        logger.LogInformation("Adding categories to viewbag");
-        ViewBag.Categories = await GetCategories();
-
-        await base.OnActionExecutionAsync(filterContext, next);
+        base.OnActionExecuting(filterContext);
     }
-
 
     protected async Task<LoginData> GetUserInfo()
     {

@@ -43,7 +43,8 @@
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nfix: replace hx-boost with hx-controller/hx-action on home links\n\nhx-boost was causing phantom hx-request headers on browser refresh.\nUsing explicit HTMX.NET tag helpers avoids the buggy history restoration.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff Mostlylucid/Controllers/HomeController.cs)",
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" checkout -- Mostlylucid/Controllers/HomeController.cs)",
-      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nadd: WebSite JSON-LD structured data for rich results\n\nAdds site-wide schema.org markup with:\n- WebSite type with name, URL, description\n- SearchAction for potential sitelinks search box\n- Publisher (Person) with social profile sameAs links\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nadd: WebSite JSON-LD structured data for rich results\n\nAdds site-wide schema.org markup with:\n- WebSite type with name, URL, description\n- SearchAction for potential sitelinks search box\n- Publisher (Person) with social profile sameAs links\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff docker-compose.yml)"
     ],
     "deny": [],
     "ask": []

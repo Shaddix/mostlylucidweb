@@ -16,16 +16,6 @@
           href="https://@Context.Request.Host/rss" />
 
     <link rel="prefetch" href="https://accounts.google.com/gsi/client"/>
-    <!-- Dynamic RSS Feed Links for each category -->
-    @if (ViewBag.Categories != null)
-    {
-        foreach (var category in ViewBag.Categories)
-        {
-            <link rel="alternate" type="application/atom+xml"
-                  title="RSS Feed for mostlylucid.net - @category"
-                  href="https://@Context.Request.Host/rss?category=@category"/>
-        }
-    }
 
     @{
         var currentUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
@@ -93,13 +83,6 @@
         <meta property="article:published_time" content="@(((DateTime)ViewBag.PublishedDate).ToString("yyyy-MM-ddTHH:mm:ssZ"))" />
         <meta property="article:author" content="Scott Galloway" />
     }
-    @if (ViewBag.Categories != null)
-    {
-        foreach (var category in ViewBag.Categories)
-        {
-            <meta property="article:tag" content="@category" />
-        }
-    }
     <link rel="icon" type="image/png" href="/img/smalllogo.svg" />
 
     <script src="https://accounts.google.com/gsi/client"  data-cfasync="false" async defer></script>
@@ -127,7 +110,7 @@
     <ul class="flex items-center w-full print:hidden gap-1 sm:gap-2">
         <!-- Logo + Home Icon - Always visible (last to hide) -->
         <li>
-            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" class="flex items-center">
+            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="flex items-center">
                 <span class="bx bx-home-alt-2 text-xl lg:text-2xl font-semibold mr-1 sm:mr-2 transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary print:hidden"></span>
 
                 <div class="svg-container">
@@ -246,14 +229,14 @@ bg-white    dark:border-gray-600 dark:bg-gray-800 bg-gray-800
         dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700
         dark:btn-accent dark:btn-outline dark:btn-disabled dark:btn-primary dark:btn-active gap-2 whitespace-nowrap cursor-pointer">
 </span>
-<div class="container mx-auto" id="contentcontainer">
+<div class="container mx-auto" id="contentcontainer" hx-history-elt>
     @RenderBody()
 </div>
 <div class="container pb-8 mx-auto print:hidden">
     <div
         class="flex flex-col items-center justify-between  sm:flex-row sm:py-2">
         <div class="mr-auto flex flex-col items-center sm:flex-row">
-            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" class="mr-auto sm:mr-6">
+            <a hx-controller="Home" hx-action="Index" hx-swap="show:window:top" hx-target="#contentcontainer" hx-push-url="true" hx-get hx-headers='{"homerequest": "true"}' class="mr-auto sm:mr-6">
                 <div class="svg-container">
                     <img src="/img/logo.svg" asp-append-version="true" width="180px" height="30px" alt="logo" :class="{ 'img-filter-dark': !isDarkMode }"/>
                 </div>

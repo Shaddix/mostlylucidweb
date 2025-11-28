@@ -20,9 +20,10 @@ public class RSSFeedService(IBlogViewService blogViewService, IHttpContextAccess
         return $"https://{request.Host}";
     }
     
-    public async Task<string> GenerateFeed(DateTime? startDate=null, string? category = null)
+    public async Task<string> GenerateFeed(DateTime? startDate = null, string? language = null)
     {
-        var items =await  blogViewService.GetPostsForLanguage(startDate, category, MarkdownBaseService.EnglishLanguage);
+        var lang = string.IsNullOrWhiteSpace(language) ? MarkdownBaseService.EnglishLanguage : language;
+        var items = await blogViewService.GetPostsForLanguage(startDate, null, lang);
         items = items.OrderByDescending(x => x.PublishedDate).ToList();
         List<RssFeedItem> rssFeedItems = new();
         foreach (var item in items)
@@ -37,23 +38,25 @@ public class RSSFeedService(IBlogViewService blogViewService, IHttpContextAccess
                 Slug = item.Slug
             });
         }
-        return GenerateFeed(rssFeedItems, category);
+        return GenerateFeed(rssFeedItems, lang);
     }
 
-    private string GenerateFeed(IEnumerable<RssFeedItem> items, string categoryName = "")
+    private string GenerateFeed(IEnumerable<RssFeedItem> items, string language = "")
     {
         XNamespace atom = "http://www.w3.org/2005/Atom";
+        var isEnglish = string.IsNullOrEmpty(language) || language.Equals(MarkdownBaseService.EnglishLanguage, StringComparison.OrdinalIgnoreCase);
+        var title = isEnglish ? "mostlylucid.net" : $"mostlylucid.net ({language})";
         var feed = new XDocument(
             new XDeclaration("1.0", "utf-8", null),
-            new XElement("rss",    new XAttribute(XNamespace.Xmlns + "atom", atom.NamespaceName), new XAttribute("version", "2.0"),
+            new XElement("rss", new XAttribute(XNamespace.Xmlns + "atom", atom.NamespaceName), new XAttribute("version", "2.0"),
                 new XElement("channel",
-                    new XElement("title", !string.IsNullOrEmpty(categoryName) ? $"mostlylucid.net for {categoryName}" : $"mostlylucid.net"),
+                    new XElement("title", title),
                     new XElement("link", $"{GetSiteUrl()}/rss"),
                     new XElement("description", "The latest posts from mostlylucid.net"),
                     new XElement("pubDate", DateTime.UtcNow.ToString("R")),
-                    new XElement(atom + "link", 
-                        new XAttribute("href", $"{GetSiteUrl()}/rss"), 
-                        new XAttribute("rel", "self"), 
+                    new XElement(atom + "link",
+                        new XAttribute("href", $"{GetSiteUrl()}/rss"),
+                        new XAttribute("rel", "self"),
                         new XAttribute("type", "application/rss+xml")),
                     from item in items
                     select new XElement("item",

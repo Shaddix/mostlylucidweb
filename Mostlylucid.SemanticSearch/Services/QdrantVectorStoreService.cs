@@ -112,7 +112,8 @@ public class QdrantVectorStoreService : IVectorStoreService
 
         try
         {
-            var pointId = Guid.NewGuid();
+            // Use deterministic ulong based on document ID to ensure upsert works correctly
+            var pointId = GenerateDeterministicId(document.Id);
 
             var payload = new Dictionary<string, Value>
             {
@@ -187,7 +188,8 @@ public class QdrantVectorStoreService : IVectorStoreService
 
                 return new PointStruct
                 {
-                    Id = Guid.NewGuid(),
+                    // Use deterministic ulong based on document ID to ensure upsert works correctly
+                    Id = GenerateDeterministicId(doc.Document.Id),
                     Vectors = doc.Embedding,
                     Payload = { payload }
                 };
@@ -389,5 +391,14 @@ public class QdrantVectorStoreService : IVectorStoreService
             _logger.LogError(ex, "Failed to get document hash for {Id}", id);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Generate a deterministic ulong from a string ID using xxHash64.
+    /// This ensures the same document ID always gets the same point ID for proper upsert behavior.
+    /// </summary>
+    private static ulong GenerateDeterministicId(string id)
+    {
+        return System.IO.Hashing.XxHash64.HashToUInt64(System.Text.Encoding.UTF8.GetBytes(id));
     }
 }
