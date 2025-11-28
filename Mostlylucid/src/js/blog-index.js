@@ -551,9 +551,81 @@
     root.__ensureSelectionCoversPosts = ensureSelectionCoversPosts;
   }
 
-  // Expose Alpine component for categories panel
+  // Expose Alpine component for categories panel (legacy)
   window.blogCategories = function(){
     return { openCategories: false };
+  };
+
+  // Category dropdown component
+  window.categoryDropdown = function(){
+    return {
+      open: false,
+      categories: [],
+      selectedCategory: null,
+      loading: false,
+
+      async init() {
+        // Get current category from URL
+        const url = new URL(window.location.href);
+        this.selectedCategory = url.searchParams.get('category') || null;
+
+        // Get language from URL or localStorage
+        const language = url.searchParams.get('language') || localStorage.getItem('preferredLanguage') || 'en';
+
+        // Fetch categories
+        await this.fetchCategories(language);
+
+        // Watch for language changes
+        this.$watch('selectedCategory', () => {
+          this.applyFilter();
+        });
+      },
+
+      async fetchCategories(language) {
+        this.loading = true;
+        try {
+          const res = await fetch(`/blog/categories?language=${encodeURIComponent(language)}`);
+          if (res.ok) {
+            this.categories = await res.json();
+          }
+        } catch(e) {
+          console.warn('Error fetching categories:', e);
+        }
+        this.loading = false;
+      },
+
+      selectCategory(category) {
+        this.selectedCategory = category;
+      },
+
+      applyFilter() {
+        const u = new URL(window.location.href);
+
+        if (this.selectedCategory) {
+          u.searchParams.set('category', this.selectedCategory);
+        } else {
+          u.searchParams.delete('category');
+        }
+
+        // Reset to page 1 when changing category
+        u.searchParams.set('page', '1');
+
+        // Push URL
+        try { window.history.pushState({}, '', u.toString()); } catch {}
+
+        // Make HTMX request
+        const target = document.querySelector('#content');
+        if (window.htmx && target) {
+          window.htmx.ajax('GET', u.toString(), {
+            target: '#content',
+            swap: 'outerHTML show:none',
+            headers: { 'pagerequest': 'true' }
+          });
+        } else {
+          window.location.href = u.toString();
+        }
+      }
+    };
   };
 
   // Expose init function globally for manual or external calls

@@ -20,18 +20,30 @@ public class BlogController(BaseControllerService baseControllerService,
     MarkdownConfig markdownConfig,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
-    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir) },
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir), nameof(category) },
         Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
-        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc")
+        string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", string? category = null)
     {
-        var posts = await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate);
+        var posts = !string.IsNullOrEmpty(category)
+            ? await blogViewService.GetPostsByCategory(category, page, pageSize, language)
+            : await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy: orderBy, orderDir: orderDir);
+
         // Set LinkUrl to preserve filters and options if present
-        posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir });
+        posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir, category });
         if (Request.IsHtmx()) return PartialView("_BlogSummaryList", posts);
         return View("Index", posts);
+    }
+
+    [HttpGet("categories")]
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { nameof(language) }, Location = ResponseCacheLocation.Client)]
+    [OutputCache(Duration = 1800, VaryByHeaderNames = new[] { "hx-request" }, VaryByQueryKeys = new[] { nameof(language) })]
+    public async Task<IActionResult> Categories(string language = MarkdownBaseService.EnglishLanguage)
+    {
+        var categories = await blogViewService.GetCategoriesWithCount(language);
+        return Json(categories);
     }
 
     [HttpGet("calendar-days")]

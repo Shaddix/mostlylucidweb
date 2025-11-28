@@ -14,32 +14,20 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
     : BaseController(baseControllerService, logger)
 {
     [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest", "homerequest", "Cookie" },
-        VaryByQueryKeys = new[] { "page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir" })]
+        VaryByQueryKeys = new[] { "page", "pageSize", "startDate", "endDate", "language", "orderBy", "orderDir", "category" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null,
         string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc",
-        [FromHeader] bool homerequest = false)
+        string? category = null, [FromHeader] bool homerequest = false)
     {
         var authenticateResult = await GetUserInfo();
-        var posts = await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate,orderBy, orderDir);
 
-        // Apply ordering on the result set
-        if (posts?.Data != null)
-        {
-            bool asc = string.Equals(orderDir, "asc", StringComparison.OrdinalIgnoreCase);
-            switch ((orderBy ?? "date").ToLowerInvariant())
-            {
-                case "title":
-                    posts.Data = (asc ? posts.Data.OrderBy(p => p.Title) : posts.Data.OrderByDescending(p => p.Title)).ToList();
-                    break;
-                case "date":
-                default:
-                    posts.Data = (asc ? posts.Data.OrderBy(p => p.PublishedDate) : posts.Data.OrderByDescending(p => p.PublishedDate)).ToList();
-                    break;
-            }
-        }
+        // Use category filter if specified, otherwise use date/order filters
+        var posts = !string.IsNullOrEmpty(category)
+            ? await BlogViewService.GetPostsByCategory(category, page, pageSize, language)
+            : await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy, orderDir);
 
-        posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir });
+        posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir, category });
 
         var indexPageViewModel = new IndexPageViewModel
         {

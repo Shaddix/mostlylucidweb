@@ -42,4 +42,10 @@ public class BlogPostDocument
     /// Example: ["en", "fr", "es", "de"] means the post has English, French, Spanish, German translations
     /// </summary>
     public string[] Languages { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Categories for this post (for filtering search results by category)
+    /// Example: ["ASP.NET", "HTMX", "Docker"]
+    /// </summary>
+    public string[] Categories { get; set; } = Array.Empty<string>();
 }

@@ -33,6 +33,26 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
         return await Task.FromResult(categories);
     }
 
+    public Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = Constants.EnglishLanguage)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var pages = PageCacheHelper.GetPageCache()
+            .Where(x => x.Value.Language == language)
+            .Select(x => x.Value);
+
+        // Apply visibility filters
+        pages = ApplyVisibilityFilters(pages);
+
+        var categoryCounts = pages
+            .SelectMany(p => p.Categories)
+            .GroupBy(c => c)
+            .Select(g => new CategoryWithCount(g.Key, g.Count()))
+            .OrderBy(c => c.Name)
+            .ToList();
+
+        return Task.FromResult(categoryCounts);
+    }
+
 
     public Task<bool> Delete(string slug, string language)
     {

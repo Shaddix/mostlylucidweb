@@ -126,6 +126,13 @@ public class QdrantVectorStoreService : IVectorStoreService
                     {
                         Values = { document.Languages.Select(lang => new Value { StringValue = lang }) }
                     }
+                },
+                ["categories"] = new Value
+                {
+                    ListValue = new ListValue
+                    {
+                        Values = { document.Categories.Select(cat => new Value { StringValue = cat }) }
+                    }
                 }
             };
 
@@ -176,6 +183,13 @@ public class QdrantVectorStoreService : IVectorStoreService
                         ListValue = new ListValue
                         {
                             Values = { doc.Document.Languages.Select(lang => new Value { StringValue = lang }) }
+                        }
+                    },
+                    ["categories"] = new Value
+                    {
+                        ListValue = new ListValue
+                        {
+                            Values = { doc.Document.Categories.Select(cat => new Value { StringValue = cat }) }
                         }
                     }
                 };
@@ -501,6 +515,39 @@ public class QdrantVectorStoreService : IVectorStoreService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to add language {Language} for {Slug}", language, slug);
+        }
+    }
+
+    public async Task ClearCollectionAsync(CancellationToken cancellationToken = default)
+    {
+        if (_client == null || !_config.Enabled)
+            return;
+
+        try
+        {
+            // Check if collection exists
+            var collections = await _client.ListCollectionsAsync(cancellationToken);
+            if (!collections.Contains(_config.CollectionName))
+            {
+                _logger.LogInformation("Collection {CollectionName} does not exist, nothing to clear", _config.CollectionName);
+                return;
+            }
+
+            // Delete the collection
+            await _client.DeleteCollectionAsync(_config.CollectionName, cancellationToken: cancellationToken);
+            _logger.LogInformation("Deleted collection {CollectionName}", _config.CollectionName);
+
+            // Reset initialization flag so it will be recreated
+            _collectionInitialized = false;
+
+            // Recreate the collection
+            await InitializeCollectionAsync(cancellationToken);
+            _logger.LogInformation("Recreated collection {CollectionName}", _config.CollectionName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear collection {CollectionName}", _config.CollectionName);
+            throw;
         }
     }
 

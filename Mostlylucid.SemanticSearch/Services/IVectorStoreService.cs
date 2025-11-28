@@ -51,4 +51,9 @@ public interface IVectorStoreService
     /// Add a single language to the existing languages array (called immediately when translation is created)
     /// </summary>
     Task AddLanguageAsync(string slug, string language, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clear all documents from the collection (used for full re-indexing)
+    /// </summary>
+    Task ClearCollectionAsync(CancellationToken cancellationToken = default);
 }

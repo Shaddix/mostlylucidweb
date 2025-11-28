@@ -306,7 +306,8 @@ public class MarkdownDirectoryWatcherService(
                 Title = post.Title,
                 Content = post.PlainTextContent,
                 PublishedDate = post.PublishedDate,
-                Languages = GetAvailableLanguages(post.Slug)
+                Languages = GetAvailableLanguages(post.Slug),
+                Categories = post.Categories
             };
 
             await semanticSearchService.IndexPostAsync(document);

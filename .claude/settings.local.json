@@ -44,7 +44,18 @@
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff Mostlylucid/Controllers/HomeController.cs)",
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" checkout -- Mostlylucid/Controllers/HomeController.cs)",
       "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nadd: WebSite JSON-LD structured data for rich results\n\nAdds site-wide schema.org markup with:\n- WebSite type with name, URL, description\n- SearchAction for potential sitelinks search box\n- Publisher (Person) with social profile sameAs links\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff docker-compose.yml)"
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff docker-compose.yml)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff --stat)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" log --oneline -15)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" log --oneline --all --grep=\"RSS\" -5)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" show --stat 4d47b40)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" log --oneline origin/main -5)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" log --oneline --all -- \"Mostlylucid/Views/Shared/_BlogSummaryList.cshtml\" -5)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" diff --name-only)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" add Mostlylucid/Views/Shared/_BlogSummaryList.cshtml)",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" commit -m \"$(cat <<''EOF''\nfix: remove categories expander from blog summary list\n\nCategories are already shown in the filter bar, so the collapsible\ncategories section is redundant.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git -C \"C:\\Blog\\mostlylucidweb\" check-ignore -v .claude/settings.local.json)",
+      "Bash(git -C:*)"
     ],
     "deny": [],
     "ask": []

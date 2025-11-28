@@ -201,7 +201,8 @@ public class SemanticIndexingBackgroundService : BackgroundService
             Content = blogPost.PlainTextContent,
             ContentHash = contentHash,
             PublishedDate = blogPost.PublishedDate,
-            Languages = languages
+            Languages = languages,
+            Categories = blogPost.Categories.ToArray()
         };
 
         await _semanticSearchService.IndexPostAsync(document, stoppingToken);

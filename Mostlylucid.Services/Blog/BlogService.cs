@@ -319,6 +319,27 @@ public class BlogService(
         return posts.Select(p => p.ToDto()).ToList();
     }
 
+    public async Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = Constants.EnglishLanguage)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        // Get posts for the specified language that are not hidden and not scheduled for future
+        var postsQuery = PostsQuery()
+            .AsNoTracking()
+            .Where(x => x.LanguageEntity.Name == language)
+            .Where(x => !x.IsHidden && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
+
+        // Get all categories with their post counts
+        var categoryCounts = await postsQuery
+            .SelectMany(p => p.Categories)
+            .GroupBy(c => c.Name)
+            .Select(g => new CategoryWithCount(g.Key, g.Count()))
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+
+        return categoryCounts;
+    }
+
     public async Task<List<BlogPostDto>> GetPostsBySlugsAsync(List<string> slugs, string language)
     {
         var posts = await NoTrackingQuery()

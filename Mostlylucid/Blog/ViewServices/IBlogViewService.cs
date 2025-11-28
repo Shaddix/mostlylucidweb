@@ -1,12 +1,15 @@
 ﻿using Mostlylucid.Models.Blog;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Models;
+using CategoryWithCount = Mostlylucid.Shared.Models.CategoryWithCount;
 
 namespace Mostlylucid.Blog.ViewServices;
 
 public interface IBlogViewService : IMarkdownFileBlogService
 {
    Task<List<string>> GetCategories(bool noTracking = false);
+
+   Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = MarkdownBaseService.EnglishLanguage);
    
    Task<List<BlogPostViewModel>> GetAllPosts();
     Task<List<BlogPostViewModel>> GetPosts(DateTime? startDate = null, string category = "");

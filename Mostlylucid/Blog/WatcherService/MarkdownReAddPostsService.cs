@@ -64,6 +64,22 @@ public class MarkdownReAddPostsService(
             var blogService = scope.ServiceProvider.GetRequiredService<IBlogService>();
             var markdownBlogService = scope.ServiceProvider.GetRequiredService<IMarkdownBlogService>();
             var semanticSearchService = scope.ServiceProvider.GetService<ISemanticSearchService>();
+            var vectorStoreService = scope.ServiceProvider.GetService<IVectorStoreService>();
+
+            // Clear Qdrant collection before re-indexing (if available)
+            if (vectorStoreService != null)
+            {
+                try
+                {
+                    logger.LogInformation("Clearing Qdrant collection before re-indexing...");
+                    await vectorStoreService.ClearCollectionAsync(cancellationToken);
+                    logger.LogInformation("Qdrant collection cleared successfully");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to clear Qdrant collection, continuing with re-add anyway");
+                }
+            }
 
             // Get all English markdown files
             var markdownFiles = Directory.GetFiles(markdownConfig.MarkdownPath, "*.md", SearchOption.TopDirectoryOnly);
@@ -184,7 +200,10 @@ public class MarkdownReAddPostsService(
                 Id = post.Slug,
                 Slug = post.Slug,
                 Title = post.Title,
-                Content = post.PlainTextContent
+                Content = post.PlainTextContent,
+                PublishedDate = post.PublishedDate,
+                Languages = GetAvailableLanguages(post.Slug),
+                Categories = post.Categories
             };
 
             await semanticSearchService.IndexPostAsync(document);
@@ -193,5 +212,36 @@ public class MarkdownReAddPostsService(
         {
             logger.LogWarning(ex, "Failed to index post {Slug} ({Language}) in semantic search", post.Slug, language);
         }
+    }
+
+    /// <summary>
+    /// Get all available languages for a given post slug by scanning the translated directory
+    /// </summary>
+    private string[] GetAvailableLanguages(string slug)
+    {
+        var languages = new List<string> { "en" }; // English is always available (the source)
+
+        var translatedPath = markdownConfig.MarkdownTranslatedPath;
+        if (!Directory.Exists(translatedPath))
+            return languages.ToArray();
+
+        // Look for files matching pattern: {slug}.{lang}.md
+        var translatedFiles = Directory.GetFiles(translatedPath, $"{slug}.*.md", SearchOption.TopDirectoryOnly);
+
+        foreach (var file in translatedFiles)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            var parts = fileName.Split('.');
+            if (parts.Length >= 2)
+            {
+                var langCode = parts[^1];
+                if (langCode.Length == 2 && langCode != "en")
+                {
+                    languages.Add(langCode);
+                }
+            }
+        }
+
+        return languages.OrderBy(l => l).ToArray();
     }
 }

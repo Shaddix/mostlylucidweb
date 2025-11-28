@@ -2,6 +2,7 @@
 using Mostlylucid.Models.Blog;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Shared.Models;
+using CategoryWithCount = Mostlylucid.Shared.Models.CategoryWithCount;
 using Constants = Mostlylucid.Shared.Constants;
 
 namespace Mostlylucid.Blog.ViewServices;
@@ -27,6 +28,11 @@ public class BlogPostViewService(IBlogService blogPostService) : IBlogViewServic
     public async Task<List<string>> GetCategories(bool noTracking = false)
     {
         return await blogPostService.GetCategories(noTracking);
+    }
+
+    public async Task<List<CategoryWithCount>> GetCategoriesWithCount(string language = Constants.EnglishLanguage)
+    {
+        return await blogPostService.GetCategoriesWithCount(language);
     }
 
     private async Task<List<BlogPostViewModel>> GetPosts(PostListQueryModel model)
