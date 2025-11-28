@@ -31,6 +31,9 @@ public class BlogController(BaseControllerService baseControllerService,
             ? await blogViewService.GetPostsByCategory(category, page, pageSize, language)
             : await blogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy: orderBy, orderDir: orderDir);
 
+        // Get all categories for the filter dropdown
+        posts.AllCategories = await blogViewService.GetCategoriesWithCount(language);
+
         // Set LinkUrl to preserve filters and options if present
         posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir, category });
         if (Request.IsHtmx()) return PartialView("_BlogSummaryList", posts);

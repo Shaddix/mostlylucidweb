@@ -27,6 +27,9 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
             ? await BlogViewService.GetPostsByCategory(category, page, pageSize, language)
             : await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy, orderDir);
 
+        // Get all categories for the filter dropdown
+        posts.AllCategories = await BlogViewService.GetCategoriesWithCount(language);
+
         posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir, category });
 
         var indexPageViewModel = new IndexPageViewModel
