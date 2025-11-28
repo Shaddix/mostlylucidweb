@@ -170,6 +170,9 @@ public class SemanticIndexingBackgroundService : BackgroundService
         // Compute content hash
         var contentHash = ComputeContentHash(blogPost.PlainTextContent);
 
+        // Get available languages for this post
+        var languages = GetAvailableLanguages(blogPost.Slug);
+
         // Check if reindexing is needed
         var needsReindex = await _semanticSearchService.NeedsReindexingAsync(
             blogPost.Slug,
@@ -178,12 +181,16 @@ public class SemanticIndexingBackgroundService : BackgroundService
 
         if (!needsReindex)
         {
-            _logger.LogDebug("Skipping unchanged post: {Slug}", blogPost.Slug);
+            // Content unchanged, but still update the languages array in case new translations exist
+            var vectorStoreService = _serviceProvider.GetService<IVectorStoreService>();
+            if (vectorStoreService != null)
+            {
+                await vectorStoreService.UpdateLanguagesAsync(blogPost.Slug, languages, stoppingToken);
+                _logger.LogDebug("Updated languages for unchanged post: {Slug} -> [{Languages}]",
+                    blogPost.Slug, string.Join(", ", languages));
+            }
             return IndexResult.Skipped;
         }
-
-        // Get available languages for this post
-        var languages = GetAvailableLanguages(blogPost.Slug);
 
         // Create document for indexing (ID is just slug since only English is indexed)
         var document = new BlogPostDocument

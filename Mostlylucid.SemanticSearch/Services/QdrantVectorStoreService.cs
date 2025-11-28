@@ -412,6 +412,98 @@ public class QdrantVectorStoreService : IVectorStoreService
         }
     }
 
+    public async Task AddLanguageAsync(string slug, string language, CancellationToken cancellationToken = default)
+    {
+        if (_client == null || !_config.Enabled)
+            return;
+
+        try
+        {
+            // First, get the current languages array
+            var scrollResults = await _client.ScrollAsync(
+                collectionName: _config.CollectionName,
+                filter: new Filter
+                {
+                    Must =
+                    {
+                        new Condition
+                        {
+                            Field = new FieldCondition
+                            {
+                                Key = "slug",
+                                Match = new Match { Keyword = slug }
+                            }
+                        }
+                    }
+                },
+                limit: 1,
+                cancellationToken: cancellationToken
+            );
+
+            var point = scrollResults.Result.FirstOrDefault();
+            if (point == null)
+            {
+                _logger.LogDebug("Post {Slug} not found in vector store, skipping language update", slug);
+                return;
+            }
+
+            // Get existing languages
+            var existingLanguages = new List<string>();
+            if (point.Payload.TryGetValue("languages", out var langValue) && langValue.ListValue != null)
+            {
+                existingLanguages = langValue.ListValue.Values
+                    .Select(v => v.StringValue)
+                    .ToList();
+            }
+
+            // Add new language if not already present
+            if (existingLanguages.Contains(language))
+            {
+                _logger.LogDebug("Language {Language} already exists for {Slug}", language, slug);
+                return;
+            }
+
+            existingLanguages.Add(language);
+            var sortedLanguages = existingLanguages.OrderBy(l => l).ToArray();
+
+            // Update with new languages array
+            await _client.SetPayloadAsync(
+                collectionName: _config.CollectionName,
+                payload: new Dictionary<string, Value>
+                {
+                    ["languages"] = new Value
+                    {
+                        ListValue = new ListValue
+                        {
+                            Values = { sortedLanguages.Select(lang => new Value { StringValue = lang }) }
+                        }
+                    }
+                },
+                filter: new Filter
+                {
+                    Must =
+                    {
+                        new Condition
+                        {
+                            Field = new FieldCondition
+                            {
+                                Key = "slug",
+                                Match = new Match { Keyword = slug }
+                            }
+                        }
+                    }
+                },
+                cancellationToken: cancellationToken
+            );
+
+            _logger.LogInformation("Added language {Language} to {Slug} in semantic search", language, slug);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add language {Language} for {Slug}", language, slug);
+        }
+    }
+
     /// <summary>
     /// Generate a deterministic ulong from a string ID using xxHash64.
     /// This ensures the same document ID always gets the same point ID for proper upsert behavior.

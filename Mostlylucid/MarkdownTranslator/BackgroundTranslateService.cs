@@ -2,6 +2,7 @@
 using System.Threading.Channels;
 using Mostlylucid.Blog.ViewServices;
 using Mostlylucid.Helpers;
+using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
@@ -421,6 +422,14 @@ public class BackgroundTranslateService(
                 : scope.ServiceProvider.GetRequiredService<IBlogViewService>();
             _ = await blogService.SavePost(slug, translateModel.Language,
                 translatedMarkdown);
+
+            // Immediately update Qdrant with the new language
+            var vectorStoreService = scope.ServiceProvider.GetService<IVectorStoreService>();
+            if (vectorStoreService != null)
+            {
+                await vectorStoreService.AddLanguageAsync(slug, translateModel.Language);
+                logger.LogDebug("Added language {Language} to Qdrant for {Slug}", translateModel.Language, slug);
+            }
         }
         catch (Exception e)
         {

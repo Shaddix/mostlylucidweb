@@ -143,9 +143,9 @@ public class MarkdownDirectoryWatcherService(
                 await outputCacheStore.EvictByTagAsync("blog", CancellationToken.None);
                 logger.LogDebug("Invalidated broken link cache and OutputCache for slug {Slug}", savedModel.Slug);
 
-                // Index in semantic search ONLY if file is in main Markdown directory (not subdirectories)
-                // Check if e.Name contains no directory separators - meaning it's in the root directory
-                if (!e.Name.Contains(Path.DirectorySeparatorChar) && !e.Name.Contains(Path.AltDirectorySeparatorChar))
+                // Index in semantic search for English posts, or update languages array for translations
+                var isRootDirectory = !e.Name.Contains(Path.DirectorySeparatorChar) && !e.Name.Contains(Path.AltDirectorySeparatorChar);
+                if (isRootDirectory || isTranslated)
                 {
                     await IndexPostForSemanticSearchAsync(scope, savedModel, language);
                 }

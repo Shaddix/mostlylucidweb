@@ -43,7 +43,12 @@ public interface IVectorStoreService
     Task<string?> GetDocumentHashAsync(string id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Update the languages array for an existing document (when a new translation is added)
+    /// Update the languages array for an existing document (full replacement)
     /// </summary>
     Task UpdateLanguagesAsync(string slug, string[] languages, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Add a single language to the existing languages array (called immediately when translation is created)
+    /// </summary>
+    Task AddLanguageAsync(string slug, string language, CancellationToken cancellationToken = default);
 }
