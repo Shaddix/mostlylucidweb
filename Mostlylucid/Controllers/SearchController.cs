@@ -22,7 +22,7 @@ public class SearchController(
 {
     [HttpGet]
     [Route("")]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange", "startDate", "endDate", "order" })]
+    [OutputCache(Duration = 3600, Tags = new[] { "blog" }, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange", "startDate", "endDate", "order" })]
     public async Task<IActionResult> Search(
         string? query,
         int page = 1,
@@ -138,7 +138,7 @@ public class SearchController(
 
     [HttpGet]
     [Route("semantic")]
-    [OutputCache(Duration = 3600, VaryByQueryKeys = new[] {"query", "limit"})]
+    [OutputCache(Duration = 3600, Tags = new[] { "blog" }, VaryByQueryKeys = new[] {"query", "limit"})]
     public async Task<IActionResult> SemanticSearch(string? query, int limit = 10)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -158,7 +158,7 @@ public class SearchController(
 
     [HttpGet]
     [Route("related/{slug}/{language}")]
-    [OutputCache(Duration = 7200, VaryByRouteValueNames = new[] {"slug", "language"})]
+    [OutputCache(Duration = 7200, Tags = new[] { "blog" }, VaryByRouteValueNames = new[] {"slug", "language"})]
     public async Task<IActionResult> RelatedPosts(string slug, string language, int limit = 5)
     {
         var semanticResults = await semanticSearchService.GetRelatedPostsAsync(slug, limit);
