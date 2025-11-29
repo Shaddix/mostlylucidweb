@@ -35,10 +35,8 @@ try
     {
         configuration.ReadFrom.Configuration(context.Configuration);
 #if DEBUG
-        configuration.MinimumLevel.Debug();
-        configuration.WriteTo.Console();
+        // Don't override MinimumLevel - let appsettings.json control it
         SelfLog.Enable(Console.Error);
-        Console.WriteLine($"Serilog Minimum Level: {configuration.MinimumLevel}");
 #endif
     });
     var certExists = File.Exists("mostlylucid.pfx");

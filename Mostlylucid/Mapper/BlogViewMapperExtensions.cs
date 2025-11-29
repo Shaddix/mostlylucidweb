@@ -48,7 +48,7 @@ public static class BlogViewMapperExtensions
     {
         return new PostListViewModel
         {
-            Data = postEntity.Data.Select(x => x.ToListModel(x.Languages)).ToList(),
+            Data = postEntity.Data?.Select(x => x.ToListModel(x.Languages)).ToList() ?? new List<PostListModel>(),
             TotalItems = postEntity.TotalItems,
             Page = postEntity.Page,
             PageSize = postEntity.PageSize

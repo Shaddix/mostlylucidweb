@@ -33,18 +33,45 @@ public class SearchController(
         DateTime? endDate = null,
         [FromHeader] bool pagerequest = false)
     {
-        // Calculate date range based on option
-        var (calculatedStartDate, calculatedEndDate) = CalculateDateRange(dateRange, startDate, endDate);
-
-        // Get available languages for the filter dropdown
-        var availableLanguages = await searchService.GetAvailableLanguagesAsync();
-
-        if (string.IsNullOrEmpty(query?.Trim()))
+        try
         {
-            var emptyModel = new SearchResultsModel
+            // Calculate date range based on option
+            var (calculatedStartDate, calculatedEndDate) = CalculateDateRange(dateRange, startDate, endDate);
+
+            // Get available languages for the filter dropdown
+            var availableLanguages = await searchService.GetAvailableLanguagesAsync();
+
+            if (string.IsNullOrEmpty(query?.Trim()))
+            {
+                var emptyModel = new SearchResultsModel
+                {
+                    Query = query,
+                    SearchResults = new(),
+                    AvailableLanguages = availableLanguages,
+                    Filters = new SearchFilters
+                    {
+                        Language = language,
+                        DateRange = dateRange,
+                        StartDate = calculatedStartDate,
+                        EndDate = calculatedEndDate
+                    }
+                };
+                if (Request.IsHtmx()) return PartialView("SearchResults", emptyModel);
+                return View("SearchResults", emptyModel);
+            }
+
+            var searchResults = await searchService.HybridSearchWithPagingAsync(
+                query,
+                language,
+                calculatedStartDate,
+                calculatedEndDate,
+                page,
+                pageSize);
+
+            var searchModel = new SearchResultsModel
             {
                 Query = query,
-                SearchResults = new(),
+                SearchResults = searchResults.ToPostListViewModel(),
                 AvailableLanguages = availableLanguages,
                 Filters = new SearchFilters
                 {
@@ -54,41 +81,37 @@ public class SearchController(
                     EndDate = calculatedEndDate
                 }
             };
-            if (Request.IsHtmx()) return PartialView("SearchResults", emptyModel);
-            return View("SearchResults", emptyModel);
+            searchModel = await PopulateBaseModel(searchModel);
+
+            // Build link URL with current filters
+            var linkUrl = Url.Action("Search", "Search", new { query, language, dateRange, startDate, endDate });
+            searchModel.SearchResults.LinkUrl = linkUrl;
+
+            if (pagerequest && Request.IsHtmx()) return PartialView("_SearchResultsPartial", searchModel.SearchResults);
+
+            if (Request.IsHtmx()) return PartialView("SearchResults", searchModel);
+            return View("SearchResults", searchModel);
         }
-
-        var searchResults = await searchService.HybridSearchWithPagingAsync(
-            query,
-            language,
-            calculatedStartDate,
-            calculatedEndDate,
-            page,
-            pageSize);
-
-        var searchModel = new SearchResultsModel
+        catch (Exception ex)
         {
-            Query = query,
-            SearchResults = searchResults.ToPostListViewModel(),
-            AvailableLanguages = availableLanguages,
-            Filters = new SearchFilters
+            logger.LogError(ex, "Search failed for query '{Query}'", query);
+
+            // Return empty results instead of 500
+            var errorModel = new SearchResultsModel
             {
-                Language = language,
-                DateRange = dateRange,
-                StartDate = calculatedStartDate,
-                EndDate = calculatedEndDate
-            }
-        };
-        searchModel = await PopulateBaseModel(searchModel);
+                Query = query,
+                SearchResults = new(),
+                AvailableLanguages = new List<string> { "en" },
+                Filters = new SearchFilters
+                {
+                    Language = language,
+                    DateRange = dateRange
+                }
+            };
 
-        // Build link URL with current filters
-        var linkUrl = Url.Action("Search", "Search", new { query, language, dateRange, startDate, endDate });
-        searchModel.SearchResults.LinkUrl = linkUrl;
-
-        if (pagerequest && Request.IsHtmx()) return PartialView("_SearchResultsPartial", searchModel.SearchResults);
-
-        if (Request.IsHtmx()) return PartialView("SearchResults", searchModel);
-        return View("SearchResults", searchModel);
+            if (Request.IsHtmx()) return PartialView("SearchResults", errorModel);
+            return View("SearchResults", errorModel);
+        }
     }
 
     private static (DateTime? StartDate, DateTime? EndDate) CalculateDateRange(DateRangeOption dateRange, DateTime? startDate, DateTime? endDate)
