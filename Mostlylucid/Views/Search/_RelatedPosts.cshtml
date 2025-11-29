@@ -24,13 +24,13 @@
                     <div class="border-t border-base-300/50">
                         @foreach (var (post, index) in Model.Take(3).Select((p, i) => (p, i)))
                         {
-                            <a hx-boost="true"
+                            <a hx-controller="Blog"
+                               hx-action="Show"
+                               hx-route-slug="@post.Slug"
+                               hx-get
                                hx-target="#contentcontainer"
                                hx-swap="show:window:top"
-                               asp-action="Show"
-                               asp-controller="Blog"
-                               asp-route-slug="@post.Slug"
-                               asp-route-language="en"
+                               hx-push-url="true"
                                class="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/10 transition-all duration-150 group/item @(index < Model.Take(3).Count() - 1 ? "border-b border-base-300/30" : "")">
                                 <div class="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center shrink-0">
                                     <span class="text-xs font-bold text-secondary">@(index + 1)</span>

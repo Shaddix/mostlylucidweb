@@ -1,11 +1,19 @@
-﻿@model Mostlylucid.Models.Blog.PostListModel
+﻿@using Mostlylucid.Helpers
+@model Mostlylucid.Models.Blog.PostListModel
 
 <div class="border-b border-grey-lighter pb-8 mb-8" data-published-date="@Model.PublishedDate.ToString("yyyy-MM-dd")">
 
     <div class="flex items-start justify-between gap-3 mb-2">
-        <a asp-controller="Blog" asp-action="Show" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-route-language="@Model.Language"
-           asp-route-slug="@Model.Slug"
-           class="font-body text-lg font-semibold transition-colors hover:text-green text-blue-dark dark:text-white dark:hover:text-secondary flex-1">@Model.Title</a>
+        @if (BlogUrlHelper.IsEnglish(Model.Language))
+        {
+            <a hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true"
+               class="font-body text-lg font-semibold transition-colors hover:text-green text-blue-dark dark:text-white dark:hover:text-secondary flex-1">@Model.Title</a>
+        }
+        else
+        {
+            <a hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true"
+               class="font-body text-lg font-semibold transition-colors hover:text-green text-blue-dark dark:text-white dark:hover:text-secondary flex-1">@Model.Title</a>
+        }
         @if (Model.Languages.Length > 1)
         {
              var languageModel = (Model.Slug, Model.Languages, Model.Language); 

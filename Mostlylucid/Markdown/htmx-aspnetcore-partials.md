@@ -416,7 +416,7 @@ This approach works with Mustache, Handlebars, or Nunjucks templates. Your WebAP
 
 ## Gotchas & Tips
 
-**Debugging Tool:** Install the [HTMX browser extension](https://htmx.org/extensions/) - it shows every request, response, and swap in real-time.
+**Debugging Tool:** Install the [HTMX debugger extension](https://chromewebstore.google.com/detail/htmx-debugger/) - it shows every request, response, and swap in real-time.
 
 ### CSRF Tokens
 

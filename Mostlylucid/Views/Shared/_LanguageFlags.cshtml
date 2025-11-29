@@ -11,13 +11,14 @@
                 : "opacity-50 hover:opacity-90 hover:scale-105";
 
             <div class="tooltip" data-tip="@language.ConvertCodeToLanguage()">
-                <a hx-boost="true"
-                   hx-swap="show:window:top"
+                <a hx-controller="Blog"
+                   hx-action="Language"
+                   hx-route-slug="@Model.slug"
+                   hx-route-language="@language"
+                   hx-get
                    hx-target="#contentcontainer"
-                   asp-action="Language"
-                   asp-controller="Blog"
-                   asp-route-slug="@Model.slug"
-                   asp-route-language="@language"
+                   hx-swap="show:window:top"
+                   hx-push-url="true"
                    onclick="saveLanguagePreference('@language')"
                    class="inline-block rounded @active transition-all duration-200 hover:-translate-y-0.5">
                     <img src="~/img/flags/@(language).svg"
