@@ -16,9 +16,15 @@
     x-data="{
         query: '@Model.Query',
         autoSearch: true,
-        checkSubmit() {
+        doAutoSearch() {
             if (this.autoSearch && this.query.length > 2) {
-                $refs.searchButton.click();
+                const params = new URLSearchParams();
+                params.set('query', this.query);
+                const lang = document.getElementById('languageSelect')?.value;
+                const order = document.getElementById('orderSelect')?.value;
+                if (lang) params.set('language', lang);
+                if (order) params.set('order', order);
+                htmx.ajax('GET', '/search?' + params.toString(), {target: '#content', swap: 'outerHTML', select: '#content'});
             }
         }
     }"
@@ -53,7 +59,7 @@
             id="searchQuery"
             value="@Model.Query"
             x-model="query"
-            x-on:input.debounce.200ms="checkSubmit"
+            x-on:input.debounce.300ms="doAutoSearch"
             x-on:keydown.enter.prevent="$refs.searchButton.click()"
             class="input input-sm border-0 grow text-black dark:text-white bg-transparent focus:outline-none"
         />

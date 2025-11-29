@@ -115,8 +115,19 @@
         }
      }"
      class="relative inline-block">
+@{
+        var isSearchPage = ViewContext.RouteData.Values["controller"]?.ToString()?.Equals("Search", StringComparison.OrdinalIgnoreCase) == true;
+        var langTargetUrl = isSearchPage ? "/search" : "/blog";
+    }
     <!-- Hidden input used by existing JS listeners and hx-include -->
-    <input type="hidden" id="languageSelect" name="language" />
+    <input type="hidden" id="languageSelect" name="language"
+           hx-get="@langTargetUrl"
+           hx-target="#content"
+           hx-swap="outerHTML show:none"
+           hx-trigger="change"
+           hx-push-url="true"
+           hx-include="@(isSearchPage ? "#orderSelect, #searchQuery" : "#orderSelect, #categorySelect")"
+           hx-vals='{"page": "1"}' />
 
     <!-- Dropdown Button -->
     <button x-on:click="open = !open"

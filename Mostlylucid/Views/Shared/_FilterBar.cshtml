@@ -83,7 +83,7 @@
                             hx-swap="outerHTML show:none"
                             hx-trigger="change"
                             hx-push-url="true"
-                            hx-include="#languageSelect@(!isSearchPage ? ", #categorySelect" : "")"
+                            hx-include="#languageSelect@(!isSearchPage ? ", #categorySelect" : ", #searchQuery")"
                             hx-vals='{"page": "1"}'
                             class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 transition-colors cursor-pointer">
                         <option value="date_desc">Newest</option>
