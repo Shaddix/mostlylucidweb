@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Working Preferences
+
+- **No unexpected changes**: Only make changes that are explicitly requested. If you identify a potential fix or improvement while investigating an issue, explain your reasoning and ask before implementing it.
+- **Explain before acting**: When diagnosing issues, share your analysis and proposed solution before making changes.
+- **Stay focused**: Address the specific issue asked about rather than proactively fixing related problems you discover.
+- **Never use Console.WriteLine**: All logging must go through Serilog. Never use `Console.WriteLine`, `Console.Write`, or `Debug.WriteLine` for any logging or debugging output.
+
 ## Project Overview
 
 Mostlylucid is a sophisticated .NET 9.0 blog platform with multilingual support, automated translation, full-text search, and comprehensive observability. The blog supports dual content modes (file-based and database-driven) and integrates with external services for analytics, translation, and monitoring.

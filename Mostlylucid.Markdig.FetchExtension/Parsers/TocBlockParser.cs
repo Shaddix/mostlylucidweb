@@ -37,12 +37,7 @@ public partial class TocBlockParser : BlockParser
         // Get the full line text
         var lineText = line.ToString().Trim();
 
-        // Debug logging
-        Console.WriteLine($"[TocBlockParser] Attempting to match line: '{lineText}' (length: {lineText.Length})");
-        Console.WriteLine($"[TocBlockParser] Line bytes: {string.Join(" ", System.Text.Encoding.UTF8.GetBytes(lineText).Select(b => b.ToString("X2")))}");
-
         var match = TocRegex().Match(lineText);
-        Console.WriteLine($"[TocBlockParser] Match success: {match.Success}");
  
         if (!match.Success)
             return BlockState.None;
@@ -56,7 +51,6 @@ public partial class TocBlockParser : BlockParser
         if (match.Groups[1].Success && !string.IsNullOrEmpty(match.Groups[1].Value))
         {
             cssClass = match.Groups[1].Value;
-            Console.WriteLine($"[TocBlockParser] Extracted CSS class: '{cssClass}'");
         }
 
         // Create the TOC block
