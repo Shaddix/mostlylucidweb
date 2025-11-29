@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.OutputCaching;
+﻿using System.Collections.Concurrent;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Memory;
 using Mostlylucid.Blog.ViewServices;
 using Mostlylucid.Middleware;
@@ -26,6 +27,9 @@ public class MarkdownDirectoryWatcherService(
 {
     private Task _awaitChangeTask = Task.CompletedTask;
     private FileSystemWatcher _fileSystemWatcher;
+
+    // Per-file locks to prevent race conditions when multiple events fire for the same file
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _fileLocks = new(StringComparer.OrdinalIgnoreCase);
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -55,7 +59,7 @@ public class MarkdownDirectoryWatcherService(
         _fileSystemWatcher.EnableRaisingEvents = false;
         _fileSystemWatcher.Dispose();
 
-        Console.WriteLine($"Stopped watching directory: {markdownConfig.MarkdownPath}");
+        logger.LogInformation("Stopped watching directory: {Path}", markdownConfig.MarkdownPath);
 
         return Task.CompletedTask;
     }
@@ -85,20 +89,32 @@ public class MarkdownDirectoryWatcherService(
     {
         if (e.Name == null) return;
 
-        using var activity = Log.Logger.StartActivity("Markdown File Changed {Name}", e.Name);
-        var retryPolicy = Policy
-            .Handle<IOException>() // Only handle IO exceptions (like file in use)
-            .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromMilliseconds(500 * retryAttempt),
-                (exception, timeSpan, retryCount, context) =>
-                {
-                    activity?.Activity?.SetTag("Retry Attempt", retryCount);
-                    // Log the retry attempt
-                    logger.LogWarning("File is in use, retrying attempt {RetryCount} after {TimeSpan}", retryCount,
-                        timeSpan);
-                });
+        // Get or create a lock for this specific file to prevent race conditions
+        var fileLock = _fileLocks.GetOrAdd(e.Name, _ => new SemaphoreSlim(1, 1));
+
+        // Try to acquire lock - if another operation is in progress for this file, skip
+        if (!await fileLock.WaitAsync(TimeSpan.Zero))
+        {
+            logger.LogDebug("Skipping duplicate file event for {Name}, already processing", e.Name);
+            return;
+        }
 
         try
         {
+            using var activity = Log.Logger.StartActivity("Markdown File Changed {Name}", e.Name);
+            var retryPolicy = Policy
+                .Handle<IOException>() // Only handle IO exceptions (like file in use)
+                .WaitAndRetryAsync(5, retryAttempt => TimeSpan.FromMilliseconds(500 * retryAttempt),
+                    (exception, timeSpan, retryCount, context) =>
+                    {
+                        activity?.Activity?.SetTag("Retry Attempt", retryCount);
+                        // Log the retry attempt
+                        logger.LogWarning("File is in use, retrying attempt {RetryCount} after {TimeSpan}", retryCount,
+                            timeSpan);
+                    });
+
+            try
+            {
             var fileName = e.Name;
             var isTranslated = Path.GetFileNameWithoutExtension(e.Name).Contains(".");
             var language = MarkdownBaseService.EnglishLanguage;
@@ -157,13 +173,18 @@ public class MarkdownDirectoryWatcherService(
                         new PageTranslationModel()
                             { OriginalFileName = filePath, OriginalMarkdown = savedModel.Markdown, Persist = true });
                 }
-            });
+                });
 
-            activity?.Complete();
+                activity?.Complete();
+            }
+            catch (Exception exception)
+            {
+                activity?.Complete(LogEventLevel.Error, exception);
+            }
         }
-        catch (Exception exception)
+        finally
         {
-            activity?.Complete(LogEventLevel.Error, exception);
+            fileLock.Release();
         }
     }
 

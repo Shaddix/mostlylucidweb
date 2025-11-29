@@ -85,6 +85,20 @@ public class BaseService(IMostlylucidDBContext context, ILogger<BaseService> log
                 return currentPost;
             }
 
+            // If this is a new post, check if another post in the same language already has this ContentHash
+            // This prevents duplicate inserts when file watcher triggers multiple rapid events
+            if (currentPost == null)
+            {
+                var existingWithHash = await Context.BlogPosts
+                    .AnyAsync(x => x.ContentHash == hash && x.LanguageEntity.Name == post.Language);
+                if (existingWithHash)
+                {
+                    Logger.LogWarning("Post with ContentHash {Hash} already exists for language {Language}, skipping duplicate insert for {Slug}",
+                        hash, post.Language, post.Slug);
+                    return null;
+                }
+            }
+
             foreach (var postCat in post.Categories)
             {
                 if (categories.All(x => x.Name != postCat))

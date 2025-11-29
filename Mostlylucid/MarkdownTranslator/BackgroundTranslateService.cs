@@ -212,7 +212,7 @@ public class BackgroundTranslateService(
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            logger.LogError(e, "Error in translation batch");
             throw;
         }
     }

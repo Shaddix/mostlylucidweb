@@ -28,7 +28,6 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.MinimumLevel.Debug();
     configuration.WriteTo.Console();
     SelfLog.Enable(Console.Error);
-    Console.WriteLine($"Serilog Minimum Level: {configuration.MinimumLevel}");
 #endif
 });
 var configuration = builder.Configuration;
