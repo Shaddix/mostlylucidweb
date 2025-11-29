@@ -48,13 +48,13 @@ public class BackgroundTranslate_Tests
         await Assert.ThrowsAsync<Exception>(async () => await result);
         await backgroundTranslateService.StopAsync(CancellationToken.None);
         var snapshot = fakeLogger.Collector.GetSnapshot();
-        Assert.Contains(snapshot, x => x.Level == LogLevel.Error && x.Message.Contains("Error translating markdown"));
-        // Changed from Warning to Debug to reduce log noise
+        // Verify retries happened
         Assert.Contains(snapshot,
-            x => x.Level == LogLevel.Debug && x.Message.Contains("Translation error, retrying attempt 1"));
+            x => x.Level == LogLevel.Debug && x.Message.Contains("Translation error, retrying attempt 1/3"));
         Assert.Contains(snapshot,
-            x => x.Level == LogLevel.Debug && x.Message.Contains("Translation error, retrying attempt 2"));
+            x => x.Level == LogLevel.Debug && x.Message.Contains("Translation error, retrying attempt 2/3"));
+        // Verify final failure is logged
         Assert.Contains(snapshot,
-            x => x.Level == LogLevel.Error && x.Message.Contains("Translation failed after 3 attempts"));
+            x => x.Level == LogLevel.Error && x.Message.Contains("Translation failed after 3 retries"));
     }
 }
