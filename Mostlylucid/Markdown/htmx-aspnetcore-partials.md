@@ -485,6 +485,237 @@ Or use `hx-replace-url="true"` to update the URL without adding history entries.
 
 Install the HTMX devtools browser extension. It shows you every request, response, and swap in real-time. Absolutely invaluable.
 
+## Tips and Tricks: Troubleshooting Common HTMX Issues
+
+Building real-world HTMX applications reveals some subtle gotchas. Here are the most common issues you'll encounter and their solutions, drawn from experience running this blog in production.
+
+### The Classic Problem: Loading Full Pages Instead of Partials
+
+**Symptom:** You click an HTMX-enabled link or button, and instead of getting a smooth partial update, the entire page reloads or a full HTML page (complete with `<html>`, `<head>`, layout) gets dumped into your target container.
+
+**Root Cause:** The server doesn't know the request came from HTMX, so it returns a full view instead of a partial.
+
+**Solution:** Use the `Request.IsHtmx()` extension method from HTMX.NET to detect HTMX requests:
+
+```csharp
+[HttpGet]
+public async Task<IActionResult> BlogList(int page = 1, int pageSize = 20)
+{
+    var posts = await blogViewService.GetPagedPosts(page, pageSize);
+
+    // Check if this is an HTMX request
+    if (Request.IsHtmx())
+        return PartialView("_BlogSummaryList", posts);
+
+    // Regular browser request - return full page
+    return View("Index", posts);
+}
+```
+
+This pattern is used extensively across this blog. Here's the real implementation from `BlogController.cs:51-62`:
+
+```csharp
+if (Request.IsHtmx())
+    return PartialView("_BlogSummaryList", posts);
+
+return View("Index", posts);
+```
+
+**Why This Matters:** Without this check, HTMX requests get the full layout, causing broken HTML when it's injected into `hx-target`. The browser might try to render nested `<html>` tags, or JavaScript from the layout might execute twice.
+
+**Debugging Tip:** Install the HTMX browser extension and watch the Network tab. HTMX requests include the `HX-Request: true` header. If your server isn't seeing this header, check that HTMX is properly loaded and your attributes are correct.
+
+### History Restoration Bug: The Phantom Partial
+
+**Symptom:** User navigates with HTMX (everything works), uses browser back/forward buttons, and suddenly only a partial fragment appears instead of the full page. No header, no layout, just a lonely content div floating in white space.
+
+**Root Cause:** HTMX saves the partial HTML to the browser's history. When you navigate back, it restores that partial - but there's no full page structure around it.
+
+**Solution:** Use the `hx-history-elt` attribute to tell HTMX which element to snapshot for history:
+
+```html
+<div class="container mx-auto" id="contentcontainer" hx-history-elt>
+    @RenderBody()
+</div>
+```
+
+From `_Layout.cshtml:232`, this site uses `hx-history-elt` on the main content container. This tells HTMX:
+- When taking a history snapshot, only save this element's content
+- When restoring history, swap it back into this same element
+- The parent structure (layout, header, footer) stays intact
+
+**How It Works:**
+1. User loads `/blog/my-post` - gets full page with layout
+2. User clicks HTMX link to `/blog/another-post` - partial update swaps content
+3. HTMX stores the new content in `#contentcontainer` in browser history
+4. User clicks back button
+5. Instead of the broken partial-only view, HTMX restores content to `#contentcontainer` within the existing page structure
+
+**Alternative Approach:** If you don't want HTMX URLs in history at all (for pagination, filters, etc.), use:
+
+```html
+<pager
+    hx-push-url="false"  <!-- Don't add to history -->
+    hx-target="#content">
+</pager>
+```
+
+Or use `hx-replace-url="true"` to update the URL without creating a history entry.
+
+### Cloudflare Caching: The HTMX Request That Wasn't
+
+**Symptom:** HTMX works perfectly in development. Deploy behind Cloudflare, and suddenly HTMX requests get cached full-page responses instead of partials. Users see broken layouts, duplicate content, or full pages injected into divs.
+
+**Root Cause:** Cloudflare's default caching ignores the `HX-Request` header. Your server returns different content (partial vs. full page) based on this header, but Cloudflare treats all requests for `/blog/page/2` as identical, caching the first response and serving it to everyone.
+
+**The Problem in Detail:**
+```
+First request:  GET /blog/page/2 (regular browser)
+→ Server returns: Full page with layout
+→ Cloudflare caches: Full page
+
+Second request: GET /blog/page/2 (HTMX with HX-Request: true header)
+→ Cloudflare returns: Cached full page (wrong!)
+→ Result: Full page dumped into hx-target div
+```
+
+**Solution 1: ASP.NET Core OutputCache with VaryByHeaderNames**
+
+The most robust solution is to handle this server-side using ASP.NET Core's `OutputCache`:
+
+```csharp
+[HttpGet]
+[OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
+public async Task<IActionResult> Search(string query, int page = 1)
+{
+    var results = await searchService.Search(query, page);
+
+    if (Request.IsHtmx())
+        return PartialView("_SearchResults", results);
+
+    return View("SearchResults", results);
+}
+```
+
+The `VaryByHeaderNames = new[] { "hx-request" }` tells ASP.NET Core to cache different responses based on the `HX-Request` header value. This creates separate cache entries:
+- One for `HX-Request: true` (partials)
+- One for regular requests (full pages)
+
+Real examples from this blog:
+
+**SearchController.cs:25** - Multiple vary headers for different request types:
+```csharp
+[OutputCache(Duration = 3600,
+    VaryByHeaderNames = new[] { "hx-request", "pagerequest" },
+    VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange" })]
+```
+
+**BlogController.cs:25** - Simple blog list caching:
+```csharp
+[OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
+```
+
+**Solution 2: Cloudflare Cache Rules**
+
+If you're using Cloudflare, create a Cache Rule that respects HTMX headers:
+
+1. Go to Cloudflare Dashboard → Caching → Cache Rules
+2. Create a new rule:
+   - **Rule name:** "HTMX Request Handling"
+   - **When incoming requests match:** Custom filter expression
+   - **Expression:** `http.request.uri.path matches "^/blog.*" or http.request.uri.path matches "^/search.*"`
+   - **Then:**
+     - **Cache status:** Eligible for cache
+     - **Cache key:** Custom cache key
+     - **Query string:** All query string parameters
+     - **Headers:** Include `HX-Request`, `pagerequest`
+     - **Respect Origin Cache-Control:** Yes
+
+This tells Cloudflare to create separate cache entries based on the `HX-Request` header, just like `VaryByHeaderNames` does server-side.
+
+**Solution 3: Bypass Cloudflare Cache for HTMX (Not Recommended)**
+
+If you can't modify cache rules, you can bypass Cloudflare's cache entirely for HTMX requests:
+
+```csharp
+[HttpGet]
+public IActionResult Index()
+{
+    if (Request.IsHtmx())
+    {
+        Response.Headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate";
+    }
+    return View();
+}
+```
+
+This works but wastes the performance benefits of CDN caching. Only use it as a last resort.
+
+**Testing Cloudflare Cache Issues:**
+
+1. Check the `CF-Cache-Status` response header:
+   - `HIT` - Served from Cloudflare cache
+   - `MISS` - Fetched from origin
+   - `DYNAMIC` - Bypassed cache (good for debugging)
+
+2. Test with and without HTMX:
+   ```bash
+   # Regular request
+   curl -I https://yourdomain.com/blog/page/2
+
+   # HTMX request
+   curl -I -H "HX-Request: true" https://yourdomain.com/blog/page/2
+   ```
+
+3. Compare the response sizes - partial responses should be significantly smaller
+
+### Combining VaryByHeaderNames with Custom Headers
+
+You can vary by multiple headers for complex scenarios. This blog's search controller handles three request types:
+
+```csharp
+[OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
+public async Task<IActionResult> Search(
+    string query,
+    int page = 1,
+    [FromHeader] bool pagerequest = false)
+{
+    var results = await BuildSearchModel(query, page);
+
+    // Minimal partial for pagination
+    if (pagerequest && Request.IsHtmx())
+        return PartialView("_SearchResultsPartial", results.SearchResults);
+
+    // Section partial for filter changes
+    if (Request.IsHtmx())
+        return PartialView("SearchResults", results);
+
+    // Full page for direct navigation
+    return View("SearchResults", results);
+}
+```
+
+This creates three separate cache entries:
+1. Full page (no HTMX headers)
+2. Section partial (`hx-request: true`, no `pagerequest`)
+3. Minimal partial (`hx-request: true`, `pagerequest: true`)
+
+The corresponding HTMX setup in the view:
+
+```razor
+<pager
+    link-url="@Model.LinkUrl"
+    hx-boost="true"
+    hx-target="#content"
+    hx-headers='{"pagerequest": "true"}'  <!-- Custom header -->
+    page="@Model.Page"
+    page-size="@Model.PageSize"
+    total-items="@Model.TotalItems">
+</pager>
+```
+
+**Key Takeaway:** The combination of `IsHtmx()` server-side detection, `VaryByHeaderNames` for caching, and `hx-history-elt` for history management solves 90% of HTMX issues. Add Cloudflare-aware cache rules if you're behind a CDN, and you'll have a rock-solid HTMX implementation.
+
 ## Conclusion
 
 HTMX with ASP.NET Core partials represents a return to server-side simplicity without sacrificing modern UX. You get:
