@@ -62,14 +62,14 @@
                     {
                         @if (BlogUrlHelper.IsEnglish(Model.Language))
                         {
-                            <a hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.PreviousPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                            <a href="@Url.Action("Show", "Blog", new { slug = Model.PreviousPost.Slug })" hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.PreviousPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                                 <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
                                 <span>Newer: @Model.PreviousPost.Title</span>
                             </a>
                         }
                         else
                         {
-                            <a hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.PreviousPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                            <a href="@Url.Action("Language", "Blog", new { slug = Model.PreviousPost.Slug, language = Model.Language })" hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.PreviousPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                                 <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
                                 <span>Newer: @Model.PreviousPost.Title</span>
                             </a>
@@ -81,14 +81,14 @@
                     {
                         @if (BlogUrlHelper.IsEnglish(Model.Language))
                         {
-                            <a hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.NextPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                            <a href="@Url.Action("Show", "Blog", new { slug = Model.NextPost.Slug })" hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.NextPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                                 <span>Older: @Model.NextPost.Title</span>
                                 <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
                             </a>
                         }
                         else
                         {
-                            <a hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.NextPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                            <a href="@Url.Action("Language", "Blog", new { slug = Model.NextPost.Slug, language = Model.Language })" hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.NextPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                                 <span>Older: @Model.NextPost.Title</span>
                                 <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
                             </a>
@@ -118,14 +118,14 @@
                 {
                     @if (BlogUrlHelper.IsEnglish(Model.Language))
                     {
-                        <a hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.PreviousPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                        <a href="@Url.Action("Show", "Blog", new { slug = Model.PreviousPost.Slug })" hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.PreviousPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                             <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
                             <span>Newer: @Model.PreviousPost.Title</span>
                         </a>
                     }
                     else
                     {
-                        <a hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.PreviousPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                        <a href="@Url.Action("Language", "Blog", new { slug = Model.PreviousPost.Slug, language = Model.Language })" hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.PreviousPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                             <i class='bx bx-left-arrow-alt text-xl mr-1'></i>
                             <span>Newer: @Model.PreviousPost.Title</span>
                         </a>
@@ -137,14 +137,14 @@
                 {
                     @if (BlogUrlHelper.IsEnglish(Model.Language))
                     {
-                        <a hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.NextPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                        <a href="@Url.Action("Show", "Blog", new { slug = Model.NextPost.Slug })" hx-controller="Blog" hx-action="Show" hx-route-slug="@Model.NextPost.Slug" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                             <span>Older: @Model.NextPost.Title</span>
                             <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
                         </a>
                     }
                     else
                     {
-                        <a hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.NextPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
+                        <a href="@Url.Action("Language", "Blog", new { slug = Model.NextPost.Slug, language = Model.Language })" hx-controller="Blog" hx-action="Language" hx-route-slug="@Model.NextPost.Slug" hx-route-language="@Model.Language" hx-get hx-target="#contentcontainer" hx-swap="show:window:top" hx-push-url="true" class="inline-flex items-center hover:text-secondary">
                             <span>Older: @Model.NextPost.Title</span>
                             <i class='bx bx-right-arrow-alt text-xl ml-1'></i>
                         </a>
