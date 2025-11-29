@@ -19,6 +19,9 @@ using Mostlylucid.Services.Announcement;
 
 try
 {  Log.Logger = new LoggerConfiguration()
+             .MinimumLevel.Warning()
+             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Error)
+             .MinimumLevel.Override("Npgsql", Serilog.Events.LogEventLevel.Error)
              .WriteTo.Console()
              .WriteTo.File("logs/boot-*.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
              .CreateBootstrapLogger();
