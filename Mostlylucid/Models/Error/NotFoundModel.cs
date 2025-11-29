@@ -2,7 +2,7 @@
 
 namespace Mostlylucid.Models.Error;
 
-public class NotFoundModel
+public class NotFoundModel : BaseViewModel
 {
     public string OriginalPath { get; set; } = string.Empty;
     public List<SuggestionWithScore> SuggestionsWithScores { get; set; } = new();
