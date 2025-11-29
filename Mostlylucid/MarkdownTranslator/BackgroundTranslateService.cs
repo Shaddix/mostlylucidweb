@@ -337,22 +337,10 @@ public class BackgroundTranslateService(
                 delay,
                 (exception, timeSpan, retryCount, context) =>
                 {
-                    if (retryCount >= 3)
-                    {
-                        activity?.Activity?.SetTag("Error", exception.Message);
-                        tcs.SetException(new Exception("Translation failed available after 3 attempts"));
-                        activity?.Complete(LogEventLevel.Error, exception);
-                        logger.LogError(exception, "Translation failed after {RetryCount} attempts",
-                            retryCount);
-                    }
-                    else
-                    {
-                        activity?.Activity?.SetTag("Retry Attempt for ", retryCount);
-                        activity?.Activity?.SetTag("For language", translateModel.Language);
-                        // Suppress noisy retry warnings - only log on final failure
-                        logger.LogDebug(exception,
-                            "Translation error, retrying attempt {RetryCount}", retryCount);
-                    }
+                    activity?.Activity?.SetTag("Retry Attempt", retryCount);
+                    activity?.Activity?.SetTag("For language", translateModel.Language);
+                    logger.LogDebug(exception,
+                        "Translation error, retrying attempt {RetryCount}/3", retryCount);
                 });
 
 
@@ -365,35 +353,36 @@ public class BackgroundTranslateService(
             return;
         }
 
-        await retryPolicy.ExecuteAsync(async () =>
+        try
         {
-            var scope = scopeFactory.CreateScope();
-            var slug = Path.GetFileNameWithoutExtension(translateModel.OriginalFileName);
-            if (translateModel.Persist)
+            await retryPolicy.ExecuteAsync(async () =>
             {
-                if (await EntryChanged(scope, slug, translateModel))
+                var scope = scopeFactory.CreateScope();
+                var slug = Path.GetFileNameWithoutExtension(translateModel.OriginalFileName);
+                if (translateModel.Persist)
                 {
-                    logger.LogInformation("Entry {Slug} has changed, translating", slug);
+                    if (await EntryChanged(scope, slug, translateModel))
+                    {
+                        logger.LogInformation("Entry {Slug} has changed, translating", slug);
+                    }
+                    else
+                    {
+                        logger.LogInformation("Entry {Slug} has not changed, skipping translation", slug);
+                        tcs.SetResult(new TaskCompletion(null, translateModel.OriginalMarkdown, translateModel.Language,
+                            true, DateTime.Now));
+                        return;
+                    }
                 }
-                else
-                {
-                    logger.LogInformation("Entry {Slug} has not changed, skipping translation", slug);
-                    tcs.SetResult(new TaskCompletion(null, translateModel.OriginalMarkdown, translateModel.Language,
-                        true, DateTime.Now));
-                    return;
-                }
-            }
 
-            logger.LogInformation("Translating {File} to {Language}", translateModel.OriginalFileName,
-                translateModel.Language);
+                logger.LogInformation("Translating {File} to {Language}", translateModel.OriginalFileName,
+                    translateModel.Language);
 
-            try
-            {
-                if(!TranslationServiceUp)
+                if (!TranslationServiceUp)
                 {
                     activity?.Activity?.SetTag("Error", "Translation service is not available");
-                    throw new Exception("Translation service is not available");
+                    throw new TranslateException("Translation service is not available", Array.Empty<string>());
                 }
+
                 var translatedMarkdown =
                     await markdownTranslatorService.TranslateMarkdown(translateModel.OriginalMarkdown,
                         translateModel.Language, cancellationToken, activity.Activity);
@@ -406,16 +395,24 @@ public class BackgroundTranslateService(
                 activity?.Complete();
                 tcs.SetResult(new TaskCompletion(translatedMarkdown, translateModel.OriginalMarkdown,
                     translateModel.Language, true, DateTime.Now));
-            }
-            catch (Exception e) when (e is not TranslateException)
-            {
-                activity?.Activity?.SetTag("Error", e.Message);
-                activity.Complete(LogEventLevel.Error, e);
-                tcs.SetException(e);
-                logger.LogError(e, "Error translating markdown");
-                return;
-            }
-        });
+            });
+        }
+        catch (TranslateException e)
+        {
+            // All retries exhausted - translation failed completely, do NOT save
+            activity?.Activity?.SetTag("Error", e.Message);
+            activity?.Complete(LogEventLevel.Error, e);
+            tcs.SetException(new Exception($"Translation failed after 3 retries: {e.Message}"));
+            logger.LogError(e, "Translation failed after 3 retries for {Language}", translateModel.Language);
+        }
+        catch (Exception e)
+        {
+            // Unexpected error - do NOT save
+            activity?.Activity?.SetTag("Error", e.Message);
+            activity?.Complete(LogEventLevel.Error, e);
+            tcs.SetException(e);
+            logger.LogError(e, "Unexpected error translating to {Language}", translateModel.Language);
+        }
     }
 
     private async Task<bool> EntryChanged(IServiceScope scope, string slug, PageTranslationModel translateModel)
