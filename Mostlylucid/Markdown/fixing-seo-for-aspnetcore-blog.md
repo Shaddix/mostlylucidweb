@@ -5,7 +5,6 @@
 
 I've been running this blog for a while now, writing detailed technical articles on ASP.NET Core, Entity Framework, HTMX, and all sorts of .NET goodness. Yet my search rankings were... underwhelming. After finally investigating why, I discovered I'd been sabotaging my own SEO with some rookie mistakes. Here's what was wrong and how I fixed it.
 
-> NOTE: This has yet to be released, the next release is HUGE (too big really!) so need to get my ducks in a row to get it all out there. BUT here's what I did...and what WILL arrive at some point!
 [TOC]
 
 # The Problem: Every Page Looked Identical to Google
@@ -21,7 +20,7 @@ Here's what my `_Layout.cshtml` looked like:
 <meta property="og:description" content="Scott Galloway is a lead developer and software engineer with a passion for building web applications.">
 ```
 
-Every. Single. Page. The same description. My article about [Background Services in ASP.NET Core](/blog/background-services-in-aspnetcore-part1)? Same description as my homepage. My deep dive into [Entity Framework](/blog/addingaboraboragaboragotoaboraboref)? Same description.
+Every. Single. Page. The same description. My article about [Background Services in ASP.NET Core](/blog/background-services-in-aspnetcore-part1)? Same description as my homepage. My deep dive into [RAG Architecture](/blog/rag-architecture)? Same description.
 
 Google sees 200+ pages with identical descriptions and thinks "this site has duplicate content issues" or "this site doesn't care about providing useful information." Either way, rankings suffer.
 

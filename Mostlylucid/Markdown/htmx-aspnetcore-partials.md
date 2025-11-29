@@ -13,7 +13,7 @@ HTMX gives us a declarative way to do what we've always done: return server-rend
 
 > **Companion Article:** This article focuses on the ASP.NET Core integration side. For a deep dive into HTMX events, lifecycle, and custom extensions, see my companion article: [A Whistle-stop Tour of HTMX Extensions and Using HTMX with ASP.NET Core](/blog/htmxandaspnetcore).
 
-In this article, I'll show you how HTMX integrates beautifully with ASP.NET Core partials, how the excellent **HTMX.NET** library makes it even better, and how my [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pagingtaghelper) NuGet package provides powerful pagination with zero configuration.
+In this article, I'll show you how HTMX integrates beautifully with ASP.NET Core partials, how the excellent **HTMX.NET** library makes it even better, and how my [mostlylucid.pagingtaghelper](https://github.com/scottgal/mostlylucid.pagingtaghelper) NuGet package uses HTMX provides powerful pagination with minimal configuration.
 
 The approach is framework-agnostic too - Django added template fragments in version 6.0, Rails has Turbo Frames, and the broader web ecosystem is embracing HTML-over-the-wire patterns. It's a good time to be building server-rendered applications.
 
@@ -414,20 +414,13 @@ Perfect for notification badges, cart counts, etc. I cover this pattern in depth
 
 This approach works with Mustache, Handlebars, or Nunjucks templates. Your WebAPI returns JSON, but HTMX handles the rendering client-side. It's particularly useful when you have an existing API or need to share data with mobile apps. For more details on HTMX extensions including client-side-templates, see [the companion article](/blog/htmxandaspnetcore).
 
-## Common Gotchas
+## Gotchas & Tips
+
+**Debugging Tool:** Install the [HTMX browser extension](https://htmx.org/extensions/) - it shows every request, response, and swap in real-time.
 
 ### CSRF Tokens
 
-ASP.NET Core's antiforgery tokens work differently with AJAX. The manual approach is to listen for HTMX requests and inject the token:
-
-```javascript
-document.addEventListener('htmx:configRequest', (event) => {
-    event.detail.headers['X-CSRF-TOKEN'] =
-        document.querySelector('[name="__RequestVerificationToken"]').value;
-});
-```
-
-**HTMX.NET's better approach:** The library provides several cleaner options. The recommended way is to use `HtmxAntiforgeryScriptEndpoint` which maps the script to an endpoint (default `_htmx/antiforgery.js`):
+ASP.NET Core's antiforgery tokens need special handling with AJAX. HTMX.NET provides several clean options. The recommended way uses `HtmxAntiforgeryScriptEndpoint`:
 
 ```csharp
 // In Program.cs
@@ -439,79 +432,30 @@ app.MapHtmxAntiforgeryScript();
 <script src="@HtmxAntiforgeryScriptEndpoints.Path" defer></script>
 ```
 
-Or use the tag helper with a meta tag in your `<head>`:
-
-```html
-<meta name="htmx-config" includeAspNetAntiforgeryToken="true" />
-```
-
-There's also `@Html.HtmxAntiforgeryScript()` if you prefer an inline approach. See [Khalid's article on HTMX Anti-Forgery Tokens](https://khalidabuhakmeh.com/htmx-requests-with-aspnet-core-anti-forgery-tokens) for the full details.
+Or use the tag helper: `<meta name="htmx-config" includeAspNetAntiforgeryToken="true" />`. See [Khalid's article on HTMX Anti-Forgery Tokens](https://khalidabuhakmeh.com/htmx-requests-with-aspnet-core-anti-forgery-tokens) for full details.
 
 ### Alpine.js @ Shorthand in Razor
 
-Alpine.js has a shorthand syntax using `@` (e.g., `@click` instead of `x-on:click`), but this conflicts with Razor's `@` syntax. You have three options:
+Alpine's `@click` shorthand conflicts with Razor's `@` syntax. Use the explicit form instead:
 
-**Option 1: Use explicit syntax (recommended)**
 ```razor
-<button x-on:click="doSomething()">Click me</button>
+<button x-on:click="doSomething()">Click me</button>  <!-- Instead of @click -->
+<div x-bind:class="isOpen ? 'block' : 'hidden'"></div>  <!-- Instead of :class -->
 ```
 
-**Option 2: Escape with @@**
-```razor
-<button @@click="doSomething()">Click me</button>
-```
-
-**Option 3: Use x-bind for attributes**
-```razor
-<div x-bind:class="isOpen ? 'block' : 'hidden'"></div>
-```
-
-I prefer the explicit `x-on:click` syntax as it's clearer and avoids any confusion with Razor syntax.
+Or escape with `@@click`, but explicit syntax is clearer.
 
 ### History Management
 
-By default, HTMX pushes every request to history. For pagination, you might want:
+**Controlling history entries:** By default, HTMX pushes every request to history. For pagination/filters where you don't want history pollution:
 
 ```razor
-<paging
-    model="@Model"
-    hx-push-url="false">  <!-- Don't pollute history -->
-</paging>
+<paging model="@Model" hx-push-url="false">  <!-- Don't add history entries -->
 ```
 
-Or use `hx-replace-url="true"` to update the URL without adding history entries.
+Or use `hx-replace-url="true"` to update the URL without adding entries.
 
-## Tips and Tricks: Common HTMX Integration Issues
-
-Building real-world HTMX applications with ASP.NET Core reveals some subtle gotchas. Here are the most common issues and their solutions, drawn from production experience.
-
-**Debugging Tool:** Install the [HTMX browser extension](https://htmx.org/extensions/) - it shows every request, response, and swap in real-time.
-
-### The Classic Problem: Loading Full Pages Instead of Partials
-
-**Symptom:** Full HTML page (with `<html>`, `<head>`, layout) gets dumped into your target container instead of just the partial.
-
-**Solution:** Use `Request.IsHtmx()` to detect HTMX requests and return the appropriate response:
-
-```csharp
-public async Task<IActionResult> Index(int page = 1)
-{
-    var posts = await blogViewService.GetPagedPosts(page);
-
-    if (Request.IsHtmx())
-        return PartialView("_BlogSummaryList", posts);
-
-    return View("Index", posts);
-}
-```
-
-Real example from `BlogController.cs:51-62`. Without this check, HTMX requests get the full layout, causing nested `<html>` tags and duplicate JavaScript execution.
-
-### History Restoration: The Phantom Partial
-
-**Symptom:** Browser back/forward buttons show only a partial fragment floating in white space - no header, no layout.
-
-**Solution:** Use `hx-history-elt` to tell HTMX which element to snapshot:
+**The Phantom Partial problem:** Browser back/forward shows only a partial fragment with no layout. Fix with `hx-history-elt` on your content container:
 
 ```html
 <div class="container mx-auto" id="contentcontainer" hx-history-elt>
@@ -519,67 +463,33 @@ Real example from `BlogController.cs:51-62`. Without this check, HTMX requests g
 </div>
 ```
 
-From `_Layout.cshtml:232`. This preserves the parent structure (layout, header, footer) when restoring history. Without it, HTMX saves and restores only the partial HTML.
+This tells HTMX which element to snapshot, preserving the surrounding layout when restoring history.
 
-For pagination/filters where you don't want history entries: `hx-push-url="false"` or `hx-replace-url="true"`.
+### CDN Caching (Cloudflare, etc.)
 
-### CDN Caching Issues (Cloudflare, etc.)
+**Symptom:** HTMX works locally but breaks behind a CDN - wrong content gets cached.
 
-**Symptom:** HTMX works in development but breaks behind a CDN - wrong content gets cached and served.
+**Root Cause:** CDNs ignore the `HX-Request` header. Your server returns different content based on this header, but the CDN caches them identically.
 
-**Root Cause:** CDNs ignore the `HX-Request` header by default. Your server returns different content based on this header, but the CDN treats all requests for `/blog/page/2` as identical.
-
-**ASP.NET Core Solution:** Use `VaryByHeaderNames` to cache different responses:
+**ASP.NET Core fix:** Use `VaryByHeaderNames`:
 
 ```csharp
 [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" })]
-public async Task<IActionResult> Search(string query, int page = 1)
-{
-    if (Request.IsHtmx())
-        return PartialView("_SearchResults", results);
-
-    return View("SearchResults", results);
-}
 ```
 
-Real examples: `SearchController.cs:25`, `BlogController.cs:25`
-
-**CDN Solution:** Configure your CDN's cache rules to include the `HX-Request` header in the cache key. For Cloudflare: Dashboard → Caching → Cache Rules → Custom cache key → Headers → Include `HX-Request`.
-
-### Advanced: Multiple Response Tiers with Custom Headers
-
-For complex scenarios, vary by multiple headers to serve different partials:
-
-```csharp
-[OutputCache(VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
-public async Task<IActionResult> Search(string query, [FromHeader] bool pagerequest = false)
-{
-    var results = await BuildSearchModel(query);
-
-    if (pagerequest && Request.IsHtmx())
-        return PartialView("_SearchResultsPartial", results.SearchResults); // Minimal
-
-    if (Request.IsHtmx())
-        return PartialView("SearchResults", results); // Section
-
-    return View("SearchResults", results); // Full page
-}
-```
-
-This creates three cache tiers. Add custom headers in views: `hx-headers='{"pagerequest": "true"}'`
+**CDN fix:** Configure cache rules to include `HX-Request` in the cache key. For Cloudflare: Dashboard → Caching → Cache Rules → Custom cache key → Headers → Include `HX-Request`.
 
 ### The hx-boost Debate
 
-The [`hx-boost`](https://htmx.org/attributes/hx-boost/) attribute converts normal links into AJAX requests. The [HTMX quirks page](https://htmx.org/quirks/) notes some core team members recommend avoiding it (discards `<head>` content, affects locality of behavior), while others find it perfectly fine for quick wins.
+[`hx-boost`](https://htmx.org/attributes/hx-boost/) converts normal links into AJAX requests. The [HTMX quirks page](https://htmx.org/quirks/) notes some core team members recommend avoiding it (discards `<head>` content, affects locality of behavior), while others find it fine for quick wins.
 
-**Works with ASP.NET Core:**
 ```razor
 <div hx-boost="true" hx-target="#contentcontainer">
     <a asp-action="Show" asp-route-slug="@post.Slug">Read More</a>
 </div>
 ```
 
-This blog uses it extensively (see `_PostPartial.cshtml:4`, `_ListPost.cshtml:6`). When targeting specific containers, explicit `hx-get` is clearer, but `hx-boost` works fine if you're consistent. Disable selectively with `hx-boost="false"` on child elements.
+This blog uses it extensively. When targeting specific containers, explicit `hx-get` is clearer, but `hx-boost` works if you're consistent. Disable selectively with `hx-boost="false"` on child elements.
 
 ## Conclusion
 
