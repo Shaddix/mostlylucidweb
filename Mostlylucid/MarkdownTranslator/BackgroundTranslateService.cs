@@ -187,8 +187,16 @@ public class BackgroundTranslateService(
                 logger.LogInformation("ForceRetranslation is enabled - all files will be retranslated on startup");
             }
 
-            var markdownFiles = Directory.GetFiles(markdownConfig.MarkdownPath, "*.md");
-            logger.LogInformation("Found {Count} markdown files to check for translation", markdownFiles.Length);
+            var allMarkdownFiles = Directory.GetFiles(markdownConfig.MarkdownPath, "*.md");
+
+            // Filter to only English source files (files without a language suffix)
+            // English files are named {slug}.md, translated files are {slug}.{language}.md
+            var markdownFiles = allMarkdownFiles
+                .Where(file => IsEnglishSourceFile(file))
+                .ToArray();
+
+            logger.LogInformation("Found {Count} English source files to translate (filtered from {Total} total .md files)",
+                markdownFiles.Length, allMarkdownFiles.Length);
             logger.LogInformation("Configured languages: {Languages}", string.Join(", ", translateServiceConfig.Languages));
 
             // Log summary of missing translations per language
@@ -207,6 +215,28 @@ public class BackgroundTranslateService(
             Console.WriteLine(e);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Determines if a file is an English source file (not an already-translated file).
+    /// English source files are named {slug}.md, while translated files are {slug}.{language}.md
+    /// </summary>
+    private bool IsEnglishSourceFile(string filePath)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+
+        // Check if the filename ends with a known language code
+        // e.g., "my-post.es" would indicate it's a Spanish translation
+        foreach (var language in translateServiceConfig.Languages)
+        {
+            if (fileName.EndsWith($".{language}", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogDebug("Skipping translated file: {File} (detected language: {Language})", filePath, language);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async Task LogMissingTranslationsSummary(string[] markdownFiles)
