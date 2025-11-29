@@ -165,17 +165,25 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         }
 
         // Fall back to PostgreSQL full-text search
-        var pgResults = query.Contains(" ")
-            ? await GetSearchResultForQueryWithLimit(query, limit)
-            : await GetSearchResultForCompleteWithLimit(query, limit);
+        try
+        {
+            var pgResults = query.Contains(" ")
+                ? await GetSearchResultForQueryWithLimit(query, limit)
+                : await GetSearchResultForCompleteWithLimit(query, limit);
 
-        // PostgreSQL results are already ranked by ts_rank
-        return pgResults.Select((r, index) => new SearchResults(
-            r.Title,
-            r.Slug,
-            $"/blog/{r.Slug}",
-            1.0f - (index * 0.05f) // Approximate score based on ranking
-        )).ToList();
+            // PostgreSQL results are already ranked by ts_rank
+            return pgResults.Select((r, index) => new SearchResults(
+                r.Title,
+                r.Slug,
+                $"/blog/{r.Slug}",
+                1.0f - (index * 0.05f) // Approximate score based on ranking
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Error(ex, "PostgreSQL full-text search failed for query '{Query}'", query);
+            return new List<SearchResults>();
+        }
     }
 
     private async Task<List<(string Title, string Slug)>> GetSearchResultForQueryWithLimit(string query, int limit)
@@ -226,52 +234,75 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
 
         var targetLanguage = string.IsNullOrEmpty(language) ? "en" : language;
 
-        // Try semantic search first
-        var semanticResults = await semanticSearchService.SearchAsync(query, pageSize * 3); // Get more for potential filtering
-
-        if (semanticResults.Count > 0)
+        // Try semantic search first (with fallback to PostgreSQL on any failure)
+        try
         {
-            // Get full blog posts for the semantic results
-            var slugs = semanticResults.Select(r => r.Slug).ToList();
-            var now = DateTimeOffset.UtcNow;
+            var semanticResults = await semanticSearchService.SearchAsync(query, pageSize * 3); // Get more for potential filtering
 
-            var postsQuery = context.BlogPosts
-                .Include(x => x.Categories)
-                .Include(x => x.LanguageEntity)
-                .AsNoTracking()
-                .Where(x => slugs.Contains(x.Slug)
-                            && !x.IsHidden
-                            && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
-                            && x.LanguageEntity.Name == targetLanguage);
-
-            // Apply date filters
-            if (startDate.HasValue)
-                postsQuery = postsQuery.Where(x => x.PublishedDate >= startDate.Value);
-            if (endDate.HasValue)
-                postsQuery = postsQuery.Where(x => x.PublishedDate <= endDate.Value);
-
-            var posts = await postsQuery.ToListAsync();
-
-            // Order by semantic search ranking
-            var orderedPosts = slugs
-                .Select(slug => posts.FirstOrDefault(p => p.Slug == slug))
-                .Where(p => p != null)
-                .Cast<BlogPostEntity>()
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return new BasePagingModel<BlogPostDto>
+            if (semanticResults.Count > 0)
             {
-                Data = orderedPosts.Select(x => x.ToDto()).ToList(),
-                TotalItems = posts.Count,
-                Page = page,
-                PageSize = pageSize
-            };
+                // Get full blog posts for the semantic results
+                var slugs = semanticResults.Select(r => r.Slug).ToList();
+                var now = DateTimeOffset.UtcNow;
+
+                var postsQuery = context.BlogPosts
+                    .Include(x => x.Categories)
+                    .Include(x => x.LanguageEntity)
+                    .AsNoTracking()
+                    .Where(x => slugs.Contains(x.Slug)
+                                && !x.IsHidden
+                                && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
+                                && x.LanguageEntity.Name == targetLanguage);
+
+                // Apply date filters
+                if (startDate.HasValue)
+                    postsQuery = postsQuery.Where(x => x.PublishedDate >= startDate.Value);
+                if (endDate.HasValue)
+                    postsQuery = postsQuery.Where(x => x.PublishedDate <= endDate.Value);
+
+                var posts = await postsQuery.ToListAsync();
+
+                // Only use semantic results if we actually found matching posts
+                if (posts.Count > 0)
+                {
+                    // Order by semantic search ranking
+                    var orderedPosts = slugs
+                        .Select(slug => posts.FirstOrDefault(p => p.Slug == slug))
+                        .Where(p => p != null)
+                        .Cast<BlogPostEntity>()
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
+
+                    return new BasePagingModel<BlogPostDto>
+                    {
+                        Data = orderedPosts.Select(x => x.ToDto()).ToList(),
+                        TotalItems = posts.Count,
+                        Page = page,
+                        PageSize = pageSize
+                    };
+                }
+
+                // Semantic search returned results but none matched DB filters - fall through to PostgreSQL
+                Log.Logger.Debug("Semantic search returned {Count} results but none matched DB filters, falling back to PostgreSQL", semanticResults.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail - fall back to PostgreSQL
+            Log.Logger.Warning(ex, "Semantic search failed for query '{Query}', falling back to PostgreSQL full-text search", query);
         }
 
         // Fall back to PostgreSQL full-text search with filters
-        return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize);
+        try
+        {
+            return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize);
+        }
+        catch (Exception ex)
+        {
+            Log.Logger.Error(ex, "PostgreSQL full-text search failed for query '{Query}'", query);
+            return new BasePagingModel<BlogPostDto>();
+        }
     }
 
     private async Task<BasePagingModel<BlogPostDto>> GetPostsWithFilters(

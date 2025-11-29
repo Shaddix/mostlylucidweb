@@ -15,6 +15,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="FakeItEasy" Version="8.3.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="9.9.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
         <PackageReference Include="xunit" Version="2.9.3" />
@@ -29,6 +30,8 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Mostlylucid.DbContext\Mostlylucid.DbContext.csproj" />
+      <ProjectReference Include="..\Mostlylucid.SemanticSearch\Mostlylucid.SemanticSearch.csproj" />
       <ProjectReference Include="..\Mostlylucid.Services\Mostlylucid.Services.csproj" />
       <ProjectReference Include="..\Mostlylucid.Shared\Mostlylucid.Shared.csproj" />
     </ItemGroup>
