@@ -22,7 +22,7 @@ public class SearchController(
 {
     [HttpGet]
     [Route("")]
-    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange", "startDate", "endDate" })]
+    [OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange", "startDate", "endDate", "order" })]
     public async Task<IActionResult> Search(
         string? query,
         int page = 1,
@@ -31,6 +31,7 @@ public class SearchController(
         DateRangeOption dateRange = DateRangeOption.AllTime,
         DateTime? startDate = null,
         DateTime? endDate = null,
+        string order = "date_desc",
         [FromHeader] bool pagerequest = false)
     {
         try
@@ -66,7 +67,8 @@ public class SearchController(
                 calculatedStartDate,
                 calculatedEndDate,
                 page,
-                pageSize);
+                pageSize,
+                order);
 
             var searchModel = new SearchResultsModel
             {
@@ -84,7 +86,7 @@ public class SearchController(
             searchModel = await PopulateBaseModel(searchModel);
 
             // Build link URL with current filters
-            var linkUrl = Url.Action("Search", "Search", new { query, language, dateRange, startDate, endDate });
+            var linkUrl = Url.Action("Search", "Search", new { query, language, dateRange, startDate, endDate, order });
             searchModel.SearchResults.LinkUrl = linkUrl;
 
             if (pagerequest && Request.IsHtmx()) return PartialView("_SearchResultsPartial", searchModel.SearchResults);

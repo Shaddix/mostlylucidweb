@@ -221,7 +221,8 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         DateTime? startDate,
         DateTime? endDate,
         int page = 1,
-        int pageSize = 10)
+        int pageSize = 10,
+        string order = "date_desc")
     {
         if (string.IsNullOrWhiteSpace(query))
             return new BasePagingModel<BlogPostDto>();
@@ -231,6 +232,7 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         activity.AddProperty("Language", language ?? "all");
         activity.AddProperty("Page", page);
         activity.AddProperty("PageSize", pageSize);
+        activity.AddProperty("Order", order);
 
         var targetLanguage = string.IsNullOrEmpty(language) ? "en" : language;
 
@@ -265,18 +267,23 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 // Only use semantic results if we actually found matching posts
                 if (posts.Count > 0)
                 {
-                    // Order by semantic search ranking
-                    var orderedPosts = slugs
-                        .Select(slug => posts.FirstOrDefault(p => p.Slug == slug))
-                        .Where(p => p != null)
-                        .Cast<BlogPostEntity>()
+                    // Apply ordering
+                    IEnumerable<BlogPostEntity> orderedPosts = order switch
+                    {
+                        "date_asc" => posts.OrderBy(p => p.PublishedDate),
+                        "title_asc" => posts.OrderBy(p => p.Title),
+                        "title_desc" => posts.OrderByDescending(p => p.Title),
+                        _ => posts.OrderByDescending(p => p.PublishedDate) // date_desc default
+                    };
+
+                    var pagedPosts = orderedPosts
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
                         .ToList();
 
                     return new BasePagingModel<BlogPostDto>
                     {
-                        Data = orderedPosts.Select(x => x.ToDto()).ToList(),
+                        Data = pagedPosts.Select(x => x.ToDto()).ToList(),
                         TotalItems = posts.Count,
                         Page = page,
                         PageSize = pageSize
@@ -296,7 +303,7 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         // Fall back to PostgreSQL full-text search with filters
         try
         {
-            return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize);
+            return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize, order);
         }
         catch (Exception ex)
         {
@@ -311,7 +318,8 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         DateTime? startDate,
         DateTime? endDate,
         int page,
-        int pageSize)
+        int pageSize,
+        string order = "date_desc")
     {
         var now = DateTimeOffset.UtcNow;
         var baseQuery = context.BlogPosts
@@ -329,7 +337,7 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         if (endDate.HasValue)
             baseQuery = baseQuery.Where(x => x.PublishedDate <= endDate.Value);
 
-        // Apply text search
+        // Apply text search filter
         IQueryable<BlogPostEntity> searchQuery;
         if (query.Contains(" "))
         {
@@ -337,9 +345,7 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", query))
                 || x.Categories.Any(c =>
                     EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.WebSearchToTsQuery("english", query))))
-                .OrderByDescending(x =>
-                    x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", query)));
+                        .Matches(EF.Functions.WebSearchToTsQuery("english", query))));
         }
         else
         {
@@ -347,13 +353,20 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 x.SearchVector.Matches(EF.Functions.ToTsQuery("english", query + ":*"))
                 || x.Categories.Any(c =>
                     EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.ToTsQuery("english", query + ":*"))))
-                .OrderByDescending(x =>
-                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", query + ":*")));
+                        .Matches(EF.Functions.ToTsQuery("english", query + ":*"))));
         }
 
+        // Apply ordering
+        IOrderedQueryable<BlogPostEntity> orderedQuery = order switch
+        {
+            "date_asc" => searchQuery.OrderBy(x => x.PublishedDate),
+            "title_asc" => searchQuery.OrderBy(x => x.Title),
+            "title_desc" => searchQuery.OrderByDescending(x => x.Title),
+            _ => searchQuery.OrderByDescending(x => x.PublishedDate) // date_desc default
+        };
+
         var totalPosts = await searchQuery.CountAsync();
-        var results = await searchQuery
+        var results = await orderedQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
