@@ -4,9 +4,9 @@ using Mostlylucid.Blog.ViewServices;
 using Mostlylucid.Controllers;
 using Mostlylucid.EmailSubscription.Mappers;
 using Mostlylucid.EmailSubscription.Models;
+using Mostlylucid.Helpers;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Email;
-using Mostlylucid.Services.Markdown;
 using Mostlylucid.Shared.Models.Email;
 using Mostlylucid.Shared.Models.EmailSubscription;
 using EmailSubscriptionService = Mostlylucid.Services.EmailSubscription.EmailSubscriptionService;
@@ -30,9 +30,7 @@ public class EmailSubscriptionController(BaseControllerService baseControllerSer
             Slug = x.Slug,
             PlainTextContent = x.Summary,
             PublishedDate = x.PublishedDate,
-            Url = language == MarkdownBaseService.EnglishLanguage ?  
-                Url.ActionLink("Show", "Blog", new { x.Slug }, "https", Request.Host.Value) :
-                Url.ActionLink("Language", "Blog", new { x.Slug, language }, "https", Request.Host.Value)
+            Url = BlogUrlHelper.GetAbsoluteBlogUrl(x.Slug, language, Request.Host.Value)
         }).ToList();
       
         var emailSubscriptionModel = new EmailRenderingModel
@@ -59,9 +57,7 @@ public class EmailSubscriptionController(BaseControllerService baseControllerSer
             Slug = x.Slug,
             PlainTextContent = x.Summary,
             PublishedDate = x.PublishedDate,
-            Url = emailSubscription.Language == MarkdownBaseService.EnglishLanguage ?  
-                Url.ActionLink("Show", "Blog", new { x.Slug }, "https", Request.Host.Value) :
-                Url.ActionLink("Language", "Blog", new { x.Slug, emailSubscription.Language }, "https", Request.Host.Value)
+            Url = BlogUrlHelper.GetAbsoluteBlogUrl(x.Slug, emailSubscription.Language, Request.Host.Value)
         }).ToList();
       
         var emailRenderingModel = new EmailRenderingModel

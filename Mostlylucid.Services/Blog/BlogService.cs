@@ -151,6 +151,15 @@ public class BlogService(
         return post.Slug;
     }
 
+    public async Task<(string Slug, string Language)> GetSlugAndLanguage(int postId)
+    {
+        var post = await Context.BlogPosts
+            .Include(p => p.LanguageEntity)
+            .FirstOrDefaultAsync(p => p.Id == postId);
+        if (post == null) return ("", "");
+        return (post.Slug, post.LanguageEntity?.Name ?? Constants.EnglishLanguage);
+    }
+
     public Task<bool> EntryExists(string slug, string language)
     {
         return PostsQuery().AnyAsync(x => x.Slug == slug && x.LanguageEntity.Name == language);

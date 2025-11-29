@@ -2,6 +2,7 @@
 using System.Xml;
 using System.Xml.Linq;
 using Mostlylucid.Blog.ViewServices;
+using Mostlylucid.Helpers;
 using Mostlylucid.RSS.Models;
 using Mostlylucid.Services.Markdown;
 
@@ -31,7 +32,7 @@ public class RSSFeedService(IBlogViewService blogViewService, IHttpContextAccess
             rssFeedItems.Add(new RssFeedItem()
             {
                 Title = item.Title,
-                Link = $"{GetSiteUrl()}/blog/{item.Slug}",
+                Link = $"{GetSiteUrl()}{BlogUrlHelper.GetBlogUrl(item.Slug, lang)}",
                 Description = item.Title,
                 PubDate = item.PublishedDate,
                 Categories = item.Categories,

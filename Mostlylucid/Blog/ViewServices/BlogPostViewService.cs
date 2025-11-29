@@ -113,9 +113,103 @@ public class BlogPostViewService(IBlogService blogPostService) : IBlogViewServic
         return await blogPostService.GetSlug(id);
     }
 
+    public async Task<(string Slug, string Language)> GetSlugAndLanguage(int id)
+    {
+        return await blogPostService.GetSlugAndLanguage(id);
+    }
+
     public async Task<List<PostListModel>> GetPostsBySlugAsync(List<string> slugs, string language)
     {
         var posts = await blogPostService.GetPostsBySlugsAsync(slugs, language);
         return posts.Select(p => p.ToPostListModel()).ToList();
+    }
+
+    public async Task<BlogIndexResult> GetIndexDataAsync(BlogIndexRequest request)
+    {
+        var (page, pageSize, startDate, endDate, language, orderBy, orderDir, order, category) = request;
+
+        // Support combined order parameter (e.g., "date_desc") for simpler HTMX forms
+        if (!string.IsNullOrEmpty(order) && order.Contains('_'))
+        {
+            var parts = order.Split('_', 2);
+            orderBy = parts[0];
+            orderDir = parts.Length > 1 ? parts[1] : "desc";
+        }
+
+        var posts = !string.IsNullOrEmpty(category)
+            ? await GetPostsByCategory(category, page, pageSize, language)
+            : await GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy: orderBy, orderDir: orderDir);
+
+        var result = new BlogIndexResult { Posts = posts };
+
+        // Check if category filter results in exactly 1 post - caller should redirect
+        if (!string.IsNullOrEmpty(category) && posts.TotalItems == 1 && posts.Data?.Count == 1)
+        {
+            var singlePost = posts.Data[0];
+            result.ShouldRedirectToSinglePost = true;
+            result.SinglePostSlug = singlePost.Slug;
+            result.SinglePostLanguage = language;
+        }
+
+        // Get all categories for the filter dropdown
+        posts.AllCategories = await GetCategoriesWithCount(language);
+
+        return result;
+    }
+
+    public async Task<List<string>> GetCalendarDaysAsync(int year, int month, string language)
+    {
+        var start = new DateTime(year, month, 1);
+        var end = start.AddMonths(1).AddDays(-1);
+        var posts = await GetPostsForRange(start, end, language: language);
+
+        if (posts is null) return new List<string>();
+
+        return posts
+            .Select(p => p.PublishedDate.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .Select(d => d.ToString("yyyy-MM-dd"))
+            .ToList();
+    }
+
+    public async Task<DateRangeResult> GetDateRangeAsync(string language)
+    {
+        var allPosts = await GetAllPosts();
+
+        if (allPosts is null || !allPosts.Any())
+        {
+            return new DateRangeResult(
+                DateTime.UtcNow.AddYears(-1).ToString("yyyy-MM-dd"),
+                DateTime.UtcNow.ToString("yyyy-MM-dd"));
+        }
+
+        // Filter by language if specified
+        var posts = allPosts;
+        if (!string.IsNullOrEmpty(language) && language != Constants.EnglishLanguage)
+        {
+            posts = allPosts.Where(p => p.Language.Equals(language, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        // If no posts in that language, fall back to all posts
+        if (!posts.Any())
+        {
+            posts = allPosts;
+        }
+
+        var minDate = posts.Min(p => p.PublishedDate.Date);
+        var maxDate = posts.Max(p => p.PublishedDate.Date);
+
+        return new DateRangeResult(
+            minDate.ToString("yyyy-MM-dd"),
+            maxDate.ToString("yyyy-MM-dd"));
+    }
+
+    public string NormalizeSlug(string slug)
+    {
+        if (slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            slug = slug[..^3];
+
+        return slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
     }
 }

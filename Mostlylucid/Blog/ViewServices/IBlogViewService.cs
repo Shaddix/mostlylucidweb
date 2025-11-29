@@ -25,11 +25,32 @@ public interface IBlogViewService : IMarkdownFileBlogService
     
     Task<bool> Delete(string slug, string language);
     Task<string> GetSlug(int id);
+    Task<(string Slug, string Language)> GetSlugAndLanguage(int id);
 
     /// <summary>
     /// Get posts by a list of slugs for a specific language
     /// </summary>
     Task<List<PostListModel>> GetPostsBySlugAsync(List<string> slugs, string language);
+
+    /// <summary>
+    /// Get posts for index page with optional filters, including categories.
+    /// </summary>
+    Task<BlogIndexResult> GetIndexDataAsync(BlogIndexRequest request);
+
+    /// <summary>
+    /// Get calendar days with posts for a given month.
+    /// </summary>
+    Task<List<string>> GetCalendarDaysAsync(int year, int month, string language);
+
+    /// <summary>
+    /// Get the date range of all posts for a language.
+    /// </summary>
+    Task<DateRangeResult> GetDateRangeAsync(string language);
+
+    /// <summary>
+    /// Normalize a slug (remove .md, convert underscores/spaces to hyphens, lowercase).
+    /// </summary>
+    string NormalizeSlug(string slug);
 }
 
 public interface IMarkdownFileBlogService

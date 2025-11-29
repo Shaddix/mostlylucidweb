@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mostlylucid.Blog.ViewServices;
+using Mostlylucid.Helpers;
 using Mostlylucid.Models.Comments;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Email;
@@ -61,13 +62,13 @@ public class CommentController(
             return PartialView("_CommentForm", model);
         }
 
-        var slug = await BlogViewService.GetSlug(postId);
-        var url = Url.Action("Show", "Blog", new { slug }, Request.Scheme);
+        var (slug, language) = await BlogViewService.GetSlugAndLanguage(postId);
+        var url = BlogUrlHelper.GetAbsoluteBlogUrl(slug, language, Request.Host.Value, Request.Scheme);
         var commentModel = new CommentEmailModel
         {
             SenderEmail = email ?? "",
             Content = htmlContent,
-            PostUrl = url ?? string.Empty
+            PostUrl = url
         };
         await sender.SendEmailAsync(commentModel);
         model.Content = htmlContent;
@@ -126,13 +127,13 @@ public class CommentController(
         var email = model.Email ?? "Anonymous";
         var htmlContent = await commentService.Add(postId, model.ParentId, name, model.Content);
         if (string.IsNullOrEmpty(htmlContent)) return BadRequest();
-        var slug = await BlogViewService.GetSlug(postId);
-        var url = Url.Action("Show", "Blog", new { slug }, Request.Scheme);
+        var (slug, language) = await BlogViewService.GetSlugAndLanguage(postId);
+        var url = BlogUrlHelper.GetAbsoluteBlogUrl(slug, language, Request.Host.Value, Request.Scheme);
         var commentModel = new CommentEmailModel
         {
             SenderEmail = email ?? "",
             Content = htmlContent,
-            PostUrl = url ?? string.Empty
+            PostUrl = url
         };
         await sender.SendEmailAsync(commentModel);
         model.Content = htmlContent;

@@ -63,6 +63,12 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
     {
         throw new NotImplementedException();
     }
+
+    public Task<(string Slug, string Language)> GetSlugAndLanguage(int postId)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<List<BlogPostViewModel>> GetAllPosts()
     {
         var posts = PageCacheHelper.GetPageCache().Select(x => x.Value);
@@ -299,5 +305,28 @@ public class MarkdownBlogViewService(MarkdownConfig config, ILogger<MarkdownBlog
             .Select(x => x.Value.ToPostListModel())
             .ToList();
         return Task.FromResult(posts);
+    }
+
+    public Task<BlogIndexResult> GetIndexDataAsync(BlogIndexRequest request)
+    {
+        throw new NotImplementedException("File mode does not support GetIndexDataAsync");
+    }
+
+    public Task<List<string>> GetCalendarDaysAsync(int year, int month, string language)
+    {
+        throw new NotImplementedException("File mode does not support GetCalendarDaysAsync");
+    }
+
+    public Task<DateRangeResult> GetDateRangeAsync(string language)
+    {
+        throw new NotImplementedException("File mode does not support GetDateRangeAsync");
+    }
+
+    public string NormalizeSlug(string slug)
+    {
+        if (slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            slug = slug[..^3];
+
+        return slug.Replace('_', '-').Replace(' ', '-').ToLowerInvariant();
     }
 }

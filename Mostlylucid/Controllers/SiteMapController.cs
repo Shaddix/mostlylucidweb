@@ -3,7 +3,7 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.Blog.ViewServices;
-using Mostlylucid.Services.Markdown;
+using Mostlylucid.Helpers;
 
 namespace Mostlylucid.Controllers;
 
@@ -37,10 +37,9 @@ public class SiteMapController(
             List<SiteMapPage> siteMapPages = new();
             siteMapPages.Add(new SiteMapPage(Url.Action("Index", "Home"), DateTime.UtcNow, 1, ChangeFrequency.Daily));
             siteMapPages.AddRange(pages.Select(x =>
-                new SiteMapPage(x.Language == MarkdownBaseService.EnglishLanguage
-                        ? Url.Action("Show", "Blog", new { x.Slug })
-                        : Url.Action("Language", "Blog", new { x.Slug, x.Language })
-                    , x.PublishedDate, x.Language == MarkdownBaseService.EnglishLanguage ? 1 : 0.8,
+                new SiteMapPage(BlogUrlHelper.GetBlogUrl(x.Slug, x.Language),
+                    x.PublishedDate,
+                    BlogUrlHelper.IsEnglish(x.Language) ? 1 : 0.8,
                     ChangeFrequency.Daily)).ToList());
 
 

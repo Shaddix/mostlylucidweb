@@ -3,6 +3,7 @@ using Htmx;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.Models;
+using Mostlylucid.Models.Blog;
 using mostlylucid.pagingtaghelper.Helpers;
 using Mostlylucid.Services;
 using Mostlylucidblog.Models;
@@ -22,19 +23,15 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
     {
         var authenticateResult = await GetUserInfo();
 
-        // Use category filter if specified, otherwise use date/order filters
-        var posts = !string.IsNullOrEmpty(category)
-            ? await BlogViewService.GetPostsByCategory(category, page, pageSize, language)
-            : await BlogViewService.GetPagedPosts(page, pageSize, language: language, startDate: startDate, endDate: endDate, orderBy, orderDir);
+        // Use the same index logic as BlogController
+        var request = new BlogIndexRequest(page, pageSize, startDate, endDate, language, orderBy, orderDir, null, category);
+        var result = await BlogViewService.GetIndexDataAsync(request);
 
-        // Get all categories for the filter dropdown
-        posts.AllCategories = await BlogViewService.GetCategoriesWithCount(language);
-
-        posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir, category });
+        result.Posts.LinkUrl = Url.Action("Index", "Home", new { startDate, endDate, language, orderBy, orderDir, category });
 
         var indexPageViewModel = new IndexPageViewModel
         {
-            Posts = posts,
+            Posts = result.Posts,
             Authenticated = authenticateResult.LoggedIn,
             Name = authenticateResult.Name,
             AvatarUrl = authenticateResult.AvatarUrl
@@ -42,7 +39,7 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
 
         // For paging requests (has pagerequest header)
         if (Request.IsPageRequest())
-            return PartialView("_BlogSummaryList", posts);
+            return PartialView("_BlogSummaryList", result.Posts);
 
         // For home button click (has homerequest header)
         if (homerequest)

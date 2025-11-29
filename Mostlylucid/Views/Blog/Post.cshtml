@@ -18,10 +18,10 @@
     ViewBag.PublishedDate = Model.PublishedDate;
     ViewBag.Categories = Model.Categories;
 
-    // Build canonical URL (without language suffix for English)
+    // Build canonical URL: /blog/{slug} for English, /blog/{language}/{slug} for others
     var canonicalUrl = Model.Language == "en"
         ? $"https://{Context.Request.Host}/blog/{Model.Slug}"
-        : $"https://{Context.Request.Host}/blog/{Model.Slug}/{Model.Language}";
+        : $"https://{Context.Request.Host}/blog/{Model.Language}/{Model.Slug}";
 }
 
 <!-- JSON-LD Structured Data for Blog Post -->

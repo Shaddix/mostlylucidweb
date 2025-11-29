@@ -153,7 +153,7 @@ This is the big one for rich snippets. Add a JSON-LD script block to your blog p
     },
     "publisher": {
         "@@type": "Organization",
-        "name": "Mostly Lucid",
+        "name": "mostlylucid",
         "logo": {
             "@@type": "ImageObject",
             "url": "https://mostlylucid.net/img/logo.svg"
@@ -190,7 +190,7 @@ Don't forget your static pages. Each should have a unique, relevant description:
 ```html
 <!-- Home page -->
 @{
-    ViewBag.Title = "Mostly Lucid - Scott Galloway's Developer Blog";
+    ViewBag.Title = "mostlylucid- Scott Galloway's Developer Blog";
     ViewBag.Description = "Technical blog covering ASP.NET Core, C#, Entity Framework, HTMX, Docker, and modern web development. Practical tutorials, NuGet packages, and open source projects.";
 }
 
