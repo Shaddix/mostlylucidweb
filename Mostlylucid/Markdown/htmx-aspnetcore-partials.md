@@ -716,6 +716,91 @@ The corresponding HTMX setup in the view:
 
 **Key Takeaway:** The combination of `IsHtmx()` server-side detection, `VaryByHeaderNames` for caching, and `hx-history-elt` for history management solves 90% of HTMX issues. Add Cloudflare-aware cache rules if you're behind a CDN, and you'll have a rock-solid HTMX implementation.
 
+### Understanding hx-boost: When Simple Becomes Complex
+
+**What is hx-boost?** The [`hx-boost`](https://htmx.org/attributes/hx-boost/) attribute converts normal anchor links and form submissions into AJAX requests, swapping the response into the `<body>` tag by default. It's designed as a quick way to make traditional multi-page apps feel like SPAs.
+
+**The Debate:** There's an interesting split in the HTMX community about `hx-boost`. According to the official [HTMX quirks documentation](https://htmx.org/quirks/), some core team members recommend avoiding it entirely, while others consider it perfectly fine to use.
+
+**The Arguments Against:**
+1. **Head tag content is discarded** - Styles and scripts in the new page's `<head>` are ignored
+2. **Global JavaScript scope isn't refreshed** - Can cause strange interactions between pages
+3. **Progressive enhancement concerns** - You're converting semantic links into partial updates, which changes their meaning
+4. **Locality of behavior** - `hx-boost="true"` on a parent affects all child links, making behavior less obvious
+
+From the [quirks documentation](https://htmx.org/quirks/):
+> "Some members on the core htmx team feel that, due to these issues, as well as the fact that browsers have improved quite a bit in page navigation, it is best to avoid hx-boost and just use unboosted links and forms."
+
+**The Arguments For:**
+1. **Quick wins** - Instantly make existing multi-page apps feel faster
+2. **Progressive enhancement** - Links still work if JavaScript fails
+3. **Less verbose** - One attribute instead of `hx-get` + `hx-push-url` on every link
+
+**Using hx-boost with hx-target: Officially Supported, But...**
+
+The [official documentation](https://htmx.org/attributes/hx-boost/) confirms you can combine `hx-boost` with other attributes like `hx-target`:
+
+```razor
+<!-- This is supported and works -->
+<div hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top">
+    <a href="/blog/post">Read More</a>
+</div>
+```
+
+This blog uses this pattern extensively. From `_PostPartial.cshtml:4`:
+
+```razor
+<div class="pt-2 lg:pt-2" id="blogpost" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top">
+```
+
+And from `_ListPost.cshtml:6`:
+
+```razor
+<a asp-controller="Blog" asp-action="Show"
+   hx-boost="true"
+   hx-swap="show:window:top"
+   hx-target="#contentcontainer"
+   asp-route-language="@Model.Language">
+```
+
+**However**, when you add `hx-target`, you're essentially replicating what `hx-get` does more explicitly. Compare:
+
+```razor
+<!-- Using hx-boost (inherited, implicit) -->
+<div hx-boost="true" hx-target="#contentcontainer">
+    <a href="/blog/post">Post</a>
+</div>
+
+<!-- Using explicit hx-get (clearer intent) -->
+<a hx-get="/blog/post"
+   hx-target="#contentcontainer"
+   hx-push-url="true">
+    Post
+</a>
+```
+
+**Recommendation:**
+
+- **Use `hx-boost`** if you want a quick progressive enhancement for simple navigation without targeting specific containers
+- **Use explicit `hx-get`/`hx-post`** when:
+  - You're targeting specific containers (not `<body>`)
+  - You need fine-grained control over swap behavior
+  - You want clear, self-documenting code (better locality of behavior)
+  - You're building component-based partials (the HTMX way)
+
+**Disabling hx-boost Selectively:**
+
+If you use `hx-boost="true"` on a parent, you can disable it for specific children:
+
+```razor
+<div hx-boost="true">
+    <a href="/boosted">This uses AJAX</a>
+    <a href="/download.pdf" hx-boost="false">This is a normal link</a>
+</div>
+```
+
+**The Pragmatic Approach:** This blog uses `hx-boost` with custom targets extensively and it works well in production. The key is consistency and understanding the tradeoffs. If you're starting fresh, consider explicit `hx-get` for better code clarity. If you have an existing app, `hx-boost` can be a great stepping stone.
+
 ## Conclusion
 
 HTMX with ASP.NET Core partials represents a return to server-side simplicity without sacrificing modern UX. You get:
