@@ -115,7 +115,7 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
     modelBuilder.Entity<BlogPostEntity>(entity =>
         {
             entity.HasIndex(x => new { x.Slug, x.LanguageId });
-            entity.HasIndex(x => x.ContentHash).IsUnique();
+            entity.HasIndex(x => new { x.ContentHash, x.LanguageId }).IsUnique();
             entity.HasIndex(x => x.PublishedDate);
 
             // Indexes for new visibility features
