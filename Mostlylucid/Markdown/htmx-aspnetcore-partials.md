@@ -481,57 +481,37 @@ By default, HTMX pushes every request to history. For pagination, you might want
 
 Or use `hx-replace-url="true"` to update the URL without adding history entries.
 
-### Debugging
+## Tips and Tricks: Common HTMX Integration Issues
 
-Install the HTMX devtools browser extension. It shows you every request, response, and swap in real-time. Absolutely invaluable.
+Building real-world HTMX applications with ASP.NET Core reveals some subtle gotchas. Here are the most common issues and their solutions, drawn from production experience.
 
-## Tips and Tricks: Troubleshooting Common HTMX Issues
-
-Building real-world HTMX applications reveals some subtle gotchas. Here are the most common issues you'll encounter and their solutions, drawn from experience running this blog in production.
+**Debugging Tool:** Install the [HTMX browser extension](https://htmx.org/extensions/) - it shows every request, response, and swap in real-time.
 
 ### The Classic Problem: Loading Full Pages Instead of Partials
 
-**Symptom:** You click an HTMX-enabled link or button, and instead of getting a smooth partial update, the entire page reloads or a full HTML page (complete with `<html>`, `<head>`, layout) gets dumped into your target container.
+**Symptom:** Full HTML page (with `<html>`, `<head>`, layout) gets dumped into your target container instead of just the partial.
 
-**Root Cause:** The server doesn't know the request came from HTMX, so it returns a full view instead of a partial.
-
-**Solution:** Use the `Request.IsHtmx()` extension method from HTMX.NET to detect HTMX requests:
+**Solution:** Use `Request.IsHtmx()` to detect HTMX requests and return the appropriate response:
 
 ```csharp
-[HttpGet]
-public async Task<IActionResult> BlogList(int page = 1, int pageSize = 20)
+public async Task<IActionResult> Index(int page = 1)
 {
-    var posts = await blogViewService.GetPagedPosts(page, pageSize);
+    var posts = await blogViewService.GetPagedPosts(page);
 
-    // Check if this is an HTMX request
     if (Request.IsHtmx())
         return PartialView("_BlogSummaryList", posts);
 
-    // Regular browser request - return full page
     return View("Index", posts);
 }
 ```
 
-This pattern is used extensively across this blog. Here's the real implementation from `BlogController.cs:51-62`:
+Real example from `BlogController.cs:51-62`. Without this check, HTMX requests get the full layout, causing nested `<html>` tags and duplicate JavaScript execution.
 
-```csharp
-if (Request.IsHtmx())
-    return PartialView("_BlogSummaryList", posts);
+### History Restoration: The Phantom Partial
 
-return View("Index", posts);
-```
+**Symptom:** Browser back/forward buttons show only a partial fragment floating in white space - no header, no layout.
 
-**Why This Matters:** Without this check, HTMX requests get the full layout, causing broken HTML when it's injected into `hx-target`. The browser might try to render nested `<html>` tags, or JavaScript from the layout might execute twice.
-
-**Debugging Tip:** Install the HTMX browser extension and watch the Network tab. HTMX requests include the `HX-Request: true` header. If your server isn't seeing this header, check that HTMX is properly loaded and your attributes are correct.
-
-### History Restoration Bug: The Phantom Partial
-
-**Symptom:** User navigates with HTMX (everything works), uses browser back/forward buttons, and suddenly only a partial fragment appears instead of the full page. No header, no layout, just a lonely content div floating in white space.
-
-**Root Cause:** HTMX saves the partial HTML to the browser's history. When you navigate back, it restores that partial - but there's no full page structure around it.
-
-**Solution:** Use the `hx-history-elt` attribute to tell HTMX which element to snapshot for history:
+**Solution:** Use `hx-history-elt` to tell HTMX which element to snapshot:
 
 ```html
 <div class="container mx-auto" id="contentcontainer" hx-history-elt>
@@ -539,57 +519,22 @@ return View("Index", posts);
 </div>
 ```
 
-From `_Layout.cshtml:232`, this site uses `hx-history-elt` on the main content container. This tells HTMX:
-- When taking a history snapshot, only save this element's content
-- When restoring history, swap it back into this same element
-- The parent structure (layout, header, footer) stays intact
+From `_Layout.cshtml:232`. This preserves the parent structure (layout, header, footer) when restoring history. Without it, HTMX saves and restores only the partial HTML.
 
-**How It Works:**
-1. User loads `/blog/my-post` - gets full page with layout
-2. User clicks HTMX link to `/blog/another-post` - partial update swaps content
-3. HTMX stores the new content in `#contentcontainer` in browser history
-4. User clicks back button
-5. Instead of the broken partial-only view, HTMX restores content to `#contentcontainer` within the existing page structure
+For pagination/filters where you don't want history entries: `hx-push-url="false"` or `hx-replace-url="true"`.
 
-**Alternative Approach:** If you don't want HTMX URLs in history at all (for pagination, filters, etc.), use:
+### CDN Caching Issues (Cloudflare, etc.)
 
-```html
-<pager
-    hx-push-url="false"  <!-- Don't add to history -->
-    hx-target="#content">
-</pager>
-```
+**Symptom:** HTMX works in development but breaks behind a CDN - wrong content gets cached and served.
 
-Or use `hx-replace-url="true"` to update the URL without creating a history entry.
+**Root Cause:** CDNs ignore the `HX-Request` header by default. Your server returns different content based on this header, but the CDN treats all requests for `/blog/page/2` as identical.
 
-### Cloudflare Caching: The HTMX Request That Wasn't
-
-**Symptom:** HTMX works perfectly in development. Deploy behind Cloudflare, and suddenly HTMX requests get cached full-page responses instead of partials. Users see broken layouts, duplicate content, or full pages injected into divs.
-
-**Root Cause:** Cloudflare's default caching ignores the `HX-Request` header. Your server returns different content (partial vs. full page) based on this header, but Cloudflare treats all requests for `/blog/page/2` as identical, caching the first response and serving it to everyone.
-
-**The Problem in Detail:**
-```
-First request:  GET /blog/page/2 (regular browser)
-→ Server returns: Full page with layout
-→ Cloudflare caches: Full page
-
-Second request: GET /blog/page/2 (HTMX with HX-Request: true header)
-→ Cloudflare returns: Cached full page (wrong!)
-→ Result: Full page dumped into hx-target div
-```
-
-**Solution 1: ASP.NET Core OutputCache with VaryByHeaderNames**
-
-The most robust solution is to handle this server-side using ASP.NET Core's `OutputCache`:
+**ASP.NET Core Solution:** Use `VaryByHeaderNames` to cache different responses:
 
 ```csharp
-[HttpGet]
-[OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
+[OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request" })]
 public async Task<IActionResult> Search(string query, int page = 1)
 {
-    var results = await searchService.Search(query, page);
-
     if (Request.IsHtmx())
         return PartialView("_SearchResults", results);
 
@@ -597,209 +542,44 @@ public async Task<IActionResult> Search(string query, int page = 1)
 }
 ```
 
-The `VaryByHeaderNames = new[] { "hx-request" }` tells ASP.NET Core to cache different responses based on the `HX-Request` header value. This creates separate cache entries:
-- One for `HX-Request: true` (partials)
-- One for regular requests (full pages)
+Real examples: `SearchController.cs:25`, `BlogController.cs:25`
 
-Real examples from this blog:
+**CDN Solution:** Configure your CDN's cache rules to include the `HX-Request` header in the cache key. For Cloudflare: Dashboard → Caching → Cache Rules → Custom cache key → Headers → Include `HX-Request`.
 
-**SearchController.cs:25** - Multiple vary headers for different request types:
-```csharp
-[OutputCache(Duration = 3600,
-    VaryByHeaderNames = new[] { "hx-request", "pagerequest" },
-    VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange" })]
-```
+### Advanced: Multiple Response Tiers with Custom Headers
 
-**BlogController.cs:25** - Simple blog list caching:
-```csharp
-[OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
-```
-
-**Solution 2: Cloudflare Cache Rules**
-
-If you're using Cloudflare, create a Cache Rule that respects HTMX headers:
-
-1. Go to Cloudflare Dashboard → Caching → Cache Rules
-2. Create a new rule:
-   - **Rule name:** "HTMX Request Handling"
-   - **When incoming requests match:** Custom filter expression
-   - **Expression:** `http.request.uri.path matches "^/blog.*" or http.request.uri.path matches "^/search.*"`
-   - **Then:**
-     - **Cache status:** Eligible for cache
-     - **Cache key:** Custom cache key
-     - **Query string:** All query string parameters
-     - **Headers:** Include `HX-Request`, `pagerequest`
-     - **Respect Origin Cache-Control:** Yes
-
-This tells Cloudflare to create separate cache entries based on the `HX-Request` header, just like `VaryByHeaderNames` does server-side.
-
-**Solution 3: Bypass Cloudflare Cache for HTMX (Not Recommended)**
-
-If you can't modify cache rules, you can bypass Cloudflare's cache entirely for HTMX requests:
+For complex scenarios, vary by multiple headers to serve different partials:
 
 ```csharp
-[HttpGet]
-public IActionResult Index()
+[OutputCache(VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
+public async Task<IActionResult> Search(string query, [FromHeader] bool pagerequest = false)
 {
-    if (Request.IsHtmx())
-    {
-        Response.Headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate";
-    }
-    return View();
-}
-```
+    var results = await BuildSearchModel(query);
 
-This works but wastes the performance benefits of CDN caching. Only use it as a last resort.
-
-**Testing Cloudflare Cache Issues:**
-
-1. Check the `CF-Cache-Status` response header:
-   - `HIT` - Served from Cloudflare cache
-   - `MISS` - Fetched from origin
-   - `DYNAMIC` - Bypassed cache (good for debugging)
-
-2. Test with and without HTMX:
-   ```bash
-   # Regular request
-   curl -I https://yourdomain.com/blog/page/2
-
-   # HTMX request
-   curl -I -H "HX-Request: true" https://yourdomain.com/blog/page/2
-   ```
-
-3. Compare the response sizes - partial responses should be significantly smaller
-
-### Combining VaryByHeaderNames with Custom Headers
-
-You can vary by multiple headers for complex scenarios. This blog's search controller handles three request types:
-
-```csharp
-[OutputCache(Duration = 3600, VaryByHeaderNames = new[] { "hx-request", "pagerequest" })]
-public async Task<IActionResult> Search(
-    string query,
-    int page = 1,
-    [FromHeader] bool pagerequest = false)
-{
-    var results = await BuildSearchModel(query, page);
-
-    // Minimal partial for pagination
     if (pagerequest && Request.IsHtmx())
-        return PartialView("_SearchResultsPartial", results.SearchResults);
+        return PartialView("_SearchResultsPartial", results.SearchResults); // Minimal
 
-    // Section partial for filter changes
     if (Request.IsHtmx())
-        return PartialView("SearchResults", results);
+        return PartialView("SearchResults", results); // Section
 
-    // Full page for direct navigation
-    return View("SearchResults", results);
+    return View("SearchResults", results); // Full page
 }
 ```
 
-This creates three separate cache entries:
-1. Full page (no HTMX headers)
-2. Section partial (`hx-request: true`, no `pagerequest`)
-3. Minimal partial (`hx-request: true`, `pagerequest: true`)
+This creates three cache tiers. Add custom headers in views: `hx-headers='{"pagerequest": "true"}'`
 
-The corresponding HTMX setup in the view:
+### The hx-boost Debate
 
+The [`hx-boost`](https://htmx.org/attributes/hx-boost/) attribute converts normal links into AJAX requests. The [HTMX quirks page](https://htmx.org/quirks/) notes some core team members recommend avoiding it (discards `<head>` content, affects locality of behavior), while others find it perfectly fine for quick wins.
+
+**Works with ASP.NET Core:**
 ```razor
-<pager
-    link-url="@Model.LinkUrl"
-    hx-boost="true"
-    hx-target="#content"
-    hx-headers='{"pagerequest": "true"}'  <!-- Custom header -->
-    page="@Model.Page"
-    page-size="@Model.PageSize"
-    total-items="@Model.TotalItems">
-</pager>
-```
-
-**Key Takeaway:** The combination of `IsHtmx()` server-side detection, `VaryByHeaderNames` for caching, and `hx-history-elt` for history management solves 90% of HTMX issues. Add Cloudflare-aware cache rules if you're behind a CDN, and you'll have a rock-solid HTMX implementation.
-
-### Understanding hx-boost: When Simple Becomes Complex
-
-**What is hx-boost?** The [`hx-boost`](https://htmx.org/attributes/hx-boost/) attribute converts normal anchor links and form submissions into AJAX requests, swapping the response into the `<body>` tag by default. It's designed as a quick way to make traditional multi-page apps feel like SPAs.
-
-**The Debate:** There's an interesting split in the HTMX community about `hx-boost`. According to the official [HTMX quirks documentation](https://htmx.org/quirks/), some core team members recommend avoiding it entirely, while others consider it perfectly fine to use.
-
-**The Arguments Against:**
-1. **Head tag content is discarded** - Styles and scripts in the new page's `<head>` are ignored
-2. **Global JavaScript scope isn't refreshed** - Can cause strange interactions between pages
-3. **Progressive enhancement concerns** - You're converting semantic links into partial updates, which changes their meaning
-4. **Locality of behavior** - `hx-boost="true"` on a parent affects all child links, making behavior less obvious
-
-From the [quirks documentation](https://htmx.org/quirks/):
-> "Some members on the core htmx team feel that, due to these issues, as well as the fact that browsers have improved quite a bit in page navigation, it is best to avoid hx-boost and just use unboosted links and forms."
-
-**The Arguments For:**
-1. **Quick wins** - Instantly make existing multi-page apps feel faster
-2. **Progressive enhancement** - Links still work if JavaScript fails
-3. **Less verbose** - One attribute instead of `hx-get` + `hx-push-url` on every link
-
-**Using hx-boost with hx-target: Officially Supported, But...**
-
-The [official documentation](https://htmx.org/attributes/hx-boost/) confirms you can combine `hx-boost` with other attributes like `hx-target`:
-
-```razor
-<!-- This is supported and works -->
-<div hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top">
-    <a href="/blog/post">Read More</a>
-</div>
-```
-
-This blog uses this pattern extensively. From `_PostPartial.cshtml:4`:
-
-```razor
-<div class="pt-2 lg:pt-2" id="blogpost" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top">
-```
-
-And from `_ListPost.cshtml:6`:
-
-```razor
-<a asp-controller="Blog" asp-action="Show"
-   hx-boost="true"
-   hx-swap="show:window:top"
-   hx-target="#contentcontainer"
-   asp-route-language="@Model.Language">
-```
-
-**However**, when you add `hx-target`, you're essentially replicating what `hx-get` does more explicitly. Compare:
-
-```razor
-<!-- Using hx-boost (inherited, implicit) -->
 <div hx-boost="true" hx-target="#contentcontainer">
-    <a href="/blog/post">Post</a>
-</div>
-
-<!-- Using explicit hx-get (clearer intent) -->
-<a hx-get="/blog/post"
-   hx-target="#contentcontainer"
-   hx-push-url="true">
-    Post
-</a>
-```
-
-**Recommendation:**
-
-- **Use `hx-boost`** if you want a quick progressive enhancement for simple navigation without targeting specific containers
-- **Use explicit `hx-get`/`hx-post`** when:
-  - You're targeting specific containers (not `<body>`)
-  - You need fine-grained control over swap behavior
-  - You want clear, self-documenting code (better locality of behavior)
-  - You're building component-based partials (the HTMX way)
-
-**Disabling hx-boost Selectively:**
-
-If you use `hx-boost="true"` on a parent, you can disable it for specific children:
-
-```razor
-<div hx-boost="true">
-    <a href="/boosted">This uses AJAX</a>
-    <a href="/download.pdf" hx-boost="false">This is a normal link</a>
+    <a asp-action="Show" asp-route-slug="@post.Slug">Read More</a>
 </div>
 ```
 
-**The Pragmatic Approach:** This blog uses `hx-boost` with custom targets extensively and it works well in production. The key is consistency and understanding the tradeoffs. If you're starting fresh, consider explicit `hx-get` for better code clarity. If you have an existing app, `hx-boost` can be a great stepping stone.
+This blog uses it extensively (see `_PostPartial.cshtml:4`, `_ListPost.cshtml:6`). When targeting specific containers, explicit `hx-get` is clearer, but `hx-boost` works fine if you're consistent. Disable selectively with `hx-boost="false"` on child elements.
 
 ## Conclusion
 
