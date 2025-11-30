@@ -14,12 +14,10 @@
         </paging>
     </div>
 
-    <text>
     @foreach (var post in Model.Data)
     {
         <partial name="_ListPost" model="post"/>
     }
-    </text>
 
     <!-- Bottom Pagination -->
     <div class="flex items-center justify-center w-full mt-4 mb-2 print:!hidden">

@@ -7,5 +7,10 @@
 }
 
 <div class="pt-2 lg:pt-2">
+    <!-- Filter Bar (outside #content, not swapped) -->
+    <div class="flex justify-center mb-4 print:!hidden">
+        <partial name="_FilterBar" model="Model"/>
+    </div>
+
     <partial name="_BlogSummaryList" model="Model" />
 </div>

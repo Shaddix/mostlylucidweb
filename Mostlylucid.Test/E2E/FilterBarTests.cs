@@ -305,4 +305,284 @@ public class FilterBarTests : E2ETestBase
         Assert.Equal("/rss", rssHref);
         Output.WriteLine("RSS link is present and points to /rss");
     }
+
+    #region HTMX Filter Bar Behavior Tests
+
+    [Fact]
+    public async Task FilterBar_Homepage_TargetsRootUrl()
+    {
+        // Arrange - Navigate to homepage
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Assert - Filter bar select elements should target "/" via hx-get
+        var orderSelectTarget = await EvaluateFunctionAsync<string>(@"() => {
+            const select = document.querySelector('#orderSelect');
+            return select?.getAttribute('hx-get') || '';
+        }");
+
+        Output.WriteLine($"Order select hx-get on homepage: '{orderSelectTarget}'");
+        Assert.Equal("/", orderSelectTarget);
+        Output.WriteLine("✅ Filter bar on homepage correctly targets /");
+    }
+
+    [Fact]
+    public async Task FilterBar_BlogPage_TargetsBlogUrl()
+    {
+        // Arrange - Navigate to blog page
+        await NavigateAsync("/blog");
+        await WaitAsync(500);
+
+        // Assert - Filter bar select elements should target "/blog" via hx-get
+        var orderSelectTarget = await EvaluateFunctionAsync<string>(@"() => {
+            const select = document.querySelector('#orderSelect');
+            return select?.getAttribute('hx-get') || '';
+        }");
+
+        Output.WriteLine($"Order select hx-get on blog page: '{orderSelectTarget}'");
+        Assert.Equal("/blog", orderSelectTarget);
+        Output.WriteLine("✅ Filter bar on blog page correctly targets /blog");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_SearchPage_TargetsSearchUrl()
+    {
+        // Arrange - Navigate to search page with a query
+        await NavigateAsync("/search?query=test");
+        await WaitAsync(500);
+
+        // Assert - Filter bar select elements should target "/search" via hx-get
+        var orderSelectTarget = await EvaluateFunctionAsync<string>(@"() => {
+            const select = document.querySelector('#orderSelect');
+            return select?.getAttribute('hx-get') || '';
+        }");
+
+        Output.WriteLine($"Order select hx-get on search page: '{orderSelectTarget}'");
+        Assert.Equal("/search", orderSelectTarget);
+        Output.WriteLine("✅ Filter bar on search page correctly targets /search");
+    }
+
+    [Fact]
+    public async Task FilterBar_Homepage_SortChangeMaintainsSelection()
+    {
+        // Arrange - Navigate to homepage
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Act - Change sort to "Oldest"
+        await Page.SelectAsync("#orderSelect", "date_asc");
+        await WaitAsync(1500); // Wait for HTMX swap
+
+        // Assert - Select should still have "date_asc" selected after swap
+        var selectValue = await EvaluateFunctionAsync<string>("() => document.querySelector('#orderSelect')?.value");
+        Output.WriteLine($"Sort value after HTMX swap: {selectValue}");
+        Assert.Equal("date_asc", selectValue);
+
+        // Assert - URL should contain order param and stay on root (path is "/" before query)
+        Output.WriteLine($"URL after sort: {Page.Url}");
+        Assert.Contains("order=date_asc", Page.Url);
+        var uri = new Uri(Page.Url);
+        Assert.Equal("/", uri.AbsolutePath);
+        Output.WriteLine("✅ Sort selection maintained on homepage after HTMX swap");
+    }
+
+    [Fact]
+    public async Task FilterBar_BlogPage_SortChangeMaintainsSelection()
+    {
+        // Arrange - Navigate to blog page
+        await NavigateAsync("/blog");
+        await WaitAsync(500);
+
+        // Act - Change sort to "Title A-Z"
+        await Page.SelectAsync("#orderSelect", "title_asc");
+        await WaitAsync(1500); // Wait for HTMX swap
+
+        // Assert - Select should still have "title_asc" selected after swap
+        var selectValue = await EvaluateFunctionAsync<string>("() => document.querySelector('#orderSelect')?.value");
+        Output.WriteLine($"Sort value after HTMX swap: {selectValue}");
+        Assert.Equal("title_asc", selectValue);
+
+        // Assert - URL should contain order param and stay on /blog
+        Assert.Contains("order=title_asc", Page.Url);
+        Assert.Contains("/blog", Page.Url);
+        Output.WriteLine($"URL after sort: {Page.Url}");
+        Output.WriteLine("✅ Sort selection maintained on blog page after HTMX swap");
+    }
+
+    [Fact]
+    public async Task FilterBar_Homepage_NoFullPageReload()
+    {
+        // Arrange - Navigate to homepage and set a marker
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Set a marker in window to detect full page reload
+        await Page.EvaluateExpressionAsync("window.__htmxTestMarker = 'loaded'");
+
+        // Act - Change sort order
+        await Page.SelectAsync("#orderSelect", "date_asc");
+        await WaitAsync(1500);
+
+        // Assert - Marker should still exist (no full page reload)
+        var markerExists = await EvaluateFunctionAsync<string>("() => window.__htmxTestMarker || 'missing'");
+        Assert.Equal("loaded", markerExists);
+        Output.WriteLine("✅ Homepage filter change uses HTMX partial swap (no full page reload)");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_BlogPage_NoFullPageReload()
+    {
+        // Arrange - Navigate to blog page and set a marker
+        await NavigateAsync("/blog");
+        await WaitAsync(500);
+
+        // Set a marker in window to detect full page reload
+        await Page.EvaluateExpressionAsync("window.__htmxTestMarker = 'loaded'");
+
+        // Act - Change sort order
+        await Page.SelectAsync("#orderSelect", "title_desc");
+        await WaitAsync(1500);
+
+        // Assert - Marker should still exist (no full page reload)
+        var markerExists = await EvaluateFunctionAsync<string>("() => window.__htmxTestMarker || 'missing'");
+        Assert.Equal("loaded", markerExists);
+        Output.WriteLine("✅ Blog page filter change uses HTMX partial swap (no full page reload)");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_Homepage_UrlDoesNotHaveDuplicateParams()
+    {
+        // Arrange - Navigate to homepage
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Act - Apply multiple filter changes
+        await Page.SelectAsync("#orderSelect", "date_asc");
+        await WaitAsync(1000);
+        await Page.SelectAsync("#orderSelect", "title_asc");
+        await WaitAsync(1000);
+
+        // Assert - URL should not have duplicate 'order' params
+        var orderCount = Page.Url.Split("order=").Length - 1;
+        Output.WriteLine($"URL: {Page.Url}");
+        Output.WriteLine($"Number of 'order=' in URL: {orderCount}");
+        Assert.True(orderCount <= 1, $"URL should not have duplicate order params. URL: {Page.Url}");
+        Output.WriteLine("✅ URL does not have duplicate params");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_Homepage_ContentAreaUpdates()
+    {
+        // Arrange - Navigate to homepage
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Get initial content ID or some marker
+        var initialContentExists = await ElementExistsAsync("#content");
+        Assert.True(initialContentExists, "#content element should exist");
+
+        // Act - Change sort order
+        await Page.SelectAsync("#orderSelect", "date_asc");
+        await WaitAsync(1500);
+
+        // Assert - Content area should still exist and be updated
+        var contentExists = await ElementExistsAsync("#content");
+        Assert.True(contentExists, "#content element should still exist after HTMX swap");
+        Output.WriteLine("✅ Content area properly updated on homepage");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_BlogPage_ContentAreaUpdates()
+    {
+        // Arrange - Navigate to blog page
+        await NavigateAsync("/blog");
+        await WaitAsync(500);
+
+        var initialContentExists = await ElementExistsAsync("#content");
+        Assert.True(initialContentExists, "#content element should exist");
+
+        // Act - Change sort order
+        await Page.SelectAsync("#orderSelect", "title_asc");
+        await WaitAsync(1500);
+
+        // Assert - Content area should still exist
+        var contentExists = await ElementExistsAsync("#content");
+        Assert.True(contentExists, "#content element should still exist after HTMX swap");
+        Output.WriteLine("✅ Content area properly updated on blog page");
+    }
+
+    [Fact(Skip = "Local E2E test - requires site to be running on localhost:8080")]
+    public async Task FilterBar_Homepage_CategorySelectWorks()
+    {
+        // Arrange - Navigate to homepage
+        await NavigateAsync("/");
+        await WaitAsync(500);
+
+        // Check if category select exists
+        var categorySelectExists = await ElementExistsAsync("#categorySelect");
+        if (!categorySelectExists)
+        {
+            Output.WriteLine("⚠️ Category select not found on homepage - skipping test");
+            return;
+        }
+
+        // Get available categories
+        var categoryCount = await EvaluateFunctionAsync<int>(@"() => {
+            return document.querySelectorAll('#categorySelect option').length;
+        }");
+
+        if (categoryCount <= 1)
+        {
+            Output.WriteLine("⚠️ No category options available - skipping test");
+            return;
+        }
+
+        // Set marker to detect full page reload
+        await Page.EvaluateExpressionAsync("window.__htmxTestMarker = 'loaded'");
+
+        // Act - Select a category (second option, first is "All")
+        var secondCategoryValue = await EvaluateFunctionAsync<string>(@"() => {
+            const option = document.querySelector('#categorySelect option:nth-child(2)');
+            return option?.value || '';
+        }");
+
+        if (!string.IsNullOrEmpty(secondCategoryValue))
+        {
+            await Page.SelectAsync("#categorySelect", secondCategoryValue);
+            await WaitAsync(1500);
+
+            // Assert - No full page reload
+            var markerExists = await EvaluateFunctionAsync<string>("() => window.__htmxTestMarker || 'missing'");
+            Assert.Equal("loaded", markerExists);
+
+            // Assert - URL should contain category param
+            Assert.Contains($"category={secondCategoryValue}", Page.Url.Replace("%20", " ").Replace("+", " "));
+            Output.WriteLine($"✅ Category selection works on homepage. URL: {Page.Url}");
+        }
+    }
+
+    [Fact]
+    public async Task FilterBar_AllPages_HxTargetIsContent()
+    {
+        // Test that all filter selects have hx-target="#content"
+        var pages = new[] { "/", "/blog" };
+
+        foreach (var page in pages)
+        {
+            await NavigateAsync(page);
+            await WaitAsync(500);
+
+            var orderSelectTarget = await EvaluateFunctionAsync<string>(@"() => {
+                const select = document.querySelector('#orderSelect');
+                return select?.getAttribute('hx-target') || '';
+            }");
+
+            Output.WriteLine($"Page {page} - #orderSelect hx-target: '{orderSelectTarget}'");
+            Assert.Equal("#content", orderSelectTarget);
+        }
+
+        Output.WriteLine("✅ All pages have correct hx-target='#content'");
+    }
+
+    #endregion
 }

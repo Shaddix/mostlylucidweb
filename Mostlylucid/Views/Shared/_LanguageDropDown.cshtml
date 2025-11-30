@@ -116,8 +116,8 @@
      }"
      class="relative inline-block">
 @{
-        var isSearchPage = ViewContext.RouteData.Values["controller"]?.ToString()?.Equals("Search", StringComparison.OrdinalIgnoreCase) == true;
-        var langTargetUrl = isSearchPage ? "/search" : "/blog";
+        var langTargetUrl = Context.Request.Path.Value ?? "/";
+        var isSearchPage = langTargetUrl.StartsWith("/search", StringComparison.OrdinalIgnoreCase);
     }
     <!-- Hidden input used by existing JS listeners and hx-include -->
     <input type="hidden" id="languageSelect" name="language"

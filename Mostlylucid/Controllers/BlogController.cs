@@ -22,13 +22,21 @@ public class BlogController(
     MarkdownConfig markdownConfig,
     ILogger<BlogController> logger) : BaseController(baseControllerService, logger)
 {
-    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir), nameof(category) },
+    [ResponseCache(Duration = 300, VaryByHeader = "hx-request", VaryByQueryKeys = new[] { "page", "pageSize", nameof(startDate), nameof(endDate), nameof(language), nameof(orderBy), nameof(orderDir), "order", nameof(category) },
         Location = ResponseCacheLocation.Client)]
     [OutputCache(PolicyName = "BlogList", VaryByHeaderNames = new[] { "hx-request" })]
     [HttpGet]
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, DateTime? startDate = null, DateTime? endDate = null,
         string language = MarkdownBaseService.EnglishLanguage, string orderBy = "date", string orderDir = "desc", string? order = null, string? category = null)
     {
+        // Parse combined order param (e.g., "date_asc") if provided
+        if (!string.IsNullOrEmpty(order) && order.Contains('_'))
+        {
+            var parts = order.Split('_');
+            orderBy = parts[0];
+            orderDir = parts[1];
+        }
+
         var request = new BlogIndexRequest(page, pageSize, startDate, endDate, language, orderBy, orderDir, order, category);
         var result = await BlogViewService.GetIndexDataAsync(request);
 
@@ -45,8 +53,7 @@ public class BlogController(
             return RedirectPermanent(postUrl);
         }
 
-        // Set LinkUrl to preserve filters and options if present
-        result.Posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, orderBy, orderDir, category });
+        result.Posts.LinkUrl = Url.Action("Index", "Blog", new { startDate, endDate, language, order = order ?? $"{orderBy}_{orderDir}", category });
 
         if (Request.IsHtmx()) return PartialView("_BlogSummaryList", result.Posts);
         return View("Index", result.Posts);
@@ -138,6 +145,33 @@ public class BlogController(
     public IActionResult Compat(string slug, string language)
     {
         var canonicalUrl = BlogUrlHelper.GetBlogUrl(slug, language);
+        return RedirectPermanent(canonicalUrl);
+    }
+
+    /// <summary>
+    /// Redirect legacy /posts/{id}.aspx URLs to /blog/{id}.
+    /// Returns 301 Permanent Redirect for SEO, or HX-Redirect for HTMX requests.
+    /// Returns 404 if the post doesn't exist.
+    /// </summary>
+    [Route("/posts/{id}.aspx")]
+    [HttpGet]
+    public async Task<IActionResult> LegacyPostsAspx(string id)
+    {
+        // Check if the post actually exists
+        var post = await BlogViewService.GetPost(id);
+        if (post == null)
+        {
+            return NotFound();
+        }
+
+        var canonicalUrl = $"/blog/{id}";
+
+        if (Request.IsHtmx())
+        {
+            Response.Headers["HX-Redirect"] = canonicalUrl;
+            return Content("");
+        }
+
         return RedirectPermanent(canonicalUrl);
     }
 

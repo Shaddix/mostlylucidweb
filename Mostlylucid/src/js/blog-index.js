@@ -239,8 +239,17 @@
     const fromCookie = getCookie('preferredLanguage');
     const existingLang = (fromUrl || fromStorage || fromCookie || 'en').toLowerCase();
 
-    const existingOrderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
-    const existingOrderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
+    // Support both combined 'order' param (date_desc) and separate orderBy/orderDir params
+    const combinedOrder = url.searchParams.get('order');
+    let existingOrderBy, existingOrderDir;
+    if (combinedOrder && combinedOrder.includes('_')) {
+      const parts = combinedOrder.split('_');
+      existingOrderBy = parts[0].toLowerCase();
+      existingOrderDir = parts[1].toLowerCase();
+    } else {
+      existingOrderBy = (url.searchParams.get('orderBy') || 'date').toLowerCase();
+      existingOrderDir = (url.searchParams.get('orderDir') || 'desc').toLowerCase();
+    }
     const existingCategory = url.searchParams.get('category') || '';
 
     // Helper function to get cookie
@@ -444,46 +453,14 @@
       applyNavigation(u);
     });
 
+    // Language select is now handled by HTMX (hx-trigger="change" hx-push-url="true")
+    // But we still need to clear caches and update flatpickr when language changes
     langSelect && langSelect.addEventListener('change', async function(){
       console.log('Language changed to:', langSelect.value);
-
-      // Only trigger navigation on blog/search pages, not on editor or other pages
-      const isBlogPage = window.location.pathname === '/blog' ||
-                         window.location.pathname === '/' ||
-                         window.location.pathname.startsWith('/search') ||
-                         document.querySelector('#content[data-blog-list]') !== null ||
-                         document.querySelector('[data-search-page]') !== null;
-
-      if (!isBlogPage) {
-        console.log('Not on blog/search page, skipping navigation');
-        return;
-      }
 
       // Clear caches when language changes
       clearHighlightCache();
       clearDateRangeCache();
-
-      // Start with current URL - this preserves ALL existing parameters including dates
-      const u = new URL(window.location.href);
-      // Only modify what's changing
-      u.searchParams.set('language', langSelect.value);
-      u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
-      // Make sure order is set from dropdown
-      const ord = (orderSelect && orderSelect.value) || 'date_desc';
-      const [ob,od] = ord.split('_');
-      u.searchParams.set('orderBy', ob);
-      u.searchParams.set('orderDir', od);
-
-      // IMPORTANT: Also check flatpickr for selected dates and preserve them
-      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
-        const [start, end] = input._flatpickr.selectedDates;
-        u.searchParams.set('startDate', formatYMD(start));
-        u.searchParams.set('endDate', formatYMD(end));
-        console.log('Preserving dates from flatpickr:', formatYMD(start), formatYMD(end));
-      }
-
-      console.log('Language change - URL params:', Object.fromEntries(u.searchParams.entries()));
-      updateSummary();
 
       // Update flatpickr date limits and highlights for the new language
       if(input && input._flatpickr){
@@ -510,56 +487,14 @@
         }
       }
 
-      applyNavigation(u);
+      // Navigation is handled by HTMX - no applyNavigation call here
     });
 
-    orderSelect && orderSelect.addEventListener('change', function(){
-      console.log('Order changed to:', orderSelect.value);
-      // Start with current URL - this preserves ALL existing parameters including dates
-      const u = new URL(window.location.href);
-      // Only modify what's changing
-      const [ob,od] = orderSelect.value.split('_');
-      u.searchParams.set('orderBy', ob);
-      u.searchParams.set('orderDir', od);
-      u.searchParams.set('page', '1'); // Reset to page 1 when changing filters
-      // Make sure language is set from dropdown
-      if(langSelect) u.searchParams.set('language', langSelect.value);
+    // Order select is now handled by HTMX (hx-trigger="change" hx-push-url="true")
+    // No JS listener needed - it would conflict with HTMX's URL push
 
-      // IMPORTANT: Also check flatpickr for selected dates and preserve them
-      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
-        const [start, end] = input._flatpickr.selectedDates;
-        u.searchParams.set('startDate', formatYMD(start));
-        u.searchParams.set('endDate', formatYMD(end));
-        console.log('Preserving dates from flatpickr:', formatYMD(start), formatYMD(end));
-      }
-
-      console.log('Order change - URL params:', Object.fromEntries(u.searchParams.entries()));
-      updateSummary();
-      applyNavigation(u);
-    });
-
-    categorySelect && categorySelect.addEventListener('change', function(){
-      console.log('Category changed to:', categorySelect.value);
-      const u = new URL(window.location.href);
-      if(categorySelect.value) {
-        u.searchParams.set('category', categorySelect.value);
-      } else {
-        u.searchParams.delete('category');
-      }
-      u.searchParams.set('page', '1');
-      if(langSelect) u.searchParams.set('language', langSelect.value);
-      const ord = (orderSelect && orderSelect.value) || 'date_desc';
-      const [ob,od] = ord.split('_');
-      u.searchParams.set('orderBy', ob);
-      u.searchParams.set('orderDir', od);
-      if(input && input._flatpickr && input._flatpickr.selectedDates.length === 2){
-        const [start, end] = input._flatpickr.selectedDates;
-        u.searchParams.set('startDate', formatYMD(start));
-        u.searchParams.set('endDate', formatYMD(end));
-      }
-      updateSummary();
-      applyNavigation(u);
-    });
+    // Category select is now handled by HTMX (hx-trigger="change" hx-push-url="true")
+    // No JS listener needed - it would conflict with HTMX's URL push
 
     // Helper: read published dates from posts in the content area and return sorted array of Date objects
     function getPostDates(){

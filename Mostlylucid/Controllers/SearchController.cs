@@ -42,6 +42,10 @@ public class SearchController(
             // Get available languages for the filter dropdown
             var availableLanguages = await searchService.GetAvailableLanguagesAsync();
 
+            // Check if this is a filter/pagination request targeting just the content area
+            var htmxTarget = Request.Headers["HX-Target"].FirstOrDefault();
+            var isContentOnlyRequest = Request.IsHtmx() && (pagerequest || htmxTarget == "content");
+
             if (string.IsNullOrEmpty(query?.Trim()))
             {
                 var emptyModel = new SearchResultsModel
@@ -57,6 +61,7 @@ public class SearchController(
                         EndDate = calculatedEndDate
                     }
                 };
+                if (isContentOnlyRequest) return PartialView("_SearchResultsPartial", emptyModel.SearchResults);
                 if (Request.IsHtmx()) return PartialView("SearchResults", emptyModel);
                 return View("SearchResults", emptyModel);
             }
@@ -89,8 +94,7 @@ public class SearchController(
             var linkUrl = Url.Action("Search", "Search", new { query, language, dateRange, startDate, endDate, order });
             searchModel.SearchResults.LinkUrl = linkUrl;
 
-            if (pagerequest && Request.IsHtmx()) return PartialView("_SearchResultsPartial", searchModel.SearchResults);
-
+            if (isContentOnlyRequest) return PartialView("_SearchResultsPartial", searchModel.SearchResults);
             if (Request.IsHtmx()) return PartialView("SearchResults", searchModel);
             return View("SearchResults", searchModel);
         }

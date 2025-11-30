@@ -1,7 +1,7 @@
 @model Mostlylucid.Models.Blog.PostListViewModel
 @{
-    var isSearchPage = ViewContext.RouteData.Values["controller"]?.ToString()?.Equals("Search", StringComparison.OrdinalIgnoreCase) == true;
-    var targetUrl = isSearchPage ? "/search" : "/blog";
+    var targetUrl = Context.Request.Path.Value ?? "/";
+    var isSearchPage = targetUrl.StartsWith("/search", StringComparison.OrdinalIgnoreCase);
     var langs = Model?.Data?.SelectMany(p => p.Languages ?? Array.Empty<string>()).Concat(new[] { "en" }).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string> { "en" };
 }
 <div x-data="{ showFilters: false }" @(isSearchPage ? "data-search-page" : "")>
