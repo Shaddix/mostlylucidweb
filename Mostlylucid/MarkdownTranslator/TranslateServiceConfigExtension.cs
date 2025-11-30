@@ -11,7 +11,7 @@ public static class TranslateServiceConfigExtension
     
         services.AddHttpClient<IMarkdownTranslatorService, MarkdownTranslatorService>(options =>
         {
-            options.Timeout = TimeSpan.FromSeconds(120);
+            options.Timeout = TimeSpan.FromMinutes(5);
         });
         services.AddSingleton<IBackgroundTranslateService, BackgroundTranslateService>(); 
         services.AddHostedService(provider => provider.GetRequiredService<IBackgroundTranslateService>());

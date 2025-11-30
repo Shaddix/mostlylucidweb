@@ -41,7 +41,7 @@ public static class Setup
         
         var httpClientBuilder = services.AddHttpClient<IMarkdownTranslatorService, MarkdownTranslatorService>(options =>
         {
-            options.Timeout = TimeSpan.FromSeconds(120);
+            options.Timeout = TimeSpan.FromMinutes(5);
         });
 
         // Add the handler dynamically
