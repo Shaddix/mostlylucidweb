@@ -1,0 +1,49 @@
+@page "/post/{slug}"
+@using Mostlylucid.MinimalBlog
+@using Microsoft.AspNetCore.OutputCaching
+@attribute [OutputCache(PolicyName = "Blog")]
+@inject MarkdownBlogService Blog
+@{
+    var slug = RouteData.Values["slug"]?.ToString() ?? "";
+    var post = Blog.GetPost(slug);
+
+    if (post == null)
+    {
+        Response.StatusCode = 404;
+        ViewData["Title"] = "Not Found";
+    }
+    else
+    {
+        ViewData["Title"] = post.Title;
+    }
+}
+
+@if (post == null)
+{
+    <h1>Post Not Found</h1>
+    <p><a href="/">Back to home</a></p>
+}
+else
+{
+    <article>
+        <h1>@post.Title</h1>
+        <div class="meta">
+            <time datetime="@post.PublishedDate:yyyy-MM-dd">@post.PublishedDate.ToString("MMMM d, yyyy")</time>
+            @if (post.Categories.Length > 0)
+            {
+                <span> &bull; </span>
+                @foreach (var cat in post.Categories)
+                {
+                    <a href="/category/@cat">@cat</a>
+                    if (cat != post.Categories.Last())
+                    {
+                        <span>, </span>
+                    }
+                }
+            }
+        </div>
+        <div class="content">
+            @Html.Raw(post.HtmlContent)
+        </div>
+    </article>
+}

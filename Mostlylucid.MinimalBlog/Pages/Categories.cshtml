@@ -1,0 +1,15 @@
+@page "/categories"
+@using Mostlylucid.MinimalBlog
+@inject MarkdownBlogService Blog
+@{
+    ViewData["Title"] = "Categories";
+    var categories = Blog.GetAllCategories();
+}
+
+<h1>Categories</h1>
+<ul class="category-list">
+    @foreach (var cat in categories)
+    {
+        <li><a href="/category/@cat">@cat</a></li>
+    }
+</ul>
