@@ -1,42 +1,22 @@
 using Mostlylucid.MinimalBlog;
-using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
-builder.Services.AddMemoryCache();
-builder.Services.AddOutputCache(options =>
+builder.Services.AddMinimalBlog(options =>
 {
-    options.AddBasePolicy(b => b.Expire(TimeSpan.FromMinutes(10)));
-    options.AddPolicy("Blog", b => b.Expire(TimeSpan.FromHours(1)).Tag("blog"));
+    options.MarkdownPath = builder.Configuration["MarkdownPath"] ?? "../Mostlylucid/Markdown";
+    options.ImagesPath = builder.Configuration["ImagesPath"] ?? "wwwroot/images";
+    options.EnableMetaWeblog = builder.Configuration.GetValue("MetaWeblog:Enabled", true);
+    options.MetaWeblogUsername = builder.Configuration["MetaWeblog:Username"] ?? "admin";
+    options.MetaWeblogPassword = builder.Configuration["MetaWeblog:Password"] ?? "changeme";
+    options.BlogUrl = builder.Configuration["MetaWeblog:BlogUrl"] ?? "http://localhost:5000";
 });
-builder.Services.AddSingleton<MarkdownBlogService>();
-builder.Services.AddSingleton<MetaWeblogService>();
 
 var app = builder.Build();
 
-// Serve images from configured path
-var imagesPath = builder.Configuration["ImagesPath"] ?? "wwwroot/images";
-var imagesDir = Path.IsPathRooted(imagesPath) ? imagesPath : Path.Combine(app.Environment.ContentRootPath, imagesPath);
-Directory.CreateDirectory(imagesDir);
-
 app.UseStaticFiles();
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(imagesDir),
-    RequestPath = "/images"
-});
-
-app.UseOutputCache();
-
-// MetaWeblog XML-RPC endpoint
-app.MapPost("/metaweblog", async (HttpContext ctx, MetaWeblogService svc) =>
-{
-    ctx.Response.ContentType = "text/xml";
-    var response = await svc.HandleRequestAsync(ctx.Request.Body);
-    await ctx.Response.WriteAsync(response);
-});
-
+app.UseMinimalBlog();
 app.MapRazorPages();
 
 app.Run();

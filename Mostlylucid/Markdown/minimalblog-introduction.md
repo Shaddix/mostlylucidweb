@@ -216,18 +216,45 @@ The entire configuration file is just 14 lines:
 - `ImagesPath` - where images are stored
 - `MetaWeblog` - credentials for external editor access
 
-## Running the Blog
+## Using as a NuGet Package
 
-To run the blog:
+The blog is now available as a NuGet package, making it trivial to add to any ASP.NET Core application:
+
+```bash
+dotnet add package Mostlylucid.MinimalBlog
+```
+
+Then in your `Program.cs`:
+
+```csharp
+builder.Services.AddRazorPages();
+builder.Services.AddMinimalBlog(options =>
+{
+    options.MarkdownPath = "Markdown";
+    options.ImagesPath = "wwwroot/images";
+    options.EnableMetaWeblog = false; // Optional, defaults to true
+});
+
+var app = builder.Build();
+
+app.UseStaticFiles();
+app.UseMinimalBlog();
+app.MapRazorPages();
+app.Run();
+```
+
+That's it - just two method calls (`AddMinimalBlog` and `UseMinimalBlog`) and you have a working blog.
+
+## Running the Sample Project
+
+To run the included sample project:
 
 ```bash
 cd Mostlylucid.MinimalBlog
 dotnet run
 ```
 
-That's it. No `npm install`, no database migrations, no Docker containers. Just `dotnet run`.
-
-Visit `http://localhost:5000` and you'll see your blog with all markdown files from the configured path.
+Visit `http://localhost:5000` and you'll see the blog with markdown files from the configured path.
 
 ## Creating Content
 
