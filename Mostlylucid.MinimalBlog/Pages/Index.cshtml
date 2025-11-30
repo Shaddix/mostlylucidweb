@@ -1,0 +1,21 @@
+@page
+@using Mostlylucid.MinimalBlog
+@inject MarkdownBlogService Blog
+@{
+    ViewData["Title"] = "Home";
+    var posts = Blog.GetAllPosts();
+}
+
+<ul class="post-list">
+    @foreach (var post in posts)
+    {
+        <li>
+            <time datetime="@post.PublishedDate:yyyy-MM-dd">@post.PublishedDate.ToString("MMM d, yyyy")</time>
+            <h2><a href="/post/@post.Slug">@post.Title</a></h2>
+            @if (post.Categories.Length > 0)
+            {
+                <span class="cats">@string.Join(", ", post.Categories)</span>
+            }
+        </li>
+    }
+</ul>

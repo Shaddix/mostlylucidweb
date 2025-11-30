@@ -1,0 +1,27 @@
+@page "/category/{name}"
+@using Mostlylucid.MinimalBlog
+@inject MarkdownBlogService Blog
+@{
+    var name = RouteData.Values["name"]?.ToString() ?? "";
+    var posts = Blog.GetPostsByCategory(name);
+    ViewData["Title"] = $"Category: {name}";
+}
+
+<h1>Category: @name</h1>
+
+@if (posts.Count == 0)
+{
+    <p>No posts in this category.</p>
+}
+else
+{
+    <ul class="post-list">
+        @foreach (var post in posts)
+        {
+            <li>
+                <time datetime="@post.PublishedDate:yyyy-MM-dd">@post.PublishedDate.ToString("MMM d, yyyy")</time>
+                <h2><a href="/post/@post.Slug">@post.Title</a></h2>
+            </li>
+        }
+    </ul>
+}
