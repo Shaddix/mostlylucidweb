@@ -5,33 +5,19 @@
 
 ## Introduction
 
-If you've been following this blog, you might have noticed that my main blogging platform (the one you're reading right now) is... let's call it "enthusiastically engineered." We've got PostgreSQL databases, full-text search with GIN indexes, automated translation to 12 languages, Hangfire job scheduling, Prometheus metrics, Serilog tracing, HTMX interactions, and enough Docker containers to make a ship jealous.
+If you've been following this blog, you might have noticed that my main blogging platform is... let's call it "enthusiastically engineered." PostgreSQL databases, full-text search with GIN indexes, automated translation to 12 languages, Hangfire job scheduling, Prometheus metrics, Serilog tracing, HTMX interactions, and enough Docker containers to make a ship jealous.
 
-But what if you just want to write a blog? What if you don't need all that complexity? What if you just want to drop markdown files in a folder and have them appear on the web?
+**That's entirely deliberate.** This site is my living lab - a playground where I experiment with technologies, test deployment strategies, measure performance characteristics, and build reusable packages. It's *supposed* to be over-engineered because that's how I learn: by solving problems that most blogs don't actually have, then packaging those solutions as open-source libraries others can use.
 
-That's exactly why I created **Mostlylucid.MinimalBlog** - a demonstration of just how simple a functional, modern blog platform can be. This is the anti-thesis of my main blog: deliberately minimal, purposefully simple, and refreshingly straightforward.
+But here's the thing: **you probably don't need any of that to run a blog.**
+
+That's why I created **Mostlylucid.MinimalBlog** - to show what happens when you strip away all the experimentation and focus on the absolute essentials. No database. No build pipeline. No complexity. Just markdown files in a folder, appearing on the web. This is what a blog looks like when you're not using it as a laboratory.
 
 [TOC]
 
 ## The Philosophy: Less is More
 
-The entire Mostlylucid.MinimalBlog project is designed around one principle: **keep it simple**. Here's what that means in practice:
-
-- **No database** - Just markdown files in a folder
-- **No build pipeline** - No npm, no webpack, no complicated asset processing
-- **No JavaScript framework** - Just plain HTML and CSS
-- **Minimal dependencies** - Just ASP.NET 9.0 and Markdig
-- **One service** - A single `MarkdownBlogService` that does everything
-
-The entire project consists of:
-- 1 `.csproj` file
-- 1 service class (~120 lines)
-- 1 MetaWeblog API implementation (for Markdown Monster integration)
-- 4 Razor pages
-- 1 CSS file (~55 lines)
-- 1 configuration file
-
-That's it. No complexity. No over-engineering. Just what you need to blog.
+The entire project is designed around one principle: **keep it simple**. No database, no build pipeline, no JavaScript framework. Just ASP.NET 9.0, Markdig for markdown parsing, and about 500 lines of code total. That's it.
 
 ## Project Structure
 
@@ -157,141 +143,11 @@ Cache entries have a 30-minute sliding expiration and 2-hour absolute expiration
 
 ## Application Setup: Program.cs
 
-The entire application setup is just 43 lines of code:
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddRazorPages();
-builder.Services.AddMemoryCache();
-builder.Services.AddOutputCache(options =>
-{
-    options.AddBasePolicy(b => b.Expire(TimeSpan.FromMinutes(10)));
-    options.AddPolicy("Blog", b => b.Expire(TimeSpan.FromHours(1)).Tag("blog"));
-});
-builder.Services.AddSingleton<MarkdownBlogService>();
-builder.Services.AddSingleton<MetaWeblogService>();
-
-var app = builder.Build();
-
-// Serve images from configured path
-var imagesPath = builder.Configuration["ImagesPath"] ?? "wwwroot/images";
-var imagesDir = Path.IsPathRooted(imagesPath) ? imagesPath : Path.Combine(app.Environment.ContentRootPath, imagesPath);
-Directory.CreateDirectory(imagesDir);
-
-app.UseStaticFiles();
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(imagesDir),
-    RequestPath = "/images"
-});
-
-app.UseOutputCache();
-
-// MetaWeblog XML-RPC endpoint
-app.MapPost("/metaweblog", async (HttpContext ctx, MetaWeblogService svc) =>
-{
-    ctx.Response.ContentType = "text/xml";
-    var response = await svc.HandleRequestAsync(ctx.Request.Body);
-    await ctx.Response.WriteAsync(response);
-});
-
-app.MapRazorPages();
-
-app.Run();
-```
-
-Key features:
-- **Output caching** for performance
-- **Static file serving** for images (configurable path)
-- **MetaWeblog API** endpoint for writing with external editors like Markdown Monster
-- **Singleton services** since they cache everything anyway
+The entire application setup is just 43 lines: Razor Pages, memory cache, output cache, two singleton services, static file serving, and a MetaWeblog XML-RPC endpoint. Everything cached as singletons because nothing changes unless files are modified.
 
 ## The UI: Simple Razor Pages
 
-The UI is pure server-rendered HTML with minimal CSS. Let's look at the homepage:
-
-```cshtml
-@page
-@using Mostlylucid.MinimalBlog
-@inject MarkdownBlogService Blog
-@{
-    ViewData["Title"] = "Home";
-    var posts = Blog.GetAllPosts();
-}
-
-<ul class="post-list">
-    @foreach (var post in posts)
-    {
-        <li>
-            <time datetime="@post.PublishedDate:yyyy-MM-dd">@post.PublishedDate.ToString("MMM d, yyyy")</time>
-            <h2><a href="/post/@post.Slug">@post.Title</a></h2>
-            @if (post.Categories.Length > 0)
-            {
-                <span class="cats">@string.Join(", ", post.Categories)</span>
-            }
-        </li>
-    }
-</ul>
-```
-
-No JavaScript. No HTMX. No Alpine.js. Just good old HTML rendered on the server. Fast, accessible, and it works without JavaScript enabled.
-
-The individual post page is equally simple:
-
-```cshtml
-@page "/post/{slug}"
-@using Mostlylucid.MinimalBlog
-@using Microsoft.AspNetCore.OutputCaching
-@attribute [OutputCache(PolicyName = "Blog")]
-@inject MarkdownBlogService Blog
-@{
-    var slug = RouteData.Values["slug"]?.ToString() ?? "";
-    var post = Blog.GetPost(slug);
-
-    if (post == null)
-    {
-        Response.StatusCode = 404;
-        ViewData["Title"] = "Not Found";
-    }
-    else
-    {
-        ViewData["Title"] = post.Title;
-    }
-}
-
-@if (post == null)
-{
-    <h1>Post Not Found</h1>
-    <p><a href="/">Back to home</a></p>
-}
-else
-{
-    <article>
-        <h1>@post.Title</h1>
-        <div class="meta">
-            <time datetime="@post.PublishedDate:yyyy-MM-dd">@post.PublishedDate.ToString("MMMM d, yyyy")</time>
-            @if (post.Categories.Length > 0)
-            {
-                <span> &bull; </span>
-                @foreach (var cat in post.Categories)
-                {
-                    <a href="/category/@cat">@cat</a>
-                    if (cat != post.Categories.Last())
-                    {
-                        <span>, </span>
-                    }
-                }
-            }
-        </div>
-        <div class="content">
-            @Html.Raw(post.HtmlContent)
-        </div>
-    </article>
-}
-```
-
-Notice the `[OutputCache]` attribute on the page - this caches the entire rendered HTML for an hour, making subsequent requests blazingly fast.
+The UI is pure server-rendered HTML. No JavaScript, no HTMX, no Alpine.js. The homepage lists posts, the post page renders `@Html.Raw(post.HtmlContent)` with an `[OutputCache]` attribute for hour-long HTML caching. Four pages total, each under 30 lines.
 
 ## Styling: 55 Lines of CSS
 
@@ -432,16 +288,15 @@ Use **Mostlylucid.MinimalBlog** when:
 - You don't need multiple languages
 - You want to keep things simple
 - You're comfortable with markdown files
-- You don't need comments or other interactive features
+- You just want to write and publish
 
 Use the **full Mostlylucid platform** when:
-- You need multilingual support
-- You want automated translation
-- You need full-text search
-- You want comments and user interaction
-- You need analytics and metrics
-- You want a complex categorization system
-- You're building a content management system
+- You're using your blog as a **learning laboratory** for new technologies
+- You want to experiment with deployment strategies, monitoring, and performance optimization
+- You need specific features like multilingual support, full-text search, or comments
+- You're building packages and need a real-world testbed
+- You're documenting complex technical implementations
+- The journey of building the platform is as valuable as the content it hosts
 
 ## Conclusion: Simplicity as a Feature
 
