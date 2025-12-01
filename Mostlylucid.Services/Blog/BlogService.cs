@@ -39,10 +39,11 @@ public class BlogService(
 
             var postQuery = PostsQuery();
 
-            // Filter out hidden posts and posts scheduled for the future
+            // Filter out hidden posts, posts scheduled for the future, and posts with empty titles
             var now = DateTimeOffset.UtcNow;
             postQuery = postQuery.Where(x =>
                 !x.IsHidden &&
+                !string.IsNullOrWhiteSpace(x.Title) &&
                 (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now));
 
             if (model.StartDate != null)

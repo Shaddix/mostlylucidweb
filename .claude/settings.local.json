@@ -9,7 +9,8 @@
       "Bash(then grep -L 'datetime class=\"\"\"\"hidden\"\"\"\"' $f)",
       "Bash(fi)",
       "Bash(dotnet build:*)",
-      "WebFetch(domain:www.rssboard.org)"
+      "WebFetch(domain:www.rssboard.org)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

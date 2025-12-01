@@ -10,10 +10,13 @@
     />
     <title>@ViewBag.Title</title>
 
-    <!-- Static RSS Feed Link -->
-    <link rel="alternate" type="application/atom+xml"
-          title="RSS Feed for mostlylucid.net"
+    <!-- RSS Feed Autodiscovery -->
+    <link rel="alternate" type="application/rss+xml"
+          title="mostlylucid.net RSS Feed"
           href="https://@Context.Request.Host/rss" />
+    <link rel="alternate" type="application/atom+xml"
+          title="mostlylucid.net Atom Feed"
+          href="https://@Context.Request.Host/atom" />
 
     <link rel="prefetch" href="https://accounts.google.com/gsi/client"/>
 
