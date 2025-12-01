@@ -193,6 +193,27 @@ Key concepts:
 
 Before testing MinimalBlog, let's understand the five main types of load tests and when to use each:
 
+```mermaid
+graph TD
+    A[Performance Testing Types] --> B[Smoke Test]
+    A --> C[Load Test]
+    A --> D[Stress Test]
+    A --> E[Spike Test]
+    A --> F[Soak Test]
+
+    B --> B1[1-2 VUs<br/>30s-1min<br/>Basic Functionality]
+    C --> C1[Normal Load<br/>5-15 minutes<br/>Verify SLAs]
+    D --> D1[Gradual Increase<br/>10-30 minutes<br/>Find Breaking Point]
+    E --> E1[Sudden Spike<br/>5-10 minutes<br/>Test Recovery]
+    F --> F1[Normal Load<br/>Hours/Days<br/>Memory Leaks]
+
+    style B fill:#90EE90
+    style C fill:#87CEEB
+    style D fill:#FFD700
+    style E fill:#FF6347
+    style F fill:#DDA0DD
+```
+
 ### 1. Smoke Tests
 
 **Purpose**: Verify the system works under minimal load
@@ -203,7 +224,7 @@ Before testing MinimalBlog, let's understand the five main types of load tests a
 - As a sanity check in CI/CD
 
 **Characteristics**:
-- 1-2 VUs
+- 1-2 VUs (Virtual Users)
 - Short duration (30s-1min)
 - Tests basic functionality
 
@@ -262,6 +283,31 @@ Before testing MinimalBlog, let's understand the five main types of load tests a
 - Normal load levels
 - Extended duration (hours or days)
 - Monitor for degradation
+
+```mermaid
+graph LR
+    A[Start] --> B{Smoke Test Pass?}
+    B -->|No| C[Fix Issues]
+    C --> A
+    B -->|Yes| D{Load Test Pass?}
+    D -->|No| E[Optimize]
+    E --> D
+    D -->|Yes| F{Stress Test}
+    F --> G{Found Limit?}
+    G -->|Yes| H[Document Capacity]
+    G -->|No| I[Increase Load]
+    I --> F
+    H --> J{Spike Test Pass?}
+    J -->|No| K[Improve Resilience]
+    K --> J
+    J -->|Yes| L{Soak Test}
+    L --> M{Memory Stable?}
+    M -->|No| N[Fix Memory Leaks]
+    N --> L
+    M -->|Yes| O[Production Ready]
+
+    style O fill:#90EE90
+```
 
 ## Setting Up Your Test Environment
 
@@ -969,7 +1015,7 @@ jobs:
             sleep 2
           done'
 
-          echo "✅ App is ready!"
+          echo "- App is ready!"
 
       - name: Run Smoke Test
         id: smoke-test
@@ -1013,32 +1059,58 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ steps.smoke-test.outputs.smoke-test-passed }}" == "true" ]; then
-            echo "✅ Smoke Test: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Smoke Test: PASSED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Smoke Test: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- Smoke Test: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ steps.load-test.outputs.load-test-passed }}" == "true" ]; then
-            echo "✅ Load Test: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Load Test: PASSED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Load Test: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- Load Test: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ steps.cache-test.outputs.cache-test-passed }}" == "true" ]; then
-            echo "✅ Cache Test: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- Cache Test: PASSED" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Cache Test: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "- Cache Test: FAILED" >> $GITHUB_STEP_SUMMARY
           fi
 ```
 
 **Key Features:**
-- ✅ Runs on every PR
-- ✅ Creates test data automatically
-- ✅ Waits for app to be ready before testing
-- ✅ Runs multiple test types
-- ✅ **Fails the build if thresholds not met**
-- ✅ Uploads results as artifacts
-- ✅ Shows summary in GitHub UI
+- Runs on every PR
+- Creates test data automatically
+- Waits for app to be ready before testing
+- Runs multiple test types
+- **Fails the build if thresholds not met**
+- Uploads results as artifacts
+- Shows summary in GitHub UI
+
+```mermaid
+sequenceDiagram
+    participant PR as Pull Request
+    participant GHA as GitHub Actions
+    participant App as MinimalBlog
+    participant k6 as k6 Tests
+
+    PR->>GHA: Trigger workflow
+    GHA->>GHA: Setup .NET & k6
+    GHA->>GHA: Create test data
+    GHA->>App: Build & Start
+    App-->>GHA: App ready
+    GHA->>k6: Run smoke test
+    k6-->>GHA: Results
+    GHA->>k6: Run load test
+    k6-->>GHA: Results
+    GHA->>k6: Run cache test
+    k6-->>GHA: Results
+    GHA->>App: Stop
+    alt Tests Pass
+        GHA->>PR: Mark as success
+    else Tests Fail
+        GHA->>PR: Block merge
+    end
+```
 
 ### GitHub Actions: Advanced with PR Comments
 
@@ -1124,7 +1196,7 @@ jobs:
             const output = fs.readFileSync('k6-output.txt', 'utf8');
 
             const testsPassed = '${{ steps.k6-test.outputs.tests-passed }}' === 'true';
-            const icon = testsPassed ? '✅' : '❌';
+            const icon = testsPassed ? 'PASS' : 'FAIL';
             const status = testsPassed ? 'PASSED' : 'FAILED';
 
             const comment = `## ${icon} k6 Performance Test Results
@@ -1139,8 +1211,8 @@ jobs:
             | Error Rate | ${{ steps.k6-test.outputs.errors }} |
 
             ### Thresholds
-            - ✅ P95 < 300ms
-            - ✅ Error rate < 1%
+            - P95 < 300ms
+            - Error rate < 1%
 
             <details>
             <summary>Full k6 Output</summary>
@@ -1179,11 +1251,11 @@ jobs:
 ```
 
 **This workflow:**
-- ✅ Posts results directly to PR
-- ✅ Shows key metrics in a table
-- ✅ Provides full output in expandable section
-- ✅ Links to full test run
-- ✅ Visual status indicators
+- Posts results directly to PR
+- Shows key metrics in a table
+- Provides full output in expandable section
+- Links to full test run
+- Visual status indicators
 
 ### GitHub Actions: Performance Regression Detection
 
@@ -1277,19 +1349,35 @@ jobs:
 
           # Fail if performance degrades by more than 20%
           if (( $(echo "$CHANGE > 20" | bc -l) )); then
-            echo "❌ Performance degraded by ${CHANGE}%" >> $GITHUB_STEP_SUMMARY
+            echo "- Performance degraded by ${CHANGE}%" >> $GITHUB_STEP_SUMMARY
             echo "::error::Performance regression detected: ${CHANGE}% slower than baseline"
             exit 1
           else
-            echo "✅ Performance acceptable" >> $GITHUB_STEP_SUMMARY
+            echo "- Performance acceptable" >> $GITHUB_STEP_SUMMARY
           fi
 ```
 
 **This workflow:**
-- ✅ Tests both PR and main branch
-- ✅ Compares performance metrics
-- ✅ **Fails if performance degrades >20%**
-- ✅ Prevents merging slow code
+- Tests both PR and main branch
+- Compares performance metrics
+- **Fails if performance degrades >20%**
+- Prevents merging slow code
+
+```mermaid
+graph TD
+    A[PR Submitted] --> B[Checkout PR Code]
+    B --> C[Test PR Branch]
+    C --> D[Checkout main Branch]
+    D --> E[Test Baseline]
+    E --> F{Calculate<br/>Difference}
+    F -->|>20% Slower| G[FAIL Build]
+    F -->|<20% Change| H[PASS Build]
+    G --> I[Block Merge]
+    H --> J[Allow Merge]
+
+    style G fill:#ff6b6b
+    style H fill:#51cf66
+```
 
 ### GitHub Actions: Matrix Testing
 
@@ -1407,7 +1495,7 @@ jobs:
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: '⚠️ Performance Degradation Detected',
+              title: ' Performance Degradation Detected',
               body: `## Performance Alert
 
               Scheduled performance tests detected degraded performance:
@@ -1437,11 +1525,11 @@ jobs:
 ```
 
 **This workflow:**
-- ✅ Runs automatically every 6 hours
-- ✅ Tests full suite (smoke, load, stress)
-- ✅ **Creates GitHub issue if performance degrades**
-- ✅ Can be triggered manually
-- ✅ Maintains historical results
+- Runs automatically every 6 hours
+- Tests full suite (smoke, load, stress)
+- **Creates GitHub issue if performance degrades**
+- Can be triggered manually
+- Maintains historical results
 
 ### Best Practices for CI/CD k6 Testing
 
@@ -1808,42 +1896,42 @@ Here's a complete testing workflow before releasing MinimalBlog:
 
 set -e
 
-echo "🔨 Building MinimalBlog in Release mode..."
+echo "Building: Building MinimalBlog in Release mode..."
 dotnet build -c Release Mostlylucid.MinimalBlog/Mostlylucid.MinimalBlog.csproj
 
-echo "🚀 Starting MinimalBlog Demo..."
+echo "Starting: Starting MinimalBlog Demo..."
 dotnet run -c Release --project Mostlylucid.MinimalBlog.Demo &
 APP_PID=$!
 
 # Wait for app to start
-echo "⏳ Waiting for app to start..."
+echo "Waiting: Waiting for app to start..."
 timeout 30 bash -c 'until curl -s http://localhost:5000 > /dev/null; do sleep 1; done'
 
-echo "✅ App started successfully"
+echo "- App started successfully"
 
 # Run test suite
-echo "🧪 Running smoke tests..."
+echo "Running: Running smoke tests..."
 k6 run k6-tests/smoke-test.js
 
-echo "🧪 Running cache validation..."
+echo "Running: Running cache validation..."
 k6 run k6-tests/cache-test.js
 
-echo "🧪 Running load tests..."
+echo "Running: Running load tests..."
 k6 run k6-tests/load-test.js
 
-echo "🧪 Running stress tests..."
+echo "Running: Running stress tests..."
 k6 run k6-tests/stress-test.js
 
-echo "🧪 Running spike tests..."
+echo "Running: Running spike tests..."
 k6 run k6-tests/spike-test.js
 
-echo "📊 Generating combined report..."
+echo "Generating: Generating combined report..."
 # Process and combine results
 
-echo "🛑 Stopping app..."
+echo "Stopping: Stopping app..."
 kill $APP_PID
 
-echo "✅ All tests completed successfully!"
+echo "- All tests completed successfully!"
 ```
 
 **Run it:**
@@ -1894,6 +1982,26 @@ dotnet tool install --global dotnet-dump
 For this guide, we'll show both approaches.
 
 ### Profiling Workflow
+
+```mermaid
+flowchart LR
+    A[Start App] --> B[Baseline<br/>Snapshot]
+    B --> C[Start Profiler]
+    C --> D[Run k6 Load Test]
+    D --> E[Capture Metrics]
+    E --> F[Stop Profiler]
+    F --> G[Final Snapshot]
+    G --> H{Analyze Results}
+    H --> I[Identify<br/>Hotspots]
+    I --> J[Optimize Code]
+    J --> K[Re-test with k6]
+    K --> L{Better?}
+    L -->|Yes| M[Document & Deploy]
+    L -->|No| I
+
+    style M fill:#51cf66
+    style I fill:#FFD700
+```
 
 **Step 1: Baseline without load**
 **Step 2: Profile under k6 load**
@@ -1949,8 +2057,8 @@ Method                                    Total Time    Self Time    Calls
 MarkdownBlogService.GetAllPosts()         450ms        5ms          100
   ├─ LoadAllPosts()                       420ms        10ms         10
   │   ├─ ParseFile()                      400ms        20ms         100
-  │   │   ├─ Markdown.Parse()             250ms        250ms        100  ⚠️ HOTSPOT
-  │   │   └─ Regex.Match() (categories)   80ms         80ms         100  ⚠️ HOTSPOT
+  │   │   ├─ Markdown.Parse()             250ms        250ms        100   HOTSPOT
+  │   │   └─ Regex.Match() (categories)   80ms         80ms         100   HOTSPOT
   │   └─ File.ReadAllText()               10ms         10ms         100
   └─ cache.GetOrCreate()                  25ms         25ms         90
 ```
@@ -2036,10 +2144,10 @@ dotmemory compare snapshot-start.dmw snapshot-after.dmw --save-to=comparison.htm
 ```
 Object Type                      Start    Load     After    Growth
 -------------------------------------------------------------------
-System.String                    5 MB     45 MB    15 MB    +10 MB  ⚠️
-BlogPost[]                       2 MB     2 MB     2 MB     0 MB    ✅
-MarkdownDocument                 0 MB     8 MB     0 MB     0 MB    ✅ (GC'd)
-Dictionary<string, BlogPost>     1 MB     1 MB     1 MB     0 MB    ✅
+System.String                    5 MB     45 MB    15 MB    +10 MB  
+BlogPost[]                       2 MB     2 MB     2 MB     0 MB    PASS
+MarkdownDocument                 0 MB     8 MB     0 MB     0 MB    - (GC'd)
+Dictionary<string, BlogPost>     1 MB     1 MB     1 MB     0 MB    PASS
 ```
 
 This shows:
@@ -2074,7 +2182,7 @@ Here's a complete script that runs k6 while profiling:
 #!/bin/bash
 set -e
 
-echo "🔥 Profiling MinimalBlog under k6 load"
+echo "Profiling: Profiling MinimalBlog under k6 load"
 
 # Configuration
 DURATION="120s"
@@ -2084,28 +2192,28 @@ OUTPUT_DIR="profiling-results"
 mkdir -p $OUTPUT_DIR
 
 # Build and start app
-echo "📦 Building MinimalBlog..."
+echo "Building: Building MinimalBlog..."
 cd Mostlylucid.MinimalBlog.Demo
 dotnet build -c Release > /dev/null
 
-echo "🚀 Starting MinimalBlog..."
+echo "Starting: Starting MinimalBlog..."
 dotnet run -c Release > $OUTPUT_DIR/app.log 2>&1 &
 APP_PID=$!
 echo $APP_PID > $OUTPUT_DIR/app.pid
 
 # Wait for startup
 timeout 60 bash -c "until curl -sf http://localhost:5000 > /dev/null; do sleep 2; done"
-echo "✅ App started (PID: $APP_PID)"
+echo "- App started (PID: $APP_PID)"
 
 # Baseline metrics
-echo "📊 Collecting baseline metrics..."
+echo "Generating: Collecting baseline metrics..."
 dotnet-counters collect -p $APP_PID --format json -o $OUTPUT_DIR/baseline-metrics.json &
 COUNTER_PID=$!
 sleep 10
 kill -SIGINT $COUNTER_PID
 
 # Take initial memory snapshot
-echo "💾 Initial memory snapshot..."
+echo "Snapshot: Initial memory snapshot..."
 if command -v dotmemory &> /dev/null; then
     dotmemory get-snapshot $APP_PID --save-to=$OUTPUT_DIR/snapshot-start.dmw
 else
@@ -2113,7 +2221,7 @@ else
 fi
 
 # Start performance profiling
-echo "🔍 Starting performance profiler..."
+echo "Starting: Starting performance profiler..."
 if command -v dottrace &> /dev/null; then
     dottrace attach $APP_PID --save-to=$OUTPUT_DIR/performance-profile.dtt --timeout=150s &
     PROFILER_PID=$!
@@ -2125,24 +2233,24 @@ fi
 sleep 5
 
 # Run k6 load test
-echo "⚡ Running k6 load test ($DURATION, $VUS VUs)..."
+echo "Running: Running k6 load test ($DURATION, $VUS VUs)..."
 cd ..
 k6 run --duration $DURATION --vus $VUS \
     --out json=$OUTPUT_DIR/k6-results.json \
     k6-tests/load-test.js | tee $OUTPUT_DIR/k6-output.txt
 
-echo "✅ k6 test completed"
+echo "- k6 test completed"
 
 # Wait for profiler to finish
 wait $PROFILER_PID
-echo "✅ Performance profile captured"
+echo "- Performance profile captured"
 
 # Take final memory snapshot
-echo "💾 Final memory snapshot..."
+echo "Snapshot: Final memory snapshot..."
 if command -v dotmemory &> /dev/null; then
     dotmemory get-snapshot $APP_PID --save-to=$OUTPUT_DIR/snapshot-end.dmw
 
-    echo "📈 Comparing memory snapshots..."
+    echo "Comparing: Comparing memory snapshots..."
     dotmemory compare $OUTPUT_DIR/snapshot-start.dmw $OUTPUT_DIR/snapshot-end.dmw \
         --save-to=$OUTPUT_DIR/memory-comparison.html
 else
@@ -2150,11 +2258,11 @@ else
 fi
 
 # Stop app
-echo "🛑 Stopping MinimalBlog..."
+echo "Stopping: Stopping MinimalBlog..."
 kill $APP_PID
 
 # Generate reports
-echo "📄 Generating reports..."
+echo "Generating: Generating reports..."
 
 if command -v dottrace &> /dev/null; then
     dottrace report $OUTPUT_DIR/performance-profile.dtt \
@@ -2164,7 +2272,7 @@ fi
 # Summary
 echo ""
 echo "========================================="
-echo "✅ Profiling Complete!"
+echo "- Profiling Complete!"
 echo "========================================="
 echo ""
 echo "Results in: $OUTPUT_DIR/"
@@ -2172,7 +2280,7 @@ echo ""
 echo "Files generated:"
 ls -lh $OUTPUT_DIR/
 echo ""
-echo "📊 View results:"
+echo "Generating: View results:"
 echo "  - k6 output: cat $OUTPUT_DIR/k6-output.txt"
 echo "  - Performance profile: open $OUTPUT_DIR/performance-report.html"
 echo "  - Memory comparison: open $OUTPUT_DIR/memory-comparison.html"
@@ -2199,7 +2307,7 @@ http_req_duration..............: avg=450ms p(95)=850ms p(99)=1.2s
 **dotTrace shows:**
 ```
 MarkdownBlogService.ParseFile()   : 350ms (77% of total time)
-  └─ Markdown.Parse()             : 280ms (62% of total time)  ⚠️
+  └─ Markdown.Parse()             : 280ms (62% of total time)  
 ```
 
 **Action:** Optimize or cache Markdown.Parse() results more aggressively.
@@ -2209,8 +2317,8 @@ MarkdownBlogService.ParseFile()   : 350ms (77% of total time)
 **k6 soak test shows:**
 ```
 Iteration 1-100:    avg=180ms
-Iteration 500-600:  avg=250ms  ⚠️ degrading
-Iteration 900-1000: avg=380ms  ⚠️⚠️ severely degraded
+Iteration 500-600:  avg=250ms   degrading
+Iteration 900-1000: avg=380ms   severely degraded
 ```
 
 **dotMemory shows:**
@@ -2259,13 +2367,13 @@ var matches = MetadataRegex().Matches(markdown);
 
 **k6 test results:**
 ```
-http_req_duration..............: avg=180ms p(95)=320ms  ✅ 57% faster
-http_reqs......................: 285/s                  ✅ 2x throughput
+http_req_duration..............: avg=180ms p(95)=320ms  - 57% faster
+http_reqs......................: 285/s                  - 2x throughput
 ```
 
 **dotTrace profile shows:**
 ```
-ParseFile() regex time reduced from 80ms to 25ms ✅
+ParseFile() regex time reduced from 80ms to 25ms PASS
 ```
 
 ### GitHub Actions Integration with Profiling
@@ -2334,7 +2442,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const comment = `## 🔥 Performance Profile
+            const comment = `## Profiling: Performance Profile
 
             Performance profile captured during k6 load test.
 
@@ -2397,13 +2505,13 @@ jobs:
 
 ### Key Takeaways
 
-✅ k6 identifies **slow endpoints** and **performance thresholds**
-✅ Profilers identify **exact code** causing slowness
-✅ Combine both for **complete performance picture**
-✅ Profile under **realistic k6 load**, not idle
-✅ Focus on **hot paths** shown in profiler
-✅ **Measure improvement** with k6 after fixes
-✅ **Automate profiling** in CI/CD for critical paths
+- k6 identifies **slow endpoints** and **performance thresholds**
+- Profilers identify **exact code** causing slowness
+- Combine both for **complete performance picture**
+- Profile under **realistic k6 load**, not idle
+- Focus on **hot paths** shown in profiler
+- **Measure improvement** with k6 after fixes
+- **Automate profiling** in CI/CD for critical paths
 
 By combining k6 load testing with dotTrace/dotMemory profiling, you get complete visibility into MinimalBlog's performance, from high-level metrics down to individual method calls and memory allocations.
 
@@ -2563,13 +2671,13 @@ With so many load testing tools available, why should you choose k6 for testing 
 
 **Choose k6 for MinimalBlog when you want:**
 
-✅ Fast, accurate load testing
-✅ Developer-friendly JavaScript API
-✅ Excellent CI/CD integration
-✅ Protocol-level HTTP testing (no browser needed)
-✅ Rich scenario support (smoke, load, stress, spike, soak)
-✅ Modern tooling with good ecosystem
-✅ Lightweight resource usage
+- Fast, accurate load testing
+- Developer-friendly JavaScript API
+- Excellent CI/CD integration
+- Protocol-level HTTP testing (no browser needed)
+- Rich scenario support (smoke, load, stress, spike, soak)
+- Modern tooling with good ecosystem
+- Lightweight resource usage
 
 **k6 is perfect for:**
 - APIs and web services
@@ -2579,11 +2687,11 @@ With so many load testing tools available, why should you choose k6 for testing 
 - Cloud-native applications
 
 **Consider alternatives if you need:**
-- ❌ Browser-based testing (use Playwright)
-- ❌ Extensive protocol support beyond HTTP (use JMeter)
-- ❌ Free distributed testing (use Locust)
-- ❌ Beautiful built-in reports (use Gatling)
-- ❌ GUI for non-technical testers (use JMeter)
+- Browser-based testing (use [Playwright](https://playwright.dev/))
+- Extensive protocol support beyond HTTP (use [JMeter](https://jmeter.apache.org/))
+- Free distributed testing (use [Locust](https://locust.io/))
+- Beautiful built-in reports (use [Gatling](https://gatling.io/))
+- GUI for non-technical testers (use [JMeter](https://jmeter.apache.org/))
 
 For MinimalBlog specifically, k6 is the ideal choice because:
 1. It's a simple HTTP/HTML application (no complex JavaScript)
@@ -2596,12 +2704,12 @@ For MinimalBlog specifically, k6 is the ideal choice because:
 
 Load testing with k6 gives you confidence that MinimalBlog can handle real-world traffic. By the end of this guide, you should be able to:
 
-✅ Install k6 on any platform (Windows, Mac, Linux)
-✅ Write and run different types of performance tests
-✅ Verify caching behavior works as expected
-✅ Find performance bottlenecks before they hit production
-✅ Integrate load tests into CI/CD pipelines
-✅ Monitor and interpret k6 metrics
+- Install k6 on any platform (Windows, Mac, Linux)
+- Write and run different types of performance tests
+- Verify caching behavior works as expected
+- Find performance bottlenecks before they hit production
+- Integrate load tests into CI/CD pipelines
+- Monitor and interpret k6 metrics
 
 ### Key Takeaways
 
@@ -2617,11 +2725,11 @@ Load testing with k6 gives you confidence that MinimalBlog can handle real-world
 
 Through k6 testing, we can verify MinimalBlog's claims:
 
-- ✅ **Fast**: p(95) < 300ms with warm cache
-- ✅ **Efficient**: Low memory usage, minimal GC pressure
-- ✅ **Scalable**: Handles 100+ concurrent users on modest hardware
-- ✅ **Reliable**: < 0.1% error rate under normal load
-- ✅ **Cache-effective**: 10x faster responses with warm cache
+- **Fast**: p(95) < 300ms with warm cache
+- **Efficient**: Low memory usage, minimal GC pressure
+- **Scalable**: Handles 100+ concurrent users on modest hardware
+- **Reliable**: < 0.1% error rate under normal load
+- **Cache-effective**: 10x faster responses with warm cache
 
 ### Next Steps
 
@@ -2638,18 +2746,53 @@ Remember: **performance testing isn't a one-time activity**. As you add content,
 ## Resources
 
 ### k6 Documentation
-- [Official k6 docs](https://k6.io/docs/)
-- [k6 examples](https://github.com/grafana/k6-learn)
-- [k6 extensions](https://k6.io/docs/extensions/)
+- [Official k6 docs](https://k6.io/docs/) - Complete k6 documentation
+- [k6 JavaScript API](https://k6.io/docs/javascript-api/) - All available k6 APIs
+- [k6 examples](https://github.com/grafana/k6-learn) - Example test scripts
+- [k6 extensions](https://k6.io/docs/extensions/) - Extend k6 functionality
+- [k6 metrics](https://k6.io/docs/using-k6/metrics/) - Understanding metrics
+- [k6 thresholds](https://k6.io/docs/using-k6/thresholds/) - Setting pass/fail criteria
+- [k6 scenarios](https://k6.io/docs/using-k6/scenarios/) - Advanced test scenarios
+
+### GitHub Actions
+- [GitHub Actions Docs](https://docs.github.com/en/actions) - Complete Actions documentation
+- [Workflow syntax](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions) - YAML syntax reference
+- [Using artifacts](https://docs.github.com/en/actions/guides/storing-workflow-data-as-artifacts) - Store test results
+- [Setup actions](https://github.com/grafana/setup-k6-action) - k6 setup action
+
+### Profiling Tools
+- [dotnet-trace](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-trace) - Performance profiling
+- [dotnet-counters](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-counters) - Real-time metrics
+- [dotnet-dump](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/dotnet-dump) - Memory dumps
+- [JetBrains dotTrace](https://www.jetbrains.com/profiler/) - Commercial profiler
+- [JetBrains dotMemory](https://www.jetbrains.com/dotmemory/) - Memory profiler
+- [Speedscope](https://www.speedscope.app/) - Flame graph viewer
+
+### Monitoring & Visualization
+- [k6 Cloud](https://k6.io/cloud/) - Cloud-based k6 testing
+- [k6 Reporter](https://github.com/benc-uk/k6-reporter) - HTML reports
+- [Grafana k6 Dashboard](https://grafana.com/grafana/dashboards/18030) - k6 metrics dashboard
+- [Prometheus](https://prometheus.io/docs/introduction/overview/) - Metrics collection
+- [Grafana](https://grafana.com/docs/) - Metrics visualization
 
 ### MinimalBlog
-- [MinimalBlog Introduction](/blog/minimalblog-introduction)
-- [Source code](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog)
-- [NuGet package](https://www.nuget.org/packages/Mostlylucid.MinimalBlog)
+- [MinimalBlog Introduction](/blog/minimalblog-introduction) - Why MinimalBlog exists
+- [Source code](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog) - Full source
+- [NuGet package](https://www.nuget.org/packages/Mostlylucid.MinimalBlog) - Install via NuGet
+- [Demo project](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog.Demo) - Working example
 
-### Tools
-- [k6 Cloud](https://k6.io/cloud/)
-- [k6 Reporter](https://github.com/benc-uk/k6-reporter)
-- [Grafana k6 Dashboard](https://grafana.com/grafana/dashboards/18030)
+### Alternative Load Testing Tools
+- [Apache JMeter](https://jmeter.apache.org/) - Java-based load testing
+- [Locust](https://locust.io/) - Python-based load testing
+- [Gatling](https://gatling.io/) - Scala-based load testing
+- [Artillery](https://www.artillery.io/) - Node.js load testing
+- [wrk](https://github.com/wg/wrk) - HTTP benchmarking tool
+- [Playwright](https://playwright.dev/) - Browser automation & testing
 
-Happy testing! 🚀
+### ASP.NET Performance
+- [ASP.NET Core Performance](https://learn.microsoft.com/en-us/aspnet/core/performance/performance-best-practices) - Best practices
+- [Caching in ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/performance/caching/response) - Response caching
+- [Memory management](https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/) - .NET GC
+- [Diagnostic tools](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/) - .NET diagnostics
+
+Happy testing!
