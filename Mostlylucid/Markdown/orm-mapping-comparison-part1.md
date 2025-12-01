@@ -594,7 +594,15 @@ public async Task LoadCacheAsync()
 
 ### 2. Proxy Generation and Lazy Loading Dangers
 
-**The Problem:**
+> **🚨 CRITICAL WARNING: DO NOT USE EF CORE PROXIES IF YOU CACHE ENTITIES**
+>
+> Lazy loading proxies + caching = **GUARANTEED MEMORY LEAK**
+>
+> If you cache DbContext instances or cache entities loaded with proxies enabled, you **WILL** leak memory. The proxy mechanism maintains references to the DbContext, preventing garbage collection. This is one of the most common and dangerous mistakes in EF Core applications.
+>
+> **Rule of thumb**: Always include collections explicitly with `.Include()`. Only use proxies if you fully understand the tradeoffs and never, ever cache proxy entities.
+
+**Problem 1: The N+1 Query Nightmare**
 ```csharp
 // ❌ Enable lazy loading
 optionsBuilder
@@ -625,22 +633,73 @@ foreach (var post in posts)
 3. For **each post**, accessing `Comments` triggers another query
 4. If you have 100 posts, you just executed **201 queries**!
 
-**The Solution:**
+**Problem 2: Proxy + Caching = Memory Leak**
 ```csharp
-// ✅ Explicit eager loading
+// ❌ CATASTROPHIC: Lazy loading proxies + caching
+public class BlogPostCache
+{
+    private static List<BlogPost> _cachedPosts;
+    private readonly BlogDbContext _context;
+
+    public BlogPostCache()
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<BlogDbContext>();
+        optionsBuilder
+            .UseNpgsql(connectionString)
+            .UseLazyLoadingProxies();  // ⚠️ DANGER!
+
+        _context = new BlogDbContext(optionsBuilder.Options);
+    }
+
+    public async Task<List<BlogPost>> GetCachedPostsAsync()
+    {
+        if (_cachedPosts == null)
+        {
+            // ❌ These proxy entities hold references to _context
+            _cachedPosts = await _context.BlogPosts.ToListAsync();
+        }
+        return _cachedPosts;
+    }
+}
+```
+
+**Why this is catastrophic:**
+- Proxy entities maintain a reference to their `DbContext`
+- The `DbContext` maintains a reference to all tracked entities
+- Your cache now prevents the entire object graph from being garbage collected
+- Every time you access a navigation property, it may trigger queries using the **old, cached context**
+- Memory grows unbounded as you load more data
+- You'll eventually run out of memory or exhaust connection pools
+
+**The Solution: Be Explicit**
+```csharp
+// ✅ NEVER use lazy loading proxies - always be explicit
+optionsBuilder
+    .UseNpgsql(connectionString);
+    // NO .UseLazyLoadingProxies()!
+
+public class BlogPost
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public Category Category { get; set; }  // NOT virtual
+    public List<Comment> Comments { get; set; }  // NOT virtual
+}
+
+// ✅ Explicit eager loading - you control what's loaded
 var posts = await _context.BlogPosts
     .Include(p => p.Category)
     .Include(p => p.Comments)
     .ToListAsync();
 
-// Or use split queries for better performance
+// ✅ Or use split queries for better performance
 var posts = await _context.BlogPosts
     .Include(p => p.Category)
     .Include(p => p.Comments)
     .AsSplitQuery()
     .ToListAsync();
 
-// Or use projection to DTOs
+// ✅ Or use projection to DTOs (best for caching)
 var posts = await _context.BlogPosts
     .Select(p => new PostDto
     {
@@ -649,7 +708,45 @@ var posts = await _context.BlogPosts
         CommentCount = p.Comments.Count
     })
     .ToListAsync();
+
+// ✅ If you MUST cache, use AsNoTracking and no proxies
+public class SafeBlogPostCache
+{
+    private static List<BlogPost> _cachedPosts;
+    private readonly IDbContextFactory<BlogDbContext> _contextFactory;
+
+    public async Task<List<BlogPost>> GetCachedPostsAsync()
+    {
+        if (_cachedPosts == null)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+
+            _cachedPosts = await context.BlogPosts
+                .Include(p => p.Category)
+                .Include(p => p.Comments)
+                .AsNoTracking()  // Critical for caching!
+                .ToListAsync();
+        }
+        return _cachedPosts;
+    }
+}
 ```
+
+**When Proxies Might Be Acceptable (Understand the Tradeoffs):**
+
+Lazy loading proxies might be acceptable ONLY when:
+1. ✅ You have **short-lived** scoped contexts (e.g., per HTTP request)
+2. ✅ You **never** cache entities
+3. ✅ You're okay with N+1 query performance
+4. ✅ You're prototyping and will optimize later
+5. ✅ Your team fully understands the implications
+
+But even then, explicit `Include()` is almost always the better choice because:
+- It makes data loading **explicit and obvious**
+- It's **easier to optimize** (you can see what's being loaded)
+- It **prevents accidental N+1 queries**
+- It works correctly with caching and long-lived contexts
+- It's the **recommended approach** by the EF Core team
 
 ### 3. DbContext Lifetime Issues
 
