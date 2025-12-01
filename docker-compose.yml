@@ -96,12 +96,60 @@
   easynmt:
     container_name: easynmt
     image: scottgal/mostlylucid-nmt:cpu
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: "4.0"
+          memory: 8G
+        reservations:
+          memory: 4G
+    environment:
+      # Model caching - keep 10 models loaded
+      - MAX_CACHED_MODELS=10
+      - MODEL_CACHE_DIR=/models
+      
+      # CPU-optimized performance
+      - WEB_CONCURRENCY=4
+      - MAX_WORKERS_BACKEND=4
+      - MAX_INFLIGHT_TRANSLATIONS=4
+      - EASYNMT_BATCH_SIZE=16
+      
+      # Queue management
+      - ENABLE_QUEUE=1
+      - MAX_QUEUE_SIZE=1000
+      
+      # Memory management for small machine
+      - ENABLE_MEMORY_MONITOR=1
+      - MEMORY_WARNING_THRESHOLD=75
+      - MEMORY_CRITICAL_THRESHOLD=85
+      
+      # Evict idle models after 30 minutes to free memory
+      - MODEL_IDLE_TIMEOUT=1800
+      - IDLE_CHECK_INTERVAL=60
+      
+      # Fast shutdown
+      - GRACEFUL_TIMEOUT=5
+      
+      # Markdown sanitization (prevents Markdig errors)
+      - MARKDOWN_SANITIZE=1
+      - MARKDOWN_SAFE_MODE_AUTO=1
+      
+      # Logging
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./model-cache:/models
+    ports:
+      - "5000:8000"
     networks:
       - app_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  
   caddy:
     image: caddy:latest
     ports:

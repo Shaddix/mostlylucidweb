@@ -119,7 +119,7 @@ public partial class ExternalImageDownloadService
     }
 
     /// <summary>
-    /// Download an external image and save it locally
+    /// Download an external image and save it locally, with archive.org fallback
     /// </summary>
     private async Task<DownloadedImageEntity?> DownloadImageAsync(string url, string postSlug, CancellationToken cancellationToken)
     {
@@ -128,11 +128,22 @@ public partial class ExternalImageDownloadService
             var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(30);
 
-            var response = await client.GetAsync(url, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            // Try original URL first
+            var response = await TryDownloadFromUrl(client, url, cancellationToken);
+
+            // If original fails, try archive.org Wayback Machine
+            if (response == null || !response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Failed to download image {Url}: {StatusCode}", url, response.StatusCode);
-                return null;
+                var archiveUrl = $"https://web.archive.org/web/0/{url}";
+                _logger.LogInformation("Original URL failed, trying archive.org: {ArchiveUrl}", archiveUrl);
+                response = await TryDownloadFromUrl(client, archiveUrl, cancellationToken);
+
+                if (response == null || !response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to download image {Url} (also tried archive.org)", url);
+                    return null;
+                }
+                _logger.LogInformation("Successfully retrieved image from archive.org for {Url}", url);
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
@@ -206,7 +217,7 @@ public partial class ExternalImageDownloadService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading image {Url}", url);
+            _logger.LogWarning(ex, "Failed to download image {Url}", url);
             return null;
         }
     }
@@ -336,6 +347,28 @@ public partial class ExternalImageDownloadService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Cleanup complete. Removed {Count} orphaned images", orphanedImages.Count);
+    }
+
+    /// <summary>
+    /// Try to download from a URL, returning null on failure instead of throwing
+    /// </summary>
+    private async Task<HttpResponseMessage?> TryDownloadFromUrl(HttpClient client, string url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await client.GetAsync(url, cancellationToken);
+            return response;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogDebug(ex, "HTTP request failed for {Url}", url);
+            return null;
+        }
+        catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogDebug(ex, "Request timed out for {Url}", url);
+            return null;
+        }
     }
 
     /// <summary>

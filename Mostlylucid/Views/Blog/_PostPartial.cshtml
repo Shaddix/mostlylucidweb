@@ -1,5 +1,6 @@
 ﻿@using Mostlylucid.Shared.Helpers
 @using Mostlylucid.Helpers
+@inject Mostlylucid.SemanticSearch.Config.SemanticSearchConfig SemanticSearchConfig
 @model Mostlylucid.Models.Blog.BlogPostViewModel
 <title>@($"{Model.Title} ({Model.Language.ConvertCodeToLanguage()})")</title>
 <div class="pt-2 lg:pt-2" id="blogpost" hx-boost="true"  hx-target="#contentcontainer" hx-swap="show:window:top">
@@ -154,22 +155,25 @@
         </nav>
     }
 
-    @* Related Posts Section - Loaded via HTMX *@
-    <div class="print:hidden"
-         hx-get="/search/related/@Model.Slug/@Model.Language"
-         hx-trigger="load delay:300ms"
-         hx-target="this"
-         hx-swap="innerHTML">
-        @* Loading placeholder *@
-        <div class="mt-6 mb-6">
-            <div class="border border-base-300 rounded-lg overflow-hidden bg-gradient-to-r from-base-200/80 to-base-200/40">
-                <div class="flex items-center gap-2 px-4 py-2.5">
-                    <span class="loading loading-spinner loading-xs text-secondary"></span>
-                    <span class="text-sm opacity-60">Finding related posts...</span>
+    @* Related Posts Section - Loaded via HTMX (only when semantic search is enabled) *@
+    @if (SemanticSearchConfig.Enabled)
+    {
+        <div class="print:hidden"
+             hx-get="/search/related/@Model.Slug/@Model.Language"
+             hx-trigger="load delay:300ms"
+             hx-target="this"
+             hx-swap="innerHTML">
+            @* Loading placeholder *@
+            <div class="mt-6 mb-6">
+                <div class="border border-base-300 rounded-lg overflow-hidden bg-gradient-to-r from-base-200/80 to-base-200/40">
+                    <div class="flex items-center gap-2 px-4 py-2.5">
+                        <span class="loading loading-spinner loading-xs text-secondary"></span>
+                        <span class="text-sm opacity-60">Finding related posts...</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 
     <div x-data="{ showNewElement: false }" x-init="
     document.addEventListener('htmx:afterSwap', (event) => {

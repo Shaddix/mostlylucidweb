@@ -8,6 +8,8 @@ using Mostlylucid.Models.Search;
 using Mostlylucid.Services;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Shared.Models;
+using Mostlylucid.SemanticSearch.Config;
+using Mostlylucid.SemanticSearch.Models;
 using Mostlylucid.SemanticSearch.Services;
 
 namespace Mostlylucid.Controllers;
@@ -17,6 +19,7 @@ public class SearchController(
     BaseControllerService baseControllerService,
     BlogSearchService searchService,
     ISemanticSearchService semanticSearchService,
+    SemanticSearchConfig semanticSearchConfig,
     ILogger<SearchController> logger)
     : BaseController(baseControllerService, logger)
 {
@@ -145,6 +148,12 @@ public class SearchController(
     [OutputCache(Duration = 3600, Tags = new[] { "blog" }, VaryByQueryKeys = new[] {"query", "limit"})]
     public async Task<IActionResult> SemanticSearch(string? query, int limit = 10)
     {
+        if (!semanticSearchConfig.Enabled)
+        {
+            if (Request.IsHtmx()) return Content("");
+            return Json(new List<SearchResult>());
+        }
+
         if (string.IsNullOrWhiteSpace(query))
         {
             return BadRequest("Query cannot be empty");
@@ -165,6 +174,12 @@ public class SearchController(
     [OutputCache(Duration = 7200, Tags = new[] { "blog" }, VaryByRouteValueNames = new[] {"slug", "language"})]
     public async Task<IActionResult> RelatedPosts(string slug, string language, int limit = 5)
     {
+        if (!semanticSearchConfig.Enabled)
+        {
+            if (Request.IsHtmx()) return Content("");
+            return Json(new List<RelatedPostViewModel>());
+        }
+
         var semanticResults = await semanticSearchService.GetRelatedPostsAsync(slug, limit);
 
         // Enrich with details from PostgreSQL

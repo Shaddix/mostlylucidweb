@@ -1,23 +1,26 @@
-# Mostlylucid.MinimalBlog - How Simple Can a Blog Really Be?
+# mostlylucid.MinimalBlog-How Simple Can an ASP.NET Blog Really Be?
 
 <!--category-- ASP.NET, Markdown, Blogging -->
-<datetime class="hidden">2025-11-30T12:00</datetime>
+<datetime class="hidden">2025-12-01T12:00</datetime>
 
 ## Introduction
 
-If you've been following this blog, you might have noticed that my main blogging platform is... let's call it "enthusiastically engineered." PostgreSQL databases, full-text search with GIN indexes, automated translation to 12 languages, Hangfire job scheduling, Prometheus metrics, Serilog tracing, HTMX interactions, and enough Docker containers to make a ship jealous.
+If you've been following this blog, you might have noticed that my main blogging platform is... let's call it "enthusiastically engineered." PostgreSQL AND vector databases, semantic AND full-text search with GIN indexes, automated translation to 14 languages, multiple hosted services, Hangfire job scheduling, Prometheus metrics, Serilog tracing, HTMX interactions, usign my own nuget packages, and enough Docker containers to make a ship jealous.
 
 **That's entirely deliberate.** This site is my living lab - a playground where I experiment with technologies, test deployment strategies, measure performance characteristics, and build reusable packages. It's *supposed* to be over-engineered because that's how I learn: by solving problems that most blogs don't actually have, then packaging those solutions as open-source libraries others can use.
 
 But here's the thing: **you probably don't need any of that to run a blog.**
 
-That's why I created **Mostlylucid.MinimalBlog** - to show what happens when you strip away all the experimentation and focus on the absolute essentials. No database. No build pipeline. No complexity. Just markdown files in a folder, appearing on the web. This is what a blog looks like when you're not using it as a laboratory.
+That's why I created **mostlylucid.MinimalBlog** - to show what happens when you strip away all the experimentation and focus on the absolute essentials. No database. No build pipeline. No complexity. Just markdown files in a folder, appearing on the web. This is what a blog looks like when you're not using it as a laboratory.
+
+> NOTE: See the end of the article for a link to the source, I plan on releasing this as a [nuget package](https://www.nuget.org/packages?q=mostlylucid&includeComputedFrameworks=true&prerel=true&sortby=relevance) as soon as I get time to ensure it's 100% reliable and it's perf isn't TOO awful (so look for k6 testing articles soon!). 
 
 [TOC]
 
 ## The Philosophy: Less is More
 
 The entire project is designed around one principle: **keep it simple**. No database, no build pipeline, no JavaScript framework. Just ASP.NET 9.0, Markdig for markdown parsing, and about 500 lines of code total. That's it.
+NOTE: You COULD even do this client side by using the likes of [markdown-it](https://github.com/markdown-it/markdown-it) then just have the server site map static `.md` files and make it even SIMPLER but...well this is an ASP.NET blog (kinda sorta 🤓).
 
 ## Project Structure
 
@@ -45,7 +48,7 @@ Mostlylucid.MinimalBlog/
 
 ## The Heart: MarkdownBlogService
 
-The core of the blog is the `MarkdownBlogService` class. It's remarkably simple - just 120 lines of code that handle:
+The core of the blog is the `MarkdownBlogService` class. It's remarkably simple-just 120 lines of code that handle:
 
 1. Reading markdown files from a directory
 2. Parsing metadata (title, categories, publish date)
@@ -340,6 +343,6 @@ That's **less than 520 lines of code total** for a complete blogging platform.
 
 The project serves as both a functional blog platform and a reminder: before you add complexity, ask yourself if you really need it. Sometimes a folder full of markdown files is all you need.
 
-You can find the complete source code in the [Mostlylucid.MinimalBlog directory](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog) of the main repository.
+You can find the complete source code in the [Mostlylucid.MinimalBlog directory](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog) of the main repository. I'll release the nuget package as soon as I'm happy with the code. 
 
-Happy blogging! 🚀
+Happy blogging! 
