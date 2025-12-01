@@ -9,3 +9,7 @@ scrape_configs:
       - targets: ['host.docker.internal:7240']  # Your HTTPS target
     tls_config:
       insecure_skip_verify: true  # Skip SSL verification (for self-signed certificates)
+
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['node_exporter:9100']  # Machine metrics from node_exporter container
