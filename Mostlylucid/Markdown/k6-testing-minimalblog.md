@@ -1,15 +1,28 @@
-# Load Testing MinimalBlog with k6: A Complete Guide
+# Load Testing ASP.NET Core Applications with k6: A Complete Guide
 
 <!--category-- Testing, Performance, k6, ASP.NET -->
 <datetime class="hidden">2025-12-01T14:00</datetime>
 
+Your application works perfectly on your laptop. Unit tests pass. Integration tests pass. You deploy to production, and suddenly everything grinds to a halt. Five hundred real users hit your homepage simultaneously, and your server starts returning 503 errors. Your carefully crafted caching strategy? Turns out it doesn't work quite like you thought. That database query you thought was fast? It's creating a bottleneck at scale.
+
+This is the nightmare scenario every developer fears, but most don't test for. **Performance testing isn't optional - it's the difference between a successful launch and a 3 AM emergency page.** This guide will show you exactly how to prevent this scenario using k6, the modern load testing tool that's powerful enough for enterprise applications but simple enough to run in your CI/CD pipeline.
+
 ## Introduction
 
-In [my previous article on MinimalBlog](/blog/minimalblog-introduction), I mentioned that k6 testing articles were coming soon. Well, here we are! As promised, this guide will show you how to thoroughly test the MinimalBlog platform using k6 - one of the most powerful open-source load testing tools available.
+Performance testing is critical for any production ASP.NET Core application. Whether you're building a simple blog, a complex microservice architecture, or an enterprise application, you need to know how your application behaves under load. Will it handle 100 concurrent users? 1,000? Where are the bottlenecks? Does your caching strategy actually work?
 
-MinimalBlog is designed to be fast and simple: memory caching, output caching, no database, no JavaScript. But how do we **prove** it's robust? How do we verify that the caching works as expected? How do we know it won't fall over under load?
+This comprehensive guide shows you how to load test ASP.NET Core applications using [k6](https://k6.io/) - one of the most powerful open-source load testing tools available. While we'll use [MinimalBlog](/blog/minimalblog-introduction) as our example application (a simple markdown-based blog with memory and output caching), the techniques and patterns shown here apply to **any ASP.NET Core application**.
 
-That's where k6 comes in. By the end of this article, you'll know how to install k6 on any platform, write comprehensive performance tests, and use different testing strategies (smoke, load, stress, spike, and soak tests) to ensure MinimalBlog is production-ready.
+By the end of this article, you'll know how to:
+
+- Install and configure k6 on any platform (Windows, Mac, Linux)
+- Write comprehensive performance tests for different scenarios
+- Integrate k6 into your CI/CD pipeline with GitHub Actions
+- Use profiling tools (dotTrace, dotMemory) alongside k6 to find bottlenecks
+- Implement different testing strategies: smoke, load, stress, spike, and soak tests
+- Set up performance regression detection to prevent slow code from reaching production
+
+**Why MinimalBlog as the example?** It's a real ASP.NET Core 9.0 application with common patterns: Razor Pages, memory caching, output caching, file I/O, and markdown processing. The testing approaches you'll learn apply equally to your MVC apps, Web APIs, Blazor applications, or minimal APIs.
 
 [TOC]
 
