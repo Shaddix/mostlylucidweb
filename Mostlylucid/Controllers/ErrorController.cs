@@ -9,6 +9,7 @@ namespace Mostlylucid.Controllers;
 public class ErrorController(
     BaseControllerService baseControllerService,
     ILogger<ErrorController> logger,
+    IBlogService blogService,
     ISlugSuggestionService? slugSuggestionService = null) : BaseController(baseControllerService, logger)
 {
     [Route("/error/{statusCode}")]
@@ -75,17 +76,41 @@ public class ErrorController(
             return null;
         }
 
+        // Handle legacy /blog/kategorie/{category} URLs -> redirect to /blog?category={category}
+        if (pathSegments.Length >= 3 &&
+            pathSegments[1].Equals("kategorie", StringComparison.OrdinalIgnoreCase))
+        {
+            var category = pathSegments[2];
+            var redirectUrl = $"/blog?category={Uri.EscapeDataString(category)}";
+            logger.LogInformation(
+                "Kategorie redirect (301): {OriginalPath} -> {RedirectUrl}",
+                originalPath, redirectUrl);
+            return RedirectPermanent(redirectUrl);
+        }
+
         string slug;
         var language = "en";
+
+        // Known language codes for validation
+        var validLanguages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "en", "es", "fr", "de", "it", "nl", "pt", "pl", "sv", "fi", "ar", "el", "hi", "uk", "zh"
+        };
 
         if (pathSegments.Length == 2)
         {
             slug = pathSegments[1];
         }
-        else if (pathSegments.Length >= 3)
+        else if (pathSegments.Length >= 3 && validLanguages.Contains(pathSegments[1]))
         {
+            // Only treat as language/slug if the second segment is a known language
             language = pathSegments[1];
             slug = pathSegments[2];
+        }
+        else if (pathSegments.Length >= 3)
+        {
+            // Unknown second segment - treat the whole thing as a potentially malformed path
+            slug = pathSegments[1];
         }
         else
         {
@@ -181,6 +206,26 @@ public class ErrorController(
 
         try
         {
+            // First, check if the extracted identifier is a valid slug that exists directly
+            // This handles URLs like /archive/2003/06/06/more-passport-woes.aspx -> /blog/more-passport-woes
+            if (!int.TryParse(archiveId, out _))
+            {
+                // It's not a numeric ID, so treat it as a potential slug
+                var normalizedSlug = archiveId.ToLowerInvariant().Replace('_', '-').Replace(' ', '-');
+                var slugExists = await blogService.EntryExists(normalizedSlug, "en");
+
+                if (slugExists)
+                {
+                    var redirectUrl = $"/blog/{normalizedSlug}";
+                    logger.LogInformation(
+                        "Archive direct slug redirect (301): {OriginalPath} -> {RedirectUrl}",
+                        originalPath, redirectUrl);
+
+                    return RedirectPermanent(redirectUrl);
+                }
+            }
+
+            // Fall back to fuzzy matching for numeric IDs or if direct slug not found
             var suggestions = await slugSuggestionService!.GetSuggestionsForArchiveIdAsync(archiveId, "en", 2, cancellationToken);
 
             if (suggestions.Count == 0)
@@ -217,8 +262,9 @@ public class ErrorController(
 
     /// <summary>
     /// Extract the archive identifier from a legacy URL
-    /// E.g., "/archite/2002/01/01/445.html" -> "445"
-    /// E.g., "/archive/my-old-post.aspx" -> "my-old-post"
+    /// E.g., "/archive/2002/01/01/445.html" -> "445"
+    /// E.g., "/archive/2003/06/06/more-passport-woes.aspx" -> "more-passport-woes"
+    /// E.g., "/archive/2011/01/24.aspx" -> null (date-only, no slug)
     /// </summary>
     private static string? ExtractArchiveIdentifier(string path)
     {
@@ -230,6 +276,15 @@ public class ErrorController(
         // Check if it's a legacy URL (ends with .html or .aspx)
         if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase) &&
             !path.EndsWith(".aspx", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        // Check if this is an archive URL pattern
+        var isArchivePath = path.StartsWith("/archive", StringComparison.OrdinalIgnoreCase) ||
+                            path.StartsWith("/archite", StringComparison.OrdinalIgnoreCase);
+
+        if (!isArchivePath)
         {
             return null;
         }
@@ -251,7 +306,25 @@ public class ErrorController(
             filename = filename[..dotIndex];
         }
 
-        return string.IsNullOrWhiteSpace(filename) ? null : filename;
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            return null;
+        }
+
+        // Check if this looks like a date-only pattern (e.g., /archive/2011/01/24.aspx)
+        // If the filename is just a 1-2 digit number and the path has 4 segments like /archive/YYYY/MM/DD
+        // then it's likely a date, not a post ID
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 4 &&
+            int.TryParse(filename, out var num) &&
+            num >= 1 && num <= 31)
+        {
+            // This looks like /archive/YYYY/MM/DD.aspx - a date-only URL with no actual slug
+            // Return null as we can't determine what post this refers to
+            return null;
+        }
+
+        return filename;
     }
 
     private async Task<NotFoundModel> CreateNotFoundModel(
