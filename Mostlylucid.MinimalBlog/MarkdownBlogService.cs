@@ -5,9 +5,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Mostlylucid.MinimalBlog;
 
-public partial class MarkdownBlogService(IConfiguration config, IMemoryCache cache)
+public partial class MarkdownBlogService(MinimalBlogOptions options, IMemoryCache cache)
 {
-    private readonly string _markdownPath = config["MarkdownPath"]
+    private readonly string _markdownPath = options.MarkdownPath
         ?? throw new InvalidOperationException("MarkdownPath not configured");
 
     private readonly MarkdownPipeline _pipeline = new MarkdownPipelineBuilder()

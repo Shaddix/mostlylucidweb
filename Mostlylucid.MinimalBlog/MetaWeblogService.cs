@@ -4,14 +4,14 @@ using System.Xml.Linq;
 
 namespace Mostlylucid.MinimalBlog;
 
-public partial class MetaWeblogService(IConfiguration config, ILogger<MetaWeblogService> logger)
+public partial class MetaWeblogService(MinimalBlogOptions options, ILogger<MetaWeblogService> logger)
 {
-    private readonly string _markdownPath = config["MarkdownPath"]
+    private readonly string _markdownPath = options.MarkdownPath
         ?? throw new InvalidOperationException("MarkdownPath not configured");
-    private readonly string _imagesPath = config["ImagesPath"] ?? "wwwroot/images";
-    private readonly string _username = config["MetaWeblog:Username"] ?? "admin";
-    private readonly string _password = config["MetaWeblog:Password"] ?? "admin";
-    private readonly string _blogUrl = config["MetaWeblog:BlogUrl"] ?? "http://localhost:5000";
+    private readonly string _imagesPath = options.ImagesPath;
+    private readonly string _username = options.MetaWeblogUsername;
+    private readonly string _password = options.MetaWeblogPassword;
+    private readonly string _blogUrl = options.BlogUrl;
 
     public async Task<string> HandleRequestAsync(Stream requestBody)
     {
