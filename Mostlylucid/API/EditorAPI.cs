@@ -15,6 +15,10 @@ public class Editor(MarkdownRenderingService markdownBlogService, UmamiClient um
         Request.Cookies.TryGetValue("UserIdentifier", out var userId);
         await umamiClient.Send( new UmamiPayload(){Url = "api/editor/getcontent", Referrer = Request.Headers["Referer"]});
         var blogPost = markdownBlogService.GetPageFromMarkdown(model.Content, DateTime.Now, "");
+        if (blogPost == null)
+        {
+            return BadRequest("Invalid markdown content - must start with a # heading");
+        }
         return Ok(blogPost); // Use Ok() for proper JSON responses
     }
 

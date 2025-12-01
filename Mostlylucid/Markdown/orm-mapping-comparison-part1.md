@@ -1,7 +1,7 @@
 # Data Access in .NET: Comparing ORMs and Mapping Strategies (Part 1 - Entity Framework Core)
 
 <!-- category -- .NET, EF Core, PostgreSQL, Performance, Database -->
-<datetime class="hidden">2025-12-01T14:00</datetime>
+<datetime class="hidden">2025-12-03T14:00</datetime>
 
 When building .NET applications, one of the most important architectural decisions you'll make is how to handle data access and object mapping. The .NET ecosystem offers a rich variety of approaches, from full-featured ORMs to bare-metal SQL execution. Each approach comes with its own trade-offs in terms of performance, developer productivity, type safety, and maintainability.
 
@@ -312,7 +312,7 @@ var recentPosts = await _context.BlogPosts
     .ToListAsync();
 ```
 
-**Generated SQL (EF Core 8+):**
+**Generated SQL ([EF Core 8+](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-8.0/whatsnew)):**
 ```sql
 SELECT b."Id", b."Title", b."Content", b."CategoryId", b."PublishedDate"
 FROM "BlogPosts" AS b
@@ -321,7 +321,7 @@ ORDER BY b."PublishedDate" DESC
 LIMIT @__p_1
 ```
 
-Notice how EF Core 8+ generates clean, efficient SQL with proper parameterization.
+Notice how EF Core 8+ generates clean, efficient SQL with proper parameterization. [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) continues this trend with even more improvements.
 
 ### Example: Join with Include (Before EF Core 5)
 
@@ -501,7 +501,7 @@ var categoryStats = await _context.Categories
     .ToListAsync();
 ```
 
-**Generated SQL (EF Core 8):**
+**Generated SQL (EF Core 8+/10):**
 ```sql
 SELECT c."Name" AS "CategoryName",
        COUNT(*)::int AS "PostCount",
@@ -894,6 +894,135 @@ public BlogPost GetPost(int id)
 }
 ```
 
+## EF Core 10: What's New and Breaking Changes
+
+With [EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew) released alongside .NET 10, there are several important changes to be aware of when upgrading. For the full list, see [Breaking changes in EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/breaking-changes).
+
+### Runtime Requirements
+
+**EF Core 10 requires .NET 10**. It will not run on .NET 8, .NET 9, or .NET Framework. This is the most significant change - ensure your project targets `net10.0` before upgrading.
+
+### Query-Related Breaking Changes
+
+#### 1. Parameterized Collection Translation (Default Changed)
+
+EF Core 10 changes how `Contains()` with in-memory collections is translated to SQL. Previously, EF Core used `OpenJson()` (SQL Server) or similar. Now it defaults to **parameter arrays** which provide better query plan caching.
+
+**Impact**: You may see different SQL generated for queries like:
+
+```csharp
+var ids = new List<int> { 1, 2, 3, 4, 5 };
+var posts = await _context.BlogPosts
+    .Where(p => ids.Contains(p.Id))
+    .ToListAsync();
+```
+
+**EF Core 8/9 (OpenJson):**
+```sql
+SELECT b."Id", b."Title"
+FROM "BlogPosts" AS b
+WHERE b."Id" IN (SELECT value FROM OPENJSON(@__ids_0))
+```
+
+**EF Core 10 (Parameter Arrays):**
+```sql
+SELECT b."Id", b."Title"
+FROM "BlogPosts" AS b
+WHERE b."Id" = ANY(@__ids_0)  -- PostgreSQL
+-- Or: WHERE b."Id" IN (@__ids_0_0, @__ids_0_1, @__ids_0_2, ...) -- SQL Server
+```
+
+**If you experience performance regressions**, revert to the old behavior:
+
+```csharp
+// SQL Server
+optionsBuilder.UseSqlServer(connectionString,
+    o => o.UseParameterizedCollectionMode(ParameterTranslationMode.Constant));
+
+// PostgreSQL - generally parameter arrays work well, but you can opt out if needed
+```
+
+#### 2. ExecuteUpdateAsync Signature Change
+
+The `ExecuteUpdateAsync` signature has changed to support non-expression lambdas. This is more flexible but **breaks code that built expression trees programmatically**:
+
+**Old way (EF Core 7-9):**
+```csharp
+// This still works
+await _context.BlogPosts
+    .Where(p => p.CategoryId == 5)
+    .ExecuteUpdateAsync(setters => setters
+        .SetProperty(p => p.IsArchived, true));
+```
+
+**New in EF Core 10 - Non-expression lambdas:**
+```csharp
+// Now you can include custom logic!
+await _context.BlogPosts
+    .Where(p => p.CategoryId == 5)
+    .ExecuteUpdateAsync(setters =>
+    {
+        setters.SetProperty(p => p.IsArchived, true);
+        setters.SetProperty(p => p.UpdatedAt, DateTime.UtcNow);
+        // Can now include conditional logic, loops, etc.
+    });
+```
+
+#### 3. Complex Type Column Naming
+
+EF Core 10 changes how nested complex type columns are named to prevent data corruption:
+
+**EF Core 9:**
+```
+NestedComplex_Property
+```
+
+**EF Core 10:**
+```
+OuterComplex_NestedComplex_Property
+```
+
+**Migration impact**: If you have existing tables with complex types, you may need to rename columns or configure explicit column names:
+
+```csharp
+modelBuilder.Entity<Order>()
+    .ComplexProperty(o => o.ShippingAddress)
+    .Property(a => a.Street)
+    .HasColumnName("ShippingAddress_Street"); // Explicit name
+```
+
+### SQL Server / Azure SQL Specific Changes
+
+#### JSON Data Type Default
+
+For Azure SQL Database or SQL Server 2025 (compatibility level 170+), EF Core 10 defaults to the new native `JSON` data type instead of `NVARCHAR(MAX)`.
+
+**To opt out** (if you need backwards compatibility):
+```csharp
+optionsBuilder.UseAzureSql(connectionString,
+    o => o.UseCompatibilityLevel(160)); // Use old NVARCHAR behavior
+```
+
+### Upgrading Checklist
+
+When upgrading from EF Core 8/9 to EF Core 10:
+
+1. ✅ Update target framework to `net10.0`
+2. ✅ Update all `Microsoft.EntityFrameworkCore.*` packages to 10.x
+3. ✅ Update `Npgsql.EntityFrameworkCore.PostgreSQL` to 10.x
+4. ✅ Review queries using `Contains()` with collections for performance changes
+5. ✅ Test any code that programmatically builds `ExecuteUpdateAsync` expressions
+6. ✅ Check complex type column names if using nested complex types
+7. ✅ Review SQL Server JSON column usage if using Azure SQL/SQL Server 2025
+
+### What's New (Highlights)
+
+- **Improved LINQ translation**: Better SQL generation for complex queries
+- **Non-expression lambdas in ExecuteUpdateAsync**: More flexibility in bulk updates
+- **Better parameter handling**: Improved query plan caching
+- **Enhanced JSON support**: Native JSON type on SQL Server 2025
+- **Performance improvements**: Faster materialization and change tracking
+
 ## Performance Characteristics
 
 - **Query Performance**: 20-50% overhead compared to Dapper for simple queries
@@ -901,7 +1030,7 @@ public BlogPost GetPost(int id)
 - **First Query**: Slow (query compilation and caching)
 - **Subsequent Queries**: Faster due to compiled query cache
 - **Inserts/Updates**: Automatic change tracking adds overhead
-- **Bulk Operations**: Poor performance with default methods (consider EFCore.BulkExtensions or ExecuteUpdate/ExecuteDelete in EF Core 7+)
+- **Bulk Operations**: Poor performance with default methods (consider [EFCore.BulkExtensions](https://github.com/borisdj/EFCore.BulkExtensions) or ExecuteUpdate/ExecuteDelete in EF Core 7+)
 
 ## Best Practices for EF Core
 
@@ -940,6 +1069,8 @@ In the next article, we'll explore:
 - [Entity Framework Core Documentation](https://learn.microsoft.com/en-us/ef/core/)
 - [Npgsql Entity Framework Core Provider](https://www.npgsql.org/efcore/)
 - [EF Core Performance](https://learn.microsoft.com/en-us/ef/core/performance/)
+- [What's New in EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/whatsnew)
+- [Breaking Changes in EF Core 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-10.0/breaking-changes)
 - [What's New in EF Core 8](https://learn.microsoft.com/en-us/ef/core/what-is-new/ef-core-8.0/whatsnew)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 

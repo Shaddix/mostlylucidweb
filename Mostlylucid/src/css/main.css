@@ -18,6 +18,51 @@
         /* Light theme from default.css will apply here */
     }
 }
+
+/* Code block wrapper styling - prevents scrollbar from copy button */
+.prose pre {
+    position: relative;
+    overflow: hidden; /* Hide overflow on wrapper, code inside will scroll if needed */
+}
+
+.prose pre code {
+    display: block;
+    overflow-x: auto; /* Only the code scrolls horizontally when needed */
+    padding: 1em;
+}
+
+/* Copy button positioning */
+.prose pre .copy-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+}
+/* Broken image placeholder styling */
+.broken-image-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    min-height: 100px;
+    max-width: 100%;
+    padding: 1rem;
+    border: 2px dashed currentColor;
+    border-radius: 0.5rem;
+    opacity: 0.5;
+}
+
+.broken-image-placeholder {
+    width: 48px;
+    height: 48px;
+    color: currentColor;
+}
+
+/* Ensure prose images that fail also get handled */
+.prose .broken-image-container {
+    margin: 1rem 0;
+}
+
 .mermaid { visibility: hidden; }
 .mermaid[data-processed="true"] { visibility: visible; }
 

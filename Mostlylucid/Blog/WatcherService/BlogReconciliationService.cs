@@ -142,6 +142,12 @@ public class BlogReconciliationService(
                     try
                     {
                         var blogModel = await markdownBlogService.GetPage(filePath);
+                        // Skip invalid files (no valid title/heading)
+                        if (blogModel == null)
+                        {
+                            logger.LogWarning("Skipping invalid markdown file (no valid title): {FilePath}", filePath);
+                            continue;
+                        }
                         blogModel.Language = language;
                         await blogService.SavePost(blogModel);
                         activity?.Activity?.AddTag($"Added Missing", $"{slug}|{language}");

@@ -192,6 +192,11 @@ public class BlogService(
             try
             {
                 var model = markdownRenderingService.GetPageFromMarkdown(markdown, DateTime.Now, slug);
+                if (model == null)
+                {
+                    Logger.LogWarning("Invalid markdown content (no valid title) for {Slug}", slug);
+                    return new BlogPostDto();
+                }
                 model.Language = language;
                 return await SavePost(model);
             }

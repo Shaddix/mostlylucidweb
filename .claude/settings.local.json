@@ -1,8 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object -Last 5)",
-      "Bash(Select-Object -Last 40)"
+      "Bash(Where-Object { $_ength -lt 100 })",
+      "Bash(for:*)",
+      "Bash(do grep -q 'datetime class=\"\"\"\"hidden\"\"\"\"' $f)",
+      "Bash(done)",
+      "Bash(do if [ -f $f ])",
+      "Bash(then grep -L 'datetime class=\"\"\"\"hidden\"\"\"\"' $f)",
+      "Bash(fi)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "ask": []

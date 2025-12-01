@@ -96,6 +96,12 @@ public class MarkdownReAddPostsService(
                 try
                 {
                     var blogModel = await markdownBlogService.GetPage(filePath);
+                    // Skip invalid files (no valid title/heading)
+                    if (blogModel == null)
+                    {
+                        logger.LogWarning("Skipping invalid markdown file (no valid title): {FilePath}", filePath);
+                        continue;
+                    }
                     blogModel.Language = MarkdownBaseService.EnglishLanguage;
                     await blogService.SavePost(blogModel);
 
@@ -141,6 +147,12 @@ public class MarkdownReAddPostsService(
                 try
                 {
                     var blogModel = await markdownBlogService.GetPage(filePath);
+                    // Skip invalid files (no valid title/heading)
+                    if (blogModel == null)
+                    {
+                        logger.LogWarning("Skipping invalid translated file (no valid title): {FilePath}", filePath);
+                        continue;
+                    }
                     blogModel.Language = language;
                     await blogService.SavePost(blogModel);
 

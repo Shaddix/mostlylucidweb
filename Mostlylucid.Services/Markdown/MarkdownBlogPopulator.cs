@@ -44,7 +44,7 @@ public class MarkdownBlogPopulator(
     }
     
     
-    public async Task<BlogPostDto> GetPage(string filePath)
+    public async Task<BlogPostDto?> GetPage(string filePath)
     {
         var fileInfo = new FileInfo(filePath);
         // Ensure the file exists
@@ -56,6 +56,7 @@ public class MarkdownBlogPopulator(
         var publishedDate = fileInfo.CreationTime;
         var viewModel = markdownRenderingService.GetPageFromMarkdown(markdown, publishedDate, filePath);
 
+        // viewModel will be null if the file doesn't have a valid title
         return viewModel;
     }
 
@@ -66,14 +67,16 @@ public class MarkdownBlogPopulator(
         if (language != Constants.EnglishLanguage)
             pages = Directory.GetFiles(markdownConfig.MarkdownTranslatedPath, $"*.{language}.md");
 
-        var pageModels = new List<BlogPostDto>();
+        var pageModels = new ConcurrentBag<BlogPostDto>();
         await Parallel.ForEachAsync(pages, ParallelOptions, async (page, ct) =>
         {
             var pageModel = await GetPage(page);
+            // Skip invalid files (null = no valid title/heading)
+            if (pageModel == null) return;
             pageModel.Language = language;
             pageModels.Add(pageModel);
         });
-        return pageModels;
+        return pageModels.ToList();
     }
 
 

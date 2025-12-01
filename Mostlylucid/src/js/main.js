@@ -38,6 +38,7 @@ import { globalSetup } from "./global";
 import  {comments} from  "./comments";
 import { queryParamClearer, queryParamToggler } from "./query-params";
 import { initBrokenLinks } from "./broken-links";
+import { initBrokenImages } from "./broken-images";
 import { showToast, showHTMXToast } from "./toast";
 import "./highlight-copy";
 import "./htmx-events";
@@ -225,6 +226,13 @@ function registerHTMXListener() {
             console.error('Failed to rewrite broken links:', err);
         }
 
+        // Handle broken images in swapped content
+        try {
+            initBrokenImages(evt.detail.target);
+        } catch (err) {
+            console.error('Failed to handle broken images:', err);
+        }
+
         console.log('HTMX afterSettle complete for:', targetId);
     }, { once: false }); // Don't use once - we need this for all HTMX swaps
 
@@ -306,6 +314,13 @@ async function initializePage() {
         initBrokenLinks();
     } catch (err) {
         console.error('Failed to initialize broken links:', err);
+    }
+
+    // Initialize broken image handler
+    try {
+        initBrokenImages();
+    } catch (err) {
+        console.error('Failed to initialize broken images:', err);
     }
 
     console.log('Document is ready - all initializations complete');

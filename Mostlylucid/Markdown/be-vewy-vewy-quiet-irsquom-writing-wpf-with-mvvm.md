@@ -1,0 +1,8 @@
+# Be vewy vewy quiet I’m writing WPF with MVVM
+
+<datetime class="hidden">2010-04-17T00:00</datetime>
+<!-- category -- mostlylucidcouk, Imported -->
+
+[!\[Get Microsoft Silverlight\](image_fe52ca2fb5ad44bf932785b11111522a_B780AF86.jpg)](http://go.microsoft.com/fwlink/?LinkID=124807) 
+
+Ok, not a catchy title but it really is what I’ve been up to for the past 3 months. As I wrote before, I’m currently working with the awesome @[RobertTheGrey](http://www.twitter.com/RobertTheGrey) on a project called [cozwecan](http://blog.cozwecan.com), which is a bunch of sites set up with the aim of being an amazing independent ecommerce platform for artists (photographers to start with, in the future, who knows…). Anyway, I’ve been remiss in blogging about the amazingly cool stuff I’ve been doing (IMHO :)), using WPF with [Reactive Extensions](http://msdn.microsoft.com/en-us/devlabs/ee794896.aspx), [MongoDB](http://www.mongodb.org/), [FluidKit](http://fluidkit.codeplex.com/) and of course the awesome WPF / SL MVVM framework, [Caliburn](http://www.codeplex.com/caliburn) (the embedded bit aboveis the creator of Caliburn, [@EisenbergEffect’s](http://www.twitter.com/eisenbergeffect) presentation on MVVM from MIX). So, just licking my wounds and getting my brain back in one piece after last year’s craziness (minor drug problem, clinical depression, car crashes, international moves etc…) and will be back to full communicative me soon enough :)

@@ -49,12 +49,12 @@ public partial class MarkdownRenderingService : MarkdownBaseService
     [GeneratedRegex(@"\r\n|\r|\n")]
     private static partial Regex SplitRegex();
 
-    public BlogPostDto GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath)
+    public BlogPostDto? GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath)
     {
         return GetPageFromMarkdown(markdown, publishedDate, filePath, sourceUrl: null);
     }
 
-    public BlogPostDto GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath, string? sourceUrl)
+    public BlogPostDto? GetPageFromMarkdown(string markdown, DateTime publishedDate, string filePath, string? sourceUrl)
     {
         // Preprocess markdown to inject fetched content BEFORE parsing
         // This ensures everything goes through the pipeline once
@@ -74,10 +74,26 @@ public partial class MarkdownRenderingService : MarkdownBaseService
             });
 
         var lines =  SplitRegex().Split(markdown);
-        // Get the title from the first line
-        var title = lines.Length > 0 ? global::Markdig.Markdown.ToPlainText(lines[0].Trim()) : string.Empty;
+        // Get the title from the first line - must start with # to be valid
+        var firstLine = lines.Length > 0 ? lines[0].Trim() : string.Empty;
 
+        // Validate that the first line is a proper markdown heading
+        if (!firstLine.StartsWith('#'))
+        {
+            _logger?.LogWarning("Markdown file {FilePath} does not start with a heading (first line: '{FirstLine}'). Skipping.",
+                filePath, firstLine.Length > 50 ? firstLine[..50] + "..." : firstLine);
+            return null;
+        }
+
+        var title = global::Markdig.Markdown.ToPlainText(firstLine);
         title = title.Trim();
+
+        // Skip files with empty titles
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            _logger?.LogWarning("Markdown file {FilePath} has an empty title. Skipping.", filePath);
+            return null;
+        }
         // Concatenate the rest of the lines with newline characters
         var restOfTheLines = string.Join(Environment.NewLine, lines.Skip(1));
 

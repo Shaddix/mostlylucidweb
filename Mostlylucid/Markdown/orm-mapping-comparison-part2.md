@@ -1,7 +1,7 @@
 # Data Access in .NET: Comparing ORMs and Mapping Strategies (Part 2 - Dapper, Raw SQL, and Hybrid Approaches)
 
 <!-- category -- .NET, Dapper, PostgreSQL, Performance, Database -->
-<datetime class="hidden">2025-12-01T15:00</datetime>
+<datetime class="hidden">2025-12-03T15:00</datetime>
 
 Welcome to Part 2 of our comprehensive guide to data access in .NET! In [Part 1](/blog/orm-mapping-comparison-part1), we explored Entity Framework Core in depth, including SQL generation, common pitfalls, and that critical warning about proxies and caching.
 

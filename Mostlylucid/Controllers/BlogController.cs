@@ -267,6 +267,12 @@ public class BlogController(
             var fileInfo = new FileInfo(filePath);
             var blogPost = markdownRenderingService.GetPageFromMarkdown(markdown, fileInfo.LastWriteTimeUtc, filePath);
 
+            if (blogPost == null)
+            {
+                logger.LogWarning("Invalid draft file (no valid title): {FilePath}", filePath);
+                return null;
+            }
+
             var post = blogPost.ToViewModel();
             post.Categories = blogPost.Categories.ToArray();
             return post;

@@ -160,6 +160,13 @@ public class SemanticIndexingBackgroundService : BackgroundService
         // Parse the markdown to get blog post data
         var blogPost = markdownRenderingService.GetPageFromMarkdown(markdown, fileInfo.LastWriteTimeUtc, filePath);
 
+        // Skip invalid files (no valid title/heading)
+        if (blogPost == null)
+        {
+            _logger.LogDebug("Skipping invalid file (no valid title): {FilePath}", filePath);
+            return IndexResult.Skipped;
+        }
+
         // Skip hidden posts
         if (blogPost.IsHidden)
         {

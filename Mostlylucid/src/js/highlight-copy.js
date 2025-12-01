@@ -12,7 +12,7 @@ window.addCopyPlugin = () => {
             wrapper.classList.add('relative');
 
             const copyButton = document.createElement('button');
-            copyButton.className = 'absolute top-6 right-1 p-2 text-gray-500 hover:text-gray-700 bx bx-copy text-xl cursor-pointer copy-button';
+            copyButton.className = 'p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bx bx-copy text-xl cursor-pointer copy-button';
             copyButton.setAttribute('aria-label', 'Copy code to clipboard');
             copyButton.title = 'Copy code to clipboard';
 

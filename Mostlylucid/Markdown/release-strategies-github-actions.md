@@ -1,695 +1,295 @@
 # Modern Release Strategies with GitHub Actions
 
 <!--category-- DevOps, CI/CD, GitHub Actions -->
-<datetime class="hidden">2025-12-01T12:00</datetime>
+<datetime class="hidden">2025-12-04T12:00</datetime>
 
-## Introduction
+**The core principle: make releases fast and painless, and you'll release more often.** This is critical for agile development - rapid, reliable deployments create the fast feedback loop you need. When deploying is scary or slow, teams batch up changes, increasing risk. When deploying is boring and automatic, you ship small changes frequently.
 
-Deploying software isn't just about pushing code to production. It's about having repeatable, reliable processes that let you ship with confidence. Over time I've refined my release strategy for this blog and its associated packages into a system that handles everything from local testing to production deployments, multi-package versioning, and quality gates.
-
-In this article I'll walk through the release strategies I use, covering branch-based releases, tag-based releases, monorepo challenges, quality assurance, and environment management. All examples come from real workflows running in this repository.
+This guide covers the release strategies I use in production, from simple tag-based deployments to multi-package monorepo publishing. All examples come from real [GitHub Actions](https://docs.github.com/en/actions) workflows in this repository.
 
 [TOC]
 
-## The Landscape: Monorepo vs Multi-Repo
+## Release Strategies at a Glance
 
-Before diving into specific strategies, it's worth understanding the fundamental architectural decision that shapes your release process.
+Before diving into details, here's how common strategies compare:
 
-### Monorepo Approach
+| Strategy | Best For | Complexity | Common In |
+|----------|----------|------------|-----------|
+| **Tag-based** | Applications, explicit releases | Low | Startups, solo devs, mature teams |
+| **Branch-based** | Continuous deployment | Low | Startups, fast-moving teams |
+| **GitFlow** | Regulated releases, multiple versions | High | Enterprise, compliance-heavy |
+| **Trunk-based + Feature flags** | High-velocity teams | Medium | Big tech, mature startups |
+| **Monorepo multi-package** | Libraries, shared codebases | Medium | Platform teams, OSS projects |
 
-This blog runs as a monorepo - one repository containing multiple deployable units:
-- The main blog application (Docker image: `scottgal/mostlylucid`)
-- A scheduler service (Docker image: `scottgal/mostlylucid-scheduler`)
-- Multiple NuGet packages (`Umami.Net`, `Mostlylucid.Markdig.FetchExtension` and variants)
-- An npm package (`@mostlylucid/mermaid-enhancements`)
+### What Works Where
 
-```bash
-mostlylucidweb/
-├── Mostlylucid/                          # Main web application
-├── Mostlylucid.SchedulerService/         # Background jobs service
-├── Umami.Net/                            # Analytics client (NuGet)
-├── Mostlylucid.Markdig.FetchExtension/   # Markdown extension (NuGet)
-├── mostlylucid-mermaid/                  # Frontend package (npm)
-└── .github/workflows/                    # Unified CI/CD
-```
+**Startups & Small Teams**: Start with tag-based or branch-based deployment. Keep it simple - you can always add complexity later. Trunk-based development with feature flags is popular at scale but overkill for small teams.
 
-**Advantages:**
-- Atomic commits across related changes
-- Shared tooling and CI/CD infrastructure
-- Easier to maintain consistency across packages
-- Single source of truth for issues and documentation
+**Enterprise**: Often requires GitFlow or similar for compliance, audit trails, and release management. Multiple environments (dev, QA, staging, prod) with approval gates. Artifact attestations increasingly required for supply chain security.
 
-**Challenges:**
-- Need independent versioning per package
-- Selective triggering (don't rebuild everything on every commit)
-- More complex CI/CD logic
-- Larger repository size
+**Solo Developers**: Tag-based is ideal. Push a tag, deployment happens. No ceremony, no overhead.
 
-### Multi-Repo Alternative
+**Platform/Library Teams**: Need monorepo strategies with independent versioning per package. Semantic versioning is critical for downstream consumers.
 
-The alternative is splitting each package into its own repository. I've seen this work well for larger teams where different groups own different packages, but for a solo developer or small team, the overhead isn't worth it.
+## Tag-Based Deployment
 
-## Strategy 1: Tag-Based Environment Targeting
+The simplest and most reliable strategy. Different tag prefixes route to different environments or trigger different actions.
 
-The simplest and most reliable release strategy I use is tag-based deployment with environment targeting. This is what powers the main blog application.
-
-### How It Works
-
-Different tag prefixes route to different environments:
+### Environment Targeting
 
 ```yaml
-# .github/workflows/docker-image.yml
 on:
   push:
     tags:
-      - 'release-*'  # Production releases
-      - 'local-*'    # Local/dev environment releases
+      - 'release-*'  # Production
+      - 'local-*'    # Dev environment
 ```
 
-The workflow logic determines the destination based on the tag:
-
 ```yaml
-- name: Build and tag the Docker image
+- name: Build Docker image
   run: |
     TAG_NAME=${GITHUB_REF#refs/tags/}
-
     if [[ "$TAG_NAME" == local-* ]]; then
-      # Local environment
-      TAGS="scottgal/mostlylucid:local"
-      ADDITIONAL_TAG="scottgal/mostlylucid:$TIMESTAMP-local"
+      docker build -t myapp:local .
     else
-      # Production environment
-      TAGS="scottgal/mostlylucid:latest"
-      ADDITIONAL_TAG="scottgal/mostlylucid:$TIMESTAMP"
+      docker build -t myapp:latest -t myapp:$(date +%s) .
     fi
-
-    docker build . --file Mostlylucid/Dockerfile --tag $TAGS --tag $ADDITIONAL_TAG
 ```
 
-### Workflow Diagram
-
-```mermaid
-graph LR
-    A[Developer] -->|git tag release-v1.0| B[GitHub]
-    A -->|git tag local-test| B
-    B -->|Tag: release-*| C[Build Production Image]
-    B -->|Tag: local-*| D[Build Local Image]
-    C -->|Push| E[Docker Hub: latest]
-    D -->|Push| F[Docker Hub: local]
-    E -->|Watchtower Pulls| G[Production Server]
-    F -->|Watchtower Pulls| H[Local Dev Server]
-```
-
-### Why This Works
-
-1. **Simple mental model**: Want to deploy to production? Tag with `release-`. Testing locally? Tag with `local-`.
-2. **No manual intervention**: Push the tag, everything else is automatic
-3. **Rollback friendly**: Every build gets a timestamped tag for easy rollback
-4. **Environment isolation**: Production never accidentally pulls a dev build
-
-### Real Usage
+**Why it works**: Simple mental model, explicit deployments, easy rollback via timestamped tags.
 
 ```bash
-# Deploy to local dev environment
-git tag local-testing-new-feature
-git push origin local-testing-new-feature
-
 # Deploy to production
-git tag release-v2024.12.01
-git push origin release-v2024.12.01
+git tag release-v2024.12.01 && git push origin release-v2024.12.01
+
+# Deploy to dev
+git tag local-feature-test && git push origin local-feature-test
 ```
 
-## Strategy 2: Package-Specific Semantic Versioning
+### Multi-Package Versioning
 
-When you have multiple publishable packages in one repo, you need a way to version them independently. I use tag prefixes to identify which package is being released.
-
-### Tag Prefix Routing
-
-Each package has its own tag prefix:
+For monorepos with multiple publishable packages, use tag prefixes to identify which package to release:
 
 ```yaml
-# Umami.Net NuGet package
+# Different workflows, different tag patterns
+# umami-net.yml
 on:
   push:
-    tags:
-      - 'umamiv*.*.*'  # e.g., umamiv1.0.5
+    tags: ['umamiv*.*.*']  # e.g., umamiv1.0.5
 
-# Markdig.FetchExtension package
+# fetchextension.yml
 on:
   push:
-    tags:
-      - 'fetchextension-v*.*.*'  # e.g., fetchextension-v1.2.0
-
-# npm package
-on:
-  push:
-    tags:
-      - 'ml-mermaidv*'  # e.g., ml-mermaidv1.0.0
+    tags: ['fetchextension-v*.*.*']  # e.g., fetchextension-v1.2.0
 ```
 
-### Version Extraction
-
-The workflow extracts the actual semantic version from the tag:
+Extract the version and use it throughout:
 
 ```yaml
-- name: Extract version from tag
-  id: get_version
+- name: Extract version
+  run: echo "VERSION=${GITHUB_REF#refs/tags/umamiv}" >> $GITHUB_OUTPUT
+
+- name: Build & Pack
   run: |
-    TAG=${GITHUB_REF#refs/tags/fetchextension-v}
-    echo "VERSION=$TAG" >> $GITHUB_OUTPUT
-    echo "Publishing version: $TAG"
+    dotnet build -c Release -p:Version=${{ steps.version.outputs.VERSION }}
+    dotnet pack -c Release -p:PackageVersion=${{ steps.version.outputs.VERSION }}
 ```
 
-This version is then used throughout the build and publish process:
-
-```yaml
-- name: Build
-  run: dotnet build --configuration Release -p:Version=${{ steps.get_version.outputs.VERSION }}
-
-- name: Pack
-  run: dotnet pack --configuration Release -p:PackageVersion=${{ steps.get_version.outputs.VERSION }}
-```
-
-### The Umami.Net Example
-
-Here's the full workflow for publishing the Umami.Net package:
-
-```yaml
-name: Publish Umami.NET
-
-on:
-  push:
-    tags:
-      - 'umamiv*.*.*'
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # MinVer needs full history
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.x
-            9.x
-
-      - name: Restore dependencies
-        run: dotnet restore ./Umami.Net/Umami.Net.csproj
-
-      - name: Build project (multi-targeting)
-        run: |
-          dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net8.0
-          dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net9.0
-
-      - name: Run tests
-        run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj
-
-      - name: Pack project
-        run: dotnet pack --configuration Release ./Umami.Net/Umami.Net.csproj --output ./nupkg
-
-      - name: Publish to NuGet
-        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.UMAMI_NUGET_API_KEY }}
-```
-
-### MinVer Integration
-
-For automatic versioning, I use MinVer which calculates versions from Git tags:
+For automatic versioning, [MinVer](https://github.com/adamralph/minver) calculates versions from Git tags:
 
 ```xml
-<PackageReference Include="MinVer" Version="6.0.0">
-  <PrivateAssets>all</PrivateAssets>
-</PackageReference>
-
+<PackageReference Include="MinVer" Version="6.0.0" PrivateAssets="all" />
 <PropertyGroup>
   <MinVerTagPrefix>umamiv</MinVerTagPrefix>
-  <MinVerSkip Condition="'$(Configuration)' == 'Debug'">true</MinVerSkip>
 </PropertyGroup>
 ```
 
-This means:
-- Tag `umamiv1.0.5` becomes version `1.0.5`
-- Commits after the tag get a pre-release version like `1.0.5-alpha.0.1`
-- Debug builds skip versioning (faster local builds)
+## Branch-Based Deployment
 
-## Strategy 3: Database Variants from a Single Codebase
-
-An interesting challenge is publishing multiple variations of the same package. The Markdig.FetchExtension comes in three flavors:
-- `Mostlylucid.Markdig.FetchExtension` (in-memory/no DB)
-- `Mostlylucid.Markdig.FetchExtension.Postgres`
-- `Mostlylucid.Markdig.FetchExtension.SqlServer`
-- `Mostlylucid.Markdig.FetchExtension.Sqlite`
-
-Each has its own workflow but they share the same tag pattern:
+Deploy automatically when code lands on specific branches. Common in startups and fast-moving teams.
 
 ```yaml
-# publish-fetchextension-postgres.yml
 on:
   push:
-    tags:
-      - 'fetchextension-v*.*.*'
+    branches: [main]      # → Production
+    # branches: [develop] # → Staging
+```
+
+**Pros**: No manual step, deploys on merge
+**Cons**: Accidental deploys possible, less explicit history
+
+I use a hybrid approach - build on branch push (CI verification), but only publish on tags:
+
+```yaml
+on:
+  push:
+    tags: ['scheduler-*']
+    branches: [main, local]
 
 jobs:
-  build-and-publish:
-    steps:
-      # ... build steps ...
-      - name: Pack
-        run: dotnet pack Mostlylucid.Markdig.FetchExtension.Postgres/Mostlylucid.Markdig.FetchExtension.Postgres.csproj
+  build:
+    # Always build
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')  # Only publish on tags
 ```
 
-The trick is each workflow file specifies which project to build, but they all trigger on the same tag. This ensures all variants are published simultaneously with the same version number.
+## Auto-Updates with Watchtower
 
-### Workflow Coordination
+For self-hosted deployments, [Watchtower](https://containrrr.dev/watchtower/) automatically pulls new images:
 
-```mermaid
-graph TD
-    A[git tag fetchextension-v1.2.0] --> B[GitHub Tag Event]
-    B --> C[Postgres Workflow]
-    B --> D[SqlServer Workflow]
-    B --> E[Sqlite Workflow]
-    B --> F[Base Package Workflow]
-    C --> G[NuGet: *.Postgres 1.2.0]
-    D --> H[NuGet: *.SqlServer 1.2.0]
-    E --> I[NuGet: *.Sqlite 1.2.0]
-    F --> J[NuGet: Base Package 1.2.0]
+```yaml
+services:
+  app:
+    image: myapp:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300  # Check every 5 minutes
 ```
 
-## Monorepo Package Management: The Local NuGet Feed
+**Deployment flow**: Push tag → GitHub Actions builds → Push to registry → Watchtower pulls → Container restarts. Total time: ~5 minutes.
 
-One of the biggest challenges in a monorepo is using your own packages during development before they're published. Here's how I handle it.
+## Quality Gates
 
-### The Old Manual Approach
-
-Previously I had this in my `.csproj` files:
-
-```xml
-<Target Name="NugetPackAutoVersioning" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
-  <RemoveDir Directories="$(SolutionDir)nuget" />
-  <MakeDir Directories="$(SolutionDir)nuget" />
-  <Exec Command="dotnet pack -p:PackageVersion=$([System.DateTime]::Now.ToString(&quot;yyyy.MM.dd.HHmm&quot;))-preview --output &quot;$(SolutionDir)nuget&quot;" />
-  <Exec Command="dotnet nuget push $(SolutionDir)nuget\*.nupkg --source Local" />
-</Target>
-```
-
-This auto-generates timestamped preview packages on every Debug build and pushes them to a local feed defined in `Nuget.config`:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-    <add key="Local" value="e:\nuget" />
-  </packageSources>
-</configuration>
-```
-
-### The Better Approach: Project References
-
-Now I primarily use project references during development:
-
-```xml
-<ItemGroup>
-  <!-- Development: use project reference -->
-  <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
-
-  <!-- Production: use NuGet package -->
-  <!-- <PackageReference Include="Umami.Net" Version="1.0.0" /> -->
-</ItemGroup>
-```
-
-This is much simpler - you get:
-- Immediate rebuild when you change the library
-- Better debugging with source code stepping
-- No versioning headaches
-- Faster build times (no packing/unpacking)
-
-The commented PackageReference serves as documentation for which version will be used when deployed. Before release, I verify the published package version matches my expectation.
-
-## Quality Gates: Don't Ship Broken Code
-
-Having fast deployment is useless if you're deploying bugs. Here's how I ensure quality.
-
-### Test Execution in CI
-
-Every workflow runs tests before publishing:
+Fast deployments are useless if you deploy bugs. Every workflow should include gates:
 
 ```yaml
 - name: Run tests
-  run: dotnet test --configuration Release ./Umami.Net.Test/Umami.Net.Test.csproj
-```
+  run: dotnet test --configuration Release
 
-If tests fail, the workflow stops. The package never gets published.
-
-### Build Verification for npm Packages
-
-For the npm package, I verify the build output exists:
-
-```yaml
 - name: Build
-  run: npm run build:all
+  run: dotnet build --configuration Release
 
-- name: Verify build output
-  run: |
-    if [ ! -d "dist" ]; then
-      echo "❌ Build failed - dist directory not found"
-      exit 1
-    fi
-    echo "✅ Build successful"
+# Tests or build fail → workflow stops → no publish
 ```
 
-### Multi-Framework Testing
-
-The Umami.Net package targets both .NET 8 and .NET 9, so I build both:
+For multi-framework packages, build all targets:
 
 ```yaml
-- name: Build project (net8.0)
-  run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net8.0
-
-- name: Build project (net9.0)
-  run: dotnet build --configuration Release ./Umami.Net/Umami.Net.csproj --framework net9.0
+- run: dotnet build -c Release --framework net8.0
+- run: dotnet build -c Release --framework net9.0
 ```
 
-This ensures compatibility across both frameworks before publishing.
+## Passwordless Publishing with OIDC
 
-## Environment Management: Local vs Production
-
-I run two complete environments:
-1. **Production**: Live blog served to the internet
-2. **Local**: Development instance running on a home server
-
-### Docker Compose Environments
-
-Both environments use the same `docker-compose.yml` but with different configurations:
-
-```yaml
-services:
-  mostlylucid:
-    image: scottgal/mostlylucid:latest  # Production uses :latest
-    # image: scottgal/mostlylucid:local   # Dev uses :local
-    restart: always
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    env_file:
-      - .env
-    volumes:
-      - /mnt/imagecache:/app/wwwroot/cache
-      - /mnt/logs:/app/logs
-      - /mnt/markdown:/app/Markdown
-```
-
-### Watchtower for Auto-Updates
-
-The key to this working smoothly is Watchtower, which automatically pulls new images:
-
-```yaml
-watchtower:
-  image: containrrr/watchtower
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  environment:
-    - WATCHTOWER_CLEANUP=true
-    - WATCHTOWER_LABEL_ENABLE=true
-  command: --interval 300  # Check every 5 minutes
-```
-
-### Deployment Flow
-
-```mermaid
-graph TB
-    A[Developer Machine] -->|git tag release-*| B[GitHub Actions]
-    A -->|git tag local-*| B
-    B -->|Build & Push| C[Docker Hub]
-    C -->|:latest tag| D[Watchtower - Production]
-    C -->|:local tag| E[Watchtower - Dev]
-    D -->|Pull & Restart| F[Production Container]
-    E -->|Pull & Restart| G[Dev Container]
-```
-
-The entire deployment happens in about 5-10 minutes:
-1. Push tag (1 second)
-2. GitHub Actions build (3-5 minutes)
-3. Push to Docker Hub (30 seconds)
-4. Watchtower detects new image (up to 5 minutes)
-5. Container restart (10 seconds)
-
-## Blue-Green Deployments with Docker Tags
-
-While I don't run true blue-green deployments (limited resources on my home server), the pattern is built into my tagging strategy.
-
-### Timestamped Releases
-
-Every build creates a timestamped tag alongside the environment tag:
-
-```yaml
-TIMESTAMP=$(date +%s)
-docker build --tag scottgal/mostlylucid:latest \
-             --tag scottgal/mostlylucid:$TIMESTAMP
-```
-
-This means I have:
-- `scottgal/mostlylucid:latest` - current production
-- `scottgal/mostlylucid:1733064000` - specific build from Dec 1, 2025
-- `scottgal/mostlylucid:1733063700` - previous build
-
-### Instant Rollback
-
-If a deployment goes wrong:
-
-```bash
-# Check what's running
-docker ps
-
-# Roll back to previous version
-docker pull scottgal/mostlylucid:1733063700
-docker stop mostlylucid_container
-docker run -d --name mostlylucid_container scottgal/mostlylucid:1733063700
-
-# Or let Watchtower do it by temporarily changing the tag in docker-compose.yml
-```
-
-### "Slots" Simulation for Testing
-
-In Azure App Service you have deployment slots. I simulate this locally by running two containers:
-
-```yaml
-# docker-compose.yml
-services:
-  mostlylucid-prod:
-    image: scottgal/mostlylucid:latest
-    ports:
-      - "8080:8080"
-
-  mostlylucid-staging:
-    image: scottgal/mostlylucid:local
-    ports:
-      - "8081:8080"
-```
-
-I can test the staging slot (port 8081) before swapping the tags to promote it to production. This isn't automatic, but it provides a safety net.
-
-## OIDC and Trusted Publishing to NuGet
-
-Traditional NuGet publishing requires storing an API key in GitHub Secrets. The newer approach uses OIDC (OpenID Connect) for passwordless authentication.
-
-### Setting Up Trusted Publishing
-
-1. On NuGet.org, configure your package to trust GitHub Actions from your repository
-2. Grant `id-token: write` permission in your workflow
+Modern approach - no secrets to rotate, no keys to leak:
 
 ```yaml
 permissions:
   id-token: write
   contents: read
+
+- uses: NuGet/login@v1
+  with:
+    user: 'myusername'
+
+- run: dotnet nuget push *.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
 ```
 
-3. Use the official NuGet login action:
+GitHub exchanges its OIDC token for a short-lived NuGet API key. Configure trust on NuGet.org to enable this.
+
+## Supply Chain Security
+
+[Artifact attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations) prove your artifacts were built in CI, not tampered with. Increasingly required by enterprises.
 
 ```yaml
-- name: Login to NuGet (OIDC)
-  id: nuget_login
-  uses: NuGet/login@v1
-  with:
-    user: 'mostlylucid'
+permissions:
+  id-token: write
+  attestations: write
 
-- name: Publish to NuGet
-  run: |
-    dotnet nuget push ./artifacts/*.nupkg \
-      --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} \
-      --source https://api.nuget.org/v3/index.json
+- uses: docker/build-push-action@v6
+  id: push
+  with:
+    push: true
+    tags: myapp:latest
+
+- uses: actions/attest-build-provenance@v2
+  with:
+    subject-name: index.docker.io/myuser/myapp
+    subject-digest: ${{ steps.push.outputs.digest }}
+    push-to-registry: true
 ```
 
-The login action exchanges the GitHub OIDC token for a short-lived NuGet API key. No secrets stored, no keys to rotate.
+Consumers verify with: `gh attestation verify oci://index.docker.io/myuser/myapp:latest --owner myuser`
 
-## Branch-Based Releases: An Alternative Pattern
+This achieves [SLSA Level 2](https://slsa.dev/spec/v1.0/levels). For Level 3, use [reusable workflows](https://docs.github.com/en/actions/sharing-automations/reusing-workflows).
 
-While I primarily use tag-based releases, the scheduler service uses a hybrid approach with branch-based triggers:
+## Preview Environments
+
+Teams need stakeholders to preview changes before merging.
+
+**Enterprise approach** - Branch-based preview environments:
 
 ```yaml
 on:
-  push:
-    tags:
-      - 'scheduler-*'
-    branches:
-      - "main"
-      - "local"
+  pull_request:
+    types: [opened, synchronize]
+
+- run: |
+    BRANCH=$(echo ${{ github.head_ref }} | sed 's/[^a-zA-Z0-9]/-/g')
+    docker build -t myapp:preview-$BRANCH .
+    # Deploy to k8s namespace, cloud platform, etc.
 ```
 
-This allows:
-- **Tag-based releases**: `scheduler-v1.0.0` triggers a build
-- **Branch-based auto-deploy**: Pushing to `main` or `local` branches auto-deploys
-
-```yaml
-if: startsWith(github.ref, 'refs/tags/scheduler-')  # Only tags trigger publish
-```
-
-The workflow only publishes on tags, but builds on branch pushes (for CI verification).
-
-### When to Use Branch-Based
-
-Branch-based deployments work well when:
-- You have a clear `main` = production, `develop` = staging mapping
-- You want automatic deployments on merge
-- Your team is disciplined about branch protection
-
-I prefer tag-based because:
-- Explicit about what's being deployed
-- Easier to track in Git history
-- Prevents accidental deployments
-- Clearer rollback story
-
-## Practical Tips and Gotchas
-
-### Git Tag Cleanup
-
-Git tags stick around forever. Clean up old test tags:
+**Startup/solo approach** - Tunnel your local machine:
 
 ```bash
-# List local tags
-git tag
-
-# Delete local tag
-git tag -d local-old-test
-
-# Delete remote tag
-git push origin :refs/tags/local-old-test
+# Cloudflare Tunnel (free)
+cloudflared tunnel run --url http://localhost:5000 my-preview
+# → https://my-preview.cfargotunnel.com
 ```
 
-### Workflow Testing
+Or use [Wireguard](https://www.wireguard.com/) VPN for internal team access to your dev machine.
 
-Test workflow changes carefully. A syntax error can break all deployments. Use:
+## Practical Tips
 
+**Tag cleanup**: Git tags stick around forever.
 ```bash
-# Validate workflow syntax locally
-npm install -g @actions/workflow-parser
-workflow-parser .github/workflows/docker-image.yml
+git tag -d old-test-tag                      # Delete local
+git push origin :refs/tags/old-test-tag      # Delete remote
 ```
 
-Or use the GitHub Actions extension in VS Code for real-time validation.
+**Naming conventions**: Be consistent.
+- `release-YYYY.MM.DD` for production
+- `local-feature-name` for dev
+- `packagev1.2.3` for libraries
 
-### Tag Naming Conventions
+**Secrets**: Store in [GitHub Secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions), never in code. Required secrets typically:
+- `DOCKER_HUB_ACCESS_TOKEN`
+- `NUGET_API_KEY` (or use OIDC)
+- `NPM_TOKEN`
 
-Be consistent with tag naming. I use:
-- `release-*` for production (human-readable dates like `release-2024.12.01`)
-- `local-*` for dev (descriptive like `local-test-new-feature`)
-- Package versions always include version numbers (`umamiv1.0.5`)
+**Monorepo development**: Use project references during development, switch to package references for deployment verification:
 
-### Secrets Management
-
-Secrets required:
-- `DOCKER_HUB_USER_NAME` and `DOCKER_HUB_ACCESS_TOKEN` for Docker
-- `UMAMI_NUGET_API_KEY` for NuGet (or use OIDC)
-- `NPM_TOKEN` for npm publishing
-
-Store these in GitHub repository secrets, never in code.
-
-### Docker Build Context
-
-Mind your Docker build context. My Dockerfile is in the project directory but needs files from the solution root:
-
-```dockerfile
-# Mostlylucid/Dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-COPY ["Mostlylucid/Mostlylucid.csproj", "Mostlylucid/"]
-COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
-RUN dotnet restore "Mostlylucid/Mostlylucid.csproj"
-COPY . .
+```xml
+<ProjectReference Include="..\MyLib\MyLib.csproj" />
+<!-- <PackageReference Include="MyLib" Version="1.0.0" /> -->
 ```
 
-Build from the solution root:
+## Moving to Kubernetes
 
-```bash
-docker build -f Mostlylucid/Dockerfile .
-```
+Same principles, different tools:
 
-## Monitoring and Observability
+| Docker Compose | Kubernetes |
+|----------------|------------|
+| Watchtower | [ArgoCD](https://argo-cd.readthedocs.io/) / [Flux](https://fluxcd.io/docs/) |
+| docker-compose.yml environments | Namespaces |
+| Container restart | Rolling deployment |
+| Manual rollback | GitOps rollback |
 
-### Deployment Success Tracking
+## Summary
 
-I track deployments in my Umami analytics instance. The blog sends a deployment event on startup:
+1. **Start simple**: Tag-based deployment covers most needs
+2. **Add complexity when needed**: Branch-based, multi-environment, attestations
+3. **Automate quality gates**: Tests must pass before publish
+4. **Enable rollback**: Timestamped tags or GitOps history
+5. **Secure your pipeline**: OIDC for secrets, attestations for provenance
+6. **Match your context**: Solo dev ≠ startup ≠ enterprise
 
-```csharp
-await umamiClient.Track("deployment", new UmamiEventData
-{
-    { "version", Assembly.GetExecutingAssembly().GetName().Version.ToString() },
-    { "environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") }
-});
-```
+The workflows shown here run in this repository - check `.github/workflows/` for complete implementations.
 
-This lets me see:
-- When deployments happened
-- How often (detecting Watchtower restart loops)
-- Which version is running
-
-### Health Checks
-
-Every service exposes a health check endpoint:
-
-```csharp
-app.MapHealthChecks("/healthz");
-```
-
-Watchtower can check this before swapping containers (though I don't currently use this feature).
-
-### Logging
-
-All logs go to:
-1. **Console** for Docker logs
-2. **File** for persistent storage
-3. **Seq** for structured querying
-
-```yaml
-volumes:
-  - /mnt/logs:/app/logs  # Persistent logs survive container restarts
-```
-
-This has been invaluable for debugging deployment issues.
-
-## What About Kubernetes?
-
-The patterns I've described work great for Docker Compose deployments. If you move to Kubernetes, the same principles apply but the mechanisms change:
-
-- **Tags → Image Tags**: Same tagging strategy
-- **Watchtower → ArgoCD/Flux**: GitOps-based deployment tools
-- **Environments → Namespaces**: `production` and `staging` namespaces
-- **Slots → Services**: Blue-green with service selectors
-
-The mental model stays the same, just different tools.
-
-## Conclusion
-
-Release strategies aren't one-size-fits-all. What works for a monorepo solo project differs from a microservices team deployment. The key principles remain:
-
-1. **Make releases boring**: Automate everything, remove manual steps
-2. **Version independently**: Each package gets its own version and release cadence
-3. **Test before shipping**: Quality gates prevent broken releases
-4. **Enable rollback**: Always have an escape hatch
-5. **Visibility matters**: Track what's deployed, when, and where
-
-My setup has evolved over time from manual Docker builds to a fully automated CI/CD pipeline. It's not perfect - I'd like better automated smoke tests, proper blue-green deployments, and staging environment parity - but it's reliable, fast, and most importantly, it gets out of my way so I can focus on writing code.
-
-The workflows I've shown are all running in this repository. Check them out in `.github/workflows/` to see the complete implementations.
+**Remember**: Rapid, reliable deployments are the foundation of agile development. Invest in your release pipeline early.

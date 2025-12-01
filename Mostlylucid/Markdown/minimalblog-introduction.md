@@ -1,4 +1,4 @@
-# mostlylucid.MinimalBlog-How Simple Can an ASP.NET Blog Really Be?
+# mostlylucid.MinimalBlog - How Simple Can an ASP.NET Blog Really Be?
 
 <!--category-- ASP.NET, Markdown, Blogging -->
 <datetime class="hidden">2025-12-01T12:00</datetime>
