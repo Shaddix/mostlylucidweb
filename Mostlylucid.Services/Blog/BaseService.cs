@@ -59,7 +59,7 @@ public class BaseService(IMostlylucidDBContext context, ILogger<BaseService> log
         }
 
         categories ??= await Context.Categories.Where(x => post.Categories.Contains(x.Name)).ToListAsync();
-        currentPost ??= await PostsQuery().Where(x => x.Slug == post.Slug && x.LanguageEntity == postLanguageEntity)
+        currentPost ??= await PostsQuery().Where(x => x.Slug == post.Slug && x.LanguageEntity.Name == post.Language)
             .FirstOrDefaultAsync();
         try
         {

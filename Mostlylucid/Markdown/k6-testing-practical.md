@@ -1,326 +1,17 @@
-# Load Testing ASP.NET Core Applications with k6: A Complete Guide
+# Load Testing ASP.NET Core Applications with k6: Practical Implementation
 
 <!--category-- Testing, Performance, k6, ASP.NET -->
-<datetime class="hidden">2025-12-01T14:00</datetime>
+<datetime class="hidden">2025-12-02T15:00</datetime>
 
-Your application works perfectly on your laptop. Unit tests pass. Integration tests pass. You deploy to production, and suddenly everything grinds to a halt. Five hundred real users hit your homepage simultaneously, and your server starts returning 503 errors. Your carefully crafted caching strategy? Turns out it doesn't work quite like you thought. That database query you thought was fast? It's creating a bottleneck at scale.
+Now that you understand the fundamentals of k6 and performance testing, it's time to put that knowledge into practice. This article walks you through writing real tests, integrating them into CI/CD pipelines, and using profiling tools to identify and fix performance bottlenecks.
 
-This is the nightmare scenario every developer fears, but most don't test for. **Performance testing isn't optional - it's the difference between a successful launch and a 3 AM emergency page.** This guide will show you exactly how to prevent this scenario using k6, the modern load testing tool that's powerful enough for enterprise applications but simple enough to run in your CI/CD pipeline.
+This is **Part 2** of a two-part series on load testing with k6:
+- **[Part 1: Introduction](/blog/k6-testing-introduction)**: Introduction to k6, installation, test types, and why k6
+- **Part 2 (this article)**: Writing tests, CI/CD integration, profiling, and real-world examples
 
-## Introduction
-
-Performance testing is critical for any production ASP.NET Core application. Whether you're building a simple blog, a complex microservice architecture, or an enterprise application, you need to know how your application behaves under load. Will it handle 100 concurrent users? 1,000? Where are the bottlenecks? Does your caching strategy actually work?
-
-This comprehensive guide shows you how to load test ASP.NET Core applications using [k6](https://k6.io/) - one of the most powerful open-source load testing tools available. While we'll use [MinimalBlog](/blog/minimalblog-introduction) as our example application (a simple markdown-based blog with memory and output caching), the techniques and patterns shown here apply to **any ASP.NET Core application**.
-
-By the end of this article, you'll know how to:
-
-- Install and configure k6 on any platform (Windows, Mac, Linux)
-- Write comprehensive performance tests for different scenarios
-- Integrate k6 into your CI/CD pipeline with GitHub Actions
-- Use profiling tools (dotTrace, dotMemory) alongside k6 to find bottlenecks
-- Implement different testing strategies: smoke, load, stress, spike, and soak tests
-- Set up performance regression detection to prevent slow code from reaching production
-
-**Why MinimalBlog as the example?** It's a real ASP.NET Core 9.0 application with common patterns: Razor Pages, memory caching, output caching, file I/O, and markdown processing. The testing approaches you'll learn apply equally to your MVC apps, Web APIs, Blazor applications, or minimal APIs.
+If you haven't read Part 1, start there to understand k6 basics, installation, and test types before diving into implementation.
 
 [TOC]
-
-## What is k6 and Why Use It?
-
-[k6](https://k6.io/) is a modern load testing tool built for developers. Unlike older tools like JMeter or LoadRunner, k6 is:
-
-- **Developer-friendly**: Tests are written in JavaScript (ES6+)
-- **CLI-first**: Perfect for CI/CD pipelines
-- **Lightweight**: Single binary, no dependencies
-- **Accurate**: Written in Go for precise metrics
-- **Scriptable**: Full programming capabilities for complex scenarios
-- **Cloud-ready**: Can integrate with k6 Cloud, Grafana, Prometheus
-
-For MinimalBlog, k6 is ideal because:
-
-1. **We can test caching**: k6 can verify cache headers and behavior
-2. **We can simulate real traffic**: Test multiple concurrent users
-3. **We can validate performance claims**: Measure actual response times
-4. **We can integrate with CI/CD**: Automate testing in our pipeline
-5. **We can test specific scenarios**: Category filtering, individual posts, homepage
-
-## Installing k6
-
-### Windows Installation
-
-**Option 1: Using Chocolatey (Recommended)**
-
-```powershell
-choco install k6
-```
-
-**Option 2: Using Winget**
-
-```powershell
-winget install k6 --source winget
-```
-
-**Option 3: Manual Installation**
-
-1. Download the latest Windows release from [GitHub Releases](https://github.com/grafana/k6/releases)
-2. Extract the `k6.exe` file
-3. Add the directory to your PATH or move `k6.exe` to a directory already in PATH
-
-**Verify Installation:**
-
-```powershell
-k6 version
-```
-
-### Mac Installation
-
-**Option 1: Using Homebrew (Recommended)**
-
-```bash
-brew install k6
-```
-
-**Option 2: Using MacPorts**
-
-```bash
-sudo port install k6
-```
-
-**Option 3: Manual Installation**
-
-```bash
-# Download and install the latest release
-curl -O -L https://github.com/grafana/k6/releases/latest/download/k6-macos-amd64.zip
-unzip k6-macos-amd64.zip
-sudo cp k6-macos-amd64/k6 /usr/local/bin/
-sudo chmod +x /usr/local/bin/k6
-```
-
-**Verify Installation:**
-
-```bash
-k6 version
-```
-
-### Linux Installation
-
-**Option 1: Using Package Managers**
-
-For **Debian/Ubuntu**:
-
-```bash
-sudo gpg -k
-sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-sudo apt-get update
-sudo apt-get install k6
-```
-
-For **Fedora/CentOS/RHEL**:
-
-```bash
-sudo dnf install https://dl.k6.io/rpm/repo.rpm
-sudo dnf install k6
-```
-
-**Option 2: Using Snap**
-
-```bash
-sudo snap install k6
-```
-
-**Option 3: Manual Installation**
-
-```bash
-# Download the latest release
-curl -O -L https://github.com/grafana/k6/releases/latest/download/k6-linux-amd64.tar.gz
-tar -xzf k6-linux-amd64.tar.gz
-sudo cp k6-linux-amd64/k6 /usr/local/bin/
-sudo chmod +x /usr/local/bin/k6
-```
-
-**Option 4: Using Docker**
-
-```bash
-docker pull grafana/k6:latest
-
-# Run a test
-docker run --rm -i grafana/k6:latest run - <script.js
-```
-
-**Verify Installation:**
-
-```bash
-k6 version
-```
-
-## Understanding k6 Test Anatomy
-
-Before we dive into testing MinimalBlog, let's understand the basic structure of a k6 test:
-
-```javascript
-import http from 'k6/http';
-import { check, sleep } from 'k6';
-
-// Test configuration
-export const options = {
-  vus: 10,              // Virtual users
-  duration: '30s',      // Test duration
-};
-
-// Setup function (runs once before test)
-export function setup() {
-  // Prepare test data
-  return { baseUrl: 'http://localhost:5000' };
-}
-
-// Main test function (runs for each VU)
-export default function(data) {
-  const response = http.get(data.baseUrl);
-
-  // Assertions
-  check(response, {
-    'status is 200': (r) => r.status === 200,
-    'response time < 200ms': (r) => r.timings.duration < 200,
-  });
-
-  sleep(1); // Wait between iterations
-}
-
-// Teardown function (runs once after test)
-export function teardown(data) {
-  // Clean up
-}
-```
-
-Key concepts:
-
-- **Virtual Users (VUs)**: Simulated concurrent users
-- **Duration**: How long the test runs
-- **Checks**: Assertions that don't stop the test
-- **Thresholds**: Pass/fail criteria
-- **Metrics**: Response time, throughput, error rate
-
-## Types of Performance Tests
-
-Before testing MinimalBlog, let's understand the five main types of load tests and when to use each:
-
-```mermaid
-graph TD
-    A[Performance Testing Types] --> B[Smoke Test]
-    A --> C[Load Test]
-    A --> D[Stress Test]
-    A --> E[Spike Test]
-    A --> F[Soak Test]
-
-    B --> B1[1-2 VUs<br/>30s-1min<br/>Basic Functionality]
-    C --> C1[Normal Load<br/>5-15 minutes<br/>Verify SLAs]
-    D --> D1[Gradual Increase<br/>10-30 minutes<br/>Find Breaking Point]
-    E --> E1[Sudden Spike<br/>5-10 minutes<br/>Test Recovery]
-    F --> F1[Normal Load<br/>Hours/Days<br/>Memory Leaks]
-
-    style B fill:#90EE90
-    style C fill:#87CEEB
-    style D fill:#FFD700
-    style E fill:#FF6347
-    style F fill:#DDA0DD
-```
-
-### 1. Smoke Tests
-
-**Purpose**: Verify the system works under minimal load
-
-**When to use**:
-- After every code change
-- Before running more intensive tests
-- As a sanity check in CI/CD
-
-**Characteristics**:
-- 1-2 VUs (Virtual Users)
-- Short duration (30s-1min)
-- Tests basic functionality
-
-### 2. Load Tests
-
-**Purpose**: Assess performance under expected normal load
-
-**When to use**:
-- To establish baseline performance
-- To verify SLAs are met
-- Regular performance regression testing
-
-**Characteristics**:
-- Realistic number of users
-- Sustained load
-- Typical duration: 5-15 minutes
-
-### 3. Stress Tests
-
-**Purpose**: Find system breaking point
-
-**When to use**:
-- To understand capacity limits
-- To identify bottlenecks
-- Planning for scaling
-
-**Characteristics**:
-- Gradually increasing load
-- Push beyond normal capacity
-- Duration: 10-30 minutes
-
-### 4. Spike Tests
-
-**Purpose**: Test behavior under sudden traffic spikes
-
-**When to use**:
-- Preparing for product launches
-- Testing auto-scaling
-- Validating fallback behavior
-
-**Characteristics**:
-- Sudden large increase in load
-- Short spike duration
-- Total duration: 5-10 minutes
-
-### 5. Soak Tests (Endurance Tests)
-
-**Purpose**: Find memory leaks and degradation over time
-
-**When to use**:
-- Before major releases
-- Testing long-running services
-- Validating resource cleanup
-
-**Characteristics**:
-- Normal load levels
-- Extended duration (hours or days)
-- Monitor for degradation
-
-```mermaid
-graph LR
-    A[Start] --> B{Smoke Test Pass?}
-    B -->|No| C[Fix Issues]
-    C --> A
-    B -->|Yes| D{Load Test Pass?}
-    D -->|No| E[Optimize]
-    E --> D
-    D -->|Yes| F{Stress Test}
-    F --> G{Found Limit?}
-    G -->|Yes| H[Document Capacity]
-    G -->|No| I[Increase Load]
-    I --> F
-    H --> J{Spike Test Pass?}
-    J -->|No| K[Improve Resilience]
-    K --> J
-    J -->|Yes| L{Soak Test}
-    L --> M{Memory Stable?}
-    M -->|No| N[Fix Memory Leaks]
-    N --> L
-    M -->|Yes| O[Production Ready]
-
-    style O fill:#90EE90
-```
 
 ## Setting Up Your Test Environment
 
@@ -344,11 +35,58 @@ docker run -d -p 5000:8080 \
   scottgal/minimalblog:latest
 ```
 
-**Note**: For performance testing, build in Release mode:
+### Why Release Mode Matters for Performance Testing
+
+For accurate performance testing, **always build in Release mode**:
 
 ```bash
 dotnet run --configuration Release
 ```
+
+**Debug vs Release mode differences:**
+
+| Aspect | Debug Mode | Release Mode |
+|--------|------------|--------------|
+| **Optimizations** | Disabled | Full JIT optimizations enabled |
+| **Inlining** | Minimal | Aggressive method inlining |
+| **Dead code** | Preserved | Eliminated |
+| **Debug symbols** | Full PDB, extra metadata | Minimal or none |
+| **Assertions** | `Debug.Assert()` active | Compiled out |
+| **Bounds checking** | Extra safety checks | Optimized away where safe |
+| **Typical overhead** | 2-10x slower | Baseline performance |
+
+**Why Debug mode gives misleading results:**
+
+1. **No JIT optimizations**: The compiler preserves code structure for debugging rather than optimizing for speed
+2. **Extra instrumentation**: Debug builds include code for breakpoints, variable inspection, and stack traces
+3. **No inlining**: Methods aren't inlined, adding call overhead that won't exist in production
+4. **Assertions run**: `Debug.Assert()` statements execute, adding checks that production won't have
+5. **Different memory patterns**: Debug allocations include padding and tracking that affects GC behavior
+
+**When to use Debug mode for testing:**
+
+- **Troubleshooting failures**: When tests fail and you need detailed stack traces
+- **Investigating specific requests**: Attach a debugger to trace a single problematic request
+- **Verifying logging**: Ensure your logging captures the right information under load
+- **Initial development**: When writing new test scripts and verifying they hit the right endpoints
+
+**Recommended workflow:**
+
+```bash
+# 1. Develop and debug with Debug mode
+dotnet run                           # Debug mode (default)
+
+# 2. Validate functionality works
+k6 run --vus 1 --duration 10s smoke-test.js
+
+# 3. Switch to Release for actual performance testing
+dotnet run -c Release
+
+# 4. Run full load tests
+k6 run load-test.js
+```
+
+> **Rule of thumb**: If you're measuring performance, use Release. If you're fixing bugs, use Debug.
 
 ### 2. Prepare Test Data
 
@@ -1388,161 +1126,9 @@ graph TD
     G --> I[Block Merge]
     H --> J[Allow Merge]
 
-    style G fill:#ff6b6b
-    style H fill:#51cf66
+    style G stroke:#ff6b6b
+    style H stroke:#51cf66
 ```
-
-### GitHub Actions: Matrix Testing
-
-Test across multiple configurations:
-
-```yaml
-name: k6 Matrix Tests
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  matrix-test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        dotnet: ['8.0.x', '9.0.x']
-        test: ['smoke-test.js', 'load-test.js']
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET ${{ matrix.dotnet }}
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-
-      - name: Setup k6
-        uses: grafana/setup-k6-action@v1
-
-      - name: Build and Test
-        shell: bash
-        run: |
-          cd Mostlylucid.MinimalBlog.Demo
-          dotnet build -c Release
-          dotnet run -c Release &
-          APP_PID=$!
-
-          sleep 15
-
-          k6 run ../k6-tests/${{ matrix.test }}
-
-          kill $APP_PID || true
-```
-
-### GitHub Actions: Scheduled Performance Monitoring
-
-Create `.github/workflows/k6-scheduled.yml` for continuous monitoring:
-
-```yaml
-name: Scheduled Performance Monitoring
-
-on:
-  schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
-  workflow_dispatch:         # Manual trigger
-
-jobs:
-  performance-monitoring:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Setup k6
-        uses: grafana/setup-k6-action@v1
-
-      - name: Create test data
-        run: |
-          mkdir -p TestMarkdown
-          for i in {1..50}; do
-            echo "# Post $i" > TestMarkdown/post-$i.md
-            echo "<!-- category -- Monitor -->" >> TestMarkdown/post-$i.md
-            echo '<datetime class="hidden">2025-12-01T12:00</datetime>' >> TestMarkdown/post-$i.md
-            echo "Content for monitoring post $i" >> TestMarkdown/post-$i.md
-          done
-
-      - name: Build and Start
-        run: |
-          cd Mostlylucid.MinimalBlog.Demo
-          dotnet build -c Release
-          dotnet run -c Release &
-          echo $! > app.pid
-          timeout 60 bash -c 'until curl -sf http://localhost:5000; do sleep 2; done'
-
-      - name: Run Full Test Suite
-        id: tests
-        run: |
-          # Run all tests
-          k6 run --out json=smoke.json k6-tests/smoke-test.js
-          k6 run --out json=load.json k6-tests/load-test.js
-          k6 run --out json=stress.json k6-tests/stress-test.js
-
-          # Extract metrics
-          SMOKE_P95=$(jq '.metrics.http_req_duration.values["p(95)"]' smoke.json)
-          LOAD_P95=$(jq '.metrics.http_req_duration.values["p(95)"]' load.json)
-          STRESS_P95=$(jq '.metrics.http_req_duration.values["p(95)"]' stress.json)
-
-          echo "smoke_p95=${SMOKE_P95}" >> $GITHUB_OUTPUT
-          echo "load_p95=${LOAD_P95}" >> $GITHUB_OUTPUT
-          echo "stress_p95=${STRESS_P95}" >> $GITHUB_OUTPUT
-
-      - name: Create Issue if Performance Degraded
-        if: ${{ steps.tests.outputs.load_p95 > 500 }}
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: ' Performance Degradation Detected',
-              body: `## Performance Alert
-
-              Scheduled performance tests detected degraded performance:
-
-              - Smoke Test P95: ${{ steps.tests.outputs.smoke_p95 }}ms
-              - Load Test P95: ${{ steps.tests.outputs.load_p95 }}ms
-              - Stress Test P95: ${{ steps.tests.outputs.stress_p95 }}ms
-
-              Expected: < 300ms for normal load
-
-              [View Test Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
-              labels: ['performance', 'automated']
-            });
-
-      - name: Stop App
-        if: always()
-        run: |
-          [ -f Mostlylucid.MinimalBlog.Demo/app.pid ] && \
-            kill $(cat Mostlylucid.MinimalBlog.Demo/app.pid) || true
-
-      - name: Upload Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-results-${{ github.run_number }}
-          path: '*.json'
-```
-
-**This workflow:**
-- Runs automatically every 6 hours
-- Tests full suite (smoke, load, stress)
-- **Creates GitHub issue if performance degrades**
-- Can be triggered manually
-- Maintains historical results
 
 ### Best Practices for CI/CD k6 Testing
 
@@ -1594,43 +1180,6 @@ jobs:
      },
    };
    ```
-
-### GitLab CI Example
-
-Create `.gitlab-ci.yml`:
-
-```yaml
-stages:
-  - build
-  - test
-
-k6-tests:
-  stage: test
-  image: mcr.microsoft.com/dotnet/sdk:9.0
-  services:
-    - grafana/k6:latest
-
-  before_script:
-    - apt-get update
-    - apt-get install -y curl gnupg
-    - curl -fsSL https://dl.k6.io/key.gpg | gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
-    - echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | tee /etc/apt/sources.list.d/k6.list
-    - apt-get update
-    - apt-get install k6
-
-  script:
-    - cd Mostlylucid.MinimalBlog.Demo
-    - dotnet run --configuration Release &
-    - sleep 10
-    - k6 run ../k6-tests/smoke-test.js
-    - k6 run ../k6-tests/load-test.js
-
-  artifacts:
-    when: always
-    paths:
-      - "*.json"
-      - "*.html"
-```
 
 ## Monitoring k6 Tests with Grafana
 
@@ -2012,8 +1561,8 @@ flowchart LR
     L -->|Yes| M[Document & Deploy]
     L -->|No| I
 
-    style M fill:#51cf66
-    style I fill:#FFD700
+    style M stroke:#51cf66
+    style I stroke:#FFD700
 ```
 
 **Step 1: Baseline without load**
@@ -2067,7 +1616,7 @@ dottrace report profile-load.dtt --output=report.html
 ```
 Method                                    Total Time    Self Time    Calls
 -----------------------------------------------------------------------
-MarkdownBlogService.GetAllPosts()         450ms        5ms          100
+ MarkdownBlogService.GetAllPosts()         450ms        5ms          100
   ├─ LoadAllPosts()                       420ms        10ms         10
   │   ├─ ParseFile()                      400ms        20ms         100
   │   │   ├─ Markdown.Parse()             250ms        250ms        100   HOTSPOT
@@ -2157,7 +1706,7 @@ dotmemory compare snapshot-start.dmw snapshot-after.dmw --save-to=comparison.htm
 ```
 Object Type                      Start    Load     After    Growth
 -------------------------------------------------------------------
-System.String                    5 MB     45 MB    15 MB    +10 MB  
+System.String                    5 MB     45 MB    15 MB    +10 MB
 BlogPost[]                       2 MB     2 MB     2 MB     0 MB    PASS
 MarkdownDocument                 0 MB     8 MB     0 MB     0 MB    - (GC'd)
 Dictionary<string, BlogPost>     1 MB     1 MB     1 MB     0 MB    PASS
@@ -2308,175 +1857,6 @@ chmod +x profile-under-load.sh
 ./profile-under-load.sh
 ```
 
-### Interpreting Combined Results
-
-#### Example: Slow Response Times
-
-**k6 shows:**
-```
-http_req_duration..............: avg=450ms p(95)=850ms p(99)=1.2s
-```
-
-**dotTrace shows:**
-```
-MarkdownBlogService.ParseFile()   : 350ms (77% of total time)
-  └─ Markdown.Parse()             : 280ms (62% of total time)  
-```
-
-**Action:** Optimize or cache Markdown.Parse() results more aggressively.
-
-#### Example: Memory Growing Over Time
-
-**k6 soak test shows:**
-```
-Iteration 1-100:    avg=180ms
-Iteration 500-600:  avg=250ms   degrading
-Iteration 900-1000: avg=380ms   severely degraded
-```
-
-**dotMemory shows:**
-```
-Gen 2 Collections: 45 (high!)
-String objects: 250 MB (growing)
-Cache size: 150 MB (should be ~50 MB)
-```
-
-**Action:** Fix memory leak, improve cache eviction policy.
-
-### Real-World Example: Optimizing MinimalBlog
-
-Let's walk through a complete optimization cycle:
-
-#### Before Optimization
-
-**k6 test results:**
-```
-http_req_duration..............: avg=420ms p(95)=780ms
-http_reqs......................: 142/s
-```
-
-**dotTrace profile shows:**
-```
-ParseFile() calls Regex.Match() twice for same content
-Each regex match takes ~40ms
-```
-
-#### Optimization Applied
-
-```csharp
-// Before: Multiple regex matches
-var categoryMatch = CategoryRegex().Match(markdown);
-var dateMatch = DateTimeRegex().Match(markdown);
-
-// After: Cache compiled regexes, match once
-[GeneratedRegex(@"<!--\s*category\s*--\s*(.+?)\s*-->|<datetime[^>]*>(.+?)</datetime>",
-    RegexOptions.IgnoreCase | RegexOptions.Compiled)]
-private static partial Regex MetadataRegex();
-
-var matches = MetadataRegex().Matches(markdown);
-```
-
-#### After Optimization
-
-**k6 test results:**
-```
-http_req_duration..............: avg=180ms p(95)=320ms  - 57% faster
-http_reqs......................: 285/s                  - 2x throughput
-```
-
-**dotTrace profile shows:**
-```
-ParseFile() regex time reduced from 80ms to 25ms PASS
-```
-
-### GitHub Actions Integration with Profiling
-
-Add profiling to your CI/CD:
-
-```yaml
-name: Performance Profile on PR
-
-on:
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  profile:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Install profiling tools
-        run: |
-          dotnet tool install --global dotnet-trace
-          dotnet tool install --global dotnet-counters
-
-      - name: Setup k6
-        uses: grafana/setup-k6-action@v1
-
-      - name: Build and Profile
-        run: |
-          cd Mostlylucid.MinimalBlog.Demo
-          dotnet build -c Release
-          dotnet run -c Release &
-          APP_PID=$!
-
-          timeout 60 bash -c 'until curl -sf http://localhost:5000; do sleep 2; done'
-
-          # Start profiling
-          dotnet-trace collect -p $APP_PID --format speedscope -o trace.json &
-          TRACE_PID=$!
-
-          # Run load test
-          cd ..
-          k6 run --duration 30s --vus 10 k6-tests/load-test.js
-
-          # Stop profiling
-          kill -SIGINT $TRACE_PID
-          wait $TRACE_PID
-
-          kill $APP_PID
-
-      - name: Upload Profile
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-profile
-          path: |
-            Mostlylucid.MinimalBlog.Demo/trace.json
-          retention-days: 30
-
-      - name: Comment PR with Profile Link
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = `## Profiling: Performance Profile
-
-            Performance profile captured during k6 load test.
-
-            **View profile:**
-            1. Download trace.json from [artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            2. Upload to https://www.speedscope.app/
-
-            **Quick analysis tips:**
-            - Look for wide bars in flame graph (hotspots)
-            - Check Left Heavy view for total time spent
-            - Compare with baseline from main branch
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-```
-
 ### Best Practices: k6 + Profiling
 
 1. **Always profile under realistic load**
@@ -2516,206 +1896,9 @@ jobs:
 | **dotnet-dump** | Memory dumps | Free | Post-mortem analysis |
 | **PerfView** | Advanced profiling | Free | Deep Windows profiling |
 
-### Key Takeaways
-
-- k6 identifies **slow endpoints** and **performance thresholds**
-- Profilers identify **exact code** causing slowness
-- Combine both for **complete performance picture**
-- Profile under **realistic k6 load**, not idle
-- Focus on **hot paths** shown in profiler
-- **Measure improvement** with k6 after fixes
-- **Automate profiling** in CI/CD for critical paths
-
-By combining k6 load testing with dotTrace/dotMemory profiling, you get complete visibility into MinimalBlog's performance, from high-level metrics down to individual method calls and memory allocations.
-
-## Why k6 and Not...?
-
-With so many load testing tools available, why should you choose k6 for testing MinimalBlog? Let's compare k6 with popular alternatives:
-
-### k6 vs Apache JMeter
-
-**Apache JMeter** is the veteran of load testing tools (since 1999).
-
-| Feature | k6 | JMeter |
-|---------|----|---------|
-| **Installation** | Single binary, no dependencies | Requires Java, heavier install |
-| **Test Definition** | JavaScript code | XML or GUI |
-| **Resource Usage** | Lightweight (Go) | Heavy (Java) |
-| **CI/CD Integration** | Excellent (CLI-first) | Requires plugins |
-| **Learning Curve** | Easy for developers | Steeper, GUI-focused |
-| **Protocol Support** | HTTP, WebSockets, gRPC | Broader (FTP, JDBC, SMTP, etc.) |
-
-**When to use JMeter instead:**
-- Need GUI for non-technical testers
-- Testing protocols beyond HTTP (JDBC, LDAP, SOAP)
-- Already have JMeter expertise in team
-- Need extensive plugin ecosystem
-
-**Why k6 is better for MinimalBlog:**
-- Faster to write tests (JavaScript vs XML)
-- Lighter resource footprint
-- Better CI/CD integration
-- More modern developer experience
-
-### k6 vs Locust
-
-**Locust** is a Python-based load testing tool, popular in Python shops.
-
-| Feature | k6 | Locust |
-|---------|----|---------|
-| **Language** | JavaScript | Python |
-| **Performance** | Very fast (Go runtime) | Slower (Python GIL) |
-| **Ease of Use** | Simple JavaScript | Pythonic, easy |
-| **Distributed Testing** | k6 Cloud (paid) | Built-in (free) |
-| **Web UI** | Limited | Excellent real-time UI |
-| **Metrics Export** | Many formats | CSV, web UI |
-
-**When to use Locust instead:**
-- Python-first team
-- Need free distributed testing
-- Want real-time web UI during tests
-- Complex Python logic in tests
-
-**Why k6 is better for MinimalBlog:**
-- Better performance for accurate metrics
-- JavaScript more familiar for web developers
-- Cleaner threshold/assertion syntax
-- Better Prometheus/Grafana integration
-
-### k6 vs Gatling
-
-**Gatling** is a Scala-based tool with excellent reporting.
-
-| Feature | k6 | Gatling |
-|---------|----|---------|
-| **Language** | JavaScript | Scala/Java |
-| **Reports** | Basic (+ extensions) | Beautiful built-in HTML reports |
-| **Learning Curve** | Easy | Moderate (Scala DSL) |
-| **Performance** | Excellent | Excellent |
-| **Open Source** | Fully open | Open with enterprise add-ons |
-| **Cloud Service** | k6 Cloud | Gatling Enterprise |
-
-**When to use Gatling instead:**
-- JVM/Scala expertise in team
-- Need stunning built-in reports
-- Testing complex HTTP scenarios
-- Enterprise support requirements
-
-**Why k6 is better for MinimalBlog:**
-- JavaScript is more accessible
-- Simpler setup and execution
-- Better for quick CI/CD checks
-- More straightforward for simple HTTP testing
-
-### k6 vs Artillery
-
-**Artillery** is another JavaScript load testing tool.
-
-| Feature | k6 | Artillery |
-|---------|----|---------|
-| **Test Definition** | JavaScript code | YAML + JS hooks |
-| **Performance** | Faster (Go) | Slower (Node.js) |
-| **Ease of Use** | Code-based | YAML config-based |
-| **Built for** | Load testing | Load + functional testing |
-| **Assertions** | Excellent thresholds | Basic expectations |
-| **Extensibility** | Extensions | Plugins |
-
-**When to use Artillery instead:**
-- Prefer YAML over code
-- Need Socket.io testing
-- Want combined load + functional tests
-- Already using Node.js ecosystem
-
-**Why k6 is better for MinimalBlog:**
-- More precise metrics (Go vs Node.js)
-- Better threshold system
-- Cleaner JavaScript API
-- More mature and stable
-
-### k6 vs wrk/wrk2
-
-**wrk** is a lightweight HTTP benchmarking tool.
-
-| Feature | k6 | wrk |
-|---------|----|---------|
-| **Ease of Use** | High-level API | Low-level C + Lua |
-| **Scenarios** | Rich scenario support | Basic HTTP only |
-| **Metrics** | Comprehensive | Basic |
-| **Scripting** | JavaScript | Lua |
-| **Use Case** | Full load testing | Quick benchmarks |
-
-**When to use wrk instead:**
-- Need absolute minimal overhead
-- Quick one-off benchmarks
-- Testing raw HTTP performance
-- Low-level protocol testing
-
-**Why k6 is better for MinimalBlog:**
-- Much easier to write tests
-- Better reporting and metrics
-- Scenario support (ramp-up, stages)
-- CI/CD friendly
-
-### k6 vs Playwright/Cypress (Browser-Based)
-
-**Playwright** and **Cypress** are browser automation tools sometimes used for load testing.
-
-| Feature | k6 | Playwright/Cypress |
-|---------|----|---------|
-| **Approach** | Protocol-level HTTP | Real browser |
-| **Performance** | Thousands of VUs | Tens of browsers |
-| **Resource Usage** | Lightweight | Heavy (browsers) |
-| **JavaScript Execution** | No | Yes |
-| **Primary Use Case** | Load testing | E2E functional testing |
-
-**When to use Playwright/Cypress instead:**
-- Need to test JavaScript execution
-- Must verify browser rendering
-- Testing complex SPAs
-- Functional E2E testing
-
-**Why k6 is better for MinimalBlog:**
-- MinimalBlog has no JavaScript to test
-- Need to simulate 100+ concurrent users
-- Protocol-level testing sufficient
-- Much more efficient resource usage
-
-### Summary: k6's Sweet Spot
-
-**Choose k6 for MinimalBlog when you want:**
-
-- Fast, accurate load testing
-- Developer-friendly JavaScript API
-- Excellent CI/CD integration
-- Protocol-level HTTP testing (no browser needed)
-- Rich scenario support (smoke, load, stress, spike, soak)
-- Modern tooling with good ecosystem
-- Lightweight resource usage
-
-**k6 is perfect for:**
-- APIs and web services
-- Server-side rendered apps (like MinimalBlog)
-- CI/CD performance gates
-- Developer-driven performance testing
-- Cloud-native applications
-
-**Consider alternatives if you need:**
-- Browser-based testing (use [Playwright](https://playwright.dev/))
-- Extensive protocol support beyond HTTP (use [JMeter](https://jmeter.apache.org/))
-- Free distributed testing (use [Locust](https://locust.io/))
-- Beautiful built-in reports (use [Gatling](https://gatling.io/))
-- GUI for non-technical testers (use [JMeter](https://jmeter.apache.org/))
-
-For MinimalBlog specifically, k6 is the ideal choice because:
-1. It's a simple HTTP/HTML application (no complex JavaScript)
-2. We need to verify caching behavior (k6's metrics are perfect)
-3. We want CI/CD integration (k6 is CLI-first)
-4. We're developers comfortable with JavaScript
-5. We need accurate performance metrics under load
-
 ## Conclusion: Building Confidence Through Testing
 
-Load testing with k6 gives you confidence that MinimalBlog can handle real-world traffic. By the end of this guide, you should be able to:
+Load testing with k6 gives you confidence that MinimalBlog can handle real-world traffic. By the end of this two-part guide, you should be able to:
 
 - Install k6 on any platform (Windows, Mac, Linux)
 - Write and run different types of performance tests
@@ -2746,15 +1929,15 @@ Through k6 testing, we can verify MinimalBlog's claims:
 
 ### Next Steps
 
-Now that you know how to test MinimalBlog with k6:
+Now that you know how to test an ASP.NET with k6:
 
 1. Create a baseline performance profile for your setup
 2. Set up automated testing in your CI/CD pipeline
 3. Run soak tests before major releases
 4. Monitor production metrics and compare with test results
-5. Iterate: test → optimize → test again
+5. Iterate: test -> optimize -> test again
 
-Remember: **performance testing isn't a one-time activity**. As you add content, modify the code, or change hosting providers, re-run these tests to ensure MinimalBlog stays fast and reliable.
+Remember: **performance testing isn't a one-time activity**. As you add content, modify the code, or change hosting providers, re-run these tests to ensure your app stays fast and reliable.
 
 ## Resources
 
@@ -2793,14 +1976,6 @@ Remember: **performance testing isn't a one-time activity**. As you add content,
 - [Source code](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog) - Full source
 - [NuGet package](https://www.nuget.org/packages/Mostlylucid.MinimalBlog) - Install via NuGet
 - [Demo project](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog.Demo) - Working example
-
-### Alternative Load Testing Tools
-- [Apache JMeter](https://jmeter.apache.org/) - Java-based load testing
-- [Locust](https://locust.io/) - Python-based load testing
-- [Gatling](https://gatling.io/) - Scala-based load testing
-- [Artillery](https://www.artillery.io/) - Node.js load testing
-- [wrk](https://github.com/wg/wrk) - HTTP benchmarking tool
-- [Playwright](https://playwright.dev/) - Browser automation & testing
 
 ### ASP.NET Performance
 - [ASP.NET Core Performance](https://learn.microsoft.com/en-us/aspnet/core/performance/performance-best-practices) - Best practices

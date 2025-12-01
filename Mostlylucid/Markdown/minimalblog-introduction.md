@@ -221,10 +221,12 @@ The entire configuration file is just 14 lines:
 
 ## Using as a NuGet Package
 
+> As mentioned above it will SOON be available but not yet :)
+
 The blog is now available as a NuGet package, making it trivial to add to any ASP.NET Core application:
 
 ```bash
-dotnet add package Mostlylucid.MinimalBlog
+dotnet add package mostlylucid.MinimalBlog
 ```
 
 Then in your `Program.cs`:
