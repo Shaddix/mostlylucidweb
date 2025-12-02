@@ -18,11 +18,11 @@ The adjacency list is the simplest and most intuitive approach to storing hierar
 
 ## What is an Adjacency List?
 
-The adjacency list model is the approach most developers reach for first, and with good reason - it's intuitive. Each node simply stores a reference to its parent. If you've ever drawn a family tree, you've already understood this pattern.
+The adjacency list model (a term coined by [Joe Celko](https://www.amazon.com/Hierarchies-Smarties-Kaufmann-Management-Systems/dp/0123877334)) is the approach most developers reach for first, and with good reason - it's intuitive. Each node simply stores a reference to its parent. If you've ever drawn a family tree, you've already understood this pattern.
 
 The key characteristic: **each row only knows about its immediate parent**. To find grandparents or grandchildren, you need multiple lookups or recursive queries.
 
-This is the most commonly documented pattern and is well supported by [EF Core's self-referencing relationships](https://learn.microsoft.com/en-us/ef/core/modeling/relationships/self-referencing).
+This is the most commonly documented pattern and is well supported by [EF Core's self-referencing relationships](https://learn.microsoft.com/en-us/ef/core/modeling/relationships).
 
 [TOC]
 
@@ -198,7 +198,7 @@ public async Task<List<Comment>> GetChildrenAsync(int commentId, CancellationTok
 
 Here's where adjacency lists show their weakness. Without recursive queries, you'd have to do multiple round trips: get parent, get parent's parent, get grandparent... and so on.
 
-Thankfully, PostgreSQL's [recursive CTEs](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-RECURSIVE) come to the rescue:
+Thankfully, PostgreSQL's [recursive CTEs (WITH RECURSIVE)](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-RECURSIVE) come to the rescue:
 
 ```csharp
 public async Task<List<Comment>> GetAncestorsAsync(int commentId, CancellationToken ct = default)

@@ -18,7 +18,7 @@ Closure tables precompute and store every ancestor-descendant relationship, trad
 
 ## What is a Closure Table?
 
-A Closure Table is a separate table that **precomputes and stores every ancestor-descendant relationship** in your hierarchy. Instead of figuring out "who are the ancestors of Comment 7?" at query time by traversing up the tree, we've already stored the answer: rows that say (1, 7), (3, 7), (7, 7) meaning "Comments 1, 3, and 7 are all ancestors of Comment 7" (with 7 being an ancestor of itself at depth 0).
+A Closure Table (also known as a "transitive closure" - see [Joe Celko's Trees and Hierarchies in SQL](https://www.amazon.com/Hierarchies-Smarties-Kaufmann-Management-Systems/dp/0123877334) for a comprehensive treatment) is a separate table that **precomputes and stores every ancestor-descendant relationship** in your hierarchy. Instead of figuring out "who are the ancestors of Comment 7?" at query time by traversing up the tree, we've already stored the answer: rows that say (1, 7), (3, 7), (7, 7) meaning "Comments 1, 3, and 7 are all ancestors of Comment 7" (with 7 being an ancestor of itself at depth 0).
 
 The key insight: **we trade storage space and write complexity for blazing-fast reads**. Getting ancestors or descendants becomes a simple indexed lookup instead of a recursive traversal.
 
