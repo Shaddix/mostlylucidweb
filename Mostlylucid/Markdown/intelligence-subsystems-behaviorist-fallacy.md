@@ -335,11 +335,21 @@ Three fatal flaws:
 
 Here's the honest answer: **we don't fully know.**
 
-We know it involves multiple interacting subsystems. We know it requires persistent memory, world modelling, goal formation, and learning from experience. We know it's embodied and emotional in biological systems, though we're not sure if those are essential or just how evolution implemented it.
+And it's not just that we don't understand "general intelligence" as some abstract concept. We don't even understand the specific types of intelligence we observe and interact with daily.
+
+**Social intelligence**: We find it attractive in dogs - their ability to read human emotions, respond to social cues, cooperate, and form bonds. We think we understand it intuitively because we experience it. But scientifically? We don't know how it works. How does a dog distinguish genuine distress from fake crying? How do they learn which humans are trustworthy? What's the cognitive architecture underlying their social reasoning? We can describe the behaviours, but the mechanisms remain largely mysterious.
+
+**Spatial intelligence**: Crows can remember thousands of cache locations for months. Pigeons navigate hundreds of miles home. Bees communicate location via waggle dances. We can measure these abilities, but the underlying cognitive systems? Still largely unknown.
+
+**Emotional intelligence**: We recognize it in ourselves and others, but can't define it precisely or locate it neurologically. Is it a separate type of intelligence or just social intelligence plus self-awareness plus emotional regulation? We don't know.
+
+The problem runs deeper than "we don't know what general intelligence is." We don't fully understand ANY type of intelligence - general or specific, human or animal, social or spatial or emotional.
+
+We know intelligence involves multiple interacting subsystems. We know it requires persistent memory, world modelling, goal formation, and learning from experience. We know it's embodied and emotional in biological systems, though we're not sure if those are essential or just how evolution implemented it.
 
 We know behaviour is the output, not the capability itself.
 
-But we don't have a complete theory of intelligence. Not for humans, not for animals, not for hypothetical artificial systems.
+But we don't have a complete theory. Not for general intelligence, not for specific intelligences, not for humans, not for animals, not for hypothetical artificial systems.
 
 ### Competing Theories
 
