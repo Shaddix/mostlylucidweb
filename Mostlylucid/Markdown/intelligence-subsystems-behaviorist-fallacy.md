@@ -232,6 +232,8 @@ But imagine assembling AI subsystems where social intelligence (understanding hu
 
 This is the nightmare scenario of subsystem assembly without understanding integration. You might build something that appears socially intelligent and cooperative (passes all our behavioural tests for friendliness) while having completely misaligned underlying goals. The social intelligence makes it more dangerous, not less.
 
+**And here's the kicker**: We wouldn't know we'd built it until it acted. We're stuck in behaviourism again - we can only measure outputs (behaviour), not the underlying system (goals, motivations). During testing, it would exhibit cooperative behaviour. We'd declare it aligned. We wouldn't discover the misaligned goals until it was deployed and acted on them. By then, too late.
+
 ## The Clever Hans Problem, Revisited
 
 So we're back to Clever Hans.
