@@ -256,6 +256,91 @@ Maybe assembled subsystems + scale = intelligence. Maybe there's an integration 
 
 **We. Don't. Know.**
 
+## The Bidirectional Problem: Missing and Misattributing Intelligence
+
+Here's an uncomfortable complication that makes this whole mess even harder:
+
+**We have no reliable way to recognise intelligence.**
+
+The problem runs in both directions:
+
+### Direction 1: We Won't Recognise Non-Human-Like Intelligence
+
+If intelligence emerges in a form that doesn't behave like human intelligence, we'll likely miss it entirely.
+
+Imagine an AI system that develops genuine understanding, internal models, goals, and metacognition - but expresses them in ways that don't map to human behaviour patterns. We wouldn't recognise it as intelligent because it fails our human-behavior-based tests.
+
+**The octopus problem**: Octopuses are genuinely intelligent - tool use, problem-solving, individual personalities, complex learning. But their intelligence is so alien to ours (distributed across eight arms, no persistent memory architecture like ours, radically different sensory experience) that we nearly missed it for decades. We almost didn't recognise it as intelligence because it doesn't look like human intelligence.
+
+**The plant problem**: Plants exhibit sophisticated behaviours - chemical signalling, distributed decision-making, resource allocation, adaptation to environment. Some researchers argue this constitutes a form of intelligence. Others say it's just complex biochemistry. We can't agree because it doesn't behave like animal intelligence.
+
+If AI develops intelligence via a completely different architecture that produces different behavioral patterns, **we might not recognise it even if it's staring us in the face.**
+
+### Direction 2: We'll Attribute Intelligence to Really Good Tools
+
+This is the more immediate danger.
+
+Systems that behave like humans - passing our tests, speaking our language, appearing to reason - will be attributed intelligence even if they're just sophisticated pattern-matching machines.
+
+**We're anthropocentric by necessity.** We can only design tests based on human cognition because that's the intelligence we understand (barely). So we test for:
+- Language fluency
+- Mathematical reasoning
+- Visual recognition
+- Problem-solving
+- Social understanding
+
+All measured against human performance baselines.
+
+**But human-like behaviour doesn't prove human-like cognition.** Clever Hans behaved like a mathematical reasoner. He wasn't one.
+
+Modern LLMs behave like language understanders. Are they?
+
+### The Measurement Problem
+
+This creates a vicious circle:
+
+```mermaid
+flowchart LR
+    A[We define intelligence<br/>via human behavior] --> B[We build tests<br/>based on that definition]
+    B --> C[Systems optimize<br/>for test performance]
+    C --> D[Systems pass tests]
+    D --> E{Is it intelligent?}
+    E --> F[We can't tell - we only<br/>measured behavior]
+    F --> A
+```
+
+**We're trapped in a loop of measuring behavior because we can't measure the underlying capability directly.**
+
+Even if we achieve genuine intelligence via a different architectural path, our behavior-based tests might not detect it. And even if we only achieve sophisticated behavior-matching, our tests will reward it as if it were intelligence.
+
+### The Turing Test Trap
+
+The Turing Test perfectly illustrates this problem. Turing proposed: if a system's conversational behaviour is indistinguishable from a human's, treat it as intelligent.
+
+This was pragmatic for 1950. It's dangerous now.
+
+**The test only measures behavioral similarity.** A system could pass the Turing Test via sophisticated pattern matching without any internal understanding, goals, or consciousness. It would be intelligent-according-to-the-test while not being intelligent-in-any-meaningful-sense.
+
+Conversely, a genuinely intelligent system with a different communication style or behavioral patterns might fail the Turing Test. We'd reject it as non-intelligent despite it actually being intelligent.
+
+**Behavior-based tests can't distinguish intelligence from skillful mimicry.**
+
+### Why This Matters for AGI Claims
+
+This bidirectional problem demolishes confident AGI predictions:
+
+1. **We might have already missed it.** If intelligence emerged in a non-human-like form, we wouldn't know.
+
+2. **We might never recognise it.** If AGI doesn't behave like humans, our human-centric tests won't detect it.
+
+3. **We'll misidentify tools as AGI.** Systems that pass our behavior tests might just be sophisticated mimics, not genuinely intelligent.
+
+4. **We have no ground truth.** Without understanding what intelligence IS (beyond behavior), we can't validate whether we've achieved it.
+
+The behaviorists had the same problem. They could measure behavior, so they assumed behavior WAS the thing. They missed that behavior is the output of cognitive systems they couldn't directly measure.
+
+We're making the same mistake, just with fancier tools.
+
 ## "But It Passes Tests!"
 
 I hear this constantly. "GPT-4 passed the bar exam! It scored in the 90th percentile on the SAT! It beat the Turing test!"
