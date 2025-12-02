@@ -14,10 +14,8 @@ The approaches we'll cover:
 1. **Adjacency List** - The straightforward parent-child reference
 2. **Closure Table** - Precomputed ancestor-descendant relationships
 3. **Materialised Path** - Storing the full path as a string
-4. **Nested Sets** - Left and right boundary values (famously covered in [Joe Celko's "SQL for Smarties"](https://www.amazon.co.uk/Joe-Celkos-SQL-Smarties-Programming/dp/0128007613))
+4. **Nested Sets** - Left and right boundary values
 5. **PostgreSQL ltree** - Native hierarchical label trees
-
-In Part 2, we'll look at performance benchmarks and real-world implementation patterns for each approach.
 
 [TOC]
 
@@ -1695,3 +1693,7 @@ Whatever approach you choose, remember to:
 4. Test with realistic data volumes - a hundred nodes behaves very differently from a million
 
 The code examples in this article are available in the [mostlylucidweb repository](https://github.com/scottgal/mostlylucidweb), where you can see the closure table implementation in action for the comment system.
+
+## Coming in Part 2
+
+In the next article, we'll step away from EF Core and explore manual implementations using raw SQL and [Dapper](https://github.com/DapperLib/Dapper). Sometimes you need more control over the generated queries, or you're working with a codebase that doesn't use EF Core. We'll look at how to implement these same patterns with direct database access and compare the performance characteristics. Stay tuned!
