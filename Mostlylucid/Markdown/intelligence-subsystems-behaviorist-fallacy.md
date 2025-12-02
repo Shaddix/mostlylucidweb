@@ -427,21 +427,7 @@ The AGI that announces itself isn't the one you should worry about. The one that
 
 ## Conclusion: The Behaviour Trap
 
-Here's the core problem, stated plainly:
-
-**It's trivially easy to mistake increasingly sophisticated behaviour for intelligence.**
-
-Every year, AI systems exhibit more impressive behaviours:
-- Pass more exams
-- Write better code
-- Generate better images
-- Answer harder questions
-- Control more tools
-- Solve more problems
-
-The behaviours are real. The progress is real. The usefulness is real.
-
-But behaviour is not intelligence. It's the output of intelligence - or of something that mimics intelligence well enough to produce similar outputs.
+**It's trivially easy to mistake increasingly sophisticated behaviour for intelligence.** The behaviours are real, the progress is real, the usefulness is real. But behaviour is not intelligence - it's the output of intelligence, or of something that mimics it well enough.
 
 ### The Parallel
 
@@ -449,28 +435,14 @@ But behaviour is not intelligence. It's the output of intelligence - or of somet
 
 2020s: AI researchers see subsystem assembly and conclude "That's intelligence - just add more subsystems + scale!" Are they wrong? **We don't know yet.**
 
-The parallel is uncomfortable. The behaviourists were catastrophically wrong.
-
-### The Core Issue
-
-Every improvement in AI behaviour makes it harder to tell whether we're building intelligence or just building better behaviour-generators.
-
-GPT-3: coherent paragraphs. Impressive, but clearly not intelligent.
-GPT-4: passes professional exams. More impressive. Intelligent?
-GPT-5: will be even better. At what point does behaviour become intelligence?
-
-**We can't answer because we don't know what intelligence is.**
-
-That's why AGI timeline predictions are bollocks - they extrapolate behaviour improvements and assume sufficiently good behaviour = intelligence. The behaviourists made that assumption and were catastrophically wrong.
+The parallel is uncomfortable because the behaviourists were catastrophically wrong.
 
 ### The Bottom Line
 
-**We are not a year away from AGI.** We're building subsystems that produce intelligent behaviours. Real progress - but subsystems aren't systems without integration.
+**We are not a year away from AGI.** We're building subsystems that produce intelligent behaviours - real progress, but subsystems aren't systems without integration. And we can't tell if we've achieved integration because we can only measure behaviour, not mechanisms.
 
-The danger isn't AI becoming too intelligent. It's us mistaking behaviour for capability, trusting outputs we shouldn't, and hyping timelines based on benchmark improvements rather than understanding.
+The danger isn't AI becoming too intelligent. It's us mistaking behaviour for capability, trusting outputs we shouldn't, missing misaligned goals we can't test for, and declaring victory while actual intelligence stays hidden.
 
-We're not building AGI. We're building increasingly sophisticated Clever Hans systems - producing intelligent behaviours through mechanisms that might or might not constitute intelligence.
+We're building increasingly sophisticated Clever Hans systems. The behaviours will keep improving. That doesn't mean we're approaching intelligence - it might just mean we're getting better at mimicking it.
 
-The behaviours will keep improving. That doesn't mean we're approaching intelligence. It might just mean we're getting better at mimicking it.
-
-And until we can tell the difference, everything else is hype.
+Until we can tell the difference, everything else is hype.
