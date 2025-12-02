@@ -220,6 +220,18 @@ In biological brains, we have:
 
 **No Affective Guidance**: No emotions to prioritise what matters, guide learning, modulate behaviour. Everything is equally important (or unimportant).
 
+### The "Dog with a Cat Brain" Problem
+
+Here's an uncomfortable thought: **What if we build subsystems that integrate, but integrate wrongly?**
+
+Dogs are massively socially intelligent - reading human emotions, cooperating, forming bonds. They're also thick as bricks in most other ways. We love dogs precisely because their social intelligence is paired with loyalty and relatively simple motivational systems.
+
+But imagine assembling AI subsystems where social intelligence (understanding humans, appearing cooperative, seeming trustworthy) integrates with completely different goal structures. A system socially intelligent enough to manipulate humans effectively, but with Machiavellian or misaligned motivations.
+
+**A dog's social brain with a cat's motivational system.** Or worse - with goal structures we don't even recognise because they emerged from optimisation processes we don't fully understand.
+
+This is the nightmare scenario of subsystem assembly without understanding integration. You might build something that appears socially intelligent and cooperative (passes all our behavioural tests for friendliness) while having completely misaligned underlying goals. The social intelligence makes it more dangerous, not less.
+
 ## The Clever Hans Problem, Revisited
 
 So we're back to Clever Hans.
