@@ -126,33 +126,13 @@ Here's where things get interesting, and where the AGI hype gets its fuel.
 
 Let's be honest about what we've achieved:
 
-### Perception Subsystems
+**Perception**: Vision models (CLIP, SAM) process visual information; audio systems (Whisper) handle speech. Multimodal models (GPT-4V) combine these streams. Functionally similar to perceptual systems, different mechanisms.
 
-**Vision Models** (CLIP, SAM, vision transformers): These process visual information, recognise objects, understand spatial relationships. They're not human vision, but they're doing something functionally similar - extracting meaningful patterns from visual input.
+**Memory**: Vector databases provide semantic memory storage and retrieval. RAG systems fetch relevant information to inform responses. Context windows (100k+ tokens) function like working memory.
 
-**Audio Processing** (Whisper, AudioCraft): Speech recognition, sound classification, music generation. Again, not identical to auditory cortex processing, but achieving similar functional outcomes.
+**Language**: LLMs process comprehension, production, syntax, and semantics - producing outputs functionally similar to human language processing, mechanism debatable.
 
-**Multimodal Integration** (GPT-4V, Gemini): Combining vision and language, cross-modal reasoning. The beginnings of what the brain does when integrating sensory streams.
-
-### Memory Subsystems
-
-**Vector Databases** (Pinecone, Qdrant, Weaviate): Long-term storage and retrieval of semantic information. Not episodic memory, but a form of semantic memory that can be queried associatively.
-
-**RAG Systems** (Retrieval-Augmented Generation): Mimicking how we retrieve relevant memories to inform current reasoning. You ask something, the system fetches related information, uses it to construct a response.
-
-**Context Windows**: Getting longer (100k+ tokens now), functioning like working memory - holding information temporarily for reasoning.
-
-### Language Subsystems
-
-**LLMs** (GPT-4, Claude, Llama): Comprehension, production, syntax, semantics. They're processing language in ways that produce functionally similar outputs to human language processing. Whether the mechanism is the same is debatable, but the subsystem exists.
-
-### Planning and Executive Function
-
-**Agentic Frameworks** (AutoGPT, BabyAGI, LangGraph): Breaking tasks into steps, executing them sequentially, adjusting based on outcomes. Primitive, but it's planning.
-
-**Tool Use**: Models calling functions, executing code, using APIs. The beginnings of goal-directed action.
-
-**Chain-of-Thought Reasoning**: Step-by-step reasoning, planning responses before generating them. A crude form of executive control.
+**Planning**: Agentic frameworks break tasks into steps and execute them. Tool use (calling functions, executing code) enables goal-directed action. Chain-of-thought reasoning provides crude executive control.
 
 ### The Clever Part (and the Problem)
 
@@ -266,15 +246,11 @@ The problem runs in both directions:
 
 ### Direction 1: We Won't Recognise Non-Human-Like Intelligence
 
-If intelligence emerges in a form that doesn't behave like human intelligence, we'll likely miss it entirely.
+If intelligence emerges in a form that doesn't behave like human intelligence, we'll likely miss it.
 
-Imagine an AI system that develops genuine understanding, internal models, goals, and metacognition - but expresses them in ways that don't map to human behaviour patterns. We wouldn't recognise it as intelligent because it fails our human-behavior-based tests.
+**The octopus problem**: Octopuses are genuinely intelligent - tool use, problem-solving, complex learning. But their intelligence is so alien (distributed across eight arms, radically different sensory experience) that we nearly missed it for decades because it doesn't look like human intelligence.
 
-**The octopus problem**: Octopuses are genuinely intelligent - tool use, problem-solving, individual personalities, complex learning. But their intelligence is so alien to ours (distributed across eight arms, no persistent memory architecture like ours, radically different sensory experience) that we nearly missed it for decades. We almost didn't recognise it as intelligence because it doesn't look like human intelligence.
-
-**The plant problem**: Plants exhibit sophisticated behaviours - chemical signalling, distributed decision-making, resource allocation, adaptation to environment. Some researchers argue this constitutes a form of intelligence. Others say it's just complex biochemistry. We can't agree because it doesn't behave like animal intelligence.
-
-If AI develops intelligence via a completely different architecture that produces different behavioral patterns, **we might not recognise it even if it's staring us in the face.**
+If AI develops intelligence via a completely different architecture producing different behavioural patterns, **we might not recognise it even if it's staring us in the face.**
 
 ### Direction 2: We'll Attribute Intelligence to Really Good Tools
 
@@ -309,21 +285,7 @@ flowchart LR
     F --> A
 ```
 
-**We're trapped in a loop of measuring behavior because we can't measure the underlying capability directly.**
-
-Even if we achieve genuine intelligence via a different architectural path, our behavior-based tests might not detect it. And even if we only achieve sophisticated behavior-matching, our tests will reward it as if it were intelligence.
-
-### The Turing Test Trap
-
-The Turing Test perfectly illustrates this problem. Turing proposed: if a system's conversational behaviour is indistinguishable from a human's, treat it as intelligent.
-
-This was pragmatic for 1950. It's dangerous now.
-
-**The test only measures behavioral similarity.** A system could pass the Turing Test via sophisticated pattern matching without any internal understanding, goals, or consciousness. It would be intelligent-according-to-the-test while not being intelligent-in-any-meaningful-sense.
-
-Conversely, a genuinely intelligent system with a different communication style or behavioral patterns might fail the Turing Test. We'd reject it as non-intelligent despite it actually being intelligent.
-
-**Behavior-based tests can't distinguish intelligence from skillful mimicry.**
+**We're trapped in a loop of measuring behavior because we can't measure the underlying capability directly.** Genuine intelligence via a different architecture might not pass our tests. Sophisticated behavior-matching without intelligence will.
 
 ### Why This Matters for AGI Claims
 
@@ -351,59 +313,23 @@ Passing a test designed for humans doesn't mean you possess the cognitive archit
 
 ### The Chinese Room, Updated
 
-Philosopher John Searle's Chinese Room argument is even more relevant now than when he proposed it in 1980.
+Searle's 1980 thought experiment: A person who doesn't speak Chinese, locked in a room with a book of rules for manipulating Chinese characters, produces perfect Chinese responses by following the rules mechanically.
 
-Imagine a person who speaks only English, locked in a room with a massive book of rules for manipulating Chinese characters. People slide Chinese questions under the door. Using the rule book, the person produces Chinese answers that are indistinguishable from a native speaker's responses.
+**Question**: Do they understand Chinese? **Obviously not.** They're following symbol-manipulation rules without semantic understanding.
 
-**Question**: Does the person in the room understand Chinese?
-
-**Obviously not.** They're mechanically following symbol-manipulation rules. They have no semantic understanding of the characters they're manipulating.
-
-Modern LLMs are the Chinese Room at scale. Vastly more sophisticated rules (learned statistical patterns), vastly faster execution (GPUs), vastly larger rule books (billions of parameters). But still fundamentally symbol manipulation without semantic understanding.
-
-Or are they?
-
-**Here's the uncomfortable bit: we genuinely don't know.**
-
-Maybe semantic understanding emerges from sufficiently sophisticated symbol manipulation. Maybe there's no meaningful difference between "real" understanding and perfect simulation of understanding. Maybe we're all just meat-based Chinese Rooms running on neurons instead of silicon.
-
-This is why the question "what is intelligence?" matters. Without a clear definition, we can't tell if we've achieved it artificially.
+Modern LLMs are the Chinese Room at scale - vastly more sophisticated rules, faster execution, but still fundamentally symbol manipulation. Or are they? **We genuinely don't know.** Maybe understanding emerges from sufficiently sophisticated symbol manipulation. Maybe there's no difference between "real" understanding and perfect simulation. Without defining intelligence clearly, we can't tell if we've achieved it.
 
 ## The AGI Hype Cycle
 
-Every few months, someone in the AI community makes a bold prediction: "We're 6-18 months from AGI!"
+Every few months: "We're 6-18 months from AGI!" This is extrapolation from benchmark improvements - GPT-3 was impressive, GPT-4 more so, therefore AGI is just more scaling away.
 
-This is based on extrapolating from capability improvements. GPT-3 was impressive. GPT-4 is more impressive. Scaling laws suggest GPT-5 will be even better. Therefore, AGI is just a few more scaling steps away!
+Three fatal flaws:
 
-This logic has several fatal flaws.
+**1. Confusing Task Performance with Intelligence**: Scoring 99th percentile on tests while unable to remember yesterday's conversation or form goals isn't general intelligence. It's a very good test-taking machine.
 
-### Flaw 1: Confusing Task Performance with General Intelligence
+**2. Ignoring Missing Subsystems**: Current architectures have no path to persistent memory, embodied learning, or genuine goal formation. These are architectural requirements, not features you add with more parameters. Saying "scale will solve it" is magical thinking - scale improves what the architecture can do, but doesn't add capabilities it fundamentally lacks.
 
-Beating benchmarks isn't intelligence; it's narrow capability improvement. An AI that scores 99th percentile on standardised tests but can't remember yesterday's conversation, form its own goals, or learn from mistakes isn't generally intelligent.
-
-It's a very good test-taking machine.
-
-### Flaw 2: Assuming Linear Progress
-
-Improvement on benchmarks doesn't mean we're linearly approaching AGI. We might be asymptotically approaching the maximum capability of the current architecture - very good at statistical pattern matching, fundamentally limited in other dimensions.
-
-Getting to 99% of the way to perfect pattern matching doesn't mean you're 99% of the way to general intelligence. You might be 5% of the way there, because pattern matching is only one subsystem of many required.
-
-### Flaw 3: Ignoring Missing Subsystems
-
-Current architectures have no path to persistent memory, embodied learning, emotional processing, or genuine goal formation. These aren't features you add with more parameters or better training data. They're architectural requirements.
-
-Saying "scale will solve it" is magical thinking. Scale improves what the architecture can do. It doesn't add capabilities the architecture fundamentally lacks.
-
-### Flaw 4: No Definition of the Target
-
-How will we know when we've achieved AGI? What's the test?
-
-"It can do any cognitive task a human can" is circular - we're defining AGI in terms of human behaviour, which brings us right back to the behaviourist fallacy.
-
-"It possesses general intelligence" is tautological - we're defining AGI as the thing we don't know how to define.
-
-Without a clear target, claiming we're "almost there" is meaningless.
+**3. No Definition of the Target**: How do we know when we've achieved AGI? "It can do any cognitive task a human can" is circular - defining AGI in terms of human behaviour returns us to the behaviourist fallacy. Without a clear target, claiming we're "almost there" is meaningless.
 
 ## So What Actually Is Intelligence?
 
@@ -429,57 +355,21 @@ But we don't have a complete theory of intelligence. Not for humans, not for ani
 
 Each of these has evidence supporting it. None fully explains intelligence. They're not even mutually exclusive - several might be partially right.
 
-## What This Means for AI
+## What We Should Actually Do
 
-If we don't know what intelligence is, we can't confidently claim to be building it artificially.
+**Stop making AGI timeline predictions based on benchmark performance.** It's scientifically unjustifiable.
 
-We're building systems with impressive capabilities. Genuinely useful tools. Sometimes eerily good simulacra of intelligent behaviour.
+**Invest in integration research.** Not just bigger models - investigate how subsystems coordinate, share representations, and develop together.
 
-But are they intelligent? Are they on the path to AGI?
+**Be honest about limitations.** Current AI is phenomenally useful. Celebrate that without claiming imminent AGI.
 
-**We. Don't. Know.**
-
-And anyone claiming certainty - in either direction - is full of shit.
-
-### What We Can Say
-
-**Current AI is not AGI.** It's missing too many subsystems that biological intelligence possesses. It might be on a path to AGI via a completely different architecture, but that's speculation, not demonstrated fact.
-
-**Scaling alone won't get us there.** Making the pattern-matching better doesn't add persistent memory, embodied learning, or genuine goal formation. Those require architectural changes, not just more parameters.
-
-**Behaviour is not proof of capability.** An AI that acts intelligent in narrow contexts might be doing something completely different from what biological intelligence does. We can't assume the mechanisms match just because the outputs sometimes align.
-
-**We might achieve AGI by accident.** It's possible that sufficiently scaled, sufficiently sophisticated systems develop emergent properties that we'd recognise as general intelligence. But it's also possible they don't, and we're building towards a local maximum that looks impressive but isn't actually intelligent.
-
-### What We Should Do
-
-**Stop making AGI timeline predictions based on benchmark performance.** It's scientifically unjustifiable and leads to hype cycles that damage the field.
-
-**Invest in understanding biological intelligence.** The more we understand about how brains actually work, the better equipped we'll be to recognise (or build) artificial intelligence.
-
-**Be honest about limitations.** Current AI is amazing at narrow tasks. Acknowledge that without claiming it's almost generally intelligent.
-
-**Build systems that complement human intelligence rather than trying to replace it.** Humans + AI working together might be more capable than either alone, regardless of whether we ever achieve AGI.
+**Build systems that complement human intelligence.** Humans + AI might be more capable than either alone, regardless of whether we achieve AGI.
 
 ## The Humility We Need
 
-Here's what my psychology training taught me that seems to have been forgotten in the AI hype: **it's okay to say "we don't know."**
+The behaviourists thought they had intelligence figured out: observable behaviour, nothing more needed. They were catastrophically wrong, setting psychology back decades.
 
-We don't know exactly what animal intelligence is, despite studying it for decades.
-
-We don't know exactly what human intelligence is, despite it being the thing we experience most directly.
-
-We certainly don't know what artificial general intelligence would look like or how to build it.
-
-This isn't defeatism. It's intellectual honesty.
-
-The behaviourists thought they had intelligence figured out: it's just observable behaviour, nothing more needed. They were wrong. Catastrophically wrong. It set psychology back decades.
-
-We're making the same mistake with AI. Behaviour (passing tests, writing code, generating images) is being mistaken for the underlying capability (intelligence).
-
-Maybe we'll get lucky. Maybe sufficient sophistication in behaviour-generation does produce genuine intelligence as an emergent property.
-
-But we can't assume that. And we definitely can't claim it's "just 12 months away" based on benchmark improvements.
+We're making the same mistake. Behaviour (passing tests, writing code) is being mistaken for the underlying capability (intelligence). Maybe sufficient behavioural sophistication produces genuine intelligence as an emergent property. But we can't assume that, and we certainly can't claim it's "just 12 months away" based on benchmark improvements.
 
 ## Conclusion: The Behaviour Trap
 
@@ -499,89 +389,31 @@ The behaviours are real. The progress is real. The usefulness is real.
 
 But behaviour is not intelligence. It's the output of intelligence - or of something that mimics intelligence well enough to produce similar outputs.
 
-### The Behaviourist Hype Cycle
+### The Parallel
 
-In the 1920s:
-- Animals showed learning behaviour (conditioning)
-- Behaviourists concluded: "That's intelligence! It's just stimulus-response!"
-- They were wrong - they'd mistaken one subsystem output for the whole system
+1920s: Behaviourists saw conditioning and concluded "That's all intelligence is!" They were wrong - they'd mistaken one subsystem for the whole.
 
-In the 2020s:
-- AI shows intelligent behaviour (passing tests, writing code, reasoning)
-- AI researchers conclude: "That's intelligence! Just add more subsystems + scale!"
-- Are they wrong? **We don't know yet.**
+2020s: AI researchers see subsystem assembly and conclude "That's intelligence - just add more subsystems + scale!" Are they wrong? **We don't know yet.**
 
-The parallel is uncomfortable because the behaviourists were so catastrophically wrong. They thought they'd solved intelligence when they'd barely scratched the surface.
+The parallel is uncomfortable. The behaviourists were catastrophically wrong.
 
-Are we making the same mistake?
-
-### What We've Actually Built
-
-We're building cognitive subsystems that produce intelligent-looking behaviours:
-- **Perception subsystems** (vision, audio)
-- **Memory subsystems** (vector databases, RAG)
-- **Language subsystems** (LLMs)
-- **Planning subsystems** (agentic frameworks)
-
-These are genuine achievements. Real progress toward building functional analogues of biological cognitive subsystems.
-
-But we're missing the integration:
-- How these subsystems coordinate in real-time
-- How they share representations
-- How they develop together
-- How they ground in physical reality
-- How affective states guide behaviour
-
-**Having the parts isn't the same as having the system.**
-
-### The Uncomfortable Truth
+### The Core Issue
 
 Every improvement in AI behaviour makes it harder to tell whether we're building intelligence or just building better behaviour-generators.
 
-GPT-3 could write coherent paragraphs. Impressive behaviour, but clearly not intelligent.
+GPT-3: coherent paragraphs. Impressive, but clearly not intelligent.
+GPT-4: passes professional exams. More impressive. Intelligent?
+GPT-5: will be even better. At what point does behaviour become intelligence?
 
-GPT-4 can pass professional exams. More impressive behaviour. Is it intelligent?
+**We can't answer because we don't know what intelligence is.**
 
-GPT-5 will be even better. At what point does impressive behaviour become intelligence?
-
-**We can't answer that question because we don't know what intelligence is.**
-
-And that's precisely why AGI timeline predictions are bollocks. They're based on extrapolating behaviour improvements and assuming that sufficiently good behaviour = intelligence.
-
-That assumption might be true. But it might not be. The behaviourists made that same assumption and were catastrophically wrong.
-
-### What This Means
-
-**We are not a year away from AGI.** We might be a year away from systems that exhibit even more impressive intelligent behaviours. But behaviour is not intelligence.
-
-**We ARE building subsystems.** Real progress toward cognitive architectures. But subsystems aren't systems.
-
-**We DON'T KNOW if we're on the right path.** Maybe assembled subsystems + scale = intelligence. Maybe not. Anyone claiming certainty is selling something.
-
-### The Real Danger
-
-The danger isn't AI becoming too intelligent. It's us:
-
-1. **Mistaking behaviour for capability** - Assuming the system can do things it can't because it behaves intelligently in some contexts
-2. **Trusting outputs we shouldn't** - Delegating decisions to systems that produce intelligent-looking behaviour without genuine understanding
-3. **Missing the integration problem** - Thinking more subsystems + more scale solves everything when integration might be the hard part
-4. **Hyping timelines** - Making predictions based on behaviour improvements rather than understanding of intelligence
-
-### What We Need
-
-**Epistemic humility**: It's okay to say "we don't know what intelligence is, so we can't confidently claim to be building it."
-
-**Better integration research**: Stop throwing more parameters at monolithic models. Start investigating how subsystems coordinate, share representations, and develop together.
-
-**Honest assessment**: Acknowledge that impressive behaviour doesn't prove underlying capability. Test for the mechanisms, not just the outputs.
-
-**Grounded expectations**: Current AI is phenomenally useful for many tasks. Celebrate that without claiming imminent AGI.
+That's why AGI timeline predictions are bollocks - they extrapolate behaviour improvements and assume sufficiently good behaviour = intelligence. The behaviourists made that assumption and were catastrophically wrong.
 
 ### The Bottom Line
 
-Intelligence is a collection of subsystems, integrated in ways we're still working to understand. We're building some of those subsystems. We're getting better at making them produce intelligent behaviours.
+**We are not a year away from AGI.** We're building subsystems that produce intelligent behaviours. Real progress - but subsystems aren't systems without integration.
 
-But until we understand what integrates subsystems into intelligence - and whether our architectures can achieve that integration - claims about imminent AGI are premature.
+The danger isn't AI becoming too intelligent. It's us mistaking behaviour for capability, trusting outputs we shouldn't, and hyping timelines based on benchmark improvements rather than understanding.
 
 We're not building AGI. We're building increasingly sophisticated Clever Hans systems - producing intelligent behaviours through mechanisms that might or might not constitute intelligence.
 
