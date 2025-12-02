@@ -18,7 +18,7 @@ PostgreSQL's ltree extension gives you materialised paths with database-native s
 
 ## What is ltree?
 
-`ltree` is a PostgreSQL extension that provides a native data type for hierarchical label paths. Think of it as [Materialised Path](/blog/efcore-hierarchical-data-path) with superpowers - the database understands the structure and provides optimised operators, functions, and GiST index support.
+[`ltree`](https://www.postgresql.org/docs/current/ltree.html) is a PostgreSQL extension that provides a native data type for hierarchical label paths. Think of it as [Materialised Path](/blog/efcore-hierarchical-data-path) with superpowers - the database understands the structure and provides optimised operators, functions, and GiST index support.
 
 Instead of treating the path as a dumb string and using LIKE queries, PostgreSQL can:
 - Use specialised operators (`@>` for "is ancestor of", `<@` for "is descendant of")

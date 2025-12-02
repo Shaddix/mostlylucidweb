@@ -18,7 +18,7 @@ Materialised paths store the complete ancestry as a delimited string - like `/1/
 
 ## What is a Materialised Path?
 
-The Materialised Path pattern stores the complete ancestry of each node as a delimited string - like a file path or postal address. Instead of storing just "my parent is node 5", we store "I am reached via nodes 1 → 3 → 5 → 7" directly in the row.
+The Materialised Path pattern (also called "Path Enumeration" in [Joe Celko's Trees and Hierarchies](https://www.amazon.com/Hierarchies-Smarties-Kaufmann-Management-Systems/dp/0123877334)) stores the complete ancestry of each node as a delimited string - like a file path or postal address. Instead of storing just "my parent is node 5", we store "I am reached via nodes 1 → 3 → 5 → 7" directly in the row.
 
 Think of it like storing the full URL instead of just the page name. The path `/blog/posts/2024/my-article` tells you exactly where you are in the hierarchy, no lookups needed.
 
@@ -584,7 +584,7 @@ sequenceDiagram
 
 ## Index Considerations
 
-The path index is critical. For PostgreSQL, consider using `text_pattern_ops`:
+The path index is critical. For PostgreSQL, consider using [`text_pattern_ops`](https://www.postgresql.org/docs/current/indexes-opclass.html), which enables efficient prefix LIKE queries in non-C locales:
 
 ```sql
 -- Standard B-tree index (works for LIKE 'prefix%')

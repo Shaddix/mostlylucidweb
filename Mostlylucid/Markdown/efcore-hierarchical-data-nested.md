@@ -18,7 +18,7 @@ Nested sets encode the entire tree structure into just two integers per node - L
 
 ## What are Nested Sets?
 
-Nested Sets (also called Modified Preorder Tree Traversal or MPTT) assigns each node two numbers: `Left` and `Right`. These numbers are assigned during a depth-first traversal of the tree, with Left assigned when entering a node and Right assigned when leaving.
+The [Nested Set model](https://en.wikipedia.org/wiki/Nested_set_model) (also called Modified Preorder Tree Traversal or MPTT), popularised by [Joe Celko](https://www.amazon.com/Hierarchies-Smarties-Kaufmann-Management-Systems/dp/0123877334), assigns each node two numbers: `Left` and `Right`. These numbers are assigned during a depth-first traversal of the tree, with Left assigned when entering a node and Right assigned when leaving.
 
 The magic property: **all descendants of a node have Left and Right values between the node's own Left and Right**. This transforms hierarchical queries into simple range queries.
 

@@ -5,11 +5,11 @@
 
 ## Introduction
 
-Hierarchical data is everywhere in software development: threaded comments, organisational charts, file systems, product categories, and forum discussions. The eternal question of "how do I store a tree in a relational database?" has haunted developers since the early days of SQL, and frankly, there's still no single answer that makes everyone happy.
+Hierarchical data is everywhere in software development: threaded comments, organisational charts, file systems, product categories, and forum discussions. The eternal question of "how do I store a tree in a relational database?" has haunted developers since the early days of SQL, and frankly, there's still no single answer that makes everyone happy. I [first wrote about this topic back in 2004](/blog/1188), and the fundamental challenges remain the same today.
 
 ### Why Hierarchies Are Hard in SQL
 
-Here's the fundamental problem: **relational databases think in sets, not trees**.
+Here's the fundamental problem: **relational databases think in sets, not trees**. As Joe Celko explains in his excellent book [Thinking in Sets](https://www.amazon.com/Joe-Celkos-Thinking-Sets-Management/dp/0123741378), SQL operates on whole tables, not individual rows.
 
 When you write a SQL query, the database engine operates on *sets of rows*. It's brilliant at operations like "find all orders over 100" or "join customers to their purchases" - these are set operations that fit naturally with how tables work. The result is always a flat set of rows.
 
@@ -19,11 +19,11 @@ But a hierarchy is inherently *recursive*. To find all descendants of a node, yo
 3. Repeat until you've traversed the entire subtree
 
 This recursive traversal doesn't map naturally to set operations. You can't express "give me all descendants at any depth" in a single, simple SQL statement without either:
-- Recursive CTEs (added to SQL:1999, but computationally expensive)
+- [Recursive CTEs](https://www.postgresql.org/docs/current/queries-with.html#QUERIES-WITH-RECURSIVE) (added to SQL:1999, but computationally expensive)
 - Multiple round trips to the database
 - Clever denormalisation that precomputes relationships
 
-Each approach in this series represents a different trade-off between write complexity, read complexity, and storage overhead. There's no free lunch - you're always trading one cost for another.
+Each approach in this series represents a different trade-off between write complexity, read complexity, and storage overhead. There's no free lunch - you're always trading one cost for another. For the definitive reference on this subject, see Joe Celko's [Trees and Hierarchies in SQL for Smarties](https://www.amazon.com/Hierarchies-Smarties-Kaufmann-Management-Systems/dp/0123877334), which covers all of these approaches in depth.
 
 [TOC]
 
