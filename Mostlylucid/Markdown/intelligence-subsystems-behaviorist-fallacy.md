@@ -1,7 +1,7 @@
-# We Don't Know What Intelligence Is (And That's Why AGI Claims Are Bollocks)
+# No we're likely not reaching AGI anytime soon: The Behaviourist Fallacy in AI Subsystem Development
 
 <!--category-- AI, Opinion, Psychology, Intelligence -->
-<datetime class="hidden">2025-12-02T14:30</datetime>
+<datetime class="hidden">2025-12-05T14:30</datetime>
 
 ## Introduction
 
@@ -146,11 +146,11 @@ flowchart TD
         BE --> BL[Language]
         BL --> BS[Social]
         BS --> BP
-        style BP fill:#90EE90
-        style BM fill:#90EE90
-        style BE fill:#FFD700
-        style BL fill:#90EE90
-        style BS fill:#FFB6C1
+        style BP stroke:#90EE90
+        style BM stroke:#90EE90
+        style BE stroke:#FFD700
+        style BL stroke:#90EE90
+        style BS stroke:#FFB6C1
     end
 
     subgraph Artificial["Current AI Systems"]
@@ -158,19 +158,19 @@ flowchart TD
         AM -.-> AE[Agentic Frameworks]
         AE -.-> AL[LLMs]
         AL -.-> AM
-        style AP fill:#90EE90
-        style AM fill:#90EE90
-        style AE fill:#FFD700
-        style AL fill:#90EE90
+        style AP stroke:#90EE90
+        style AM stroke:#90EE90
+        style AE stroke:#FFD700
+        style AL stroke:#90EE90
     end
 
     subgraph Legend
         L1[✓ Subsystem exists]
         L2[⚠ Subsystem emerging]
         L3[✗ Subsystem missing]
-        style L1 fill:#90EE90
-        style L2 fill:#FFD700
-        style L3 fill:#FFB6C1
+        style L1 stroke:#90EE90
+        style L2 stroke:#FFD700
+        style L3 stroke:#FFB6C1
     end
 ```
 

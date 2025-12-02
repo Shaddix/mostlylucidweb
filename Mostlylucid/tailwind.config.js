@@ -132,6 +132,43 @@ module.exports = {
                 DEFAULT: {
                     css: {
                         color: theme("colors.primary"),
+                        // Tighten up the spacing significantly
+                        p: {
+                            marginTop: theme("spacing.2"),
+                            marginBottom: theme("spacing.2"),
+                        },
+                        li: {
+                            marginTop: "0.125rem",
+                            marginBottom: "0.125rem",
+                        },
+                        "ul, ol": {
+                            marginTop: theme("spacing.2"),
+                            marginBottom: theme("spacing.2"),
+                        },
+                        "ul ul, ol ol, ul ol, ol ul": {
+                            marginTop: theme("spacing.1"),
+                            marginBottom: theme("spacing.1"),
+                        },
+                        "h2, h3, h4, h5, h6": {
+                            marginTop: theme("spacing.4"),
+                            marginBottom: theme("spacing.2"),
+                        },
+                        table: {
+                            marginTop: theme("spacing.3"),
+                            marginBottom: theme("spacing.3"),
+                        },
+                        "thead th": {
+                            paddingTop: theme("spacing.1"),
+                            paddingBottom: theme("spacing.1"),
+                        },
+                        "tbody td": {
+                            paddingTop: theme("spacing.1"),
+                            paddingBottom: theme("spacing.1"),
+                        },
+                        hr: {
+                            marginTop: theme("spacing.2"),
+                            marginBottom: theme("spacing.2"),
+                        },
                         a: {
                             fontWeight: theme("fontWeight.semibold"),
                             color: theme("colors.green"),

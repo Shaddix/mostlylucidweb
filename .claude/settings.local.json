@@ -10,7 +10,8 @@
       "Bash(fi)",
       "Bash(dotnet build:*)",
       "WebFetch(domain:www.rssboard.org)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

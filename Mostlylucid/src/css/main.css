@@ -29,6 +29,11 @@
     display: block;
     overflow-x: auto; /* Only the code scrolls horizontally when needed */
     padding: 1em;
+    line-height: 1.4; /* Tighter line spacing for code */
+}
+
+pre code, code.hljs {
+    line-height: 1.4 !important; /* Tighter line spacing for all code blocks */
 }
 
 /* Copy button positioning */
@@ -88,6 +93,12 @@
 
 .prose ul ul {
     padding-left: 1rem; /* Keeps indentation for nested lists if needed */
+}
+
+/* Tighten hr spacing in prose */
+.prose hr {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
 }
 
 

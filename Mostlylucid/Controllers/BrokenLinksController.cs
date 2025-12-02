@@ -321,6 +321,49 @@ public class BrokenLinksController : ControllerBase
     }
 
     /// <summary>
+    /// Report a broken image from the client
+    /// </summary>
+    [HttpPost("report-image")]
+    public async Task<IActionResult> ReportBrokenImage([FromBody] BrokenImageReport report, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(report.ImageUrl))
+        {
+            return BadRequest("imageUrl is required");
+        }
+
+        try
+        {
+            _logger.LogWarning("Broken image reported: {ImageUrl} on page {PageUrl}, alt: {Alt}",
+                report.ImageUrl, report.PageUrl, report.Alt);
+
+            // Register the broken image URL so it can be tracked/fixed
+            if (!string.IsNullOrEmpty(report.ImageUrl))
+            {
+                await _brokenLinkService.RegisterUrlsAsync(
+                    new List<string> { report.ImageUrl },
+                    report.PageUrl,
+                    cancellationToken);
+
+                // Mark it as broken immediately since we know it failed to load
+                var linkEntity = await _dbContext.BrokenLinks
+                    .FirstOrDefaultAsync(x => x.OriginalUrl == report.ImageUrl, cancellationToken);
+
+                if (linkEntity != null)
+                {
+                    await _brokenLinkService.UpdateLinkStatusAsync(linkEntity.Id, 404, true, "Image failed to load on client", cancellationToken);
+                }
+            }
+
+            return Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reporting broken image: {ImageUrl}", report.ImageUrl);
+            return StatusCode(500, "Error reporting broken image");
+        }
+    }
+
+    /// <summary>
     /// Manually trigger archive.org lookup for broken links (development only)
     /// </summary>
     [HttpPost("trigger-archive-lookup")]
@@ -381,3 +424,8 @@ public class BrokenLinksController : ControllerBase
         }
     }
 }
+
+/// <summary>
+/// Model for reporting broken images from the client
+/// </summary>
+public record BrokenImageReport(string ImageUrl, string? PageUrl, string? Alt);
