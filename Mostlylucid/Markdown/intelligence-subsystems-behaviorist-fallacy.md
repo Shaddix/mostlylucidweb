@@ -118,62 +118,143 @@ The modularity of intelligence becomes obvious when individual subsystems fail:
 
 Each of these demonstrates that intelligence isn't one thing. It's many systems working together, and when one breaks, the others keep functioning.
 
-## What Modern AI Actually Has (And Doesn't)
+## The Subsystems We're Actually Building
 
-Let's be brutally honest about what current "AI" systems - even the most advanced transformer models - actually possess.
+Here's where things get interesting, and where the AGI hype gets its fuel.
 
-### What They Have
+**We ARE building subsystems.** Not all the subsystems needed for intelligence, but genuine cognitive subsystems that map (roughly) to neuroanatomical ones.
 
-**Pattern Matching at Scale**: Transformers are bloody brilliant at finding statistical patterns in massive datasets. This enables impressive behaviour: writing code, answering questions, generating images, translating languages.
+Let's be honest about what we've achieved:
 
-**Associative Retrieval**: Given a prompt, they can pull up relevant statistical patterns from their training. This looks like knowledge retrieval and sometimes functions like it.
+### Perception Subsystems
 
-**Compositional Generation**: They can combine patterns in novel ways to produce outputs they've never seen in training. This looks creative and sometimes is.
+**Vision Models** (CLIP, SAM, vision transformers): These process visual information, recognise objects, understand spatial relationships. They're not human vision, but they're doing something functionally similar - extracting meaningful patterns from visual input.
 
-### What They Definitely Don't Have
+**Audio Processing** (Whisper, AudioCraft): Speech recognition, sound classification, music generation. Again, not identical to auditory cortex processing, but achieving similar functional outcomes.
 
-**Persistent Memory**: Every conversation starts fresh. There's no continuous experience, no accumulation of knowledge from interactions. Context windows are getting longer, but they're not memory - they're just bigger prompts.
+**Multimodal Integration** (GPT-4V, Gemini): Combining vision and language, cross-modal reasoning. The beginnings of what the brain does when integrating sensory streams.
 
-**Internal Models**: Transformers don't build models of the world. They have statistical associations between tokens, not causal understanding. They can parrot physics explanations without any representation of how gravity actually works.
+### Memory Subsystems
 
-**Goals or Motivation**: They optimise for next-token prediction during training. At inference, they're just computing probabilities. There's no "wanting" anything, no internal drive, no intention.
+**Vector Databases** (Pinecone, Qdrant, Weaviate): Long-term storage and retrieval of semantic information. Not episodic memory, but a form of semantic memory that can be queried associatively.
 
-**Self-Model**: They have no representation of themselves as an entity. No metacognition. No ability to reason about their own limitations or capabilities beyond statistical patterns in their training about "what AI systems typically can't do."
+**RAG Systems** (Retrieval-Augmented Generation): Mimicking how we retrieve relevant memories to inform current reasoning. You ask something, the system fetches related information, uses it to construct a response.
 
-**Developmental Arc**: They're trained once (or fine-tuned), then frozen. They don't learn from experience in deployment. They don't develop new capabilities over time. They don't mature.
+**Context Windows**: Getting longer (100k+ tokens now), functioning like working memory - holding information temporarily for reasoning.
 
-**Embodiment**: They have no connection to the physical world beyond text descriptions. No proprioception, no motor control, no feedback from interacting with reality.
+### Language Subsystems
 
-**Emotional States**: No valence, no arousal, no affective colouring of experience. Responses about emotions are statistical patterns about how humans write about emotions.
+**LLMs** (GPT-4, Claude, Llama): Comprehension, production, syntax, semantics. They're processing language in ways that produce functionally similar outputs to human language processing. Whether the mechanism is the same is debatable, but the subsystem exists.
 
-### The Clever Hans Problem, Again
+### Planning and Executive Function
 
-Modern LLMs are exhibiting Clever Hans behaviour at scale. They've learned to produce outputs that look intelligent by picking up on statistical patterns in human-generated text.
+**Agentic Frameworks** (AutoGPT, BabyAGI, LangGraph): Breaking tasks into steps, executing them sequentially, adjusting based on outcomes. Primitive, but it's planning.
 
-Ask GPT-4 to explain quantum mechanics, and it generates text that matches the statistical distribution of how physicists write about quantum mechanics. Impressive! But is it understanding quantum mechanics, or is it the world's most sophisticated autocomplete?
+**Tool Use**: Models calling functions, executing code, using APIs. The beginnings of goal-directed action.
 
-We genuinely don't know. And that's the problem.
+**Chain-of-Thought Reasoning**: Step-by-step reasoning, planning responses before generating them. A crude form of executive control.
 
-## The Subsystems We're Missing
+### The Clever Part (and the Problem)
 
-If intelligence is a collection of interacting subsystems, current AI is missing most of them:
+We're building these subsystems **separately**, then **composing them** into systems that look increasingly capable:
 
-| Subsystem | Humans | Animals | Current AI | Why It Matters |
-|-----------|--------|---------|------------|----------------|
-| **Persistent Memory** | ✓ | ✓ | ✗ | Can't learn from experience, no identity over time |
-| **World Modelling** | ✓ | ✓ | ✗ | No causal understanding, just correlations |
-| **Goal Formation** | ✓ | ✓ | ✗ | No internal motivation, no agency |
-| **Metacognition** | ✓ | Some | ✗ | Can't reason about own knowledge/limitations |
-| **Emotional Processing** | ✓ | ✓ | ✗ | No valence to guide decision-making |
-| **Social Cognition** | ✓ | ✓ | ✗ | No theory of mind, no real empathy |
-| **Embodied Interaction** | ✓ | ✓ | ✗ | No feedback from physical reality |
-| **Developmental Learning** | ✓ | ✓ | ✗ | Static after training, no maturation |
+```mermaid
+flowchart TD
+    subgraph Biological["Biological Intelligence"]
+        BP[Perception] --> BM[Memory]
+        BM --> BE[Executive]
+        BE --> BL[Language]
+        BL --> BS[Social]
+        BS --> BP
+        style BP fill:#90EE90
+        style BM fill:#90EE90
+        style BE fill:#FFD700
+        style BL fill:#90EE90
+        style BS fill:#FFB6C1
+    end
 
-Notice something? Current AI has basically zero of the subsystems that cognitive science identifies as core to biological intelligence.
+    subgraph Artificial["Current AI Systems"]
+        AP[Vision Models] -.-> AM[Vector DBs/RAG]
+        AM -.-> AE[Agentic Frameworks]
+        AE -.-> AL[LLMs]
+        AL -.-> AM
+        style AP fill:#90EE90
+        style AM fill:#90EE90
+        style AE fill:#FFD700
+        style AL fill:#90EE90
+    end
 
-What it does have - pattern matching and compositional generation - are impressive. Genuinely useful. Sometimes uncannily good at mimicking intelligent behaviour.
+    subgraph Legend
+        L1[✓ Subsystem exists]
+        L2[⚠ Subsystem emerging]
+        L3[✗ Subsystem missing]
+        style L1 fill:#90EE90
+        style L2 fill:#FFD700
+        style L3 fill:#FFB6C1
+    end
+```
 
-But they're not a mind. They're not even close.
+Look at that diagram. We have perception (✓). We have memory (✓). We have language (✓). We have rudimentary planning (⚠).
+
+**This is genuine progress.** We're not building nothing. We're building functional analogues to cognitive subsystems.
+
+### The Behaviourist Parallel
+
+But here's where the behaviourist hype comes in:
+
+In the 1920s, behaviourists saw conditioning and learning and thought: "That's it! That's all there is! Stimulus-response explains everything!"
+
+They were wrong. They'd found **one subsystem** (associative learning) and mistaken it for **the whole system**.
+
+Today, AI researchers see subsystem assembly and think: "That's it! Put enough subsystems together and you get intelligence! AGI is just more subsystems + more scale!"
+
+Maybe. But maybe not.
+
+## The Integration Problem (That Nobody's Solving)
+
+Having subsystems isn't the same as having intelligence. A pile of car parts isn't a car.
+
+The question isn't "do we have subsystems?" - we do. The question is: **what integrates them into a coherent cognitive system?**
+
+In biological brains, we have:
+
+**Continuous Operation**: Your subsystems are always running, always interacting. Perception feeds memory, memory informs perception, executive control modulates both. It's a continuous loop.
+
+**Shared Representations**: Information is encoded in ways that multiple subsystems can access and use. Your visual cortex's representation of a face is usable by your emotional system, your memory system, your social cognition system.
+
+**Embodied Feedback**: Subsystems are grounded in physical reality. You can test your world model by interacting with the world. Actions have consequences that feed back into perception.
+
+**Developmental Integration**: The subsystems develop together, learning to communicate and coordinate. A newborn's perception and motor control are uncoordinated; by age 2, they're integrated.
+
+**Emotional Valence**: Experiences have affective colouring that guides learning and decision-making. Not all memories are equal; emotionally significant ones are prioritised.
+
+### What Current AI Lacks
+
+**Continuous Integration**: We bolt subsystems together via APIs and prompts, not genuine neural integration. The vision model doesn't continuously inform the language model; we pipe outputs between them.
+
+**Shared Grounding**: Vector embeddings aren't shared representations. Each model has its own latent space. There's no common "language" between subsystems.
+
+**No Feedback Loops**: Can't test predictions against reality. Can't learn from mistakes in deployment. The systems are static after training.
+
+**No Development**: Subsystems are trained separately, then frozen. They don't learn to coordinate better over time. They don't mature together.
+
+**No Affective Guidance**: No emotions to prioritise what matters, guide learning, modulate behaviour. Everything is equally important (or unimportant).
+
+## The Clever Hans Problem, Revisited
+
+So we're back to Clever Hans.
+
+Hans exhibited mathematical behaviour (tapping the correct number). But the underlying capability (mathematical reasoning) didn't exist. He was using a completely different mechanism (reading human cues) to produce the same output.
+
+Modern AI exhibits intelligent behaviour across many subsystems. But does the underlying capability (intelligence) exist?
+
+**We're building subsystem components that produce intelligent-looking outputs. But are we building intelligence, or are we building elaborate Clever Hans at scale?**
+
+The uncomfortable answer: we don't know yet.
+
+Maybe assembled subsystems + scale = intelligence. Maybe there's an integration principle we're missing. Maybe consciousness or embodiment is essential. Maybe multiple realisability means the mechanism doesn't matter, only the functional outcome.
+
+**We. Don't. Know.**
 
 ## "But It Passes Tests!"
 
@@ -315,24 +396,110 @@ Maybe we'll get lucky. Maybe sufficient sophistication in behaviour-generation d
 
 But we can't assume that. And we definitely can't claim it's "just 12 months away" based on benchmark improvements.
 
-## Conclusion
+## Conclusion: The Behaviour Trap
 
-Intelligence is a collection of subsystems, interacting in ways we're still working to understand. It's not one thing. It's many things, working together.
+Here's the core problem, stated plainly:
 
-Current AI has some of those subsystems, simulated via completely different mechanisms. It's missing most of them entirely.
+**It's trivially easy to mistake increasingly sophisticated behaviour for intelligence.**
 
-That doesn't make AI useless. It's phenomenally useful for many tasks. But it's not intelligent in the way humans or animals are intelligent, and claiming otherwise confuses the impressive behaviour (outputs) with the sophisticated cognition (mechanisms).
+Every year, AI systems exhibit more impressive behaviours:
+- Pass more exams
+- Write better code
+- Generate better images
+- Answer harder questions
+- Control more tools
+- Solve more problems
 
-Until we understand what intelligence actually is - in humans, in animals, in any substrate - claims about imminent AGI are premature at best, intellectually dishonest at worst.
+The behaviours are real. The progress is real. The usefulness is real.
 
-So no, we are not a year away from AGI.
+But behaviour is not intelligence. It's the output of intelligence - or of something that mimics intelligence well enough to produce similar outputs.
 
-We're a year away from better behaviour-generating systems that might look more intelligent without necessarily being more intelligent.
+### The Behaviourist Hype Cycle
 
-And until we can tell the difference, we're not building AGI. We're building Clever Hans at scale.
+In the 1920s:
+- Animals showed learning behaviour (conditioning)
+- Behaviourists concluded: "That's intelligence! It's just stimulus-response!"
+- They were wrong - they'd mistaken one subsystem output for the whole system
 
-The real danger isn't AI becoming too intelligent. It's us mistaking sophisticated pattern-matching for thought, and making decisions based on that misunderstanding.
+In the 2020s:
+- AI shows intelligent behaviour (passing tests, writing code, reasoning)
+- AI researchers conclude: "That's intelligence! Just add more subsystems + scale!"
+- Are they wrong? **We don't know yet.**
 
-We need to solve the "what is intelligence?" question before we can meaningfully answer the "have we built it artificially?" question.
+The parallel is uncomfortable because the behaviourists were so catastrophically wrong. They thought they'd solved intelligence when they'd barely scratched the surface.
 
-Everything else is just hype.
+Are we making the same mistake?
+
+### What We've Actually Built
+
+We're building cognitive subsystems that produce intelligent-looking behaviours:
+- **Perception subsystems** (vision, audio)
+- **Memory subsystems** (vector databases, RAG)
+- **Language subsystems** (LLMs)
+- **Planning subsystems** (agentic frameworks)
+
+These are genuine achievements. Real progress toward building functional analogues of biological cognitive subsystems.
+
+But we're missing the integration:
+- How these subsystems coordinate in real-time
+- How they share representations
+- How they develop together
+- How they ground in physical reality
+- How affective states guide behaviour
+
+**Having the parts isn't the same as having the system.**
+
+### The Uncomfortable Truth
+
+Every improvement in AI behaviour makes it harder to tell whether we're building intelligence or just building better behaviour-generators.
+
+GPT-3 could write coherent paragraphs. Impressive behaviour, but clearly not intelligent.
+
+GPT-4 can pass professional exams. More impressive behaviour. Is it intelligent?
+
+GPT-5 will be even better. At what point does impressive behaviour become intelligence?
+
+**We can't answer that question because we don't know what intelligence is.**
+
+And that's precisely why AGI timeline predictions are bollocks. They're based on extrapolating behaviour improvements and assuming that sufficiently good behaviour = intelligence.
+
+That assumption might be true. But it might not be. The behaviourists made that same assumption and were catastrophically wrong.
+
+### What This Means
+
+**We are not a year away from AGI.** We might be a year away from systems that exhibit even more impressive intelligent behaviours. But behaviour is not intelligence.
+
+**We ARE building subsystems.** Real progress toward cognitive architectures. But subsystems aren't systems.
+
+**We DON'T KNOW if we're on the right path.** Maybe assembled subsystems + scale = intelligence. Maybe not. Anyone claiming certainty is selling something.
+
+### The Real Danger
+
+The danger isn't AI becoming too intelligent. It's us:
+
+1. **Mistaking behaviour for capability** - Assuming the system can do things it can't because it behaves intelligently in some contexts
+2. **Trusting outputs we shouldn't** - Delegating decisions to systems that produce intelligent-looking behaviour without genuine understanding
+3. **Missing the integration problem** - Thinking more subsystems + more scale solves everything when integration might be the hard part
+4. **Hyping timelines** - Making predictions based on behaviour improvements rather than understanding of intelligence
+
+### What We Need
+
+**Epistemic humility**: It's okay to say "we don't know what intelligence is, so we can't confidently claim to be building it."
+
+**Better integration research**: Stop throwing more parameters at monolithic models. Start investigating how subsystems coordinate, share representations, and develop together.
+
+**Honest assessment**: Acknowledge that impressive behaviour doesn't prove underlying capability. Test for the mechanisms, not just the outputs.
+
+**Grounded expectations**: Current AI is phenomenally useful for many tasks. Celebrate that without claiming imminent AGI.
+
+### The Bottom Line
+
+Intelligence is a collection of subsystems, integrated in ways we're still working to understand. We're building some of those subsystems. We're getting better at making them produce intelligent behaviours.
+
+But until we understand what integrates subsystems into intelligence - and whether our architectures can achieve that integration - claims about imminent AGI are premature.
+
+We're not building AGI. We're building increasingly sophisticated Clever Hans systems - producing intelligent behaviours through mechanisms that might or might not constitute intelligence.
+
+The behaviours will keep improving. That doesn't mean we're approaching intelligence. It might just mean we're getting better at mimicking it.
+
+And until we can tell the difference, everything else is hype.
