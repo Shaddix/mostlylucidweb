@@ -11,7 +11,20 @@
       "Bash(dotnet build:*)",
       "WebFetch(domain:www.rssboard.org)",
       "Bash(powershell:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:www.nuget.org)",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet nuget:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:www.mostlylucid.net)",
+      "Bash(dotnet list package:*)",
+      "Bash(dotnet list:*)",
+      "Bash(cat:*)",
+      "Bash(dir:*)",
+      "Bash(dotnet add:*)",
+      "Bash(del \"C:\\Blog\\mostlylucidweb\\Mostlylucid\\Helpers\\ParallelEphemeral.cs\")"
     ],
     "deny": [],
     "ask": []

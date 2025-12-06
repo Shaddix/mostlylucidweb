@@ -386,6 +386,8 @@ public class QdrantVectorStoreService : IVectorStoreService
         if (_client == null || !_config.Enabled)
             return;
 
+        await InitializeCollectionAsync(cancellationToken);
+
         try
         {
             // Update the payload for documents matching this slug
@@ -430,6 +432,8 @@ public class QdrantVectorStoreService : IVectorStoreService
     {
         if (_client == null || !_config.Enabled)
             return;
+
+        await InitializeCollectionAsync(cancellationToken);
 
         try
         {
