@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.Threading;
 
 namespace Mostlylucid.Helpers.Ephemeral;
 
@@ -8,11 +8,12 @@ namespace Mostlylucid.Helpers.Ephemeral;
 /// </summary>
 public sealed class SignalDispatcher : IAsyncDisposable
 {
-    private readonly ConcurrentDictionary<string, DispatchPolicy> _policies = new();
+    private readonly object _rulesLock = new();
+    private DispatchRule[] _rules = Array.Empty<DispatchRule>();
     private readonly EphemeralKeyedWorkCoordinator<SignalEvent, string> _coordinator;
     private readonly CancellationTokenSource _cts = new();
 
-    private record DispatchPolicy(Func<SignalEvent, Task> Handler);
+    private sealed record DispatchRule(string Pattern, Func<SignalEvent, Task> Handler);
 
     public SignalDispatcher(EphemeralOptions? coordinatorOptions = null)
     {
@@ -21,12 +22,12 @@ public sealed class SignalDispatcher : IAsyncDisposable
             evt => evt.Signal,
             async (evt, ct) =>
             {
-                foreach (var (pattern, policy) in _policies)
+                var rules = Volatile.Read(ref _rules);
+                foreach (var rule in rules)
                 {
-                    if (StringPatternMatcher.Matches(evt.Signal, pattern))
+                    if (StringPatternMatcher.Matches(evt.Signal, rule.Pattern))
                     {
-                        await policy.Handler(evt);
-                        return;
+                        await rule.Handler(evt);
                     }
                 }
             },
@@ -35,12 +36,45 @@ public sealed class SignalDispatcher : IAsyncDisposable
 
     /// <summary>
     /// Register or replace a handler for a signal pattern (supports '*' and '?').
+    /// Handlers are invoked in registration order when multiple patterns match.
     /// </summary>
     public void Register(string pattern, Func<SignalEvent, Task> handler)
     {
         if (string.IsNullOrWhiteSpace(pattern)) throw new ArgumentNullException(nameof(pattern));
         if (handler is null) throw new ArgumentNullException(nameof(handler));
-        _policies[pattern] = new DispatchPolicy(handler);
+        lock (_rulesLock)
+        {
+            // Replace existing pattern if present to keep order deterministic
+            var existing = _rules;
+            var replaced = false;
+            var next = new DispatchRule[existing.Length + 1];
+
+            for (var i = 0; i < existing.Length; i++)
+            {
+                if (!replaced && existing[i].Pattern == pattern)
+                {
+                    next[i] = new DispatchRule(pattern, handler);
+                    replaced = true;
+                }
+                else
+                {
+                    next[i] = existing[i];
+                }
+            }
+
+            if (!replaced)
+            {
+                next[existing.Length] = new DispatchRule(pattern, handler);
+            }
+
+            if (replaced)
+            {
+                // Shrink back to original length when we replaced
+                next = next[..existing.Length];
+            }
+
+            Volatile.Write(ref _rules, next);
+        }
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ internal sealed class EphemeralOperation : ISignalEmitter
 {
     private readonly SignalSink? _sink;
     private readonly Action<SignalEvent>? _onSignal;
+    private readonly Action<SignalRetractedEvent>? _onSignalRetracted;
     private readonly SignalConstraints? _constraints;
     internal List<string>? _signals;
 
@@ -29,11 +30,13 @@ internal sealed class EphemeralOperation : ISignalEmitter
     public EphemeralOperation(
         SignalSink? sink = null,
         Action<SignalEvent>? onSignal = null,
+        Action<SignalRetractedEvent>? onSignalRetracted = null,
         SignalConstraints? constraints = null,
         long? id = null)
     {
         _sink = sink;
         _onSignal = onSignal;
+        _onSignalRetracted = onSignalRetracted;
         _constraints = constraints;
         Id = id ?? EphemeralIdGenerator.NextId();
     }
@@ -90,9 +93,66 @@ internal sealed class EphemeralOperation : ISignalEmitter
         return true;
     }
 
+    /// <summary>
+    /// Remove a signal from this operation.
+    /// Returns true if the signal was found and removed.
+    /// </summary>
+    public bool Retract(string signal)
+    {
+        if (_signals is null) return false;
+        if (!_signals.Remove(signal)) return false;
+
+        NotifyRetracted(signal, wasPatternMatch: false, pattern: null);
+        return true;
+    }
+
+    /// <summary>
+    /// Remove all signals matching a pattern from this operation.
+    /// Returns the number of signals removed.
+    /// </summary>
+    public int RetractMatching(string pattern)
+    {
+        if (_signals is null) return 0;
+
+        var removed = new List<string>();
+        _signals.RemoveAll(s =>
+        {
+            if (StringPatternMatcher.Matches(s, pattern))
+            {
+                removed.Add(s);
+                return true;
+            }
+            return false;
+        });
+
+        foreach (var signal in removed)
+        {
+            NotifyRetracted(signal, wasPatternMatch: true, pattern: pattern);
+        }
+
+        return removed.Count;
+    }
+
+    private void NotifyRetracted(string signal, bool wasPatternMatch, string? pattern)
+    {
+        if (_onSignalRetracted is null) return;
+
+        var evt = new SignalRetractedEvent(signal, Id, Key, DateTimeOffset.UtcNow, wasPatternMatch, pattern);
+        try { _onSignalRetracted(evt); }
+        catch { /* Don't propagate callback exceptions */ }
+    }
+
+    /// <summary>
+    /// Check if this operation has a specific signal.
+    /// </summary>
+    public bool HasSignal(string signal) => _signals?.Contains(signal) == true;
+
     // ISignalEmitter implementation
     void ISignalEmitter.Emit(string signal) => Signal(signal);
     bool ISignalEmitter.EmitCaused(string signal, SignalPropagation? cause) => EmitCaused(signal, cause);
+    bool ISignalEmitter.Retract(string signal) => Retract(signal);
+    int ISignalEmitter.RetractMatching(string pattern) => RetractMatching(pattern);
+    bool ISignalEmitter.HasSignal(string signal) => HasSignal(signal);
 
     public EphemeralOperationSnapshot ToSnapshot() =>
         new(Id, Started, Completed, Key, IsFaulted: Error != null, Error, Duration, _signals, IsPinned);
@@ -105,6 +165,7 @@ internal sealed class EphemeralOperation<TResult> : ISignalEmitter
 {
     private readonly SignalSink? _sink;
     private readonly Action<SignalEvent>? _onSignal;
+    private readonly Action<SignalRetractedEvent>? _onSignalRetracted;
     private readonly SignalConstraints? _constraints;
     internal List<string>? _signals;
 
@@ -129,11 +190,13 @@ internal sealed class EphemeralOperation<TResult> : ISignalEmitter
     public EphemeralOperation(
         SignalSink? sink = null,
         Action<SignalEvent>? onSignal = null,
+        Action<SignalRetractedEvent>? onSignalRetracted = null,
         SignalConstraints? constraints = null,
         long? id = null)
     {
         _sink = sink;
         _onSignal = onSignal;
+        _onSignalRetracted = onSignalRetracted;
         _constraints = constraints;
         Id = id ?? EphemeralIdGenerator.NextId();
     }
@@ -192,9 +255,66 @@ internal sealed class EphemeralOperation<TResult> : ISignalEmitter
         return true;
     }
 
+    /// <summary>
+    /// Remove a signal from this operation.
+    /// Returns true if the signal was found and removed.
+    /// </summary>
+    public bool Retract(string signal)
+    {
+        if (_signals is null) return false;
+        if (!_signals.Remove(signal)) return false;
+
+        NotifyRetracted(signal, wasPatternMatch: false, pattern: null);
+        return true;
+    }
+
+    /// <summary>
+    /// Remove all signals matching a pattern from this operation.
+    /// Returns the number of signals removed.
+    /// </summary>
+    public int RetractMatching(string pattern)
+    {
+        if (_signals is null) return 0;
+
+        var removed = new List<string>();
+        _signals.RemoveAll(s =>
+        {
+            if (StringPatternMatcher.Matches(s, pattern))
+            {
+                removed.Add(s);
+                return true;
+            }
+            return false;
+        });
+
+        foreach (var signal in removed)
+        {
+            NotifyRetracted(signal, wasPatternMatch: true, pattern: pattern);
+        }
+
+        return removed.Count;
+    }
+
+    private void NotifyRetracted(string signal, bool wasPatternMatch, string? pattern)
+    {
+        if (_onSignalRetracted is null) return;
+
+        var evt = new SignalRetractedEvent(signal, Id, Key, DateTimeOffset.UtcNow, wasPatternMatch, pattern);
+        try { _onSignalRetracted(evt); }
+        catch { /* Don't propagate callback exceptions */ }
+    }
+
+    /// <summary>
+    /// Check if this operation has a specific signal.
+    /// </summary>
+    public bool HasSignal(string signal) => _signals?.Contains(signal) == true;
+
     // ISignalEmitter implementation
     void ISignalEmitter.Emit(string signal) => Signal(signal);
     bool ISignalEmitter.EmitCaused(string signal, SignalPropagation? cause) => EmitCaused(signal, cause);
+    bool ISignalEmitter.Retract(string signal) => Retract(signal);
+    int ISignalEmitter.RetractMatching(string pattern) => RetractMatching(pattern);
+    bool ISignalEmitter.HasSignal(string signal) => HasSignal(signal);
 
     public EphemeralOperationSnapshot<TResult> ToSnapshot() =>
         new(Id, Started, Completed, Key, IsFaulted: Error != null, Error, Duration, Result, HasResult, _signals, IsPinned);

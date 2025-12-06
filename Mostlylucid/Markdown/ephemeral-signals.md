@@ -13,10 +13,12 @@ The signal infrastructure lives in:
 
 | File | Purpose |
 |------|---------|
-| [Signals.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Signals.cs) | `SignalEvent`, `SignalPropagation`, `SignalConstraints`, `SignalSink`, `ISignalEmitter`, `AsyncSignalProcessor` |
-| [EphemeralOperation.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOperation.cs) | Signal emission from operations |
-| [EphemeralOptions.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOptions.cs) | Signal-reactive configuration (`CancelOnSignals`, `DeferOnSignals`, `OnSignalAsync`) |
+| [Signals.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Signals.cs) | `SignalEvent`, `SignalRetractedEvent`, `SignalPropagation`, `SignalConstraints`, `SignalSink`, `ISignalEmitter`, `AsyncSignalProcessor` |
+| [EphemeralOperation.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOperation.cs) | Signal emission and retraction from operations |
+| [EphemeralOptions.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOptions.cs) | Signal-reactive configuration (`CancelOnSignals`, `DeferOnSignals`, `OnSignal`, `OnSignalRetracted`) |
 | [StringPatternMatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/StringPatternMatcher.cs) | Glob-style pattern matching for signal filtering |
+| [SignalDispatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/SignalDispatcher.cs) | Async signal routing with pattern matching (supports `*`, `?`, comma lists, deterministic order) |
+| [Examples/SignalingHttpClient.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalingHttpClient.cs) | Sample fine-grained signal emission for HTTP calls |
 
 [TOC]
 
@@ -143,15 +145,22 @@ var circuitBreaker = Policy
 
 ---
 
-## Raising Signals
+## Raising and Retracting Signals
 
 Operations implement `ISignalEmitter`:
 
 ```csharp
 public interface ISignalEmitter
 {
+    // Emit signals
     void Emit(string signal);
     bool EmitCaused(string signal, SignalPropagation? cause);
+
+    // Retract (remove) signals
+    bool Retract(string signal);
+    int RetractMatching(string pattern);
+    bool HasSignal(string signal);
+
     long OperationId { get; }
     string? Key { get; }
 }
@@ -187,6 +196,155 @@ await coordinator.ProcessAsync(async (item, op, ct) =>
 ```
 
 Signals are just strings. Use simple names (`"rate-limit"`) or structured names (`"rate-limit:5000ms"`).
+Pattern filters use glob semantics (`*`, `?`) and support comma lists (`"error.*,timeout"`). Matching is deterministic and allocation-light via `StringPatternMatcher`.
+
+### Fine-Grained Signal Example: HTTP Calls
+
+For very detailed observability, you can emit signals at each stage of an operation. The library includes a sample [SignalingHttpClient](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalingHttpClient.cs) that demonstrates this pattern:
+
+```csharp
+using Mostlylucid.Helpers.Ephemeral.Examples;
+
+// Inside your work body where you have access to the operation's emitter:
+await coordinator.ProcessAsync(async (request, op, ct) =>
+{
+    var data = await SignalingHttpClient.DownloadWithSignalsAsync(
+        httpClient,
+        new HttpRequestMessage(HttpMethod.Get, request.Url),
+        op,  // ISignalEmitter
+        ct);
+
+    // Process the downloaded data...
+});
+```
+
+This emits signals at each stage:
+
+| Signal | When |
+|--------|------|
+| `stage.starting` | Before the request begins |
+| `progress:0` | Initial progress mark |
+| `stage.request` | HTTP request sent |
+| `stage.headers` | Response headers received |
+| `stage.reading` | Starting to read body |
+| `progress:XX` | Progress percentage (0-100) during download |
+| `stage.completed` | Download finished |
+
+You can then query these with pattern matching:
+
+```csharp
+// Find all stage transitions
+var stages = coordinator.GetSignalsByPattern("stage.*");
+
+// Check download progress
+var progress = coordinator.GetSignalsByPattern("progress:*");
+
+// Check if any download is still in progress
+if (coordinator.HasSignalMatching("stage.reading") &&
+    !coordinator.HasSignalMatching("stage.completed"))
+{
+    // Download in progress
+}
+```
+
+### Retracting Signals
+
+Operations can also remove their own signals. This is useful for temporary states:
+
+```csharp
+await coordinator.ProcessAsync(async (item, op, ct) =>
+{
+    // Mark as processing
+    op.Emit("processing");
+
+    try
+    {
+        await ProcessItemAsync(item, ct);
+
+        // Success - retract the processing signal
+        op.Retract("processing");
+        op.Emit("completed");
+    }
+    catch (RetryableException)
+    {
+        // Keep processing signal, add retry info
+        op.Emit("retrying");
+    }
+    catch (Exception)
+    {
+        // Remove all temporary signals
+        op.RetractMatching("processing*");
+        op.Emit("failed");
+        throw;
+    }
+});
+```
+
+### Retraction Events
+
+Just like signal emission, retractions can trigger callbacks:
+
+```csharp
+var coordinator = new EphemeralWorkCoordinator<Request>(
+    body,
+    new EphemeralOptions
+    {
+        // Sync retraction handler
+        OnSignalRetracted = evt =>
+        {
+            _metrics.DecrementGauge(evt.Signal);
+            Console.WriteLine($"Signal {evt.Signal} retracted from op {evt.OperationId}");
+
+            if (evt.WasPatternMatch)
+                Console.WriteLine($"  (matched pattern: {evt.Pattern})");
+        },
+
+        // Async retraction handler
+        OnSignalRetractedAsync = async (evt, ct) =>
+        {
+            await _telemetry.TrackRetraction(evt.Signal, evt.OperationId, ct);
+        }
+    });
+```
+
+The `SignalRetractedEvent` includes:
+- `Signal` - The retracted signal name
+- `OperationId` - The operation that retracted it
+- `Key` - The operation's key (if any)
+- `Timestamp` - When retraction occurred
+- `WasPatternMatch` - True if retracted via `RetractMatching`
+- `Pattern` - The pattern used (if pattern match)
+
+### Real-World Example: Rate Limit Recovery
+
+```csharp
+await coordinator.ProcessAsync(async (request, op, ct) =>
+{
+    // Check if we already have a rate limit signal
+    if (op.HasSignal("rate-limited"))
+    {
+        // We're in recovery mode
+        await Task.Delay(1000, ct);
+    }
+
+    try
+    {
+        var response = await _api.SendAsync(request, ct);
+
+        // Success! Remove any rate limit signal
+        if (op.Retract("rate-limited"))
+        {
+            op.Emit("rate-limit-cleared");
+        }
+    }
+    catch (RateLimitException ex)
+    {
+        op.Emit("rate-limited");
+        op.Emit($"rate-limit:{ex.RetryAfterMs}ms");
+        throw;
+    }
+});
+```
 
 ---
 
@@ -584,52 +742,34 @@ op.Signal("rate-limit");
 
 ## Async Signal Handling
 
-Synchronous signal handlers (`OnSignal`) run on the operation's thread - they must be fast. For I/O-bound processing (logging to external services, sending notifications, database writes), use async handlers.
+Synchronous signal handlers (`OnSignal`) run on the operation's thread—keep them fast. To do I/O-bound work, fan signals into an async path with `SignalDispatcher` (pattern matching, deterministic order) or `AsyncSignalProcessor`.
 
-### OnSignalAsync
-
-Configure async handling in options:
+### SignalDispatcher fan-out
 
 ```csharp
+await using var dispatcher = new SignalDispatcher(new EphemeralOptions
+{
+    MaxConcurrency = Environment.ProcessorCount,
+    MaxConcurrencyPerKey = 1  // sequential per signal name by default
+});
+
+dispatcher.Register("error.*", evt => _alerts.SendAsync(evt.Signal));
+dispatcher.Register("progress:*", evt => _metrics.Record(evt.Signal));
+
+// In coordinator options, keep OnSignal cheap and enqueue
 var coordinator = new EphemeralWorkCoordinator<Request>(
     body,
     new EphemeralOptions
     {
-        // Async handler - non-blocking, processed in background
-        OnSignalAsync = async (signal, ct) =>
-        {
-            await _telemetry.TrackSignalAsync(signal.Signal, signal.Key, ct);
-
-            if (signal.StartsWith("error"))
-            {
-                await _alertService.SendAlertAsync(signal, ct);
-            }
-        },
-
-        // Control concurrency of async handlers (default: 4)
-        MaxConcurrentSignalHandlers = 4,
-
-        // Max queued signals before dropping (default: 1000)
-        MaxQueuedSignals = 1000,
-
-        // Sync handler still available for fast, in-memory operations
-        OnSignal = signal =>
-        {
-            _metrics.IncrementCounter(signal.Signal);
-        }
+        OnSignal = dispatcher.Dispatch
     });
 ```
 
-The async signal processor:
-- Signals are enqueued immediately (non-blocking emission)
-- Processing happens in a bounded background queue
-- Concurrency is limited to prevent resource exhaustion
-- Oldest signals are dropped when queue is full
-- Exceptions in handlers are swallowed (handlers should manage their own errors)
+Patterns support `*`, `?`, and comma lists (`"error.*,timeout"`). All matching handlers run in registration order on a background keyed coordinator; emit remains synchronous.
 
 ### AsyncSignalProcessor
 
-For standalone async signal processing outside coordinators:
+For standalone async processing:
 
 ```csharp
 await using var processor = new AsyncSignalProcessor(
@@ -641,72 +781,11 @@ await using var processor = new AsyncSignalProcessor(
     maxQueueSize: 1000);
 
 // Enqueue signals (returns immediately)
-bool queued = processor.Enqueue(new SignalEvent(
+processor.Enqueue(new SignalEvent(
     "rate-limit",
     operationId,
     key,
     DateTimeOffset.UtcNow));
-
-if (!queued)
-{
-    // Queue was full - signal was dropped
-    _metrics.IncrementDroppedSignals();
-}
-
-// Check stats
-Console.WriteLine($"Queued: {processor.QueuedCount}");
-Console.WriteLine($"Processed: {processor.ProcessedCount}");
-Console.WriteLine($"Dropped: {processor.DroppedCount}");
-```
-
-### Real-World Example: External Telemetry
-
-```csharp
-public class TelemetrySignalHandler
-{
-    private readonly AsyncSignalProcessor _processor;
-    private readonly ITelemetryClient _telemetry;
-
-    public TelemetrySignalHandler(ITelemetryClient telemetry)
-    {
-        _telemetry = telemetry;
-        _processor = new AsyncSignalProcessor(
-            HandleSignalAsync,
-            maxConcurrency: 8,
-            maxQueueSize: 5000);
-    }
-
-    public void OnSignal(SignalEvent signal) => _processor.Enqueue(signal);
-
-    private async Task HandleSignalAsync(SignalEvent signal, CancellationToken ct)
-    {
-        var properties = new Dictionary<string, string>
-        {
-            ["signal"] = signal.Signal,
-            ["operationId"] = signal.OperationId.ToString(),
-            ["key"] = signal.Key ?? "none",
-            ["depth"] = signal.Depth.ToString()
-        };
-
-        await _telemetry.TrackEventAsync("EphemeralSignal", properties, ct);
-
-        // Categorized tracking
-        if (signal.StartsWith("error"))
-            await _telemetry.TrackExceptionAsync(signal.Signal, properties, ct);
-        else if (signal.StartsWith("perf"))
-            await _telemetry.TrackMetricAsync(signal.Signal, 1, ct);
-    }
-}
-
-// Usage
-var handler = new TelemetrySignalHandler(telemetryClient);
-
-var coordinator = new EphemeralWorkCoordinator<Request>(
-    body,
-    new EphemeralOptions
-    {
-        OnSignal = handler.OnSignal  // Fast sync dispatch to async queue
-    });
 ```
 
 ---
@@ -751,4 +830,3 @@ The atoms don't talk to each other directly - they just leave traces in the ephe
 - [Stigmergy (Wikipedia)](https://en.wikipedia.org/wiki/Stigmergy) - indirect coordination through environment modification
 - [Circuit Breaker Pattern](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker)
 - [Reactive Extensions](https://github.com/dotnet/reactive)
-

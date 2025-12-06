@@ -687,7 +687,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
 
                 await _concurrency.WaitAsync(_cts.Token).ConfigureAwait(false);
 
-                var op = new EphemeralOperation(_options.Signals, _options.OnSignal, _options.SignalConstraints, work.Id);
+                var op = new EphemeralOperation(_options.Signals, _options.OnSignal, _options.OnSignalRetracted, _options.SignalConstraints, work.Id);
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
                 Interlocked.Increment(ref _activeTaskCount);

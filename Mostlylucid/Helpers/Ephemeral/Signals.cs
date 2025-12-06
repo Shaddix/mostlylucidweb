@@ -55,6 +55,24 @@ public readonly record struct SignalEvent(
 }
 
 /// <summary>
+/// Event raised when a signal is retracted (removed) from an operation.
+/// </summary>
+public readonly record struct SignalRetractedEvent(
+    string Signal,
+    long OperationId,
+    string? Key,
+    DateTimeOffset Timestamp,
+    bool WasPatternMatch = false,
+    string? Pattern = null)
+{
+    /// <summary>
+    /// Check if this retraction matches a signal name (exact match).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool Is(string name) => Signal == name;
+}
+
+/// <summary>
 /// Tracks signal propagation for cycle detection and depth limiting.
 /// Immutable, allocation-efficient for shallow depths.
 /// </summary>
@@ -242,6 +260,23 @@ public interface ISignalEmitter
     /// Returns false if blocked by constraints.
     /// </summary>
     bool EmitCaused(string signal, SignalPropagation? cause);
+
+    /// <summary>
+    /// Remove a signal from this operation.
+    /// Returns true if the signal was found and removed.
+    /// </summary>
+    bool Retract(string signal);
+
+    /// <summary>
+    /// Remove all signals matching a pattern from this operation.
+    /// Returns the number of signals removed.
+    /// </summary>
+    int RetractMatching(string pattern);
+
+    /// <summary>
+    /// Check if this operation has a specific signal.
+    /// </summary>
+    bool HasSignal(string signal);
 
     /// <summary>
     /// The operation ID (for correlation).

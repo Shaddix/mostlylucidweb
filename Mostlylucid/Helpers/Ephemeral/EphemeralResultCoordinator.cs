@@ -674,7 +674,7 @@ public sealed class EphemeralResultCoordinator<TInput, TResult> : IAsyncDisposab
 
                 await _concurrency.WaitAsync(_cts.Token).ConfigureAwait(false);
 
-                var op = new EphemeralOperation<TResult>(_options.Signals, _options.OnSignal, _options.SignalConstraints);
+                var op = new EphemeralOperation<TResult>(_options.Signals, _options.OnSignal, _options.OnSignalRetracted, _options.SignalConstraints);
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
                 Interlocked.Increment(ref _activeTaskCount);

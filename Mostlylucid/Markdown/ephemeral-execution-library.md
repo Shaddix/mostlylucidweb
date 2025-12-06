@@ -24,7 +24,9 @@ The library is split into well-factored files:
 | [EphemeralWorkCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralWorkCoordinator.cs) | Long-lived work queue coordinator |
 | [EphemeralKeyedWorkCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralKeyedWorkCoordinator.cs) | Per-key sequential execution with fair scheduling |
 | [EphemeralResultCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralResultCoordinator.cs) | Result-capturing coordinator variant |
+| [SignalDispatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/SignalDispatcher.cs) | Async signal routing with pattern matching |
 | [DependencyInjection.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/DependencyInjection.cs) | DI extension methods and factory implementations |
+| [Examples/SignalingHttpClient.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalingHttpClient.cs) | Sample fine-grained signal emission for HTTP calls |
 
 And [comprehensive tests](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid.Test/ParallelEphemeralTests.cs) covering all edge cases.
 
@@ -171,8 +173,8 @@ public sealed class EphemeralOptions
 
 - **MaxConcurrency** defaults to CPU count - sensible for CPU-bound work. For I/O-bound work, increase it.
 - **EnableDynamicConcurrency** enables runtime adjustment via `SetMaxConcurrency()` - uses a custom gate instead of `SemaphoreSlim`.
-- **CancelOnSignals/DeferOnSignals** make coordinators signal-reactive - they respond to ambient system state.
-- **OnSignalAsync** enables non-blocking I/O-bound signal processing via a background queue.
+- **CancelOnSignals/DeferOnSignals** make coordinators signal-reactive - they respond to ambient system state (pattern matching supports `*`/`?`/comma lists).
+- **OnSignal** is synchronous; for async fan-out use `SignalDispatcher` or `AsyncSignalProcessor` inside the handler.
 - **SignalConstraints** prevents infinite signal loops with cycle detection and depth limits.
 
 ---
@@ -780,4 +782,3 @@ The pattern sits in a sweet spot:
 - [System.Threading.Channels](https://learn.microsoft.com/en-us/dotnet/core/extensions/channels)
 - [TPL Dataflow](https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/dataflow-task-parallel-library)
 - [IHttpClientFactory pattern](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/http-requests)
-

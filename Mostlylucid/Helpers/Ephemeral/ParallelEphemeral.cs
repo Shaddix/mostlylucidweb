@@ -32,7 +32,7 @@ public static class ParallelEphemeral
             cancellationToken.ThrowIfCancellationRequested();
             await concurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            var op = new EphemeralOperation(options.Signals, options.OnSignal, options.SignalConstraints);
+            var op = new EphemeralOperation(options.Signals, options.OnSignal, options.OnSignalRetracted, options.SignalConstraints);
             EnqueueEphemeral(op, recent, options);
 
             var task = ExecuteAsync(item, body, op, recent, options, cancellationToken, concurrency);
@@ -77,7 +77,7 @@ public static class ParallelEphemeral
                 await globalConcurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
                 await keyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                var op = new EphemeralOperation(options.Signals, options.OnSignal, options.SignalConstraints) { Key = key?.ToString() };
+                var op = new EphemeralOperation(options.Signals, options.OnSignal, options.OnSignalRetracted, options.SignalConstraints) { Key = key?.ToString() };
                 EnqueueEphemeral(op, recent, options);
 
                 var task = ExecuteAsync(item, body, op, recent, options, cancellationToken, keyGate, globalConcurrency);

@@ -778,7 +778,7 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
                 await keyLock.Gate.WaitAsync(_cts.Token).ConfigureAwait(false);
                 keyLock.Touch();
 
-                var op = new EphemeralOperation(_options.Signals, _options.OnSignal, _options.SignalConstraints) { Key = key.ToString() };
+                var op = new EphemeralOperation(_options.Signals, _options.OnSignal, _options.OnSignalRetracted, _options.SignalConstraints) { Key = key.ToString() };
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
                 _perKeyPendingCount.AddOrUpdate(key, 0, (_, c) => Math.Max(0, c - 1));

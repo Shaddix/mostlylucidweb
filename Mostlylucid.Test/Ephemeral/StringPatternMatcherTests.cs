@@ -20,6 +20,17 @@ public class StringPatternMatcherTests
         Assert.Equal(expected, StringPatternMatcher.Matches(value, pattern));
     }
 
+    [Theory]
+    [InlineData("anything", "*", true)]
+    [InlineData("anything", "*,*", true)]
+    [InlineData("anything", "foo, * ,bar", true)]
+    [InlineData("anything", "foo,,bar", false)]
+    public void Matches_CommaAndCatchAll(string value, string pattern, bool expected)
+    {
+        var patterns = new HashSet<string> { pattern };
+        Assert.Equal(expected, StringPatternMatcher.MatchesAny(value, patterns));
+    }
+
     [Fact]
     public void MatchesAny_CommaSeparated()
     {

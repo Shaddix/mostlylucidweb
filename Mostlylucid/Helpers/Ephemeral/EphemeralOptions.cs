@@ -77,8 +77,20 @@ public sealed class EphemeralOptions
     public Func<SignalEvent, CancellationToken, Task>? OnSignalAsync { get; init; }
 
     /// <summary>
+    /// Optional callback when a signal is retracted (removed).
+    /// Runs synchronously on the operation's thread - keep it fast.
+    /// </summary>
+    public Action<SignalRetractedEvent>? OnSignalRetracted { get; init; }
+
+    /// <summary>
+    /// Optional async callback when a signal is retracted (removed).
+    /// Dispatched to a background queue for non-blocking processing.
+    /// </summary>
+    public Func<SignalRetractedEvent, CancellationToken, Task>? OnSignalRetractedAsync { get; init; }
+
+    /// <summary>
     /// Maximum concurrent async signal handlers running at once.
-    /// Only applies when OnSignalAsync is set.
+    /// Only applies when OnSignalAsync or OnSignalRetractedAsync is set.
     /// Default: 4.
     /// </summary>
     public int MaxConcurrentSignalHandlers { get; init; } = 4;
@@ -86,7 +98,7 @@ public sealed class EphemeralOptions
     /// <summary>
     /// Maximum queued signals waiting for async processing.
     /// If exceeded, oldest signals are dropped.
-    /// Only applies when OnSignalAsync is set.
+    /// Only applies when OnSignalAsync or OnSignalRetractedAsync is set.
     /// Default: 1000.
     /// </summary>
     public int MaxQueuedSignals { get; init; } = 1000;

@@ -138,6 +138,7 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 | `EphemeralWorkCoordinator.cs` | Long-lived work queue coordinator |
 | `EphemeralKeyedWorkCoordinator.cs` | Per-key sequential execution with fair scheduling |
 | `EphemeralResultCoordinator.cs` | Result-capturing coordinator variant |
+| `Examples/SignalingHttpClient.cs` | Sample fine-grained signal emission around HTTP calls |
 | `SignalDispatcher.cs` | Async signal routing with pattern matching |
 | `DependencyInjection.cs` | DI extension methods and factory implementations |
 
@@ -445,6 +446,56 @@ await coordinator.ProcessAsync(async (item, op, ct) =>
 });
 ```
 
+### Retracting Signals
+
+Operations can remove their own signals:
+
+```csharp
+await coordinator.ProcessAsync(async (item, op, ct) =>
+{
+    op.Emit("processing");
+
+    try
+    {
+        await ProcessItemAsync(item, ct);
+        op.Retract("processing");  // Remove the signal
+        op.Emit("completed");
+    }
+    catch
+    {
+        op.RetractMatching("processing*");  // Remove by pattern
+        op.Emit("failed");
+        throw;
+    }
+});
+
+// Check if operation has a signal
+if (op.HasSignal("rate-limited"))
+{
+    await Task.Delay(1000, ct);
+}
+```
+
+### Retraction Events
+
+Handle signal retractions with callbacks:
+
+```csharp
+var coordinator = new EphemeralWorkCoordinator<Request>(
+    body,
+    new EphemeralOptions
+    {
+        OnSignalRetracted = evt =>
+        {
+            _metrics.DecrementGauge(evt.Signal);
+        },
+        OnSignalRetractedAsync = async (evt, ct) =>
+        {
+            await _telemetry.TrackRetraction(evt.Signal, evt.OperationId, ct);
+        }
+    });
+```
+
 ### Querying Signals
 
 ```csharp
@@ -517,6 +568,24 @@ if (sharedSignals.Detect("system-maintenance"))
 {
     await DeferWorkAsync();
 }
+```
+
+### Example: Signal-Rich HttpClient
+
+For very fine-grained telemetry, you can emit stages and progress marks during HTTP calls:
+
+```csharp
+using Mostlylucid.Helpers.Ephemeral.Examples;
+
+// Inside a component that has an ISignalEmitter (for example, an EphemeralOperation you compose in):
+var body = await SignalingHttpClient.DownloadWithSignalsAsync(
+    httpClient,
+    new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/data"),
+    emitter,
+    ct);
+
+// Signals emitted: stage.starting, progress:0, stage.request, stage.headers, stage.reading,
+// progress:XX (0-100), stage.completed. Pattern filters like "stage.*" or "progress:*" work.
 ```
 
 ### Signal Constraints
@@ -662,6 +731,15 @@ public sealed class EphemeralOptions
     public SignalSink? Signals { get; init; }
     public SignalConstraints? SignalConstraints { get; init; }
     public Action<SignalEvent>? OnSignal { get; init; }
+    public Func<SignalEvent, CancellationToken, Task>? OnSignalAsync { get; init; }
+
+    // Signal retraction
+    public Action<SignalRetractedEvent>? OnSignalRetracted { get; init; }
+    public Func<SignalRetractedEvent, CancellationToken, Task>? OnSignalRetractedAsync { get; init; }
+
+    // Async signal handler limits
+    public int MaxConcurrentSignalHandlers { get; init; } = 4;
+    public int MaxQueuedSignals { get; init; } = 1000;
 
     // Observability
     public Action<IReadOnlyCollection<EphemeralOperationSnapshot>>? OnSample { get; init; }
