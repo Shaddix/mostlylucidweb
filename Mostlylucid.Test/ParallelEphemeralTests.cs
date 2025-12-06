@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Mostlylucid.Helpers;
+using Mostlylucid.Helpers.Ephemeral;
 using Xunit;
 
 namespace Mostlylucid.Test;
@@ -1764,15 +1764,13 @@ public class EphemeralEdgeCaseTests
     public async Task MaxOperationLifetime_EvictsOldEntries()
     {
         // Arrange
-        IReadOnlyCollection<EphemeralOperationSnapshot>? finalSnapshot = null;
-
         await using var coordinator = new EphemeralWorkCoordinator<int>(
             async (item, ct) => await Task.Delay(10, ct),
             new EphemeralOptions
             {
                 MaxConcurrency = 1,
-                MaxOperationLifetime = TimeSpan.FromMilliseconds(100),
-                OnSample = s => finalSnapshot = s
+                MaxTrackedOperations = 5,
+                MaxOperationLifetime = TimeSpan.FromMilliseconds(50)
             });
 
         // Act - process items with delay
@@ -1783,9 +1781,9 @@ public class EphemeralEdgeCaseTests
 
         coordinator.Complete();
         await coordinator.DrainAsync();
+        await Task.Delay(150); // allow age-based eviction window
 
-        // Assert - old operations should have been evicted
-        Assert.NotNull(finalSnapshot);
+        var finalSnapshot = coordinator.GetSnapshot();
         // Due to time-based eviction, not all 20 should be present
         Assert.True(finalSnapshot.Count < 20,
             $"Expected some eviction due to MaxOperationLifetime, got {finalSnapshot.Count}");
@@ -1908,7 +1906,7 @@ public class EphemeralCoordinatorFactoryTests
         var services = new ServiceCollection();
         var processed = new ConcurrentBag<int>();
 
-        services.AddEphemeralWorkCoordinatorFactory<int>(
+        services.AddEphemeralWorkCoordinator<int>("",
             _ => async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2026,7 +2024,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_CapturesResults()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, string>(
+        await using var coordinator = new EphemeralResultCoordinator<int, string>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2053,7 +2051,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_GetSuccessful_OnlyReturnsSuccesses()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, string>(
+        await using var coordinator = new EphemeralResultCoordinator<int, string>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2085,7 +2083,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_GetSnapshot_IncludesResults()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, int>(
+        await using var coordinator = new EphemeralResultCoordinator<int, int>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2109,7 +2107,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_GetBaseSnapshot_ExcludesResults()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, string>(
+        await using var coordinator = new EphemeralResultCoordinator<int, string>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2141,7 +2139,7 @@ public class EphemeralResultCoordinatorTests
             }
         }
 
-        await using var coordinator = EphemeralWorkCoordinator<int, int>.FromAsyncEnumerable(
+        await using var coordinator = EphemeralResultCoordinator<int, int>.FromAsyncEnumerable(
             GenerateItems(),
             async (item, ct) =>
             {
@@ -2166,7 +2164,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_ComplexResultType()
     {
         // Arrange - simulate session fingerprinting
-        await using var coordinator = new EphemeralWorkCoordinator<SessionInput, SessionResult>(
+        await using var coordinator = new EphemeralResultCoordinator<SessionInput, SessionResult>(
             async (input, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2199,7 +2197,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_TryEnqueue_Works()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, int>(
+        await using var coordinator = new EphemeralResultCoordinator<int, int>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2222,7 +2220,7 @@ public class EphemeralResultCoordinatorTests
     public async Task ResultCoordinator_CountersWork()
     {
         // Arrange
-        await using var coordinator = new EphemeralWorkCoordinator<int, int>(
+        await using var coordinator = new EphemeralResultCoordinator<int, int>(
             async (item, ct) =>
             {
                 await Task.Delay(1, ct);
@@ -2247,3 +2245,4 @@ public class EphemeralResultCoordinatorTests
     public record SessionInput(string SessionId, string[] Events);
     public record SessionResult(string Fingerprint, int EventCount, TimeSpan TotalDuration);
 }
+

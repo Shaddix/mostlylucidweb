@@ -23,7 +23,8 @@
       "Bash(dotnet list:*)",
       "Bash(cat:*)",
       "Bash(dir:*)",
-      "Bash(dotnet add:*)"
+      "Bash(dotnet add:*)",
+      "Bash(del \"C:\\Blog\\mostlylucidweb\\Mostlylucid\\Helpers\\ParallelEphemeral.cs\")"
     ],
     "deny": [],
     "ask": []
