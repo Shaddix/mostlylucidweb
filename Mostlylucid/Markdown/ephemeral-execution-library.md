@@ -22,6 +22,97 @@ I'll make this into a NuGet package shortly, but for now...
 
 ---
 
+## Before and After
+
+Here's what we're replacing:
+
+```csharp
+// ❌ Before: Fire-and-forget black hole
+_ = Task.Run(() => ProcessAsync(item));
+// No visibility. No debugging. No idea if it worked.
+
+// ❌ Or: Blocking everything
+await ProcessAsync(item);  // Hope you like waiting...
+```
+
+And what we're building:
+
+```csharp
+// ✅ After: Trackable, bounded, debuggable
+await coordinator.EnqueueAsync(item);
+
+// Instant visibility
+Console.WriteLine($"Pending: {coordinator.PendingCount}");
+Console.WriteLine($"Active: {coordinator.ActiveCount}");
+Console.WriteLine($"Failed: {coordinator.TotalFailed}");
+
+// Full operation history
+var snapshot = coordinator.GetSnapshot();
+var failures = coordinator.GetFailed();
+```
+
+Same async execution. Complete observability. No user data retained.
+
+---
+
+## Quick Start
+
+The most common pattern - register a coordinator in DI and inject it:
+
+```csharp
+// Program.cs
+services.AddEphemeralWorkCoordinator<TranslationRequest>(
+    async (request, ct) => await TranslateAsync(request, ct),
+    new EphemeralOptions { MaxConcurrency = 8 });
+
+// Your service
+public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coordinator)
+{
+    public async Task TranslateAsync(TranslationRequest request)
+    {
+        await coordinator.EnqueueAsync(request);
+        // Returns immediately - work happens in background
+    }
+
+    public object GetStatus() => new
+    {
+        pending = coordinator.PendingCount,
+        active = coordinator.ActiveCount,
+        completed = coordinator.TotalCompleted,
+        failed = coordinator.TotalFailed
+    };
+}
+```
+
+---
+
+## Which Variant Do I Need?
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    DECISION TREE                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Processing a collection once?                                  │
+│  └─► EphemeralForEachAsync<T>                                   │
+│                                                                 │
+│  Need a long-lived queue that accepts items over time?          │
+│  └─► EphemeralWorkCoordinator<T>                                │
+│                                                                 │
+│  Need per-entity ordering (user commands, tenant jobs)?         │
+│  └─► EphemeralKeyedWorkCoordinator<T, TKey>                     │
+│                                                                 │
+│  Need to capture results (fingerprints, summaries)?             │
+│  └─► EphemeralWorkCoordinator<TInput, TResult>                  │
+│                                                                 │
+│  Need multiple coordinators with different configs?             │
+│  └─► IEphemeralCoordinatorFactory<T> (like IHttpClientFactory)  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## The Full Implementation
 
 Let's build the complete library piece by piece.
