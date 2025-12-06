@@ -22,7 +22,7 @@ But modern systems — especially AI-augmented ones — no longer behave like cl
 - Requirements drift over time
 - The environment shifts constantly
 
-Static architectures can't keep up. You patch one hole, three more appear. You tune one threshold, something else breaks. You're always reacting, never adapting.
+Static architectures can't keep up. You patch one hole, three more appear. You tune one threshold, something else breaks. You'r e always reacting, never adapting.
 
 **DiSE Architecture** (Directed Synthetic Evolution) treats software the way biologists treat organisms: as something that must adapt, self-correct, and improve under pressure.
 

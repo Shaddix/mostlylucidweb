@@ -62,7 +62,7 @@
       <PackageReference Include="SixLabors.ImageSharp.Web" Version="3.2.0" />
       <PackageReference Include="Scalar.AspNetCore" Version="1.2.60" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
-      <PackageReference Include="System.IO.Hashing" Version="9.0.10" />
+      <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
       <!-- <PackageReference Include="Umami.Net" Version="1.0.0-preview5" /> -->
       <PackageReference Include="WebEssentials.AspNetCore.PWA" Version="1.0.85" />
     </ItemGroup>

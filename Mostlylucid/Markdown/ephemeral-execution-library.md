@@ -7,6 +7,10 @@ In **[Part 1: Fire and Don't *Quite* Forget](/blog/fire-and-dont-quite-forget-ep
 
 This article turns that pattern into a reusable library you can drop into any .NET project:
 
+[See here for the actual utility](https://github.com/scottgal/mostlylucidweb/blob/features/referrers/Mostlylucid/Helpers/ParallelEphemeral.cs). And [here for its tests](https://github.com/scottgal/mostlylucidweb/blob/features/referrers/Mostlylucid.Test/ParallelEphemeralTests.cs) (78 tests covering all the edge cases).
+
+I'll make this into a NuGet package shortly, but for now...
+
 - `EphemeralForEachAsync<T>` - like `Parallel.ForEachAsync` but with operation tracking
 - Keyed pipelines for per-entity sequential execution
 - `EphemeralWorkCoordinator<T>` - a long-lived observable work queue
@@ -92,7 +96,7 @@ What gets exposed to observers:
 
 ```csharp
 public sealed record EphemeralOperationSnapshot(
-    Guid Id,
+    long Id,              // Fast XxHash64-based ID (see optimisation section below)
     DateTimeOffset Started,
     DateTimeOffset? Completed,
     string? Key,
@@ -116,7 +120,7 @@ The actual tracking object is internal - callers only see snapshots:
 ```csharp
 internal sealed class EphemeralOperation
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public long Id { get; } = EphemeralIdGenerator.NextId();  // Fast XxHash64-based ID
     public DateTimeOffset Started { get; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? Completed { get; set; }
     public Exception? Error { get; set; }
@@ -131,6 +135,8 @@ internal sealed class EphemeralOperation
 ```
 
 The `Duration` property is computed on-demand - we store timestamps, not durations. This means in-progress operations show `null` duration, and completed ones compute it from the timestamps.
+
+Note: We use a custom `EphemeralIdGenerator` instead of `Guid.NewGuid()` for performance - see the [optimisation section](#optimising-for-production-fixing-memory-leaks-and-improving-performance) below.
 
 ---
 
@@ -899,6 +905,328 @@ public class WorkController : ControllerBase
     }
 }
 ```
+
+---
+
+## Optimising for Production: Fixing Memory Leaks and Improving Performance
+
+When you build a library like this for production use, especially as a long-lived singleton, there are subtle issues that can bite you. Here's what we fixed and how.
+
+### The Problem: Unbounded Task Accumulation
+
+The original implementation tracked running tasks in a `ConcurrentBag<Task>`:
+
+```csharp
+// ❌ ORIGINAL - Memory leak in long-lived coordinators
+private readonly ConcurrentBag<Task> _runningTasks;
+
+private async Task ProcessAsync()
+{
+    await foreach (var item in _channel.Reader.ReadAllAsync(_cts.Token))
+    {
+        var task = ExecuteItemAsync(item, op);
+        _runningTasks.Add(task);  // Added but NEVER removed!
+    }
+
+    await Task.WhenAll(_runningTasks.ToArray());
+}
+```
+
+This works fine for short-lived coordinators, but for singletons that run for the lifetime of your application, `_runningTasks` grows forever. Every completed task stays in memory.
+
+### The Fix: Count-Based Tracking with Signaling
+
+Instead of storing task references, we track the *count* of active tasks and use a `TaskCompletionSource` to signal when all work is done:
+
+```csharp
+// ✅ FIXED - No memory leak
+private readonly TaskCompletionSource _drainTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+private bool _channelIterationComplete;
+private int _activeTaskCount;
+
+private async Task ProcessAsync()
+{
+    try
+    {
+        await foreach (var item in _channel.Reader.ReadAllAsync(_cts.Token))
+        {
+            await _concurrency.WaitAsync(_cts.Token);
+
+            var op = new EphemeralOperation();
+            EnqueueOperation(op);
+            Interlocked.Decrement(ref _pendingCount);
+            Interlocked.Increment(ref _activeTaskCount);
+
+            // Fire-and-forget - we track completion via _activeTaskCount
+            _ = ExecuteItemAsync(item, op);
+        }
+
+        // Mark iteration complete so task completions can signal drain
+        Volatile.Write(ref _channelIterationComplete, true);
+
+        // If all tasks already finished, signal now
+        if (Volatile.Read(ref _activeTaskCount) == 0)
+        {
+            _drainTcs.TrySetResult();
+        }
+
+        await _drainTcs.Task;
+    }
+    catch (OperationCanceledException)
+    {
+        _drainTcs.TrySetCanceled();
+    }
+}
+```
+
+The key insight: we don't need the task *objects* - we just need to know when they're all done.
+
+### Signaling Completion Correctly
+
+The `ExecuteItemAsync` method signals the drain when it's the last task to finish:
+
+```csharp
+private async Task ExecuteItemAsync(T item, EphemeralOperation op)
+{
+    try
+    {
+        await _body(item, _cts.Token);
+        Interlocked.Increment(ref _totalCompleted);
+    }
+    catch (Exception ex) when (!_cts.Token.IsCancellationRequested)
+    {
+        op.Error = ex;
+        Interlocked.Increment(ref _totalFailed);
+    }
+    finally
+    {
+        op.Completed = DateTimeOffset.UtcNow;
+        _concurrency.Release();
+        CleanupWindow();
+        SampleIfRequested();
+
+        // Signal drain when: last task completes AND channel iteration is done
+        // Must be AFTER cleanup so all work is truly finished before DrainAsync returns
+        if (Interlocked.Decrement(ref _activeTaskCount) == 0 &&
+            Volatile.Read(ref _channelIterationComplete))
+        {
+            _drainTcs.TrySetResult();
+        }
+    }
+}
+```
+
+The ordering matters:
+1. **Cleanup first** (`CleanupWindow`, `SampleIfRequested`)
+2. **Then check if we should signal**
+
+This ensures that when `DrainAsync()` returns, all operations have truly completed their cleanup - not just their main work.
+
+### Why `_channelIterationComplete`?
+
+Without this flag, there's a race condition:
+
+1. Task A completes, decrements `_activeTaskCount` to 0
+2. Task A signals `_drainTcs.TrySetResult()`
+3. Meanwhile, the `await foreach` loop is still running and starts Task B
+4. But the drain has already been signaled!
+
+The flag ensures we only signal when *both* conditions are true:
+- The channel iteration has finished (no more tasks will be started)
+- All active tasks have completed
+
+### Faster IDs with XxHash64 (Cross-Process Safe)
+
+`Guid.NewGuid()` is relatively expensive. For operation IDs that only need to be unique within a process, XxHash64 is much faster. But there's a catch: if you restart your process, you might get the same IDs again (same counter + same process start time could collide with a different process that started at a similar tick count).
+
+The fix: include the process ID in the hash input:
+
+```csharp
+internal static class EphemeralIdGenerator
+{
+    private static long _counter;
+    private static readonly long _processStart = Environment.TickCount64;
+    private static readonly int _processId = Environment.ProcessId;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long NextId()
+    {
+        var counter = Interlocked.Increment(ref _counter);
+
+        // Combine counter with process-unique seed
+        // Include process ID for cross-process uniqueness
+        Span<byte> buffer = stackalloc byte[24];
+        BitConverter.TryWriteBytes(buffer, _processStart);
+        BitConverter.TryWriteBytes(buffer.Slice(8), _processId);
+        BitConverter.TryWriteBytes(buffer.Slice(16), counter);
+
+        return unchecked((long)XxHash64.HashToUInt64(buffer));
+    }
+}
+```
+
+This is:
+- **Allocation-free** (uses `stackalloc`)
+- **Thread-safe** (uses `Interlocked.Increment`)
+- **Unique across processes** (combines process start time + process ID + counter)
+- **Non-sequential** (the hash diffuses the monotonic counter)
+
+### Memory Model Correctness with Volatile
+
+For flag fields that are read and written from multiple threads, use `Volatile.Read` and `Volatile.Write` for proper memory barriers:
+
+```csharp
+// Reading
+public bool IsCompleted => Volatile.Read(ref _completed);
+public int ActiveCount => Volatile.Read(ref _activeTaskCount);
+
+// Writing
+Volatile.Write(ref _completed, true);
+Volatile.Write(ref _channelIterationComplete, true);
+```
+
+On x86/x64, this is technically unnecessary due to the strong memory model, but it makes the intent explicit and is correct on all architectures.
+
+### Per-Key Lock Memory Leak in Keyed Coordinator
+
+The keyed coordinator creates a `SemaphoreSlim` for each unique key. In the original implementation, these were never cleaned up - a memory leak if you process millions of unique keys:
+
+```csharp
+// ❌ ORIGINAL - Unbounded growth
+private readonly ConcurrentDictionary<TKey, SemaphoreSlim> _perKeyLocks = new();
+```
+
+The fix: wrap locks in a tracker with last-used timestamps, and periodically clean up idle locks:
+
+```csharp
+// ✅ FIXED - Idle locks are cleaned up
+private sealed class KeyLock(SemaphoreSlim gate, int maxCount)
+{
+    public SemaphoreSlim Gate { get; } = gate;
+    public int MaxCount { get; } = maxCount;
+    public long LastUsedTicks = Environment.TickCount64;
+
+    public void Touch() => Volatile.Write(ref LastUsedTicks, Environment.TickCount64);
+    public long GetLastUsed() => Volatile.Read(ref LastUsedTicks);
+}
+
+private readonly ConcurrentDictionary<TKey, KeyLock> _perKeyLocks = new();
+private const long KeyLockIdleTimeoutMs = 60_000; // 1 minute
+```
+
+The cleanup runs periodically (roughly 1 in 1024 operations to amortise the O(n) scan):
+
+```csharp
+private void CleanupIdleKeyLocks(TKey currentKey, KeyLock currentKeyLock)
+{
+    var now = Environment.TickCount64;
+
+    // Only trigger cleanup ~1 in 1024 calls
+    if ((now & 0x3FF) != 0) return;
+
+    foreach (var kvp in _perKeyLocks)
+    {
+        // Skip current key - it's in use
+        if (EqualityComparer<TKey>.Default.Equals(kvp.Key, currentKey))
+            continue;
+
+        var keyLock = kvp.Value;
+        var idleTime = now - keyLock.GetLastUsed();
+
+        // Only remove if idle long enough AND semaphore is at full capacity
+        if (idleTime >= KeyLockIdleTimeoutMs &&
+            keyLock.Gate.CurrentCount == keyLock.MaxCount)
+        {
+            if (_perKeyLocks.TryRemove(kvp))
+            {
+                _perKeyPendingCount.TryRemove(kvp.Key, out _);
+                keyLock.Gate.Dispose();
+            }
+        }
+    }
+}
+```
+
+### Exception Handling in Source Consumption
+
+When consuming from an `IAsyncEnumerable` source, exceptions from the source itself need to be captured and propagated properly:
+
+```csharp
+private async Task ConsumeSourceAsync(IAsyncEnumerable<T> source)
+{
+    Exception? sourceException = null;
+    try
+    {
+        await foreach (var item in source.WithCancellation(_cts.Token))
+        {
+            await _channel.Writer.WriteAsync(item, _cts.Token);
+            Interlocked.Increment(ref _pendingCount);
+            Interlocked.Increment(ref _totalEnqueued);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        // Expected on cancellation
+    }
+    catch (Exception ex)
+    {
+        // Capture source exception to propagate to channel
+        sourceException = ex;
+    }
+    finally
+    {
+        Volatile.Write(ref _completed, true);
+        // Complete channel with exception if source failed
+        _channel.Writer.TryComplete(sourceException);
+    }
+}
+```
+
+Now `DrainAsync()` will throw if the source threw - callers can observe the failure.
+
+### Semaphore Disposal in Static Methods
+
+The static `EphemeralForEachAsync` methods create per-key semaphores. If enumeration throws, they need to still be disposed:
+
+```csharp
+public static async Task EphemeralForEachAsync<T, TKey>(...)
+{
+    var perKeyLocks = new ConcurrentDictionary<TKey, SemaphoreSlim>();
+
+    try
+    {
+        foreach (var item in source)
+        {
+            // ... processing
+        }
+        await Task.WhenAll(running);
+    }
+    finally
+    {
+        // Always dispose, even on exception
+        foreach (var gate in perKeyLocks.Values)
+        {
+            gate.Dispose();
+        }
+    }
+}
+```
+
+### The Complete Fix Summary
+
+| Issue | Original | Fixed |
+|-------|----------|-------|
+| Task tracking | `ConcurrentBag<Task>` grows forever | `int _activeTaskCount` stays bounded |
+| Drain signaling | Poll in a loop | `TaskCompletionSource` signals exactly once |
+| ID generation | `Guid.NewGuid()` | XxHash64 with stackalloc + process ID |
+| ID collisions | Same IDs across processes possible | Process ID included in hash |
+| Memory barriers | Implicit (risky) | Explicit `Volatile.Read/Write` |
+| Race condition | Signal drain before iteration done | `_channelIterationComplete` flag |
+| Per-key locks | Never cleaned up (memory leak) | Idle timeout + periodic cleanup |
+| Source exceptions | Swallowed silently | Propagated via channel completion |
+| Semaphore disposal | Missed on exception | `try/finally` ensures cleanup |
+
+These changes make the library safe for long-lived singletons processing millions of operations with millions of unique keys.
 
 ---
 

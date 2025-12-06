@@ -1,10 +1,41 @@
 using System.Collections.Concurrent;
+using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Mostlylucid.Helpers;
+
+/// <summary>
+/// High-performance ID generator using XxHash64.
+/// Thread-safe, allocation-free after warmup.
+/// </summary>
+internal static class EphemeralIdGenerator
+{
+    private static long _counter;
+    private static readonly long _processStart = Environment.TickCount64;
+    private static readonly int _processId = Environment.ProcessId;
+
+    /// <summary>
+    /// Generates a fast, unique 64-bit ID using XxHash64.
+    /// Combines process start time, process ID, and counter for cross-process uniqueness.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static long NextId()
+    {
+        var counter = Interlocked.Increment(ref _counter);
+
+        // Combine counter with process-unique seed for XxHash64
+        // Include process ID to avoid collisions across processes
+        Span<byte> buffer = stackalloc byte[24];
+        BitConverter.TryWriteBytes(buffer, _processStart);
+        BitConverter.TryWriteBytes(buffer.Slice(8), _processId);
+        BitConverter.TryWriteBytes(buffer.Slice(16), counter);
+
+        return unchecked((long)XxHash64.HashToUInt64(buffer));
+    }
+}
 
 public sealed class EphemeralOptions
 {
@@ -56,7 +87,7 @@ public sealed class EphemeralOptions
 }
 
 public sealed record EphemeralOperationSnapshot(
-    Guid Id,
+    long Id,
     DateTimeOffset Started,
     DateTimeOffset? Completed,
     string? Key,
@@ -68,7 +99,7 @@ public sealed record EphemeralOperationSnapshot(
 /// Snapshot of an operation that captures a result of type TResult.
 /// </summary>
 public sealed record EphemeralOperationSnapshot<TResult>(
-    Guid Id,
+    long Id,
     DateTimeOffset Started,
     DateTimeOffset? Completed,
     string? Key,
@@ -80,7 +111,7 @@ public sealed record EphemeralOperationSnapshot<TResult>(
 
 internal sealed class EphemeralOperation
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public long Id { get; } = EphemeralIdGenerator.NextId();
     public DateTimeOffset Started { get; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? Completed { get; set; }
     public Exception? Error { get; set; }
@@ -95,7 +126,7 @@ internal sealed class EphemeralOperation
 
 internal sealed class EphemeralOperation<TResult>
 {
-    public Guid Id { get; } = Guid.NewGuid();
+    public long Id { get; } = EphemeralIdGenerator.NextId();
     public DateTimeOffset Started { get; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? Completed { get; set; }
     public Exception? Error { get; set; }
@@ -171,31 +202,36 @@ public static class ParallelEphemeral
         var recent = new ConcurrentQueue<EphemeralOperation>();
         var running = new ConcurrentBag<Task>();
 
-        foreach (var item in source)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var item in source)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            var key = keySelector(item);
-            var keyGate = perKeyLocks.GetOrAdd(
-                key,
-                _ => new SemaphoreSlim(options.MaxConcurrencyPerKey));
+                var key = keySelector(item);
+                var keyGate = perKeyLocks.GetOrAdd(
+                    key,
+                    _ => new SemaphoreSlim(options.MaxConcurrencyPerKey));
 
-            await globalConcurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await keyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await globalConcurrency.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await keyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            var op = new EphemeralOperation { Key = key?.ToString() };
-            EnqueueEphemeral(op, recent, options);
+                var op = new EphemeralOperation { Key = key?.ToString() };
+                EnqueueEphemeral(op, recent, options);
 
-            var task = ExecuteAsync(item, body, op, recent, options, cancellationToken, keyGate, globalConcurrency);
-            running.Add(task);
+                var task = ExecuteAsync(item, body, op, recent, options, cancellationToken, keyGate, globalConcurrency);
+                running.Add(task);
+            }
+
+            await Task.WhenAll(running).ConfigureAwait(false);
         }
-
-        await Task.WhenAll(running).ConfigureAwait(false);
-
-        // Cleanup per-key gates
-        foreach (var gate in perKeyLocks.Values)
+        finally
         {
-            gate.Dispose();
+            // Cleanup per-key gates - always dispose even on exception
+            foreach (var gate in perKeyLocks.Values)
+            {
+                gate.Dispose();
+            }
         }
     }
 
@@ -294,13 +330,15 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     private readonly ConcurrentQueue<EphemeralOperation> _recent;
     private readonly SemaphoreSlim _concurrency;
     private readonly Task _processingTask;
-    private readonly ConcurrentBag<Task> _runningTasks;
     private readonly Task? _sourceConsumerTask;
+    private readonly TaskCompletionSource _drainTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _completed;
+    private bool _channelIterationComplete;
     private int _pendingCount;
     private int _totalEnqueued;
     private int _totalCompleted;
     private int _totalFailed;
+    private int _activeTaskCount;
 
     /// <summary>
     /// Creates a coordinator that accepts manual enqueues via EnqueueAsync/TryEnqueue.
@@ -314,7 +352,6 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _concurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _runningTasks = new ConcurrentBag<Task>();
 
         // Bounded channel provides back-pressure
         _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(_options.MaxTrackedOperations)
@@ -341,7 +378,6 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _concurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _runningTasks = new ConcurrentBag<Task>();
 
         _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -369,37 +405,37 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     /// <summary>
     /// Number of items waiting to be processed.
     /// </summary>
-    public int PendingCount => _pendingCount;
+    public int PendingCount => Volatile.Read(ref _pendingCount);
 
     /// <summary>
     /// Number of items currently being processed.
     /// </summary>
-    public int ActiveCount => _options.MaxConcurrency - _concurrency.CurrentCount;
+    public int ActiveCount => Volatile.Read(ref _activeTaskCount);
 
     /// <summary>
     /// Total items enqueued since creation.
     /// </summary>
-    public int TotalEnqueued => _totalEnqueued;
+    public int TotalEnqueued => Volatile.Read(ref _totalEnqueued);
 
     /// <summary>
     /// Total items completed successfully.
     /// </summary>
-    public int TotalCompleted => _totalCompleted;
+    public int TotalCompleted => Volatile.Read(ref _totalCompleted);
 
     /// <summary>
     /// Total items that failed with an exception.
     /// </summary>
-    public int TotalFailed => _totalFailed;
+    public int TotalFailed => Volatile.Read(ref _totalFailed);
 
     /// <summary>
     /// Whether Complete() has been called.
     /// </summary>
-    public bool IsCompleted => _completed;
+    public bool IsCompleted => Volatile.Read(ref _completed);
 
     /// <summary>
     /// Whether all work is done (completed + drained).
     /// </summary>
-    public bool IsDrained => _completed && _pendingCount == 0 && ActiveCount == 0;
+    public bool IsDrained => IsCompleted && PendingCount == 0 && ActiveCount == 0;
 
     /// <summary>
     /// Gets a snapshot of recent operations (both running and completed).
@@ -478,7 +514,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     /// </summary>
     public void Complete()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.Complete();
     }
 
@@ -509,13 +545,14 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     /// </summary>
     public void Cancel()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.TryComplete();
         _cts.Cancel();
     }
 
     private async Task ConsumeSourceAsync(IAsyncEnumerable<T> source)
     {
+        Exception? sourceException = null;
         try
         {
             await foreach (var item in source.WithCancellation(_cts.Token).ConfigureAwait(false))
@@ -529,10 +566,16 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         {
             // Expected on cancellation
         }
+        catch (Exception ex)
+        {
+            // Capture source enumeration exception to propagate to channel
+            sourceException = ex;
+        }
         finally
         {
-            _completed = true;
-            _channel.Writer.TryComplete();
+            Volatile.Write(ref _completed, true);
+            // Complete channel with exception if source failed, allowing DrainAsync to observe it
+            _channel.Writer.TryComplete(sourceException);
         }
     }
 
@@ -547,17 +590,27 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
                 var op = new EphemeralOperation();
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
+                Interlocked.Increment(ref _activeTaskCount);
 
-                var task = ExecuteItemAsync(item, op);
-                _runningTasks.Add(task);
+                // Fire-and-forget the execution; we track completion via _activeTaskCount
+                _ = ExecuteItemAsync(item, op);
             }
 
-            // Wait for any remaining in-flight tasks
-            await Task.WhenAll(_runningTasks.ToArray()).ConfigureAwait(false);
+            // Mark channel iteration as complete so task completions can signal drain
+            Volatile.Write(ref _channelIterationComplete, true);
+
+            // If all tasks already finished, signal now
+            if (Volatile.Read(ref _activeTaskCount) == 0)
+            {
+                _drainTcs.TrySetResult();
+            }
+
+            await _drainTcs.Task.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             // Expected on cancellation
+            _drainTcs.TrySetCanceled();
         }
     }
 
@@ -579,6 +632,13 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
             _concurrency.Release();
             CleanupWindow();
             SampleIfRequested();
+
+            // Signal drain completion when last task finishes and channel iteration is done
+            // Must be after CleanupWindow/SampleIfRequested so they're complete before DrainAsync returns
+            if (Interlocked.Decrement(ref _activeTaskCount) == 0 && Volatile.Read(ref _channelIterationComplete))
+            {
+                _drainTcs.TrySetResult();
+            }
         }
     }
 
@@ -644,6 +704,19 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
 public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
     where TKey : notnull
 {
+    /// <summary>
+    /// Tracks a per-key semaphore with last usage time for cleanup.
+    /// </summary>
+    private sealed class KeyLock(SemaphoreSlim gate, int maxCount)
+    {
+        public SemaphoreSlim Gate { get; } = gate;
+        public int MaxCount { get; } = maxCount;
+        public long LastUsedTicks = Environment.TickCount64;
+
+        public void Touch() => Volatile.Write(ref LastUsedTicks, Environment.TickCount64);
+        public long GetLastUsed() => Volatile.Read(ref LastUsedTicks);
+    }
+
     private readonly Channel<T> _channel;
     private readonly Func<T, TKey> _keySelector;
     private readonly Func<T, CancellationToken, Task> _body;
@@ -651,16 +724,19 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
     private readonly CancellationTokenSource _cts;
     private readonly ConcurrentQueue<EphemeralOperation> _recent;
     private readonly SemaphoreSlim _globalConcurrency;
-    private readonly ConcurrentDictionary<TKey, SemaphoreSlim> _perKeyLocks;
+    private readonly ConcurrentDictionary<TKey, KeyLock> _perKeyLocks;
     private readonly ConcurrentDictionary<TKey, int> _perKeyPendingCount;
     private readonly Task _processingTask;
-    private readonly ConcurrentBag<Task> _runningTasks;
     private readonly Task? _sourceConsumerTask;
+    private readonly TaskCompletionSource _drainTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private const long KeyLockIdleTimeoutMs = 60_000; // 1 minute idle before cleanup eligible
     private bool _completed;
+    private bool _channelIterationComplete;
     private int _pendingCount;
     private int _totalEnqueued;
     private int _totalCompleted;
     private int _totalFailed;
+    private int _activeTaskCount;
 
     /// <summary>
     /// Creates a keyed coordinator that accepts manual enqueues.
@@ -676,9 +752,8 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _globalConcurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _perKeyLocks = new ConcurrentDictionary<TKey, SemaphoreSlim>();
+        _perKeyLocks = new ConcurrentDictionary<TKey, KeyLock>();
         _perKeyPendingCount = new ConcurrentDictionary<TKey, int>();
-        _runningTasks = new ConcurrentBag<Task>();
 
         _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -705,9 +780,8 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _globalConcurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _perKeyLocks = new ConcurrentDictionary<TKey, SemaphoreSlim>();
+        _perKeyLocks = new ConcurrentDictionary<TKey, KeyLock>();
         _perKeyPendingCount = new ConcurrentDictionary<TKey, int>();
-        _runningTasks = new ConcurrentBag<Task>();
 
         _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -735,37 +809,37 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
     /// <summary>
     /// Number of items waiting to be processed.
     /// </summary>
-    public int PendingCount => _pendingCount;
+    public int PendingCount => Volatile.Read(ref _pendingCount);
 
     /// <summary>
     /// Number of items currently being processed.
     /// </summary>
-    public int ActiveCount => _options.MaxConcurrency - _globalConcurrency.CurrentCount;
+    public int ActiveCount => Volatile.Read(ref _activeTaskCount);
 
     /// <summary>
     /// Total items enqueued since creation.
     /// </summary>
-    public int TotalEnqueued => _totalEnqueued;
+    public int TotalEnqueued => Volatile.Read(ref _totalEnqueued);
 
     /// <summary>
     /// Total items completed successfully.
     /// </summary>
-    public int TotalCompleted => _totalCompleted;
+    public int TotalCompleted => Volatile.Read(ref _totalCompleted);
 
     /// <summary>
     /// Total items that failed with an exception.
     /// </summary>
-    public int TotalFailed => _totalFailed;
+    public int TotalFailed => Volatile.Read(ref _totalFailed);
 
     /// <summary>
     /// Whether Complete() has been called.
     /// </summary>
-    public bool IsCompleted => _completed;
+    public bool IsCompleted => Volatile.Read(ref _completed);
 
     /// <summary>
     /// Whether all work is done (completed + drained).
     /// </summary>
-    public bool IsDrained => _completed && _pendingCount == 0 && ActiveCount == 0;
+    public bool IsDrained => IsCompleted && PendingCount == 0 && ActiveCount == 0;
 
     /// <summary>
     /// Gets pending count for a specific key.
@@ -848,7 +922,7 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
     /// </summary>
     public void Complete()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.Complete();
     }
 
@@ -878,13 +952,14 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
     /// </summary>
     public void Cancel()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.TryComplete();
         _cts.Cancel();
     }
 
     private async Task ConsumeSourceAsync(IAsyncEnumerable<T> source)
     {
+        Exception? sourceException = null;
         try
         {
             await foreach (var item in source.WithCancellation(_cts.Token).ConfigureAwait(false))
@@ -901,10 +976,16 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
         {
             // Expected
         }
+        catch (Exception ex)
+        {
+            // Capture source enumeration exception to propagate to channel
+            sourceException = ex;
+        }
         finally
         {
-            _completed = true;
-            _channel.Writer.TryComplete();
+            Volatile.Write(ref _completed, true);
+            // Complete channel with exception if source failed, allowing DrainAsync to observe it
+            _channel.Writer.TryComplete(sourceException);
         }
     }
 
@@ -915,37 +996,50 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
             await foreach (var item in _channel.Reader.ReadAllAsync(_cts.Token).ConfigureAwait(false))
             {
                 var key = _keySelector(item);
-                var keyGate = _perKeyLocks.GetOrAdd(key, _ => new SemaphoreSlim(_options.MaxConcurrencyPerKey));
+                var keyLock = _perKeyLocks.GetOrAdd(key, _ =>
+                    new KeyLock(new SemaphoreSlim(_options.MaxConcurrencyPerKey), _options.MaxConcurrencyPerKey));
 
                 await _globalConcurrency.WaitAsync(_cts.Token).ConfigureAwait(false);
-                await keyGate.WaitAsync(_cts.Token).ConfigureAwait(false);
+                await keyLock.Gate.WaitAsync(_cts.Token).ConfigureAwait(false);
+                keyLock.Touch();
 
                 var op = new EphemeralOperation { Key = key.ToString() };
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
                 _perKeyPendingCount.AddOrUpdate(key, 0, (_, c) => Math.Max(0, c - 1));
+                Interlocked.Increment(ref _activeTaskCount);
 
-                var task = ExecuteItemAsync(item, key, op, keyGate);
-                _runningTasks.Add(task);
+                // Fire-and-forget the execution; we track completion via _activeTaskCount
+                _ = ExecuteItemAsync(item, key, op, keyLock);
             }
 
-            await Task.WhenAll(_runningTasks.ToArray()).ConfigureAwait(false);
+            // Mark channel iteration as complete so task completions can signal drain
+            Volatile.Write(ref _channelIterationComplete, true);
+
+            // If all tasks already finished, signal now
+            if (Volatile.Read(ref _activeTaskCount) == 0)
+            {
+                _drainTcs.TrySetResult();
+            }
+
+            await _drainTcs.Task.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             // Expected
+            _drainTcs.TrySetCanceled();
         }
         finally
         {
             // Cleanup per-key semaphores
-            foreach (var gate in _perKeyLocks.Values)
+            foreach (var keyLock in _perKeyLocks.Values)
             {
-                gate.Dispose();
+                keyLock.Gate.Dispose();
             }
         }
     }
 
-    private async Task ExecuteItemAsync(T item, TKey key, EphemeralOperation op, SemaphoreSlim keyGate)
+    private async Task ExecuteItemAsync(T item, TKey key, EphemeralOperation op, KeyLock keyLock)
     {
         try
         {
@@ -960,10 +1054,59 @@ public sealed class EphemeralKeyedWorkCoordinator<T, TKey> : IAsyncDisposable
         finally
         {
             op.Completed = DateTimeOffset.UtcNow;
-            keyGate.Release();
+            keyLock.Gate.Release();
+            keyLock.Touch();
             _globalConcurrency.Release();
             CleanupWindow();
             SampleIfRequested();
+            CleanupIdleKeyLocks(key, keyLock);
+
+            // Signal drain completion when last task finishes and channel iteration is done
+            // Must be after CleanupWindow/SampleIfRequested so they're complete before DrainAsync returns
+            if (Interlocked.Decrement(ref _activeTaskCount) == 0 && Volatile.Read(ref _channelIterationComplete))
+            {
+                _drainTcs.TrySetResult();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Removes idle per-key locks to prevent unbounded memory growth.
+    /// Only removes locks that are idle (semaphore at max count) and haven't been used recently.
+    /// </summary>
+    private void CleanupIdleKeyLocks(TKey currentKey, KeyLock currentKeyLock)
+    {
+        var now = Environment.TickCount64;
+
+        // Only attempt cleanup periodically (every ~10 seconds, using low bits of current time)
+        // This amortizes the O(n) scan across many operations
+        if ((now & 0x3FF) != 0) return; // ~1 in 1024 calls triggers cleanup
+
+        foreach (var kvp in _perKeyLocks)
+        {
+            var key = kvp.Key;
+            var keyLock = kvp.Value;
+
+            // Skip the current key - it's in use
+            if (EqualityComparer<TKey>.Default.Equals(key, currentKey))
+                continue;
+
+            // Check if lock is idle (all permits available) and old enough
+            var idleTime = now - keyLock.GetLastUsed();
+            if (idleTime < KeyLockIdleTimeoutMs)
+                continue;
+
+            // Only remove if semaphore is at full capacity (no active work)
+            if (keyLock.Gate.CurrentCount != keyLock.MaxCount)
+                continue;
+
+            // Try to remove atomically - another thread might be using it
+            if (_perKeyLocks.TryRemove(kvp))
+            {
+                // Also clean up the pending count tracking
+                _perKeyPendingCount.TryRemove(key, out _);
+                keyLock.Gate.Dispose();
+            }
         }
     }
 
@@ -1036,13 +1179,15 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
     private readonly ConcurrentQueue<EphemeralOperation<TResult>> _recent;
     private readonly SemaphoreSlim _concurrency;
     private readonly Task _processingTask;
-    private readonly ConcurrentBag<Task> _runningTasks;
     private readonly Task? _sourceConsumerTask;
+    private readonly TaskCompletionSource _drainTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _completed;
+    private bool _channelIterationComplete;
     private int _pendingCount;
     private int _totalEnqueued;
     private int _totalCompleted;
     private int _totalFailed;
+    private int _activeTaskCount;
 
     /// <summary>
     /// Creates a result-capturing coordinator that accepts manual enqueues.
@@ -1056,7 +1201,6 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation<TResult>>();
         _concurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _runningTasks = new ConcurrentBag<Task>();
 
         _channel = Channel.CreateBounded<TInput>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -1081,7 +1225,6 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation<TResult>>();
         _concurrency = new SemaphoreSlim(_options.MaxConcurrency);
-        _runningTasks = new ConcurrentBag<Task>();
 
         _channel = Channel.CreateBounded<TInput>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -1108,37 +1251,37 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
     /// <summary>
     /// Number of items waiting to be processed.
     /// </summary>
-    public int PendingCount => _pendingCount;
+    public int PendingCount => Volatile.Read(ref _pendingCount);
 
     /// <summary>
     /// Number of items currently being processed.
     /// </summary>
-    public int ActiveCount => _options.MaxConcurrency - _concurrency.CurrentCount;
+    public int ActiveCount => Volatile.Read(ref _activeTaskCount);
 
     /// <summary>
     /// Total items enqueued since creation.
     /// </summary>
-    public int TotalEnqueued => _totalEnqueued;
+    public int TotalEnqueued => Volatile.Read(ref _totalEnqueued);
 
     /// <summary>
     /// Total items completed successfully.
     /// </summary>
-    public int TotalCompleted => _totalCompleted;
+    public int TotalCompleted => Volatile.Read(ref _totalCompleted);
 
     /// <summary>
     /// Total items that failed with an exception.
     /// </summary>
-    public int TotalFailed => _totalFailed;
+    public int TotalFailed => Volatile.Read(ref _totalFailed);
 
     /// <summary>
     /// Whether Complete() has been called.
     /// </summary>
-    public bool IsCompleted => _completed;
+    public bool IsCompleted => Volatile.Read(ref _completed);
 
     /// <summary>
     /// Whether all work is done (completed + drained).
     /// </summary>
-    public bool IsDrained => _completed && _pendingCount == 0 && ActiveCount == 0;
+    public bool IsDrained => IsCompleted && PendingCount == 0 && ActiveCount == 0;
 
     /// <summary>
     /// Gets a snapshot of recent operations with their results.
@@ -1236,7 +1379,7 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
     /// </summary>
     public void Complete()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.Complete();
     }
 
@@ -1264,13 +1407,14 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
     /// </summary>
     public void Cancel()
     {
-        _completed = true;
+        Volatile.Write(ref _completed, true);
         _channel.Writer.TryComplete();
         _cts.Cancel();
     }
 
     private async Task ConsumeSourceAsync(IAsyncEnumerable<TInput> source)
     {
+        Exception? sourceException = null;
         try
         {
             await foreach (var item in source.WithCancellation(_cts.Token).ConfigureAwait(false))
@@ -1284,10 +1428,16 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
         {
             // Expected
         }
+        catch (Exception ex)
+        {
+            // Capture source enumeration exception to propagate to channel
+            sourceException = ex;
+        }
         finally
         {
-            _completed = true;
-            _channel.Writer.TryComplete();
+            Volatile.Write(ref _completed, true);
+            // Complete channel with exception if source failed, allowing DrainAsync to observe it
+            _channel.Writer.TryComplete(sourceException);
         }
     }
 
@@ -1302,16 +1452,27 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
                 var op = new EphemeralOperation<TResult>();
                 EnqueueOperation(op);
                 Interlocked.Decrement(ref _pendingCount);
+                Interlocked.Increment(ref _activeTaskCount);
 
-                var task = ExecuteItemAsync(item, op);
-                _runningTasks.Add(task);
+                // Fire-and-forget the execution; we track completion via _activeTaskCount
+                _ = ExecuteItemAsync(item, op);
             }
 
-            await Task.WhenAll(_runningTasks.ToArray()).ConfigureAwait(false);
+            // Mark channel iteration as complete so task completions can signal drain
+            Volatile.Write(ref _channelIterationComplete, true);
+
+            // If all tasks already finished, signal now
+            if (Volatile.Read(ref _activeTaskCount) == 0)
+            {
+                _drainTcs.TrySetResult();
+            }
+
+            await _drainTcs.Task.ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
             // Expected
+            _drainTcs.TrySetCanceled();
         }
     }
 
@@ -1335,6 +1496,13 @@ public sealed class EphemeralWorkCoordinator<TInput, TResult> : IAsyncDisposable
             _concurrency.Release();
             CleanupWindow();
             SampleIfRequested();
+
+            // Signal drain completion when last task finishes and channel iteration is done
+            // Must be after CleanupWindow/SampleIfRequested so they're complete before DrainAsync returns
+            if (Interlocked.Decrement(ref _activeTaskCount) == 0 && Volatile.Read(ref _channelIterationComplete))
+            {
+                _drainTcs.TrySetResult();
+            }
         }
     }
 
