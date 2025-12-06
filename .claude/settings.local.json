@@ -21,7 +21,8 @@
       "WebFetch(domain:www.mostlylucid.net)",
       "Bash(dotnet list package:*)",
       "Bash(dotnet list:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

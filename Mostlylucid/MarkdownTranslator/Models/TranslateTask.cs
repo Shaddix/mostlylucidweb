@@ -25,33 +25,37 @@ public class TranslateResultTask
         TaskId = task.TaskId;
         StartTime = task.StartTime;
         Language = task.Language;
-        Completed = task.Task?.IsCompleted == true;
-        if (Completed)
+
+        // Check for faulted state first - a faulted task is also "completed" in .NET terms
+        if (task.Task?.IsFaulted == true)
         {
+            Failed = true;
+            Completed = false;
+            TotalMilliseconds = (int)(DateTime.Now - task.StartTime).TotalMilliseconds;
+        }
+        else if (task.Task?.IsCompletedSuccessfully == true)
+        {
+            Completed = true;
+            Failed = false;
             var endTime = task.Task.Result.EndTime;
             TotalMilliseconds = (int)((endTime - task.StartTime)!).Value.TotalMilliseconds;
             EndTime = endTime;
-            Failed = false;
         }
-        else if (!Completed)
+        else
         {
+            // Still in progress
             Completed = false;
             Failed = false;
-            TotalMilliseconds = (int)((DateTime.Now - task.StartTime)!).TotalMilliseconds;
-        }
-        else if(task.Task?.IsFaulted ==true)
-        {
-            Failed = true;
+            TotalMilliseconds = (int)(DateTime.Now - task.StartTime).TotalMilliseconds;
         }
 
-        if  (Completed && includeMarkdown)
+        if (Completed && includeMarkdown)
         {
             var result = task.Task?.Result;
-            if(result == null) return;
+            if (result == null) return;
             OriginalMarkdown = result.OriginalMarkdown;
             TranslatedMarkdown = result.TranslatedMarkdown;
         }
-        
     }
     [Display(Name ="Task ID")]
     public string TaskId { get; set; }
