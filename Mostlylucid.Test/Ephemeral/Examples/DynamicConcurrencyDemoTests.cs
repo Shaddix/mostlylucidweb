@@ -16,13 +16,19 @@ public class DynamicConcurrencyDemoTests
             minConcurrency: 1,
             maxConcurrency: 4,
             scaleUpPattern: "load.high",
-            scaleDownPattern: "load.low");
+            scaleDownPattern: "load.low",
+            signalWindow: TimeSpan.FromSeconds(5),
+            minAdjustInterval: TimeSpan.FromMilliseconds(100)); // Short interval for testing
 
         var initial = demo.EnqueueAsync(1); // force creation
         await initial;
 
         sink.Raise(new SignalEvent("load.high", 1, null, DateTimeOffset.UtcNow));
         await SpinUntilAsync(() => demo.CurrentMaxConcurrency > 1, TimeSpan.FromSeconds(2));
+
+        // Wait for hysteresis before next adjustment
+        await Task.Delay(150);
+
         sink.Raise(new SignalEvent("load.low", 2, null, DateTimeOffset.UtcNow));
         await SpinUntilAsync(() => demo.CurrentMaxConcurrency <= 2, TimeSpan.FromSeconds(2));
 

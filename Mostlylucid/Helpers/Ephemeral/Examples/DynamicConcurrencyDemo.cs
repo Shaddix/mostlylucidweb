@@ -2,6 +2,8 @@ namespace Mostlylucid.Helpers.Ephemeral.Examples;
 
 /// <summary>
 /// Demonstrates dynamic concurrency: adjust MaxConcurrency in response to signals.
+/// Includes time-windowed sensing (only react to recent signals) and hysteresis
+/// (minimum interval between adjustments) to avoid thrashing.
 /// </summary>
 public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
 {
@@ -12,6 +14,9 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
     private readonly int _max;
     private readonly string _scaleUpPattern;
     private readonly string _scaleDownPattern;
+    private readonly TimeSpan _signalWindow;
+    private readonly TimeSpan _minAdjustInterval;
+    private DateTimeOffset _lastAdjust = DateTimeOffset.MinValue;
 
     public DynamicConcurrencyDemo(
         Func<T, CancellationToken, Task> body,
@@ -19,12 +24,16 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
         int minConcurrency = 1,
         int maxConcurrency = 32,
         string scaleUpPattern = "load.high",
-        string scaleDownPattern = "load.low")
+        string scaleDownPattern = "load.low",
+        TimeSpan? signalWindow = null,
+        TimeSpan? minAdjustInterval = null)
     {
         _min = Math.Max(1, minConcurrency);
         _max = Math.Max(_min, maxConcurrency);
         _scaleUpPattern = scaleUpPattern;
         _scaleDownPattern = scaleDownPattern;
+        _signalWindow = signalWindow ?? TimeSpan.FromSeconds(5);
+        _minAdjustInterval = minAdjustInterval ?? TimeSpan.FromSeconds(1);
 
         _coordinator = new EphemeralWorkCoordinator<T>(
             body,
@@ -46,16 +55,25 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
         {
             try
             {
-                var snapshot = sink.Sense();
-                if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleUpPattern)))
+                // Hysteresis: don't adjust more frequently than _minAdjustInterval
+                if (DateTimeOffset.UtcNow - _lastAdjust >= _minAdjustInterval)
                 {
-                    var next = Math.Min(_max, _coordinator.CurrentMaxConcurrency * 2);
-                    _coordinator.SetMaxConcurrency(next);
-                }
-                else if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleDownPattern)))
-                {
-                    var next = Math.Max(_min, _coordinator.CurrentMaxConcurrency / 2);
-                    _coordinator.SetMaxConcurrency(next);
+                    // Time-windowed sensing: only react to recent signals
+                    var cutoff = DateTimeOffset.UtcNow - _signalWindow;
+                    var snapshot = sink.Sense(s => s.Timestamp >= cutoff);
+
+                    if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleUpPattern)))
+                    {
+                        var next = Math.Min(_max, _coordinator.CurrentMaxConcurrency * 2);
+                        _coordinator.SetMaxConcurrency(next);
+                        _lastAdjust = DateTimeOffset.UtcNow;
+                    }
+                    else if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleDownPattern)))
+                    {
+                        var next = Math.Max(_min, _coordinator.CurrentMaxConcurrency / 2);
+                        _coordinator.SetMaxConcurrency(next);
+                        _lastAdjust = DateTimeOffset.UtcNow;
+                    }
                 }
             }
             catch { /* ignore */ }

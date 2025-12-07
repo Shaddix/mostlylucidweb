@@ -144,6 +144,9 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 | `Examples/SignalAnomalyDetector.cs` | Moving-window anomaly detection by pattern/threshold |
 | `Examples/LongWindowDemo.cs` | Shows short vs. long operation windows with bounded memory |
 | `Examples/ReactiveFanOutPipeline.cs` | Upstream fan-out that throttles on downstream signals/backpressure |
+| `Examples/AdaptiveTranslationService.cs` | Adaptive rate limiting with signal-based deferral |
+| `Examples/SignalBasedCircuitBreaker.cs` | Circuit breaker reading ephemeral signal window |
+| `Examples/TelemetrySignalHandler.cs` | Async signal processing with telemetry integration |
 | `DependencyInjection.cs` | DI extension methods and factory implementations |
 | `Atoms/*` | Small, opinionated wrappers showcasing common patterns |
 
@@ -153,7 +156,9 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 - `SignalAnomalyDetector`: sliding-window detector for rate anomalies; use for self-healing or alerting.
 - `SignalDrivenBackpressure`: defers work when backpressure signals are present; apply when downstream queues need relief.
 - `AdaptiveTranslationService`: pipeline that adapts concurrency based on signal feedback; a template for adaptive workloads.
-- `DynamicConcurrencyDemo`: shows runtime `SetMaxConcurrency` with signal-driven scaling.
+- `SignalBasedCircuitBreaker`: circuit breaker that reads ephemeral window instead of maintaining its own state; zero external storage.
+- `TelemetrySignalHandler`: async signal processing with telemetry integration; never blocks the operation thread.
+- `DynamicConcurrencyDemo`: shows runtime `SetMaxConcurrency` with signal-driven scaling; includes time-windowed sensing (only react to recent signals) and hysteresis (minimum adjust interval) to avoid thrashing.
 - `ControlledFanOut`: caps global concurrency while keeping per-key ordering.
 - `LongWindowDemo`: demonstrates tiny vs. long operation windows staying bounded by `MaxTrackedOperations`.
 - `ReactiveFanOutPipeline`: two-stage fan-out that throttles stage 1 when stage 2 emits backpressure/failure signals.
