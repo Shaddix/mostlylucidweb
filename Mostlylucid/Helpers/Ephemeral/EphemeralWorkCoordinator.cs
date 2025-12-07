@@ -31,6 +31,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     private int _totalCompleted;
     private int _totalFailed;
     private int _activeTaskCount;
+    private int _currentMaxConcurrency;
     private long _lastTrimTicks; // For throttling TrimWindowAge
     private long _lastReadCleanupTicks; // For throttling cleanup on read operations
 
@@ -46,6 +47,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _concurrency = CreateGate(_options);
+        _currentMaxConcurrency = _options.MaxConcurrency;
 
         // Bounded channel provides back-pressure
         _channel = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(_options.MaxTrackedOperations)
@@ -72,6 +74,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         _cts = new CancellationTokenSource();
         _recent = new ConcurrentQueue<EphemeralOperation>();
         _concurrency = CreateGate(_options);
+        _currentMaxConcurrency = _options.MaxConcurrency;
 
         _channel = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(_options.MaxTrackedOperations)
         {
@@ -136,6 +139,11 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
     /// When paused, no new items are pulled from the queue (but running operations continue).
     /// </summary>
     public bool IsPaused => Volatile.Read(ref _paused);
+
+    /// <summary>
+    /// Current max concurrency (tracks dynamic changes when enabled).
+    /// </summary>
+    public int CurrentMaxConcurrency => Volatile.Read(ref _currentMaxConcurrency);
 
     /// <summary>
     /// Pause processing. Running operations continue, but no new items are started.
@@ -634,6 +642,7 @@ public sealed class EphemeralWorkCoordinator<T> : IAsyncDisposable
         if (!_options.EnableDynamicConcurrency)
             throw new InvalidOperationException("Dynamic concurrency is disabled for this coordinator.");
         _concurrency.UpdateLimit(newLimit);
+        Volatile.Write(ref _currentMaxConcurrency, newLimit);
     }
 
     private async Task ConsumeSourceAsync(IAsyncEnumerable<T> source)

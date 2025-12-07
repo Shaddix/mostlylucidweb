@@ -140,7 +140,32 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 | `EphemeralResultCoordinator.cs` | Result-capturing coordinator variant |
 | `Examples/SignalingHttpClient.cs` | Sample fine-grained signal emission around HTTP calls |
 | `SignalDispatcher.cs` | Async signal routing with pattern matching |
+| `Examples/SignalLogWatcher.cs` | Polls signal window for matching signals and triggers callbacks |
+| `Examples/SignalAnomalyDetector.cs` | Moving-window anomaly detection by pattern/threshold |
+| `Examples/LongWindowDemo.cs` | Shows short vs. long operation windows with bounded memory |
+| `Examples/ReactiveFanOutPipeline.cs` | Upstream fan-out that throttles on downstream signals/backpressure |
 | `DependencyInjection.cs` | DI extension methods and factory implementations |
+| `Atoms/*` | Small, opinionated wrappers showcasing common patterns |
+
+### Pattern/Example Quick Guide
+- `SignalingHttpClient`: emit fine-grained HTTP progress/stage signals without blocking callers; plug into any coordinator via `ISignalEmitter`.
+- `SignalLogWatcher`: polls recent signals and triggers callbacks; great for error log scraping or metric hooks.
+- `SignalAnomalyDetector`: sliding-window detector for rate anomalies; use for self-healing or alerting.
+- `SignalDrivenBackpressure`: defers work when backpressure signals are present; apply when downstream queues need relief.
+- `AdaptiveTranslationService`: pipeline that adapts concurrency based on signal feedback; a template for adaptive workloads.
+- `DynamicConcurrencyDemo`: shows runtime `SetMaxConcurrency` with signal-driven scaling.
+- `ControlledFanOut`: caps global concurrency while keeping per-key ordering.
+- `LongWindowDemo`: demonstrates tiny vs. long operation windows staying bounded by `MaxTrackedOperations`.
+- `ReactiveFanOutPipeline`: two-stage fan-out that throttles stage 1 when stage 2 emits backpressure/failure signals.
+- `SignalReactionShowcase`: emits signals inside work items, reacts immediately via `OnSignal`, and polls a sink for pattern matches.
+- Atoms:
+  - `FixedWorkAtom`: simple bounded worker pool with stats.
+  - `KeyedSequentialAtom`: per-key ordered execution with optional fair scheduling.
+  - `SignalAwareAtom`: cancel/defer intake based on signals (circuit-breaker/backpressure guard).
+  - `BatchingAtom`: coalesce items by size/time into batches.
+  - `RetryAtom`: adds bounded retry/backoff around work items.
+  - `ControlledFanOut` (example-backed): global + per-key gating for bursty inputs.
+  - `Reactive Fan-Out` (example-backed): upstream throttle that reacts to downstream signals.
 
 ---
 
@@ -587,6 +612,314 @@ var body = await SignalingHttpClient.DownloadWithSignalsAsync(
 // Signals emitted: stage.starting, progress:0, stage.request, stage.headers, stage.reading,
 // progress:XX (0-100), stage.completed. Pattern filters like "stage.*" or "progress:*" work.
 ```
+
+### Atoms: Tiny, Opinionated Patterns
+
+Atoms are single-file wrappers that show the pattern in its simplest form. Full code is below so you can copy/paste and tweak.
+
+**FixedWorkAtom** (bounded, fixed concurrency)
+```csharp
+public sealed class FixedWorkAtom<T> : IAsyncDisposable
+{
+    private readonly EphemeralWorkCoordinator<T> _coordinator;
+
+    public FixedWorkAtom(Func<T, CancellationToken, Task> body, int? maxConcurrency = null, int? maxTracked = null, SignalSink? signals = null)
+    {
+        var options = new EphemeralOptions
+        {
+            MaxConcurrency = maxConcurrency is > 0 ? maxConcurrency.Value : Environment.ProcessorCount,
+            MaxTrackedOperations = maxTracked is > 0 ? maxTracked.Value : 200,
+            Signals = signals
+        };
+        _coordinator = new EphemeralWorkCoordinator<T>(body, options);
+    }
+
+    public ValueTask<long> EnqueueAsync(T item, CancellationToken ct = default)
+        => _coordinator.EnqueueWithIdAsync(item, ct);
+
+    public async Task DrainAsync(CancellationToken ct = default)
+    {
+        _coordinator.Complete();
+        await _coordinator.DrainAsync(ct).ConfigureAwait(false);
+    }
+
+    public IReadOnlyCollection<EphemeralOperationSnapshot> Snapshot() => _coordinator.GetSnapshot();
+    public (int Pending, int Active, int Completed, int Failed) Stats()
+        => (_coordinator.PendingCount, _coordinator.ActiveCount, _coordinator.TotalCompleted, _coordinator.TotalFailed);
+
+    public ValueTask DisposeAsync() => _coordinator.DisposeAsync();
+}
+```
+
+**KeyedSequentialAtom** (per-key ordering, global parallelism)
+```csharp
+public sealed class KeyedSequentialAtom<T, TKey> : IAsyncDisposable where TKey : notnull
+{
+    private readonly EphemeralKeyedWorkCoordinator<T, TKey> _coordinator;
+    private long _id;
+
+    public KeyedSequentialAtom(Func<T, TKey> keySelector, Func<T, CancellationToken, Task> body, int? maxConcurrency = null, int perKeyConcurrency = 1, bool enableFairScheduling = false, SignalSink? signals = null)
+    {
+        var options = new EphemeralOptions
+        {
+            MaxConcurrency = maxConcurrency is > 0 ? maxConcurrency.Value : Environment.ProcessorCount,
+            MaxConcurrencyPerKey = Math.Max(1, perKeyConcurrency),
+            EnableFairScheduling = enableFairScheduling,
+            Signals = signals
+        };
+        _coordinator = new EphemeralKeyedWorkCoordinator<T, TKey>(keySelector, body, options);
+    }
+
+    public async ValueTask<long> EnqueueAsync(T item, CancellationToken ct = default)
+    {
+        await _coordinator.EnqueueAsync(item, ct).ConfigureAwait(false);
+        return Interlocked.Increment(ref _id);
+    }
+
+    public async Task DrainAsync(CancellationToken ct = default)
+    {
+        _coordinator.Complete();
+        await _coordinator.DrainAsync(ct).ConfigureAwait(false);
+    }
+
+    public IReadOnlyCollection<EphemeralOperationSnapshot> Snapshot() => _coordinator.GetSnapshot();
+    public (int Pending, int Active, int Completed, int Failed) Stats()
+        => (_coordinator.PendingCount, _coordinator.ActiveCount, _coordinator.TotalCompleted, _coordinator.TotalFailed);
+
+    public ValueTask DisposeAsync() => _coordinator.DisposeAsync();
+}
+```
+
+**SignalAwareAtom** (react to ambient signals with glob patterns)
+```csharp
+public sealed class SignalAwareAtom<T> : IAsyncDisposable
+{
+    private readonly EphemeralWorkCoordinator<T> _coordinator;
+    private readonly IReadOnlySet<string>? _cancelOn;
+    private readonly HashSet<string> _ambient = new(StringComparer.Ordinal);
+
+    public SignalAwareAtom(Func<T, CancellationToken, Task> body, IReadOnlySet<string>? cancelOn = null, IReadOnlySet<string>? deferOn = null, TimeSpan? deferInterval = null, int? maxDeferAttempts = null, SignalSink? signals = null, int? maxConcurrency = null)
+    {
+        var options = new EphemeralOptions
+        {
+            MaxConcurrency = maxConcurrency is > 0 ? maxConcurrency.Value : Environment.ProcessorCount,
+            CancelOnSignals = cancelOn,
+            DeferOnSignals = deferOn,
+            DeferCheckInterval = deferInterval ?? TimeSpan.FromMilliseconds(100),
+            MaxDeferAttempts = maxDeferAttempts ?? 50,
+            Signals = signals
+        };
+        _coordinator = new EphemeralWorkCoordinator<T>(body, options);
+        _cancelOn = cancelOn;
+    }
+
+    public ValueTask<long> EnqueueAsync(T item, CancellationToken ct = default)
+    {
+        if (_cancelOn is { Count: > 0 })
+            foreach (var signal in _ambient)
+                if (StringPatternMatcher.MatchesAny(signal, _cancelOn))
+                    return ValueTask.FromResult(-1L);
+
+        return _coordinator.EnqueueWithIdAsync(item, ct);
+    }
+
+    public void Raise(string signal)
+    {
+        if (!string.IsNullOrWhiteSpace(signal))
+            _ambient.Add(signal);
+    }
+
+    public async Task DrainAsync(CancellationToken ct = default)
+    {
+        _coordinator.Complete();
+        await _coordinator.DrainAsync(ct).ConfigureAwait(false);
+    }
+
+    public IReadOnlyCollection<EphemeralOperationSnapshot> Snapshot() => _coordinator.GetSnapshot();
+    public (int Pending, int Active, int Completed, int Failed) Stats()
+        => (_coordinator.PendingCount, _coordinator.ActiveCount, _coordinator.TotalCompleted, _coordinator.TotalFailed);
+
+    public ValueTask DisposeAsync() => _coordinator.DisposeAsync();
+}
+```
+
+**BatchingAtom** (collect N or flush on interval)
+```csharp
+public sealed class BatchingAtom<T> : IAsyncDisposable
+{
+    private readonly object _lock = new();
+    private readonly List<T> _buffer = new();
+    private readonly Func<IReadOnlyList<T>, CancellationToken, Task> _onBatch;
+    private readonly int _maxBatchSize;
+    private readonly Timer _timer;
+    private bool _flushing;
+    private bool _disposed;
+
+    public BatchingAtom(Func<IReadOnlyList<T>, CancellationToken, Task> onBatch, int maxBatchSize = 32, TimeSpan? flushInterval = null)
+    {
+        _onBatch = onBatch ?? throw new ArgumentNullException(nameof(onBatch));
+        _maxBatchSize = maxBatchSize <= 0 ? throw new ArgumentOutOfRangeException(nameof(maxBatchSize)) : maxBatchSize;
+        _timer = new Timer((flushInterval ?? TimeSpan.FromSeconds(1)).TotalMilliseconds) { AutoReset = true, Enabled = true };
+        _timer.Elapsed += async (_, _) => await TryFlushAsync().ConfigureAwait(false);
+    }
+
+    public void Enqueue(T item)
+    {
+        lock (_lock)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatchingAtom<T>));
+            _buffer.Add(item);
+            if (_buffer.Count >= _maxBatchSize && !_flushing)
+                _ = FlushAsync();
+        }
+    }
+
+    private async Task TryFlushAsync()
+    {
+        lock (_lock) { if (_flushing || _buffer.Count == 0) return; _flushing = true; }
+        try { await FlushAsync().ConfigureAwait(false); }
+        finally { lock (_lock) { _flushing = false; } }
+    }
+
+    private async Task FlushAsync()
+    {
+        List<T> batch;
+        lock (_lock) { if (_buffer.Count == 0) return; batch = new List<T>(_buffer); _buffer.Clear(); }
+        await _onBatch(batch, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _timer.Stop();
+        _timer.Dispose();
+        await FlushAsync().ConfigureAwait(false);
+    }
+}
+```
+
+**RetryAtom** (retry with backoff)
+```csharp
+public sealed class RetryAtom<T> : IAsyncDisposable
+{
+    private readonly EphemeralWorkCoordinator<T> _coordinator;
+    private readonly int _maxAttempts;
+    private readonly Func<int, TimeSpan> _backoff;
+
+    public RetryAtom(Func<T, CancellationToken, Task> body, int maxAttempts = 3, Func<int, TimeSpan>? backoff = null, int? maxConcurrency = null, SignalSink? signals = null)
+    {
+        _maxAttempts = maxAttempts <= 0 ? throw new ArgumentOutOfRangeException(nameof(maxAttempts)) : maxAttempts;
+        _backoff = backoff ?? (attempt => TimeSpan.FromMilliseconds(50 * attempt));
+
+        _coordinator = new EphemeralWorkCoordinator<T>(
+            async (item, ct) =>
+            {
+                var attempt = 0;
+                while (true)
+                {
+                    try { await body(item, ct).ConfigureAwait(false); return; }
+                    catch when (++attempt < _maxAttempts && !ct.IsCancellationRequested)
+                    {
+                        await Task.Delay(_backoff(attempt), ct).ConfigureAwait(false);
+                    }
+                }
+            },
+            new EphemeralOptions
+            {
+                MaxConcurrency = maxConcurrency is > 0 ? maxConcurrency.Value : Environment.ProcessorCount,
+                Signals = signals
+            });
+    }
+
+    public ValueTask<long> EnqueueAsync(T item, CancellationToken ct = default) => _coordinator.EnqueueWithIdAsync(item, ct);
+
+    public async Task DrainAsync(CancellationToken ct = default)
+    {
+        _coordinator.Complete();
+        await _coordinator.DrainAsync(ct).ConfigureAwait(false);
+    }
+
+    public ValueTask DisposeAsync() => _coordinator.DisposeAsync();
+}
+```
+
+### Example: Signal Detection and Anomaly Window
+
+Detect anomalies by scanning the moving signal window (bounded by capacity and age) and glob-matching patterns:
+
+```csharp
+public sealed class SignalAnomalyDetector
+{
+    private readonly SignalSink _sink;
+    private readonly TimeSpan _window;
+    private readonly int _threshold;
+    private readonly string _pattern;
+
+    public SignalAnomalyDetector(SignalSink sink, string pattern = "error.*", int threshold = 5, TimeSpan? window = null)
+    {
+        _sink = sink;
+        _pattern = pattern;
+        _threshold = threshold;
+        _window = window ?? TimeSpan.FromSeconds(10);
+    }
+
+    public bool IsAnomalous()
+    {
+        var cutoff = DateTimeOffset.UtcNow - _window;
+        var recent = _sink.Sense(s => s.Timestamp >= cutoff);
+        var matches = recent.Count(s => StringPatternMatcher.Matches(s.Signal, _pattern));
+        return matches >= _threshold;
+    }
+}
+
+// Wiring it up
+var sink = new SignalSink(maxCapacity: 1024, maxAge: TimeSpan.FromMinutes(1));
+var detector = new SignalAnomalyDetector(sink, pattern: "http.error.*", threshold: 3, window: TimeSpan.FromSeconds(5));
+
+await using var atom = new FixedWorkAtom<HttpRequestMessage>(
+    async (req, ct) =>
+    {
+        try
+        {
+            // ... perform HTTP work
+        }
+        catch (HttpRequestException ex)
+        {
+            sink.Raise(new SignalEvent($"http.error:{ex.StatusCode}", EphemeralIdGenerator.NextId(), req.RequestUri?.ToString(), DateTimeOffset.UtcNow));
+            throw;
+        }
+    },
+    maxConcurrency: 4,
+    signals: sink);
+
+// Periodically
+if (detector.IsAnomalous())
+{
+    // throttle, open a circuit, or alert
+}
+```
+
+See `Examples/SignalAnomalyDetector.cs` for the implementation and `SignalAnomalyDetectorTests` for coverage.
+
+### Example: Error Log Watcher (Singleton)
+
+Monitor a shared `SignalSink` for error signals and trigger log capture automatically:
+
+```csharp
+// Singleton wiring
+var sink = new SignalSink(maxCapacity: 2048, maxAge: TimeSpan.FromMinutes(2));
+await using var watcher = new SignalLogWatcher(
+    sink,
+    evt => _logger.LogError("Captured signal {Signal} from {Key}", evt.Signal, evt.Key),
+    pattern: "error.*",
+    pollInterval: TimeSpan.FromMilliseconds(200));
+
+// Producers emit signals; watcher polls the moving window and dedups
+sink.Raise(new SignalEvent("error.timeout", EphemeralIdGenerator.NextId(), "worker-1", DateTimeOffset.UtcNow));
+```
+
+See `Examples/SignalLogWatcher.cs` for the full implementation and `SignalLogWatcherTests` for coverage.
 
 ### Signal Constraints
 

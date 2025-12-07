@@ -21,6 +21,9 @@ The signal infrastructure lives in:
 | [StringPatternMatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/StringPatternMatcher.cs) | Glob-style pattern matching for signal filtering |
 | [SignalDispatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/SignalDispatcher.cs) | Async signal routing with pattern matching (supports `*`, `?`, comma lists, deterministic order) |
 | [Examples/SignalingHttpClient.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalingHttpClient.cs) | Sample fine-grained signal emission for HTTP calls |
+| [Examples/AdaptiveTranslationService.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/AdaptiveTranslationService.cs) | Adaptive rate limiting with signal-based deferral |
+| [Examples/SignalBasedCircuitBreaker.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalBasedCircuitBreaker.cs) | Circuit breaker reading ephemeral signal window |
+| [Examples/TelemetrySignalHandler.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/TelemetrySignalHandler.cs) | Async signal processing with telemetry integration |
 
 [TOC]
 
@@ -418,52 +421,66 @@ When a signal in `DeferOnSignals` is detected, new items wait until the signal c
 
 ## Real-World Example: Adaptive Rate Limiting
 
+From [AdaptiveTranslationService.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/AdaptiveTranslationService.cs):
+
 ```csharp
-public class AdaptiveTranslationService
+public class AdaptiveTranslationService : IAsyncDisposable
 {
     private readonly EphemeralWorkCoordinator<TranslationRequest> _coordinator;
+    private readonly ITranslationApi _translationApi;
 
-    public AdaptiveTranslationService()
+    public AdaptiveTranslationService(ITranslationApi translationApi)
     {
+        _translationApi = translationApi;
+
         _coordinator = new EphemeralWorkCoordinator<TranslationRequest>(
             ProcessTranslationAsync,
             new EphemeralOptions
             {
                 MaxConcurrency = 8,
                 MaxTrackedOperations = 100,
-                DeferOnSignals = new HashSet<string> { "rate-limit" }
+
+                // New work is deferred while any "rate-limit" or "rate-limit:*" signal is present
+                DeferOnSignals = new HashSet<string> { "rate-limit", "rate-limit:*" },
+                MaxDeferAttempts = 10,
+                DeferCheckInterval = TimeSpan.FromMilliseconds(100)
             });
     }
 
     public async Task TranslateAsync(TranslationRequest request)
     {
-        // Check for rate limit signals with retry-after info
+        // Optional: extra politeness based on most recent retry-after
         var rateLimitSignals = _coordinator.GetSignalsByPattern("rate-limit:*");
         if (rateLimitSignals.Count > 0)
         {
-            // Parse "rate-limit:5000ms" -> delay 5000ms
-            var signal = rateLimitSignals.First().Signal;
-            var delayMs = int.Parse(signal.Split(':')[1].TrimEnd('m', 's'));
-            await Task.Delay(delayMs);
+            var latest = rateLimitSignals
+                .OrderByDescending(s => s.Timestamp)
+                .First()
+                .Signal; // "rate-limit:5000ms"
+
+            if (TryParseRetryAfter(latest, out var delay))
+            {
+                await Task.Delay(delay);
+            }
         }
 
         await _coordinator.EnqueueAsync(request);
     }
 
-    private async Task ProcessTranslationAsync(
-        TranslationRequest request,
-        CancellationToken ct)
+    public static bool TryParseRetryAfter(string signal, out TimeSpan delay)
     {
-        // Work body has access to signaling via coordinator
-        try
-        {
-            await _translationApi.TranslateAsync(request, ct);
-        }
-        catch (RateLimitException ex)
-        {
-            // Signal will be visible to other operations
-            throw;
-        }
+        delay = default;
+        var parts = signal.Split(':', 2);
+        if (parts.Length != 2) return false;
+
+        var payload = parts[1].Trim();
+        if (!payload.EndsWith("ms", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var numPart = payload[..^2];
+        if (!int.TryParse(numPart, out var ms) || ms < 0) return false;
+
+        delay = TimeSpan.FromMilliseconds(ms);
+        return true;
     }
 }
 ```
@@ -545,6 +562,8 @@ No metrics library needed. Just query the ephemeral window.
 
 ## Real-World Example: Signal-Based Circuit Breaking
 
+From [SignalBasedCircuitBreaker.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalBasedCircuitBreaker.cs):
+
 ```csharp
 public class SignalBasedCircuitBreaker
 {
@@ -568,6 +587,14 @@ public class SignalBasedCircuitBreaker
             DateTimeOffset.UtcNow - _windowSize);
 
         return recentFailures.Count(s => s.Signal == _failureSignal) >= _threshold;
+    }
+
+    public int GetFailureCount<T>(EphemeralWorkCoordinator<T> coordinator)
+    {
+        var recentFailures = coordinator.GetSignalsSince(
+            DateTimeOffset.UtcNow - _windowSize);
+
+        return recentFailures.Count(s => s.Signal == _failureSignal);
     }
 }
 
@@ -799,6 +826,76 @@ processor.Enqueue(new SignalEvent(
     key,
     DateTimeOffset.UtcNow));
 ```
+
+### TelemetrySignalHandler Example
+
+A complete example combining async signal processing with telemetry integration:
+
+> **Source:** [TelemetrySignalHandler.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/TelemetrySignalHandler.cs)
+
+```csharp
+public class TelemetrySignalHandler : IAsyncDisposable
+{
+    private readonly AsyncSignalProcessor _processor;
+    private readonly ITelemetryClient _telemetry;
+
+    public TelemetrySignalHandler(ITelemetryClient telemetry)
+    {
+        _telemetry = telemetry;
+        _processor = new AsyncSignalProcessor(
+            HandleSignalAsync,
+            maxConcurrency: 8,
+            maxQueueSize: 5000);
+    }
+
+    // Synchronous entry point - returns immediately
+    public bool OnSignal(SignalEvent signal) => _processor.Enqueue(signal);
+
+    private async Task HandleSignalAsync(SignalEvent signal, CancellationToken ct)
+    {
+        var properties = new Dictionary<string, string>
+        {
+            ["signal"] = signal.Signal,
+            ["operationId"] = signal.OperationId.ToString(),
+            ["key"] = signal.Key ?? "none"
+        };
+
+        await _telemetry.TrackEventAsync("EphemeralSignal", properties, ct);
+
+        // Categorized tracking based on signal prefix
+        if (signal.StartsWith("error"))
+            await _telemetry.TrackExceptionAsync(signal.Signal, properties, ct);
+        else if (signal.StartsWith("perf"))
+            await _telemetry.TrackMetricAsync(signal.Signal, 1, ct);
+    }
+
+    // Expose stats for monitoring
+    public int QueuedCount => _processor.QueuedCount;
+    public long ProcessedCount => _processor.ProcessedCount;
+    public long DroppedCount => _processor.DroppedCount;
+
+    public async ValueTask DisposeAsync() => await _processor.DisposeAsync();
+}
+```
+
+Wire it up to your coordinator:
+
+```csharp
+await using var telemetryHandler = new TelemetrySignalHandler(telemetryClient);
+
+await using var coordinator = new EphemeralWorkCoordinator<Request>(
+    ProcessAsync,
+    new EphemeralOptions
+    {
+        OnSignal = signal => telemetryHandler.OnSignal(signal)
+    });
+```
+
+The handler:
+- **Never blocks** the operation thread - `OnSignal` returns immediately
+- **Categorizes signals** by prefix for different telemetry types
+- **Exposes metrics** (queued, processed, dropped) for monitoring health
+- **Bounds memory** - drops oldest signals if queue fills up
 
 ---
 
