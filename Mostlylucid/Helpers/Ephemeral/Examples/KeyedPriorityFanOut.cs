@@ -61,22 +61,37 @@ public sealed class KeyedPriorityFanOut<TKey, T> : IAsyncDisposable where TKey :
                 }));
     }
 
+    /// <summary>
+    /// Enqueue an item into the normal lane.
+    /// </summary>
     public ValueTask EnqueueAsync(T item, CancellationToken ct = default)
         => _priorityCoordinator.EnqueueAsync(item, "normal", ct).AsVoid();
 
+    /// <summary>
+    /// Enqueue an item into the priority lane. Returns false if the priority lane is saturated
+    /// (based on MaxDepth, CancelOnSignals, or DeferOnSignals rules).
+    /// </summary>
     public ValueTask<bool> EnqueuePriorityAsync(T item, CancellationToken ct = default)
         => _priorityCoordinator.EnqueueAsync(item, "priority", ct);
 
     public Task DrainAsync(CancellationToken ct = default) => _priorityCoordinator.DrainAsync(ct);
 
-    public (int Priority, int Normal) PendingCounts
+    /// <summary>
+    /// Gets pending counts for priority and normal lanes.
+    /// </summary>
+    public LaneCounts PendingCounts
     {
         get
         {
             var lanes = _priorityCoordinator.PendingCounts;
-            var priority = lanes.FirstOrDefault(l => l.Lane == "priority").Count;
-            var normal = lanes.FirstOrDefault(l => l.Lane == "normal").Count;
-            return (priority, normal);
+            var priority = 0;
+            var normal = 0;
+            foreach (var (lane, count) in lanes)
+            {
+                if (lane == "priority") priority = count;
+                else if (lane == "normal") normal = count;
+            }
+            return new LaneCounts(priority, normal);
         }
     }
 

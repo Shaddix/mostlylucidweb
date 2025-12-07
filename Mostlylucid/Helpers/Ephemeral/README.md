@@ -161,7 +161,7 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 - `TelemetrySignalHandler`: async signal processing with telemetry integration; never blocks the operation thread.
 - `DynamicConcurrencyDemo`: shows runtime `SetMaxConcurrency` with signal-driven scaling; includes time-windowed sensing (only react to recent signals) and hysteresis (minimum adjust interval) to avoid thrashing.
 - `ControlledFanOut`: caps global concurrency while keeping per-key ordering.
-- `KeyedPriorityFanOut`: per-key ordering with priority/normal lanes using `PriorityKeyedWorkCoordinator` (optional depth cap + signal gating).
+- `KeyedPriorityFanOut`: per-key ordering with priority/normal lanes using `PriorityKeyedWorkCoordinator` (optional depth cap + lane cancel/defer signals).
 - `LongWindowDemo`: demonstrates tiny vs. long operation windows staying bounded by `MaxTrackedOperations`.
 - `ReactiveFanOutPipeline`: two-stage fan-out that throttles stage 1 when stage 2 emits backpressure/failure signals.
 - `SignalReactionShowcase`: emits signals inside work items, reacts immediately via `OnSignal`, and polls a sink for pattern matches.
@@ -215,6 +215,40 @@ This ensures:
 ## EphemeralWorkCoordinator
 
 Long-lived work queue for continuous processing.
+
+### Priority Coordinators (lane-aware)
+
+For pre-emptive intake with signals:
+
+```csharp
+var sink = new SignalSink();
+
+await using var coordinator = new PriorityKeyedWorkCoordinator<Order, string>(
+    new PriorityKeyedWorkCoordinatorOptions<Order, string>(
+        order => order.CustomerId,
+        async (order, ct) => await ProcessAsync(order, ct),
+        Lanes: new[]
+        {
+            // Priority lane drains first, capped at 100, cancelled on "maintenance", deferred on "slow"
+            new PriorityLane("priority",
+                MaxDepth: 100,
+                CancelOnSignals: new HashSet<string> { "maintenance" },
+                DeferOnSignals: new HashSet<string> { "slow" }),
+            new PriorityLane("normal")
+        },
+        EphemeralOptions: new EphemeralOptions
+        {
+            MaxConcurrency = 16,
+            MaxConcurrencyPerKey = 1,
+            Signals = sink
+        }));
+
+await coordinator.EnqueueAsync(new Order("cust-1", payload), laneName: "normal");
+await coordinator.EnqueueAsync(new Order("cust-1", payload), laneName: "priority");
+await coordinator.DrainAsync();
+```
+
+`PriorityWorkCoordinator` provides the same API for non-keyed workloads. Lane-level cancel/defer rules use glob patterns (`*`, `?`, comma lists).
 
 ### Creating a Coordinator
 
