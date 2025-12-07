@@ -50,4 +50,35 @@ public class PriorityKeyedWorkCoordinatorTests
 
         await coordinator.DrainAsync();
     }
+
+    [Fact]
+    public async Task Keyed_Cancel_Signal_Drops_Items()
+    {
+        var sink = new SignalSink();
+        var processed = new List<(string Lane, int Item)>();
+
+        await using var coordinator = new PriorityKeyedWorkCoordinator<(string Lane, int Item), string>(
+            new PriorityKeyedWorkCoordinatorOptions<(string Lane, int Item), string>(
+                item => item.Lane,
+                async (item, ct) =>
+                {
+                    lock (processed) processed.Add(item);
+                    await Task.Delay(1, ct);
+                },
+                Lanes: new[]
+                {
+                    new PriorityLane("blocked", CancelOnSignals: new HashSet<string> { "halt" }),
+                    new PriorityLane("open")
+                },
+                EphemeralOptions: new EphemeralOptions { MaxConcurrency = 2, MaxConcurrencyPerKey = 1, Signals = sink }));
+
+        sink.Raise("halt");
+        await coordinator.EnqueueAsync(("blocked", 1), "blocked");
+        await coordinator.EnqueueAsync(("open", 1), "open");
+
+        await coordinator.DrainAsync();
+
+        Assert.Single(processed);
+        Assert.Equal("open", processed[0].Lane);
+    }
 }

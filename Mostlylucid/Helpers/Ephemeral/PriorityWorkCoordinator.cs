@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace Mostlylucid.Helpers.Ephemeral;
 
@@ -17,8 +18,8 @@ public sealed record PriorityLane(
     public int? MaxDepth { get; init; } = MaxDepth is > 0 ? MaxDepth : null;
     public IReadOnlySet<string>? CancelOnSignals { get; init; } = CancelOnSignals;
     public IReadOnlySet<string>? DeferOnSignals { get; init; } = DeferOnSignals;
-    public TimeSpan DeferCheckInterval { get; init; } = DeferCheckInterval ?? TimeSpan.FromMilliseconds(100);
-    public int MaxDeferAttempts { get; init; } = MaxDeferAttempts is > 0 ? MaxDeferAttempts.Value : 50;
+    public TimeSpan EffectiveDeferCheckInterval { get; init; } = DeferCheckInterval ?? TimeSpan.FromMilliseconds(100);
+    public int EffectiveMaxDeferAttempts { get; init; } = MaxDeferAttempts is > 0 ? MaxDeferAttempts.Value : 50;
 }
 
 /// <summary>
@@ -63,6 +64,7 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
     private readonly SignalSink? _signalSource;
     private readonly bool _laneHasSignalRules;
     private readonly TimeSpan _minDeferInterval;
+    private (string Lane, int Count)[]? _pendingCountsCache;
 
     public PriorityWorkCoordinator(PriorityWorkCoordinatorOptions<T> options)
     {
@@ -70,10 +72,10 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
         _lanes = BuildLanes(options.Lanes);
         _laneLookup = _lanes.ToDictionary(l => l.Definition.Name, StringComparer.Ordinal);
         _signalSource = options.EphemeralOptions?.Signals;
-        _laneHasSignalRules = _lanes.Any(l => l.Definition.CancelOnSignals is { Count: > 0 } || l.Definition.DeferOnSignals is { Count: > 0 });
+        _laneHasSignalRules = HasAnySignalRules(_lanes);
         if (_laneHasSignalRules && _signalSource is null)
             throw new InvalidOperationException("Lane-level signal gating requires EphemeralOptions.Signals to be set.");
-        _minDeferInterval = _lanes.Select(l => l.Definition.DeferCheckInterval).DefaultIfEmpty(TimeSpan.FromMilliseconds(100)).Min();
+        _minDeferInterval = GetMinDeferInterval(_lanes);
 
         _coordinator = new EphemeralWorkCoordinator<T>(
             options.Body,
@@ -83,7 +85,8 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
     }
 
     /// <summary>
-    /// Enqueue an item into the specified lane (default "normal"). Returns false if the lane is full.
+    /// Enqueue an item into the specified lane (default "normal").
+    /// Returns false if the lane's MaxDepth is exceeded (item rejected).
     /// </summary>
     public ValueTask<bool> EnqueueAsync(T item, string laneName = "normal", CancellationToken ct = default)
     {
@@ -95,7 +98,7 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
         if (lane.Definition.MaxDepth is not null && count > lane.Definition.MaxDepth)
         {
             Interlocked.Decrement(ref lane.Count);
-            return ValueTask.FromResult(false);
+            return ValueTask.FromResult(false); // Lane is saturated
         }
 
         lane.Queue.Enqueue(item);
@@ -112,8 +115,22 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
         await _coordinator.DrainAsync(ct).ConfigureAwait(false);
     }
 
-    public (string Lane, int Count)[] PendingCounts =>
-        _lanes.Select(l => (l.Definition.Name, Volatile.Read(ref l.Count))).ToArray();
+    /// <summary>
+    /// Gets pending counts per lane. Reuses a cached array to avoid allocations on repeated calls.
+    /// </summary>
+    public (string Lane, int Count)[] PendingCounts
+    {
+        get
+        {
+            var result = _pendingCountsCache ??= new (string, int)[_lanes.Count];
+            for (var i = 0; i < _lanes.Count; i++)
+            {
+                var lane = _lanes[i];
+                result[i] = (lane.Definition.Name, Volatile.Read(ref lane.Count));
+            }
+            return result;
+        }
+    }
 
     private async Task PumpAsync()
     {
@@ -132,7 +149,7 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
                     foreach (var lane in _lanes)
                     {
                         if (lane.Definition.CancelOnSignals is { Count: > 0 } &&
-                            HasSignal(lane.Definition.CancelOnSignals, snapshot))
+                            PriorityLaneHelpers.HasSignal(lane.Definition.CancelOnSignals, snapshot))
                         {
                             while (lane.Queue.TryDequeue(out _))
                             {
@@ -143,10 +160,10 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
                         }
 
                         if (lane.Definition.DeferOnSignals is { Count: > 0 } &&
-                            HasSignal(lane.Definition.DeferOnSignals, snapshot))
+                            PriorityLaneHelpers.HasSignal(lane.Definition.DeferOnSignals, snapshot))
                         {
                             lane.DeferAttempts++;
-                            if (lane.DeferAttempts < lane.Definition.MaxDeferAttempts)
+                            if (lane.DeferAttempts < lane.Definition.EffectiveMaxDeferAttempts)
                             {
                                 deferredSeen = true;
                                 continue;
@@ -161,7 +178,7 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
                             dequeued = true;
                         }
 
-                        if (lane.Queue.IsEmpty is false)
+                        if (!lane.Queue.IsEmpty)
                         {
                             // Lane still has items; check again before touching lower lanes
                             dequeued = true;
@@ -173,7 +190,7 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
                         break;
                 }
 
-                if (_completed && _lanes.All(l => l.Queue.IsEmpty))
+                if (_completed && AllLanesEmpty())
                     break;
 
                 if (deferredSeen)
@@ -189,32 +206,55 @@ public sealed class PriorityWorkCoordinator<T> : IAsyncDisposable
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool AllLanesEmpty()
+    {
+        foreach (var lane in _lanes)
+        {
+            if (!lane.Queue.IsEmpty)
+                return false;
+        }
+        return true;
+    }
+
     private static List<Lane> BuildLanes(IReadOnlyCollection<PriorityLane>? lanes)
     {
         if (lanes is null || lanes.Count == 0)
             return [new Lane(new PriorityLane("normal"))];
 
         var result = new List<Lane>(lanes.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var lane in lanes)
         {
             if (string.IsNullOrWhiteSpace(lane.Name))
                 throw new ArgumentException("Lane name cannot be empty.");
+            if (!seen.Add(lane.Name))
+                throw new ArgumentException($"Duplicate lane name: '{lane.Name}'.");
             result.Add(new Lane(lane));
         }
         return result;
     }
 
-    private static bool HasSignal(IReadOnlySet<string>? patterns, IReadOnlyList<SignalEvent>? snapshot)
+    private static bool HasAnySignalRules(List<Lane> lanes)
     {
-        if (patterns is not { Count: > 0 } || snapshot is null)
-            return false;
-
-        foreach (var s in snapshot)
+        foreach (var lane in lanes)
         {
-            if (StringPatternMatcher.MatchesAny(s.Signal, patterns))
+            if (lane.Definition.CancelOnSignals is { Count: > 0 } ||
+                lane.Definition.DeferOnSignals is { Count: > 0 })
                 return true;
         }
         return false;
+    }
+
+    private static TimeSpan GetMinDeferInterval(List<Lane> lanes)
+    {
+        var min = TimeSpan.FromMilliseconds(100);
+        foreach (var lane in lanes)
+        {
+            if (lane.Definition.EffectiveDeferCheckInterval < min)
+                min = lane.Definition.EffectiveDeferCheckInterval;
+        }
+        return min;
     }
 
     private void ThrowIfCompleted()
@@ -243,6 +283,7 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         public PriorityLane Definition { get; }
         public ConcurrentQueue<T> Queue { get; } = new();
         public int Count;
+        public int DeferAttempts;
 
         public Lane(PriorityLane definition) => Definition = definition;
     }
@@ -255,6 +296,10 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _pump;
     private volatile bool _completed;
+    private readonly SignalSink? _signalSource;
+    private readonly bool _laneHasSignalRules;
+    private readonly TimeSpan _minDeferInterval;
+    private (string Lane, int Count)[]? _pendingCountsCache;
 
     public PriorityKeyedWorkCoordinator(PriorityKeyedWorkCoordinatorOptions<T, TKey> options)
     {
@@ -262,6 +307,11 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         _keySelector = options.KeySelector ?? throw new ArgumentNullException(nameof(options.KeySelector));
         _lanes = BuildLanes(options.Lanes);
         _laneLookup = _lanes.ToDictionary(l => l.Definition.Name, StringComparer.Ordinal);
+        _signalSource = options.EphemeralOptions?.Signals;
+        _laneHasSignalRules = HasAnySignalRules(_lanes);
+        if (_laneHasSignalRules && _signalSource is null)
+            throw new InvalidOperationException("Lane-level signal gating requires EphemeralOptions.Signals to be set.");
+        _minDeferInterval = GetMinDeferInterval(_lanes);
 
         _coordinator = new EphemeralKeyedWorkCoordinator<T, TKey>(
             _keySelector,
@@ -271,6 +321,10 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         _pump = Task.Run(PumpAsync);
     }
 
+    /// <summary>
+    /// Enqueue an item into the specified lane (default "normal").
+    /// Returns false if the lane's MaxDepth is exceeded (item rejected).
+    /// </summary>
     public ValueTask<bool> EnqueueAsync(T item, string laneName = "normal", CancellationToken ct = default)
     {
         ThrowIfCompleted();
@@ -281,7 +335,7 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         if (lane.Definition.MaxDepth is not null && count > lane.Definition.MaxDepth)
         {
             Interlocked.Decrement(ref lane.Count);
-            return ValueTask.FromResult(false);
+            return ValueTask.FromResult(false); // Lane is saturated
         }
 
         lane.Queue.Enqueue(item);
@@ -298,8 +352,22 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         await _coordinator.DrainAsync(ct).ConfigureAwait(false);
     }
 
-    public (string Lane, int Count)[] PendingCounts =>
-        _lanes.Select(l => (l.Definition.Name, Volatile.Read(ref l.Count))).ToArray();
+    /// <summary>
+    /// Gets pending counts per lane. Reuses a cached array to avoid allocations on repeated calls.
+    /// </summary>
+    public (string Lane, int Count)[] PendingCounts
+    {
+        get
+        {
+            var result = _pendingCountsCache ??= new (string, int)[_lanes.Count];
+            for (var i = 0; i < _lanes.Count; i++)
+            {
+                var lane = _lanes[i];
+                result[i] = (lane.Definition.Name, Volatile.Read(ref lane.Count));
+            }
+            return result;
+        }
+    }
 
     private async Task PumpAsync()
     {
@@ -308,6 +376,8 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
             while (true)
             {
                 await _signal.WaitAsync(_cts.Token).ConfigureAwait(false);
+                var snapshot = _laneHasSignalRules ? _signalSource?.Sense() : null;
+                var deferredSeen = false;
 
                 while (true)
                 {
@@ -315,6 +385,29 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
 
                     foreach (var lane in _lanes)
                     {
+                        if (lane.Definition.CancelOnSignals is { Count: > 0 } &&
+                            PriorityLaneHelpers.HasSignal(lane.Definition.CancelOnSignals, snapshot))
+                        {
+                            while (lane.Queue.TryDequeue(out _))
+                            {
+                                Interlocked.Decrement(ref lane.Count);
+                            }
+                            lane.DeferAttempts = 0;
+                            continue;
+                        }
+
+                        if (lane.Definition.DeferOnSignals is { Count: > 0 } &&
+                            PriorityLaneHelpers.HasSignal(lane.Definition.DeferOnSignals, snapshot))
+                        {
+                            lane.DeferAttempts++;
+                            if (lane.DeferAttempts < lane.Definition.EffectiveMaxDeferAttempts)
+                            {
+                                deferredSeen = true;
+                                continue;
+                            }
+                            lane.DeferAttempts = 0;
+                        }
+
                         while (lane.Queue.TryDequeue(out var item))
                         {
                             Interlocked.Decrement(ref lane.Count);
@@ -322,7 +415,7 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
                             dequeued = true;
                         }
 
-                        if (lane.Queue.IsEmpty is false)
+                        if (!lane.Queue.IsEmpty)
                         {
                             dequeued = true;
                             break;
@@ -333,8 +426,14 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
                         break;
                 }
 
-                if (_completed && _lanes.All(l => l.Queue.IsEmpty))
+                if (_completed && AllLanesEmpty())
                     break;
+
+                if (deferredSeen)
+                {
+                    try { await Task.Delay(_minDeferInterval, _cts.Token).ConfigureAwait(false); }
+                    catch (OperationCanceledException) { }
+                }
             }
         }
         catch (OperationCanceledException)
@@ -343,19 +442,55 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool AllLanesEmpty()
+    {
+        foreach (var lane in _lanes)
+        {
+            if (!lane.Queue.IsEmpty)
+                return false;
+        }
+        return true;
+    }
+
     private static List<Lane> BuildLanes(IReadOnlyCollection<PriorityLane>? lanes)
     {
         if (lanes is null || lanes.Count == 0)
             return [new Lane(new PriorityLane("normal"))];
 
         var result = new List<Lane>(lanes.Count);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var lane in lanes)
         {
             if (string.IsNullOrWhiteSpace(lane.Name))
                 throw new ArgumentException("Lane name cannot be empty.");
+            if (!seen.Add(lane.Name))
+                throw new ArgumentException($"Duplicate lane name: '{lane.Name}'.");
             result.Add(new Lane(lane));
         }
         return result;
+    }
+
+    private static bool HasAnySignalRules(List<Lane> lanes)
+    {
+        foreach (var lane in lanes)
+        {
+            if (lane.Definition.CancelOnSignals is { Count: > 0 } ||
+                lane.Definition.DeferOnSignals is { Count: > 0 })
+                return true;
+        }
+        return false;
+    }
+
+    private static TimeSpan GetMinDeferInterval(List<Lane> lanes)
+    {
+        var min = TimeSpan.FromMilliseconds(100);
+        foreach (var lane in lanes)
+        {
+            if (lane.Definition.EffectiveDeferCheckInterval < min)
+                min = lane.Definition.EffectiveDeferCheckInterval;
+        }
+        return min;
     }
 
     private void ThrowIfCompleted()
@@ -371,5 +506,25 @@ public sealed class PriorityKeyedWorkCoordinator<T, TKey> : IAsyncDisposable whe
         _signal.Dispose();
         _cts.Dispose();
         await _coordinator.DisposeAsync();
+    }
+}
+
+/// <summary>
+/// Shared helpers for priority lane signal checking.
+/// </summary>
+internal static class PriorityLaneHelpers
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasSignal(IReadOnlySet<string>? patterns, IReadOnlyList<SignalEvent>? snapshot)
+    {
+        if (patterns is not { Count: > 0 } || snapshot is null)
+            return false;
+
+        foreach (var s in snapshot)
+        {
+            if (StringPatternMatcher.MatchesAny(s.Signal, patterns))
+                return true;
+        }
+        return false;
     }
 }

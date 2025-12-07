@@ -173,7 +173,7 @@ await fanout.DrainAsync();
 ### Keyed Priority Fan-Out
 - File: `Examples/KeyedPriorityFanOut.cs`
 - Test: `Examples/KeyedPriorityFanOutTests.cs`
-- What: Per-key ordering with a priority lane that drains first, then resumes normal items; optional max priority depth.
+- What: Per-key ordering with a priority lane that drains first, then resumes normal items; optional max priority depth and lane-level signal gating (cancel/defer).
 
 Diagram:
 ```mermaid

@@ -47,6 +47,35 @@ public class PriorityWorkCoordinatorTests
     }
 
     [Fact]
+    public async Task Lane_Cancel_Signal_Drops_Items()
+    {
+        var sink = new SignalSink();
+        var processed = 0;
+
+        await using var coordinator = new PriorityWorkCoordinator<int>(
+            new PriorityWorkCoordinatorOptions<int>(
+                async (item, ct) =>
+                {
+                    Interlocked.Increment(ref processed);
+                    await Task.Delay(1, ct);
+                },
+                Lanes: new[]
+                {
+                    new PriorityLane("blocked", CancelOnSignals: new HashSet<string> { "stop" }),
+                    new PriorityLane("open")
+                },
+                EphemeralOptions: new EphemeralOptions { MaxConcurrency = 2, Signals = sink }));
+
+        sink.Raise("stop");
+        await coordinator.EnqueueAsync(1, "blocked");
+        await coordinator.EnqueueAsync(2, "open");
+
+        await coordinator.DrainAsync();
+
+        Assert.Equal(1, processed);
+    }
+
+    [Fact]
     public async Task Processes_Thousand_Items_All_Lanes()
     {
         var processed = 0;
