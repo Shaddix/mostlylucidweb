@@ -2,6 +2,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Atoms;
 
 /// <summary>
 /// Atom that pauses or cancels intake based on ambient signals (patterns supported).
+/// Use for circuit breakers, maintenance flags, or downstream backpressure toggles.
 /// </summary>
 public sealed class SignalAwareAtom<T> : IAsyncDisposable
 {

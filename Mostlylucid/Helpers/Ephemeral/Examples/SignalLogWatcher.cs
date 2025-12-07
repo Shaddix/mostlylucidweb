@@ -4,7 +4,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Examples;
 
 /// <summary>
 /// Watches a SignalSink for error-like signals (glob patterns) and triggers a callback.
-/// Demonstrates a singleton coordinator that reacts to the moving window.
+/// Demonstrates a singleton coordinator that reacts to the moving window; perfect for auto-log capture or alert hooks.
 /// </summary>
 public sealed class SignalLogWatcher : IAsyncDisposable
 {

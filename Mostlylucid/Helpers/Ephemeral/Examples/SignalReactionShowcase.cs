@@ -11,9 +11,11 @@ public static class SignalReactionShowcase
     {
         if (itemCount <= 0) throw new ArgumentOutOfRangeException(nameof(itemCount));
 
+        // Global sink we can poll later; bounded so it cannot balloon.
         var sink = new SignalSink(maxCapacity: itemCount * 4, maxAge: TimeSpan.FromSeconds(10));
         var dispatchedHits = 0;
 
+        // Async fan-out so signal handling stays off the hot path.
         await using var dispatcher = new SignalDispatcher(new EphemeralOptions { MaxTrackedOperations = itemCount * 4, MaxConcurrency = 4 });
         dispatcher.Register("stage.done:*", evt =>
         {
@@ -24,12 +26,14 @@ public static class SignalReactionShowcase
         await using var coordinator = new EphemeralWorkCoordinator<int>(
             async (item, token) =>
             {
+                // Emit immediately when work starts; this is synchronous but tiny.
                 var start = new SignalEvent($"stage.start:{item}", EphemeralIdGenerator.NextId(), null, DateTimeOffset.UtcNow);
                 sink.Raise(start);
                 dispatcher.Dispatch(start);
 
                 await Task.Delay(5, token).ConfigureAwait(false);
 
+                // Emit completion and fan it out; downstream stays async.
                 var done = new SignalEvent($"stage.done:{item}", EphemeralIdGenerator.NextId(), null, DateTimeOffset.UtcNow);
                 sink.Raise(done);
                 dispatcher.Dispatch(done);
@@ -44,7 +48,7 @@ public static class SignalReactionShowcase
 
         coordinator.Complete();
         await coordinator.DrainAsync(ct).ConfigureAwait(false);
-        await Task.Delay(20, ct).ConfigureAwait(false); // allow dispatcher to drain
+        await dispatcher.FlushAsync(ct).ConfigureAwait(false);
 
         var polledHits = sink.Sense(s => s.Signal.StartsWith("stage.done", StringComparison.Ordinal)).Count;
         var signals = sink.Sense().Select(s => s.Signal).ToArray();

@@ -3,7 +3,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Examples;
 /// <summary>
 /// Demonstrates dynamic concurrency: adjust MaxConcurrency in response to signals.
 /// Includes time-windowed sensing (only react to recent signals) and hysteresis
-/// (minimum interval between adjustments) to avoid thrashing.
+/// (minimum interval between adjustments) to avoid thrashing. Use when a queue should self-tune off telemetry.
 /// </summary>
 public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
 {

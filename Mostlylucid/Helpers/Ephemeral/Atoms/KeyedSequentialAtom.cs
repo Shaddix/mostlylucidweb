@@ -1,7 +1,7 @@
 namespace Mostlylucid.Helpers.Ephemeral.Atoms;
 
 /// <summary>
-/// Per-key sequential atom. Ensures ordering per key while allowing global parallelism.
+/// Per-key sequential atom. Ensures ordering per key while allowing global parallelism; use when tenant/user/resource ordering matters.
 /// </summary>
 public sealed class KeyedSequentialAtom<T, TKey> : IAsyncDisposable where TKey : notnull
 {

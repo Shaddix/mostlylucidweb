@@ -87,6 +87,15 @@ public sealed class SignalDispatcher : IAsyncDisposable
         return true;
     }
 
+    /// <summary>
+    /// Wait for all dispatched signals to complete. Useful in tests/examples to avoid a spin/wait.
+    /// </summary>
+    public Task FlushAsync(CancellationToken ct = default)
+    {
+        _coordinator.Complete();
+        return _coordinator.DrainAsync(ct);
+    }
+
     public async ValueTask DisposeAsync()
     {
         _cts.Cancel();

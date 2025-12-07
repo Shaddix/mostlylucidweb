@@ -169,3 +169,19 @@ await fanout.DrainAsync();
 - File: `Examples/ReactiveFanOutPipeline.cs`
 - Test: `Examples/ReactiveFanOutPipelineTests.cs`
 - What: Upstream fan-out that throttles dynamically when downstream signals backpressure or errors. Use when stage 1 must react to downstream stress without extra queues.
+
+### Keyed Priority Fan-Out
+- File: `Examples/KeyedPriorityFanOut.cs`
+- Test: `Examples/KeyedPriorityFanOutTests.cs`
+- What: Per-key ordering with a priority lane that drains first, then resumes normal items; optional max priority depth.
+
+Diagram:
+```mermaid
+flowchart LR
+    P[Enqueue priority (key)] --> Q{Priority queue}
+    N[Enqueue normal (key)] --> R{Normal queue}
+    Q --> S{Keyed workers}
+    R --> S
+    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
+    class P,Q,N,R,S accent;
+```

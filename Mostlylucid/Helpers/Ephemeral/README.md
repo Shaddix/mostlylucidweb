@@ -160,9 +160,11 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 - `TelemetrySignalHandler`: async signal processing with telemetry integration; never blocks the operation thread.
 - `DynamicConcurrencyDemo`: shows runtime `SetMaxConcurrency` with signal-driven scaling; includes time-windowed sensing (only react to recent signals) and hysteresis (minimum adjust interval) to avoid thrashing.
 - `ControlledFanOut`: caps global concurrency while keeping per-key ordering.
+- `KeyedPriorityFanOut`: per-key ordering with a priority lane that drains first (optional depth cap), then resumes normal items.
 - `LongWindowDemo`: demonstrates tiny vs. long operation windows staying bounded by `MaxTrackedOperations`.
 - `ReactiveFanOutPipeline`: two-stage fan-out that throttles stage 1 when stage 2 emits backpressure/failure signals.
 - `SignalReactionShowcase`: emits signals inside work items, reacts immediately via `OnSignal`, and polls a sink for pattern matches.
+- `SignalCoordinatedReads`: readers defer while an update signal is active and resume once the updater emits `update.done`.
 - Atoms:
   - `FixedWorkAtom`: simple bounded worker pool with stats.
   - `KeyedSequentialAtom`: per-key ordered execution with optional fair scheduling.

@@ -3,6 +3,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Examples;
 /// <summary>
 /// Demonstrates signal-driven backpressure: when "backpressure.*" is present, the queue defers starts.
 /// When "backpressure.cleared" appears, intake resumes.
+/// Ideal when downstream systems surface stress signals and upstream should pause briefly rather than fail.
 /// </summary>
 public static class SignalDrivenBackpressure
 {

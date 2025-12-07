@@ -5,6 +5,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Atoms;
 
 /// <summary>
 /// Collects items into batches and processes them when full or when a flush interval elapses.
+/// Use to coalesce many small writes/calls into efficient bursts with minimal coordination overhead.
 /// </summary>
 public sealed class BatchingAtom<T> : IAsyncDisposable
 {

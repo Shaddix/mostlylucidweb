@@ -2,6 +2,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Examples;
 
 /// <summary>
 /// Scans a SignalSink with a moving time window and flags anomalies based on pattern + threshold.
+/// Use for lightweight alerting/self-healing triggers without extra dependencies.
 /// </summary>
 public sealed class SignalAnomalyDetector
 {

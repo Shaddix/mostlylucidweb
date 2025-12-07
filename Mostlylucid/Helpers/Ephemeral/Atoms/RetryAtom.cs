@@ -2,6 +2,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Atoms;
 
 /// <summary>
 /// Wraps work with retry/backoff semantics using EphemeralWorkCoordinator under the hood.
+/// Use to harden transient operations without rewriting the caller.
 /// </summary>
 public sealed class RetryAtom<T> : IAsyncDisposable
 {

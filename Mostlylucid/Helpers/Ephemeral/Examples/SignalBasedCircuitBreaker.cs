@@ -78,7 +78,7 @@ public class SignalBasedCircuitBreaker
             return null;
 
         // The oldest failure that's keeping us at threshold
-        var oldestRelevant = recentFailures[recentFailures.Count - _threshold];
+        var oldestRelevant = recentFailures[^_threshold];
         var ageOutTime = oldestRelevant.Timestamp + _windowSize;
 
         return ageOutTime - DateTimeOffset.UtcNow;

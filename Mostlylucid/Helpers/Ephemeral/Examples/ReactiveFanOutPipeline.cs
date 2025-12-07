@@ -52,6 +52,7 @@ public sealed class ReactiveFanOutPipeline<T> : IAsyncDisposable
         _lastAdjustTicks = Environment.TickCount64;
         _lastBackpressureRaiseTicks = Environment.TickCount64;
 
+        // Stage 2 does the heavy/slow work and emits stress signals.
         _stage2 = new EphemeralWorkCoordinator<T>(
             async (item, ct) =>
             {
@@ -72,6 +73,7 @@ public sealed class ReactiveFanOutPipeline<T> : IAsyncDisposable
                 MaxTrackedOperations = backpressureThreshold * 2
             });
 
+        // Stage 1 fans out quickly but reacts to stage 2 signals to avoid runaway.
         _stage1 = new EphemeralWorkCoordinator<T>(
             async (item, ct) =>
             {

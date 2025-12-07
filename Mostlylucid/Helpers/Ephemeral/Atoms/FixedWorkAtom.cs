@@ -4,7 +4,7 @@ namespace Mostlylucid.Helpers.Ephemeral.Atoms;
 
 /// <summary>
 /// Minimal “atom” wrapper around EphemeralWorkCoordinator for fixed-concurrency pipelines.
-/// Keeps API small: enqueue, complete, drain, snapshot.
+/// Keeps API small: enqueue, complete, drain, snapshot. Use when you just need a bounded worker pool.
 /// </summary>
 public sealed class FixedWorkAtom<T> : IAsyncDisposable
 {
