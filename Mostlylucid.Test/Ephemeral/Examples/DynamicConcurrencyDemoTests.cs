@@ -10,6 +10,9 @@ public class DynamicConcurrencyDemoTests
     public async Task Scales_Up_And_Down_On_Signals()
     {
         var sink = new SignalSink(maxCapacity: 16, maxAge: TimeSpan.FromSeconds(5));
+        var scaledUp = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var scaledDown = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         await using var demo = new DynamicConcurrencyDemo<int>(
             async (item, ct) => await Task.Delay(5, ct),
             sink,
@@ -18,31 +21,28 @@ public class DynamicConcurrencyDemoTests
             scaleUpPattern: "load.high",
             scaleDownPattern: "load.low",
             signalWindow: TimeSpan.FromSeconds(5),
-            minAdjustInterval: TimeSpan.FromMilliseconds(100)); // Short interval for testing
+            minAdjustInterval: TimeSpan.FromMilliseconds(100),
+            sampleInterval: TimeSpan.FromMilliseconds(50),
+            onAdjusted: (prev, next) =>
+            {
+                if (next > prev) scaledUp.TrySetResult(next);
+                if (next < prev) scaledDown.TrySetResult(next);
+            }); // Tight sampling for deterministic tests
 
-        var initial = demo.EnqueueAsync(1); // force creation
-        await initial;
+        await demo.EnqueueAsync(1); // force creation
 
         sink.Raise(new SignalEvent("load.high", 1, null, DateTimeOffset.UtcNow));
-        await SpinUntilAsync(() => demo.CurrentMaxConcurrency > 1, TimeSpan.FromSeconds(2));
+        var upValue = await scaledUp.Task.WaitAsync(TimeSpan.FromSeconds(3));
 
         // Wait for hysteresis before next adjustment
         await Task.Delay(150);
 
         sink.Raise(new SignalEvent("load.low", 2, null, DateTimeOffset.UtcNow));
-        await SpinUntilAsync(() => demo.CurrentMaxConcurrency <= 2, TimeSpan.FromSeconds(2));
+        var downValue = await scaledDown.Task.WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.True(upValue > 1, $"Expected scale up > 1, saw {upValue}");
+        Assert.True(downValue <= upValue, $"Expected scale down to stay <= {upValue}, saw {downValue}");
 
         await demo.DrainAsync();
-
-        static async Task SpinUntilAsync(Func<bool> condition, TimeSpan timeout)
-        {
-            var start = DateTimeOffset.UtcNow;
-            while (DateTimeOffset.UtcNow - start < timeout)
-            {
-                if (condition()) return;
-                await Task.Delay(50);
-            }
-            Assert.True(condition());
-        }
     }
 }

@@ -16,6 +16,8 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
     private readonly string _scaleDownPattern;
     private readonly TimeSpan _signalWindow;
     private readonly TimeSpan _minAdjustInterval;
+    private readonly TimeSpan _sampleInterval;
+    private readonly Action<int, int>? _onAdjusted;
     private DateTimeOffset _lastAdjust = DateTimeOffset.MinValue;
 
     public DynamicConcurrencyDemo(
@@ -26,7 +28,9 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
         string scaleUpPattern = "load.high",
         string scaleDownPattern = "load.low",
         TimeSpan? signalWindow = null,
-        TimeSpan? minAdjustInterval = null)
+        TimeSpan? minAdjustInterval = null,
+        TimeSpan? sampleInterval = null,
+        Action<int, int>? onAdjusted = null)
     {
         _min = Math.Max(1, minConcurrency);
         _max = Math.Max(_min, maxConcurrency);
@@ -34,6 +38,8 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
         _scaleDownPattern = scaleDownPattern;
         _signalWindow = signalWindow ?? TimeSpan.FromSeconds(5);
         _minAdjustInterval = minAdjustInterval ?? TimeSpan.FromSeconds(1);
+        _sampleInterval = (sampleInterval is { Ticks: > 0 } ? sampleInterval : TimeSpan.FromMilliseconds(200)).Value;
+        _onAdjusted = onAdjusted;
 
         _coordinator = new EphemeralWorkCoordinator<T>(
             body,
@@ -61,24 +67,53 @@ public sealed class DynamicConcurrencyDemo<T> : IAsyncDisposable
                     // Time-windowed sensing: only react to recent signals
                     var cutoff = DateTimeOffset.UtcNow - _signalWindow;
                     var snapshot = sink.Sense(s => s.Timestamp >= cutoff);
+                    SignalEvent? latestUp = null;
+                    SignalEvent? latestDown = null;
 
-                    if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleUpPattern)))
+                    foreach (var s in snapshot)
                     {
-                        var next = Math.Min(_max, _coordinator.CurrentMaxConcurrency * 2);
-                        _coordinator.SetMaxConcurrency(next);
-                        _lastAdjust = DateTimeOffset.UtcNow;
+                        if (StringPatternMatcher.Matches(s.Signal, _scaleUpPattern) &&
+                            (latestUp is null || s.Timestamp > latestUp.Value.Timestamp))
+                        {
+                            latestUp = s;
+                        }
+                        if (StringPatternMatcher.Matches(s.Signal, _scaleDownPattern) &&
+                            (latestDown is null || s.Timestamp > latestDown.Value.Timestamp))
+                        {
+                            latestDown = s;
+                        }
                     }
-                    else if (snapshot.Any(s => StringPatternMatcher.Matches(s.Signal, _scaleDownPattern)))
+
+                    var preferUp = latestUp is not null && (latestDown is null || latestUp.Value.Timestamp >= latestDown.Value.Timestamp);
+                    var preferDown = latestDown is not null && (latestUp is null || latestDown.Value.Timestamp > latestUp.Value.Timestamp);
+
+                    if (preferUp)
                     {
-                        var next = Math.Max(_min, _coordinator.CurrentMaxConcurrency / 2);
-                        _coordinator.SetMaxConcurrency(next);
-                        _lastAdjust = DateTimeOffset.UtcNow;
+                        var current = _coordinator.CurrentMaxConcurrency;
+                        var next = Math.Min(_max, current * 2);
+                        if (next != current)
+                        {
+                            _coordinator.SetMaxConcurrency(next);
+                            _onAdjusted?.Invoke(current, next);
+                            _lastAdjust = DateTimeOffset.UtcNow;
+                        }
+                    }
+                    else if (preferDown)
+                    {
+                        var current = _coordinator.CurrentMaxConcurrency;
+                        var next = Math.Max(_min, current / 2);
+                        if (next != current)
+                        {
+                            _coordinator.SetMaxConcurrency(next);
+                            _onAdjusted?.Invoke(current, next);
+                            _lastAdjust = DateTimeOffset.UtcNow;
+                        }
                     }
                 }
             }
             catch { /* ignore */ }
 
-            try { await Task.Delay(200, _cts.Token).ConfigureAwait(false); }
+            try { await Task.Delay(_sampleInterval, _cts.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) { }
         }
     }

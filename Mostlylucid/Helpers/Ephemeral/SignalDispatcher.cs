@@ -88,7 +88,8 @@ public sealed class SignalDispatcher : IAsyncDisposable
     }
 
     /// <summary>
-    /// Wait for all dispatched signals to complete. Useful in tests/examples to avoid a spin/wait.
+    /// Wait for all dispatched signals to complete and stop the dispatcher.
+    /// Intended for shutdown/tests; once flushed the dispatcher will not accept new work.
     /// </summary>
     public Task FlushAsync(CancellationToken ct = default)
     {

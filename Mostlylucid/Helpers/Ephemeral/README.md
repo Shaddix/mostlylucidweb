@@ -140,6 +140,7 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 | `EphemeralResultCoordinator.cs` | Result-capturing coordinator variant |
 | `Examples/SignalingHttpClient.cs` | Sample fine-grained signal emission around HTTP calls |
 | `SignalDispatcher.cs` | Async signal routing with pattern matching |
+| `PriorityWorkCoordinator.cs` | First-class priority lanes for unkeyed and keyed coordinators |
 | `Examples/SignalLogWatcher.cs` | Polls signal window for matching signals and triggers callbacks |
 | `Examples/SignalAnomalyDetector.cs` | Moving-window anomaly detection by pattern/threshold |
 | `Examples/LongWindowDemo.cs` | Shows short vs. long operation windows with bounded memory |
@@ -165,6 +166,7 @@ public class TranslationService(EphemeralWorkCoordinator<TranslationRequest> coo
 - `ReactiveFanOutPipeline`: two-stage fan-out that throttles stage 1 when stage 2 emits backpressure/failure signals.
 - `SignalReactionShowcase`: emits signals inside work items, reacts immediately via `OnSignal`, and polls a sink for pattern matches.
 - `SignalCoordinatedReads`: readers defer while an update signal is active and resume once the updater emits `update.done`.
+- `PriorityWorkCoordinator` / `PriorityKeyedWorkCoordinator`: configure multiple priority lanes (with optional depth caps) on top of Ephemeral coordinators.
 - Atoms:
   - `FixedWorkAtom`: simple bounded worker pool with stats.
   - `KeyedSequentialAtom`: per-key ordered execution with optional fair scheduling.
@@ -302,6 +304,8 @@ coordinator.Unpin(operationId);
 // Force immediate eviction
 coordinator.Evict(operationId);
 ```
+
+> In single-concurrency coordinators a pinned, long-running operation holds the only slot; prefer moving that work into a sub-coordinator so the main queue keeps flowing.
 
 ### From IAsyncEnumerable
 
