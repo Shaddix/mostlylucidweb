@@ -1,0 +1,81 @@
+# Caddyfile for Docker Registry
+#
+# This configuration:
+# - Serves the Docker registry at docker.mostlylucid.net
+# - Handles automatic HTTPS certificate provisioning
+# - Provides basic authentication for registry access
+# - Proxies requests to the registry backend
+# - Handles Docker registry-specific headers and responses
+#
+# Usage:
+# - Set REGISTRY_USERNAME and REGISTRY_PASSWORD_HASH in .env
+# - Generate password hash: docker run --rm caddy:2-alpine caddy hash-password --plaintext 'yourpassword'
+
+{
+	# Global options
+	admin off
+
+	# Automatic HTTPS via HTTP challenge (port 80)
+	auto_https on
+}
+
+# Docker Registry
+docker.mostlylucid.net {
+	# Enable access logging
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+
+	# Basic authentication for registry access
+	# Username and password hash from environment variables
+	basicauth /* {
+		{$REGISTRY_USERNAME} {$REGISTRY_PASSWORD_HASH}
+	}
+
+	# Reverse proxy to registry backend
+	reverse_proxy registry:5000 {
+		# Docker registry specific headers
+		header_up Host {upstream_hostport}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+
+		# Increase timeouts for large image uploads
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+			dial_timeout 30s
+		}
+	}
+
+	# Docker registry requires chunked uploads
+	# Ensure proper handling of large payloads
+	request_body {
+		max_size 5GB
+	}
+
+	# Security headers
+	header {
+		# Remove server information
+		-Server
+
+		# Security headers
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+
+		# Remove unnecessary headers
+		-X-Powered-By
+	}
+
+	# Health check endpoint (bypass auth)
+	@health {
+		path /v2/
+	}
+	handle @health {
+		reverse_proxy registry:5000
+	}
+}

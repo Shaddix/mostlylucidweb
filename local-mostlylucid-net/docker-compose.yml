@@ -1,0 +1,203 @@
+# Docker Registry Compose Configuration
+#
+# This compose file sets up a complete private Docker registry with:
+# - Docker Registry v2 for storing container images
+# - Caddy reverse proxy with automatic HTTPS and authentication
+# - Watchtower for automatic registry updates
+# - Cloudflare Tunnel for secure external access
+#
+# Architecture: Cloudflare Tunnel -> Caddy -> Docker Registry
+# The registry will be accessible at: https://docker.mostlylucid.net
+#
+# Prerequisites:
+# 1. Copy .env.example to .env and configure all values
+# 2. Caddyfile is in config/Caddyfile
+# 3. Obtain Cloudflare tunnel token from Cloudflare dashboard
+# 4. Configure tunnel to point to http://caddy:80
+#
+# Quick Start:
+#   docker-compose up -d
+#
+# To push an image:
+#   docker login docker.mostlylucid.net
+#   docker tag myimage:latest docker.mostlylucid.net/myimage:latest
+#   docker push docker.mostlylucid.net/myimage:latest
+
+version: "3.9"
+
+services:
+  # Docker Registry - Stores container images
+  registry:
+    image: registry:2
+    container_name: docker_registry
+    restart: unless-stopped
+    environment:
+      # Registry storage configuration
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+
+      # Enable deletion of images
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+
+      # Health check configuration
+      REGISTRY_HEALTH_STORAGEDRIVER_ENABLED: "true"
+      REGISTRY_HEALTH_STORAGEDRIVER_INTERVAL: 10s
+      REGISTRY_HEALTH_STORAGEDRIVER_THRESHOLD: 3
+
+      # Logging configuration
+      REGISTRY_LOG_LEVEL: info
+      REGISTRY_LOG_FORMATTER: text
+      REGISTRY_LOG_FIELDS_SERVICE: registry
+      REGISTRY_LOG_FIELDS_ENVIRONMENT: production
+
+      # HTTP configuration - Caddy handles TLS
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_HTTP_HOST: https://docker.mostlylucid.net
+
+      # Optional: Configure garbage collection
+      # Run with: docker exec docker_registry bin/registry garbage-collect /etc/docker/registry/config.yml
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_ENABLED: "true"
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_AGE: 168h
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_INTERVAL: 24h
+      REGISTRY_STORAGE_MAINTENANCE_UPLOADPURGING_DRYRUN: "false"
+
+    volumes:
+      # Persistent storage for registry data
+      - registry_data:/var/lib/registry
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - registry_network
+
+    labels:
+      # Enable Watchtower updates
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Caddy - Reverse proxy with HTTPS and authentication
+  caddy:
+    image: caddy:2-alpine
+    container_name: docker_registry_caddy
+    restart: unless-stopped
+    ports:
+      # Expose port 80 for Cloudflare tunnel connection
+      - "80:80"
+    volumes:
+      # Caddyfile configuration
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+
+      # Persistent storage for Caddy data
+      - caddy_data:/data
+      - caddy_config:/config
+
+    environment:
+      # Domain for the registry
+      - REGISTRY_DOMAIN=${REGISTRY_DOMAIN:-docker.mostlylucid.net}
+
+      # Basic auth credentials (set in .env)
+      - REGISTRY_USERNAME=${REGISTRY_USERNAME}
+      - REGISTRY_PASSWORD_HASH=${REGISTRY_PASSWORD_HASH}
+
+    depends_on:
+      registry:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - registry_network
+
+    labels:
+      # Enable Watchtower updates
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Cloudflare Tunnel - Secure external access
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: docker_registry_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Cloudflare tunnel token (get from Cloudflare dashboard)
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+
+    depends_on:
+      caddy:
+        condition: service_healthy
+
+    networks:
+      - registry_network
+
+    labels:
+      # Enable Watchtower updates
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Watchtower - Automatic container updates
+  watchtower:
+    image: containrrr/watchtower
+    container_name: docker_registry_watchtower
+    restart: unless-stopped
+    environment:
+      # Check for updates every 6 hours
+      - WATCHTOWER_POLL_INTERVAL=21600
+
+      # Clean up old images after update
+      - WATCHTOWER_CLEANUP=true
+
+      # Include stopped containers
+      - WATCHTOWER_INCLUDE_STOPPED=true
+
+      # Revive stopped containers after update
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+
+      # Enable notifications (optional - configure if needed)
+      - WATCHTOWER_NOTIFICATIONS=${WATCHTOWER_NOTIFICATIONS:-}
+      - WATCHTOWER_NOTIFICATION_URL=${WATCHTOWER_NOTIFICATION_URL:-}
+
+      # Logging
+      - WATCHTOWER_DEBUG=${WATCHTOWER_DEBUG:-false}
+      - WATCHTOWER_TRACE=${WATCHTOWER_TRACE:-false}
+
+      # Label-based filtering (only update labeled containers)
+      - WATCHTOWER_LABEL_ENABLE=true
+
+    volumes:
+      # Access to Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    labels:
+      # Allow watchtower to update itself
+      - "com.centurylinklabs.watchtower.enable=true"
+
+    networks:
+      - registry_network
+
+networks:
+  registry_network:
+    driver: bridge
+    name: registry_network
+
+volumes:
+  # Registry data storage
+  registry_data:
+    driver: local
+    name: registry_data
+
+  # Caddy data (certificates, etc.)
+  caddy_data:
+    driver: local
+    name: registry_caddy_data
+
+  # Caddy configuration
+  caddy_config:
+    driver: local
+    name: registry_caddy_config

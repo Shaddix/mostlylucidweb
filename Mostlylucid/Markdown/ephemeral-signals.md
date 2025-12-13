@@ -2,6 +2,8 @@
 
 *A tiny primitive that turns concurrent work into a coordinated, adaptive system.*
 
+**"The Ephemeral Signals Pattern"**
+
 <!--category-- ASP.NET, Architecture, Systems Design, Async -->
 <datetime class="hidden">2025-12-12T16:00</datetime>
 
@@ -9,7 +11,15 @@ In **[Part 1](/blog/fire-and-dont-quite-forget-ephemeral-execution)** we built e
 
 This article adds one small feature that changes everything: **signals**.
 
+## NUGET!!!
+This is now in the mostlylucid.ephemerals Nuget package also [more than 20 mostlylucid.ephemerals patterns and 'atoms'](https://www.nuget.org/packages?q=mostlylucid.ephemeral&includeComputedFrameworks=true&prerel=true&sortby=created-desc).
+
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.ephemeral.svg)](https://www.nuget.org/packages/mostlylucid.ephemeral)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](../../UNLICENSE)
+
 ## Source Files
+
+The full source code is in the [mostlylucid.atoms GitHub repository](https://github.com/scottgal/mostlylucid.atoms)
 
 The signal infrastructure lives in:
 
@@ -78,6 +88,199 @@ An operation can raise signals during execution. Those signals live in the ephem
 That's it. No message broker. No separate infrastructure. Just strings attached to operations.
 
 Because signals live inside the ephemeral window, they inherit its guarantees: bounded size, automatic ageing, and zero lifecycle overhead.
+
+---
+
+# The Ephemeral Signal Laws
+## Law 1 — Signals Never Implicitly Trigger Execution
+
+A signal, by itself, does not cause execution.
+It only records a fact in the ephemeral window.
+Nothing runs because a signal was emitted.
+
+## Law 2 — OnSignal Is Explicit, Local, and Optional
+
+If a coordinator defines an OnSignal handler, it runs synchronously when a signal is emitted — but only because the coordinator chose to attach it.
+Emitters do not know or care.
+Removing all handlers leaves core behaviour unchanged.
+
+## Law 3 — Signals Are Local to the Atom
+
+A signal is attached only to the atom/operation that emitted it.
+No signal ever mutates or annotates another atom.
+There is no shared writable bus.
+
+## Law 4 — Signals Are Append-Only Facts
+
+Emitting a signal appends a fact to the atom’s history.
+Signals are never updated or overwritten.
+Retractions remove only the emitter’s own signals.
+
+## Law 5 — The Signal Surface Is Bounded and Time-Limited
+
+Signals exist only within the coordinator’s ephemeral window.
+They expire automatically as the window ages out.
+Nothing is persisted unless you explicitly build persistence.
+
+## Law 6 — Observers Read, They Do Not Write
+
+When a coordinator “checks signals for key K”, it scans:
+
+the atoms in its window
+
+and the signals local to those atoms
+Observers never modify an atom’s signal state.
+
+## Law 7 — Event-like Behaviour Is a Layer, Not a Primitive
+
+If you want signals to drive async workflows, you must use:
+
+SignalDispatcher
+
+AsyncSignalProcessor
+
+or other adapters.
+
+These are optional layers built on top of signals, not part of their semantics.
+
+## Law 8 — No Cross-Atom Mutation Under Any Circumstances
+
+No atom may alter the snapshot, state, signals, or metadata of another atom.
+Coordination occurs through:
+
+- signals
+
+- sensing
+
+- windows
+
+- policies
+
+**Not through writes.**
+
+## Law 9 — Global Views Are Derived, Never Mutable
+
+A SignalSink or swarm-aggregated surface may show a combined view of signals —
+but it is always read-only, never authoritative, never writable.
+
+## Law 10 — Removing Handlers Yields the Same Core System
+
+If all handlers (OnSignal, dispatchers, processors) are detached,
+the system remains fully correct and predictable.
+Signals still have meaning because they are facts, not triggers.
+
+### The Best Analogy: Footprints, Not Instructions
+
+**Events** are like a phone call:
+> "I'm calling you right now. Pick up and react."
+
+**Signals** are like footprints in the snow:
+> "I left footprints. If you want to know where I went — look. If you don't care — ignore it."
+
+This is why signals never break, never block, and never interact with control flow unless you *choose* to poll them.
+
+### What This Removes
+
+The distinction matters because signals eliminate:
+
+| Problem | Events Have It | Signals Avoid It |
+|---------|:--------------:|:----------------:|
+| Coupling | Publisher → Subscribers | None |
+| Timing dependencies | Immediate reaction required | Ambient, poll when ready |
+| Feedback loops | Handlers can trigger handlers | No loops unless explicitly asked |
+| Ordering semantics | Order matters | Irrelevant |
+| Delivery guarantees | Must be delivered/handled | No delivery, just existence |
+| Error propagation | Handler errors propagate | Isolated |
+| Reentrancy hazards | Common | Impossible |
+| Cascaded failures | One handler fails, chain breaks | No chain to break |
+
+### Quick Comparison
+
+| Feature | Events | Signals |
+|---------|--------|---------|
+| Coupling | Strong (publisher → subscribers) | None |
+| Timing | Immediate | Ambient |
+| Delivery | Guaranteed/attempted | No delivery, just existence |
+| Reaction | Required | Optional |
+| Data Payload | Often heavy | Tiny string metadata |
+| Storage | None | Sliding LRU-style window |
+| Lifetime | Instantaneous | Decays automatically |
+| Failure modes | Many | Almost none |
+
+### The Difference in Code
+
+**Events approach (classic):**
+
+```csharp
+public event Action RateLimited;
+
+try
+{
+    await CallApiAsync();
+}
+catch (RateLimitException)
+{
+    RateLimited?.Invoke(); // Makes someone else act right now
+}
+```
+
+Problems:
+- Who reacts?
+- In what order?
+- What if two handlers conflict?
+- What if a handler throws?
+- What if it's the wrong time?
+- What if the caller doesn't want this behaviour?
+
+**Signal approach (ephemeral):**
+
+```csharp
+try
+{
+    await CallApiAsync(ct);
+}
+catch (RateLimitException ex)
+{
+    op.Signal($"rate-limit:{ex.RetryAfterMs}ms");
+    throw;
+}
+```
+
+Nothing happens here. Later, somewhere totally different:
+
+```csharp
+if (translator.HasSignal("rate-limit"))
+{
+    await Task.Delay(1000);   // Act when *we* choose
+}
+```
+
+Notes:
+- No direct coupling
+- No surprise calls
+- No execution jumps
+- No callback hell
+- No cross-thread weirdness
+- Only reacts when we *ask* to look
+
+### The "Aha!" Line
+
+> **Events transfer control. Signals transfer context.**
+
+That's the entire mental model in one sentence.
+
+### What Signals Really Are
+
+Depending on your background:
+
+| Audience | Definition |
+|----------|------------|
+| **Systems Thinkers** | A stigmergic substrate for indirect coordination |
+| **Engineers** | Lightweight metadata attached to operations in a bounded sliding window |
+| **PL/Concurrency Nerds** | An implicit, temporal blackboard paired with bounded concurrency semantics |
+| **Framework Users** | An in-process, self-cleaning state surface you can query at any time |
+
+Signals are traces left in a shared, bounded memory surface. Anyone can look at them. No one is obligated to react. This is a fundamentally *stigmergic* model of coordination — the same one ants use, the same one blackboard systems used in early AI, and the same one modern CRDT gossip networks hint at.
 
 ---
 

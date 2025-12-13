@@ -19,9 +19,19 @@ This is **Part 1** of a two-part series:
 - **Part 1 (this article)**: The theory, the pattern, and a real-world example
 - **[Part 2: Building a Reusable Ephemeral Execution Library](/blog/ephemeral-execution-library)**: The full implementation with DI integration
 
+## NUGET!!!
+This is now in the mostlylucid.ephemerals Nuget package also [more than 20 mostlylucid.ephemerals patterns and 'atoms'](https://www.nuget.org/packages?q=mostlylucid.ephemeral&includeComputedFrameworks=true&prerel=true&sortby=created-desc).
+
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.ephemeral.svg)](https://www.nuget.org/packages/mostlylucid.ephemeral)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](../../UNLICENSE)
+
 [TOC]
 
 ---
+
+## Source Files
+
+The full source code is in the [mostlylucid.atoms GitHub repository](https://github.com/scottgal/mostlylucid.atoms)
 
 ## The Problem -Async Workflows Create Hidden State
 

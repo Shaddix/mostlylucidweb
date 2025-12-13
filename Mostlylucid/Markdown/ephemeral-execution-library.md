@@ -7,28 +7,15 @@ In **[Part 1: Fire and Don't *Quite* Forget](/blog/fire-and-dont-quite-forget-ep
 
 This article turns that pattern into a reusable library you can drop into any .NET project.
 
-## Source Files
+## NUGET!!!
+This is now in the mostlylucid.ephemerals Nuget package also [more than 20 mostlylucid.ephemerals patterns and 'atoms'](https://www.nuget.org/packages?q=mostlylucid.ephemeral&includeComputedFrameworks=true&prerel=true&sortby=created-desc).
 
-The library is split into well-factored files:
+[![NuGet](https://img.shields.io/nuget/v/mostlylucid.ephemeral.svg)](https://www.nuget.org/packages/mostlylucid.ephemeral)
+[![License](https://img.shields.io/badge/license-Unlicense-blue.svg)](../../UNLICENSE)
 
-| File | Purpose |
-|------|---------|
-| [EphemeralOptions.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOptions.cs) | Configuration (concurrency, window size, lifetime, signals) |
-| [EphemeralOperation.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralOperation.cs) | Internal operation tracking with signal support |
-| [Snapshots.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Snapshots.cs) | Immutable snapshot records exposed to consumers |
-| [Signals.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Signals.cs) | Signal events, propagation, constraints, and the global SignalSink |
-| [EphemeralIdGenerator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralIdGenerator.cs) | Fast XxHash64-based ID generation |
-| [ConcurrencyGates.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/ConcurrencyGates.cs) | Fixed and adjustable concurrency limiting |
-| [StringPatternMatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/StringPatternMatcher.cs) | Glob-style pattern matching for signal filtering |
-| [ParallelEphemeral.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/ParallelEphemeral.cs) | Static extension methods (`EphemeralForEachAsync`) |
-| [EphemeralWorkCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralWorkCoordinator.cs) | Long-lived work queue coordinator |
-| [EphemeralKeyedWorkCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralKeyedWorkCoordinator.cs) | Per-key sequential execution with fair scheduling |
-| [EphemeralResultCoordinator.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/EphemeralResultCoordinator.cs) | Result-capturing coordinator variant |
-| [SignalDispatcher.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/SignalDispatcher.cs) | Async signal routing with pattern matching |
-| [DependencyInjection.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/DependencyInjection.cs) | DI extension methods and factory implementations |
-| [Examples/SignalingHttpClient.cs](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid/Helpers/Ephemeral/Examples/SignalingHttpClient.cs) | Sample fine-grained signal emission for HTTP calls |
+## Source Files 
 
-And [comprehensive tests](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid.Test/ParallelEphemeralTests.cs) covering all edge cases.
+The full source code is in the [mostlylucid.atoms GitHub repository](https://github.com/scottgal/mostlylucid.atoms) 
 
 [TOC]
 

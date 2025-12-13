@@ -14,11 +14,7 @@ module.exports = (env, argv) => {
             chunkFilename: '[name].[contenthash].js',
             path: path.resolve(__dirname, 'wwwroot/js/dist'),
             publicPath: '/js/dist/',
-            module: true,
             clean: true,
-        },
-        experiments:{
-            outputModule: true,
         },
         module: {
             rules: [
@@ -52,15 +48,8 @@ module.exports = (env, argv) => {
             }
         },
         optimization: {
-            splitChunks: {
-                chunks: 'all',
-                minSize: 20000,
-                maxSize: 100000,
-                name: false,
-            },
-            runtimeChunk: {
-                name: 'runtime', // ✅ avoid filename conflict
-            },
+            splitChunks: false,  // Disable code splitting to ensure synchronous loading
+            runtimeChunk: false,  // Disable runtime chunk to ensure synchronous loading
             minimize: isProduction,
             minimizer: isProduction ? [
                 new TerserPlugin({

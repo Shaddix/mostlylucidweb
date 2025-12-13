@@ -24,7 +24,16 @@
       "Bash(cat:*)",
       "Bash(dir:*)",
       "Bash(dotnet add:*)",
-      "Bash(del \"C:\\Blog\\mostlylucidweb\\Mostlylucid\\Helpers\\ParallelEphemeral.cs\")"
+      "Bash(del \"C:\\Blog\\mostlylucidweb\\Mostlylucid\\Helpers\\ParallelEphemeral.cs\")",
+      "Bash(node check-theme.js:*)",
+      "Bash(npm install:*)",
+      "Bash(node debug-theme.js:*)",
+      "Bash(node check-script-load.js:*)",
+      "Bash(node debug-errors.js:*)",
+      "Bash(npm run dev:js:*)",
+      "Bash(webpack --mode development)",
+      "Bash(npx webpack:*)",
+      "Bash(node check-network.js:*)"
     ],
     "deny": [],
     "ask": []

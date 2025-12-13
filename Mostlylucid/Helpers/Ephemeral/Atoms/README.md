@@ -14,11 +14,10 @@ Small, opinionated wrappers around Ephemeral coordinators. Each atom has:
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue] -->|bounded| B[Workers]
     B --> C[Complete/Drain]
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C accent;
 ```
 
 Usage:
@@ -38,14 +37,13 @@ await atom.DrainAsync();
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue (key)] --> B{Key switch}
     B -->|Key A| C[Seq A]
     B -->|Key B| D[Seq B]
     C --> E[Drain]
     D --> E
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C,D,E accent;
 ```
 
 Usage:
@@ -67,12 +65,11 @@ await atom.DrainAsync();
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue] --> B{Cancel/Defer signals?}
     B -- yes --> C[Skip/Wait]
     B -- no --> D[Process]
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C,D accent;
 ```
 
 Usage:
@@ -91,12 +88,11 @@ await atom.DrainAsync();
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue] --> B[Buffer]
     B -->|size>=N or timer| C[Flush batch]
     C --> D[Handler]
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C,D accent;
 ```
 
 Usage:
@@ -118,13 +114,12 @@ atom.Enqueue("b");
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue] --> B[Attempt 1]
     B -->|fail| C[Backoff]
     C --> D[Retry...]
     D -->|success| E[Done]
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C,D,E accent;
 ```
 
 Usage:
@@ -145,12 +140,11 @@ await atom.DrainAsync();
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     A[Enqueue (key)] --> B{Global gate}
     B --> C{Key gate}
     C --> D[Process]
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class A,B,C,D accent;
 ```
 
 Usage:
@@ -177,11 +171,10 @@ await fanout.DrainAsync();
 
 Diagram:
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#0b6fa4','lineColor':'#0b6fa4','tertiaryColor':'#ffffff'}}}%%
 flowchart LR
     P[Enqueue priority (key)] --> Q{Priority queue}
     N[Enqueue normal (key)] --> R{Normal queue}
     Q --> S{Keyed workers}
     R --> S
-    classDef accent stroke:#0b6fa4,fill:none,stroke-width:2px;
-    class P,Q,N,R,S accent;
 ```
