@@ -1,4 +1,4 @@
-# Building a Frontend Before the API is Ready: mostlylucid.mockllmapi
+# Building a Frontend Before the API is Ready: Without Brittle Fixtures
 
 <datetime class="hidden">2025-12-13T14:30</datetime>
 <!--category-- ASP.NET Core, LLM, API Development, Testing, Mock APIs -->
@@ -7,20 +7,25 @@
 
 How many times have you been blocked waiting for backend APIs to be ready? Or spent hours maintaining brittle mock data that becomes stale the moment requirements change?
 
-Enter `mostlylucid.mockllmapi` - a production-ready ASP.NET Core mocking platform that uses Large Language Models to generate realistic, contextually aware API responses on the fly. Instead of maintaining JSON fixtures, you get intelligent mocks that adapt to your requests, remember state across calls, and support every protocol you need: REST, GraphQL, gRPC, SignalR, and OpenAPI.
+Enter `mostlylucid.mockllmapi` - a production-ready ASP.NET Core mocking platform that uses Large Language Models to generate realistic, contextually aware API responses on the fly. Instead of maintaining JSON fixtures, you get intelligent mocks that adapt to your requests and remember state across calls.
+
+**What it supports:** Every protocol you need - REST, GraphQL, gRPC, SignalR, Server-Sent Events, and OpenAPI. Unlike static fixtures, responses are generated dynamically based on your request context, making multi-step workflows and complex testing scenarios trivial.
+
+### Project Links
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 [![GitHub Release](https://img.shields.io/github/v/release/scottgal/LLMApi)](https://github.com/scottgal/LLMApi/releases)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 
-**Companion Package:** [mostlylucid.mockllmapi.Testing](./mostlylucid.mockllmapi.Testing/README.md) - Testing utilities with fluent HttpClient integration
+- **Repository:** [https://github.com/scottgal/LLMApi](https://github.com/scottgal/LLMApi)
+- **Releases:** https://github.com/scottgal/LLMApi/releases
+- **Companion Package:** [mostlylucid.mockllmapi.Testing](https://github.com/scottgal/LLMApi/blob/master/mostlylucid.mockllmapi.Testing/README.md) - Testing utilities with fluent HttpClient integration
 
-**Repository:** [https://github.com/scottgal/LLMApi](https://github.com/scottgal/LLMApi)
+### Three Ways to Use It
 
-**Releases:** https://github.com/scottgal/LLMApi/releases 
+You can use mostlylucid.mockllmapi in three ways, depending on how isolated you want your dev environment to be:
 
-**Three ways to use it:**
 1. **ASP.NET Core NuGet package** - Add to your existing projects
 2. **Standalone CLI tool** - Cross-platform executable (download from [releases](https://github.com/scottgal/LLMApi/releases))
 3. **Docker container** - Zero installation required
@@ -29,7 +34,7 @@ Enter `mostlylucid.mockllmapi` - a production-ready ASP.NET Core mocking platfor
 
 ## The Killer Feature: Context Memory
 
-> **📖 Full Guide:** [API Contexts Documentation](https://github.com/scottgal/LLMApi/blob/main/docs/API-CONTEXTS.md)
+> **📖 Full Guide:** [API Contexts Documentation](https://github.com/scottgal/LLMApi/blob/master/docs/API-CONTEXTS.md)
 
 Traditional mock APIs have a fatal flaw: each request is independent. Get a user with ID 42, then fetch their orders, and you'll get orders for user ID 99. No consistency.
 
@@ -37,22 +42,31 @@ Traditional mock APIs have a fatal flaw: each request is independent. Get a user
 
 ```javascript
 // Request 1: Get a user
+// Note: 'context' is a simple query parameter - no cookies or sessions needed
 fetch('/api/users/123?context=checkout-session')
 // Response: { id: 42, name: "Alice Smith", email: "alice@example.com" }
 
-// Request 2: Get orders (same context)
+// Request 2: Get orders (same context parameter)
 fetch('/api/orders?userId=42&context=checkout-session')
 // Response: { userId: 42, customerName: "Alice Smith", items: [...] }
 // Perfect! Same user, consistent data
 ```
 
-The LLM sees previous requests and generates consistent data. **This is the game-changer for multi-step workflows.**
+The LLM sees previous requests in the same context and generates consistent data. **This is the game-changer for multi-step workflows.**
 
 **Features:**
+
+**Lifecycle:**
 - Automatic expiration after 15 minutes of inactivity (configurable)
 - Each request refreshes the timer
+
+**Behaviour:**
 - Intelligent extraction of ALL fields from responses
+
+**Safety:**
 - Zero memory leaks - contexts clean themselves up
+
+**Use Cases:**
 - Perfect for CI/CD - no state between runs
 
 ## Quick Start
@@ -78,7 +92,7 @@ llmock serve --port 5000
 
 ### Option 3: Docker
 
-> **📖 Complete Guide:** [Docker Deployment Guide](https://github.com/scottgal/LLMApi/blob/main/docs/DOCKER_GUIDE.md)
+> **📖 Complete Guide:** [Docker Deployment Guide](https://github.com/scottgal/LLMApi/blob/master/docs/DOCKER_GUIDE.md)
 
 ```bash
 git clone https://github.com/scottgal/LLMApi.git
@@ -88,18 +102,29 @@ docker compose up -d
 
 ### Prerequisites: LLM Backend
 
-You need Ollama, OpenAI, or LM Studio:
+You need **one of**: Ollama, OpenAI, or LM Studio:
 
 ```bash
-# Recommended: Ollama with llama3
-ollama pull llama3
+# Recommended: Ollama with ministral-3:3b (ultra-fast, accurate JSON generation)
+ollama pull ministral-3:3b
 ```
 
-See [Ollama Models Guide](https://github.com/scottgal/LLMApi/blob/main/docs/OLLAMA_MODELS.md) for recommendations.
+See [Ollama Models Guide](https://github.com/scottgal/LLMApi/blob/master/docs/OLLAMA_MODELS.md) for all model recommendations and comparisons.
+
+### Try It Immediately
+
+Once running, make your first request:
+
+```bash
+curl http://localhost:5000/api/mock/users
+# Response: [{"id": 1, "name": "Alice Johnson", "email": "alice@example.com"}, ...]
+```
+
+That's it! You now have a working mock API that generates realistic data on demand.
 
 ## Real Example: Search from mostlylucid.net
 
-Here's the actual search code from this blog:
+Here's the actual search code from this blog - **this is unchanged production frontend code**, no adaptations needed for the mock:
 
 ```javascript
 // typeahead.js from mostlylucid.net
@@ -134,9 +159,9 @@ Each response is unique and realistic, adapting to the query.
 
 ## Shape Control: Define Your Schema
 
-> **📖 See the article section below for full details**
+Beyond just generating random data, you often need precise control over the JSON structure. Shape control lets you tell the LLM exactly what structure to generate - the most powerful feature for frontend development.
 
-The most powerful feature for frontend dev - tell the LLM exactly what JSON structure to generate:
+### Basic Shape
 
 ```bash
 # Without shape - random structure
@@ -154,7 +179,7 @@ curl "http://localhost:5000/api/mock/users" \
 2. HTTP header - `X-Response-Shape: {...}` (recommended)
 3. Request body - `{"shape": {...}}`
 
-**Complex nesting:**
+### Nested Shape
 ```javascript
 const shape = {
   company: {
@@ -174,7 +199,7 @@ fetch('/api/mock/company', {
 });
 ```
 
-**TypeScript integration:**
+### TypeScript Alignment
 ```typescript
 interface User {
   id: number;
@@ -189,7 +214,9 @@ const USER_SHAPE: Partial<User> = { id: 0, name: "", email: "" };
 
 ## Multi-Step Workflows with Context
 
-Real example from mostlylucid.net's translation service:
+Now let's combine shape control with API contexts to handle complex, multi-step workflows. Remember the context memory feature from earlier? Here's how it shines in real-world asynchronous operations.
+
+This example from mostlylucid.net's translation service shows how the LLM maintains state across a complete async workflow:
 
 ```bash
 # Step 1: Start translation
@@ -210,6 +237,17 @@ Notice how `taskId` is consistent across all requests. **Context makes this poss
 
 ## Beyond REST: All the Protocols
 
+So far we've focused on REST, but modern applications need more. Whether you're building with GraphQL, implementing real-time features with SignalR, or working with gRPC services, mostlylucid.mockllmapi has you covered.
+
+**Supported protocols:**
+
+- ✓ REST
+- ✓ GraphQL
+- ✓ gRPC
+- ✓ SignalR
+- ✓ Server-Sent Events (SSE)
+- ✓ OpenAPI / Swagger
+
 ### GraphQL
 
 > **📖 Guide:** [GraphQL Section](https://github.com/scottgal/LLMApi#graphql-api-mocking)
@@ -223,7 +261,7 @@ The query IS the shape - no separate schema needed.
 
 ### gRPC
 
-> **📖 Complete Guide:** [gRPC Support](https://github.com/scottgal/LLMApi/blob/main/docs/GRPC_SUPPORT.md)
+> **📖 Complete Guide:** [gRPC Support](https://github.com/scottgal/LLMApi/blob/master/docs/GRPC_SUPPORT.md)
 
 ```bash
 # Upload .proto file
@@ -237,7 +275,7 @@ curl -X POST http://localhost:5116/api/grpc/userservice/UserService/GetUser \
 
 ### SignalR Real-Time
 
-> **📖 Guide:** [SignalR Demo Guide](https://github.com/scottgal/LLMApi/blob/main/SIGNALR_DEMO_GUIDE.md)
+> **📖 Guide:** [SignalR Demo Guide](https://github.com/scottgal/LLMApi/blob/master/SIGNALR_DEMO_GUIDE.md)
 
 ```javascript
 const connection = new signalR.HubConnectionBuilder()
@@ -256,7 +294,7 @@ Perfect for dashboard prototyping.
 
 ### Server-Sent Events (SSE)
 
-> **📖 Guide:** [SSE Streaming Modes](https://github.com/scottgal/LLMApi/blob/main/docs/SSE_STREAMING_MODES.md)
+> **📖 Guide:** [SSE Streaming Modes](https://github.com/scottgal/LLMApi/blob/master/docs/SSE_STREAMING_MODES.md)
 
 ```javascript
 const eventSource = new EventSource('/api/mock/stream/users');
@@ -268,7 +306,7 @@ eventSource.onmessage = (event) => {
 
 ### OpenAPI / Swagger
 
-> **📖 Complete Guide:** [OpenAPI Features](https://github.com/scottgal/LLMApi/blob/main/docs/OPENAPI-FEATURES.md)
+> **📖 Complete Guide:** [OpenAPI Features](https://github.com/scottgal/LLMApi/blob/master/docs/OPENAPI-FEATURES.md)
 
 ```bash
 # CLI: Load any OpenAPI spec
@@ -280,9 +318,9 @@ curl http://localhost:5000/petstore/pet/123
 
 ## Pluggable Tools: Mix Real & Mock Data
 
-> **📖 Complete Guide:** [Tools & Actions](https://github.com/scottgal/LLMApi/blob/main/docs/TOOLS_ACTIONS.md)
+> **📖 Complete Guide:** [Tools & Actions](https://github.com/scottgal/LLMApi/blob/master/docs/TOOLS_ACTIONS.md)
 
-Call real APIs during mocking:
+Sometimes you need a hybrid approach - real data from production combined with generated mock data. The pluggable tools system lets you call actual APIs during mock generation, creating incredibly realistic test scenarios.
 
 ```json
 {
@@ -301,11 +339,11 @@ Call real APIs during mocking:
 curl "http://localhost:5000/api/mock/orders?useTool=getUserData&userId=123"
 ```
 
-The mock fetches REAL user data, then LLM generates orders using it. **Insanely powerful for realistic testing.**
+The mock fetches REAL user data, then the LLM generates orders using it. **Extremely useful for realistic testing with hybrid mock/real workflows.**
 
 ## ASP.NET Core Integration
 
-Point `HttpClient` to the mock during dev:
+If you're building with ASP.NET Core, integration is seamless. The beauty of this approach is **zero code changes** to your services - you simply configure `HttpClient` to point at the mock during development and at the real API in production.
 
 ```csharp
 // Real code from mostlylucid.net
@@ -336,11 +374,34 @@ builder.Services.AddHttpClient<IMarkdownTranslatorService, MarkdownTranslatorSer
 }
 ```
 
+This pattern works for any `HttpClient` in your application - translation services, payment gateways, external APIs, you name it.
+
+## When to Use This
+
+Before we dive into advanced features, let's be clear about when this tool makes sense for your workflow.
+
+**Perfect for:**
+- **Frontend development before backend exists** - Stop blocking on backend teams
+- **Multi-step workflow testing** - Context memory handles complex scenarios
+- **API prototyping** - Experiment with response shapes before committing
+- **Offline development** - Work without network dependencies
+- **Error scenario testing** - Simulate failures without breaking production
+- **CI/CD pipelines** - No external dependencies means faster, more reliable builds
+
+**Not ideal for:**
+- **Production environments** - This is a development and testing tool
+- **Deterministic test data** - Use fixtures when you need exact reproducibility
+- **Contract testing** - Always validate against real APIs for production contracts
+
+Now that you know where it fits, let's explore the advanced capabilities.
+
 ## Advanced Features
+
+> These features are optional - you can get tremendous value from the basics alone. But when you need production-grade realism at scale, these tools are here.
 
 ### Multiple LLM Backends
 
-> **📖 Guide:** [Multiple LLM Backends](https://github.com/scottgal/LLMApi/blob/main/docs/MULTIPLE_LLM_BACKENDS.md)
+> **📖 Guide:** [Multiple LLM Backends](https://github.com/scottgal/LLMApi/blob/master/docs/MULTIPLE_LLM_BACKENDS.md)
 
 ```bash
 # Fast for dev
@@ -355,7 +416,7 @@ curl "http://localhost:5000/api/mock/users?backend=openai"
 
 ### Rate Limiting Simulation
 
-> **📖 Guide:** [Rate Limiting & Batching](https://github.com/scottgal/LLMApi/blob/main/docs/RATE_LIMITING_BATCHING.md)
+> **📖 Guide:** [Rate Limiting & Batching](https://github.com/scottgal/LLMApi/blob/master/docs/RATE_LIMITING_BATCHING.md)
 
 Test how your app handles rate limits:
 
@@ -387,80 +448,230 @@ curl "http://localhost:5000/api/mock/users?shape={\"$cache\":10,\"id\":0,\"name\
 
 Subsequent requests get instant cached responses.
 
-## Testing Utilities
+## Testing Utilities: mostlylucid.mockllmapi.Testing
 
-> **📖 Package:** [mostlylucid.mockllmapi.Testing](https://github.com/scottgal/LLMApi/blob/main/mostlylucid.mockllmapi.Testing/README.md)
+> **📖 Package:** [mostlylucid.mockllmapi.Testing](https://github.com/scottgal/LLMApi/blob/master/mostlylucid.mockllmapi.Testing/README.md)
+
+All the features above are great for development, but what about automated testing? The companion testing package provides a fluent API that makes integration tests a breeze - configure mock behavior declaratively and let `HttpClient` do the rest.
+
+### Installation
 
 ```bash
 dotnet add package mostlylucid.mockllmapi.Testing
 ```
 
-Fluent API for tests:
+### Basic Usage
+
+```csharp
+using mostlylucid.mockllmapi.Testing;
+
+// Create a client with a single endpoint configuration
+var client = HttpClientExtensions.CreateMockLlmClient(
+    baseAddress: "http://localhost:5116",
+    pathPattern: "/users",
+    configure: endpoint => endpoint
+        .WithShape(new { id = 0, name = "", email = "" })
+        .WithCache(5)
+);
+
+// Make requests - configuration is automatically applied
+var response = await client.GetAsync("/users");
+var users = await response.Content.ReadFromJsonAsync<User[]>();
+```
+
+### Multiple Endpoints
 
 ```csharp
 var client = HttpClientExtensions.CreateMockLlmClient(
-    baseAddress: "http://localhost:5116",
+    "http://localhost:5116",
     configure: handler => handler
         .ForEndpoint("/users", config => config
             .WithShape(new { id = 0, name = "", email = "" })
-            .WithCache(5))
+            .WithCache(10))
+        .ForEndpoint("/posts", config => config
+            .WithShape(new { id = 0, title = "", content = "", authorId = 0 })
+            .WithCache(20))
         .ForEndpoint("/error", config => config
-            .WithError(500))
+            .WithError(404, "Resource not found"))
 );
 
-var users = await client.GetFromJsonAsync<User[]>("/users");
+// Each endpoint automatically uses its configuration
+var usersResponse = await client.GetAsync("/users");
+var postsResponse = await client.GetAsync("/posts");
+var errorResponse = await client.GetAsync("/error"); // Returns 404
 ```
 
-## When to Use This
+### Configuration Options
 
-**Perfect for:**
-- Frontend dev before backend exists
-- Multi-step workflow testing (with context memory!)
-- Prototyping APIs before committing to schemas
-- Offline development
-- Testing error scenarios
-- CI/CD without external dependencies
+**Shape Configuration:**
+```csharp
+// Using anonymous objects
+.WithShape(new { id = 0, name = "", active = true })
 
-**Not ideal for:**
-- Production (it's a dev tool)
-- Deterministic test data (use fixtures for that)
-- Contract testing (validate real APIs separately)
+// Using JSON strings
+.WithShape("{ \"id\": 0, \"name\": \"\", \"tags\": [] }")
 
-## Tips
+// Complex nested structures
+.WithShape(new
+{
+    user = new { id = 0, name = "" },
+    posts = new[] { new { id = 0, title = "" } }
+})
+```
 
-1. **Always use contexts for workflows** - Ensures consistent IDs and data
+**Error Simulation:**
+```csharp
+// Simple error
+.WithError(404)
+
+// With custom message
+.WithError(404, "User not found")
+
+// With details
+.WithError(422, "Validation failed", "Email address is invalid")
+```
+
+**Streaming:**
+```csharp
+// Enable streaming with token-by-token output
+.WithStreaming()
+.WithSseMode("LlmTokens")
+
+// Stream complete objects
+.WithStreaming()
+.WithSseMode("CompleteObjects")
+
+// Stream array items individually
+.WithStreaming()
+.WithSseMode("ArrayItems")
+```
+
+### Dependency Injection
+
+**Typed Client:**
+```csharp
+services.AddMockLlmHttpClient<IUserApiClient>(
+    baseApiPath: "/api/mock",
+    configure: handler => handler
+        .ForEndpoint("/users", config => config
+            .WithShape(new { id = 0, name = "", email = "" }))
+);
+```
+
+**Named Client:**
+```csharp
+services.AddMockLlmHttpClient(
+    name: "MockApi",
+    baseApiPath: "/api/mock",
+    configure: handler => handler
+        .ForEndpoint("/data", config => config
+            .WithShape(new { value = 0 }))
+);
+
+// Usage
+var client = httpClientFactory.CreateClient("MockApi");
+```
+
+### Integration Testing Example
+
+```csharp
+[Fact]
+public async Task Should_Handle_User_Creation()
+{
+    // Arrange
+    var client = HttpClientExtensions.CreateMockLlmClient(
+        "http://localhost:5116",
+        "/users",
+        config => config
+            .WithMethod("POST")
+            .WithShape(new { id = 0, name = "", email = "", createdAt = "" })
+    );
+
+    // Act
+    var newUser = new { name = "John Doe", email = "john@example.com" };
+    var response = await client.PostAsJsonAsync("/users", newUser);
+
+    // Assert
+    response.EnsureSuccessStatusCode();
+    var created = await response.Content.ReadFromJsonAsync<User>();
+    Assert.NotNull(created);
+    Assert.NotEqual(0, created.Id);
+}
+
+[Fact]
+public async Task Should_Handle_Not_Found_Error()
+{
+    // Arrange
+    var client = HttpClientExtensions.CreateMockLlmClient(
+        "http://localhost:5116",
+        "/users/999",
+        config => config.WithError(404, "User not found")
+    );
+
+    // Act
+    var response = await client.GetAsync("/users/999");
+
+    // Assert
+    Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+}
+```
+
+### How It Works
+
+The `MockLlmHttpHandler` is a `DelegatingHandler` that:
+
+1. Intercepts outgoing HTTP requests
+2. Matches requests against configured endpoint patterns
+3. Injects mock configuration via query parameters and HTTP headers
+4. Forwards the modified request to the actual mock LLM API
+
+This allows you to use a real `HttpClient` in your tests while easily controlling mock API behavior without modifying your application code.
+
+## Best Practices & Tips
+
+After working with this tool across multiple projects, here are the patterns that work best:
+
+1. **Always use contexts for workflows** - Ensures consistent IDs and data across multi-step operations
 2. **Use shape for type safety** - Make it match your TypeScript interfaces
 3. **Mix real and mock data with tools** - Best of both worlds
-4. **Choose the right model:**
-   - Dev: `gemma3:4b` (fast, lightweight)
-   - Production-like: `llama3` (best balance)
-   - Complex: `mistral-nemo` (128K context)
+4. **Choose the right model** (see [Ollama Models Guide](https://github.com/scottgal/LLMApi/blob/master/docs/OLLAMA_MODELS.md) for complete details):
+   - **RECOMMENDED for dev**: `ministral-3:3b` (3B params, 32K context) - **KILLER for JSON!** Ultra-fast, highly accurate, minimal RAM
+   - **Production-like**: `llama3` (8B params, 8K context) - Best balance of quality and performance
+   - **High quality**: `mistral-nemo` (12B params, 128K context) - Complex schemas and massive datasets
+   - **Resource-constrained**: `gemma3:4b` or `phi3` - Lighter alternatives
 
 ## Complete Documentation
 
 - **[Main Repository](https://github.com/scottgal/LLMApi)** - Source and overview
-- **[Configuration Reference](https://github.com/scottgal/LLMApi/blob/main/docs/CONFIGURATION_REFERENCE.md)** - All settings
-- **[API Contexts Guide](https://github.com/scottgal/LLMApi/blob/main/docs/API-CONTEXTS.md)** - Context memory deep dive
-- **[Tools & Actions](https://github.com/scottgal/LLMApi/blob/main/docs/TOOLS_ACTIONS.md)** - External API integration
-- **[OpenAPI Features](https://github.com/scottgal/LLMApi/blob/main/docs/OPENAPI-FEATURES.md)** - Spec-based mocking
-- **[gRPC Support](https://github.com/scottgal/LLMApi/blob/main/docs/GRPC_SUPPORT.md)** - Protocol buffers
-- **[Docker Guide](https://github.com/scottgal/LLMApi/blob/main/docs/DOCKER_GUIDE.md)** - Container deployment
-- **[Multiple Backends](https://github.com/scottgal/LLMApi/blob/main/docs/MULTIPLE_LLM_BACKENDS.md)** - Multi-provider setup
-- **[Rate Limiting](https://github.com/scottgal/LLMApi/blob/main/docs/RATE_LIMITING_BATCHING.md)** - Simulate limits
-- **[Testing Package](https://github.com/scottgal/LLMApi/blob/main/mostlylucid.mockllmapi.Testing/README.md)** - HttpClient utilities
+- **[Configuration Reference](https://github.com/scottgal/LLMApi/blob/master/docs/CONFIGURATION_REFERENCE.md)** - All settings
+- **[API Contexts Guide](https://github.com/scottgal/LLMApi/blob/master/docs/API-CONTEXTS.md)** - Context memory deep dive
+- **[Tools & Actions](https://github.com/scottgal/LLMApi/blob/master/docs/TOOLS_ACTIONS.md)** - External API integration
+- **[OpenAPI Features](https://github.com/scottgal/LLMApi/blob/master/docs/OPENAPI-FEATURES.md)** - Spec-based mocking
+- **[gRPC Support](https://github.com/scottgal/LLMApi/blob/master/docs/GRPC_SUPPORT.md)** - Protocol buffers
+- **[Docker Guide](https://github.com/scottgal/LLMApi/blob/master/docs/DOCKER_GUIDE.md)** - Container deployment
+- **[Multiple Backends](https://github.com/scottgal/LLMApi/blob/master/docs/MULTIPLE_LLM_BACKENDS.md)** - Multi-provider setup
+- **[Rate Limiting](https://github.com/scottgal/LLMApi/blob/master/docs/RATE_LIMITING_BATCHING.md)** - Simulate limits
+- **[Testing Package](https://github.com/scottgal/LLMApi/blob/master/mostlylucid.mockllmapi.Testing/README.md)** - HttpClient utilities
 
 ## Conclusion
 
-`mostlylucid.mockllmapi` eliminates the wait for backend APIs. The combination of:
+Frontend development doesn't have to wait for backend APIs. `mostlylucid.mockllmapi` gives you:
 
-- **Context memory** - Consistent data across workflows
-- **Shape control** - Precise schema definitions
-- **All protocols** - REST, GraphQL, gRPC, SignalR, SSE, OpenAPI
-- **External tools** - Mix real and mock data
-- **Zero maintenance** - No fixtures to update
+- **Context memory** - Consistent, stateful data across multi-step workflows
+- **Shape control** - Precise schema definitions that match your types
+- **Universal protocol support** - REST, GraphQL, gRPC, SignalR, SSE, OpenAPI
+- **Hybrid testing** - Mix real production data with generated mocks
+- **Zero maintenance** - No JSON fixtures to update when requirements change
+- **Testing utilities** - Fluent API for integration tests
 
-...makes it a complete solution for modern API development.
+The difference between this and traditional mocking? Your frontend works against realistic, contextually aware data from day one. No more "it worked with mock data but failed with real data" surprises.
 
-Whether building a blog like this or a complex enterprise app, you'll iterate faster and ship with confidence.
+Whether you're building a simple blog or a complex enterprise application, you'll iterate faster, test more thoroughly, and ship with confidence.
 
-**Get started:** `docker compose up -d` and start building!
+**Ready to get started?**
+
+```bash
+docker compose up -d
+```
+
+That's it. No backend required.
