@@ -136,7 +136,7 @@ PostgreSQL's native extension for hierarchical data. Like materialised paths but
 
 **Best for:** PostgreSQL-only deployments where performance matters, when you need pattern matching queries, when you want the best of materialised paths.
 
-**Trade-offs:** PostgreSQL-only, requires raw SQL for hierarchy queries (operators not supported in LINQ), adds database extension dependency.
+**Trade-offs:** PostgreSQL-only, adds database extension dependency. Note: The [Npgsql provider supports LINQ translations](https://www.npgsql.org/efcore/mapping/translations.html#ltree-functions) for ltree via the `LTree` type, though recursive CTEs still require raw SQL.
 
 ---
 
@@ -148,7 +148,7 @@ PostgreSQL's native extension for hierarchical data. Like materialised paths but
 | **Closure Table** | O(d) | O(1) | O(1) | O(s x d) | O(n x d) | Good |
 | **Materialised Path** | O(1) | O(1)* | O(1) | O(s) | O(d) per node | Good |
 | **Nested Sets** | O(n) | O(1) | O(1) | O(n) | Minimal | Good |
-| **ltree** | O(1) | O(1) | O(1) | O(s) | O(d) per node | Requires raw SQL |
+| **ltree** | O(1) | O(1) | O(1) | O(s) | O(d) per node | Good (via `LTree` type) |
 
 *n = total nodes, d = depth, s = subtree size*
 *With proper index

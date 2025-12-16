@@ -3,7 +3,11 @@
 <!--category-- Entity Framework, PostgreSQL, EF Hierarchies -->
 <datetime class="hidden">2025-12-06T09:50</datetime>
 
-PostgreSQL's ltree extension gives you materialised paths with database-native superpowers: GiST indexes, specialised operators like `@>` and `<@`, and powerful pattern matching. If you're committed to PostgreSQL and want the best hierarchy query performance, ltree is hard to beat - you just need to accept raw SQL for the hierarchy operations.
+PostgreSQL's ltree extension gives you materialised paths with database-native superpowers: GiST indexes, specialised operators like `@>` and `<@`, and powerful pattern matching. If you're committed to PostgreSQL and want the best hierarchy query performance, ltree is hard to beat.
+
+**Good news:** The [Npgsql EF Core provider does support LINQ translations for ltree operations](https://www.npgsql.org/efcore/mapping/translations.html#ltree-functions) via the `LTree` type. You can use methods like `IsAncestorOf()`, `IsDescendantOf()`, and `MatchesLQuery()` directly in LINQ queries. However, EF Core does not yet support recursive CTEs, so you'll need raw SQL for operations that require them (like building complete subtree results with calculated depths).
+
+*Thanks to [Shay Rojansky](https://www.roji.org/) for pointing out the LINQ translation support!*
 
 ## Series Navigation
 
@@ -26,7 +30,7 @@ Instead of treating the path as a dumb string and using LIKE queries, PostgreSQL
 - Match patterns with wildcards (`Top.*.Europe`)
 - Perform set operations on paths
 
-**Key insight:** ltree is the best of both worlds - the simplicity of materialised paths with database-native optimisation. The trade-off is PostgreSQL lock-in and requiring raw SQL for hierarchy operations.
+**Key insight:** ltree is the best of both worlds - the simplicity of materialised paths with database-native optimisation. The trade-off is PostgreSQL lock-in, and while many ltree operations work via LINQ, recursive CTEs still require raw SQL.
 
 [TOC]
 
@@ -67,7 +71,11 @@ protected override void Up(MigrationBuilder migrationBuilder)
 
 ## Entity Definition
 
+The Npgsql provider includes an `LTree` type that maps directly to PostgreSQL's ltree and provides LINQ-translatable methods:
+
 ```csharp
+using Microsoft.EntityFrameworkCore;
+
 public class Comment
 {
     public int Id { get; set; }
@@ -87,9 +95,8 @@ public class Comment
     //   Child of 1: "1.5"
     //   Grandchild: "1.5.12"
     //
-    // EF Core stores this as a string, but PostgreSQL treats it as ltree type
-    // We'll use raw SQL for hierarchy queries to leverage ltree operators
-    public string Path { get; set; } = string.Empty;
+    // Using the LTree type enables LINQ translations for ltree operators
+    public LTree Path { get; set; }
 
     // Keep ParentCommentId for convenience
     public int? ParentCommentId { get; set; }
@@ -98,15 +105,15 @@ public class Comment
 
     // ========== HELPER METHODS ==========
 
-    public int GetDepth() => string.IsNullOrEmpty(Path)
-        ? 0
-        : Path.Split('.').Length - 1;
+    // Helper to get depth - LTree has NLevel property for this
+    public int GetDepth() => Path.NLevel - 1;
 
     public IEnumerable<int> GetAncestorIds()
     {
-        if (string.IsNullOrEmpty(Path)) yield break;
+        var pathString = Path.ToString();
+        if (string.IsNullOrEmpty(pathString)) yield break;
 
-        var parts = Path.Split('.');
+        var parts = pathString.Split('.');
         // All except last (which is this node)
         for (int i = 0; i < parts.Length - 1; i++)
         {
@@ -135,10 +142,9 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
             .HasMaxLength(200);
 
         // ========== PATH COLUMN ==========
-        // Store as string in EF Core, but we'll use raw SQL for ltree operations
-        // The database column should be ltree type
+        // The LTree type is automatically mapped to PostgreSQL's ltree type
+        // by the Npgsql provider - no explicit column type needed
         builder.Property(c => c.Path)
-            .HasColumnType("ltree")  // Important: specify the PostgreSQL type
             .IsRequired();
 
         // Relationship to blog post
@@ -177,16 +183,24 @@ protected override void Up(MigrationBuilder migrationBuilder)
 
 ## ltree Operators
 
-ltree provides powerful operators that we'll use in raw SQL:
+ltree provides powerful operators. The Npgsql EF Core provider translates `LTree` methods to these operators:
 
-| Operator | Meaning | Example |
-|----------|---------|---------|
-| `@>` | Is ancestor of (contains) | `'1.3'::ltree @> '1.3.7'::ltree` → true |
-| `<@` | Is descendant of (contained by) | `'1.3.7'::ltree <@ '1.3'::ltree` → true |
-| `~` | Matches lquery pattern | `'1.3.7'::ltree ~ '1.*'::lquery` → true |
-| `@` | Matches ltxtquery | `'1.3.7'::ltree @ '3 & 7'::ltxtquery` → true |
-| `||` | Concatenate paths | `'1.3'::ltree || '7'::ltree` → '1.3.7' |
-| `<`, `>`, `<=`, `>=` | Comparison | For sorting |
+| Operator | Meaning | LINQ Method | SQL Example |
+|----------|---------|-------------|-------------|
+| `@>` | Is ancestor of (contains) | `ltree1.IsAncestorOf(ltree2)` | `'1.3'::ltree @> '1.3.7'::ltree` → true |
+| `<@` | Is descendant of (contained by) | `ltree1.IsDescendantOf(ltree2)` | `'1.3.7'::ltree <@ '1.3'::ltree` → true |
+| `~` | Matches lquery pattern | `ltree.MatchesLQuery(pattern)` | `'1.3.7'::ltree ~ '1.*'::lquery` → true |
+| `@` | Matches ltxtquery | `ltree.MatchesLTxtQuery(query)` | `'1.3.7'::ltree @ '3 & 7'::ltxtquery` → true |
+| `||` | Concatenate paths | (use string concatenation) | `'1.3'::ltree || '7'::ltree` → '1.3.7' |
+| `<`, `>`, `<=`, `>=` | Comparison | Standard operators | For sorting |
+
+Additional LINQ-translatable properties and methods:
+- `ltree.NLevel` → `nlevel(ltree)` - number of labels in path
+- `ltree.Subtree(start, end)` → `subltree(ltree, start, end)` - extract range of labels
+- `ltree.Subpath(offset)` → `subpath(ltree, offset)` - suffix from offset
+- `ltree.Subpath(offset, len)` → `subpath(ltree, offset, len)` - substring
+- `ltree.Index(subpath)` → `index(ltree, subpath)` - find subpath position
+- `LTree.LongestCommonAncestor(ltree1, ltree2)` → `lca(ltree1, ltree2)` - lowest common ancestor
 
 ## Operations
 
@@ -303,71 +317,86 @@ public async Task<List<Comment>> GetChildrenLtreeAsync(int commentId, Cancellati
 
 ### Get All Ancestors
 
-Using the `@>` (ancestor of) operator:
+Using LINQ with the `IsAncestorOf` method (translates to `@>` operator):
 
 ```csharp
 public async Task<List<Comment>> GetAncestorsAsync(int commentId, CancellationToken ct = default)
 {
-    var path = await context.Comments
+    var targetPath = await context.Comments
         .Where(c => c.Id == commentId)
         .Select(c => c.Path)
         .FirstOrDefaultAsync(ct);
 
-    if (string.IsNullOrEmpty(path))
+    if (targetPath == default)
         return new List<Comment>();
 
-    // Find all nodes whose path is an ancestor of (contains) this path
-    // Using @> operator: ancestor @> descendant
-    // Exclude self by checking path != target
-    var sql = @"
-        SELECT * FROM comments
-        WHERE path @> $1::ltree
-          AND path != $1::ltree
-        ORDER BY nlevel(path)";
-
+    // Find all nodes whose path is an ancestor of this path
+    // Using IsAncestorOf which translates to @> operator
     return await context.Comments
-        .FromSqlRaw(sql, path)
         .AsNoTracking()
+        .Where(c => c.Path.IsAncestorOf(targetPath) && c.Id != commentId)
+        .OrderBy(c => c.Path.NLevel)
         .ToListAsync(ct);
 }
 ```
 
 ### Get All Descendants
 
-Using the `<@` (descendant of) operator:
+Using LINQ with the `IsDescendantOf` method (translates to `<@` operator):
 
 ```csharp
 public async Task<List<Comment>> GetDescendantsAsync(int commentId, CancellationToken ct = default)
 {
-    var path = await context.Comments
+    var parentPath = await context.Comments
         .Where(c => c.Id == commentId)
         .Select(c => c.Path)
         .FirstOrDefaultAsync(ct);
 
-    if (string.IsNullOrEmpty(path))
+    if (parentPath == default)
         return new List<Comment>();
 
-    // Find all nodes whose path is a descendant of (contained by) this path
-    // Using <@ operator: descendant <@ ancestor
-    var sql = @"
-        SELECT * FROM comments
-        WHERE path <@ $1::ltree
-          AND path != $1::ltree
-        ORDER BY path";
-
+    // Find all nodes whose path is a descendant of this path
+    // Using IsDescendantOf which translates to <@ operator
     return await context.Comments
-        .FromSqlRaw(sql, path)
         .AsNoTracking()
+        .Where(c => c.Path.IsDescendantOf(parentPath) && c.Id != commentId)
+        .OrderBy(c => c.Path)
         .ToListAsync(ct);
 }
 ```
 
 ### Get Descendants to Maximum Depth
 
-ltree's `nlevel` function makes depth limiting easy:
+Using LINQ with `NLevel` for depth limiting:
 
 ```csharp
-public async Task<List<CommentWithDepth>> GetDescendantsToDepthAsync(
+public async Task<List<Comment>> GetDescendantsToDepthAsync(
+    int commentId,
+    int maxDepth,
+    CancellationToken ct = default)
+{
+    var comment = await context.Comments
+        .FirstOrDefaultAsync(c => c.Id == commentId, ct);
+
+    if (comment == null)
+        return new List<Comment>();
+
+    var basePath = comment.Path;
+    var baseLevel = comment.Path.NLevel;
+
+    // NLevel property translates to nlevel() function
+    // Filter descendants within maxDepth levels
+    return await context.Comments
+        .AsNoTracking()
+        .Where(c => c.Path.IsDescendantOf(basePath) 
+                 && c.Id != commentId
+                 && c.Path.NLevel - baseLevel <= maxDepth)
+        .OrderBy(c => c.Path)
+        .ToListAsync(ct);
+}
+
+// If you need the depth value in results, you can project it:
+public async Task<List<CommentWithDepth>> GetDescendantsWithDepthAsync(
     int commentId,
     int maxDepth,
     CancellationToken ct = default)
@@ -379,30 +408,32 @@ public async Task<List<CommentWithDepth>> GetDescendantsToDepthAsync(
         return new List<CommentWithDepth>();
 
     var basePath = comment.Path;
-    var baseLevel = comment.Path.Split('.').Length;
+    var baseLevel = comment.Path.NLevel;
 
-    // nlevel() returns the number of labels in the path
-    // Relative depth = nlevel(path) - baseLevel
-    var sql = @"
-        SELECT
-            id, content, author, created_at, post_id, parent_comment_id,
-            path::text as path,
-            nlevel(path) - $2 as depth
-        FROM comments
-        WHERE path <@ $1::ltree
-          AND path != $1::ltree
-          AND nlevel(path) - $2 <= $3
-        ORDER BY path";
-
-    return await context.Database
-        .SqlQueryRaw<CommentWithDepth>(sql, basePath, baseLevel, maxDepth)
+    return await context.Comments
+        .AsNoTracking()
+        .Where(c => c.Path.IsDescendantOf(basePath) 
+                 && c.Id != commentId
+                 && c.Path.NLevel - baseLevel <= maxDepth)
+        .OrderBy(c => c.Path)
+        .Select(c => new CommentWithDepth
+        {
+            Id = c.Id,
+            Content = c.Content,
+            Author = c.Author,
+            CreatedAt = c.CreatedAt,
+            PostId = c.PostId,
+            ParentCommentId = c.ParentCommentId,
+            Path = c.Path.ToString(),
+            Depth = c.Path.NLevel - baseLevel
+        })
         .ToListAsync(ct);
 }
 ```
 
 ### Pattern Matching Queries
 
-ltree supports powerful lquery patterns:
+ltree supports powerful lquery patterns. Use `MatchesLQuery` in LINQ:
 
 ```csharp
 // Find all comments at exactly depth 2 under comment 1
@@ -413,36 +444,33 @@ public async Task<List<Comment>> GetAtDepthAsync(int commentId, int depth, Cance
         .Select(c => c.Path)
         .FirstOrDefaultAsync(ct);
 
-    if (path == null) return new List<Comment>();
+    if (path == default) return new List<Comment>();
 
     // Pattern: path.*{depth} matches exactly 'depth' more levels
-    var sql = @"
-        SELECT * FROM comments
-        WHERE path ~ ($1 || '.*{" + depth + @"}')::lquery
-        ORDER BY path";
-
+    var pattern = $"{path}.*{{{depth}}}";
+    
     return await context.Comments
-        .FromSqlRaw(sql, path)
         .AsNoTracking()
+        .Where(c => c.Path.MatchesLQuery(pattern))
+        .OrderBy(c => c.Path)
         .ToListAsync(ct);
 }
 
 // Find all paths matching a pattern like "1.*.7" (any path through 1 ending in 7)
 public async Task<List<Comment>> MatchPatternAsync(string pattern, CancellationToken ct = default)
 {
-    var sql = @"
-        SELECT * FROM comments
-        WHERE path ~ $1::lquery
-        ORDER BY path";
-
+    // MatchesLQuery translates to the ~ operator
     return await context.Comments
-        .FromSqlRaw(sql, pattern)
         .AsNoTracking()
+        .Where(c => c.Path.MatchesLQuery(pattern))
+        .OrderBy(c => c.Path)
         .ToListAsync(ct);
 }
 ```
 
 ### Delete a Subtree
+
+You can use LINQ to select the subtree, then delete:
 
 ```csharp
 public async Task DeleteSubtreeAsync(int commentId, CancellationToken ct = default)
@@ -452,13 +480,14 @@ public async Task DeleteSubtreeAsync(int commentId, CancellationToken ct = defau
         .Select(c => c.Path)
         .FirstOrDefaultAsync(ct);
 
-    if (path == null)
+    if (path == default)
         throw new InvalidOperationException($"Comment {commentId} not found");
 
-    // Delete all descendants (nodes where path <@ this path)
-    var sql = @"DELETE FROM comments WHERE path <@ $1::ltree";
-
-    var deleted = await context.Database.ExecuteSqlRawAsync(sql, new object[] { path }, ct);
+    // Delete all descendants (nodes where path is descendant of this path)
+    // Note: ExecuteDeleteAsync requires EF Core 7+
+    var deleted = await context.Comments
+        .Where(c => c.Path.IsDescendantOf(path))
+        .ExecuteDeleteAsync(ct);
 
     logger.LogInformation("Deleted {Count} comments with path prefix {Path}", deleted, path);
 }
@@ -578,11 +607,12 @@ With GiST indexes, ltree queries are extremely efficient - typically O(log n) re
 | Pros | Cons |
 |------|------|
 | Database-native optimisation | PostgreSQL-only |
-| GiST index for all hierarchy queries | Requires raw SQL for operators |
-| Powerful pattern matching | Extension dependency |
-| Built-in path manipulation functions | Labels limited to alphanumeric |
-| O(1) ancestor/descendant queries | LINQ doesn't support ltree operators |
-| Compact storage | Less portable than pure EF Core solutions |
+| GiST index for all hierarchy queries | Extension dependency |
+| Powerful pattern matching | Labels limited to alphanumeric |
+| Built-in path manipulation functions | Recursive CTEs require raw SQL |
+| O(1) ancestor/descendant queries | Less portable than pure EF Core solutions |
+| Compact storage | |
+| LINQ support via Npgsql's `LTree` type | |
 
 ## When to Use ltree
 
@@ -591,13 +621,13 @@ With GiST indexes, ltree queries are extremely efficient - typically O(log n) re
 - Performance is critical for hierarchy queries
 - You need pattern matching (find all X.*.Y paths)
 - You want the best of materialised paths
-- You're comfortable with raw SQL for hierarchy operations
+- You want LINQ support for most hierarchy operations
 
 **Avoid ltree when:**
 - You need database portability (SQL Server, MySQL, etc.)
-- You want pure EF Core without raw SQL
 - Your team is unfamiliar with PostgreSQL extensions
 - Labels need non-alphanumeric characters
+- You need recursive CTEs and want to avoid any raw SQL
 
 ## Comparison with Materialised Path
 
@@ -607,7 +637,7 @@ With GiST indexes, ltree queries are extremely efficient - typically O(log n) re
 | Pattern matching | LIKE 'prefix%' only | Full wildcards |
 | Operators | String comparison | Native @>, <@, ~ |
 | Portability | Any database | PostgreSQL only |
-| EF Core support | Full LINQ | Raw SQL required |
+| EF Core support | Full LINQ | LINQ via `LTree` type (CTEs need raw SQL) |
 | Performance | Good with index | Excellent with GiST |
 | Functions | None (manual parsing) | Rich function library |
 

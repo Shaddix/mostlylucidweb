@@ -654,7 +654,7 @@ If you're on PostgreSQL, consider [Part 1.5: ltree](/blog/efcore-hierarchical-da
 - Path manipulation functions
 - Pattern matching with wildcards
 
-The trade-off is PostgreSQL lock-in and requiring raw SQL for hierarchy queries.
+The trade-off is PostgreSQL lock-in. Note that the [Npgsql provider now supports LINQ translations](https://www.npgsql.org/efcore/mapping/translations.html#ltree-functions) for ltree via the `LTree` type, though recursive CTEs still require raw SQL.
 
 ## Series Navigation
 
