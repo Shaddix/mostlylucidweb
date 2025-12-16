@@ -1,7 +1,7 @@
 # Fetching and Analysing Web Content with LLMs in C#
 
 <!--category-- AI, LLM, Agents, C#, Systems Design -->
-<datetime class="hidden">2025-12-18T10:00</datetime>
+<datetime class="hidden">2025-12-19T10:00</datetime>
 
 When you ask ChatGPT to "read this article and summarize it," what actually happens? If you imagine the AI opening a browser and reading like you would - that's not how it works.
 
