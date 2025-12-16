@@ -3,25 +3,24 @@
 <!--category-- AI, LLM, Data Analysis, DuckDB, C#, Ollama -->
 <datetime class="hidden">2025-12-18T10:00</datetime>
 
-Here's the mistake everyone makes: they try to feed their CSV into an LLM. Don't. **LLMs should generate queries, not consume data.**
+You've got a 500MB CSV file. Maybe it's sales data, server logs, or customer records. You want to ask questions about it - "What's the average order value by region?" or "Show me the trend of errors over the last month." 
 
-> 💡 **Core Principle**: LLMs reason; databases compute. The LLM generates the query, the database executes it against the actual data. This separation is why the approach works at scale.
+You've heard of all these fancy 'AI' tools (including [Copilot in Excel](https://support.microsoft.com/en-gb/copilot-excel)) and *know* they can do this sort of thing. But what if you had to build it yourself? What if your data is too sensitive for cloud services, or you need something customised to your workflow?
 
-You've got a 500MB CSV file and want to ask "What's the average order value by region?" Tools like [Copilot in Excel](https://support.microsoft.com/en-gb/copilot-excel) can do this, but what if your data is too sensitive for cloud services? What if you need to build it yourself?
+The obvious approach - dump it into ChatGPT - doesn't work. Context windows are limited (even 200K tokens is only ~50K rows), and you probably don't want to upload sensitive business data to external services anyway.
 
-This article shows you how - locally, privately, in C#.
-
-> **TL;DR**: Use DuckDB to query CSV files directly. Use a local LLM to generate the SQL. The LLM never sees your data - just the schema. Result: sub-100ms queries on million-row files, completely offline.
-
-> 🚀 **The Killer Feature**: DuckDB treats files as tables. Point it at a CSV, Parquet, or JSON file and query immediately. No CREATE TABLE, no bulk insert, no waiting.
+So how do you analyse large datasets with LLMs locally, using C#?
 
 [TOC]
 
-## The Core Insight
+## The Problem: LLMs Can't Process Large Data
 
-Using an LLM as a data store is the wrong abstraction. LLMs are fundamentally incapable of scanning millions of rows to compute an average - that's not what they're for. Even a 200K token context window fits maybe 50,000 rows. Your 500MB CSV has millions.
+LLMs have two fundamental limitations when it comes to data analysis:
 
-The correct pattern: **LLM reasons, database computes.**
+1. **Context window limits** - Even a 200K token context fits maybe 50,000 rows. Your 500MB CSV has millions.
+2. **LLMs aren't databases** - They're great at understanding questions and generating code, but terrible at scanning millions of rows to compute an average.
+
+The solution is simple: **don't feed data to the LLM**. Instead, let the LLM generate SQL that queries the data.
 
 ```mermaid
 flowchart LR
@@ -34,21 +33,56 @@ flowchart LR
     style D stroke:#333,stroke-width:4px
 ```
 
-Notice what's happening: the LLM generates a SQL query based on your question and the schema. DuckDB executes it against the actual data. The LLM never touches your data - it only sees column names and types. This is why it's fast, private, and accurate.
+The LLM never sees the actual data - just the schema. This keeps things fast, private, and accurate.
 
-## Why Not Just Load It Into Memory?
+## Comparing the Approaches
 
-The obvious approaches all share the same fatal flaw:
+Before jumping into code, let's look at the options for querying large CSV files from C#:
 
-**[CsvHelper](https://joshclose.github.io/CsvHelper/) / DataFrames**: Load entire file into RAM. A 500MB CSV becomes 2-4GB of objects. A 5GB file? OOM crash.
+### Option 1: Load Everything Into Memory
 
-**SQLite / PostgreSQL**: Requires a slow import step (minutes for large files), upfront schema definitions, and database management overhead.
+Libraries like [CsvHelper](https://joshclose.github.io/CsvHelper/) or [Microsoft.Data.Analysis](https://www.nuget.org/packages/Microsoft.Data.Analysis) (DataFrame) can parse CSV into memory:
 
-**[PandasAI](https://github.com/Sinaptik-AI/pandas-ai)**: Still loads everything into memory. Plus, executing LLM-generated arbitrary code is a security nightmare - SQL is declarative and sandboxable; Python is not.
+```csharp
+// CsvHelper approach
+using var reader = new StreamReader("sales.csv");
+using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+var records = csv.GetRecords<SaleRecord>().ToList();
+var totalByRegion = records.GroupBy(r => r.Region).Select(g => new { Region = g.Key, Total = g.Sum(r => r.Amount) });
+```
 
-## Why DuckDB
+**Problem**: A 500MB CSV loads into ~2-4GB of RAM as objects. A 5GB file? You're out of memory. Plus you're writing manual LINQ for every query.
 
-[DuckDB](https://duckdb.org/) is different. It queries CSV files *directly* - no import step, no loading into memory:
+### Option 2: Import to a Database
+
+Load the CSV into SQLite, PostgreSQL, or SQL Server, then query normally:
+
+```csharp
+// SQLite approach - requires import step
+using var connection = new SqliteConnection("Data Source=analytics.db");
+// First: CREATE TABLE, then bulk insert from CSV...
+// Then: var result = connection.Query("SELECT Region, SUM(Amount) FROM sales GROUP BY Region");
+```
+
+**Problem**: The import step is slow (minutes for large files), you need schema definitions upfront, and you're managing database files or servers.
+
+### Option 3: Let the LLM Generate Code
+
+Tools like [PandasAI](https://github.com/Sinaptik-AI/pandas-ai) (Python) let the LLM generate pandas code that runs against your data:
+
+```python
+# PandasAI approach
+df = pd.read_csv("sales.csv")
+pandas_ai = PandasAI(llm)
+response = pandas_ai.run(df, "What are total sales by region?")
+# LLM generates: df.groupby('Region')['Amount'].sum()
+```
+
+**Problem**: Still loads everything into memory. Also, executing LLM-generated arbitrary code is a security nightmare compared to SQL (which is declarative and sandbox-able).
+
+### Option 4: DuckDB (The Winner 🦆)
+
+DuckDB queries CSV files directly without loading them into memory:
 
 ```csharp
 using var connection = new DuckDBConnection("DataSource=:memory:");
@@ -58,29 +92,28 @@ cmd.CommandText = "SELECT Region, SUM(Amount) FROM 'sales.csv' GROUP BY Region";
 // Executes directly against the file - no import, no memory explosion
 ```
 
-The killer feature: **it treats files as tables**. Point it at a CSV, Parquet, or JSON file and query immediately. No CREATE TABLE, no bulk insert, no waiting.
+**Why DuckDB wins:**
 
 | Factor | CsvHelper | SQLite | DuckDB |
 |--------|-----------|--------|--------|
-| **Memory** | Loads entire file | Loads during import | Streams from disk |
-| **Setup** | None | Schema + import | None |
-| **500MB file** | ~2GB RAM | Minutes to import | Instant |
-| **5GB file** | OOM crash | Very slow | Works fine |
-| **Parquet** | No | No | Yes (10-100x faster) |
+| **Memory usage** | Loads entire file | Loads entire file (during import) | Streams from disk |
+| **Setup required** | None | Schema + import | None |
+| **Query language** | LINQ (code) | SQL | SQL |
+| **500MB file** | ~2GB RAM | Minutes to import | Instant queries |
+| **5GB file** | OOM crash | Very slow import | Works fine |
+| **Parquet support** | No | No | Yes (10-100x faster) |
 
-DuckDB is what data engineers use in Python for exactly this use case. The [.NET bindings](https://github.com/Giorgi/DuckDB.NET) give you full ADO.NET support - it feels like any other database, except you're querying files.
+DuckDB is designed for exactly this use case - analytical queries over files. It's what data engineers use in Python; the .NET bindings are excellent.
 
 ## The Stack
 
-| Component | Why This One |
-|-----------|--------------|
-| [DuckDB](https://duckdb.org/) | Queries CSV directly, no import step |
-| [DuckDB.NET](https://github.com/Giorgi/DuckDB.NET) | Full ADO.NET support, feels native |
-| [Ollama](https://ollama.ai/) | Local inference, no API keys, no cloud |
-| [Bogus](https://github.com/bchavez/Bogus) | Realistic test data at any scale |
-| [`qwen2.5-coder:7b`](https://ollama.ai/library/qwen2.5-coder) | Best SQL accuracy at 7B size |
-
-> **Note on security**: We're executing LLM-generated SQL. This is safer than arbitrary code, but still requires validation. See the [Security section](#security-considerations) for safeguards.
+| Component | Purpose |
+|-----------|---------|
+| [DuckDB](https://duckdb.org/) | Query engine - queries CSV directly |
+| [DuckDB.NET](https://github.com/Giorgi/DuckDB.NET) | C# bindings with ADO.NET support |
+| [Ollama](https://ollama.ai/) | Local LLM inference |
+| [Bogus](https://github.com/bchavez/Bogus) | Generate realistic test data |
+| `qwen2.5-coder:7b` | Model that's excellent at SQL |
 
 ## Project Setup
 
@@ -142,9 +175,7 @@ The key insight: we give the LLM **schema and sample data**, not the actual data
 
 ## Step 1: Generate Test Data with Bogus
 
-> **Already have CSV data?** Skip to [Step 2: Build the Schema Context](#step-2-build-the-schema-context).
-
-Before we can test our LLM-powered CSV analyser, we need data to analyse. For development and testing, synthetic data beats real data:
+Before we can test our LLM-powered CSV analyser, we need data to analyse. You might have real CSV files to work with, but for development and testing there are good reasons to generate synthetic data:
 
 1. **Scale testing** - Generate 100K, 1M, or 10M rows to verify performance at different sizes
 2. **Privacy** - No risk of exposing real customer/business data in demos or screenshots
@@ -313,7 +344,7 @@ Three rows is usually enough - it shows the LLM what formats to expect without w
 
 ## Step 3: Generate SQL with the LLM
 
-**This is the hard part.** The prompt engineering here is non-negotiable - without strict rules, local LLMs will produce creative but broken SQL. The goal is determinism, not creativity.
+Now we build a prompt that gives the LLM everything it needs:
 
 ### Building the Prompt
 
@@ -553,7 +584,7 @@ For most use cases, **`qwen2.5-coder:7b`** hits the sweet spot - accurate SQL, g
 
 ### Real-World Benchmarks
 
-Testing on a 100K row CSV file (14MB) on a standard dev machine (Ryzen 5, NVMe SSD, 32GB RAM):
+Testing on a 100K row CSV file (14MB), DuckDB query times were:
 
 | Query Type | Time |
 |------------|------|
@@ -562,7 +593,7 @@ Testing on a 100K row CSV file (14MB) on a standard dev machine (Ryzen 5, NVMe S
 | Complex aggregation with FILTER | 63ms |
 | Multi-table GROUP BY with HAVING | 71ms |
 
-Sub-100ms for analytical queries on 100K rows - without any import step. Query complexity matters more than row count; DuckDB's columnar engine handles aggregations efficiently regardless of file size.
+That's analytical queries completing in under 100ms - without any import step. The same queries via CsvHelper + LINQ would require loading the entire file into memory first.
 
 ### Convert Large Files to Parquet
 
@@ -614,21 +645,21 @@ Console.WriteLine(await analyser.AskAsync("Which category has the most returns?"
 
 ## Summary
 
-The mental model to keep: **LLMs reason; databases compute.**
+The best approach for analysing large CSV files with local LLMs:
 
-Don't feed data to the LLM. Feed it schema, let it generate SQL, execute that SQL against a proper query engine. This separation is why the approach works at scale.
+1. **Generate test data** with Bogus for realistic scenarios
+2. **Extract schema** from DuckDB - column names, types, sample rows
+3. **Build a context-rich prompt** - rules, schema, samples, conversation history
+4. **Validate SQL** before executing using `EXPLAIN`
+5. **Execute with DuckDB** - queries CSV directly, handles files larger than RAM
 
-The implementation:
+The LLM never sees your data - just the schema. This keeps things:
+- **Fast** - SQL is optimised for data processing
+- **Accurate** - No hallucinated numbers
+- **Private** - Data never leaves your machine
+- **Scalable** - Works with billion-row datasets
 
-1. **DuckDB** queries CSV directly - no import, streams from disk
-2. **Schema + samples** give the LLM enough context without exposing data
-3. **Strict prompt rules** force deterministic SQL, not creative prose
-4. **Validation via EXPLAIN** catches errors before execution
-5. **Retry with error feedback** handles the occasional syntax slip
-
-The result: sub-100ms analytical queries on million-row files, completely offline, with data that never leaves your machine.
-
-The full sample project is available at [Mostlylucid.CsvLlm](https://github.com/scottgal/mostlylucidweb) - includes `CsvQueryService`, `ConversationalCsvAnalyser`, and Bogus-based data generation.
+The full sample project is available at [Mostlylucid.CsvLlm](https://github.com/scottgal/mostlylucidweb) - includes the `CsvQueryService`, `ConversationalCsvAnalyser`, and Bogus-based data generation.
 
 ## Resources
 
