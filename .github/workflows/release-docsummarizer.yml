@@ -28,8 +28,11 @@ jobs:
             rid: win-x64
             artifact_name: docsummarizer-win-x64
             executable: docsummarizer.exe
-          # Windows ARM64 - requires ARM64 runner or cross-compile toolchain
-          # Skipped for now as GitHub doesn't have Windows ARM64 runners
+          # Windows ARM64 - cross-compile from x64 (works for .NET AOT on Windows)
+          - os: windows-latest
+            rid: win-arm64
+            artifact_name: docsummarizer-win-arm64
+            executable: docsummarizer.exe
           # Linux x64
           - os: ubuntu-latest
             rid: linux-x64
@@ -40,8 +43,8 @@ jobs:
             rid: linux-arm64
             artifact_name: docsummarizer-linux-arm64
             executable: docsummarizer
-          # macOS x64 (Intel) - use macos-13 which is Intel
-          - os: macos-13
+          # macOS x64 (Intel) - use macos-15-intel
+          - os: macos-15-intel
             rid: osx-x64
             artifact_name: docsummarizer-osx-x64
             executable: docsummarizer
@@ -144,17 +147,24 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./artifacts
+        merge-multiple: true
 
     - name: List artifacts
-      run: find ./artifacts -type f
+      run: |
+        echo "=== Artifacts directory structure ==="
+        find ./artifacts -type f -name "*.zip" -o -name "*.tar.gz" | head -20
+        echo "=== All files ==="
+        ls -laR ./artifacts/
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         name: DocSummarizer v${{ steps.get_version.outputs.VERSION }}
         tag_name: ${{ github.event_name == 'workflow_dispatch' && format('docsummarizer-v{0}', github.event.inputs.version) || github.ref_name }}
         draft: false
-        prerelease: false
+        prerelease: ${{ contains(steps.get_version.outputs.VERSION, '-') }}
         generate_release_notes: true
         body: |
           ## DocSummarizer v${{ steps.get_version.outputs.VERSION }}
@@ -173,6 +183,7 @@ jobs:
           | Platform | Architecture | Download |
           |----------|--------------|----------|
           | Windows | x64 | `docsummarizer-win-x64.zip` |
+          | Windows | ARM64 | `docsummarizer-win-arm64.zip` |
           | Linux | x64 | `docsummarizer-linux-x64.tar.gz` |
           | Linux | ARM64 | `docsummarizer-linux-arm64.tar.gz` |
           | macOS | x64 (Intel) | `docsummarizer-osx-x64.tar.gz` |
