@@ -4,6 +4,20 @@ using System.Text.RegularExpressions;
 
 namespace Mostlylucid.DocSummarizer.Models;
 
+public enum OutputFormat
+{
+    Console,
+    Text,
+    Markdown,
+    Json
+}
+
+public enum WebFetchMode
+{
+    Simple,
+    Playwright
+}
+
 public record DocumentChunk(
     int Order,
     string Heading,
@@ -14,11 +28,492 @@ public record DocumentChunk(
     public string Id => $"chunk-{Order}";
 }
 
+#region Claim Ledger System
+
+/// <summary>
+/// Type of claim - determines weight in final synthesis
+/// </summary>
+public enum ClaimType
+{
+    /// <summary>Directly stated in source text - highest weight</summary>
+    Fact = 3,
+    /// <summary>Logical deduction from stated facts - medium weight</summary>
+    Inference = 2,
+    /// <summary>Incidental detail, local colour - lowest weight</summary>
+    Colour = 1
+}
+
+/// <summary>
+/// Confidence level for claims and entities
+/// </summary>
+public enum ConfidenceLevel
+{
+    High = 3,
+    Medium = 2,
+    Low = 1,
+    Uncertain = 0
+}
+
+/// <summary>
+/// A typed citation with chunk reference and optional span
+/// </summary>
+public record Citation(
+    string ChunkId,
+    int? StartOffset = null,
+    int? EndOffset = null)
+{
+    public override string ToString() => $"[{ChunkId}]";
+}
+
+/// <summary>
+/// A claim extracted from the document with evidence trail
+/// </summary>
+public record Claim(
+    string Text,
+    ClaimType Type,
+    ConfidenceLevel Confidence,
+    List<Citation> Evidence,
+    string? Topic = null)
+{
+    /// <summary>
+    /// Computed weight for ranking claims in synthesis
+    /// Weight = Type * Confidence * EvidenceCount
+    /// </summary>
+    public double Weight => (int)Type * (int)Confidence * Math.Max(1, Evidence.Count);
+    
+    /// <summary>
+    /// Render claim with citations for output
+    /// </summary>
+    public string Render() => Evidence.Count > 0 
+        ? $"{Text} {string.Join(" ", Evidence.Select(e => e.ToString()))}"
+        : Text;
+}
+
+/// <summary>
+/// Collection of claims with operations for synthesis
+/// </summary>
+public class ClaimLedger
+{
+    private readonly List<Claim> _claims = [];
+    
+    public IReadOnlyList<Claim> Claims => _claims;
+    
+    public void Add(Claim claim) => _claims.Add(claim);
+    
+    public void AddRange(IEnumerable<Claim> claims) => _claims.AddRange(claims);
+    
+    /// <summary>
+    /// Get top claims by weight, optionally filtered by type
+    /// </summary>
+    public List<Claim> GetTopClaims(int count, ClaimType? minType = null)
+    {
+        var query = _claims.AsEnumerable();
+        if (minType.HasValue)
+            query = query.Where(c => c.Type >= minType.Value);
+        
+        return query
+            .OrderByDescending(c => c.Weight)
+            .Take(count)
+            .ToList();
+    }
+    
+    /// <summary>
+    /// Get claims grouped by topic
+    /// </summary>
+    public Dictionary<string, List<Claim>> GetByTopic()
+    {
+        return _claims
+            .Where(c => !string.IsNullOrEmpty(c.Topic))
+            .GroupBy(c => c.Topic!)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.Weight).ToList());
+    }
+    
+    /// <summary>
+    /// Get only fact-type claims (highest confidence)
+    /// </summary>
+    public List<Claim> GetFacts() => _claims
+        .Where(c => c.Type == ClaimType.Fact)
+        .OrderByDescending(c => c.Weight)
+        .ToList();
+    
+    /// <summary>
+    /// Total citation count across all claims
+    /// </summary>
+    public int TotalCitations => _claims.Sum(c => c.Evidence.Count);
+    
+    /// <summary>
+    /// Citation rate: claims with evidence / total claims
+    /// </summary>
+    public double CitationRate => _claims.Count > 0 
+        ? (double)_claims.Count(c => c.Evidence.Count > 0) / _claims.Count 
+        : 0;
+}
+
+#endregion
+
+#region Enhanced Entity System
+
+/// <summary>
+/// A normalized entity with canonical name and aliases
+/// </summary>
+public record NormalizedEntity(
+    string CanonicalName,
+    List<string> Aliases,
+    string EntityType, // "character", "location", "date", "event", "organization"
+    ConfidenceLevel Confidence,
+    List<string> SourceChunks)
+{
+    /// <summary>
+    /// Check if a name matches this entity (canonical or alias)
+    /// </summary>
+    public bool Matches(string name) =>
+        CanonicalName.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+        Aliases.Any(a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
+}
+
+/// <summary>
+/// Entities extracted from a chunk of text
+/// </summary>
+public record ExtractedEntities(
+    List<string> Characters,
+    List<string> Locations,
+    List<string> Dates,
+    List<string> Events,
+    List<string> Organizations)
+{
+    public static ExtractedEntities Empty => new([], [], [], [], []);
+    
+    /// <summary>
+    /// Merge multiple entity sets with fuzzy deduplication
+    /// </summary>
+    public static ExtractedEntities Merge(IEnumerable<ExtractedEntities> entities)
+    {
+        var all = entities.ToList();
+        return new ExtractedEntities(
+            NormalizeAndDedupe(all.SelectMany(e => e.Characters)),
+            NormalizeAndDedupe(all.SelectMany(e => e.Locations)),
+            NormalizeAndDedupe(all.SelectMany(e => e.Dates)),
+            NormalizeAndDedupe(all.SelectMany(e => e.Events)),
+            NormalizeAndDedupe(all.SelectMany(e => e.Organizations))
+        );
+    }
+    
+    /// <summary>
+    /// Normalize and deduplicate entity names with fuzzy matching
+    /// </summary>
+    private static List<string> NormalizeAndDedupe(IEnumerable<string> names)
+    {
+        var normalized = new List<string>();
+        
+        foreach (var name in names)
+        {
+            var cleanName = CleanEntityName(name);
+            if (string.IsNullOrWhiteSpace(cleanName) || cleanName.Length < 2)
+                continue;
+            
+            // Check if this is a fuzzy match to an existing entity
+            var existingMatch = normalized.FirstOrDefault(n => IsFuzzyMatch(n, cleanName));
+            if (existingMatch == null)
+            {
+                normalized.Add(cleanName);
+            }
+            else
+            {
+                // Keep the longer/more complete version
+                if (cleanName.Length > existingMatch.Length)
+                {
+                    normalized.Remove(existingMatch);
+                    normalized.Add(cleanName);
+                }
+            }
+        }
+        
+        return normalized;
+    }
+    
+    /// <summary>
+    /// Clean up entity name - remove titles, honorifics that cause duplicates
+    /// </summary>
+    private static string CleanEntityName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        
+        var clean = name.Trim()
+            .Trim('*', '[', ']', '"', '\'', '-', '(', ')')
+            .Trim();
+        
+        // Skip obviously bad entries
+        if (clean.Length < 2 || 
+            clean.StartsWith("no ", StringComparison.OrdinalIgnoreCase) ||
+            clean.Contains("unnamed", StringComparison.OrdinalIgnoreCase) ||
+            clean.Contains("unknown", StringComparison.OrdinalIgnoreCase) ||
+            clean.Contains("not mentioned", StringComparison.OrdinalIgnoreCase))
+        {
+            return "";
+        }
+        
+        return clean;
+    }
+    
+    /// <summary>
+    /// Check if two names are fuzzy matches (same person/place with different formats)
+    /// </summary>
+    private static bool IsFuzzyMatch(string a, string b)
+    {
+        // Exact match (case insensitive)
+        if (a.Equals(b, StringComparison.OrdinalIgnoreCase))
+            return true;
+        
+        // One contains the other (e.g., "Holmes" vs "Sherlock Holmes")
+        if (a.Contains(b, StringComparison.OrdinalIgnoreCase) ||
+            b.Contains(a, StringComparison.OrdinalIgnoreCase))
+            return true;
+        
+        // Handle title variations: "Mr. X" vs "X"
+        var titlesToStrip = new[] { "Mr.", "Mrs.", "Ms.", "Dr.", "Sir", "Lady", "Lord", "Miss", "Captain", "Major", "Colonel", "Inspector" };
+        var cleanA = a;
+        var cleanB = b;
+        foreach (var title in titlesToStrip)
+        {
+            cleanA = cleanA.Replace(title, "", StringComparison.OrdinalIgnoreCase).Trim();
+            cleanB = cleanB.Replace(title, "", StringComparison.OrdinalIgnoreCase).Trim();
+        }
+        
+        if (!string.IsNullOrEmpty(cleanA) && !string.IsNullOrEmpty(cleanB))
+        {
+            if (cleanA.Equals(cleanB, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (cleanA.Contains(cleanB, StringComparison.OrdinalIgnoreCase) ||
+                cleanB.Contains(cleanA, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        
+        return false;
+    }
+    
+    public bool HasAny => Characters.Count > 0 || Locations.Count > 0 || Dates.Count > 0 || 
+                          Events.Count > 0 || Organizations.Count > 0;
+}
+
+#endregion
+
 public record ChunkSummary(
     string ChunkId,
     string Heading,
     string Summary,
-    int Order);
+    int Order,
+    ExtractedEntities? Entities = null);
+
+#region Structured MapReduce Output Schema
+
+/// <summary>
+/// Structured map output for better reduce merging.
+/// Produces facts + uncertainty instead of prose.
+/// </summary>
+public record StructuredMapOutput(
+    string ChunkId,
+    int Order,
+    string Heading,
+    
+    /// <summary>
+    /// Named entities: types, classes, modules, people, organizations
+    /// </summary>
+    List<EntityReference> Entities,
+    
+    /// <summary>
+    /// Functions, methods, or actions described in this chunk
+    /// </summary>
+    List<FunctionReference> Functions,
+    
+    /// <summary>
+    /// Key flows or relationships: A -> B -> C
+    /// </summary>
+    List<FlowReference> KeyFlows,
+    
+    /// <summary>
+    /// Facts with confidence levels
+    /// </summary>
+    List<FactClaim> Facts,
+    
+    /// <summary>
+    /// Explicit "not enough context" flags
+    /// </summary>
+    List<UncertaintyFlag> Uncertainties,
+    
+    /// <summary>
+    /// Very short quotable excerpts (optional)
+    /// </summary>
+    List<string> Quotables);
+
+/// <summary>
+/// Entity reference with type classification
+/// </summary>
+public record EntityReference(
+    string Name,
+    EntityType Type,
+    string? Description = null,
+    List<string>? Aliases = null);
+
+public enum EntityType
+{
+    Unknown,
+    Class,
+    Interface,
+    Module,
+    Function,
+    Variable,
+    Config,
+    Person,
+    Organization,
+    Location,
+    Concept,
+    Technology,
+    Event
+}
+
+/// <summary>
+/// Function or method reference
+/// </summary>
+public record FunctionReference(
+    string Name,
+    string? Purpose = null,
+    List<string>? Inputs = null,
+    List<string>? Outputs = null,
+    List<string>? SideEffects = null,
+    string? SourceChunk = null);
+
+/// <summary>
+/// Key flow or relationship
+/// </summary>
+public record FlowReference(
+    List<string> Steps,
+    FlowType Type,
+    string? Description = null);
+
+public enum FlowType
+{
+    DataFlow,
+    ControlFlow,
+    Dependency,
+    Inheritance,
+    Composition,
+    Communication,
+    Workflow
+}
+
+/// <summary>
+/// Fact claim with confidence and evidence
+/// </summary>
+public record FactClaim(
+    string Statement,
+    ConfidenceLevel Confidence,
+    string? Evidence = null,
+    string? SourceChunk = null);
+
+// Note: ConfidenceLevel enum is defined in Claim Ledger System region above
+
+/// <summary>
+/// Explicit uncertainty or missing context flag
+/// </summary>
+public record UncertaintyFlag(
+    string Description,
+    UncertaintyType Type,
+    List<string>? AffectedEntities = null);
+
+public enum UncertaintyType
+{
+    MissingContext,
+    Ambiguous,
+    Contradictory,
+    IncompleteData,
+    ExternalDependency
+}
+
+#endregion
+
+#region Stitcher Output (Pre-Reduce Deduplication)
+
+/// <summary>
+/// Result of the stitcher pass that dedupes and resolves entities before final reduce
+/// </summary>
+public record StitcherOutput(
+    /// <summary>Deduplicated entities with merge info</summary>
+    List<MergedEntity> Entities,
+    
+    /// <summary>Adjacency list: who calls/uses what</summary>
+    Dictionary<string, List<string>> References,
+    
+    /// <summary>Name collisions that couldn't be auto-resolved</summary>
+    List<NameCollision> Collisions,
+    
+    /// <summary>Coverage map: which chunks cover which topics</summary>
+    Dictionary<string, List<string>> CoverageMap);
+
+/// <summary>
+/// Entity merged from multiple chunks
+/// </summary>
+public record MergedEntity(
+    string CanonicalName,
+    EntityType Type,
+    List<string> SourceChunks,
+    List<string> Aliases,
+    string? Description = null);
+
+/// <summary>
+/// Name collision that needs manual resolution
+/// </summary>
+public record NameCollision(
+    string Name,
+    List<string> ConflictingChunks,
+    string? SuggestedResolution = null);
+
+#endregion
+
+#region Loss-Aware Reduce Output
+
+/// <summary>
+/// Reduce output that preserves contradictions and tracks coverage
+/// </summary>
+public record LossAwareReduceOutput(
+    string ExecutiveSummary,
+    
+    /// <summary>Contradictions found (not resolved, preserved)</summary>
+    List<Contradiction> Contradictions,
+    
+    /// <summary>What parts are definitely covered vs inferred</summary>
+    CoverageReport Coverage,
+    
+    /// <summary>Questions that need retrieval to answer</summary>
+    List<string> RetrievalQuestions,
+    
+    /// <summary>Confidence in overall synthesis</summary>
+    ConfidenceLevel OverallConfidence);
+
+/// <summary>
+/// Contradiction found during reduce (preserved, not resolved)
+/// </summary>
+public record Contradiction(
+    string Description,
+    List<string> ConflictingChunks,
+    string? PossibleReason = null);
+
+/// <summary>
+/// Coverage report showing what's covered vs inferred
+/// </summary>
+public record CoverageReport(
+    /// <summary>Topics with direct evidence</summary>
+    List<string> DirectlyCovered,
+    
+    /// <summary>Topics inferred from context</summary>
+    List<string> Inferred,
+    
+    /// <summary>Topics with no coverage</summary>
+    List<string> NotCovered,
+    
+    /// <summary>Overall coverage ratio (0-1)</summary>
+    double CoverageRatio);
+
+#endregion
 
 public record TopicSummary(
     string Topic,
@@ -29,7 +524,8 @@ public record DocumentSummary(
     string ExecutiveSummary,
     List<TopicSummary> TopicSummaries,
     List<string> OpenQuestions,
-    SummarizationTrace Trace);
+    SummarizationTrace Trace,
+    ExtractedEntities? Entities = null);
 
 public record SummarizationTrace(
     string DocumentId,
@@ -76,7 +572,7 @@ public static class CitationValidator
             .Where(id => id.StartsWith("chunk-", StringComparison.OrdinalIgnoreCase))
             .ToList();
         var invalid = citations.Where(c => !validChunkIds.Contains(c)).ToList();
-        
+
         return new ValidationResult(
             citations.Count,
             invalid.Count,
@@ -90,7 +586,8 @@ public record BatchResult(
     bool Success,
     DocumentSummary? Summary,
     string? Error,
-    TimeSpan ProcessingTime);
+    TimeSpan ProcessingTime,
+    string? StackTrace = null);
 
 public record BatchSummary(
     int TotalFiles,
@@ -101,3 +598,140 @@ public record BatchSummary(
 {
     public double SuccessRate => TotalFiles > 0 ? (double)SuccessCount / TotalFiles : 0;
 }
+
+#region Tool Mode Output Models
+
+/// <summary>
+/// Structured output for LLM tool integration.
+/// Designed to be machine-readable and grounded with evidence.
+/// </summary>
+public record ToolOutput
+{
+    /// <summary>Whether the operation succeeded</summary>
+    public required bool Success { get; init; }
+    
+    /// <summary>Error message if failed</summary>
+    public string? Error { get; init; }
+    
+    /// <summary>Source URL or file path</summary>
+    public required string Source { get; init; }
+    
+    /// <summary>Content type fetched</summary>
+    public string? ContentType { get; init; }
+    
+    /// <summary>The summary result (null if failed)</summary>
+    public ToolSummary? Summary { get; init; }
+    
+    /// <summary>Processing metadata</summary>
+    public ToolMetadata? Metadata { get; init; }
+}
+
+/// <summary>
+/// Summary output with evidence-grounded claims
+/// </summary>
+public record ToolSummary
+{
+    /// <summary>Executive summary (1-3 sentences)</summary>
+    public required string Executive { get; init; }
+    
+    /// <summary>Key facts extracted with evidence IDs</summary>
+    public required List<GroundedClaim> KeyFacts { get; init; }
+    
+    /// <summary>Topics covered with summaries</summary>
+    public required List<ToolTopic> Topics { get; init; }
+    
+    /// <summary>Named entities found</summary>
+    public ToolEntities? Entities { get; init; }
+    
+    /// <summary>Questions the document doesn't answer</summary>
+    public List<string>? OpenQuestions { get; init; }
+}
+
+/// <summary>
+/// A claim grounded with evidence references
+/// </summary>
+public record GroundedClaim
+{
+    /// <summary>The claim/fact</summary>
+    public required string Claim { get; init; }
+    
+    /// <summary>Confidence: high, medium, low</summary>
+    public required string Confidence { get; init; }
+    
+    /// <summary>Evidence chunk IDs that support this claim</summary>
+    public required List<string> Evidence { get; init; }
+    
+    /// <summary>Type: fact, inference, or color</summary>
+    public string Type { get; init; } = "fact";
+}
+
+/// <summary>
+/// Topic with grounded summary
+/// </summary>
+public record ToolTopic
+{
+    /// <summary>Topic name</summary>
+    public required string Name { get; init; }
+    
+    /// <summary>Summary of this topic</summary>
+    public required string Summary { get; init; }
+    
+    /// <summary>Evidence chunk IDs</summary>
+    public required List<string> Evidence { get; init; }
+}
+
+/// <summary>
+/// Extracted entities for tool output
+/// </summary>
+public record ToolEntities
+{
+    /// <summary>People mentioned</summary>
+    public List<string>? People { get; init; }
+    
+    /// <summary>Organizations mentioned</summary>
+    public List<string>? Organizations { get; init; }
+    
+    /// <summary>Locations mentioned</summary>
+    public List<string>? Locations { get; init; }
+    
+    /// <summary>Dates/times mentioned</summary>
+    public List<string>? Dates { get; init; }
+    
+    /// <summary>Technical terms/concepts</summary>
+    public List<string>? Concepts { get; init; }
+    
+    /// <summary>URLs/links found</summary>
+    public List<string>? Links { get; init; }
+}
+
+/// <summary>
+/// Processing metadata for tool output
+/// </summary>
+public record ToolMetadata
+{
+    /// <summary>Time taken to process</summary>
+    public required double ProcessingSeconds { get; init; }
+    
+    /// <summary>Number of chunks processed</summary>
+    public required int ChunksProcessed { get; init; }
+    
+    /// <summary>Model used for summarization</summary>
+    public required string Model { get; init; }
+    
+    /// <summary>Summarization mode used</summary>
+    public required string Mode { get; init; }
+    
+    /// <summary>Coverage score (0-1)</summary>
+    public double CoverageScore { get; init; }
+    
+    /// <summary>Citation rate (0-1)</summary>
+    public double CitationRate { get; init; }
+    
+    /// <summary>Fetch timestamp (ISO 8601)</summary>
+    public string? FetchedAt { get; init; }
+    
+    /// <summary>Final URL after redirects</summary>
+    public string? FinalUrl { get; init; }
+}
+
+#endregion

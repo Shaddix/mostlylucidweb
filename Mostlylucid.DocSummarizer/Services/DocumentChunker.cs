@@ -1,23 +1,25 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Mostlylucid.DocSummarizer.Models;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 public class DocumentChunker
 {
-    private readonly int _maxHeadingLevel;
-    private readonly int _targetChunkTokens;
-    private readonly int _minChunkTokens;
-    
     // Rough estimate: 1 token ≈ 4 characters for English text
     private const int CharsPerToken = 4;
-    
+    private readonly int _maxHeadingLevel;
+    private readonly int _minChunkTokens;
+    private readonly int _targetChunkTokens;
+
     /// <summary>
-    /// Creates a new document chunker.
+    ///     Creates a new document chunker.
     /// </summary>
     /// <param name="maxHeadingLevel">Maximum heading level to split on (1-6). Default is 2 (H1 and H2 only).</param>
-    /// <param name="targetChunkTokens">Target chunk size in tokens. Default is 4000 (~16KB). 
-    /// Chunks smaller than this will be merged with adjacent sections.</param>
+    /// <param name="targetChunkTokens">
+    ///     Target chunk size in tokens. Default is 4000 (~16KB).
+    ///     Chunks smaller than this will be merged with adjacent sections.
+    /// </param>
     /// <param name="minChunkTokens">Minimum chunk size before merging. Default is 500 (~2KB).</param>
     public DocumentChunker(int maxHeadingLevel = 2, int targetChunkTokens = 4000, int minChunkTokens = 500)
     {
@@ -25,40 +27,124 @@ public class DocumentChunker
         _targetChunkTokens = targetChunkTokens;
         _minChunkTokens = minChunkTokens;
     }
-    
+
     public List<DocumentChunk> ChunkByStructure(string markdown)
     {
-        // First pass: split by structure (headings)
-        var rawSections = SplitByHeadings(markdown);
-        
+        // Check if document has markdown headings
+        var hasHeadings = HasMarkdownHeadings(markdown);
+
+        // First pass: split by structure (headings) or paragraphs for plain text
+        var rawSections = hasHeadings
+            ? SplitByHeadings(markdown)
+            : SplitByParagraphs(markdown);
+
         // Second pass: merge small sections to approach target size
         var mergedSections = MergeSections(rawSections);
-        
+
         // Convert to chunks
         var chunks = new List<DocumentChunk>();
         var index = 0;
-        
+
         foreach (var section in mergedSections)
-        {
             if (!string.IsNullOrWhiteSpace(section.Content))
-            {
                 chunks.Add(new DocumentChunk(
-                    index++, 
-                    section.Heading, 
-                    section.Level, 
-                    section.Content, 
+                    index++,
+                    section.Heading,
+                    section.Level,
+                    section.Content,
                     HashHelper.ComputeHash(section.Content)));
+
+        return chunks;
+    }
+
+    /// <summary>
+    ///     Check if document contains markdown headings
+    /// </summary>
+    private bool HasMarkdownHeadings(string text)
+    {
+        var lines = text.Split('\n');
+        foreach (var line in lines)
+        {
+            var level = GetHeadingLevel(line);
+            if (level > 0 && level <= _maxHeadingLevel)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Split plain text by paragraphs (double newlines)
+    /// </summary>
+    private List<RawSection> SplitByParagraphs(string text)
+    {
+        var sections = new List<RawSection>();
+
+        // Split on double newlines (blank lines) - handles \n\n and \r\n\r\n
+        var paragraphs = Regex
+            .Split(text, @"\r?\n\s*\r?\n")
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.Trim())
+            .ToList();
+
+        if (paragraphs.Count == 0)
+        {
+            // No paragraphs found, treat whole text as one section
+            if (!string.IsNullOrWhiteSpace(text)) sections.Add(new RawSection("Document", 1, text.Trim()));
+            return sections;
+        }
+
+        // Try to extract a title from the first paragraph if it's short
+        var firstPara = paragraphs[0];
+        var hasTitle = firstPara.Length < 200 && !firstPara.Contains('\n');
+
+        if (hasTitle && paragraphs.Count > 1)
+        {
+            // First paragraph is likely a title
+            var title = firstPara.Length > 80 ? firstPara[..77] + "..." : firstPara;
+            var content = string.Join("\n\n", paragraphs.Skip(1));
+            sections.Add(new RawSection(title, 1, content));
+        }
+        else
+        {
+            // Group paragraphs into logical sections
+            // Each section starts with a paragraph number for reference
+            var paragraphIndex = 0;
+            foreach (var para in paragraphs)
+            {
+                paragraphIndex++;
+                var heading = $"Paragraph {paragraphIndex}";
+
+                // Try to use first sentence or first N chars as heading
+                var firstSentenceEnd = para.IndexOfAny(['.', '!', '?']);
+                if (firstSentenceEnd > 0 && firstSentenceEnd < 100)
+                {
+                    heading = para[..(firstSentenceEnd + 1)];
+                }
+                else if (para.Length < 100)
+                {
+                    heading = para;
+                }
+                else
+                {
+                    // Use first 80 chars
+                    var cutoff = para.LastIndexOf(' ', Math.Min(80, para.Length - 1));
+                    if (cutoff < 20) cutoff = 80;
+                    heading = para[..Math.Min(cutoff, para.Length)] + "...";
+                }
+
+                sections.Add(new RawSection(heading, 1, para));
             }
         }
-        
-        return chunks;
+
+        return sections;
     }
 
     private List<RawSection> SplitByHeadings(string markdown)
     {
         var sections = new List<RawSection>();
         var lines = markdown.Split('\n');
-        
+
         var content = new StringBuilder();
         string? heading = null;
         var level = 0;
@@ -66,7 +152,7 @@ public class DocumentChunker
         foreach (var line in lines)
         {
             var headingLevel = GetHeadingLevel(line);
-            
+
             // Only split on headings up to the configured max level
             if (headingLevel > 0 && headingLevel <= _maxHeadingLevel)
             {
@@ -76,7 +162,7 @@ public class DocumentChunker
                     sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim()));
                     content.Clear();
                 }
-                
+
                 heading = line.TrimStart('#', ' ');
                 level = headingLevel;
             }
@@ -88,9 +174,7 @@ public class DocumentChunker
 
         // Flush final section
         if (content.Length > 0 || heading != null)
-        {
             sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim()));
-        }
 
         return sections;
     }
@@ -109,8 +193,8 @@ public class DocumentChunker
         foreach (var section in sections)
         {
             var sectionTokens = EstimateTokens(section.Content);
-            var sectionWithHeading = string.IsNullOrEmpty(section.Heading) 
-                ? section.Content 
+            var sectionWithHeading = string.IsNullOrEmpty(section.Heading)
+                ? section.Content
                 : $"## {section.Heading}\n\n{section.Content}";
             var fullSectionTokens = EstimateTokens(sectionWithHeading);
 
@@ -136,6 +220,7 @@ public class DocumentChunker
                         currentContent.AppendLine($"## {section.Heading}");
                         currentContent.AppendLine();
                     }
+
                     currentContent.AppendLine(section.Content);
                     currentTokens += fullSectionTokens;
                 }
@@ -159,6 +244,7 @@ public class DocumentChunker
                         currentContent.AppendLine($"## {section.Heading}");
                         currentContent.AppendLine();
                     }
+
                     currentContent.AppendLine(section.Content);
                     currentTokens += fullSectionTokens;
                 }
@@ -167,9 +253,7 @@ public class DocumentChunker
 
         // Flush final chunk
         if (currentContent.Length > 0)
-        {
             merged.Add(new RawSection(currentHeading, currentLevel, currentContent.ToString().Trim()));
-        }
 
         return merged;
     }
@@ -187,10 +271,8 @@ public class DocumentChunker
 
         var level = 0;
         foreach (var c in line)
-        {
             if (c == '#') level++;
             else break;
-        }
 
         // Must have space after # marks to be a valid heading
         return line.Length > level && line[level] == ' ' ? level : 0;

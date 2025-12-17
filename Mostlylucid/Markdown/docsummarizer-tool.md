@@ -1,4 +1,4 @@
-# docsummarizer - Local Document Summarization CLI Tool
+# docsummarizer - Local Document Intelligence Tool
 
 <!--category-- AI, LLM, RAG, C#, Docling, Ollama, Qdrant, Tools -->
 <datetime class="hidden">2025-12-21T11:00</datetime>
@@ -7,24 +7,162 @@
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Native AOT](https://img.shields.io/badge/Native%20AOT-Enabled-brightgreen)](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
 
-A local-first document summarization tool that uses LLMs (via Ollama), vector search (Qdrant), and document conversion (Docling) to create intelligent summaries of DOCX, PDF, and Markdown files.
+> **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
 
-> **Note**: With the default `qwen2.5:1.5b` model, summarization is fast (2-5 seconds for typical documents). For higher quality summaries, use larger models like `llama3.2:3b` or `ministral-3:3b` which take longer but produce better results. You trade speed for privacy, zero API costs, and offline operation.
+Every claim is traceable. Every fact cites its source. ~18MB binary, runs entirely on your machine.
 
-For the architecture and approach behind this tool, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
+```bash
+# Human-readable summary
+docsummarizer -f contract.pdf
+
+# JSON for agents/pipelines
+docsummarizer tool -u "https://docs.example.com"
+```
+
+For the architecture behind this tool, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
 
 [TOC]
 
+## Why This Exists
+
+Most summarizers give you text. This gives you *evidence*.
+
+- **Every claim includes `[chunk-N]` citations** back to source material
+- **Confidence levels** (high/medium/low) based on supporting evidence  
+- **Structured JSON output** for agent integration, CI pipelines, or MCP servers
+- **Quality metrics** catch hallucinations before they escape
+
+If you need to *trust* a summary — or feed it to another system — that matters.
+
 ## Features
 
-- **Multiple Summarization Modes**: MapReduce (parallel), RAG (topic-driven), and Iterative
-- **Native AOT Compilation**: ~24MB native executable for instant startup
-- **Rich Progress Feedback**: Live terminal UI with [Spectre.Console](https://spectreconsole.net/)
-- **Citation Tracking**: All summaries include `[chunk-N]` citations for traceability
-- **Batch Processing**: Process entire directories of documents
-- **Multiple Output Formats**: Console, Text, Markdown, JSON
-- **Configuration Files**: JSON-based configuration with auto-discovery
-- **Local Processing**: Everything runs on your machine - no cloud APIs required
+- **Evidence-Grounded Output**: Citations, confidence levels, traceable claims
+- **Multiple Modes**: MapReduce (parallel), RAG (topic-driven), Iterative
+- **Tool Mode**: Clean JSON for LLM agents, MCP servers, CI checks
+- **11 Templates**: brief, bullets, executive, technical, academic, bookreport, meeting...
+- **Large Documents**: Hierarchical reduction handles 500+ pages
+- **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
+- **Quality Analysis**: Hallucination detection, entity extraction
+- **Native AOT**: ~18MB binary, instant startup
+- **Local Only**: Nothing leaves your machine
+
+## Using as an LLM Tool
+
+The `tool` command is designed specifically for integration with AI agents, MCP servers, and other automated systems. It outputs structured JSON to stdout with evidence-grounded claims - perfect for building RAG pipelines or agent tools.
+
+### Basic Tool Usage
+
+```bash
+# Summarize a URL and get JSON output
+docsummarizer tool --url "https://example.com/docs.html"
+
+# Summarize a local file
+docsummarizer tool -f document.pdf
+
+# With a focus query
+docsummarizer tool -f contract.pdf -q "payment terms and conditions"
+
+# Pipe to jq for processing
+docsummarizer tool -f doc.pdf | jq '.summary.keyFacts'
+```
+
+### Tool Output Structure
+
+The tool command returns structured JSON with evidence tracking:
+
+```json
+{
+  "success": true,
+  "source": "https://example.com/docs.html",
+  "contentType": "text/html",
+  "summary": {
+    "executive": "Brief summary of the document.",
+    "keyFacts": [
+      {
+        "claim": "The system supports 10,000 TPS.",
+        "confidence": "high",
+        "evidence": ["chunk-3", "chunk-7"],
+        "type": "fact"
+      }
+    ],
+    "topics": [
+      {
+        "name": "Architecture",
+        "summary": "The system uses microservices...",
+        "evidence": ["chunk-1", "chunk-2"]
+      }
+    ],
+    "entities": {
+      "people": ["John Smith"],
+      "organizations": ["Acme Corp"],
+      "concepts": ["OAuth 2.0", "REST API"]
+    },
+    "openQuestions": ["What is the disaster recovery plan?"]
+  },
+  "metadata": {
+    "processingSeconds": 12.5,
+    "chunksProcessed": 15,
+    "model": "qwen2.5:1.5b",
+    "mode": "MapReduce",
+    "coverageScore": 0.95,
+    "citationRate": 1.2,
+    "fetchedAt": "2025-01-15T10:30:00Z"
+  }
+}
+```
+
+### Tool Command Options
+
+```bash
+docsummarizer tool [options]
+```
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--url` | `-u` | URL to fetch and summarize |
+| `--file` | `-f` | File to summarize |
+| `--query` | `-q` | Optional focus query |
+| `--mode` | `-m` | Summarization mode (MapReduce, Rag, Iterative) |
+| `--model` | | Ollama model to use |
+| `--config` | `-c` | Configuration file path |
+
+### Key Design Principles
+
+- **Evidence Grounding**: Every claim includes `evidence` IDs referencing source chunks
+- **Confidence Levels**: Claims are rated `high`, `medium`, or `low` based on supporting evidence
+- **Clean Output**: The `executive` summary has no citation markers for easy display
+- **Metadata**: Processing stats help with debugging and quality assessment
+- **Error Handling**: Failures return `success: false` with an `error` message
+
+### Integration Examples
+
+**Python script:**
+
+```python
+import subprocess
+import json
+
+result = subprocess.run(
+    ["docsummarizer", "tool", "-u", "https://example.com/api-docs"],
+    capture_output=True, text=True
+)
+data = json.loads(result.stdout)
+
+if data["success"]:
+    for fact in data["summary"]["keyFacts"]:
+        if fact["confidence"] == "high":
+            print(f"- {fact['claim']}")
+```
+
+**Shell pipeline:**
+
+```bash
+# Extract high-confidence facts only
+docsummarizer tool -f doc.pdf | jq '[.summary.keyFacts[] | select(.confidence == "high")]'
+
+# Get just the executive summary
+docsummarizer tool -u "https://example.com" | jq -r '.summary.executive'
+```
 
 ## Quick Start
 
@@ -161,6 +299,74 @@ Instead of summarizing, ask questions about a document:
 docsummarizer -f manual.pdf --query "How do I install the software?"
 ```
 
+### Web URL Fetching
+
+Summarize web pages directly without downloading:
+
+```bash
+# Summarize a web article
+docsummarizer --url "https://example.com/article.html" --web-enabled
+
+# Summarize a remote PDF
+docsummarizer --url "https://example.com/document.pdf" --web-enabled
+
+# With structured JSON extraction
+docsummarizer --url "https://example.com/api-docs.html" --web-enabled --structured
+```
+
+**Supported content**: HTML (sanitized), PDF, Markdown, images (OCR), Office documents. Large images automatically resized.
+
+**Security**: SSRF protection, DNS rebinding protection, content-type gating, decompression bomb protection, HTML sanitization.
+
+> **Note: JavaScript-rendered pages** — The AOT binary uses simple HTTP fetching which doesn't execute JavaScript. SPAs and client-rendered pages will return empty or partial content. For dynamic pages, either use a pre-rendered URL or build without AOT to enable Playwright support (see README for details).
+
+### Structured Mode
+
+Extract machine-readable JSON instead of prose:
+
+```bash
+docsummarizer -f document.pdf --structured -o Json
+```
+
+Extracts: entities, functions, key flows, facts (with confidence levels), uncertainties, quotable passages.
+
+### Summary Templates
+
+```bash
+# Use a template
+docsummarizer -f doc.pdf --template executive
+docsummarizer -f doc.pdf -t bullets
+
+# Specify custom word count with template:wordcount syntax
+docsummarizer -f doc.pdf -t bookreport:500
+docsummarizer -f doc.pdf -t executive:100
+
+# Or use --words to override any template's default
+docsummarizer -f doc.pdf -t detailed --words 300
+```
+
+| Template | Words | Best For |
+|----------|-------|----------|
+| `default` | ~200 | General purpose |
+| `brief` | ~50 | Quick scanning |
+| `oneliner` | ~25 | Single sentence |
+| `bullets` | auto | Key takeaways |
+| `executive` | ~150 | C-suite reports |
+| `detailed` | ~500 | Comprehensive analysis |
+| `technical` | ~300 | Tech documentation |
+| `academic` | ~250 | Research papers |
+| `citations` | auto | Key quotes with sources |
+| `bookreport` | ~400 | Book report style with themes |
+| `meeting` | ~200 | Meeting notes with actions |
+
+### Model Benchmarking
+
+Compare models on the same document:
+
+```bash
+docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
+```
+
 ### Batch Processing
 
 Process entire directories of documents:
@@ -182,16 +388,23 @@ docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 |--------|-------|-------------|---------|
 | `--file` | `-f` | Path to document (DOCX, PDF, MD) | - |
 | `--directory` | `-d` | Path to directory for batch processing | - |
+| `--url` | `-u` | Web URL to fetch and summarize | - |
+| `--web-enabled` | | Enable web fetching (required for --url) | `false` |
 | `--mode` | `-m` | Summarization mode: MapReduce, Rag, Iterative | `MapReduce` |
+| `--structured` | `-s` | Use structured JSON extraction mode | `false` |
 | `--focus` | | Focus query for RAG mode | None |
 | `--query` | `-q` | Query mode instead of summarization | None |
-| `--model` | | Ollama model to use | `qwen2.5:1.5b` |
+| `--model` | | Ollama model to use | `llama3.2:3b` |
 | `--verbose` | `-v` | Show detailed progress with live UI | `false` |
 | `--config` | `-c` | Path to configuration file | Auto-discover |
 | `--output-format` | `-o` | Output format: Console, Text, Markdown, Json | `Console` |
 | `--output-dir` | | Output directory for file outputs | Current dir |
-| `--extensions` | `-e` | File extensions for batch mode | `.pdf .docx .md` |
+| `--extensions` | `-e` | File extensions for batch mode | All Docling formats |
 | `--recursive` | `-r` | Process directories recursively | `false` |
+| `--template` | `-t` | Summary template (default, brief, bullets, executive, etc.) | `default` |
+| `--words` | `-w` | Target word count (overrides template) | Template default |
+| `--benchmark` | `-b` | Comma-separated models to compare | - |
+| `--analyze` | `-a` | Run quality analysis on summary | `false` |
 
 ## Summarization Modes
 
@@ -266,6 +479,37 @@ docsummarizer -f story.pdf -m Iterative -v
 
 **Warning**: Slower and may lose context on long documents (>10 chunks).
 
+## Large Document Guide
+
+### Choosing the Right Mode
+
+| Document Type | Goal | Mode | Why |
+|---------------|------|------|-----|
+| Technical spec (50+ pages) | Full summary | MapReduce | Complete coverage |
+| Novel/Narrative | Full summary | MapReduce | Needs temporal context |
+| Legal contract | Full summary | MapReduce | Can't miss clauses |
+| Legal contract | "Payment terms?" | RAG | Focus on specific section |
+| API docs (200 pages) | "How does auth work?" | RAG | Query specific topic |
+| Research paper | Full summary | MapReduce | Structured, need everything |
+
+### Fiction vs Non-Fiction
+
+| Content Type | Best Mode | Notes |
+|--------------|-----------|-------|
+| **Fiction/Narrative** | MapReduce | Plot requires sequential context |
+| **Technical docs** | Both | MapReduce for overview, RAG for specifics |
+| **Legal/Contracts** | MapReduce | Every clause matters |
+| **Manuals** | RAG | Usually querying for specifics |
+
+### Performance
+
+| Document Size | MapReduce | RAG | Notes |
+|---------------|-----------|-----|-------|
+| 10 pages | 15s | 20s | Both fast |
+| 50 pages | 45s | 30s | RAG faster if focused |
+| 200 pages | 3-5 min | 1-2 min | Hierarchical reduction |
+| 500+ pages | 10-15 min | 2-3 min | Consider multiple RAG queries |
+
 ## Configuration
 
 ### Generate Default Configuration
@@ -287,37 +531,43 @@ Example `docsummarizer.json`:
 ```json
 {
   "ollama": {
-    "model": "qwen2.5:1.5b",
-    "embedModel": "mxbai-embed-large",
+    "model": "llama3.2:3b",
+    "embedModel": "nomic-embed-text",
     "baseUrl": "http://localhost:11434",
     "temperature": 0.3,
-    "timeoutMinutes": 10
+    "timeoutSeconds": 1200
   },
   "docling": {
     "baseUrl": "http://localhost:5001",
-    "timeoutMinutes": 10,
+    "timeoutSeconds": 1200,
     "pdfBackend": "pypdfium2",
-    "pagesPerChunk": 50,
+    "pagesPerChunk": 10,
     "maxConcurrentChunks": 4,
     "enableSplitProcessing": true
   },
   "qdrant": {
     "host": "localhost",
-    "port": 6334,
+    "port": 6333,
     "collectionName": "documents"
   },
   "processing": {
     "maxHeadingLevel": 2,
-    "targetChunkTokens": 0,
-    "minChunkTokens": 0,
-    "maxLlmParallelism": 8
+    "targetChunkTokens": 1500,
+    "minChunkTokens": 200,
+    "maxLlmParallelism": 2
   },
   "output": {
     "format": "Console",
-    "verbose": false
+    "verbose": false,
+    "includeTrace": false
+  },
+  "webFetch": {
+    "enabled": false,
+    "timeoutSeconds": 30,
+    "userAgent": "Mozilla/5.0 DocSummarizer/1.0"
   },
   "batch": {
-    "fileExtensions": [".pdf", ".docx", ".md"],
+    "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html"],
     "recursive": false,
     "continueOnError": true
   }
@@ -337,7 +587,7 @@ Example `docsummarizer.json`:
 
 ### Summary Structure
 
-```
+```C:\Blog\mostlylucidweb\Mostlylucid\Markdown\docsummarizer-tool.md
 ## Executive Summary
 - Key finding 1 with specific details [chunk-0]
 - Important point 2 with numbers and dates [chunk-3]

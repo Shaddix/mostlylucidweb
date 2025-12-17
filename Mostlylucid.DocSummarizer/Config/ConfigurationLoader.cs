@@ -3,12 +3,12 @@ using System.Text.Json;
 namespace Mostlylucid.DocSummarizer.Config;
 
 /// <summary>
-/// Loads configuration from files with sensible defaults
+///     Loads configuration from files with sensible defaults
 /// </summary>
 public static class ConfigurationLoader
 {
     /// <summary>
-    /// Load configuration from file or use defaults
+    ///     Load configuration from file or use defaults
     /// </summary>
     public static DocSummarizerConfig Load(string? configPath = null)
     {
@@ -19,29 +19,26 @@ public static class ConfigurationLoader
         {
             var json = File.ReadAllText(configPath);
             var loaded = JsonSerializer.Deserialize(json, DocSummarizerJsonContext.Default.DocSummarizerConfig);
-            if (loaded != null)
-            {
-                config = loaded;
-            }
+            if (loaded != null) config = loaded;
         }
         else
         {
-            // Try default locations
+            // Try default locations - including appsettings.json for convention
             var defaultPaths = new[]
             {
+                "appsettings.json",
                 "docsummarizer.json",
                 ".docsummarizer.json",
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".docsummarizer.json")
             };
 
             foreach (var path in defaultPaths)
-            {
                 if (File.Exists(path))
-                {
                     try
                     {
                         var json = File.ReadAllText(path);
-                        var loaded = JsonSerializer.Deserialize(json, DocSummarizerJsonContext.Default.DocSummarizerConfig);
+                        var loaded =
+                            JsonSerializer.Deserialize(json, DocSummarizerJsonContext.Default.DocSummarizerConfig);
                         if (loaded != null)
                         {
                             config = loaded;
@@ -52,15 +49,13 @@ public static class ConfigurationLoader
                     {
                         // Continue to next file
                     }
-                }
-            }
         }
 
         return config;
     }
 
     /// <summary>
-    /// Save configuration to file
+    ///     Save configuration to file
     /// </summary>
     public static void Save(DocSummarizerConfig config, string path)
     {
@@ -69,7 +64,7 @@ public static class ConfigurationLoader
     }
 
     /// <summary>
-    /// Create a default configuration file
+    ///     Create a default configuration file
     /// </summary>
     public static void CreateDefault(string path = "docsummarizer.json")
     {

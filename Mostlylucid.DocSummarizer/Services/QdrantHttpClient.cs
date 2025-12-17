@@ -1,37 +1,38 @@
-using System.Net.Http.Json;
+using System.Net;
 using System.Text;
 using System.Text.Json;
-using Mostlylucid.DocSummarizer.Models;
+using System.Text.Json.Serialization;
+using Mostlylucid.DocSummarizer.Config;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
-/// Simple HTTP-based Qdrant client for AOT compatibility.
-/// The official Qdrant.Client uses gRPC which has AOT issues with System.Single marshalling.
+///     Simple HTTP-based Qdrant client for AOT compatibility.
+///     The official Qdrant.Client uses gRPC which has AOT issues with System.Single marshalling.
 /// </summary>
 public class QdrantHttpClient
 {
-    private readonly HttpClient _http;
     private readonly string _baseUrl;
+    private readonly HttpClient _http;
 
     public QdrantHttpClient(string host = "localhost", int port = 6333, string? apiKey = null)
     {
         // Use 127.0.0.1 if localhost to avoid DNS resolution issues
         var resolvedHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? "127.0.0.1" : host;
         _baseUrl = $"http://{resolvedHost}:{port}";
-        
+
         // Force IPv4 and configure socket handler explicitly
         var handler = new SocketsHttpHandler
         {
             ConnectTimeout = TimeSpan.FromSeconds(30),
             PooledConnectionLifetime = TimeSpan.FromMinutes(10)
         };
-        
+
         _http = new HttpClient(handler)
         {
             Timeout = TimeSpan.FromMinutes(5)
         };
-        
+
         // Add API key header if provided
         if (!string.IsNullOrEmpty(apiKey))
         {
@@ -47,23 +48,11 @@ public class QdrantHttpClient
             Console.WriteLine($"[DEBUG] Requesting: {_baseUrl}/collections");
             var response = await _http.GetAsync($"{_baseUrl}/collections");
             response.EnsureSuccessStatusCode();
-        
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(json);
-        
-        var collections = new List<string>();
-        if (doc.RootElement.TryGetProperty("result", out var result) &&
-            result.TryGetProperty("collections", out var collArray))
-        {
-            foreach (var coll in collArray.EnumerateArray())
-            {
-                if (coll.TryGetProperty("name", out var name))
-                {
-                    collections.Add(name.GetString() ?? "");
-                }
-            }
-        }
-        return collections;
+
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize(json, DocSummarizerJsonContext.Default.QdrantCollectionsResponse);
+
+            return result?.Result?.Collections?.Select(c => c.Name ?? "") ?? Enumerable.Empty<string>();
         }
         catch (Exception ex)
         {
@@ -74,16 +63,17 @@ public class QdrantHttpClient
 
     public async Task CreateCollectionAsync(string name, int vectorSize)
     {
-        var body = $$"""
+        var request = new QdrantCreateCollectionRequest
         {
-            "vectors": {
-                "size": {{vectorSize}},
-                "distance": "Cosine"
+            Vectors = new QdrantVectorConfig
+            {
+                Size = vectorSize,
+                Distance = "Cosine"
             }
-        }
-        """;
-        
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
+        };
+
+        var json = JsonSerializer.Serialize(request, DocSummarizerJsonContext.Default.QdrantCreateCollectionRequest);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await _http.PutAsync($"{_baseUrl}/collections/{name}", content);
         response.EnsureSuccessStatusCode();
     }
@@ -92,56 +82,16 @@ public class QdrantHttpClient
     {
         var response = await _http.DeleteAsync($"{_baseUrl}/collections/{name}");
         // Don't throw if collection doesn't exist
-        if (response.StatusCode != System.Net.HttpStatusCode.NotFound)
-        {
-            response.EnsureSuccessStatusCode();
-        }
+        if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
     }
 
     public async Task UpsertAsync(string collectionName, List<QdrantPoint> points)
     {
-        var pointsJson = new StringBuilder();
-        pointsJson.Append('[');
-        
-        for (var i = 0; i < points.Count; i++)
-        {
-            if (i > 0) pointsJson.Append(',');
-            var p = points[i];
-            
-            // Build vector array
-            var vectorJson = string.Join(",", p.Vector.Select(v => v.ToString("G")));
-            
-            // Build payload
-            var payloadJson = new StringBuilder();
-            payloadJson.Append('{');
-            var first = true;
-            foreach (var kv in p.Payload)
-            {
-                if (!first) payloadJson.Append(',');
-                first = false;
-                
-                var valueJson = kv.Value switch
-                {
-                    string s => $"\"{EscapeJson(s)}\"",
-                    int n => n.ToString(),
-                    long n => n.ToString(),
-                    double d => d.ToString("G"),
-                    float f => f.ToString("G"),
-                    bool b => b ? "true" : "false",
-                    _ => $"\"{EscapeJson(kv.Value?.ToString() ?? "")}\""
-                };
-                payloadJson.Append($"\"{kv.Key}\":{valueJson}");
-            }
-            payloadJson.Append('}');
-            
-            pointsJson.Append($$"""{"id":"{{p.Id}}","vector":[{{vectorJson}}],"payload":{{payloadJson}}}""");
-        }
-        pointsJson.Append(']');
-        
-        var body = $$"""{"points":{{pointsJson}}}""";
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
+        var request = new QdrantUpsertRequest { Points = points };
+        var json = JsonSerializer.Serialize(request, DocSummarizerJsonContext.Default.QdrantUpsertRequest);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await _http.PutAsync($"{_baseUrl}/collections/{collectionName}/points", content);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
@@ -151,82 +101,99 @@ public class QdrantHttpClient
 
     public async Task<List<QdrantSearchResult>> SearchAsync(string collectionName, float[] vector, int limit = 5)
     {
-        var vectorJson = string.Join(",", vector.Select(v => v.ToString("G")));
-        var body = $$"""
+        var request = new QdrantSearchRequest
         {
-            "vector": [{{vectorJson}}],
-            "limit": {{limit}},
-            "with_payload": true
-        }
-        """;
-        
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
+            Vector = vector,
+            Limit = limit,
+            WithPayload = true
+        };
+
+        var json = JsonSerializer.Serialize(request, DocSummarizerJsonContext.Default.QdrantSearchRequest);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await _http.PostAsync($"{_baseUrl}/collections/{collectionName}/points/search", content);
         response.EnsureSuccessStatusCode();
-        
-        var json = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(json);
-        
-        var results = new List<QdrantSearchResult>();
-        if (doc.RootElement.TryGetProperty("result", out var resultArray))
-        {
-            foreach (var item in resultArray.EnumerateArray())
-            {
-                var payload = new Dictionary<string, string>();
-                if (item.TryGetProperty("payload", out var payloadObj))
-                {
-                    foreach (var prop in payloadObj.EnumerateObject())
-                    {
-                        payload[prop.Name] = prop.Value.ToString();
-                    }
-                }
-                
-                results.Add(new QdrantSearchResult
-                {
-                    Id = item.TryGetProperty("id", out var id) ? id.ToString() : "",
-                    Score = item.TryGetProperty("score", out var score) ? score.GetSingle() : 0,
-                    Payload = payload
-                });
-            }
-        }
-        
-        return results;
-    }
 
-    private static string EscapeJson(string s)
-    {
-        var sb = new StringBuilder(s.Length);
-        foreach (var c in s)
-        {
-            switch (c)
-            {
-                case '\\': sb.Append("\\\\"); break;
-                case '"': sb.Append("\\\""); break;
-                case '\n': sb.Append("\\n"); break;
-                case '\r': sb.Append("\\r"); break;
-                case '\t': sb.Append("\\t"); break;
-                default:
-                    if (c < 32)
-                        sb.Append($"\\u{(int)c:x4}");
-                    else
-                        sb.Append(c);
-                    break;
-            }
-        }
-        return sb.ToString();
+        var responseJson = await response.Content.ReadAsStringAsync();
+        var searchResponse =
+            JsonSerializer.Deserialize(responseJson, DocSummarizerJsonContext.Default.QdrantSearchResponse);
+
+        return searchResponse?.Result ?? new List<QdrantSearchResult>();
     }
 }
 
+// Qdrant DTOs for source-generated JSON
 public class QdrantPoint
 {
-    public required string Id { get; set; }
-    public required float[] Vector { get; set; }
-    public Dictionary<string, object> Payload { get; set; } = new();
+    [JsonPropertyName("id")] public required string Id { get; set; }
+
+    [JsonPropertyName("vector")] public required float[] Vector { get; set; }
+
+    [JsonPropertyName("payload")] public Dictionary<string, object> Payload { get; set; } = new();
 }
 
 public class QdrantSearchResult
 {
-    public string Id { get; set; } = "";
-    public float Score { get; set; }
-    public Dictionary<string, string> Payload { get; set; } = new();
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+
+    [JsonPropertyName("score")] public float Score { get; set; }
+
+    [JsonPropertyName("payload")] public Dictionary<string, JsonElement>? Payload { get; set; }
+
+    /// <summary>
+    ///     Get payload as string dictionary for convenience
+    /// </summary>
+    public Dictionary<string, string> GetPayloadStrings()
+    {
+        var result = new Dictionary<string, string>();
+        if (Payload == null) return result;
+
+        foreach (var kv in Payload) result[kv.Key] = kv.Value.ToString();
+        return result;
+    }
+}
+
+public class QdrantUpsertRequest
+{
+    [JsonPropertyName("points")] public List<QdrantPoint> Points { get; set; } = new();
+}
+
+public class QdrantSearchRequest
+{
+    [JsonPropertyName("vector")] public float[] Vector { get; set; } = Array.Empty<float>();
+
+    [JsonPropertyName("limit")] public int Limit { get; set; } = 5;
+
+    [JsonPropertyName("with_payload")] public bool WithPayload { get; set; } = true;
+}
+
+public class QdrantSearchResponse
+{
+    [JsonPropertyName("result")] public List<QdrantSearchResult>? Result { get; set; }
+}
+
+public class QdrantCollectionsResponse
+{
+    [JsonPropertyName("result")] public QdrantCollectionsResult? Result { get; set; }
+}
+
+public class QdrantCollectionsResult
+{
+    [JsonPropertyName("collections")] public List<QdrantCollectionInfo>? Collections { get; set; }
+}
+
+public class QdrantCollectionInfo
+{
+    [JsonPropertyName("name")] public string? Name { get; set; }
+}
+
+public class QdrantCreateCollectionRequest
+{
+    [JsonPropertyName("vectors")] public QdrantVectorConfig? Vectors { get; set; }
+}
+
+public class QdrantVectorConfig
+{
+    [JsonPropertyName("size")] public int Size { get; set; }
+
+    [JsonPropertyName("distance")] public string Distance { get; set; } = "Cosine";
 }

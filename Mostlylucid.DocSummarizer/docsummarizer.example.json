@@ -1,27 +1,46 @@
 {
   // Example configuration for DocSummarizer
   // Copy this to docsummarizer.json or ~/.docsummarizer.json and customize
-  
+
   "ollama": {
     "baseUrl": "http://localhost:11434",
-    "model": "ministral-3:3b",  // Mistral-3 3B - 128K context window
+    "model": "ministral-3:3b",
+    // Mistral-3 3B - 128K context window
     "embedModel": "nomic-embed-text",
     "temperature": 0.3,
     "timeoutSeconds": 300
   },
   
+  // Benchmark settings (optional)
+  "benchmark": {
+    // Reference model for ground truth comparison in benchmarks
+    // NOTE: Cloud models (e.g., *:cloud) require Ollama paid subscription
+    // Leave null/empty to skip reference comparison (default)
+    // Examples: "gpt-oss:20b-cloud", "minimax-m2:cloud", "llama3.3:70b"
+    "referenceModel": null,
+    
+    // Maximum model size in billions for recommendations
+    // Use this to filter to only small models (e.g., 8 = max 8B params)
+    "maxModelSizeB": null,
+    
+    // Default models to benchmark (can be overridden with --benchmark)
+    "defaultModels": [
+      "qwen2.5:1.5b",
+      "qwen2.5:3b", 
+      "llama3.2:3b",
+      "ministral-3:3b"
+    ]
+  },
   "docling": {
     "baseUrl": "http://localhost:5001",
     "timeoutSeconds": 300
   },
-  
   "qdrant": {
     "host": "localhost",
     "port": 6334,
     "collectionName": "documents",
     "vectorSize": 768
   },
-  
   "processing": {
     "maxHeadingLevel": 3,
     "ragTopK": 3,
@@ -29,20 +48,26 @@
     "enableParallel": true,
     "maxDegreeOfParallelism": -1
   },
-  
   "output": {
-    "format": "Console",  // Console, Text, Markdown, Json
-    "outputDirectory": null,  // null = current directory
+    "format": "Console",
+    // Console, Text, Markdown, Json
+    "outputDirectory": null,
+    // null = current directory
     "includeTrace": true,
     "includeTopics": true,
     "includeOpenQuestions": true,
     "verbose": false
   },
-  
   "batch": {
-    "fileExtensions": [".pdf", ".docx", ".md"],
+    "fileExtensions": [
+      ".pdf",
+      ".docx",
+      ".md"
+    ],
     "recursive": false,
-    "includePatterns": ["*"],
+    "includePatterns": [
+      "*"
+    ],
     "excludePatterns": [],
     "continueOnError": true,
     "createIndex": true

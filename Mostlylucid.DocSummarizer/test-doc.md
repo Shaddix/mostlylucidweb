@@ -5,6 +5,7 @@ This is a comprehensive test document to verify the functionality of DocSummariz
 ## Section 1: Introduction
 
 This section introduces the main concepts of the document. We'll cover several key topics including:
+
 - Document processing
 - Chunk generation
 - Citation tracking
@@ -22,6 +23,7 @@ The technical implementation relies on several components:
 ### Subsection 2.1: Architecture
 
 The architecture follows a pipeline pattern:
+
 - Input validation
 - Document conversion
 - Content chunking
@@ -31,6 +33,7 @@ The architecture follows a pipeline pattern:
 ### Subsection 2.2: Performance
 
 Performance metrics are tracked including:
+
 - Processing time
 - Coverage score
 - Citation rate
@@ -48,6 +51,7 @@ Key features include:
 
 ## Section 4: Conclusion
 
-This document demonstrates the chunking and citation capabilities of DocSummarizer. Each section should be processed as a separate chunk with appropriate citations.
+This document demonstrates the chunking and citation capabilities of DocSummarizer. Each section should be processed as
+a separate chunk with appropriate citations.
 
 The tool is designed to be highly configurable while providing excellent out-of-box defaults for common use cases.
