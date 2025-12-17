@@ -17,6 +17,358 @@ public class RagSummarizer
     ///     so high values just queue requests. 8 is a good balance for throughput vs memory.
     /// </summary>
     public const int DefaultMaxParallelism = 8;
+    
+    /// <summary>
+    /// Document type classification for adaptive prompts
+    /// </summary>
+    public enum DocumentType
+    {
+        Unknown,
+        Fiction,        // Novels, short stories, creative writing
+        Technical,      // Code docs, API refs, manuals, specs
+        Academic,       // Research papers, theses, scholarly articles
+        Business,       // Reports, proposals, memos, contracts
+        Legal,          // Contracts, laws, regulations, legal briefs
+        News,           // Articles, journalism, press releases
+        Reference       // Encyclopedias, wikis, how-tos, tutorials
+    }
+    
+    /// <summary>
+    /// Document classification result with confidence
+    /// </summary>
+    private record DocumentClassification(
+        DocumentType Type,
+        double Confidence,
+        string[] Indicators,
+        string Method = "heuristic") // "heuristic" or "llm"
+    {
+        public bool IsHighConfidence => Confidence >= 0.7;
+        public bool IsLowConfidence => Confidence < 0.5;
+    }
+    
+    /// <summary>
+    /// Classify document type using heuristics on early chunks
+    /// No LLM call - purely statistical/pattern-based for speed
+    /// </summary>
+    private static DocumentClassification ClassifyDocument(List<DocumentChunk> chunks)
+    {
+        // Sample first ~5 chunks for classification (enough signal, fast)
+        var sampleText = string.Join(" ", chunks.Take(5).Select(c => c.Content));
+        var sampleLower = sampleText.ToLowerInvariant();
+        var headings = chunks.Take(10).Select(c => c.Heading?.ToLowerInvariant() ?? "").ToList();
+        var headingsText = string.Join(" ", headings);
+        
+        var scores = new Dictionary<DocumentType, (double score, List<string> indicators)>
+        {
+            [DocumentType.Fiction] = (0, []),
+            [DocumentType.Technical] = (0, []),
+            [DocumentType.Academic] = (0, []),
+            [DocumentType.Business] = (0, []),
+            [DocumentType.Legal] = (0, []),
+            [DocumentType.News] = (0, []),
+            [DocumentType.Reference] = (0, [])
+        };
+        
+        // Fiction indicators
+        var fictionPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(said|replied|whispered|shouted|asked)\b", 0.3),
+            (@"\b(he|she|they)\s+(walked|ran|looked|felt|thought)\b", 0.25),
+            (@"\b(chapter|prologue|epilogue)\s*\d*\b", 0.4),
+            (@"[""'][^""']{20,}[""']", 0.2), // Dialogue
+            (@"\b(mr\.|mrs\.|miss|lady|lord|sir)\s+[a-z]+\b", 0.25),
+            (@"\b(smiled|frowned|sighed|laughed|cried)\b", 0.2),
+            (@"\b(heart|soul|love|passion|desire)\b", 0.15),
+        };
+        
+        // Technical indicators
+        var technicalPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(function|class|method|api|interface|module)\b", 0.35),
+            (@"\b(parameter|argument|return|async|await)\b", 0.3),
+            (@"```|\bcode\b|`[^`]+`", 0.4),
+            (@"\b(install|configure|setup|deploy|build)\b", 0.25),
+            (@"\b(error|exception|debug|log|trace)\b", 0.2),
+            (@"\b(version|v\d+\.\d+|release)\b", 0.2),
+            (@"\b(http|https|url|endpoint|request|response)\b", 0.25),
+            (@"\b(json|xml|yaml|config|schema)\b", 0.25),
+        };
+        
+        // Academic indicators
+        var academicPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(abstract|introduction|methodology|conclusion|references)\b", 0.4),
+            (@"\b(hypothesis|findings|results|analysis|discussion)\b", 0.3),
+            (@"\b(study|research|paper|journal|publication)\b", 0.25),
+            (@"\([a-z]+,?\s*\d{4}\)", 0.35), // Citations like (Smith, 2020)
+            (@"\b(et al\.?|ibid|op\.?\s*cit)\b", 0.4),
+            (@"\b(figure|table|appendix)\s*\d+", 0.25),
+            (@"\b(significant|correlation|variable|sample|data)\b", 0.2),
+        };
+        
+        // Business indicators
+        var businessPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(executive summary|overview|objectives|deliverables)\b", 0.35),
+            (@"\b(revenue|profit|margin|budget|cost|roi)\b", 0.3),
+            (@"\b(stakeholder|client|vendor|partner|customer)\b", 0.25),
+            (@"\b(q[1-4]|fy\d{2,4}|fiscal|quarter)\b", 0.3),
+            (@"\b(strategy|initiative|roadmap|milestone)\b", 0.25),
+            (@"\b(kpi|metric|target|goal|benchmark)\b", 0.25),
+        };
+        
+        // Legal indicators  
+        var legalPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(whereas|hereby|herein|thereof|pursuant)\b", 0.4),
+            (@"\b(party|parties|agreement|contract|clause)\b", 0.3),
+            (@"\b(shall|must|may not|is prohibited)\b", 0.25),
+            (@"\b(liability|indemnify|warranty|damages)\b", 0.3),
+            (@"\b(section|article|paragraph)\s*\d+", 0.25),
+            (@"\b(plaintiff|defendant|court|jurisdiction)\b", 0.35),
+        };
+        
+        // News indicators
+        var newsPatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(reported|announced|according to|sources say)\b", 0.35),
+            (@"\b(yesterday|today|monday|tuesday|wednesday|thursday|friday)\b", 0.2),
+            (@"\b(officials?|spokesperson|minister|president|ceo)\b", 0.25),
+            (@"\b(breaking|update|developing|exclusive)\b", 0.3),
+            (@"\b(interview|statement|press|conference)\b", 0.2),
+        };
+        
+        // Reference/Tutorial indicators
+        var referencePatterns = new (string pattern, double weight)[]
+        {
+            (@"\b(step\s*\d+|first,?|next,?|then,?|finally)\b", 0.25),
+            (@"\b(how to|guide|tutorial|learn|example)\b", 0.35),
+            (@"\b(tip|note|warning|important|see also)\b", 0.25),
+            (@"\b(definition|overview|summary|quick\s*start)\b", 0.25),
+            (@"\b(faq|frequently asked|common questions)\b", 0.3),
+        };
+        
+        // Score each type
+        void ScorePatterns((string pattern, double weight)[] patterns, DocumentType type)
+        {
+            var (score, indicators) = scores[type];
+            foreach (var (pattern, weight) in patterns)
+            {
+                var matches = Regex.Matches(sampleLower, pattern, RegexOptions.IgnoreCase);
+                if (matches.Count > 0)
+                {
+                    score += weight * Math.Min(matches.Count, 3); // Cap at 3 matches per pattern
+                    if (indicators.Count < 3)
+                        indicators.Add($"{pattern.TrimStart('\\', 'b', '(').Split('|')[0]}×{matches.Count}");
+                }
+            }
+            // Also check headings
+            foreach (var (pattern, weight) in patterns)
+            {
+                if (Regex.IsMatch(headingsText, pattern, RegexOptions.IgnoreCase))
+                    score += weight * 0.5;
+            }
+            scores[type] = (score, indicators);
+        }
+        
+        ScorePatterns(fictionPatterns, DocumentType.Fiction);
+        ScorePatterns(technicalPatterns, DocumentType.Technical);
+        ScorePatterns(academicPatterns, DocumentType.Academic);
+        ScorePatterns(businessPatterns, DocumentType.Business);
+        ScorePatterns(legalPatterns, DocumentType.Legal);
+        ScorePatterns(newsPatterns, DocumentType.News);
+        ScorePatterns(referencePatterns, DocumentType.Reference);
+        
+        // Find winner
+        var winner = scores.OrderByDescending(kv => kv.Value.score).First();
+        var totalScore = scores.Values.Sum(v => v.score);
+        var confidence = totalScore > 0 ? winner.Value.score / totalScore : 0;
+        
+        // If no clear winner or very low scores, return Unknown
+        if (winner.Value.score < 0.5 || confidence < 0.3)
+            return new DocumentClassification(DocumentType.Unknown, confidence, [], "heuristic");
+        
+        return new DocumentClassification(
+            winner.Key, 
+            Math.Min(confidence, 0.95), // Cap at 95% confidence
+            winner.Value.indicators.ToArray(),
+            "heuristic");
+    }
+    
+    /// <summary>
+    /// Fast LLM-based classification for when heuristics are uncertain
+    /// Uses a minimal prompt to get quick classification from any model
+    /// </summary>
+    private async Task<DocumentClassification> ClassifyDocumentWithLlmAsync(List<DocumentChunk> chunks)
+    {
+        // Take a small sample - just first 500 chars from first 2 chunks
+        var sample = string.Join("\n", chunks.Take(2).Select(c => 
+            c.Content.Length > 250 ? c.Content[..250] : c.Content));
+        
+        var prompt = $"""
+            Classify this text into ONE category. Reply with ONLY the category name.
+            
+            Categories: FICTION, TECHNICAL, ACADEMIC, BUSINESS, LEGAL, NEWS, REFERENCE
+            
+            Text sample:
+            {sample}
+            
+            Category:
+            """;
+        
+        try
+        {
+            var response = await _ollama.GenerateAsync(prompt);
+            var cleaned = response.Trim().ToUpperInvariant().TrimEnd('.', ':', ' ');
+            
+            // Parse response
+            var docType = cleaned switch
+            {
+                var s when s.Contains("FICTION") => DocumentType.Fiction,
+                var s when s.Contains("TECHNICAL") => DocumentType.Technical,
+                var s when s.Contains("ACADEMIC") => DocumentType.Academic,
+                var s when s.Contains("BUSINESS") => DocumentType.Business,
+                var s when s.Contains("LEGAL") => DocumentType.Legal,
+                var s when s.Contains("NEWS") => DocumentType.News,
+                var s when s.Contains("REFERENCE") || s.Contains("TUTORIAL") => DocumentType.Reference,
+                _ => DocumentType.Unknown
+            };
+            
+            return new DocumentClassification(
+                docType,
+                docType == DocumentType.Unknown ? 0.3 : 0.8,
+                [cleaned],
+                "llm");
+        }
+        catch
+        {
+            // If LLM fails, return unknown
+            return new DocumentClassification(DocumentType.Unknown, 0, [], "llm-error");
+        }
+    }
+    
+    /// <summary>
+    /// Hybrid classification: fast heuristics first, LLM fallback if uncertain
+    /// </summary>
+    private async Task<DocumentClassification> ClassifyDocumentHybridAsync(List<DocumentChunk> chunks, bool useLlmFallback = true)
+    {
+        // First try fast heuristics
+        var heuristicResult = ClassifyDocument(chunks);
+        
+        if (_verbose)
+        {
+            Console.WriteLine($"[Classify] Heuristic: {heuristicResult.Type} ({heuristicResult.Confidence:P0}) " +
+                $"[{string.Join(", ", heuristicResult.Indicators.Take(3))}]");
+        }
+        
+        // If high confidence, use heuristic result
+        if (heuristicResult.IsHighConfidence)
+            return heuristicResult;
+        
+        // If low confidence and LLM fallback enabled, try LLM
+        if (useLlmFallback && heuristicResult.IsLowConfidence)
+        {
+            if (_verbose) Console.WriteLine("[Classify] Low confidence, trying LLM...");
+            
+            var llmResult = await ClassifyDocumentWithLlmAsync(chunks);
+            
+            if (_verbose)
+            {
+                Console.WriteLine($"[Classify] LLM: {llmResult.Type} ({llmResult.Confidence:P0})");
+            }
+            
+            // If LLM gives a clear answer, use it
+            if (llmResult.Type != DocumentType.Unknown)
+                return llmResult;
+        }
+        
+        // Fall back to heuristic result (even if low confidence)
+        return heuristicResult;
+    }
+    
+    /// <summary>
+    /// Adaptive parameters based on document size
+    /// </summary>
+    private record DocumentSizeProfile(
+        int TopicCount,           // How many topics to extract
+        int ChunksPerTopic,       // How many chunks to retrieve per topic
+        int MaxCharacters,        // Entity cap for characters
+        int MaxLocations,         // Entity cap for locations
+        int MaxOther,             // Entity cap for orgs/events/dates
+        int BulletCount,          // Executive summary bullets
+        int WordsPerBullet,       // Max words per bullet
+        int TopClaimsCount)       // Top claims to include in synthesis
+    {
+        /// <summary>
+        /// Get appropriate profile based on chunk count
+        /// </summary>
+        public static DocumentSizeProfile ForChunks(int chunkCount) => chunkCount switch
+        {
+            // Tiny docs (< 5 pages / ~10 chunks): minimal processing
+            < 10 => new(
+                TopicCount: 2,
+                ChunksPerTopic: 2,
+                MaxCharacters: 4,
+                MaxLocations: 3,
+                MaxOther: 2,
+                BulletCount: 2,
+                WordsPerBullet: 25,
+                TopClaimsCount: 5),
+            
+            // Small docs (5-20 pages / 10-40 chunks): light processing
+            < 40 => new(
+                TopicCount: 3,
+                ChunksPerTopic: 3,
+                MaxCharacters: 5,
+                MaxLocations: 4,
+                MaxOther: 3,
+                BulletCount: 3,
+                WordsPerBullet: 20,
+                TopClaimsCount: 8),
+            
+            // Medium docs (20-100 pages / 40-200 chunks): standard processing
+            < 200 => new(
+                TopicCount: 4,
+                ChunksPerTopic: 3,
+                MaxCharacters: 6,
+                MaxLocations: 4,
+                MaxOther: 3,
+                BulletCount: 3,
+                WordsPerBullet: 20,
+                TopClaimsCount: 10),
+            
+            // Large docs (100-500 pages / 200-1000 chunks): expanded processing
+            < 1000 => new(
+                TopicCount: 5,
+                ChunksPerTopic: 4,
+                MaxCharacters: 8,
+                MaxLocations: 5,
+                MaxOther: 4,
+                BulletCount: 4,
+                WordsPerBullet: 20,
+                TopClaimsCount: 12),
+            
+            // Very large docs (500+ pages / 1000+ chunks): comprehensive but efficient
+            _ => new(
+                TopicCount: 6,
+                ChunksPerTopic: 5,
+                MaxCharacters: 10,
+                MaxLocations: 6,
+                MaxOther: 5,
+                BulletCount: 5,
+                WordsPerBullet: 18,
+                TopClaimsCount: 15)
+        };
+        
+        public string SizeCategory => TopicCount switch
+        {
+            <= 2 => "tiny",
+            <= 3 => "small", 
+            <= 4 => "medium",
+            <= 5 => "large",
+            _ => "very large"
+        };
+    }
 
     private readonly bool _deleteCollectionAfterSummarization;
     private readonly int _maxParallelism;
@@ -102,8 +454,16 @@ public class RagSummarizer
         var collectionName = GetCollectionName(docId);
         await EnsureCollectionAsync(collectionName);
 
-        // Batch upsert to avoid OOM - each embedding is 4KB (1024 floats)
-        const int batchSize = 10;
+        // Adaptive batch size based on document size:
+        // - Larger batches for big docs (amortize API overhead)
+        // - Smaller batches for small docs (faster feedback)
+        var batchSize = chunks.Count switch
+        {
+            < 20 => 5,
+            < 100 => 10,
+            < 500 => 20,
+            _ => 50
+        };
         var batch = new List<QdrantPoint>(batchSize);
 
         // Initialize embedder (downloads ONNX models on first use)
@@ -195,6 +555,14 @@ public class RagSummarizer
     {
         var sw = Stopwatch.StartNew();
         var collectionName = GetCollectionName(docId);
+        
+        // Get adaptive parameters based on document size
+        var profile = DocumentSizeProfile.ForChunks(chunks.Count);
+        if (_verbose) Console.WriteLine($"[Profile] {profile.SizeCategory} document ({chunks.Count} chunks) → {profile.TopicCount} topics, {profile.ChunksPerTopic} chunks/topic");
+        
+        // Classify document type for adaptive prompts (fast heuristic, LLM fallback if uncertain)
+        var docType = await ClassifyDocumentHybridAsync(chunks, useLlmFallback: !_useOnnxEmbedding);
+        if (_verbose) Console.WriteLine($"[DocType] {docType.Type} ({docType.Confidence:P0}, {docType.Method})");
 
         try
         {
@@ -208,7 +576,7 @@ public class RagSummarizer
 
             // Extract topics - constrain to actual headings where possible
             var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
-            var topics = await ExtractTopicsAsync(headings);
+            var topics = await ExtractTopicsAsync(headings, profile.TopicCount);
 
             if (_verbose) Console.WriteLine($"[Topics] Extracted {topics.Count} topics");
 
@@ -221,7 +589,7 @@ public class RagSummarizer
             var retrievalTasks = topics.Select(async topic =>
             {
                 var query = focusQuery != null ? $"{topic} {focusQuery}" : topic;
-                var retrieved = await RetrieveChunksAsync(collectionName, query, 3);
+                var retrieved = await RetrieveChunksAsync(collectionName, query, profile.ChunksPerTopic);
                 return (topic, retrieved);
             }).ToList();
 
@@ -231,7 +599,7 @@ public class RagSummarizer
             var synthesizeTasks = retrievalResults.Select(async r =>
             {
                 var (topic, retrieved) = r;
-                var (summary, entities, claims) = await SynthesizeTopicWithClaimsAsync(topic, retrieved, focusQuery);
+                var (summary, entities, claims) = await SynthesizeTopicWithClaimsAsync(topic, retrieved, focusQuery, docType.Type, chunks.Count);
 
                 if (_verbose) Console.WriteLine($"  [{topic}] Retrieved {retrieved.Count} chunks, {claims.Count} claims");
 
@@ -240,9 +608,13 @@ public class RagSummarizer
 
             var synthesisResults = await Task.WhenAll(synthesizeTasks);
 
-            // Build results maintaining topic order
+            // Build results maintaining topic order, with post-processing to clean summaries
             var topicSummaries = synthesisResults
-                .Select(r => new TopicSummary(r.topic, r.summary, r.chunkIds))
+                .Select(r => new TopicSummary(
+                    CleanTopicName(r.topic), 
+                    CleanTopicSummary(r.summary), 
+                    r.chunkIds))
+                .Where(t => !string.IsNullOrWhiteSpace(t.Summary) && t.Summary.Length > 10)
                 .ToList();
 
             foreach (var result in synthesisResults)
@@ -280,7 +652,7 @@ public class RagSummarizer
             
             // Create executive summary using weighted claims AND entities for grounding
             var executive = await CreateGroundedExecutiveSummaryAsync(
-                topicSummaries, deduplicatedClaims, mergedEntities, focusQuery);
+                topicSummaries, deduplicatedClaims, mergedEntities, focusQuery, profile);
 
             // Clear intermediate data to free memory before building result
             deduplicatedClaims.Clear();
@@ -302,8 +674,15 @@ public class RagSummarizer
                 : 1.0;
             var citationRate = CalculateCitationRate(executive);
             
-            // Build chunk index for output
-            var chunkIndex = chunks.Select(ChunkIndexEntry.FromChunk).ToList();
+            // Build chunk index for output - cap for very large docs to save memory
+            var chunkIndex = chunks.Count > 500 
+                ? chunks.Take(100).Concat(chunks.Skip(chunks.Count - 100)).Select(ChunkIndexEntry.FromChunk).ToList()
+                : chunks.Select(ChunkIndexEntry.FromChunk).ToList();
+
+            // Apply entity caps from profile to final output
+            var cappedEntities = mergedEntities != null 
+                ? CapEntities(mergedEntities, profile)
+                : null;
 
             return new DocumentSummary(
                 executive,
@@ -312,7 +691,7 @@ public class RagSummarizer
                 new SummarizationTrace(
                     docId, chunks.Count, allRetrievedChunks.Count,
                     topics, sw.Elapsed, coverage, citationRate, chunkIndex),
-                mergedEntities);
+                cappedEntities);
         }
         finally
         {
@@ -320,28 +699,48 @@ public class RagSummarizer
             if (_deleteCollectionAfterSummarization) await DeleteCollectionAsync(docId);
         }
     }
+    
+    /// <summary>
+    /// Apply entity caps from profile to prevent bloated output
+    /// </summary>
+    private static ExtractedEntities CapEntities(ExtractedEntities entities, DocumentSizeProfile profile)
+    {
+        return new ExtractedEntities(
+            entities.Characters.Take(profile.MaxCharacters).ToList(),
+            entities.Locations.Take(profile.MaxLocations).ToList(),
+            entities.Dates.Take(profile.MaxOther).ToList(),
+            entities.Events.Take(profile.MaxOther).ToList(),
+            entities.Organizations.Take(profile.MaxOther).ToList());
+    }
 
-    private async Task<List<string>> ExtractTopicsAsync(List<string> headings)
+    private async Task<List<string>> ExtractTopicsAsync(List<string> headings, int maxTopics = 5)
     {
         // For small models, limit headings to avoid overwhelming context
         var limitedHeadings = headings.Take(15).ToList();
 
         var prompt = $"""
-                      List 3-5 main topics from these headings:
+                      Extract {maxTopics} main THEMES (not chapter titles) from these headings:
                       {string.Join(", ", limitedHeadings)}
 
-                      Output format: one topic per line, no bullets or numbers.
+                      Rules:
+                      - Output ONE theme per line
+                      - Each theme max 6 words
+                      - No bullets, numbers, or explanations
+                      - Focus on abstract themes, not plot events
+                      
+                      Example good themes: "Social class and marriage", "Family duty vs personal desire"
+                      Example bad themes: "Chapter 1 Introduction", "The events at Longbourn"
                       """;
 
         var response = await _ollama.GenerateAsync(prompt);
         return response.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(t => t.Trim().TrimStart('-', '*', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', ' '))
-            .Where(t => t.Length > 2 && t.Length < 100) // Filter out overly long "topics"
-            .Take(5) // Reduce from 8 to 5 for faster processing
+            .Where(t => t.Length > 2 && t.Length < 60 && !t.StartsWith("Example", StringComparison.OrdinalIgnoreCase))
+            .Take(maxTopics)
             .ToList();
     }
 
-    private async Task<List<(string chunkId, string heading, string content)>> RetrieveChunksAsync(
+    private async Task<List<(string chunkId, string heading, string content, int order)>> RetrieveChunksAsync(
         string collectionName, string query, int topK)
     {
         var queryEmbedding = await _embedder.EmbedAsync(query);
@@ -352,32 +751,98 @@ public class RagSummarizer
         return results.Select(r =>
         {
             var payload = r.GetPayloadStrings();
+            var orderStr = payload.GetValueOrDefault("order", "0");
+            int.TryParse(orderStr, out var order);
             return (
                 payload.GetValueOrDefault("chunkId", ""),
                 payload.GetValueOrDefault("heading", ""),
-                payload.GetValueOrDefault("content", "")
+                payload.GetValueOrDefault("content", ""),
+                order
             );
         }).ToList();
+    }
+    
+    /// <summary>
+    /// Convert chunk order to estimated page reference for citations
+    /// Uses ~2 chunks per page as rough estimate for typical documents
+    /// </summary>
+    private static string GetPageCitation(int chunkOrder, int totalChunks)
+    {
+        // Estimate: ~2 chunks per page for typical documents
+        // Adjust based on total chunks to get reasonable page numbers
+        var estimatedPage = (chunkOrder / 2) + 1;
+        return $"[p.{estimatedPage}]";
+    }
+    
+    /// <summary>
+    /// Build context with page-based citations instead of chunk IDs
+    /// </summary>
+    private static string BuildContextWithPageCitations(
+        List<(string chunkId, string heading, string content, int order)> chunks,
+        int maxContentPerChunk,
+        int totalChunks)
+    {
+        return string.Join("\n", chunks.Select(c =>
+        {
+            var truncated = c.content.Length > maxContentPerChunk
+                ? c.content[..maxContentPerChunk] + "..."
+                : c.content;
+            var pageCite = GetPageCitation(c.order, totalChunks);
+            return $"{pageCite}: {truncated}";
+        }));
     }
 
     private async Task<string> SynthesizeTopicAsync(
         string topic,
-        List<(string chunkId, string heading, string content)> chunks,
+        List<(string chunkId, string heading, string content, int order)> chunks,
         string? focus,
-        bool retry = false)
+        DocumentType docType = DocumentType.Unknown,
+        int totalChunks = 100)
     {
-        var (summary, _) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, retry);
+        var (summary, _) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, docType, totalChunks);
         return summary;
+    }
+    
+    private async Task<(string summary, ExtractedEntities? entities)> SynthesizeTopicWithEntitiesAsync(
+        string topic,
+        List<(string chunkId, string heading, string content, int order)> chunks,
+        string? focus,
+        DocumentType docType = DocumentType.Unknown,
+        int totalChunks = 100)
+    {
+        // Adaptive content truncation based on chunk count
+        var maxContentPerChunk = chunks.Count switch
+        {
+            <= 2 => 800,
+            <= 4 => 500,
+            _ => 350
+        };
+        
+        // Build context with page-based citations instead of chunk IDs
+        var context = BuildContextWithPageCitations(chunks, maxContentPerChunk, totalChunks);
+
+        // Get document-type-specific prompt
+        var prompt = GetTopicSynthesisPrompt(topic, context, focus, docType);
+        var response = await _ollama.GenerateAsync(prompt);
+        var (summary, entities) = ParseSummaryAndEntities(response);
+        
+        return (summary, entities);
     }
     
     private async Task<(string summary, ExtractedEntities? entities)> SynthesizeTopicWithEntitiesAsync(
         string topic,
         List<(string chunkId, string heading, string content)> chunks,
         string? focus,
-        bool retry = false)
+        DocumentType docType = DocumentType.Unknown)
     {
-        // Truncate content to ~500 chars per chunk for small models
-        const int maxContentPerChunk = 500;
+        // Adaptive content truncation based on chunk count
+        var maxContentPerChunk = chunks.Count switch
+        {
+            <= 2 => 800,
+            <= 4 => 500,
+            _ => 350
+        };
+        
         var context = string.Join("\n", chunks.Select(c =>
         {
             var truncated = c.content.Length > maxContentPerChunk
@@ -386,33 +851,115 @@ public class RagSummarizer
             return $"[{c.chunkId}]: {truncated}";
         }));
 
-        // Combined prompt for summary + entity extraction
-        var prompt = $"""
-            Analyze this content about "{topic}":
-            
-            {context}
-            
-            {(focus != null ? $"Focus on: {focus}\n" : "")}
-            
-            Provide your response in this EXACT format:
-            
-            SUMMARY:
-            Write 2-3 bullet points summarizing the key information about {topic}. Include [chunk-N] citations.
-            
-            ENTITIES:
-            Characters: [comma-separated list of person names mentioned, or "none"]
-            Locations: [comma-separated list of places mentioned, or "none"]
-            Dates: [comma-separated list of dates/time periods mentioned, or "none"]
-            Events: [comma-separated list of key events mentioned, or "none"]
-            Organizations: [comma-separated list of organizations/groups mentioned, or "none"]
-            """;
-
+        // Get document-type-specific prompt
+        var prompt = GetTopicSynthesisPrompt(topic, context, focus, docType);
         var response = await _ollama.GenerateAsync(prompt);
-
-        // Parse the response
         var (summary, entities) = ParseSummaryAndEntities(response);
         
         return (summary, entities);
+    }
+    
+    /// <summary>
+    /// Generate tight, document-type-specific prompts for topic synthesis
+    /// Uses page citations [p.N] instead of chunk citations
+    /// </summary>
+    private static string GetTopicSynthesisPrompt(string topic, string context, string? focus, DocumentType docType)
+    {
+        var focusLine = focus != null ? $"Focus: {focus}\n" : "";
+        
+        // Base entity extraction (same for all types)
+        const string entityBlock = """
+            ENTITIES:
+            Characters: [names or "none"]
+            Locations: [places or "none"]  
+            Dates: [dates or "none"]
+            Events: [events or "none"]
+            Organizations: [orgs or "none"]
+            """;
+        
+        return docType switch
+        {
+            DocumentType.Fiction => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [One sentence insight about theme/meaning, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Insight not plot. No "the story shows". No author name. Use exact [p.N] page cite from context.
+                """,
+            
+            DocumentType.Technical => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [What this does/solves, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Function over description. No "this section explains". Use exact [p.N] page cite.
+                """,
+            
+            DocumentType.Academic => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [Key finding or argument, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Claim not method. No "the study shows". Use exact [p.N] page cite.
+                """,
+            
+            DocumentType.Business => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [Business implication or action, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Impact not description. No "the report indicates". Use exact [p.N] page cite.
+                """,
+            
+            DocumentType.Legal => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [Legal effect or requirement, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Obligation not description. No "the document states". Use exact [p.N] page cite.
+                """,
+            
+            DocumentType.News => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [What happened and why it matters, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: News value not narrative. No "according to". Use exact [p.N] page cite.
+                """,
+            
+            DocumentType.Reference => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [Key concept or how-to, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Actionable info. No "this guide explains". Use exact [p.N] page cite.
+                """,
+            
+            // Unknown/default - generic but tight
+            _ => $"""
+                [{topic}]
+                {context}
+                {focusLine}
+                SUMMARY: [One insight, max 18 words] [p.N]
+                {entityBlock}
+                
+                Rules: Insight not restatement. No filler phrases. Use exact [p.N] page cite from context.
+                """
+        };
     }
     
     private static (string summary, ExtractedEntities? entities) ParseSummaryAndEntities(string response)
@@ -485,17 +1032,43 @@ public class RagSummarizer
         value = Regex.Replace(value, @"\n\s*-\s*", ", "); // Convert bullet lists to comma-separated
         
         // Split by comma, semicolon, or newline and clean up
-        return value.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+        var rawEntities = value.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim().Trim('[', ']', '"', '\'', '*', '-', ' '))
-            .Where(s => !string.IsNullOrWhiteSpace(s) && 
-                        s.Length > 1 &&
-                        s.Length < 100 && // Filter out overly long entries
-                        !s.Equals("none", StringComparison.OrdinalIgnoreCase) &&
-                        !s.StartsWith("no ", StringComparison.OrdinalIgnoreCase) &&
-                        !s.Contains("not mentioned", StringComparison.OrdinalIgnoreCase) &&
-                        !s.Contains("explicitly mentioned", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        
+        // Apply strict filtering to remove parser failures
+        return rawEntities
+            .Where(IsValidEntityEntry)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+    
+    /// <summary>
+    /// Strict validation for entity entries - rejects pronouns, relational phrases, parser artifacts
+    /// </summary>
+    private static bool IsValidEntityEntry(string entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity) || entity.Length < 2 || entity.Length > 100)
+            return false;
+        
+        // Reject common parser failures and non-entity text
+        var invalidPatterns = new[]
+        {
+            @"^(his|her|their|its|my|your|our)\s",    // Possessive pronouns  
+            @"^(he|she|they|it|we|you)\s",            // Subject pronouns
+            @"^(a|an|the|some|any|this|that)\s",      // Articles at start
+            @"\b(brother|sister|mother|father|son|daughter|wife|husband|uncle|aunt|cousin)\b(?!\s+\w)", // Relationships without full name
+            @"^(young|old|younger|older|eldest)\s",   // Adjective-only entries
+            @"^\d+$",                                  // Just numbers
+            @"^\[.*\]$",                              // Bracketed parser artifacts
+            @"^(none|n/a|unknown|unnamed|not specified|not mentioned)$",
+            @"(mentioned|described|referred|appears|seems)", // Meta-language
+            @"^(the|a|an)\s.*family$",                // "the X family" - too vague
+            @"^\w+\s+family\s*\([^)]*$",              // Incomplete parenthetical like "Lucas family (Sir William"
+        };
+        
+        return !invalidPatterns.Any(p => 
+            Regex.IsMatch(entity, p, RegexOptions.IgnoreCase));
     }
 
     private async Task<string> CreateExecutiveSummaryAsync(
@@ -524,12 +1097,15 @@ public class RagSummarizer
         List<TopicSummary> topicSummaries,
         List<Claim> weightedClaims,
         ExtractedEntities? entities,
-        string? focus)
+        string? focus,
+        DocumentSizeProfile? profile = null)
     {
+        profile ??= DocumentSizeProfile.ForChunks(50); // Default to medium
+        
         // Get top claims by weight (facts first, then inferences, colour last)
         var topClaims = weightedClaims
             .OrderByDescending(c => c.Weight)
-            .Take(10)
+            .Take(profile.TopClaimsCount)
             .ToList();
         
         // Build context from both topic summaries and weighted claims
@@ -560,46 +1136,243 @@ public class RagSummarizer
         }
         
         // Build entity grounding context - CRITICAL for keeping summary factual
+        // Use profile caps to scale with document size
         var entityContext = new StringBuilder();
         if (entities != null && entities.HasAny)
         {
             entityContext.AppendLine("\nVERIFIED ENTITIES (only use these names):");
             if (entities.Characters.Count > 0)
-                entityContext.AppendLine($"  Characters: {string.Join(", ", entities.Characters.Take(10))}");
+                entityContext.AppendLine($"  Characters: {string.Join(", ", entities.Characters.Take(profile.MaxCharacters))}");
             if (entities.Locations.Count > 0)
-                entityContext.AppendLine($"  Locations: {string.Join(", ", entities.Locations.Take(8))}");
+                entityContext.AppendLine($"  Locations: {string.Join(", ", entities.Locations.Take(profile.MaxLocations))}");
             if (entities.Organizations.Count > 0)
-                entityContext.AppendLine($"  Organizations: {string.Join(", ", entities.Organizations.Take(5))}");
+                entityContext.AppendLine($"  Organizations: {string.Join(", ", entities.Organizations.Take(profile.MaxOther))}");
             if (entities.Events.Count > 0)
-                entityContext.AppendLine($"  Key Events: {string.Join(", ", entities.Events.Take(5))}");
+                entityContext.AppendLine($"  Key Events: {string.Join(", ", entities.Events.Take(profile.MaxOther))}");
             if (entities.Dates.Count > 0)
-                entityContext.AppendLine($"  Dates: {string.Join(", ", entities.Dates.Take(5))}");
+                entityContext.AppendLine($"  Dates: {string.Join(", ", entities.Dates.Take(profile.MaxOther))}");
         }
         
         var prompt = $"""
-            Create an executive summary from these topic summaries, claims, and verified entities.
+            Write {profile.BulletCount} bullet points synthesizing these topics and claims.
             
-            TOPIC SUMMARIES:
+            TOPICS:
             {topicContext}
             
-            PRIORITIZED CLAIMS (ordered by importance):
+            KEY CLAIMS:
             {claimContext}
             {entityContext}
             
             {(focus != null ? $"Focus on: {focus}\n" : "")}
             
-            CRITICAL INSTRUCTIONS:
-            - ONLY use character/location/organization names from the VERIFIED ENTITIES list
-            - Do NOT invent or hallucinate any names not in the verified list
-            - Lead with the most important facts (high-confidence, well-evidenced claims)
-            - Include relevant inferences but label them appropriately  
-            - Minimize incidental details unless they're plot-critical
-            - Preserve [chunk-N] citations from the claims
-            - Write 4-6 bullet points maximum
-            - Be concise and factual
+            FORMAT: Start directly with • (no preamble)
+            • [insight, max {profile.WordsPerBullet} words] [chunk-N]
+            • [different insight] [chunk-N]
+            • [different insight] [chunk-N]
+            
+            RULES:
+            1. Each bullet = ONE unique insight (what it MEANS, not what happens)
+            2. Use DIFFERENT [chunk-N] citations for each bullet - no repeats
+            3. NO filler: "as seen in", "as evidenced by", "the text shows"
+            4. NO meta: "Here is", "This summary", "the novel explores"
+            5. NO author references: "Jane Austen", "Austen's portrayal"
+            6. Use ONLY names from VERIFIED ENTITIES list
+            
+            BAD EXAMPLE: "Social class is explored through relationships, as seen in the text [chunk-4]"
+            GOOD EXAMPLE: "Social class functions as invisible currency in the marriage market [chunk-4]"
             """;
 
-        return await _ollama.GenerateAsync(prompt);
+        var rawResponse = await _ollama.GenerateAsync(prompt);
+        
+        // Post-process to remove meta-commentary and fix common issues
+        return CleanExecutiveSummary(rawResponse, profile.BulletCount);
+    }
+    
+    /// <summary>
+    /// Post-process executive summary to remove meta-commentary and fix citation issues
+    /// </summary>
+    private static string CleanExecutiveSummary(string summary, int maxBullets = 3)
+    {
+        var lines = summary.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var cleanedLines = new List<string>();
+        var seenContent = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            
+            // Skip meta-commentary lines
+            if (IsMetaCommentary(trimmed))
+                continue;
+            
+            // Skip empty bullet markers
+            if (trimmed is "•" or "-" or "*")
+                continue;
+            
+            // Fix invented citations like [1], [2] -> remove them (better no citation than fake)
+            var cleaned = Regex.Replace(trimmed, @"\[(\d{1,2})\](?!\d)", "");
+            
+            // Remove hedging phrases inline
+            cleaned = RemoveHedgingInline(cleaned);
+            
+            // Normalize the bullet point format
+            cleaned = NormalizeBullet(cleaned);
+            
+            // Skip if too short or duplicate content
+            if (string.IsNullOrWhiteSpace(cleaned) || cleaned.Length < 10)
+                continue;
+            
+            // Dedupe similar content
+            var normalized = Regex.Replace(cleaned.ToLowerInvariant(), @"[^\w\s]", "");
+            if (seenContent.Any(s => ComputeSimpleSimilarity(s, normalized) > 0.7))
+                continue;
+            
+            seenContent.Add(normalized);
+            cleanedLines.Add(cleaned);
+        }
+        
+        // Enforce bullet max from profile
+        return string.Join("\n", cleanedLines.Take(maxBullets));
+    }
+    
+    /// <summary>
+    /// Remove hedging phrases and filler language inline while preserving the core claim
+    /// </summary>
+    private static string RemoveHedgingInline(string text)
+    {
+        var patternsToRemove = new[]
+        {
+            // Hedging
+            @"\b(appears to|seems to|possibly|likely|probably)\s+",
+            @"\b(may be|might be|could be)\s+",
+            @"\b(it is possible that|assuming|apparently)\s+",
+            @"\b(presumably|potentially|suggests that)\s+",
+            
+            // Filler phrases that add no information
+            @",?\s*as (seen|evidenced|revealed|shown|demonstrated) (in|by)\b",
+            @",?\s*as (explored|examined|discussed) (in|by)\b",
+            @"\b(the text|the novel|the book|the story|the author)\s+(shows|reveals|demonstrates|explores|examines)\s+(that\s+)?",
+            @"\bJane Austen'?s?\s+(exploration|examination|portrayal|depiction)\s+of\s+",
+            @"\bin\s+[""']?Pride and Prejudice[""']?\s*",
+            @"\bthe author'?s?\s+(exploration|examination)\s+of\s+",
+            
+            // Redundant citations to the work itself
+            @",?\s*as\s+revealed\s+in\s+[""'][^""']+[""']\s*",
+        };
+        
+        var result = text;
+        foreach (var pattern in patternsToRemove)
+        {
+            result = Regex.Replace(result, pattern, "", RegexOptions.IgnoreCase);
+        }
+        
+        // Clean up resulting double spaces and trailing commas
+        result = Regex.Replace(result, @"\s{2,}", " ");
+        result = Regex.Replace(result, @",\s*\.", ".");
+        result = Regex.Replace(result, @",\s*$", "");
+        
+        return result.Trim();
+    }
+    
+    /// <summary>
+    /// Normalize bullet point format to consistent • prefix
+    /// </summary>
+    private static string NormalizeBullet(string line)
+    {
+        // Remove existing bullet markers and normalize
+        var content = line.TrimStart('•', '-', '*', ' ', '\t');
+        
+        // If it looks like a bullet point, ensure it starts with •
+        if (content.Length > 0 && (line.StartsWith("•") || line.StartsWith("-") || line.StartsWith("*")))
+        {
+            return "• " + content;
+        }
+        
+        // If no bullet but has content, add one
+        if (content.Length > 20)
+        {
+            return "• " + content;
+        }
+        
+        return content;
+    }
+    
+    /// <summary>
+    /// Simple word overlap similarity for deduplication
+    /// </summary>
+    private static double ComputeSimpleSimilarity(string a, string b)
+    {
+        var wordsA = a.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        var wordsB = b.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        
+        if (wordsA.Count == 0 || wordsB.Count == 0) return 0;
+        
+        var intersection = wordsA.Intersect(wordsB).Count();
+        var union = wordsA.Union(wordsB).Count();
+        
+        return union > 0 ? (double)intersection / union : 0;
+    }
+    
+    /// <summary>
+    /// Clean topic name to remove meta-commentary prefixes
+    /// </summary>
+    private static string CleanTopicName(string topic)
+    {
+        // Remove common prefixes the LLM adds
+        var cleaned = Regex.Replace(topic, @"^(Here are the|The following|Theme \d+:?|Topic \d+:?)\s*", "", RegexOptions.IgnoreCase);
+        return cleaned.Trim().TrimEnd(':');
+    }
+    
+    /// <summary>
+    /// Clean topic summary to remove meta-commentary and filler
+    /// </summary>
+    private static string CleanTopicSummary(string summary)
+    {
+        if (string.IsNullOrWhiteSpace(summary)) return "";
+        
+        var lines = summary.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var cleanedLines = new List<string>();
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            
+            // Skip meta-commentary
+            if (IsMetaCommentary(trimmed))
+                continue;
+            
+            // Remove filler phrases
+            var cleaned = RemoveHedgingInline(trimmed);
+            
+            if (!string.IsNullOrWhiteSpace(cleaned) && cleaned.Length > 10)
+                cleanedLines.Add(cleaned);
+        }
+        
+        return string.Join(" ", cleanedLines).Trim();
+    }
+    
+    /// <summary>
+    /// Detect meta-commentary that should be stripped
+    /// </summary>
+    private static bool IsMetaCommentary(string line)
+    {
+        var metaPatterns = new[]
+        {
+            @"^(Here is|Here are|Below is|The following)",
+            @"^(This summary|This document|Based on the)",
+            @"^(I have|I've|Let me|I will|I'll)",
+            @"^(Note:|Note that|Please note)",
+            @"(executive summary|bullet points?|extracted themes?)[:.]?\s*$",
+            @"^(In summary|To summarize|In conclusion)",
+            @"^(According to|From the text|The text shows|The text reveals)",
+            @"^\*\*Executive Summary\*\*",
+            @"^Executive Summary:?\s*$",
+            @"^(The novel|The book|The story|The author)\s+(shows|reveals|demonstrates|explores)",
+            @"^Here are the"
+        };
+        
+        return metaPatterns.Any(p => 
+            Regex.IsMatch(line, p, RegexOptions.IgnoreCase));
     }
     
     /// <summary>
@@ -619,12 +1392,13 @@ public class RagSummarizer
     /// </summary>
     private async Task<(string summary, ExtractedEntities? entities, List<Claim> claims)> SynthesizeTopicWithClaimsAsync(
         string topic,
-        List<(string chunkId, string heading, string content)> chunks,
+        List<(string chunkId, string heading, string content, int order)> chunks,
         string? focus,
-        bool retry = false)
+        DocumentType docType = DocumentType.Unknown,
+        int totalChunks = 100)
     {
-        // Get base summary and entities
-        var (summary, entities) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, retry);
+        // Get base summary and entities with document-type-aware prompts
+        var (summary, entities) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, docType, totalChunks);
         
         // Extract and classify claims from the summary
         var claims = ExtractAndClassifyClaims(summary, topic, chunks);
@@ -638,7 +1412,7 @@ public class RagSummarizer
     private List<Claim> ExtractAndClassifyClaims(
         string summary, 
         string topic,
-        List<(string chunkId, string heading, string content)> sourceChunks)
+        List<(string chunkId, string heading, string content, int order)> sourceChunks)
     {
         var claims = new List<Claim>();
         
@@ -680,7 +1454,7 @@ public class RagSummarizer
     private ClaimType ClassifyClaimType(
         string claimText,
         string fullSourceText,
-        List<(string chunkId, string heading, string content)> sourceChunks)
+        List<(string chunkId, string heading, string content, int order)> sourceChunks)
     {
         var terms = _textAnalysis.Tokenize(claimText);
         if (terms.Count == 0) return ClaimType.Colour;
@@ -719,7 +1493,7 @@ public class RagSummarizer
     private ConfidenceLevel AssessClaimConfidence(
         string claimText,
         List<Citation> citations,
-        List<(string chunkId, string heading, string content)> sourceChunks)
+        List<(string chunkId, string heading, string content, int order)> sourceChunks)
     {
         // No citations = low confidence
         if (citations.Count == 0)

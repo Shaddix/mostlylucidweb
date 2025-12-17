@@ -216,7 +216,9 @@ public class DoclingClient : IDisposable
         if (orderedChunks.Count == 0) 
             throw new Exception("No chunks were successfully converted");
 
-        var combinedMarkdown = string.Join("\n\n---\n\n", orderedChunks.Select(c => c.Result));
+        // Inject page markers into markdown so chunker can extract page numbers
+        var combinedMarkdown = string.Join("\n\n---\n\n", orderedChunks.Select(c => 
+            $"<!-- PAGE:{c.StartPage}-{c.EndPage} -->\n{c.Result}"));
 
         if (IsGarbageText(combinedMarkdown))
         {

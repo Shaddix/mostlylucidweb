@@ -28,33 +28,102 @@ public class DocumentChunker
         _minChunkTokens = minChunkTokens;
     }
 
+    // Regex to extract page markers: <!-- PAGE:1-5 --> or <!-- PAGE:1 -->
+    private static readonly Regex PageMarkerRegex = new(@"<!--\s*PAGE:(\d+)(?:-(\d+))?\s*-->", RegexOptions.Compiled);
+    
     public List<DocumentChunk> ChunkByStructure(string markdown)
     {
+        // Extract page markers before processing
+        var pageMap = ExtractPageMarkers(markdown);
+        
+        // Remove page markers from content for cleaner processing
+        var cleanMarkdown = PageMarkerRegex.Replace(markdown, "");
+        
         // Check if document has markdown headings
-        var hasHeadings = HasMarkdownHeadings(markdown);
+        var hasHeadings = HasMarkdownHeadings(cleanMarkdown);
 
         // First pass: split by structure (headings) or paragraphs for plain text
         var rawSections = hasHeadings
-            ? SplitByHeadings(markdown)
-            : SplitByParagraphs(markdown);
+            ? SplitByHeadings(cleanMarkdown)
+            : SplitByParagraphs(cleanMarkdown);
 
         // Second pass: merge small sections to approach target size
         var mergedSections = MergeSections(rawSections);
 
-        // Convert to chunks
+        // Convert to chunks with page info
         var chunks = new List<DocumentChunk>();
         var index = 0;
+        var totalSections = mergedSections.Count;
 
         foreach (var section in mergedSections)
-            if (!string.IsNullOrWhiteSpace(section.Content))
-                chunks.Add(new DocumentChunk(
-                    index++,
-                    section.Heading,
-                    section.Level,
-                    section.Content,
-                    HashHelper.ComputeHash(section.Content)));
+        {
+            if (string.IsNullOrWhiteSpace(section.Content)) continue;
+            
+            // Try to find page info for this section
+            var (pageStart, pageEnd) = GetPageInfoForSection(section, pageMap, index, totalSections);
+            
+            chunks.Add(new DocumentChunk(
+                index++,
+                section.Heading,
+                section.Level,
+                section.Content,
+                HashHelper.ComputeHash(section.Content),
+                pageStart,
+                pageEnd));
+        }
 
         return chunks;
+    }
+    
+    /// <summary>
+    /// Extract page markers from markdown into a position-to-page map
+    /// </summary>
+    private static Dictionary<int, (int start, int end)> ExtractPageMarkers(string markdown)
+    {
+        var map = new Dictionary<int, (int start, int end)>();
+        var matches = PageMarkerRegex.Matches(markdown);
+        
+        foreach (Match match in matches)
+        {
+            var position = match.Index;
+            var startPage = int.Parse(match.Groups[1].Value);
+            var endPage = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : startPage;
+            map[position] = (startPage, endPage);
+        }
+        
+        return map;
+    }
+    
+    /// <summary>
+    /// Get page info for a section - uses section's page info if available, 
+    /// falls back to pageMap estimation, or returns null for estimation by caller
+    /// </summary>
+    private static (int? pageStart, int? pageEnd) GetPageInfoForSection(
+        RawSection section, 
+        Dictionary<int, (int start, int end)> pageMap,
+        int sectionIndex,
+        int totalSections)
+    {
+        // If section already has page info (from marker parsing), use it
+        if (section.PageStart.HasValue)
+            return (section.PageStart, section.PageEnd ?? section.PageStart);
+        
+        // If we have page markers, estimate based on section index distribution
+        if (pageMap.Count > 0)
+        {
+            var sortedMarkers = pageMap.OrderBy(kv => kv.Key).ToList();
+            var totalPages = sortedMarkers.Max(m => m.Value.end);
+            
+            // Estimate page based on section's position in document
+            var estimatedPage = totalSections > 0
+                ? (int)Math.Ceiling((double)(sectionIndex + 1) / totalSections * totalPages)
+                : 1;
+            
+            return (Math.Max(1, estimatedPage), Math.Max(1, estimatedPage));
+        }
+        
+        // No page markers - return null (caller will estimate or use section number)
+        return (null, null);
     }
 
     /// <summary>
@@ -148,18 +217,31 @@ public class DocumentChunker
         var content = new StringBuilder();
         string? heading = null;
         var level = 0;
+        int? currentPageStart = null;
+        int? currentPageEnd = null;
 
         foreach (var line in lines)
         {
+            // Check for page marker
+            var pageMatch = PageMarkerRegex.Match(line);
+            if (pageMatch.Success)
+            {
+                currentPageStart = int.Parse(pageMatch.Groups[1].Value);
+                currentPageEnd = pageMatch.Groups[2].Success 
+                    ? int.Parse(pageMatch.Groups[2].Value) 
+                    : currentPageStart;
+                continue; // Don't include marker in content
+            }
+            
             var headingLevel = GetHeadingLevel(line);
 
             // Only split on headings up to the configured max level
             if (headingLevel > 0 && headingLevel <= _maxHeadingLevel)
             {
-                // Flush previous section
+                // Flush previous section with current page info
                 if (content.Length > 0 || heading != null)
                 {
-                    sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim()));
+                    sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim(), currentPageStart, currentPageEnd));
                     content.Clear();
                 }
 
@@ -174,7 +256,7 @@ public class DocumentChunker
 
         // Flush final section
         if (content.Length > 0 || heading != null)
-            sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim()));
+            sections.Add(new RawSection(heading ?? "", level, content.ToString().Trim(), currentPageStart, currentPageEnd));
 
         return sections;
     }
@@ -278,5 +360,5 @@ public class DocumentChunker
         return line.Length > level && line[level] == ' ' ? level : 0;
     }
 
-    private record RawSection(string Heading, int Level, string Content);
+    private record RawSection(string Heading, int Level, string Content, int? PageStart = null, int? PageEnd = null);
 }

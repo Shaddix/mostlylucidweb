@@ -17,9 +17,25 @@ public record DocumentChunk(
     string Heading,
     int HeadingLevel,
     string Content,
-    string Hash)
+    string Hash,
+    int? PageStart = null,
+    int? PageEnd = null)
 {
     public string Id => $"chunk-{Order}";
+    
+    /// <summary>
+    /// Get a human-readable reference (page number if available, otherwise section number)
+    /// </summary>
+    public string Reference => PageStart.HasValue 
+        ? (PageStart == PageEnd || !PageEnd.HasValue ? $"p.{PageStart}" : $"pp.{PageStart}-{PageEnd}")
+        : $"§{Order + 1}";
+    
+    /// <summary>
+    /// Get citation format for use in summaries
+    /// </summary>
+    public string Citation => PageStart.HasValue
+        ? $"[p.{PageStart}]"
+        : $"[§{Order + 1}]";
 }
 
 #region Claim Ledger System

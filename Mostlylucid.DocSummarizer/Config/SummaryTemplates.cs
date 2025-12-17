@@ -469,11 +469,47 @@ public class SummaryTemplate
         };
 
         /// <summary>
+        ///     Strict - token-efficient with hard constraints, no hedging
+        /// </summary>
+        public static SummaryTemplate Strict => new()
+        {
+            Name = "strict",
+            Description = "Token-efficient summary with hard constraints - 3 bullets max, no hedging",
+            TargetWords = 60,
+            MaxBullets = 3,
+            Paragraphs = 0,
+            OutputStyle = OutputStyle.Bullets,
+            IncludeTopics = false,
+            IncludeCitations = true,
+            IncludeQuestions = false,
+            IncludeTrace = false,
+            Tone = SummaryTone.Professional,
+            Audience = AudienceLevel.Executive,
+            ExecutivePrompt = """
+                              {topics}
+
+                              OUTPUT CONSTRAINTS (MUST follow exactly):
+                              - EXACTLY 3 bullet points
+                              - Each bullet ≤20 words
+                              - Total ≤60 words
+                              - NO repeated names
+                              - Each bullet = ONE distinct insight
+
+                              CONTENT RULES:
+                              - Lead with highest-confidence facts only
+                              - Include [chunk-N] citations after each claim
+                              - If unsure, OMIT - do NOT hedge
+                              - NO phrases like "appears to", "seems", "possibly", "likely", "assuming"
+                              - Synthesize insights, do NOT restate facts
+                              """
+        };
+
+        /// <summary>
         ///     List all available template names
         /// </summary>
         public static IReadOnlyList<string> AvailableTemplates => new[]
         {
-            "default", "brief", "oneliner", "bullets", "executive", "detailed", "technical", "academic", "citations", "bookreport", "meeting"
+            "default", "brief", "oneliner", "bullets", "executive", "detailed", "technical", "academic", "citations", "bookreport", "meeting", "strict"
         };
 
         /// <summary>
@@ -493,6 +529,7 @@ public class SummaryTemplate
                 "citations" or "refs" => Citations,
                 "bookreport" or "book-report" or "book" => BookReport,
                 "meeting" or "notes" or "meetingnotes" => MeetingNotes,
+                "strict" or "efficient" or "tight" => Strict,
                 _ => Default
             };
         }

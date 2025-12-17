@@ -552,6 +552,157 @@ public class TextAnalysisService
 
     #endregion
 
+    #region Output Post-Processing
+    
+    /// <summary>
+    /// Post-process summary to remove hedging language, repetition, and parser failures
+    /// Returns cleaned text with penalty score for logging
+    /// </summary>
+    public (string cleanedText, double penaltyScore, List<string> issues) PostProcessSummary(string summary)
+    {
+        var issues = new List<string>();
+        var penalty = 0.0;
+        var lines = summary.Split('\n').ToList();
+        var cleanedLines = new List<string>();
+        var seenInsights = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        foreach (var line in lines)
+        {
+            var cleanLine = line.Trim();
+            if (string.IsNullOrWhiteSpace(cleanLine)) continue;
+            
+            // Check for hedging language
+            var hedgingScore = DetectHedging(cleanLine);
+            if (hedgingScore > 0)
+            {
+                penalty += hedgingScore * 0.1;
+                issues.Add($"Hedging: \"{cleanLine[..Math.Min(50, cleanLine.Length)]}...\"");
+                // Remove hedging phrases but keep the content
+                cleanLine = RemoveHedgingPhrases(cleanLine);
+            }
+            
+            // Check for repetition (semantic dedup)
+            var normalized = NormalizeForComparison(cleanLine);
+            if (seenInsights.Any(s => ComputeCombinedSimilarity(s, normalized) > 0.75))
+            {
+                penalty += 0.15;
+                issues.Add($"Repetition: \"{cleanLine[..Math.Min(50, cleanLine.Length)]}...\"");
+                continue; // Skip duplicate
+            }
+            seenInsights.Add(normalized);
+            
+            // Check for meta-commentary (model explaining what it's doing)
+            if (IsMetaCommentary(cleanLine))
+            {
+                penalty += 0.2;
+                issues.Add($"Meta-commentary: \"{cleanLine[..Math.Min(50, cleanLine.Length)]}...\"");
+                continue; // Remove entirely
+            }
+            
+            cleanedLines.Add(cleanLine);
+        }
+        
+        return (string.Join("\n", cleanedLines), penalty, issues);
+    }
+    
+    /// <summary>
+    /// Detect hedging language and return a score (0 = none, 1 = heavy)
+    /// </summary>
+    private double DetectHedging(string text)
+    {
+        var hedgingPhrases = new[]
+        {
+            "appears to", "seems to", "possibly", "likely", "probably",
+            "may be", "might be", "could be", "it is possible",
+            "assuming", "if this is", "this suggests", "apparently",
+            "presumably", "potentially", "it seems", "one could argue"
+        };
+        
+        var count = hedgingPhrases.Count(p => 
+            text.Contains(p, StringComparison.OrdinalIgnoreCase));
+        
+        return Math.Min(1.0, count * 0.3);
+    }
+    
+    /// <summary>
+    /// Remove hedging phrases from text while preserving the core claim
+    /// </summary>
+    private string RemoveHedgingPhrases(string text)
+    {
+        var result = text;
+        var hedgingPhrases = new[]
+        {
+            "appears to ", "seems to ", "possibly ", "likely ", "probably ",
+            "it is possible that ", "assuming this is ", "apparently ",
+            "presumably ", "potentially ", "it seems that ", "it seems "
+        };
+        
+        foreach (var phrase in hedgingPhrases)
+        {
+            result = Regex.Replace(result, phrase, "", RegexOptions.IgnoreCase);
+        }
+        
+        return result.Trim();
+    }
+    
+    /// <summary>
+    /// Detect meta-commentary (model explaining its process or uncertainty)
+    /// </summary>
+    private bool IsMetaCommentary(string text)
+    {
+        var metaPatterns = new[]
+        {
+            @"^(Note:|Note that|I should|I cannot|I don't have)",
+            @"^(Based on|From the|In the|According to the) (text|document|content|passage)",
+            @"(not enough context|unclear from|cannot determine|not mentioned)",
+            @"(assuming these are|if this is|appears to be a)"
+        };
+        
+        return metaPatterns.Any(p => 
+            Regex.IsMatch(text, p, RegexOptions.IgnoreCase));
+    }
+    
+    /// <summary>
+    /// Filter entities to remove parser failures (pronouns, relational phrases, etc)
+    /// </summary>
+    public List<string> FilterEntities(List<string> rawEntities, int maxCount = 10)
+    {
+        return rawEntities
+            .Select(CleanEntityName)
+            .Where(IsValidEntity)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(maxCount)
+            .ToList();
+    }
+    
+    /// <summary>
+    /// Check if an entity name is valid (not a pronoun, parser failure, etc)
+    /// </summary>
+    private bool IsValidEntity(string entity)
+    {
+        if (string.IsNullOrWhiteSpace(entity) || entity.Length < 2)
+            return false;
+        
+        // Reject pronouns and relational phrases
+        var invalidPatterns = new[]
+        {
+            @"^(his|her|their|its|my|your|our)\s",  // Possessive pronouns
+            @"^(he|she|they|it|we|you)\b",           // Subject pronouns
+            @"^(a|an|the|some|any|this|that)\s",     // Articles/determiners
+            @"\b(brother|sister|mother|father|family|wife|husband)\b",  // Relationships without names
+            @"^(young|old|younger|older|eldest)\s",  // Adjective-only
+            @"^\d+\s*(st|nd|rd|th)?\s*$",            // Just numbers
+            @"^\[.*\]$",                              // Bracketed content (parser artifacts)
+            @"^(none|n/a|unknown|unnamed|not specified)$",
+            @"(mentioned|described|referred)",        // Meta-references
+        };
+        
+        return !invalidPatterns.Any(p => 
+            Regex.IsMatch(entity, p, RegexOptions.IgnoreCase));
+    }
+    
+    #endregion
+
     #region Text Utilities
 
     /// <summary>
