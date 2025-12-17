@@ -49,10 +49,10 @@ public class OllamaConfig
     public string BaseUrl { get; set; } = "http://localhost:11434";
 
     /// <summary>
-    /// Model to use for generation. Default is ministral-3:3b for good quality.
-    /// Models under 3B parameters (e.g., gemma3:1b) produce poor quality summaries.
+    /// Model to use for generation. Default is qwen2.5:1.5b for speed.
+    /// For better quality use qwen2.5:3b, llama3.2:3b, or ministral-3:3b.
     /// </summary>
-    public string Model { get; set; } = "ministral-3:3b";
+    public string Model { get; set; } = "qwen2.5:1.5b";
 
     /// <summary>
     /// Model to use for embeddings
@@ -293,4 +293,158 @@ public enum OutputFormat
     /// JSON file
     /// </summary>
     Json
+}
+
+/// <summary>
+/// Summary style presets - controls length and format of output
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<SummaryStyle>))]
+public enum SummaryStyle
+{
+    /// <summary>
+    /// Standard summary with executive summary, topics, and trace (~500-1000 chars)
+    /// </summary>
+    Standard,
+    
+    /// <summary>
+    /// Brief summary - just 2-3 sentences (~200 chars)
+    /// </summary>
+    Brief,
+    
+    /// <summary>
+    /// Detailed summary with full topic breakdowns (~2000+ chars)
+    /// </summary>
+    Detailed,
+    
+    /// <summary>
+    /// Bullets only - no prose, just key points
+    /// </summary>
+    Bullets,
+    
+    /// <summary>
+    /// Executive summary only - concise paragraph for leadership
+    /// </summary>
+    Executive,
+    
+    /// <summary>
+    /// One-liner - single sentence summary
+    /// </summary>
+    OneLiner,
+    
+    /// <summary>
+    /// Custom - uses template file
+    /// </summary>
+    Custom
+}
+
+/// <summary>
+/// Summary style configuration
+/// </summary>
+public class SummaryStyleConfig
+{
+    /// <summary>
+    /// Style preset to use
+    /// </summary>
+    public SummaryStyle Style { get; set; } = SummaryStyle.Standard;
+    
+    /// <summary>
+    /// Maximum characters for summary output (0 = no limit)
+    /// </summary>
+    public int MaxChars { get; set; } = 0;
+    
+    /// <summary>
+    /// Maximum bullet points (0 = no limit)
+    /// </summary>
+    public int MaxBullets { get; set; } = 0;
+    
+    /// <summary>
+    /// Path to custom Mustache template file
+    /// </summary>
+    public string? TemplatePath { get; set; }
+    
+    /// <summary>
+    /// Include topic summaries in output
+    /// </summary>
+    public bool IncludeTopics { get; set; } = true;
+    
+    /// <summary>
+    /// Include open questions in output
+    /// </summary>
+    public bool IncludeQuestions { get; set; } = true;
+    
+    /// <summary>
+    /// Include trace/metadata in output
+    /// </summary>
+    public bool IncludeTrace { get; set; } = true;
+    
+    /// <summary>
+    /// Get effective settings based on style preset
+    /// </summary>
+    public static SummaryStyleConfig FromPreset(SummaryStyle style, int? maxChars = null)
+    {
+        var config = style switch
+        {
+            SummaryStyle.Brief => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 300,
+                MaxBullets = 3,
+                IncludeTopics = false,
+                IncludeQuestions = false,
+                IncludeTrace = false
+            },
+            SummaryStyle.OneLiner => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 150,
+                MaxBullets = 1,
+                IncludeTopics = false,
+                IncludeQuestions = false,
+                IncludeTrace = false
+            },
+            SummaryStyle.Bullets => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 0,
+                MaxBullets = 10,
+                IncludeTopics = false,
+                IncludeQuestions = false,
+                IncludeTrace = false
+            },
+            SummaryStyle.Executive => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 500,
+                MaxBullets = 5,
+                IncludeTopics = false,
+                IncludeQuestions = false,
+                IncludeTrace = false
+            },
+            SummaryStyle.Detailed => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 0,
+                MaxBullets = 0,
+                IncludeTopics = true,
+                IncludeQuestions = true,
+                IncludeTrace = true
+            },
+            _ => new SummaryStyleConfig
+            {
+                Style = style,
+                MaxChars = maxChars ?? 0,
+                IncludeTopics = true,
+                IncludeQuestions = true,
+                IncludeTrace = true
+            }
+        };
+        
+        // Override max chars if explicitly provided
+        if (maxChars.HasValue)
+        {
+            config.MaxChars = maxChars.Value;
+        }
+        
+        return config;
+    }
 }

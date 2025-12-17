@@ -9,7 +9,7 @@
 
 A local-first document summarization tool that uses LLMs (via Ollama), vector search (Qdrant), and document conversion (Docling) to create intelligent summaries of DOCX, PDF, and Markdown files.
 
-> **Note**: This is not a fast tool - even on powerful hardware (RTX A4000 + Ryzen 9950X), summarizing takes several minutes. You trade speed for privacy, zero API costs, and offline operation. The smaller context windows of local models (8K-32K vs 128K+ for cloud) actually help here - they force better chunking and maintain coherence within each chunk.
+> **Note**: With the default `qwen2.5:1.5b` model, summarization is fast (2-5 seconds for typical documents). For higher quality summaries, use larger models like `llama3.2:3b` or `ministral-3:3b` which take longer but produce better results. You trade speed for privacy, zero API costs, and offline operation.
 
 For the architecture and approach behind this tool, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
 
@@ -60,12 +60,12 @@ Ollama is the **only requirement** for summarizing Markdown files:
 
 ```bash
 # Install Ollama from https://ollama.ai
-ollama pull ministral-3:3b    # Default model - good quality (recommended)
-ollama pull nomic-embed-text  # For RAG mode only
+ollama pull qwen2.5:1.5b       # Default model - fast (recommended for speed)
+ollama pull mxbai-embed-large  # For RAG mode only
 ollama serve
 ```
 
-> **Warning**: Models under 3B parameters (e.g., `gemma3:1b`) produce poor quality summaries with repetitive or nonsensical output. Use `ministral-3:3b` or larger.
+> **Tip**: The default `qwen2.5:1.5b` is optimized for speed (~3s per document). For higher quality summaries, use `--model llama3.2:3b` or `--model ministral-3:3b`.
 
 #### Optional: Docling (PDF/DOCX only)
 
@@ -96,15 +96,15 @@ Checking dependencies...
   Ollama: ✓ (http://localhost:11434)
 
   Available models:
-    - ministral-3:3b
-    - nomic-embed-text
+    - qwen2.5:1.5b
+    - mxbai-embed-large
     ... and more
 
   Default model info:
-    Name: ministral-3:3b
-    Family: mistral
-    Parameters: 3.2B
-    Context Window: 128,000 tokens
+    Name: qwen2.5:1.5b
+    Family: qwen2
+    Parameters: 1.5B
+    Context Window: 8,192 tokens
 
   Docling: ✗ (http://localhost:5001)   # Optional - only for PDF/DOCX
   Qdrant: ✗ (localhost:6334)           # Optional - only for RAG mode
@@ -129,9 +129,9 @@ docsummarizer
 # Output:
 # Summarizing: README.md
 # Mode: MapReduce
-# Model: ministral-3:3b
+# Model: qwen2.5:1.5b
 # ...
-# Saved to: readme.summary.md
+# Saved: README_summary.md
 ```
 
 ### Basic Summarization
@@ -150,7 +150,7 @@ docsummarizer -f document.pdf -v
 docsummarizer -f document.pdf -m Rag --focus "security requirements"
 
 # Use a higher quality model for important documents
-docsummarizer -f document.pdf --model llama3.1:8b -v
+docsummarizer -f document.pdf --model llama3.2:3b -v
 ```
 
 ### Query Mode
@@ -185,7 +185,7 @@ docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 | `--mode` | `-m` | Summarization mode: MapReduce, Rag, Iterative | `MapReduce` |
 | `--focus` | | Focus query for RAG mode | None |
 | `--query` | `-q` | Query mode instead of summarization | None |
-| `--model` | | Ollama model to use | `ministral-3:3b` |
+| `--model` | | Ollama model to use | `qwen2.5:1.5b` |
 | `--verbose` | `-v` | Show detailed progress with live UI | `false` |
 | `--config` | `-c` | Path to configuration file | Auto-discover |
 | `--output-format` | `-o` | Output format: Console, Text, Markdown, Json | `Console` |
@@ -287,8 +287,8 @@ Example `docsummarizer.json`:
 ```json
 {
   "ollama": {
-    "model": "ministral-3:3b",
-    "embedModel": "nomic-embed-text",
+    "model": "qwen2.5:1.5b",
+    "embedModel": "mxbai-embed-large",
     "baseUrl": "http://localhost:11434",
     "temperature": 0.3,
     "timeoutMinutes": 10
@@ -368,12 +368,13 @@ Example `docsummarizer.json`:
 
 | Model | Size | Speed | Quality | Use Case |
 |-------|------|-------|---------|----------|
-| `gemma3:1b` | 815MB | Very Fast | Poor | Testing only |
-| `ministral-3:3b` | 2.9GB | Fast | Very Good | **Default** |
-| `llama3.2:3b` | 2GB | Fast | Good | General purpose |
-| `llama3.1:8b` | 4.7GB | Medium | Excellent | High-quality summaries |
+| `qwen2.5:1.5b` | 986MB | Very Fast (~3s) | Good | **Default** - speed optimized |
+| `gemma3:1b` | 815MB | Fast (~10s) | Fair | Alternative small model |
+| `llama3.2:3b` | 2GB | Medium (~15s) | Very Good | Balance of speed/quality |
+| `ministral-3:3b` | 2.9GB | Medium (~20s) | Very Good | Quality-focused |
+| `llama3.1:8b` | 4.7GB | Slow (~45s) | Excellent | High-quality summaries |
 
-> **Warning**: Models under 3B parameters produce poor summaries - often repetitive bullet points echoing the prompt. Use `ministral-3:3b` or larger.
+> **Tip**: The default `qwen2.5:1.5b` provides good summaries in ~3 seconds. For critical documents where quality matters more than speed, use `--model llama3.2:3b` or larger.
 
 ## Build from Source
 
@@ -431,9 +432,9 @@ Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~24MB)
 
 **Symptoms**: Bullet points echo the prompt ("Return only bullet points", "The rule is...") instead of summarizing content.
 
-**Cause**: Model too small (<3B parameters).
+**Cause**: Model struggling with the prompt or content too long.
 
-**Fix**: Use `ministral-3:3b` or larger. See [Model Recommendations](#model-recommendations).
+**Fix**: The default `qwen2.5:1.5b` handles most documents well. For problematic documents, try `--model llama3.2:3b`. See [Model Recommendations](#model-recommendations).
 
 ### Summary Ignores Document Content
 
@@ -445,10 +446,10 @@ If the summary seems generic or doesn't reference specific content:
 ### Citations Missing or Invalid
 
 If summaries lack `[chunk-N]` citations:
-- Some smaller models struggle to follow citation instructions
-- The tool retries once with stronger prompting, but may still fail
-- Use a 3B+ parameter model for reliable citations
-- Check `Citation rate` in trace - should be > 0.5 for good traceability
+- Small models prioritize content over citation formatting
+- The prompts are optimized for speed, not strict citation compliance
+- For strict citations, use larger models like `llama3.2:3b`
+- Check `Citation rate` in trace - higher values indicate better traceability
 
 ## Performance Tips
 

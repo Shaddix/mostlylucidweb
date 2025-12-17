@@ -23,7 +23,7 @@ public class OllamaService
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(10);
 
     public OllamaService(
-        string model = "ministral-3:3b",
+        string model = "qwen2.5:1.5b",
         string embedModel = "mxbai-embed-large",
         string baseUrl = "http://localhost:11434",
         TimeSpan? timeout = null)
@@ -38,15 +38,17 @@ public class OllamaService
             Timeout = _timeout + TimeSpan.FromMinutes(1)
         };
         
-        // Configure OllamaApiClient with custom JsonSerializerContext for AOT support
-        var config = new OllamaApiClient.Configuration
+        // Create a custom HttpClient with proper timeout for OllamaSharp
+        // OllamaSharp's internal HttpClient defaults to 100 seconds which is too short
+        var ollamaHttpClient = new HttpClient
         {
-            Uri = new Uri(baseUrl),
-            Model = model,
-            JsonSerializerContext = DocSummarizerJsonContext.Default
+            BaseAddress = new Uri(baseUrl),
+            Timeout = _timeout + TimeSpan.FromMinutes(1) // Give extra buffer beyond our CancellationToken timeout
         };
         
-        _client = new OllamaApiClient(config);
+        // Use the HttpClient constructor for custom timeout + Native AOT support
+        // OllamaApiClient(HttpClient, string model, JsonSerializerContext)
+        _client = new OllamaApiClient(ollamaHttpClient, model, DocSummarizerJsonContext.Default);
         _model = model;
         _embedModel = embedModel;
     }

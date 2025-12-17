@@ -330,26 +330,30 @@ static async Task ProcessBatchAsync(
     Console.WriteLine();
 
     var batchProcessor = new BatchProcessor(summarizer, config.Batch, config.Output.Verbose);
-    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus);
-
-    // Output individual summaries
-    foreach (var result in batchSummary.Results.Where(r => r.Success && r.Summary != null))
+    
+    // Callback to save each file IMMEDIATELY after processing - avoids OOM
+    async Task OnFileCompleted(BatchResult result)
     {
-        var fileName = Path.GetFileName(result.FilePath);
-        var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
-        
-        if (config.Output.Format == OutputFormat.Console)
+        if (result.Success && result.Summary != null)
         {
-            Console.WriteLine($"\n\n=== {fileName} ===\n");
-            Console.WriteLine(output);
-        }
-        else
-        {
-            await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+            var fileName = Path.GetFileName(result.FilePath);
+            var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
+            
+            if (config.Output.Format == OutputFormat.Console)
+            {
+                Console.WriteLine($"\n\n=== {fileName} ===\n");
+                Console.WriteLine(output);
+            }
+            else
+            {
+                await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+            }
         }
     }
+    
+    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
 
-    // Output batch summary
+    // Output batch summary (only contains failed files now, not full results)
     var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
     
     if (config.Output.Format == OutputFormat.Console)

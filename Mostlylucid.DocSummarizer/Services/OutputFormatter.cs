@@ -342,9 +342,7 @@ public static class OutputFormatter
         // Write file
         await File.WriteAllTextAsync(outputPath, content);
 
-        if (config.Verbose)
-        {
-            Console.WriteLine($"[Output] Written to: {outputPath}");
-        }
+        // Always show output path so user knows where the file was saved
+        Console.WriteLine($"Saved: {outputPath}");
     }
 }

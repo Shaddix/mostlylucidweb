@@ -15,9 +15,19 @@ public class DocumentSummarizer
     private readonly int _maxLlmParallelism;
     private int? _cachedContextWindow;
     private MapReduceSummarizer? _mapReduce;
+    
+    /// <summary>
+    /// Threshold for using temp file streaming (1MB)
+    /// </summary>
+    private const int LargeFileSizeThreshold = 1024 * 1024;
+    
+    /// <summary>
+    /// Temp directory for intermediate files
+    /// </summary>
+    private string? _tempDir;
 
     public DocumentSummarizer(
-        string ollamaModel = "ministral-3:3b",
+        string ollamaModel = "qwen2.5:1.5b",
         string doclingUrl = "http://localhost:5001",
         string qdrantHost = "localhost",
         bool verbose = false,
@@ -36,6 +46,40 @@ public class DocumentSummarizer
         
         _ollama = new OllamaService(ollamaModel);
         _rag = new RagSummarizer(_ollama, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig);
+    }
+    
+    /// <summary>
+    /// Get or create temp directory for intermediate files
+    /// </summary>
+    private string GetTempDir()
+    {
+        if (_tempDir == null)
+        {
+            _tempDir = Path.Combine(Path.GetTempPath(), $"docsummarizer_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(_tempDir);
+            if (_verbose) Console.WriteLine($"[Temp] Using temp directory: {_tempDir}");
+        }
+        return _tempDir;
+    }
+    
+    /// <summary>
+    /// Clean up temp directory
+    /// </summary>
+    private void CleanupTempDir()
+    {
+        if (_tempDir != null && Directory.Exists(_tempDir))
+        {
+            try
+            {
+                Directory.Delete(_tempDir, recursive: true);
+                if (_verbose) Console.WriteLine("[Temp] Cleaned up temp directory");
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+            _tempDir = null;
+        }
     }
     
     /// <summary>
@@ -74,61 +118,98 @@ public class DocumentSummarizer
     {
         var docId = Path.GetFileName(filePath);
         
-        if (_verbose)
+        try
         {
-            AnsiConsole.Write(new FigletText("DocSummarizer").Color(Color.Blue));
-            _progress.Rule("Document Processing");
-            _progress.Info($"Document: {docId}");
-            _progress.Info($"Mode: {mode}");
-            _progress.Info($"Timeout: {OllamaService.DefaultTimeout.TotalMinutes:F0} minutes per operation");
-            if (!string.IsNullOrEmpty(focus)) _progress.Info($"Focus: {focus}");
-            AnsiConsole.WriteLine();
-        }
-
-        // Check if it's already markdown
-        string markdown;
-        if (filePath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine("Reading markdown file...");
-            Console.Out.Flush();
-            markdown = await File.ReadAllTextAsync(filePath);
-        }
-        else
-        {
-            // Always show conversion progress - this can take a long time
-            Console.WriteLine($"Converting document with Docling...");
-            Console.Out.Flush();
-            
-            markdown = await _progress.WithStatusAsync(
-                $"Converting {docId} with Docling (timeout: 5 min)...",
-                async () => await _docling.ConvertAsync(filePath));
-            
-            Console.WriteLine("Document converted to markdown");
-        }
-
-        // Chunk the document with context-aware sizing
-        Console.WriteLine("Parsing document structure...");
-        Console.Out.Flush();
-        
-        var chunker = await CreateChunkerAsync();
-        var chunks = await _progress.WithStatusAsync(
-            "Parsing document structure...",
-            () =>
+            if (_verbose)
             {
-                var result = chunker.ChunkByStructure(markdown);
-                return Task.FromResult(result);
-            });
-        
-        Console.WriteLine($"Created {chunks.Count} chunks");
-        Console.WriteLine();
+                AnsiConsole.Write(new FigletText("DocSummarizer").Color(Color.Blue));
+                _progress.Rule("Document Processing");
+                _progress.Info($"Document: {docId}");
+                _progress.Info($"Mode: {mode}");
+                _progress.Info($"Timeout: {OllamaService.DefaultTimeout.TotalMinutes:F0} minutes per operation");
+                if (!string.IsNullOrEmpty(focus)) _progress.Info($"Focus: {focus}");
+                AnsiConsole.WriteLine();
+            }
 
-        return mode switch
+            // Check if it's already markdown - use streaming for large files
+            string markdown;
+            string? tempMarkdownPath = null;
+            
+            if (filePath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Reading markdown file...");
+                Console.Out.Flush();
+                
+                // Check file size - stream to temp if large
+                var fileInfo = new FileInfo(filePath);
+                if (fileInfo.Length > LargeFileSizeThreshold)
+                {
+                    if (_verbose) Console.WriteLine($"[Memory] Large file ({fileInfo.Length / 1024:N0}KB), streaming...");
+                    tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
+                    File.Copy(filePath, tempMarkdownPath, overwrite: true);
+                    markdown = await File.ReadAllTextAsync(tempMarkdownPath);
+                }
+                else
+                {
+                    markdown = await File.ReadAllTextAsync(filePath);
+                }
+            }
+            else
+            {
+                // Always show conversion progress - this can take a long time
+                Console.WriteLine($"Converting document with Docling...");
+                Console.Out.Flush();
+                
+                markdown = await _progress.WithStatusAsync(
+                    $"Converting {docId} with Docling (timeout: 5 min)...",
+                    async () => await _docling.ConvertAsync(filePath));
+                
+                Console.WriteLine("Document converted to markdown");
+                
+                // For large converted content, write to temp to allow GC of the string
+                if (markdown.Length > LargeFileSizeThreshold)
+                {
+                    if (_verbose) Console.WriteLine($"[Memory] Large content ({markdown.Length / 1024:N0}KB), caching to temp...");
+                    tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
+                    await File.WriteAllTextAsync(tempMarkdownPath, markdown);
+                    // Force GC to reclaim the string memory before chunking
+                    GC.Collect(0, GCCollectionMode.Optimized);
+                }
+            }
+
+            // Chunk the document with context-aware sizing
+            Console.WriteLine("Parsing document structure...");
+            Console.Out.Flush();
+            
+            var chunker = await CreateChunkerAsync();
+            var chunks = await _progress.WithStatusAsync(
+                "Parsing document structure...",
+                () =>
+                {
+                    var result = chunker.ChunkByStructure(markdown);
+                    return Task.FromResult(result);
+                });
+            
+            // Release markdown string after chunking
+            markdown = null!;
+            if (tempMarkdownPath != null) GC.Collect(0, GCCollectionMode.Optimized);
+            
+            Console.WriteLine($"Created {chunks.Count} chunks");
+            Console.WriteLine();
+
+            return mode switch
+            {
+                SummarizationMode.MapReduce => await (await GetMapReduceSummarizerAsync()).SummarizeAsync(docId, chunks),
+                SummarizationMode.Rag => await _rag.SummarizeAsync(docId, chunks, focus),
+                SummarizationMode.Iterative => await SummarizeIterativeAsync(docId, chunks),
+                _ => throw new ArgumentException($"Unknown mode: {mode}")
+            };
+        }
+        finally
         {
-            SummarizationMode.MapReduce => await (await GetMapReduceSummarizerAsync()).SummarizeAsync(docId, chunks),
-            SummarizationMode.Rag => await _rag.SummarizeAsync(docId, chunks, focus),
-            SummarizationMode.Iterative => await SummarizeIterativeAsync(docId, chunks),
-            _ => throw new ArgumentException($"Unknown mode: {mode}")
-        };
+            // Clean up temp files
+            CleanupTempDir();
+        }
     }
 
     public async Task<string> QueryAsync(string filePath, string query)
