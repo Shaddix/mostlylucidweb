@@ -72,6 +72,8 @@ jobs:
         else
           VERSION=${GITHUB_REF#refs/tags/docsummarizer-v}
         fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "Building version: $VERSION"
 
@@ -134,6 +136,8 @@ jobs:
         else
           VERSION=${GITHUB_REF#refs/tags/docsummarizer-v}
         fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Download all artifacts
