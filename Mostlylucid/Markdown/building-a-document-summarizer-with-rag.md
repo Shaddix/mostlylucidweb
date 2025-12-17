@@ -454,25 +454,25 @@ unzip docsummarizer-win-x64.zip
 cd Mostlylucid.DocSummarizer
 
 # Check dependencies are running
-dotnet run -- check --verbose
+./Mostlylucid.DocSummarizer -- check --verbose
 
 # Map/reduce summary (default)
-dotnet run -- -f contract.docx -v
+./Mostlylucid.DocSummarizer -- -f contract.docx -v
 
 # Use a fast small model
-dotnet run -- -f contract.docx --model gemma3:1b -v
+./Mostlylucid.DocSummarizer -- -f contract.docx --model gemma3:1b -v
 
 # RAG with focus query  
-dotnet run -- -f contract.docx --mode Rag --focus "pricing terms" -v
+./Mostlylucid.DocSummarizer -- -f contract.docx --mode Rag --focus "pricing terms" -v
 
 # Query indexed document
-dotnet run -- -f contract.docx --query "what are the termination penalties?"
+./Mostlylucid.DocSummarizer -- -f contract.docx --query "what are the termination penalties?"
 
 # Batch process a directory
-dotnet run -- -d ./documents --mode MapReduce -v
+./Mostlylucid.DocSummarizer -- -d ./documents --mode MapReduce -v
 
 # Adjust LLM parallelism (default: 8)
-dotnet run -- -f contract.docx --config '{"processing":{"maxLlmParallelism":4}}'
+./Mostlylucid.DocSummarizer -- -f contract.docx --config '{"processing":{"maxLlmParallelism":4}}'
 ```
 
 ### Progress Feedback

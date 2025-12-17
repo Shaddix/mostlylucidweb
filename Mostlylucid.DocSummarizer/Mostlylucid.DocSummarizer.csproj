@@ -23,6 +23,26 @@
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>false</InvariantGlobalization>
+    
+    <!-- Linker configuration for ARM64 -->
+    <LinkerEnabled>true</LinkerEnabled>
+    <LinkerFlavor>lld</LinkerFlavor>
+    <LinkerGenerateSnapshot>true</LinkerGenerateSnapshot>
+    <LinkerGenerateDebugSymbols>true</LinkerGenerateDebugSymbols>
+    <!-- ARM64 specific linker settings -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- Fix for cross-OS compilation -->
+    <EnableCrossArchitectureCompilation>true</EnableCrossArchitectureCompilation>
+    <!-- Additional ARM64 settings -->
+    <TargetPlatform>win-arm64</TargetPlatform>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- Allow cross-OS testing -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDynamicCodeGeneration>true</EnableDynamicCodeGeneration>
+    <!-- Fix for cross-OS execution -->
+    <UseAppHost>true</UseAppHost>
+    <PublishSingleFile>true</PublishSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
