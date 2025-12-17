@@ -3,20 +3,18 @@ using System.Security.Cryptography;
 using System.Text;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 public class RagSummarizer
 {
     private readonly OllamaService _ollama;
-    private readonly QdrantClient _qdrant;
+    private readonly QdrantHttpClient _qdrant;
     private readonly bool _verbose;
     private readonly int _maxParallelism;
     private readonly bool _deleteCollectionAfterSummarization;
     private const string CollectionPrefix = "docsummarizer_";
-    private const int VectorSize = 768; // nomic-embed-text
+    private const int VectorSize = 1024; // mxbai-embed-large
 
     /// <summary>
     /// Default max parallelism for LLM calls. Ollama processes one request at a time per model,
@@ -32,7 +30,12 @@ public class RagSummarizer
         QdrantConfig? qdrantConfig = null)
     {
         _ollama = ollama;
-        _qdrant = new QdrantClient(qdrantHost);
+        
+        // Use HTTP client instead of gRPC - gRPC has AOT compatibility issues with System.Single marshalling
+        var port = qdrantConfig?.Port ?? 6333; // REST port
+        var apiKey = qdrantConfig?.ApiKey;
+        _qdrant = new QdrantHttpClient(qdrantHost, port, apiKey);
+        
         _verbose = verbose;
         _maxParallelism = maxParallelism > 0 ? maxParallelism : DefaultMaxParallelism;
         _deleteCollectionAfterSummarization = qdrantConfig?.DeleteCollectionAfterSummarization ?? true;
@@ -72,60 +75,68 @@ public class RagSummarizer
         var collectionName = GetCollectionName(docId);
         await EnsureCollectionAsync(collectionName);
         
-        var parallelDesc = _maxParallelism <= 0 ? "unlimited" : _maxParallelism.ToString();
-        Console.WriteLine($"[Index] Indexing {chunks.Count} chunks ({parallelDesc} parallel)...");
+        // Embeddings must be sequential - Ollama can only process one at a time
+        // Parallel requests cause connection failures
+        Console.WriteLine($"[Index] Indexing {chunks.Count} chunks (sequential - Ollama limitation)...");
         Console.Out.Flush();
 
-        // Use controlled parallelism for embedding
-        var pointResults = new PointStruct[chunks.Count];
-        var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
-        var completed = 0;
-        var lockObj = new object();
+        var pointResults = new List<QdrantPoint>();
         
-        await Parallel.ForEachAsync(
-            chunks.Select((chunk, index) => (chunk, index)),
-            options,
-            async (item, ct) =>
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            var chunk = chunks[i];
+            var embedding = await _ollama.EmbedAsync(chunk.Content);
+            
+            // Validate embedding dimensions
+            if (embedding.Length != VectorSize)
             {
-                var embedding = await _ollama.EmbedAsync(item.chunk.Content);
-                var pointId = GenerateStableId(docId, item.chunk.Hash);
+                throw new InvalidOperationException(
+                    $"Embedding dimension mismatch: expected {VectorSize}, got {embedding.Length}. " +
+                    $"Ensure you have the correct embedding model (mxbai-embed-large) pulled in Ollama.");
+            }
+            
+            var pointId = GenerateStableId(docId, chunk.Hash);
 
-                pointResults[item.index] = new PointStruct
+            pointResults.Add(new QdrantPoint
+            {
+                Id = pointId.ToString(),
+                Vector = embedding,
+                Payload = new Dictionary<string, object>
                 {
-                    Id = new PointId { Uuid = pointId.ToString() },
-                    Vectors = embedding,
-                    Payload =
-                    {
-                        ["docId"] = docId,
-                        ["chunkId"] = item.chunk.Id,
-                        ["heading"] = item.chunk.Heading ?? "",
-                        ["headingLevel"] = item.chunk.HeadingLevel,
-                        ["order"] = item.chunk.Order,
-                        ["content"] = item.chunk.Content,
-                        ["hash"] = item.chunk.Hash
-                    }
-                };
-                
-                if (_verbose)
-                {
-                    Console.WriteLine($"  Embedded [{item.chunk.Id}] {item.chunk.Heading}");
-                }
-                else
-                {
-                    // Thread-safe progress update
-                    int current;
-                    lock (lockObj)
-                    {
-                        completed++;
-                        current = completed;
-                    }
-                    Console.Write($"\r  Progress: {current}/{chunks.Count} chunks embedded");
-                    Console.Out.Flush();
+                    ["docId"] = docId,
+                    ["chunkId"] = chunk.Id,
+                    ["heading"] = chunk.Heading ?? "",
+                    ["headingLevel"] = chunk.HeadingLevel,
+                    ["order"] = chunk.Order,
+                    ["content"] = chunk.Content,
+                    ["hash"] = chunk.Hash
                 }
             });
+            
+            if (_verbose)
+            {
+                Console.WriteLine($"  Embedded [{chunk.Id}] {chunk.Heading} ({embedding.Length} dims)");
+            }
+            else
+            {
+                Console.Write($"\r  Progress: {i + 1}/{chunks.Count} chunks embedded");
+                Console.Out.Flush();
+            }
+        }
 
         if (!_verbose) Console.WriteLine(); // New line after progress
-        await _qdrant.UpsertAsync(collectionName, pointResults.ToList());
+        
+        try
+        {
+            await _qdrant.UpsertAsync(collectionName, pointResults);
+        }
+        catch (Exception ex)
+        {
+            var firstVectorLength = pointResults.Count > 0 ? pointResults[0].Vector.Length : 0;
+            throw new InvalidOperationException(
+                $"Failed to upsert vectors to Qdrant collection '{collectionName}'. " +
+                $"First vector has {firstVectorLength} dimensions (expected {VectorSize}). Error: {ex.Message}", ex);
+        }
     }
 
     public async Task<DocumentSummary> SummarizeAsync(
@@ -228,15 +239,12 @@ public class RagSummarizer
         var queryEmbedding = await _ollama.EmbedAsync(query);
         
         // No filter needed since each document has its own collection
-        var results = await _qdrant.SearchAsync(
-            collectionName,
-            queryEmbedding,
-            limit: (ulong)topK);
+        var results = await _qdrant.SearchAsync(collectionName, queryEmbedding, topK);
 
         return results.Select(r => (
-            r.Payload["chunkId"].StringValue,
-            r.Payload["heading"].StringValue,
-            r.Payload["content"].StringValue
+            r.Payload.GetValueOrDefault("chunkId", ""),
+            r.Payload.GetValueOrDefault("heading", ""),
+            r.Payload.GetValueOrDefault("content", "")
         )).ToList();
     }
 
@@ -330,11 +338,7 @@ public class RagSummarizer
         var collections = await _qdrant.ListCollectionsAsync();
         if (!collections.Any(c => c == collectionName))
         {
-            await _qdrant.CreateCollectionAsync(collectionName, new VectorParams
-            {
-                Size = VectorSize,
-                Distance = Distance.Cosine
-            });
+            await _qdrant.CreateCollectionAsync(collectionName, VectorSize);
             if (_verbose) Console.WriteLine($"[Index] Created collection {collectionName}");
         }
     }

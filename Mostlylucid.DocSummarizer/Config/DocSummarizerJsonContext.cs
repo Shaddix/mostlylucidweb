@@ -47,9 +47,18 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(ListModelsResponse))]
 [JsonSerializable(typeof(Model))]
 [JsonSerializable(typeof(RequestOptions))]
+[JsonSerializable(typeof(OllamaSharp.Models.Chat.ChatRequest))]
+[JsonSerializable(typeof(OllamaSharp.Models.Chat.ChatResponseStream))]
+[JsonSerializable(typeof(OllamaSharp.Models.Chat.ChatDoneResponseStream))]
+[JsonSerializable(typeof(OllamaSharp.Models.Chat.Message))]
+[JsonSerializable(typeof(List<OllamaSharp.Models.Chat.Message>))]
 [JsonSerializable(typeof(List<Model>))]
 [JsonSerializable(typeof(List<double>))]
 [JsonSerializable(typeof(List<List<double>>))]
+[JsonSerializable(typeof(List<string>))]
+[JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(double[]))]
+[JsonSerializable(typeof(float[]))]
 public partial class DocSummarizerJsonContext : JsonSerializerContext
 {
 }

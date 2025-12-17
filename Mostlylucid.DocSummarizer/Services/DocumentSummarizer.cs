@@ -8,13 +8,13 @@ public class DocumentSummarizer
 {
     private readonly DoclingClient _docling;
     private readonly OllamaService _ollama;
-    private readonly MapReduceSummarizer _mapReduce;
     private readonly RagSummarizer _rag;
     private readonly ProgressService _progress;
     private readonly ProcessingConfig _processingConfig;
     private readonly bool _verbose;
     private readonly int _maxLlmParallelism;
     private int? _cachedContextWindow;
+    private MapReduceSummarizer? _mapReduce;
 
     public DocumentSummarizer(
         string ollamaModel = "ministral-3:3b",
@@ -35,8 +35,36 @@ public class DocumentSummarizer
             : MapReduceSummarizer.DefaultMaxParallelism;
         
         _ollama = new OllamaService(ollamaModel);
-        _mapReduce = new MapReduceSummarizer(_ollama, verbose, _maxLlmParallelism);
         _rag = new RagSummarizer(_ollama, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig);
+    }
+    
+    /// <summary>
+    /// Get or create the MapReduce summarizer with context-window-aware settings
+    /// </summary>
+    private async Task<MapReduceSummarizer> GetMapReduceSummarizerAsync()
+    {
+        if (_mapReduce == null)
+        {
+            var contextWindow = await GetContextWindowAsync();
+            _mapReduce = new MapReduceSummarizer(_ollama, _verbose, _maxLlmParallelism, contextWindow);
+        }
+        return _mapReduce;
+    }
+    
+    /// <summary>
+    /// Get the model's context window (cached)
+    /// </summary>
+    private async Task<int> GetContextWindowAsync()
+    {
+        if (_cachedContextWindow == null)
+        {
+            _cachedContextWindow = await _ollama.GetContextWindowAsync();
+            if (_verbose)
+            {
+                Console.WriteLine($"Model context window: {_cachedContextWindow:N0} tokens");
+            }
+        }
+        return _cachedContextWindow.Value;
     }
 
     public async Task<DocumentSummary> SummarizeAsync(
@@ -96,7 +124,7 @@ public class DocumentSummarizer
 
         return mode switch
         {
-            SummarizationMode.MapReduce => await _mapReduce.SummarizeAsync(docId, chunks),
+            SummarizationMode.MapReduce => await (await GetMapReduceSummarizerAsync()).SummarizeAsync(docId, chunks),
             SummarizationMode.Rag => await _rag.SummarizeAsync(docId, chunks, focus),
             SummarizationMode.Iterative => await SummarizeIterativeAsync(docId, chunks),
             _ => throw new ArgumentException($"Unknown mode: {mode}")

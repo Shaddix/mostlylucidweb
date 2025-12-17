@@ -1,5 +1,7 @@
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using OllamaSharp;
 using OllamaSharp.Models;
 using Mostlylucid.DocSummarizer.Config;
@@ -9,6 +11,8 @@ namespace Mostlylucid.DocSummarizer.Services;
 public class OllamaService
 {
     private readonly OllamaApiClient _client;
+    private readonly HttpClient _httpClient;
+    private readonly string _baseUrl;
     private readonly string _model;
     private readonly string _embedModel;
     private readonly TimeSpan _timeout;
@@ -20,11 +24,19 @@ public class OllamaService
 
     public OllamaService(
         string model = "ministral-3:3b",
-        string embedModel = "nomic-embed-text",
+        string embedModel = "mxbai-embed-large",
         string baseUrl = "http://localhost:11434",
         TimeSpan? timeout = null)
     {
         _timeout = timeout ?? DefaultTimeout;
+        _baseUrl = baseUrl.TrimEnd('/');
+        
+        // Create HttpClient for direct API calls (embeddings)
+        _httpClient = new HttpClient
+        {
+            BaseAddress = new Uri(baseUrl),
+            Timeout = _timeout + TimeSpan.FromMinutes(1)
+        };
         
         // Configure OllamaApiClient with custom JsonSerializerContext for AOT support
         var config = new OllamaApiClient.Configuration
@@ -71,16 +83,99 @@ public class OllamaService
         return sb.ToString().Trim();
     }
 
-    public async Task<float[]> EmbedAsync(string text)
+    public async Task<float[]> EmbedAsync(string text, int maxRetries = 3)
     {
-        var request = new EmbedRequest
-        {
-            Model = _embedModel,
-            Input = [text]
-        };
+        // Clean and normalize text for embedding
+        var cleanText = NormalizeTextForEmbedding(text);
         
-        var response = await _client.EmbedAsync(request);
-        return response.Embeddings.First().Select(d => (float)d).ToArray();
+        // Use direct HTTP call with explicit JSON to avoid OllamaSharp AOT serialization issues
+        var json = $$"""{"model":"{{_embedModel}}","prompt":"{{EscapeJsonString(cleanText)}}"}""";
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        
+        Exception? lastException = null;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync("/api/embeddings", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException(
+                        $"Ollama embedding request failed with status {response.StatusCode}: {errorBody}. " +
+                        $"Request was: {json[..Math.Min(200, json.Length)]}...");
+                }
+                
+                var responseJson = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(responseJson);
+                var embedding = doc.RootElement.GetProperty("embedding");
+                
+                var result = new float[embedding.GetArrayLength()];
+                var i = 0;
+                foreach (var val in embedding.EnumerateArray())
+                {
+                    result[i++] = (float)val.GetDouble();
+                }
+                return result;
+            }
+            catch (Exception ex) when (attempt < maxRetries)
+            {
+                lastException = ex;
+                // Wait before retry, increasing delay each time
+                await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
+                // Recreate content for retry
+                content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+        }
+        
+        throw lastException ?? new InvalidOperationException("Embedding failed after retries");
+    }
+    
+    /// <summary>
+    /// Normalize text for embedding - remove problematic characters
+    /// </summary>
+    private static string NormalizeTextForEmbedding(string text)
+    {
+        // Normalize line endings to \n
+        var normalized = text.Replace("\r\n", "\n").Replace("\r", "\n");
+        
+        // Remove null characters and other control characters (except newline/tab)
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            if (c == '\n' || c == '\t' || !char.IsControl(c))
+            {
+                sb.Append(c);
+            }
+        }
+        
+        return sb.ToString();
+    }
+    
+    private static string EscapeJsonString(string s)
+    {
+        var sb = new StringBuilder(s.Length + 10);
+        foreach (var c in s)
+        {
+            switch (c)
+            {
+                case '\\': sb.Append("\\\\"); break;
+                case '"': sb.Append("\\\""); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                case '\b': sb.Append("\\b"); break;
+                case '\f': sb.Append("\\f"); break;
+                default:
+                    if (c < 32)
+                        sb.Append($"\\u{(int)c:x4}");
+                    else
+                        sb.Append(c);
+                    break;
+            }
+        }
+        return sb.ToString();
     }
 
     public async Task<bool> IsAvailableAsync()

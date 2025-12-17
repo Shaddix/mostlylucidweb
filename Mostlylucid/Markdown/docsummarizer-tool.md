@@ -9,7 +9,7 @@
 
 A local-first document summarization tool that uses LLMs (via Ollama), vector search (Qdrant), and document conversion (Docling) to create intelligent summaries of DOCX, PDF, and Markdown files.
 
-> **Note**: This is not a fast tool - even on a powerful machine (RTX A4000 + Ryzen 9950X), summarizing a moderately sized document takes several minutes. Local LLM inference is inherently slower than cloud APIs, but you get privacy, no API costs, and offline operation in exchange.
+> **Note**: This is not a fast tool - even on powerful hardware (RTX A4000 + Ryzen 9950X), summarizing takes several minutes. You trade speed for privacy, zero API costs, and offline operation. The smaller context windows of local models (8K-32K vs 128K+ for cloud) actually help here - they force better chunking and maintain coherence within each chunk.
 
 For the architecture and approach behind this tool, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
 
@@ -81,21 +81,6 @@ Only needed for `--mode Rag`. The default MapReduce mode doesn't require Qdrant.
 
 ```bash
 docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
-```
-
-### Quick Start (Markdown Only)
-
-For Markdown files, you only need Ollama:
-
-```bash
-# Minimal setup
-ollama pull ministral-3:3b && ollama serve
-
-# Summarize README.md in current directory (auto-saves to readme.summary.md)
-docsummarizer
-
-# Summarize a specific file
-docsummarizer -f mydoc.md
 ```
 
 ### Verify Dependencies
@@ -224,8 +209,23 @@ docsummarizer -f document.pdf -m MapReduce -v
 3. Reduces summaries into executive summary with citations
 4. Validates all citations reference real chunks
 
-**Pros**: Fast, complete coverage, parallel processing
-**Cons**: May miss cross-section connections
+**Hierarchical Reduction for Long Documents**:
+
+For very long documents where the combined chunk summaries exceed the model's context window, MapReduce automatically uses hierarchical reduction:
+
+1. **Batching**: Groups summaries into batches that fit in context
+2. **Intermediate reduction**: Reduces each batch to a condensed summary
+3. **Final reduction**: Merges intermediate summaries into the final output
+4. **Recursive**: If intermediates are still too large, adds more levels
+
+```
+100 chunks → 100 summaries → 5 batches → 5 intermediate summaries → final
+```
+
+This preserves full document coverage regardless of length - every chunk contributes to the final summary. The tool estimates tokens (~4 chars/token) and targets 60% context window utilization per reduction pass.
+
+**Pros**: Fast, complete coverage, parallel processing, handles any document length
+**Cons**: May miss cross-section connections, slower for very long documents
 
 ### RAG (Best for Focused Queries)
 
@@ -241,8 +241,20 @@ docsummarizer -f document.pdf -m Rag --focus "pricing and payment terms" -v
 3. Retrieves relevant chunks per topic using semantic search
 4. Synthesizes focused summary with citations
 
-**Pros**: Topic-focused, semantic understanding, reuses index
-**Cons**: May miss some content, slower initial indexing
+**When to use RAG over MapReduce**:
+
+| Scenario | Best Mode |
+|----------|-----------|
+| "Summarize this whole document" | MapReduce |
+| "What does this say about security?" | RAG |
+| 500-page manual, need everything | MapReduce (hierarchical) |
+| 500-page manual, need specific section | RAG |
+| Need fast results, don't have Qdrant | MapReduce |
+
+RAG is **not** about handling long documents - MapReduce handles that with hierarchical reduction. RAG is about **relevance filtering**: when you want to ignore 90% of a document and focus on what matters to your specific question.
+
+**Pros**: Topic-focused, semantic understanding, reuses index, faster for focused queries
+**Cons**: May miss content outside focus area, requires Qdrant, slower initial indexing
 
 ### Iterative
 
@@ -312,50 +324,14 @@ Example `docsummarizer.json`:
 }
 ```
 
-### LLM Parallelism
-
-For large documents with many chunks, the tool limits concurrent LLM requests to avoid overwhelming Ollama:
-
-```json
-{
-  "processing": {
-    "maxLlmParallelism": 8
-  }
-}
-```
-
-Ollama processes one request at a time per model, so high values just queue requests. The default of 8 provides a good balance between throughput and memory usage.
-
-### Chunking Configuration
-
-The chunker intelligently combines small sections to create optimal chunk sizes based on the model's context window:
+### Processing Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `maxHeadingLevel` | 2 | Split on H1 and H2 only. Set to 3 for finer granularity. |
-| `targetChunkTokens` | 0 (auto) | Target chunk size. 0 = auto-calculate from model context window (~25% of context). |
-| `minChunkTokens` | 0 (auto) | Minimum size before merging. 0 = 1/8 of target. |
-
-When set to 0, the tool queries the model's context window and calculates optimal chunk sizes. For `ministral-3:3b` (128K context), this results in ~16000 token chunks.
-
-## Progress Feedback
-
-With verbose mode (`-v`), you get a live progress table:
-
-```
-Summarizing: contract.pdf
-Mode: MapReduce
-Model: ministral-3:3b
-
-Map Phase: Summarizing 12 chunks (8 parallel)...
-+-------+-----------------------------------------+---------------+
-| Chunk | Section                                 |    Status     |
-+-------+-----------------------------------------+---------------+
-|   0   | 1 The Science of Deduction              |     Done      |
-|   1   | 2 The Statement of the Case             | Processing... |
-|   2   | 3 In Quest of a Solution                |    Pending    |
-...
-```
+| `maxLlmParallelism` | 8 | Concurrent LLM requests (Ollama queues, so higher values just queue) |
+| `maxHeadingLevel` | 2 | Split on H1/H2 only. Set to 3 for finer granularity |
+| `targetChunkTokens` | 0 (auto) | Target chunk size. 0 = auto-calculate (~25% of context window) |
+| `minChunkTokens` | 0 (auto) | Minimum before merging. 0 = 1/8 of target |
 
 ## Output Format
 
@@ -386,33 +362,18 @@ Map Phase: Summarizing 12 chunks (8 parallel)...
 - Citation rate: 1.20
 ```
 
-### Understanding the Trace
-
-- **Coverage**: Percentage of document sections included in summary
-- **Citation rate**: Average citations per bullet point (higher = more traceable)
-- **Chunks processed**: In RAG mode, may be less than total chunks
+**Trace metrics**: Coverage (% sections included), Citation rate (citations/bullet), Chunks processed (RAG may skip some).
 
 ## Model Recommendations
 
 | Model | Size | Speed | Quality | Use Case |
 |-------|------|-------|---------|----------|
-| `gemma3:1b` | 815MB | Very Fast | Poor | Testing only - not recommended |
-| `ministral-3:3b` | 2.9GB | Fast | Very Good | **Default - best balance** |
+| `gemma3:1b` | 815MB | Very Fast | Poor | Testing only |
+| `ministral-3:3b` | 2.9GB | Fast | Very Good | **Default** |
 | `llama3.2:3b` | 2GB | Fast | Good | General purpose |
-| `qwen2.5:3b` | 1.9GB | Fast | Good | Multilingual documents |
 | `llama3.1:8b` | 4.7GB | Medium | Excellent | High-quality summaries |
 
-> **Warning**: Models under 3B parameters produce poor quality summaries. The output often contains repetitive bullet points that echo the prompt instructions rather than summarizing the document. Always use `ministral-3:3b` or larger for real work.
-
-### Performance Example
-
-Summarizing "The Sign of the Four" (120KB DOCX, 12 chapters):
-
-| Model | Time | Quality |
-|-------|------|---------|
-| `gemma3:1b` | 21s | Poor (repetitive) |
-| `ministral-3:3b` | 107s | Very Good |
-| `llama3.1:8b` | ~180s | Excellent |
+> **Warning**: Models under 3B parameters produce poor summaries - often repetitive bullet points echoing the prompt. Use `ministral-3:3b` or larger.
 
 ## Build from Source
 
@@ -468,29 +429,11 @@ Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~24MB)
 
 ### Repetitive or Low-Quality Summaries
 
-If your summaries contain repetitive bullet points, nonsensical content, or miss key information:
+**Symptoms**: Bullet points echo the prompt ("Return only bullet points", "The rule is...") instead of summarizing content.
 
-**Symptoms:**
-```
-- **Rule:** Return only bullet points.
-- **Section:** Return bullets only.
-- **Number:** 1. The rule is to provide bullet points.
-```
+**Cause**: Model too small (<3B parameters).
 
-**Cause**: Model is too small. Models under 3B parameters struggle with summarization instructions.
-
-**Fix**: Use `ministral-3:3b` (default) or larger:
-```bash
-docsummarizer -f doc.md --model ministral-3:3b   # Recommended
-docsummarizer -f doc.md --model llama3.1:8b      # Best quality
-```
-
-**Model size guidelines:**
-| Size | Examples | Quality |
-|------|----------|---------|
-| < 1B | `gemma3:1b`, `tinyllama` | Poor - testing only |
-| 3B | `ministral-3:3b`, `llama3.2:3b` | Good - recommended |
-| 7-8B | `llama3.1:8b`, `mistral:7b` | Excellent |
+**Fix**: Use `ministral-3:3b` or larger. See [Model Recommendations](#model-recommendations).
 
 ### Summary Ignores Document Content
 
@@ -509,12 +452,10 @@ If summaries lack `[chunk-N]` citations:
 
 ## Performance Tips
 
-1. **Use MapReduce for speed**: Processes chunks in parallel
-2. **Use `ministral-3:3b` as default**: Best balance of speed and quality
-3. **Use `llama3.1:8b` for important docs**: Higher quality, slower
-4. **Native AOT for production**: Instant startup, smaller footprint
-5. **Limit chunk size**: Documents with very large sections may need chunking adjustments
-6. **Adjust parallelism**: Lower `maxLlmParallelism` if experiencing timeouts or memory issues
+- **MapReduce** for speed (parallel chunks)
+- **`ministral-3:3b`** for balance, **`llama3.1:8b`** for quality
+- **Native AOT** for production (instant startup)
+- Lower **`maxLlmParallelism`** if experiencing timeouts
 
 ## Resources
 

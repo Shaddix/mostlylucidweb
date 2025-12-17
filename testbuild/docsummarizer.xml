@@ -1,0 +1,899 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>docsummarizer</name>
+    </assembly>
+    <members>
+        <member name="T:Mostlylucid.DocSummarizer.Config.ConfigurationLoader">
+            <summary>
+            Loads configuration from files with sensible defaults
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.ConfigurationLoader.Load(System.String)">
+            <summary>
+            Load configuration from file or use defaults
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.ConfigurationLoader.Save(Mostlylucid.DocSummarizer.Config.DocSummarizerConfig,System.String)">
+            <summary>
+            Save configuration to file
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.ConfigurationLoader.CreateDefault(System.String)">
+            <summary>
+            Create a default configuration file
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig">
+            <summary>
+            Configuration for the document summarizer
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Ollama">
+            <summary>
+            Ollama configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Docling">
+            <summary>
+            Docling configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Qdrant">
+            <summary>
+            Qdrant configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Processing">
+            <summary>
+            Processing configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Output">
+            <summary>
+            Output configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerConfig.Batch">
+            <summary>
+            Batch processing configuration
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.OllamaConfig">
+            <summary>
+            Ollama service configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OllamaConfig.BaseUrl">
+            <summary>
+            Base URL for Ollama service
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OllamaConfig.Model">
+            <summary>
+            Model to use for generation. Default is ministral-3:3b for good quality.
+            Models under 3B parameters (e.g., gemma3:1b) produce poor quality summaries.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OllamaConfig.EmbedModel">
+            <summary>
+            Model to use for embeddings
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OllamaConfig.Temperature">
+            <summary>
+            Temperature for generation
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OllamaConfig.TimeoutSeconds">
+            <summary>
+            Request timeout in seconds
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.DoclingConfig">
+            <summary>
+            Docling service configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.BaseUrl">
+            <summary>
+            Base URL for Docling service
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.TimeoutSeconds">
+            <summary>
+            Request timeout in seconds
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.PdfBackend">
+            <summary>
+            PDF backend to use. Options: pypdfium2, dlparse_v1, dlparse_v2, dlparse_v4
+            pypdfium2 is more compatible with various PDFs but may be slower.
+            dlparse_v4 is faster but may fail on some PDFs with non-standard page dimensions.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.PagesPerChunk">
+            <summary>
+            Number of pages per chunk for split processing of large PDFs
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.MaxConcurrentChunks">
+            <summary>
+            Maximum concurrent chunks when split processing PDFs
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DoclingConfig.EnableSplitProcessing">
+            <summary>
+            Enable split processing for large PDFs (better progress feedback)
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.QdrantConfig">
+            <summary>
+            Qdrant service configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.QdrantConfig.Host">
+            <summary>
+            Qdrant host
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.QdrantConfig.Port">
+            <summary>
+            Qdrant port
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.QdrantConfig.CollectionName">
+            <summary>
+            Collection name for documents
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.QdrantConfig.VectorSize">
+            <summary>
+            Vector size for embeddings
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.QdrantConfig.DeleteCollectionAfterSummarization">
+            <summary>
+            Delete the Qdrant collection after summarization completes.
+            Default is true to prevent stale data and collection name collisions.
+            Set to false if you want to reuse the index for subsequent queries.
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.ProcessingConfig">
+            <summary>
+            Processing configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.MaxHeadingLevel">
+            <summary>
+            Maximum heading level to use for chunking (1-6).
+            Default is 2 (split on H1 and H2 only). Lower values = fewer, larger chunks.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.TargetChunkTokens">
+            <summary>
+            Target chunk size in tokens. Default 0 means auto-calculate based on model context window.
+            Small sections will be merged until they approach this size.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.MinChunkTokens">
+            <summary>
+            Minimum chunk size in tokens before merging with adjacent sections.
+            Default 0 means auto-calculate (1/8 of target).
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.RagTopK">
+            <summary>
+            Number of chunks to retrieve in RAG mode
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.MaxLlmParallelism">
+            <summary>
+            Maximum parallel LLM requests. Ollama processes one request at a time per model,
+            so high values just queue requests. 8 is a good balance for throughput vs memory.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.RagMaxTopics">
+            <summary>
+            Number of topics to extract in RAG mode
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.EnableParallel">
+            <summary>
+            Enable parallel processing where possible
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.ProcessingConfig.MaxDegreeOfParallelism">
+            <summary>
+            Maximum degree of parallelism
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.OutputConfig">
+            <summary>
+            Output configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.Format">
+            <summary>
+            Output format: console, text, markdown, json
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.OutputDirectory">
+            <summary>
+            Output directory for file outputs
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.IncludeTrace">
+            <summary>
+            Include trace information in output
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.IncludeTopics">
+            <summary>
+            Include topic summaries in output
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.IncludeOpenQuestions">
+            <summary>
+            Include open questions in output
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.OutputConfig.Verbose">
+            <summary>
+            Verbose output
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.BatchConfig">
+            <summary>
+            Batch processing configuration
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.FileExtensions">
+            <summary>
+            File extensions to process (e.g., ".pdf", ".docx", ".md")
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.Recursive">
+            <summary>
+            Recursive directory processing
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.IncludePatterns">
+            <summary>
+            File name patterns to include (glob patterns)
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.ExcludePatterns">
+            <summary>
+            File name patterns to exclude (glob patterns)
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.ContinueOnError">
+            <summary>
+            Continue on error
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.BatchConfig.CreateIndex">
+            <summary>
+            Create summary index file
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.OutputFormat">
+            <summary>
+            Output format enumeration
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Config.OutputFormat.Console">
+            <summary>
+            Console output with formatting
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Config.OutputFormat.Text">
+            <summary>
+            Plain text file
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Config.OutputFormat.Markdown">
+            <summary>
+            Markdown file
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Config.OutputFormat.Json">
+            <summary>
+            JSON file
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext">
+            <summary>
+            JSON serialization context for AOT compilation
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Boolean">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.NullableBoolean">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Double">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.NullableDouble">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Single">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.NullableSingle">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.SingleArray">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.BatchConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DocSummarizerConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.OllamaConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.OutputConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.OutputFormat">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ProcessingConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.QdrantConfig">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.BatchResult">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.BatchSummary">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ChunkSummary">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DocumentChunk">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DocumentSummary">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.SummarizationMode">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.SummarizationTrace">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.TopicSummary">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ValidationResult">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingDocument">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingResultResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingStatusResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DoclingTaskResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DocSummarizerModelInfo">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Details">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.EmbedRequest">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.EmbedResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.GenerateDoneResponseStream">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.GenerateRequest">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.GenerateResponseStream">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListModelsResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Logprob">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Model">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ModelArray">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ModelInfo">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ProjectorInfo">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.RequestOptions">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ShowModelResponse">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DictionaryStringString">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.IDictionaryStringObject">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.IEnumerableLogprob">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListDouble">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListSingleArray">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListBatchResult">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListTopicSummary">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListModel">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListListDouble">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.ListString">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.DateTime">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.TimeSpan">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Int32">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.NullableInt32">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Int32Array">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Int64">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.NullableInt64">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Int64Array">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Object">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.String">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.StringArray">
+            <summary>
+            Defines the source generated JSON serialization contract metadata for a given type.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.Default">
+            <summary>
+            The default <see cref="T:System.Text.Json.Serialization.JsonSerializerContext"/> associated with a default <see cref="T:System.Text.Json.JsonSerializerOptions"/> instance.
+            </summary>
+        </member>
+        <member name="P:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.GeneratedSerializerOptions">
+            <summary>
+            The source-generated options associated with this context.
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.#ctor">
+            <inheritdoc/>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.#ctor(System.Text.Json.JsonSerializerOptions)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Config.DocSummarizerJsonContext.GetTypeInfo(System.Type)">
+            <inheritdoc/>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Services.BatchProcessor">
+            <summary>
+            Handles batch processing of multiple documents
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.BatchProcessor.ProcessDirectoryAsync(System.String,Mostlylucid.DocSummarizer.Models.SummarizationMode,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Process all documents in a directory
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.BatchProcessor.ProcessFileAsync(System.String,Mostlylucid.DocSummarizer.Models.SummarizationMode,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Process a single file with error handling
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.BatchProcessor.FindMatchingFiles(System.String)">
+            <summary>
+            Find files matching the configured patterns
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.DoclingClient.DefaultTimeout">
+            <summary>
+            Default timeout for document conversion (10 minutes for large PDFs)
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DoclingClient.GetPdfPageCount(System.String)">
+            <summary>
+            Get the number of pages in a PDF using PdfPig
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DoclingClient.ConvertPdfWithSplitProcessingAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Convert PDF using split processing for better parallelism and progress feedback
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DoclingClient.ConvertDocxWithSplitProcessingAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Convert DOCX using split processing by chapters for large files
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DoclingClient.GetDocxChapters(System.String)">
+            <summary>
+            Extract chapter boundaries from a DOCX file based on Heading1/Heading2 styles
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DoclingClient.CreateDocxFromChapter(System.String,Mostlylucid.DocSummarizer.Services.DoclingClient.DocxChapter,System.String)">
+            <summary>
+            Create a new DOCX file containing only the specified chapter
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DocumentChunker.#ctor(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Creates a new document chunker.
+            </summary>
+            <param name="maxHeadingLevel">Maximum heading level to split on (1-6). Default is 2 (H1 and H2 only).</param>
+            <param name="targetChunkTokens">Target chunk size in tokens. Default is 4000 (~16KB). 
+            Chunks smaller than this will be merged with adjacent sections.</param>
+            <param name="minChunkTokens">Minimum chunk size before merging. Default is 500 (~2KB).</param>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DocumentSummarizer.GetMapReduceSummarizerAsync">
+            <summary>
+            Get or create the MapReduce summarizer with context-window-aware settings
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DocumentSummarizer.GetContextWindowAsync">
+            <summary>
+            Get the model's context window (cached)
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.DocumentSummarizer.CreateChunkerAsync">
+            <summary>
+            Create a chunker with context-window-aware sizing
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.DefaultMaxParallelism">
+            <summary>
+            Default max parallelism for LLM calls. Ollama processes one request at a time per model,
+            so high values just queue requests. 8 is a good balance for throughput vs memory.
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.ContextWindowTargetPercent">
+            <summary>
+            Target percentage of context window to use for reduce phase input.
+            Leave room for the prompt template and output generation.
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.CharsPerToken">
+            <summary>
+            Approximate characters per token for estimation (conservative estimate)
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.CreateAsync(Mostlylucid.DocSummarizer.Services.OllamaService,System.Boolean,System.Int32)">
+            <summary>
+            Create a MapReduceSummarizer with auto-detected context window from the model
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.HierarchicalReduceAsync(System.Collections.Generic.List{Mostlylucid.DocSummarizer.Models.ChunkSummary},System.Collections.Generic.HashSet{System.String},System.Boolean)">
+            <summary>
+            Hierarchical reduction: batch summaries, reduce each batch, then reduce the batch results
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.CreateBatches(System.Collections.Generic.List{Mostlylucid.DocSummarizer.Models.ChunkSummary},System.Int32)">
+            <summary>
+            Create batches of summaries that fit within the token limit
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.SingleReduceAsync(System.Collections.Generic.List{Mostlylucid.DocSummarizer.Models.ChunkSummary},System.Collections.Generic.HashSet{System.String},System.Boolean,System.Boolean)">
+            <summary>
+            Single-pass reduction of summaries
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.EstimateTokens(System.Collections.Generic.List{Mostlylucid.DocSummarizer.Models.ChunkSummary})">
+            <summary>
+            Estimate token count for a list of summaries
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.MapReduceSummarizer.EstimateTokens(Mostlylucid.DocSummarizer.Models.ChunkSummary)">
+            <summary>
+            Estimate token count for a single summary
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.OllamaService.DefaultTimeout">
+            <summary>
+            Default timeout for LLM generation (10 minutes for large documents/slow models)
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.OllamaService.GetContextWindowAsync">
+            <summary>
+            Get the context window size for the current model
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.OllamaService.GetContextWindowForModel(System.String,System.String)">
+            <summary>
+            Get context window for a model based on name or family
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Services.OutputFormatter">
+            <summary>
+            Formats output in various formats
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.OutputFormatter.Format(Mostlylucid.DocSummarizer.Models.DocumentSummary,Mostlylucid.DocSummarizer.Config.OutputConfig,System.String)">
+            <summary>
+            Format a document summary
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.OutputFormatter.FormatBatch(Mostlylucid.DocSummarizer.Models.BatchSummary,Mostlylucid.DocSummarizer.Config.OutputConfig)">
+            <summary>
+            Format batch summary
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.OutputFormatter.WriteOutputAsync(System.String,Mostlylucid.DocSummarizer.Config.OutputConfig,System.String,System.String)">
+            <summary>
+            Write output to appropriate destination
+            </summary>
+        </member>
+        <member name="T:Mostlylucid.DocSummarizer.Services.ProgressService">
+            <summary>
+            Provides progress feedback using Spectre.Console
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.ProgressService.DefaultLlmTimeout">
+            <summary>
+            Default timeout for LLM operations (10 minutes for large documents)
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.ProgressService.DefaultDoclingTimeout">
+            <summary>
+            Default timeout for document conversion (5 minutes for large PDFs)
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.WithStatusAsync``1(System.String,System.Func{System.Threading.Tasks.Task{``0}})">
+            <summary>
+            Display a status spinner while executing an async operation
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.WithProgressAsync``2(System.String,System.Collections.Generic.IEnumerable{``0},System.Func{``0,Spectre.Console.ProgressTask,System.Threading.Tasks.Task{``1}})">
+            <summary>
+            Display a progress bar for multiple items with live updates
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.WithLiveTableAsync``2(System.String,System.Collections.Generic.IEnumerable{``0},System.Func{``0,System.Int32},System.Func{``0,System.String},System.Func{``0,System.Threading.Tasks.Task{``1}},System.Nullable{System.Int32})">
+            <summary>
+            Display a live table that updates as chunks are processed
+            </summary>
+            <param name="maxParallelism">Maximum parallel operations (defaults to Environment.ProcessorCount)</param>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.Info(System.String)">
+            <summary>
+            Write a styled info message
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.Success(System.String)">
+            <summary>
+            Write a styled success message
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.Warning(System.String)">
+            <summary>
+            Write a styled warning message
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.Error(System.String)">
+            <summary>
+            Write a styled error message
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.Rule(System.String)">
+            <summary>
+            Display a rule/separator
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.DisplaySummary(System.String,System.String)">
+            <summary>
+            Display the final summary in a panel
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.ProgressService.DisplayTrace(System.String,System.Int32,System.Int32,System.Int32,System.TimeSpan,System.Double,System.Double)">
+            <summary>
+            Display trace information in a table
+            </summary>
+        </member>
+        <member name="F:Mostlylucid.DocSummarizer.Services.RagSummarizer.DefaultMaxParallelism">
+            <summary>
+            Default max parallelism for LLM calls. Ollama processes one request at a time per model,
+            so high values just queue requests. 8 is a good balance for throughput vs memory.
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.RagSummarizer.GetCollectionName(System.String)">
+            <summary>
+            Generate a unique collection name for a document to prevent collisions
+            </summary>
+        </member>
+        <member name="M:Mostlylucid.DocSummarizer.Services.RagSummarizer.DeleteCollectionAsync(System.String)">
+            <summary>
+            Delete the collection for a document
+            </summary>
+        </member>
+        <member name="T:Program">
+            <summary>
+            Auto-generated public partial Program class for top-level statement apps.
+            </summary>
+        </member>
+    </members>
+</doc>

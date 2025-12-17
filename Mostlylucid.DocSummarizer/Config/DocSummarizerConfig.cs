@@ -57,7 +57,7 @@ public class OllamaConfig
     /// <summary>
     /// Model to use for embeddings
     /// </summary>
-    public string EmbedModel { get; set; } = "nomic-embed-text";
+    public string EmbedModel { get; set; } = "mxbai-embed-large";
 
     /// <summary>
     /// Temperature for generation
@@ -119,9 +119,14 @@ public class QdrantConfig
     public string Host { get; set; } = "localhost";
 
     /// <summary>
-    /// Qdrant port
+    /// Qdrant REST port (use 6333 for REST API, not 6334 which is gRPC)
     /// </summary>
-    public int Port { get; set; } = 6334;
+    public int Port { get; set; } = 6333;
+
+    /// <summary>
+    /// Qdrant API key (optional, only if your Qdrant instance requires authentication)
+    /// </summary>
+    public string? ApiKey { get; set; }
 
     /// <summary>
     /// Collection name for documents

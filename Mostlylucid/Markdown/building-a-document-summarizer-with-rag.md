@@ -168,8 +168,65 @@ public async Task<List<ChunkSummary>> MapAsync(List<DocumentChunk> chunks)
 
 **Reduce**: Merge into executive summary + section highlights + open questions.
 
-**Pros**: Simple, parallelizable, complete coverage.
-**Cons**: Can miss cross-cutting themes, no query-focused summaries.
+### Hierarchical Reduction for Long Documents
+
+The naive reduce phase concatenates all summaries and sends them to the LLM. This breaks on long documents - 100 chunks × 200 tokens/summary = 20,000 tokens of input, potentially exceeding context.
+
+Solution: **hierarchical reduction**.
+
+```mermaid
+flowchart TB
+    subgraph Map["Map (100 chunks)"]
+        C[Chunks] --> S[100 Summaries]
+    end
+    subgraph Hier["Hierarchical Reduce"]
+        S --> B1[Batch 1: 20 summaries]
+        S --> B2[Batch 2: 20 summaries]
+        S --> B3[Batch 3: 20 summaries]
+        S --> B4[Batch 4: 20 summaries]
+        S --> B5[Batch 5: 20 summaries]
+        B1 --> I1[Intermediate 1]
+        B2 --> I2[Intermediate 2]
+        B3 --> I3[Intermediate 3]
+        B4 --> I4[Intermediate 4]
+        B5 --> I5[Intermediate 5]
+        I1 --> F[Final Summary]
+        I2 --> F
+        I3 --> F
+        I4 --> F
+        I5 --> F
+    end
+```
+
+```csharp
+private async Task<DocumentSummary> HierarchicalReduceAsync(List<ChunkSummary> summaries)
+{
+    var maxTokens = (int)(_contextWindow * 0.6); // Leave room for prompt + output
+    var batches = CreateBatches(summaries, maxTokens);
+    
+    if (batches.Count == 1)
+        return await SingleReduceAsync(summaries); // Fits in context
+    
+    // Reduce each batch to intermediate summary
+    var intermediates = new List<ChunkSummary>();
+    for (var i = 0; i < batches.Count; i++)
+    {
+        var result = await SingleReduceAsync(batches[i], isFinal: false);
+        intermediates.Add(new ChunkSummary($"batch-{i}", result.Summary));
+    }
+    
+    // Recurse if intermediates still too large
+    if (EstimateTokens(intermediates) > maxTokens)
+        return await HierarchicalReduceAsync(intermediates);
+    
+    return await SingleReduceAsync(intermediates, isFinal: true);
+}
+```
+
+**Key points**: Token estimation (~4 chars/token), 60% context utilization, preserve `[chunk-N]` citations through intermediate passes, force-split single batches to avoid infinite recursion.
+
+**Pros**: Simple, parallelizable, complete coverage, **handles any document length**.
+**Cons**: Can miss cross-cutting themes, no query-focused summaries, slower for very long docs.
 
 ## Baseline B: Iterative Refinement
 
@@ -177,14 +234,13 @@ Process chunks sequentially, refining a running summary.
 
 **Warning**: Early mistakes compound. By chunk 20, drift is real. Use only for short documents (<10 chunks) where narrative order matters.
 
-## RAG-Enhanced: When Retrieval Helps
+## RAG-Enhanced: When Relevance Beats Coverage
 
-RAG improves summarization for:
-- **Query-focused summaries**: "Summarize the pricing terms"
-- **Coverage assurance**: Ensure all themes are represented  
-- **Long documents**: 100+ pages where map/reduce loses coherence
+Use RAG when you want to **focus** rather than **cover**: query-focused summaries, multi-query scenarios (index once, query many), semantic matching.
 
-**Key insight**: If the summary is wrong, it's usually because retrieval was wrong - not because the model was "dumb". Debug selection first.
+**RAG is NOT for handling long documents** - that's hierarchical MapReduce. RAG intentionally skips non-matching content.
+
+**Key insight**: Wrong summary usually means wrong retrieval, not "dumb model". Debug selection first.
 
 ### Index the Document
 
@@ -369,12 +425,18 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 
 ## When to Use What
 
+Common misconception: "RAG is for long documents." **No.** RAG is for *focused queries*. MapReduce with hierarchical reduction handles length; RAG intentionally skips non-matching content.
+
 | Scenario | Approach |
 |----------|----------|
-| Short doc (<10 pages) | Map/Reduce |
-| Long doc, need citations | RAG-Enhanced |
-| Query-focused ("summarize risks") | RAG-Enhanced |
-| Generic summary, simple doc | Map/Reduce |
+| "Summarize this document" | Map/Reduce |
+| 500-page manual, need everything | Map/Reduce (hierarchical) |
+| "What are the security requirements?" | RAG |
+| Compliance audit | Map/Reduce |
+| Re-querying same document | RAG |
+
+**MapReduce**: Every chunk contributes. Nothing missed.
+**RAG**: Only relevant chunks. Faster for focused queries, may miss context.
 
 ## Why This Matters Operationally
 
