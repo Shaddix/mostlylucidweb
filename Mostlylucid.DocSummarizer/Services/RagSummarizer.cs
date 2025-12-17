@@ -80,7 +80,9 @@ public class RagSummarizer
         Console.WriteLine($"[Index] Indexing {chunks.Count} chunks (sequential - Ollama limitation)...");
         Console.Out.Flush();
 
-        var pointResults = new List<QdrantPoint>();
+        // Batch upsert to avoid OOM - each embedding is 4KB (1024 floats)
+        const int batchSize = 10;
+        var batch = new List<QdrantPoint>(batchSize);
         
         for (var i = 0; i < chunks.Count; i++)
         {
@@ -97,7 +99,7 @@ public class RagSummarizer
             
             var pointId = GenerateStableId(docId, chunk.Hash);
 
-            pointResults.Add(new QdrantPoint
+            batch.Add(new QdrantPoint
             {
                 Id = pointId.ToString(),
                 Vector = embedding,
@@ -113,6 +115,13 @@ public class RagSummarizer
                 }
             });
             
+            // Upsert batch when full to free memory
+            if (batch.Count >= batchSize)
+            {
+                await _qdrant.UpsertAsync(collectionName, batch);
+                batch.Clear();
+            }
+            
             if (_verbose)
             {
                 Console.WriteLine($"  Embedded [{chunk.Id}] {chunk.Heading} ({embedding.Length} dims)");
@@ -124,19 +133,14 @@ public class RagSummarizer
             }
         }
 
-        if (!_verbose) Console.WriteLine(); // New line after progress
+        // Upsert remaining batch
+        if (batch.Count > 0)
+        {
+            await _qdrant.UpsertAsync(collectionName, batch);
+            batch.Clear();
+        }
         
-        try
-        {
-            await _qdrant.UpsertAsync(collectionName, pointResults);
-        }
-        catch (Exception ex)
-        {
-            var firstVectorLength = pointResults.Count > 0 ? pointResults[0].Vector.Length : 0;
-            throw new InvalidOperationException(
-                $"Failed to upsert vectors to Qdrant collection '{collectionName}'. " +
-                $"First vector has {firstVectorLength} dimensions (expected {VectorSize}). Error: {ex.Message}", ex);
-        }
+        if (!_verbose) Console.WriteLine(); // New line after progress
     }
 
     public async Task<DocumentSummary> SummarizeAsync(

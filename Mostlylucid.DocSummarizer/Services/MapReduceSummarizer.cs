@@ -97,6 +97,9 @@ public class MapReduceSummarizer
         var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
         var coverage = CalculateCoverage(chunkSummaries, headings);
         var citationRate = CalculateCitationRate(result.ExecutiveSummary);
+        
+        // Clear chunk summaries to free memory
+        chunkSummaries.Clear();
 
         Console.WriteLine($"Completed in {sw.Elapsed.TotalSeconds:F1}s");
         

@@ -167,12 +167,11 @@ public class BatchProcessor
             matcher.AddExclude(pattern);
         }
 
-        // Execute matching - simpler approach that's case-insensitive
+        // Use EnumerateFiles for lazy enumeration - better for large directories
         var searchOption = _config.Recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-        var files = Directory.GetFiles(directoryPath, "*.*", searchOption);
-
+        
         var matchedFiles = new List<string>();
-        foreach (var file in files)
+        foreach (var file in Directory.EnumerateFiles(directoryPath, "*.*", searchOption))
         {
             // Case-insensitive extension check
             if (_config.FileExtensions.Count == 0 || 

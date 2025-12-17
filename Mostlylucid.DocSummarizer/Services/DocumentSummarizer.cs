@@ -197,13 +197,24 @@ public class DocumentSummarizer
             Console.WriteLine($"Created {chunks.Count} chunks");
             Console.WriteLine();
 
-            return mode switch
+            DocumentSummary result;
+            try
             {
-                SummarizationMode.MapReduce => await (await GetMapReduceSummarizerAsync()).SummarizeAsync(docId, chunks),
-                SummarizationMode.Rag => await _rag.SummarizeAsync(docId, chunks, focus),
-                SummarizationMode.Iterative => await SummarizeIterativeAsync(docId, chunks),
-                _ => throw new ArgumentException($"Unknown mode: {mode}")
-            };
+                result = mode switch
+                {
+                    SummarizationMode.MapReduce => await (await GetMapReduceSummarizerAsync()).SummarizeAsync(docId, chunks),
+                    SummarizationMode.Rag => await _rag.SummarizeAsync(docId, chunks, focus),
+                    SummarizationMode.Iterative => await SummarizeIterativeAsync(docId, chunks),
+                    _ => throw new ArgumentException($"Unknown mode: {mode}")
+                };
+            }
+            finally
+            {
+                // Clear chunks to free memory immediately
+                chunks.Clear();
+            }
+            
+            return result;
         }
         finally
         {
