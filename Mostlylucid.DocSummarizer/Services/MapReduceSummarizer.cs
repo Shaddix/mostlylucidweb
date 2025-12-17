@@ -78,23 +78,13 @@ public class MapReduceSummarizer
 
         if (_verbose)
         {
-            _progress.Rule("Map Phase");
+            _progress.WriteDivider("Map Phase");
             _progress.Info(
                 $"Summarizing {chunks.Count} chunks ({parallelDesc} parallel, timeout: {OllamaService.DefaultTimeout.TotalMinutes:F0} min/chunk)");
+        }
 
-            chunkSummaries = await _progress.WithLiveTableAsync(
-                $"Processing {chunks.Count} Chunks",
-                chunks,
-                c => c.Order,
-                c => string.IsNullOrEmpty(c.Heading) ? $"Chunk {c.Order}" : c.Heading,
-                async chunk => await SummarizeChunkAsync(chunk),
-                _maxParallelism);
-        }
-        else
-        {
-            // Use controlled parallelism to avoid resource exhaustion on large documents
-            chunkSummaries = await ProcessChunksWithLimitedParallelismAsync(chunks);
-        }
+        // Use controlled parallelism to avoid resource exhaustion on large documents
+        chunkSummaries = await ProcessChunksWithLimitedParallelismAsync(chunks);
 
         // Reduce phase: merge into final summary
         Console.WriteLine($"Reduce Phase: Merging {chunkSummaries.Count} summaries...");
@@ -102,7 +92,7 @@ public class MapReduceSummarizer
 
         if (_verbose)
         {
-            _progress.Rule("Reduce Phase");
+            _progress.WriteDivider("Reduce Phase");
             _progress.Info($"Merging {chunkSummaries.Count} summaries into final document...");
         }
 

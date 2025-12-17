@@ -69,24 +69,23 @@ public class DoclingClient : IDisposable
         // Check for garbage text (font encoding issues) - only for PDFs
         if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && IsGarbageText(result))
         {
-            Console.WriteLine("Warning: Detected potential font encoding issues in Docling output.");
-            Console.WriteLine("Falling back to PdfPig extraction...");
-            Console.Out.Flush();
+            Console.WriteLine("  Warning: Font encoding issues detected");
+            Console.WriteLine("  Trying PdfPig extraction...");
 
             try
             {
                 var pdfPigResult = ExtractWithPdfPig(filePath);
                 if (!string.IsNullOrWhiteSpace(pdfPigResult) && !IsGarbageText(pdfPigResult))
                 {
-                    Console.WriteLine("PdfPig extraction successful.");
+                    Console.WriteLine("  PdfPig extraction successful");
                     return pdfPigResult;
                 }
 
-                Console.WriteLine("PdfPig extraction also produced problematic text. Using Docling output.");
+                Console.WriteLine("  PdfPig also problematic, using Docling output");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"PdfPig fallback failed: {ex.Message}");
+                Console.WriteLine($"  PdfPig fallback failed: {ex.Message}");
             }
         }
 
@@ -191,20 +190,19 @@ public class DoclingClient : IDisposable
         try
         {
             totalPages = GetPdfPageCount(filePath);
-            Console.WriteLine($"PDF has {totalPages} pages");
-            Console.Out.Flush();
+            Console.WriteLine($"  PDF: {totalPages} pages");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Could not read PDF page count: {ex.Message}");
-            Console.WriteLine("Falling back to standard conversion...");
+            Console.WriteLine($"  Could not read PDF: {ex.Message}");
+            Console.WriteLine("  Falling back to standard conversion...");
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
         // For small PDFs, just convert the whole thing
         if (totalPages <= _config.PagesPerChunk)
         {
-            Console.WriteLine("Small PDF - using standard conversion...");
+            Console.WriteLine("  Small PDF - using standard conversion...");
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
@@ -212,9 +210,7 @@ public class DoclingClient : IDisposable
         var maxConcurrent = _config.MaxConcurrentChunks;
         var numChunks = (int)Math.Ceiling((double)totalPages / pagesPerChunk);
 
-        Console.WriteLine(
-            $"Split processing: {numChunks} chunks ({pagesPerChunk} pages each, max {maxConcurrent} concurrent)");
-        Console.Out.Flush();
+        Console.WriteLine($"  Processing: {numChunks} chunks ({pagesPerChunk} pages each)");
 
         var allChunks = new List<PdfChunkTask>();
         var startTime = DateTime.UtcNow;
@@ -228,27 +224,26 @@ public class DoclingClient : IDisposable
         }
 
         // Process in waves of maxConcurrent
+        var waveNumber = 0;
         for (var waveStart = 0; waveStart < allChunks.Count; waveStart += maxConcurrent)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            waveNumber++;
 
             var waveChunks = allChunks.Skip(waveStart).Take(maxConcurrent).ToList();
+            var waveDesc = string.Join(", ", waveChunks.Select(c => $"p{c.StartPage}-{c.EndPage}"));
+            Console.WriteLine($"  Wave {waveNumber}: {waveDesc}");
 
             // Submit this wave
-            Console.Write($"Wave {waveStart / maxConcurrent + 1}: ");
             foreach (var chunk in waveChunks)
                 try
                 {
                     chunk.TaskId =
                         await StartConversionAsync(filePath, chunk.StartPage, chunk.EndPage, cancellationToken);
-                    Console.Write($"[{chunk.Index}:p{chunk.StartPage}-{chunk.EndPage}]");
-                    Console.Out.Flush();
                 }
                 catch (Exception)
                 {
                     chunk.IsFailed = true;
-                    Console.Write($"[{chunk.Index}:submit-fail]");
-                    Console.Out.Flush();
                 }
 
             // Poll for this wave to complete
@@ -271,32 +266,26 @@ public class DoclingClient : IDisposable
                     {
                         chunk.IsComplete = true;
                         chunk.Result = await GetResultAsync(chunk.TaskId, cancellationToken);
-                        Console.Write($"[{chunk.Index}:ok]");
-                        Console.Out.Flush();
                         pendingChunks.Remove(chunk);
                     }
                     else if (status == "FAILURE" || status == "REVOKED")
                     {
                         chunk.IsFailed = true;
-                        Console.Write($"[{chunk.Index}:fail]");
-                        Console.Out.Flush();
                         pendingChunks.Remove(chunk);
                     }
                 }
-
-                if (pendingChunks.Any())
-                {
-                    Console.Write(".");
-                    Console.Out.Flush();
-                }
             }
 
-            Console.WriteLine();
+            // Report wave results
+            var waveOk = waveChunks.Count(c => c.IsComplete);
+            var waveFailed = waveChunks.Count(c => c.IsFailed);
+            if (waveFailed > 0)
+                Console.WriteLine($"    -> {waveOk} ok, {waveFailed} failed");
         }
 
         var totalElapsed = DateTime.UtcNow - startTime;
         var successCount = allChunks.Count(c => c.IsComplete);
-        Console.WriteLine($"Conversion complete: {successCount}/{numChunks} chunks in {totalElapsed.TotalSeconds:F0}s");
+        Console.WriteLine($"  Converted: {successCount}/{numChunks} chunks in {totalElapsed.TotalSeconds:F0}s");
 
         // Concatenate successful results in order
         var orderedChunks = allChunks
@@ -313,24 +302,23 @@ public class DoclingClient : IDisposable
         // Check for garbage text (font encoding issues)
         if (IsGarbageText(combinedMarkdown))
         {
-            Console.WriteLine("Warning: Detected potential font encoding issues in Docling output.");
-            Console.WriteLine("Falling back to PdfPig extraction...");
-            Console.Out.Flush();
+            Console.WriteLine("  Warning: Font encoding issues detected");
+            Console.WriteLine("  Trying PdfPig extraction...");
 
             try
             {
                 var pdfPigResult = ExtractWithPdfPig(filePath);
                 if (!string.IsNullOrWhiteSpace(pdfPigResult) && !IsGarbageText(pdfPigResult))
                 {
-                    Console.WriteLine("PdfPig extraction successful.");
+                    Console.WriteLine("  PdfPig extraction successful");
                     return pdfPigResult;
                 }
 
-                Console.WriteLine("PdfPig extraction also produced problematic text. Using Docling output.");
+                Console.WriteLine("  PdfPig also problematic, using Docling output");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"PdfPig fallback failed: {ex.Message}");
+                Console.WriteLine($"  PdfPig fallback failed: {ex.Message}");
             }
         }
 
@@ -347,20 +335,19 @@ public class DoclingClient : IDisposable
         try
         {
             chapters = GetDocxChapters(filePath);
-            Console.WriteLine($"DOCX has {chapters.Count} chapters/sections");
-            Console.Out.Flush();
+            Console.WriteLine($"  DOCX: {chapters.Count} chapters/sections");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Could not read DOCX structure: {ex.Message}");
-            Console.WriteLine("Falling back to standard conversion...");
+            Console.WriteLine($"  Could not read DOCX: {ex.Message}");
+            Console.WriteLine("  Falling back to standard conversion...");
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
         // For small DOCX (few chapters), just convert the whole thing
         if (chapters.Count <= 3)
         {
-            Console.WriteLine("Small DOCX - using standard conversion...");
+            Console.WriteLine("  Small DOCX - using standard conversion...");
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
@@ -371,8 +358,7 @@ public class DoclingClient : IDisposable
         try
         {
             var maxConcurrent = _config.MaxConcurrentChunks;
-            Console.WriteLine($"Split processing: {chapters.Count} chapters (max {maxConcurrent} concurrent)");
-            Console.Out.Flush();
+            Console.WriteLine($"  Processing: {chapters.Count} chapters");
 
             var chunkTasks = new List<DocxChunkTask>();
             var startTime = DateTime.UtcNow;
@@ -387,27 +373,26 @@ public class DoclingClient : IDisposable
             }
 
             // Process in waves
+            var waveNumber = 0;
             for (var waveStart = 0; waveStart < chunkTasks.Count; waveStart += maxConcurrent)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                waveNumber++;
 
                 var waveChunks = chunkTasks.Skip(waveStart).Take(maxConcurrent).ToList();
+                var chapterNames = waveChunks.Select(c => 
+                    c.Title.Length > 15 ? c.Title[..15] + "..." : c.Title);
+                Console.WriteLine($"  Wave {waveNumber}: {string.Join(", ", chapterNames)}");
 
                 // Submit this wave
-                Console.Write($"Wave {waveStart / maxConcurrent + 1}: ");
                 foreach (var chunk in waveChunks)
                     try
                     {
                         chunk.TaskId = await StartConversionAsync(chunk.TempPath, null, null, cancellationToken);
-                        var shortTitle = chunk.Title.Length > 20 ? chunk.Title[..20] + "..." : chunk.Title;
-                        Console.Write($"[{chunk.Index}:{shortTitle}]");
-                        Console.Out.Flush();
                     }
                     catch
                     {
                         chunk.IsFailed = true;
-                        Console.Write($"[{chunk.Index}:submit-fail]");
-                        Console.Out.Flush();
                     }
 
                 // Poll for this wave to complete
@@ -431,33 +416,26 @@ public class DoclingClient : IDisposable
                         {
                             chunk.IsComplete = true;
                             chunk.Result = await GetResultAsync(chunk.TaskId, cancellationToken);
-                            Console.Write($"[{chunk.Index}:ok]");
-                            Console.Out.Flush();
                             pendingChunks.Remove(chunk);
                         }
                         else if (status == "FAILURE" || status == "REVOKED")
                         {
                             chunk.IsFailed = true;
-                            Console.Write($"[{chunk.Index}:fail]");
-                            Console.Out.Flush();
                             pendingChunks.Remove(chunk);
                         }
                     }
-
-                    if (pendingChunks.Any())
-                    {
-                        Console.Write(".");
-                        Console.Out.Flush();
-                    }
                 }
 
-                Console.WriteLine();
+                // Report wave results
+                var waveOk = waveChunks.Count(c => c.IsComplete);
+                var waveFailed = waveChunks.Count(c => c.IsFailed);
+                if (waveFailed > 0)
+                    Console.WriteLine($"    -> {waveOk} ok, {waveFailed} failed");
             }
 
             var totalElapsed = DateTime.UtcNow - startTime;
             var successCount = chunkTasks.Count(c => c.IsComplete);
-            Console.WriteLine(
-                $"Conversion complete: {successCount}/{chapters.Count} chapters in {totalElapsed.TotalSeconds:F0}s");
+            Console.WriteLine($"  Converted: {successCount}/{chapters.Count} chapters in {totalElapsed.TotalSeconds:F0}s");
 
             // Concatenate successful results in order
             var orderedChunks = chunkTasks
@@ -622,13 +600,12 @@ public class DoclingClient : IDisposable
         timeoutCts.CancelAfter(_timeout);
 
         var startTime = DateTime.UtcNow;
-        var pollCount = 0;
+        var lastReportTime = DateTime.UtcNow;
         var lastStatus = "";
 
         while (!timeoutCts.Token.IsCancellationRequested)
             try
             {
-                pollCount++;
                 var elapsed = DateTime.UtcNow - startTime;
 
                 // Poll for status
@@ -636,8 +613,6 @@ public class DoclingClient : IDisposable
 
                 if (!statusResponse.IsSuccessStatusCode)
                 {
-                    Console.Write(".");
-                    Console.Out.Flush();
                     await Task.Delay(_pollInterval, timeoutCts.Token);
                     continue;
                 }
@@ -649,33 +624,23 @@ public class DoclingClient : IDisposable
 
                 if (taskStatus == "SUCCESS")
                 {
-                    Console.WriteLine($" done ({elapsed.TotalSeconds:F0}s)");
-                    // Get the result
+                    Console.WriteLine($"  Conversion done ({elapsed.TotalSeconds:F0}s)");
                     return await GetResultAsync(taskId, timeoutCts.Token);
                 }
 
                 if (taskStatus == "FAILURE" || taskStatus == "REVOKED")
                 {
-                    Console.WriteLine(" FAILED");
+                    Console.WriteLine("  Conversion FAILED");
                     throw new Exception($"Docling conversion failed: {status?.TaskStatus}");
                 }
 
-                // Show progress every 5 polls (10 seconds) or on status change
-                if (taskStatus != lastStatus)
+                // Report progress every 10 seconds or on status change
+                var timeSinceReport = DateTime.UtcNow - lastReportTime;
+                if (taskStatus != lastStatus || timeSinceReport.TotalSeconds >= 10)
                 {
                     lastStatus = taskStatus ?? "";
-                    Console.Write($"[{lastStatus}]");
-                    Console.Out.Flush();
-                }
-                else if (pollCount % 5 == 0)
-                {
-                    Console.Write($"({elapsed.TotalSeconds:F0}s)");
-                    Console.Out.Flush();
-                }
-                else
-                {
-                    Console.Write(".");
-                    Console.Out.Flush();
+                    lastReportTime = DateTime.UtcNow;
+                    Console.WriteLine($"  Converting... {lastStatus} ({elapsed.TotalSeconds:F0}s)");
                 }
 
                 // Still processing, wait and poll again
@@ -684,11 +649,11 @@ public class DoclingClient : IDisposable
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested &&
                                                      !cancellationToken.IsCancellationRequested)
             {
-                Console.WriteLine(" TIMEOUT");
+                Console.WriteLine("  Conversion TIMEOUT");
                 throw new TimeoutException($"Document conversion timed out after {_timeout.TotalMinutes:F0} minutes");
             }
 
-        Console.WriteLine(" TIMEOUT");
+        Console.WriteLine("  Conversion TIMEOUT");
         throw new TimeoutException($"Document conversion timed out after {_timeout.TotalMinutes:F0} minutes");
     }
 

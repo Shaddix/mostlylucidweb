@@ -1,6 +1,5 @@
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
-using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
@@ -225,15 +224,15 @@ public class DocumentSummarizer
 
         try
         {
-            if (_verbose)
+        if (_verbose)
             {
-                AnsiConsole.Write(new FigletText("DocSummarizer").Color(Color.Blue));
-                _progress.Rule("Document Processing");
+                PrintBanner();
+                _progress.WriteDivider("Document Processing");
                 _progress.Info($"Document: {docId}");
                 _progress.Info($"Mode: {mode}");
                 _progress.Info($"Timeout: {_ollama.Timeout.TotalMinutes:F0} minutes per LLM operation");
                 if (!string.IsNullOrEmpty(focus)) _progress.Info($"Focus: {focus}");
-                AnsiConsole.WriteLine();
+                Console.WriteLine();
             }
 
             // Check if it's a direct-read format (markdown or plain text)
@@ -504,69 +503,38 @@ public class DocumentSummarizer
 
     private async Task<DocumentSummary> SummarizeIterativeAsync(string docId, List<DocumentChunk> chunks)
     {
-        _progress.Rule("Iterative Summarization");
+        _progress.WriteDivider("Iterative Summarization");
         _progress.Warning("Iterative mode is slower and may lose context on long documents (>10 chunks)");
 
-        // Simple iterative approach - not recommended for long documents
         var ollama = new OllamaService();
         var summary = "";
         var orderedChunks = chunks.OrderBy(c => c.Order).ToList();
 
-        // Use Progress display only if verbose AND not already in an interactive context
-        if (_verbose && !ProgressService.IsInInteractiveContext)
-            await AnsiConsole.Progress()
-                .AutoRefresh(true)
-                .Columns(
-                    new TaskDescriptionColumn(),
-                    new ProgressBarColumn(),
-                    new PercentageColumn(),
-                    new SpinnerColumn())
-                .StartAsync(async ctx =>
-                {
-                    var task = ctx.AddTask("[blue]Processing chunks sequentially[/]", maxValue: orderedChunks.Count);
+        for (var i = 0; i < orderedChunks.Count; i++)
+        {
+            var chunk = orderedChunks[i];
+            var progress = (i + 1) * 100 / orderedChunks.Count;
+            var heading = chunk.Heading.Length > 30 ? chunk.Heading[..27] + "..." : chunk.Heading;
+            
+            if (_verbose)
+                Console.WriteLine($"[{progress}%] Processing: {heading}");
 
-                    foreach (var chunk in orderedChunks)
-                    {
-                        task.Description =
-                            $"[blue]Processing: {(chunk.Heading.Length > 30 ? chunk.Heading[..27] + "..." : chunk.Heading)}[/]";
+            var prompt = summary.Length == 0
+                ? $"Summarize this section:\n\n{chunk.Content}\n\nSummary:"
+                : $"""
+                   Current summary:
+                   {summary}
 
-                        var prompt = summary.Length == 0
-                            ? $"Summarize this section:\n\n{chunk.Content}\n\nSummary:"
-                            : $"""
-                               Current summary:
-                               {summary}
+                   New section: {chunk.Heading}
+                   {chunk.Content}
 
-                               New section: {chunk.Heading}
-                               {chunk.Content}
+                   Update the summary to incorporate this section. Be concise.
 
-                               Update the summary to incorporate this section. Be concise.
+                   Updated summary:
+                   """;
 
-                               Updated summary:
-                               """;
-
-                        summary = await ollama.GenerateAsync(prompt);
-                        task.Increment(1);
-                    }
-                });
-        else
-            foreach (var chunk in orderedChunks)
-            {
-                var prompt = summary.Length == 0
-                    ? $"Summarize this section:\n\n{chunk.Content}\n\nSummary:"
-                    : $"""
-                       Current summary:
-                       {summary}
-
-                       New section: {chunk.Heading}
-                       {chunk.Content}
-
-                       Update the summary to incorporate this section. Be concise.
-
-                       Updated summary:
-                       """;
-
-                summary = await ollama.GenerateAsync(prompt);
-            }
+            summary = await ollama.GenerateAsync(prompt);
+        }
 
         _progress.Success("Iterative summarization complete");
 
@@ -613,5 +581,17 @@ public class DocumentSummarizer
         if (_verbose) Console.WriteLine($"Chunk sizing: target={targetChunkTokens}, min={minChunkTokens} tokens");
 
         return new DocumentChunker(_processingConfig.MaxHeadingLevel, targetChunkTokens, minChunkTokens);
+    }
+
+    /// <summary>
+    /// Print simple banner
+    /// </summary>
+    private static void PrintBanner()
+    {
+        Console.WriteLine();
+        Console.WriteLine("===========================================");
+        Console.WriteLine("           D O C S U M M A R I Z E R       ");
+        Console.WriteLine("===========================================");
+        Console.WriteLine();
     }
 }
