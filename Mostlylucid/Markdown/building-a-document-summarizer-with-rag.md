@@ -20,8 +20,40 @@ The failure mode isn't "bad model". It's **context collapse + structure loss**.
 Before running the summarizer, you need these local services:
 
 ```bash
+# Install Ollama and pull models
+ollama pull ministral-3:3b       # Default (128K context, good quality)
+ollama pull gemma3:1b            # Fast option for testing
+ollama pull nomic-embed-text     # For embeddings (RAG mode)
+
+# Start Docling (document conversion)
+docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
+
+# Start Qdrant (vector database, RAG mode only)
+docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+## Quick Example
+
+```bash
+# Summarize a document with progress feedback
+dotnet run -- -f document.pdf -v
+
+# Output shows parallel processing
+Map Phase: Summarizing 12 chunks (8 parallel)...
+[STARTED] done (2s)
+```
+
+Verify services are running:
+- Ollama: `ollama list` shows your models
+- Docling: `curl http://localhost:5001/health` returns OK
+- Qdrant: `curl http://localhost:6333/` returns version info
+
+Or use the built-in check command:
+
+```bash
 # 1. Install Ollama and pull models
-ollama pull llama3.2:3b          # For summarization
+ollama pull ministral-3:3b       # Default (128K context, good quality)
+ollama pull gemma3:1b            # Fast option for testing
 ollama pull nomic-embed-text     # For embeddings (RAG mode)
 
 # 2. Start Docling (document conversion)
@@ -32,9 +64,15 @@ docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
 ```
 
 Verify services are running:
-- Ollama: `ollama list` shows both models
+- Ollama: `ollama list` shows your models
 - Docling: `curl http://localhost:5001/health` returns OK
 - Qdrant: `curl http://localhost:6333/` returns version info
+
+Or use the built-in check command:
+
+```bash
+dotnet run -- check --verbose
+```
 
 ## The Expensive Mistake
 
@@ -44,7 +82,7 @@ var text = ExtractTextFromDocument("contract.docx");
 var summary = await llm.GenerateAsync($"Summarize this document:\n\n{text}");
 ```
 
-Commercial tools like [Syncfusion's AI Document Summarizer](https://www.syncfusion.com/blogs/post/ai-word-document-summarizer-csharp) use this pattern. It works for demos. It fails at scale.
+Many commercial tools use this pattern ([Syncfusion's AI Document Summarizer](https://www.syncfusion.com/blogs/post/ai-word-document-summarizer-csharp) being a representative example). It works for demos. It fails at scale.
 
 | Problem | Consequence |
 |---------|-------------|
@@ -311,6 +349,33 @@ public record SummarizationTrace(
 
 If coverage is low, retrieval is failing. If citations are low, prompts need tightening.
 
+## New: LLM Parallelism Control
+
+For large documents with many chunks, the tool limits concurrent LLM requests to avoid overwhelming Ollama:
+
+```json
+{
+  "processing": {
+    "maxLlmParallelism": 8  // Default: 8 concurrent requests
+  }
+}
+```
+
+Ollama processes one request at a time per model, so high values just queue requests. The default of 8 provides a good balance between throughput and memory usage.
+
+## Fixed: DOCX Conversion Issue
+
+Previously, DOCX files could get stuck in an infinite polling loop due to case-sensitive status comparison. Now fixed to handle lowercase status responses from Docling.
+
+## Performance Tips
+
+1. **Use MapReduce for speed**: Processes chunks in parallel
+2. **Use gemma3:1b for quick tests**: Very fast with reasonable quality
+3. **Cache RAG indices**: Qdrant stores embeddings, re-running is faster
+4. **Native AOT for production**: Instant startup, smaller footprint
+5. **Limit chunk size**: Documents with very large sections may need chunking adjustments
+6. **Adjust parallelism**: Lower `maxLlmParallelism` if experiencing timeouts or memory issues
+
 ## Worked Example
 
 Input: `payment-architecture.docx` (25 pages)
@@ -348,26 +413,112 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 
 ## The CLI Tool
 
-The complete implementation is available at [Mostlylucid.DocSummarizer](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer):
+The complete implementation is available at [Mostlylucid.DocSummarizer](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer) with pre-built native executables in [GitHub Releases](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer).
+
+### Quick Start
+
+```bash
+# Download pre-built executable (Windows x64)
+curl -L -o docsummarizer.exe https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer/docsummarizer-win-x64.zip
+unzip docsummarizer-win-x64.zip
+
+# Summarize a document with progress feedback
+./docsummarizer.exe -f document.pdf -v
+```
+
+### Features
+
+- **Native AOT compilation** - Compiles to ~18MB native executable for instant startup
+- **Rich progress feedback** - Live terminal UI with [Spectre.Console](https://spectreconsole.net/)
+- **Configurable timeouts** - 10-minute default for large documents/slow models
+- **LLM parallelism control** - Limit concurrent requests to avoid Ollama overload
+- **Batch processing** - Process entire directories
+- **Multiple output formats** - Console, Text, Markdown, JSON
+- **Configuration files** - JSON-based with auto-discovery
+- **Fixed DOCX conversion** - Resolved stuck polling issue with case-sensitive status handling
+
+### Features
+
+- **Native AOT compilation** - Compiles to ~18MB native executable for instant startup
+- **Rich progress feedback** - Live terminal UI with [Spectre.Console](https://spectreconsole.net/)
+- **Configurable timeouts** - 10-minute default for large documents/slow models
+- **LLM parallelism control** - Limit concurrent requests to avoid Ollama overload
+- **Batch processing** - Process entire directories
+- **Multiple output formats** - Console, Text, Markdown, JSON
+- **Configuration files** - JSON-based with auto-discovery
+- **Fixed DOCX conversion** - Resolved stuck polling issue with case-sensitive status handling
+
+### Basic Usage
 
 ```bash
 cd Mostlylucid.DocSummarizer
 
 # Check dependencies are running
-dotnet run -- check
+dotnet run -- check --verbose
 
-# Map/reduce summary
-dotnet run -- -f contract.docx --mode mapreduce
+# Map/reduce summary (default)
+dotnet run -- -f contract.docx -v
+
+# Use a fast small model
+dotnet run -- -f contract.docx --model gemma3:1b -v
 
 # RAG with focus query  
-dotnet run -- -f contract.docx --mode rag --focus "pricing terms"
+dotnet run -- -f contract.docx --mode Rag --focus "pricing terms" -v
 
 # Query indexed document
 dotnet run -- -f contract.docx --query "what are the termination penalties?"
 
-# Verbose output for debugging
-dotnet run -- -f contract.docx --mode rag --verbose
+# Batch process a directory
+dotnet run -- -d ./documents --mode MapReduce -v
+
+# Adjust LLM parallelism (default: 8)
+dotnet run -- -f contract.docx --config '{"processing":{"maxLlmParallelism":4}}'
 ```
+
+### Progress Feedback
+
+With verbose mode (`-v`), you get a live progress table:
+
+```
+╭───────┬─────────────────────────────────────────┬───────────────╮
+│ Chunk │ Section                                 │    Status     │
+├───────┼─────────────────────────────────────────┼───────────────┤
+│   0   │ 1 The Science of Deduction              │     Done      │
+│   1   │ 2 The Statement of the Case             │ Processing... │
+│   2   │ 3 In Quest of a Solution                │    Pending    │
+...
+```
+
+### Native AOT Compilation
+
+For production deployment with instant startup:
+
+```bash
+# Build native executable
+dotnet publish -c Release -r win-x64 --self-contained
+
+# Output: bin/Release/net10.0/win-x64/publish/Mostlylucid.DocSummarizer.exe (~18MB)
+```
+
+### Model Performance
+
+| Model | Size | Time (12 chapters) | Quality |
+|-------|------|-------------------|---------|
+| `gemma3:1b` | 815MB | **21s** | Good |
+| `ministral-3:3b` | 2.9GB | 107s | Very Good |
+| `llama3.1:8b` | 4.7GB | ~180s | Excellent |
+
+The 10-minute timeout handles even slow models on large documents.
+
+## Why This Matters Operationally
+
+This matters when you have hundreds or thousands of documents, compliance requirements, or cost sensitivity — which is where most real systems end up. A single API call works for a demo; a pipeline works for production.
+
+The difference shows up in:
+- **Audit trails**: Citations trace claims back to source material
+- **Cost control**: Local models = predictable costs at scale
+- **Privacy**: No document content leaves your infrastructure
+- **Reliability**: Retry logic and validation catch LLM failures before users see them
 
 ## The Punchline
 
@@ -382,6 +533,8 @@ Same LLM. Better architecture. Better results.
 - [Docling](https://github.com/docling-project/docling) / [Docling Serve](https://github.com/docling-project/docling-serve)
 - [Qdrant](https://qdrant.tech/) - Local vector database
 - [Ollama](https://ollama.ai/) / [OllamaSharp](https://github.com/awaescher/OllamaSharp)
+- [Spectre.Console](https://spectreconsole.net/) - Beautiful terminal UI
+- [OllamaSharp Native AOT Support](https://github.com/awaescher/OllamaSharp/blob/main/docs/native-aot-support.md) - AOT configuration guide
 - [Long Document Summarization](https://cloud.google.com/blog/products/ai-machine-learning/long-document-summarization-with-workflows-and-gemini-models) - Google's patterns
 - [Query-Focused Summarization](https://arxiv.org/abs/2404.16130v1) - Why topic-driven works
 

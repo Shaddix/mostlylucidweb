@@ -1,33 +1,74 @@
 using System.Diagnostics;
 using Mostlylucid.DocSummarizer.Models;
+using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 public class MapReduceSummarizer
 {
     private readonly OllamaService _ollama;
+    private readonly ProgressService _progress;
     private readonly bool _verbose;
+    private readonly int _maxParallelism;
 
-    public MapReduceSummarizer(OllamaService ollama, bool verbose = false)
+    /// <summary>
+    /// Default max parallelism for LLM calls. Ollama processes one request at a time per model,
+    /// so high values just queue requests. 8 is a good balance for throughput vs memory.
+    /// </summary>
+    public const int DefaultMaxParallelism = 8;
+
+    public MapReduceSummarizer(OllamaService ollama, bool verbose = false, int maxParallelism = DefaultMaxParallelism)
     {
         _ollama = ollama;
         _verbose = verbose;
+        _progress = new ProgressService(verbose);
+        _maxParallelism = maxParallelism > 0 ? maxParallelism : DefaultMaxParallelism;
     }
 
     public async Task<DocumentSummary> SummarizeAsync(string docId, List<DocumentChunk> chunks)
     {
         var sw = Stopwatch.StartNew();
+
+        // Always show basic progress
+        var parallelDesc = _maxParallelism <= 0 ? "unlimited" : _maxParallelism.ToString();
+        Console.WriteLine($"Map Phase: Summarizing {chunks.Count} chunks ({parallelDesc} parallel)...");
+        Console.Out.Flush();
+
+        // Map phase: summarize each chunk in parallel with controlled concurrency
+        List<ChunkSummary> chunkSummaries;
         
-        if (_verbose) Console.WriteLine($"[Map] Summarizing {chunks.Count} chunks in parallel...");
-
-        // Map phase: summarize each chunk in parallel
-        var mapTasks = chunks.Select(c => SummarizeChunkAsync(c));
-        var chunkSummaries = (await Task.WhenAll(mapTasks)).ToList();
-
-        if (_verbose) Console.WriteLine($"[Reduce] Merging {chunkSummaries.Count} summaries...");
+        if (_verbose)
+        {
+            _progress.Rule("Map Phase");
+            _progress.Info($"Summarizing {chunks.Count} chunks ({parallelDesc} parallel, timeout: {OllamaService.DefaultTimeout.TotalMinutes:F0} min/chunk)");
+            
+            chunkSummaries = await _progress.WithLiveTableAsync(
+                $"Processing {chunks.Count} Chunks",
+                chunks,
+                c => c.Order,
+                c => string.IsNullOrEmpty(c.Heading) ? $"Chunk {c.Order}" : c.Heading,
+                async chunk => await SummarizeChunkAsync(chunk),
+                _maxParallelism);
+        }
+        else
+        {
+            // Use controlled parallelism to avoid resource exhaustion on large documents
+            chunkSummaries = await ProcessChunksWithLimitedParallelismAsync(chunks);
+        }
 
         // Reduce phase: merge into final summary
-        var result = await ReduceAsync(chunkSummaries);
+        Console.WriteLine($"Reduce Phase: Merging {chunkSummaries.Count} summaries...");
+        Console.Out.Flush();
+        
+        if (_verbose)
+        {
+            _progress.Rule("Reduce Phase");
+            _progress.Info($"Merging {chunkSummaries.Count} summaries into final document...");
+        }
+
+        var result = await _progress.WithStatusAsync(
+            "Generating final summary...",
+            async () => await ReduceAsync(chunkSummaries));
 
         sw.Stop();
         
@@ -35,12 +76,35 @@ public class MapReduceSummarizer
         var coverage = CalculateCoverage(chunkSummaries, headings);
         var citationRate = CalculateCitationRate(result.ExecutiveSummary);
 
+        Console.WriteLine($"Completed in {sw.Elapsed.TotalSeconds:F1}s");
+        
+        if (_verbose)
+        {
+            _progress.Success($"Completed in {sw.Elapsed.TotalSeconds:F1}s");
+        }
+
         return result with
         {
             Trace = new SummarizationTrace(
                 docId, chunks.Count, chunks.Count,
                 headings, sw.Elapsed, coverage, citationRate)
         };
+    }
+
+    private async Task<List<ChunkSummary>> ProcessChunksWithLimitedParallelismAsync(List<DocumentChunk> chunks)
+    {
+        var results = new ChunkSummary[chunks.Count];
+        var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
+        
+        await Parallel.ForEachAsync(
+            chunks.Select((chunk, index) => (chunk, index)),
+            options,
+            async (item, ct) =>
+            {
+                results[item.index] = await SummarizeChunkAsync(item.chunk);
+            });
+        
+        return results.ToList();
     }
 
     private async Task<ChunkSummary> SummarizeChunkAsync(DocumentChunk chunk)
@@ -67,8 +131,6 @@ public class MapReduceSummarizer
             """;
 
         var response = await _ollama.GenerateAsync(prompt);
-        
-        if (_verbose) Console.WriteLine($"  [{chunk.Id}] {chunk.Heading}: done");
 
         return new ChunkSummary(chunk.Id, chunk.Heading, response, chunk.Order);
     }
@@ -118,7 +180,7 @@ public class MapReduceSummarizer
             var validation = CitationValidator.Validate(response, validChunkIds);
             if (!validation.IsValid && summaries.Count > 0)
             {
-                if (_verbose) Console.WriteLine("  [Reduce] Citation validation failed, retrying...");
+                _progress.Warning("Citation validation failed, retrying with stronger instruction...");
                 return await ReduceAsync(summaries, retry: true);
             }
         }

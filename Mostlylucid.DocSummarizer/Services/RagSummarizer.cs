@@ -12,14 +12,22 @@ public class RagSummarizer
     private readonly OllamaService _ollama;
     private readonly QdrantClient _qdrant;
     private readonly bool _verbose;
+    private readonly int _maxParallelism;
     private const string CollectionName = "documents";
     private const int VectorSize = 768; // nomic-embed-text
 
-    public RagSummarizer(OllamaService ollama, string qdrantHost = "localhost", bool verbose = false)
+    /// <summary>
+    /// Default max parallelism for LLM calls. Ollama processes one request at a time per model,
+    /// so high values just queue requests. 8 is a good balance for throughput vs memory.
+    /// </summary>
+    public const int DefaultMaxParallelism = 8;
+
+    public RagSummarizer(OllamaService ollama, string qdrantHost = "localhost", bool verbose = false, int maxParallelism = DefaultMaxParallelism)
     {
         _ollama = ollama;
         _qdrant = new QdrantClient(qdrantHost);
         _verbose = verbose;
+        _maxParallelism = maxParallelism > 0 ? maxParallelism : DefaultMaxParallelism;
     }
 
     public async Task IndexDocumentAsync(string docId, List<DocumentChunk> chunks)
@@ -35,34 +43,42 @@ public class RagSummarizer
             return;
         }
 
-        if (_verbose) Console.WriteLine($"[Index] Indexing {newChunks.Count} new chunks...");
+        var parallelDesc = _maxParallelism <= 0 ? "unlimited" : _maxParallelism.ToString();
+        Console.WriteLine($"[Index] Indexing {newChunks.Count} new chunks ({parallelDesc} parallel)...");
+        Console.Out.Flush();
 
-        var points = new List<PointStruct>();
-        foreach (var chunk in newChunks)
-        {
-            var embedding = await _ollama.EmbedAsync(chunk.Content);
-            var pointId = GenerateStableId(docId, chunk.Hash);
-
-            points.Add(new PointStruct
+        // Use controlled parallelism for embedding
+        var pointResults = new PointStruct[newChunks.Count];
+        var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
+        
+        await Parallel.ForEachAsync(
+            newChunks.Select((chunk, index) => (chunk, index)),
+            options,
+            async (item, ct) =>
             {
-                Id = new PointId { Uuid = pointId.ToString() },
-                Vectors = embedding,
-                Payload =
-                {
-                    ["docId"] = docId,
-                    ["chunkId"] = chunk.Id,
-                    ["heading"] = chunk.Heading ?? "",
-                    ["headingLevel"] = chunk.HeadingLevel,
-                    ["order"] = chunk.Order,
-                    ["content"] = chunk.Content,
-                    ["hash"] = chunk.Hash
-                }
-            });
-            
-            if (_verbose) Console.WriteLine($"  Embedded [{chunk.Id}] {chunk.Heading}");
-        }
+                var embedding = await _ollama.EmbedAsync(item.chunk.Content);
+                var pointId = GenerateStableId(docId, item.chunk.Hash);
 
-        await _qdrant.UpsertAsync(CollectionName, points);
+                pointResults[item.index] = new PointStruct
+                {
+                    Id = new PointId { Uuid = pointId.ToString() },
+                    Vectors = embedding,
+                    Payload =
+                    {
+                        ["docId"] = docId,
+                        ["chunkId"] = item.chunk.Id,
+                        ["heading"] = item.chunk.Heading ?? "",
+                        ["headingLevel"] = item.chunk.HeadingLevel,
+                        ["order"] = item.chunk.Order,
+                        ["content"] = item.chunk.Content,
+                        ["hash"] = item.chunk.Hash
+                    }
+                };
+                
+                if (_verbose) Console.WriteLine($"  Embedded [{item.chunk.Id}] {item.chunk.Heading}");
+            });
+
+        await _qdrant.UpsertAsync(CollectionName, pointResults.ToList());
     }
 
     public async Task<DocumentSummary> SummarizeAsync(

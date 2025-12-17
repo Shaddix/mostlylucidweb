@@ -1,0 +1,50 @@
+{
+  // Example configuration for DocSummarizer
+  // Copy this to docsummarizer.json or ~/.docsummarizer.json and customize
+  
+  "ollama": {
+    "baseUrl": "http://localhost:11434",
+    "model": "ministral-3:3b",  // Mistral-3 3B - 128K context window
+    "embedModel": "nomic-embed-text",
+    "temperature": 0.3,
+    "timeoutSeconds": 300
+  },
+  
+  "docling": {
+    "baseUrl": "http://localhost:5001",
+    "timeoutSeconds": 300
+  },
+  
+  "qdrant": {
+    "host": "localhost",
+    "port": 6334,
+    "collectionName": "documents",
+    "vectorSize": 768
+  },
+  
+  "processing": {
+    "maxHeadingLevel": 3,
+    "ragTopK": 3,
+    "ragMaxTopics": 8,
+    "enableParallel": true,
+    "maxDegreeOfParallelism": -1
+  },
+  
+  "output": {
+    "format": "Console",  // Console, Text, Markdown, Json
+    "outputDirectory": null,  // null = current directory
+    "includeTrace": true,
+    "includeTopics": true,
+    "includeOpenQuestions": true,
+    "verbose": false
+  },
+  
+  "batch": {
+    "fileExtensions": [".pdf", ".docx", ".md"],
+    "recursive": false,
+    "includePatterns": ["*"],
+    "excludePatterns": [],
+    "continueOnError": true,
+    "createIndex": true
+  }
+}

@@ -84,3 +84,20 @@ public static class CitationValidator
             invalid);
     }
 }
+
+public record BatchResult(
+    string FilePath,
+    bool Success,
+    DocumentSummary? Summary,
+    string? Error,
+    TimeSpan ProcessingTime);
+
+public record BatchSummary(
+    int TotalFiles,
+    int SuccessCount,
+    int FailureCount,
+    List<BatchResult> Results,
+    TimeSpan TotalTime)
+{
+    public double SuccessRate => TotalFiles > 0 ? (double)SuccessCount / TotalFiles : 0;
+}

@@ -11,7 +11,7 @@ public class DocumentChunker
         var lines = markdown.Split('\n');
         
         var section = new StringBuilder();
-        var heading = "";
+        string? heading = null;
         var level = 0;
         var index = 0;
 
@@ -28,7 +28,7 @@ public class DocumentChunker
                     if (!string.IsNullOrWhiteSpace(content))
                     {
                         chunks.Add(new DocumentChunk(
-                            index++, heading, level, content, HashHelper.ComputeHash(content)));
+                            index++, heading ?? string.Empty, level, content, HashHelper.ComputeHash(content)));
                     }
                     section.Clear();
                 }
@@ -49,7 +49,7 @@ public class DocumentChunker
             if (!string.IsNullOrWhiteSpace(content))
             {
                 chunks.Add(new DocumentChunk(
-                    index, heading, level, content, HashHelper.ComputeHash(content)));
+                    index, heading ?? string.Empty, level, content, HashHelper.ComputeHash(content)));
             }
         }
 

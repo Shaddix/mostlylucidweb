@@ -1,0 +1,199 @@
+name: Release DocSummarizer
+
+on:
+  push:
+    tags:
+      - 'docsummarizer-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  
+env:
+  PROJECT_PATH: Mostlylucid.DocSummarizer/Mostlylucid.DocSummarizer.csproj
+  PROJECT_NAME: Mostlylucid.DocSummarizer
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows
+          - os: windows-latest
+            rid: win-x64
+            artifact_name: docsummarizer-win-x64
+            executable: Mostlylucid.DocSummarizer.exe
+          - os: windows-latest
+            rid: win-arm64
+            artifact_name: docsummarizer-win-arm64
+            executable: Mostlylucid.DocSummarizer.exe
+          # Linux
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact_name: docsummarizer-linux-x64
+            executable: Mostlylucid.DocSummarizer
+          - os: ubuntu-latest
+            rid: linux-arm64
+            artifact_name: docsummarizer-linux-arm64
+            executable: Mostlylucid.DocSummarizer
+          # macOS
+          - os: macos-latest
+            rid: osx-x64
+            artifact_name: docsummarizer-osx-x64
+            executable: Mostlylucid.DocSummarizer
+          - os: macos-latest
+            rid: osx-arm64
+            artifact_name: docsummarizer-osx-arm64
+            executable: Mostlylucid.DocSummarizer
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
+
+    - name: Extract version from tag
+      id: get_version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/docsummarizer-v}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+
+    - name: Build and Publish Native AOT
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} \
+          -c Release \
+          -r ${{ matrix.rid }} \
+          --self-contained \
+          -p:Version=${{ steps.get_version.outputs.VERSION }} \
+          -p:PublishAot=true \
+          -p:PublishTrimmed=true \
+          -o ./publish/${{ matrix.rid }}
+      shell: bash
+
+    - name: List published files
+      run: ls -la ./publish/${{ matrix.rid }}/
+      shell: bash
+
+    - name: Create archive (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json README.md
+      shell: bash
+
+    - name: Create archive (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        chmod +x ${{ matrix.executable }}
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.zip
+          ${{ matrix.artifact_name }}.tar.gz
+        if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/docsummarizer-v}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: List artifacts
+      run: find ./artifacts -type f
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: DocSummarizer v${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ github.event_name == 'workflow_dispatch' && format('docsummarizer-v{0}', github.event.inputs.version) || github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## DocSummarizer v${{ steps.get_version.outputs.VERSION }}
+          
+          A local-first document summarization tool using LLMs (Ollama), vector search (Qdrant), and document conversion (Docling).
+          
+          ### Features
+          - **Native AOT compiled** - Fast startup, minimal memory footprint
+          - **Multiple summarization modes** - MapReduce, RAG, Iterative
+          - **Rich progress feedback** - Spectre.Console terminal UI
+          - **10-minute timeout** - Handles large documents and slow models
+          - **Batch processing** - Process entire directories
+          
+          ### Downloads
+          
+          | Platform | Architecture | Download |
+          |----------|--------------|----------|
+          | Windows | x64 | `docsummarizer-win-x64.zip` |
+          | Windows | ARM64 | `docsummarizer-win-arm64.zip` |
+          | Linux | x64 | `docsummarizer-linux-x64.tar.gz` |
+          | Linux | ARM64 | `docsummarizer-linux-arm64.tar.gz` |
+          | macOS | x64 (Intel) | `docsummarizer-osx-x64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon) | `docsummarizer-osx-arm64.tar.gz` |
+          
+          ### Quick Start
+          
+          ```bash
+          # Extract and run
+          ./Mostlylucid.DocSummarizer --help
+          
+          # Check dependencies
+          ./Mostlylucid.DocSummarizer check --verbose
+          
+          # Summarize a document
+          ./Mostlylucid.DocSummarizer -f document.pdf --model gemma3:1b -v
+          ```
+          
+          ### Prerequisites
+          
+          - [Ollama](https://ollama.ai/) with models: `ollama pull ministral-3:3b && ollama pull nomic-embed-text`
+          - [Docling](https://github.com/docling-project/docling-serve): `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
+          - [Qdrant](https://qdrant.tech/) (for RAG mode): `docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant`
+          
+        files: |
+          ./artifacts/**/*.zip
+          ./artifacts/**/*.tar.gz
