@@ -164,12 +164,14 @@ jobs:
         name: DocSummarizer v${{ steps.get_version.outputs.VERSION }}
         tag_name: ${{ github.event_name == 'workflow_dispatch' && format('docsummarizer-v{0}', github.event.inputs.version) || github.ref_name }}
         draft: false
-        prerelease: ${{ contains(steps.get_version.outputs.VERSION, '-') }}
+        prerelease: false
         generate_release_notes: true
         body: |
           ## DocSummarizer v${{ steps.get_version.outputs.VERSION }}
           
           A local-first document summarization tool using LLMs (Ollama), vector search (Qdrant), and document conversion (Docling).
+          
+          **[Full Documentation (README)](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DocSummarizer/README.md)**
           
           ### Features
           - **Native AOT compiled** - Fast startup, minimal memory footprint
