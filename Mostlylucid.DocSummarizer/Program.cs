@@ -25,6 +25,9 @@ var recursiveOption = new Option<bool>("--recursive", "-r") { Description = "Pro
 var templateOption = new Option<string?>("--template", "-t") { Description = "Summary template (e.g., 'bookreport' or 'bookreport:500' for custom word count). Available: default, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting" };
 var wordsOption = new Option<int?>("--words", "-w") { Description = "Target word count (overrides template default)" };
 var showStructureOption = new Option<bool>("--show-structure", "-s") { Description = "Include document structure/chunk index in output", DefaultValueFactory = _ => false };
+var embeddingBackendOption = new Option<EmbeddingBackend?>("--embedding-backend") { Description = "Embedding backend: Onnx (default, fast, zero-config) or Ollama (requires server)" };
+var embeddingModelOption = new Option<string?>("--embedding-model") { Description = "ONNX embedding model: AllMiniLmL6V2 (default), BgeSmallEnV15, GteSmall, MultiQaMiniLm, ParaphraseMiniLmL3" };
+var webModeOption = new Option<WebFetchMode?>("--web-mode") { Description = "Web fetch mode: Simple (fast HTTP) or Playwright (headless browser for JS-rendered pages)" };
 
 // Add options to root command
 rootCommand.Options.Add(configOption);
@@ -44,6 +47,9 @@ rootCommand.Options.Add(recursiveOption);
 rootCommand.Options.Add(templateOption);
 rootCommand.Options.Add(wordsOption);
 rootCommand.Options.Add(showStructureOption);
+rootCommand.Options.Add(embeddingBackendOption);
+rootCommand.Options.Add(embeddingModelOption);
+rootCommand.Options.Add(webModeOption);
 
 // Main handler
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -80,6 +86,18 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         if (extensions != null && extensions.Length > 0) config.Batch.FileExtensions = extensions.ToList();
         config.Batch.Recursive = recursive;
         
+        // Parse embedding options
+        var embeddingBackend = parseResult.GetValue(embeddingBackendOption);
+        var embeddingModel = parseResult.GetValue(embeddingModelOption);
+        
+        if (embeddingBackend.HasValue) config.EmbeddingBackend = embeddingBackend.Value;
+        if (!string.IsNullOrEmpty(embeddingModel))
+            config.Onnx.EmbeddingModel = Enum.Parse<OnnxEmbeddingModel>(embeddingModel, ignoreCase: true);
+        
+        // Parse web fetch mode
+        var webMode = parseResult.GetValue(webModeOption);
+        if (webMode.HasValue) config.WebFetch.Mode = webMode.Value;
+        
         // Get template - supports "template:wordcount" syntax (e.g., "bookreport:500")
         var template = ParseTemplate(templateName ?? "default", targetWords);
         
@@ -89,7 +107,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             Console.WriteLine($"Template: {template.Name} ({template.Description}){(template.TargetWords > 0 ? $" [~{template.TargetWords} words]" : "")}");
         }
 
-        // Create summarizer
+        // Create summarizer with ONNX embedding by default (fast, no external deps)
         var summarizer = new DocumentSummarizer(
             config.Ollama.Model,
             config.Docling.BaseUrl,
@@ -97,7 +115,10 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             config.Output.Verbose,
             config.Docling,
             config.Processing,
-            config.Qdrant);
+            config.Qdrant,
+            ollamaConfig: config.Ollama,
+            onnxConfig: config.Onnx,
+            embeddingBackend: config.EmbeddingBackend);
 
         // Determine operation mode
         if (!string.IsNullOrEmpty(url))
@@ -315,9 +336,9 @@ static async Task ProcessUrlAsync(
     Console.WriteLine();
     Console.Out.Flush();
 
-    // Use WebFetcher to get content (Simple mode only - Playwright requires non-AOT build)
+    // Use WebFetcher with configured mode (Simple or Playwright)
     var fetcher = new WebFetcher(config.WebFetch);
-    using var result = await fetcher.FetchAsync(url, WebFetchMode.Simple);
+    using var result = await fetcher.FetchAsync(url, config.WebFetch.Mode);
     
     if (string.IsNullOrWhiteSpace(result.TempFilePath) || !File.Exists(result.TempFilePath))
     {
@@ -490,7 +511,7 @@ static async Task<ToolOutput> RunToolModeAsync(
             config.WebFetch.Enabled = true;
             
             var fetcher = new WebFetcher(config.WebFetch);
-            var fetchResult = await fetcher.FetchAsync(url, WebFetchMode.Simple);
+            var fetchResult = await fetcher.FetchAsync(url, config.WebFetch.Mode);
             
             tempFilePath = fetchResult.TempFilePath;
             finalUrl = fetchResult.SourceUrl;
@@ -521,7 +542,7 @@ static async Task<ToolOutput> RunToolModeAsync(
             };
         }
         
-        // Create summarizer
+        // Create summarizer with ONNX embedding by default (fast, no external deps)
         var summarizer = new DocumentSummarizer(
             config.Ollama.Model,
             config.Docling.BaseUrl,
@@ -529,7 +550,10 @@ static async Task<ToolOutput> RunToolModeAsync(
             verbose: false, // Silent for tool mode
             config.Docling,
             config.Processing,
-            config.Qdrant);
+            config.Qdrant,
+            ollamaConfig: config.Ollama,
+            onnxConfig: config.Onnx,
+            embeddingBackend: config.EmbeddingBackend);
         
         var processingTime = DateTime.UtcNow - startTime;
         

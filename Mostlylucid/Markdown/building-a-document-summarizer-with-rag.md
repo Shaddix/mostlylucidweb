@@ -17,7 +17,7 @@ The failure mode isn't "bad model". It's **context collapse + structure loss**.
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
-As is my way, I've built a complete CLI tool implementing these patterns: **docsummarizer** - a local-first document summarization tool with Native AOT support, multiple summarization modes, and citation tracking.
+As is my way, I've built a complete CLI tool implementing these patterns: **docsummarizer** - a local-first document summarization tool with ONNX embeddings, Playwright support for SPAs, multiple summarization modes, and citation tracking.
 
 See the [docsummarizer tool article](/blog/docsummarizer-tool) for installation, usage, and configuration details.
 
@@ -456,9 +456,22 @@ Pipeline architecture gives you: structured summaries, verifiable citations, any
 
 Same LLM. Better architecture. Better results.
 
-## Embedding Resilience
+## Embedding Options
 
-Ollama embedding requests can fail on Windows due to connection issues (GitHub #13340). The tool uses Polly v8 for robust embedding operations:
+DocSummarizer v3.0.0 supports two embedding backends for RAG mode:
+
+### ONNX Embeddings (Default)
+
+Zero-config local embeddings using ONNX Runtime. Models auto-download from HuggingFace on first use (~23MB for AllMiniLmL6V2).
+
+```bash
+# Just works - no setup required
+docsummarizer -f doc.pdf -m Rag
+```
+
+### Ollama Embeddings (Optional)
+
+If you prefer Ollama embeddings, use `--embedding-backend Ollama`. Note: Ollama embedding requests can fail on Windows due to connection issues (GitHub #13340). The tool uses Polly v8 for robust operations:
 
 | Feature | Implementation |
 |---------|----------------|

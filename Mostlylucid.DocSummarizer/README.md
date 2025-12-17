@@ -4,22 +4,78 @@
 
 Every claim is traceable. Every fact cites its source. Runs entirely on your machine.
 
-## What's New in v3.0.0
+---
 
-- **Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for embedding operations
-- **Long Text Handling**: Automatic chunking with vector averaging for texts >1000 chars
-- **Windows Stability**: Fixed Ollama wsarecv connection issues (GitHub #13340)
-- **Improved Logging**: Clear circuit breaker and retry status messages
+## Quick Start (30 seconds)
 
 ```bash
-# Human-readable summary
-docsummarizer -f contract.pdf
+# 1. Install Ollama from https://ollama.ai, then:
+ollama pull llama3.2:3b && ollama serve
 
-# JSON for agents/pipelines  
-docsummarizer tool -u "https://docs.example.com"
+# 2. Run (no other setup needed!)
+docsummarizer -f document.pdf
 ```
 
-**~18MB native binary. No Docker required for Markdown. Just works.**
+That's it. ONNX embeddings auto-download. No Docker for Markdown files.
+
+---
+
+## Three Ways to Use DocSummarizer
+
+### For Humans: Readable Summaries
+
+```bash
+# Summarize any document
+docsummarizer -f report.pdf
+
+# Quick bullets for scanning
+docsummarizer -f manual.pdf -t bullets
+
+# Executive summary for leadership
+docsummarizer -f quarterly.pdf -t executive
+
+# Book report with themes
+docsummarizer -f novel.pdf -t bookreport
+```
+
+### For AI Agents: Structured JSON
+
+```bash
+# Clean JSON output for LLM pipelines
+docsummarizer tool -f contract.pdf
+
+# Summarize a URL for your agent
+docsummarizer tool -u "https://docs.example.com"
+
+# Focus on specific topics
+docsummarizer tool -f spec.pdf -q "security requirements"
+```
+
+Output includes `keyFacts` with confidence levels, `evidence` IDs, and `entities` — ready for downstream processing.
+
+### For Developers: Batch & Integration
+
+```bash
+# Process entire directories
+docsummarizer -d ./documents -o Markdown --output-dir ./summaries
+
+# Compare models
+docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b"
+
+# RAG mode with vector search
+docsummarizer -f large-manual.pdf -m Rag --focus "installation"
+```
+
+---
+
+## What's New in v3.0.0
+
+- **ONNX Embeddings (Default)**: Zero-config local embeddings - models auto-download on first use (~23MB)
+- **Playwright Support**: Summarize JavaScript-rendered pages (SPAs, React apps) with `--web-mode Playwright`
+- **No Ollama Embedding Required**: RAG mode works out-of-the-box without `ollama pull mxbai-embed-large`
+- **Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for LLM operations
+- **Long Text Handling**: Automatic chunking with vector averaging for texts >1000 chars
+- **Windows Stability**: Fixed Ollama wsarecv connection issues (GitHub #13340)
 
 ---
 
@@ -34,17 +90,6 @@ Most summarizers give you text. This gives you *evidence*.
 
 If you need to *trust* a summary — or feed it to another system — that's the difference.
 
-## Quick Overview
-
-| Use Case | Command |
-|----------|---------|
-| Summarize a PDF | `docsummarizer -f report.pdf` |
-| Summarize a URL | `docsummarizer -u "https://..." --web-enabled` |
-| JSON for agents | `docsummarizer tool -f doc.pdf` |
-| Book report style | `docsummarizer -f novel.pdf -t bookreport` |
-| Meeting notes | `docsummarizer -f transcript.md -t meeting` |
-| Compare models | `docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b"` |
-
 ## Features
 
 | Category | What You Get |
@@ -54,6 +99,8 @@ If you need to *trust* a summary — or feed it to another system — that's the
 | **Tool Mode** | Clean JSON for LLM agents, MCP, CI checks |
 | **11 Templates** | brief, bullets, executive, technical, academic, bookreport, meeting... |
 | **Web Fetching** | Security-hardened (SSRF protection, HTML sanitization) |
+| **Playwright Mode** | Headless browser for JavaScript-rendered pages |
+| **ONNX Embeddings** | Zero-config local embeddings, no Ollama embedding model needed |
 | **Large Docs** | Hierarchical reduction handles 500+ pages |
 | **Quality Analysis** | Hallucination detection, entity extraction |
 | **Local Only** | Nothing leaves your machine |
@@ -62,14 +109,17 @@ If you need to *trust* a summary — or feed it to another system — that's the
 
 ### Prerequisites
 
-**Required: Ollama** (only requirement for Markdown files)
+**Required: Ollama** (for LLM summarization)
 
 ```bash
 # Install from https://ollama.ai
-ollama pull qwen2.5:1.5b       # Fast (~3s per doc)
-ollama pull mxbai-embed-large  # For RAG mode only
+ollama pull llama3.2:3b        # Default model - good balance of speed/quality
 ollama serve
 ```
+
+> **Note**: Embedding models are handled automatically via ONNX. No need to pull `mxbai-embed-large` or any other embedding model unless you specifically want to use Ollama embeddings with `--embedding-backend Ollama`.
+
+> **Speed tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
 
 **Optional: Docling** (for PDF/DOCX)
 
@@ -87,6 +137,42 @@ docker run -d -p 6333:6333 qdrant/qdrant
 
 ```bash
 docsummarizer check --verbose
+```
+
+## Embedding Options
+
+DocSummarizer supports two embedding backends for RAG mode:
+
+### ONNX Embeddings (Default)
+
+Zero-config local embeddings using ONNX Runtime. Models auto-download on first use.
+
+| Model | Size | Dims | Max Seq | Best For |
+|-------|------|------|---------|----------|
+| `AllMiniLmL6V2` | ~23MB | 384 | 256 | **Default** - fast, general-purpose |
+| `BgeSmallEnV15` | ~34MB | 384 | 512 | Best quality for size |
+| `GteSmall` | ~34MB | 384 | 512 | Good all-around |
+| `MultiQaMiniLm` | ~23MB | 384 | 512 | QA-optimized |
+| `ParaphraseMiniLmL3` | ~17MB | 384 | 128 | Smallest/fastest |
+
+```bash
+# Use default ONNX embedding (AllMiniLmL6V2)
+docsummarizer -f doc.pdf -m Rag
+
+# Use a different ONNX model
+docsummarizer -f doc.pdf -m Rag --embedding-model BgeSmallEnV15
+```
+
+### Ollama Embeddings (Optional)
+
+If you prefer Ollama embeddings:
+
+```bash
+# Pull an embedding model
+ollama pull mxbai-embed-large
+
+# Use Ollama for embeddings
+docsummarizer -f doc.pdf -m Rag --embedding-backend Ollama
 ```
 
 ## Usage
@@ -110,8 +196,11 @@ docsummarizer -f document.pdf -v
 ### Web URL Fetching (Security-Hardened)
 
 ```bash
-# Summarize a web page
+# Summarize a web page (simple HTTP fetch)
 docsummarizer --url "https://example.com/article.html" --web-enabled
+
+# Summarize a JavaScript-rendered page (Playwright)
+docsummarizer --url "https://react-app.com" --web-enabled --web-mode Playwright
 
 # Summarize a remote PDF
 docsummarizer --url "https://example.com/doc.pdf" --web-enabled
@@ -125,27 +214,14 @@ docsummarizer --url "https://example.com/doc.pdf" --web-enabled
 - HTML sanitization (removes scripts, event handlers, dangerous URLs)
 - Image guardrails (size limits, count limits, hash deduplication)
 
-**Limitation: JavaScript-rendered pages**
+**Web Fetch Modes:**
 
-The AOT binary uses simple HTTP fetching which doesn't execute JavaScript. Pages that render content client-side (SPAs, React apps, etc.) will return empty or partial content.
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `Simple` | Fast HTTP client (default) | Static HTML pages, PDFs |
+| `Playwright` | Headless Chromium browser | SPAs, React/Vue/Angular apps, JS-rendered content |
 
-For dynamic pages, you have two options:
-
-1. **Use a pre-rendered URL** if the site offers one (e.g., `?_escaped_fragment_=` or server-side rendering)
-
-2. **Build without AOT** to enable Playwright support:
-   ```bash
-   # Add Playwright package
-   dotnet add package Microsoft.Playwright
-   
-   # Build without AOT (in csproj, set PublishAot=false)
-   dotnet build -c Release
-   
-   # Install browsers
-   pwsh bin/Release/net10.0/playwright.ps1 install chromium
-   ```
-   
-   Then use `--web-mode Playwright` (not available in AOT builds).
+When using Playwright mode for the first time, Chromium will be automatically downloaded (~150MB).
 
 ### LLM Tool Mode
 
@@ -251,16 +327,16 @@ docsummarizer -f doc.pdf -t detailed --words 300
 
 | Template | Words | Best For |
 |----------|-------|----------|
-| `default` | ~200 | General purpose |
+| `default` | ~500 | General purpose |
 | `brief` | ~50 | Quick scanning |
 | `oneliner` | ~25 | Single sentence |
 | `bullets` | auto | Key takeaways |
 | `executive` | ~150 | C-suite reports |
-| `detailed` | ~500 | Comprehensive analysis |
+| `detailed` | ~1000 | Comprehensive analysis |
 | `technical` | ~300 | Tech documentation |
 | `academic` | ~250 | Research papers |
 | `citations` | auto | Key quotes with sources |
-| `bookreport` | ~400 | Book report style |
+| `bookreport` | ~800 | Book report style |
 | `meeting` | ~200 | Meeting notes with actions |
 
 ### Benchmarking
@@ -281,10 +357,13 @@ docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
 | `--directory` | `-d` | Batch directory | - |
 | `--url` | `-u` | Web URL to fetch | - |
 | `--web-enabled` | | Enable web fetching | `false` |
+| `--web-mode` | | Simple or Playwright | `Simple` |
 | `--mode` | `-m` | MapReduce, Rag, Iterative | `MapReduce` |
 | `--focus` | | Focus query for RAG | - |
 | `--query` | `-q` | Query mode | - |
 | `--model` | | Ollama model | `llama3.2:3b` |
+| `--embedding-backend` | | Onnx or Ollama | `Onnx` |
+| `--embedding-model` | | ONNX model name | `AllMiniLmL6V2` |
 | `--verbose` | `-v` | Show progress | `false` |
 | `--template` | `-t` | Summary template | `default` |
 | `--output-format` | `-o` | Console, Text, Markdown, Json | `Console` |
@@ -320,7 +399,7 @@ docsummarizer templates            # List templates
 Best for comprehensive summaries. Handles documents of any size via hierarchical reduction.
 
 ```
-Document → Chunks → Parallel Summaries → Batch Reduction → Final Summary
+Document -> Chunks -> Parallel Summaries -> Batch Reduction -> Final Summary
 ```
 
 ### RAG (Focused Queries)
@@ -359,6 +438,12 @@ Auto-discovery order:
 
 ```json
 {
+  "embeddingBackend": "Onnx",
+  "onnx": {
+    "embeddingModel": "AllMiniLmL6V2",
+    "useQuantized": true,
+    "maxEmbeddingSequenceLength": 256
+  },
   "ollama": {
     "model": "llama3.2:3b",
     "embedModel": "mxbai-embed-large",
@@ -377,7 +462,8 @@ Auto-discovery order:
   "qdrant": {
     "host": "localhost",
     "port": 6333,
-    "collectionName": "documents"
+    "collectionName": "documents",
+    "vectorSize": 384
   },
   "processing": {
     "maxHeadingLevel": 2,
@@ -392,6 +478,7 @@ Auto-discovery order:
   },
   "webFetch": {
     "enabled": false,
+    "mode": "Simple",
     "timeoutSeconds": 30,
     "userAgent": "Mozilla/5.0 DocSummarizer/1.0"
   },
@@ -405,12 +492,20 @@ Auto-discovery order:
 
 ### Configuration Options Explained
 
+#### Embedding Settings
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `embeddingBackend` | `Onnx` | Embedding backend: `Onnx` (local, zero-config) or `Ollama` |
+| `onnx.embeddingModel` | `AllMiniLmL6V2` | ONNX model to use |
+| `onnx.useQuantized` | `true` | Use quantized models (smaller, faster) |
+
 #### Ollama Settings
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `model` | `llama3.2:3b` | LLM model for summarization |
-| `embedModel` | `mxbai-embed-large` | Embedding model for RAG mode |
+| `embedModel` | `mxbai-embed-large` | Embedding model (only used if `embeddingBackend` is `Ollama`) |
 | `baseUrl` | `http://localhost:11434` | Ollama API endpoint |
 | `temperature` | `0.3` | Lower = more deterministic |
 | `timeoutSeconds` | `1200` | Timeout for LLM requests |
@@ -438,15 +533,16 @@ Auto-discovery order:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `false` | Must be true for `--url` to work |
-| `timeoutSeconds` | `30` | HTTP request timeout |
+| `mode` | `Simple` | `Simple` (HTTP) or `Playwright` (headless browser) |
+| `timeoutSeconds` | `30` | HTTP/browser request timeout |
 | `userAgent` | `Mozilla/5.0...` | User agent for web requests |
 
 ## Model Recommendations
 
 | Model | Size | Speed | Quality | Use Case |
 |-------|------|-------|---------|----------|
-| `qwen2.5:1.5b` | 986MB | ~3s | Good | Speed-optimized (default) |
-| `llama3.2:3b` | 2GB | ~15s | Very Good | Balance |
+| `qwen2.5:1.5b` | 986MB | ~3s | Good | Speed-optimized |
+| `llama3.2:3b` | 2GB | ~15s | Very Good | **Default** - good balance |
 | `ministral-3:3b` | 2.9GB | ~20s | Very Good | Quality-focused |
 | `llama3.1:8b` | 4.7GB | ~45s | Excellent | Critical documents |
 
@@ -470,11 +566,11 @@ dotnet build
 dotnet run -- --help
 ```
 
-### Native AOT (Production)
+### Publish (Production)
 
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained
-# Output: bin/Release/net10.0/win-x64/publish/docsummarizer.exe (~18MB)
+# Output: bin/Release/net10.0/win-x64/publish/
 ```
 
 ## Architecture
@@ -484,17 +580,36 @@ dotnet publish -c Release -r win-x64 --self-contained
 | Component | Purpose |
 |-----------|---------|
 | `DocumentSummarizer` | Main orchestrator |
-| `WebFetcher` | Security-hardened URL fetching |
+| `WebFetcher` | Security-hardened URL fetching (Simple + Playwright modes) |
 | `MapReduceSummarizer` | Parallel chunk processing with hierarchical reduction |
 | `RagSummarizer` | Vector-based retrieval and synthesis |
-| `OllamaService` | AOT-compatible LLM client with Polly resilience |
-| `QdrantHttpClient` | AOT-compatible vector search client |
+| `OnnxEmbeddingService` | Local ONNX-based embeddings (default) |
+| `OllamaEmbeddingService` | Ollama-based embeddings (optional) |
+| `OllamaService` | LLM client with Polly resilience |
+| `QdrantHttpClient` | Vector search client |
 | `DoclingClient` | Document conversion |
 | `QualityAnalyzer` | Hallucination detection, entity extraction |
 
-### Embedding Resilience
+### Embedding Architecture
 
-The `OllamaService` uses Polly v8 for robust embedding operations:
+```
+Text -> IEmbeddingService -> float[]
+              |
+              +-- OnnxEmbeddingService (default, zero-config)
+              |       |
+              |       +-- Auto-downloads model from HuggingFace
+              |       +-- BertTokenizer for text preprocessing
+              |       +-- ONNX Runtime for inference
+              |
+              +-- OllamaEmbeddingService (optional)
+                      |
+                      +-- Requires Ollama server
+                      +-- Polly resilience for reliability
+```
+
+### LLM Resilience
+
+The `OllamaService` uses Polly v8 for robust LLM operations:
 
 | Feature | Implementation |
 |---------|----------------|
@@ -503,8 +618,6 @@ The `OllamaService` uses Polly v8 for robust embedding operations:
 | **Long Text Handling** | Splits into 1000-char chunks, averages vectors |
 | **Connection Recovery** | Fresh connections per request (Windows wsarecv fix) |
 | **Rate Limiting** | Jittered delays between requests |
-
-**Why chunked embeddings?** Ollama on Windows crashes with embedding requests >1700 chars (GitHub issue #13340). We split long texts into overlapping chunks, embed each, then L2-normalize the averaged vector. This preserves semantic content while avoiding Ollama crashes.
 
 ### Web Fetch Security
 
@@ -515,7 +628,7 @@ The `WebFetcher` implements comprehensive security controls:
 | **SSRF** | Blocks private IPs (10.x, 172.16.x, 192.168.x, localhost, link-local) |
 | **Cloud Metadata** | Blocks 169.254.169.254 and other metadata endpoints |
 | **DNS Rebinding** | Re-validates IPs after redirects |
-| **Redirects** | Max 5, blocks HTTPS→HTTP downgrade |
+| **Redirects** | Max 5, blocks HTTPS->HTTP downgrade |
 | **Content-Type** | Allowlist: HTML, PDF, Markdown, images, Office docs |
 | **Size Limits** | 10MB response, 5MB HTML |
 | **Decompression** | Max 20x expansion ratio |
@@ -534,10 +647,13 @@ The `WebFetcher` implements comprehensive security controls:
 | "wsarecv" connection errors | Windows-specific issue - the tool auto-retries with backoff |
 | Repetitive summaries | Use `--model llama3.2:3b` for better quality |
 | Missing citations | Larger models follow citation instructions better |
+| Playwright not working | First run downloads Chromium (~150MB) - ensure internet access |
 
 ## Credits
 
 - [Ollama](https://ollama.ai/) - Local LLM inference
+- [ONNX Runtime](https://onnxruntime.ai/) - Local ML inference for embeddings
+- [Playwright](https://playwright.dev/) - Headless browser automation
 - [Polly](https://github.com/App-vNext/Polly) - .NET resilience and transient-fault-handling
 - [Docling](https://github.com/docling-project/docling) - Document conversion
 - [Qdrant](https://qdrant.tech/) - Vector database

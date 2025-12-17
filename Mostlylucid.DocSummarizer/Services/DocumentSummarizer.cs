@@ -1,5 +1,6 @@
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
+using Mostlylucid.DocSummarizer.Services.Onnx;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
@@ -13,6 +14,7 @@ public class DocumentSummarizer
     private readonly DoclingClient _docling;
     private readonly int _maxLlmParallelism;
     private readonly OllamaService _ollama;
+    private readonly IEmbeddingService _embedder;
     private readonly ProcessingConfig _processingConfig;
     private readonly ProgressService _progress;
     private readonly RagSummarizer _rag;
@@ -34,7 +36,9 @@ public class DocumentSummarizer
         ProcessingConfig? processingConfig = null,
         QdrantConfig? qdrantConfig = null,
         SummaryTemplate? template = null,
-        OllamaConfig? ollamaConfig = null)
+        OllamaConfig? ollamaConfig = null,
+        OnnxConfig? onnxConfig = null,
+        EmbeddingBackend embeddingBackend = EmbeddingBackend.Onnx)
     {
         _verbose = verbose;
         _progress = new ProgressService(verbose);
@@ -52,7 +56,13 @@ public class DocumentSummarizer
             ? TimeSpan.FromSeconds(ollamaConfig.TimeoutSeconds)
             : OllamaService.DefaultTimeout;
         _ollama = new OllamaService(ollamaModel, timeout: ollamaTimeout);
-        _rag = new RagSummarizer(_ollama, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig, Template);
+        
+        // Create embedding service based on backend choice
+        _embedder = embeddingBackend == EmbeddingBackend.Onnx
+            ? new OnnxEmbeddingService(onnxConfig ?? new OnnxConfig(), verbose)
+            : new OllamaEmbeddingService(_ollama);
+        
+        _rag = new RagSummarizer(_ollama, _embedder, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig, Template);
     }
 
     /// <summary>

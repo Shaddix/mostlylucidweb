@@ -200,7 +200,6 @@ public class OllamaService
         
         // Split into overlapping chunks and average embeddings
         var chunks = SplitTextIntoChunks(cleanText, maxCharsPerChunk, overlap: maxCharsPerChunk / 10);
-        Console.WriteLine($"[Ollama] Text too long ({cleanText.Length} chars), splitting into {chunks.Count} chunks for embedding");
         
         var embeddings = new List<float[]>();
         for (var i = 0; i < chunks.Count; i++)

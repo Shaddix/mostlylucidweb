@@ -4,13 +4,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
+using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 public class RagSummarizer
 {
     private const string CollectionPrefix = "docsummarizer_";
-    private const int VectorSize = 768; // nomic-embed-text
 
     /// <summary>
     ///     Default max parallelism for LLM calls. Ollama processes one request at a time per model,
@@ -21,12 +21,16 @@ public class RagSummarizer
     private readonly bool _deleteCollectionAfterSummarization;
     private readonly int _maxParallelism;
     private readonly OllamaService _ollama;
+    private readonly IEmbeddingService _embedder;
+    private readonly bool _useOnnxEmbedding;
+    private readonly int _vectorSize;
     private readonly QdrantHttpClient _qdrant;
     private readonly bool _verbose;
     private readonly TextAnalysisService _textAnalysis;
 
     public RagSummarizer(
         OllamaService ollama,
+        IEmbeddingService embedder,
         string qdrantHost = "localhost",
         bool verbose = false,
         int maxParallelism = DefaultMaxParallelism,
@@ -35,6 +39,8 @@ public class RagSummarizer
         TextAnalysisService? textAnalysis = null)
     {
         _ollama = ollama;
+        _embedder = embedder;
+        _useOnnxEmbedding = embedder is not OllamaEmbeddingService;
         _textAnalysis = textAnalysis ?? new TextAnalysisService();
 
         // Use HTTP client instead of gRPC - gRPC has AOT compatibility issues with System.Single marshalling
@@ -45,6 +51,7 @@ public class RagSummarizer
         _verbose = verbose;
         _maxParallelism = maxParallelism > 0 ? maxParallelism : DefaultMaxParallelism;
         _deleteCollectionAfterSummarization = qdrantConfig?.DeleteCollectionAfterSummarization ?? true;
+        _vectorSize = embedder.EmbeddingDimension;
         Template = template ?? SummaryTemplate.Presets.Default;
     }
 
@@ -95,86 +102,90 @@ public class RagSummarizer
         var collectionName = GetCollectionName(docId);
         await EnsureCollectionAsync(collectionName);
 
-        // Embeddings must be sequential - Ollama can only process one at a time
-        // Parallel requests cause connection failures
-        Console.WriteLine($"[Index] Indexing {chunks.Count} chunks (sequential - Ollama limitation)...");
-        Console.Out.Flush();
-
         // Batch upsert to avoid OOM - each embedding is 4KB (1024 floats)
         const int batchSize = 10;
         var batch = new List<QdrantPoint>(batchSize);
 
-        for (var i = 0; i < chunks.Count; i++)
-        {
-            // Add delay between document chunk embeddings to let Ollama recover
-            // This is critical to prevent wsarecv connection errors on Windows
-            if (i > 0)
+        // Initialize embedder (downloads ONNX models on first use)
+        await _embedder.InitializeAsync();
+        
+        var backendName = _useOnnxEmbedding ? "ONNX" : "Ollama";
+        
+        await AnsiConsole.Progress()
+            .AutoClear(false)
+            .HideCompleted(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new SpinnerColumn())
+            .StartAsync(async ctx =>
             {
-                var baseDelay = 500; // 500ms minimum between chunks
-                var jitter = Random.Shared.Next(0, 500); // 0-500ms jitter
-                await Task.Delay(baseDelay + jitter);
-            }
-            
-            var chunk = chunks[i];
-            var embedding = await _ollama.EmbedAsync(chunk.Content);
+                var task = ctx.AddTask($"[cyan]Embedding {chunks.Count} chunks ({backendName})[/]", maxValue: chunks.Count);
 
-            // Validate embedding dimensions
-            if (embedding.Length != VectorSize)
-                throw new InvalidOperationException(
-                    $"Embedding dimension mismatch: expected {VectorSize}, got {embedding.Length}. " +
-                    $"Ensure you have the correct embedding model (nomic-embed-text) pulled in Ollama.");
-
-            // Include order in ID to handle duplicate content (same hash)
-            var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
-
-            // Store truncated content in payload to reduce memory pressure
-            // Full retrieval reconstructs from chunk ID if needed
-            var truncatedContent = chunk.Content.Length > 2000 
-                ? chunk.Content[..2000] 
-                : chunk.Content;
-            
-            batch.Add(new QdrantPoint
-            {
-                Id = pointId.ToString(),
-                Vector = embedding,
-                Payload = new Dictionary<string, object>
+                for (var i = 0; i < chunks.Count; i++)
                 {
-                    ["docId"] = docId,
-                    ["chunkId"] = chunk.Id,
-                    ["heading"] = chunk.Heading ?? "",
-                    ["headingLevel"] = chunk.HeadingLevel,
-                    ["order"] = chunk.Order,
-                    ["content"] = truncatedContent,
-                    ["hash"] = chunk.Hash
+                    // Only add delays for Ollama - ONNX is local and fast
+                    if (!_useOnnxEmbedding && i > 0)
+                    {
+                        var baseDelay = 500; // 500ms minimum between chunks
+                        var jitter = Random.Shared.Next(0, 500); // 0-500ms jitter
+                        await Task.Delay(baseDelay + jitter);
+                    }
+
+                    var chunk = chunks[i];
+                    var embedding = await _embedder.EmbedAsync(chunk.Content);
+
+                    // Validate embedding dimensions
+                    if (embedding.Length != _vectorSize)
+                        throw new InvalidOperationException(
+                            $"Embedding dimension mismatch: expected {_vectorSize}, got {embedding.Length}. " +
+                            $"Check your embedding model configuration.");
+
+                    // Include order in ID to handle duplicate content (same hash)
+                    var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
+
+                    // Store truncated content in payload to reduce memory pressure
+                    var truncatedContent = chunk.Content.Length > 2000
+                        ? chunk.Content[..2000]
+                        : chunk.Content;
+
+                    batch.Add(new QdrantPoint
+                    {
+                        Id = pointId.ToString(),
+                        Vector = embedding,
+                        Payload = new Dictionary<string, object>
+                        {
+                            ["docId"] = docId,
+                            ["chunkId"] = chunk.Id,
+                            ["heading"] = chunk.Heading ?? "",
+                            ["headingLevel"] = chunk.HeadingLevel,
+                            ["order"] = chunk.Order,
+                            ["content"] = truncatedContent,
+                            ["hash"] = chunk.Hash
+                        }
+                    });
+
+                    // Upsert batch when full to free memory
+                    if (batch.Count >= batchSize)
+                    {
+                        await _qdrant.UpsertAsync(collectionName, batch);
+                        batch.Clear();
+                    }
+
+                    task.Increment(1);
+                    
+                    if (_verbose)
+                        AnsiConsole.MarkupLine($"  [grey]Embedded {Markup.Escape($"[{chunk.Id}]")} {Markup.Escape(chunk.Heading ?? "")}[/]");
+                }
+
+                // Upsert remaining batch
+                if (batch.Count > 0)
+                {
+                    await _qdrant.UpsertAsync(collectionName, batch);
+                    batch.Clear();
                 }
             });
-
-            // Upsert batch when full to free memory
-            if (batch.Count >= batchSize)
-            {
-                await _qdrant.UpsertAsync(collectionName, batch);
-                batch.Clear();
-            }
-
-            if (_verbose)
-            {
-                Console.WriteLine($"  Embedded [{chunk.Id}] {chunk.Heading} ({embedding.Length} dims)");
-            }
-            else
-            {
-                Console.Write($"\r  Progress: {i + 1}/{chunks.Count} chunks embedded");
-                Console.Out.Flush();
-            }
-        }
-
-        // Upsert remaining batch
-        if (batch.Count > 0)
-        {
-            await _qdrant.UpsertAsync(collectionName, batch);
-            batch.Clear();
-        }
-
-        if (!_verbose) Console.WriteLine(); // New line after progress
     }
 
     public async Task<DocumentSummary> SummarizeAsync(
@@ -333,7 +344,7 @@ public class RagSummarizer
     private async Task<List<(string chunkId, string heading, string content)>> RetrieveChunksAsync(
         string collectionName, string query, int topK)
     {
-        var queryEmbedding = await _ollama.EmbedAsync(query);
+        var queryEmbedding = await _embedder.EmbedAsync(query);
 
         // No filter needed since each document has its own collection
         var results = await _qdrant.SearchAsync(collectionName, queryEmbedding, topK);
@@ -793,7 +804,7 @@ public class RagSummarizer
         var collections = await _qdrant.ListCollectionsAsync();
         if (!collections.Any(c => c == collectionName))
         {
-            await _qdrant.CreateCollectionAsync(collectionName, VectorSize);
+            await _qdrant.CreateCollectionAsync(collectionName, _vectorSize);
             if (_verbose) Console.WriteLine($"[Index] Created collection {collectionName}");
         }
     }

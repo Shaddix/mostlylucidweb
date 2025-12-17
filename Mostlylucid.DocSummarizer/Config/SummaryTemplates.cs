@@ -191,12 +191,12 @@ public class SummaryTemplate
         {
             Name = "default",
             Description = "Balanced summary with executive overview and topic breakdowns",
-            TargetWords = 200,
-            Paragraphs = 2,
+            TargetWords = 500,
+            Paragraphs = 3,
             OutputStyle = OutputStyle.Prose,
             IncludeTopics = true,
             IncludeCitations = true,
-            IncludeQuestions = false,
+            IncludeQuestions = true,
             IncludeTrace = false,
             Tone = SummaryTone.Professional,
             Audience = AudienceLevel.General
@@ -302,8 +302,8 @@ public class SummaryTemplate
         {
             Name = "detailed",
             Description = "Comprehensive summary with full topic breakdowns",
-            TargetWords = 500,
-            Paragraphs = 3,
+            TargetWords = 1000,
+            Paragraphs = 5,
             OutputStyle = OutputStyle.Prose,
             IncludeTopics = true,
             IncludeCitations = true,
@@ -401,8 +401,8 @@ public class SummaryTemplate
         {
             Name = "bookreport",
             Description = "Classic book report style with setting, characters, plot, and themes",
-            TargetWords = 400,
-            Paragraphs = 4,
+            TargetWords = 800,
+            Paragraphs = 6,
             OutputStyle = OutputStyle.Prose,
             IncludeTopics = true,
             IncludeCitations = true,
@@ -413,19 +413,21 @@ public class SummaryTemplate
             ExecutivePrompt = """
                               {topics}
 
-                              Write a book report style summary with these sections:
+                              Write a comprehensive book report style summary with these sections:
 
-                              **Overview**: What is this document about? Who wrote it and why? (2-3 sentences)
+                              **Overview**: What is this document about? Who wrote it and why? Set the scene. (3-4 sentences)
 
-                              **Main Characters/Key Players**: Who are the important people, organizations, or concepts? Describe their roles.
+                              **Setting**: Where and when does this take place? Describe the world/context.
 
-                              **Plot/Main Content**: What happens? Summarize the key events, arguments, or information in chronological or logical order.
+                              **Main Characters**: Who are the important people? Describe each major character's personality, motivations, and role in the story. Include at least 4-5 characters.
 
-                              **Themes & Takeaways**: What are the main themes or lessons? What should the reader remember?
+                              **Plot Summary**: What happens? Summarize the key events in chronological order. Include the main conflict, key turning points, and resolution. This should be detailed - at least 3-4 paragraphs.
 
-                              **My Opinion**: Is this document effective? What works well and what could be improved?
+                              **Themes & Motifs**: What are the main themes explored? What messages or lessons does the author convey? Discuss at least 3 major themes.
 
-                              Write in an engaging, accessible style as if explaining to a friend. Include citations.
+                              **Analysis & Opinion**: Is this work effective? What makes it memorable? What are its strengths and weaknesses?
+
+                              Write in an engaging, accessible style. Include citations where you reference specific events or quotes.
                               """
         };
 

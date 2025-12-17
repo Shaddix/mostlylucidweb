@@ -12,12 +12,6 @@ public enum OutputFormat
     Json
 }
 
-public enum WebFetchMode
-{
-    Simple,
-    Playwright
-}
-
 public record DocumentChunk(
     int Order,
     string Heading,

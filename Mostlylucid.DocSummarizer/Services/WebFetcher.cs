@@ -5,6 +5,7 @@ using System.Text;
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
+using Microsoft.Playwright;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using SixLabors.ImageSharp;
@@ -788,12 +789,117 @@ public class WebFetcher
 
     #region Playwright Mode
 
+    private static bool _playwrightInstalled;
+    private static readonly SemaphoreSlim _installLock = new(1, 1);
+
+    /// <summary>
+    /// Ensure Playwright Chromium browser is installed (one-time setup).
+    /// Only called when Playwright mode is enabled.
+    /// </summary>
+    private static async Task EnsurePlaywrightInstalledAsync()
+    {
+        if (_playwrightInstalled) return;
+
+        await _installLock.WaitAsync();
+        try
+        {
+            if (_playwrightInstalled) return;
+
+            Console.WriteLine("Installing Playwright Chromium browser (first-time setup)...");
+            var exitCode = Microsoft.Playwright.Program.Main(["install", "chromium"]);
+            if (exitCode != 0)
+                throw new InvalidOperationException($"Failed to install Playwright Chromium browser (exit code {exitCode})");
+
+            _playwrightInstalled = true;
+            Console.WriteLine("Playwright Chromium installed successfully.");
+        }
+        finally
+        {
+            _installLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Fetch web content using Playwright headless browser.
+    /// Handles JavaScript-rendered pages (SPAs, React apps, etc.)
+    /// </summary>
     private async Task<WebFetchResult> FetchWithPlaywrightAsync(Uri uri)
     {
-        // Playwright mode would render JavaScript but has its own security concerns
-        // For now, fall back to simple fetch
-        Console.WriteLine("Note: Playwright mode not available in AOT build. Using simple HTTP fetch.");
-        return await FetchWithSecurityAsync(uri);
+        // Auto-install Chromium on first use
+        await EnsurePlaywrightInstalledAsync();
+
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Headless = true,
+            ExecutablePath = _config.BrowserExecutablePath // null = use installed Chromium
+        });
+
+        var page = await browser.NewPageAsync(new BrowserNewPageOptions
+        {
+            UserAgent = _config.UserAgent
+        });
+
+        // Set timeout from config
+        page.SetDefaultTimeout(_config.TimeoutSeconds * 1000);
+
+        try
+        {
+            Console.WriteLine($"Fetching (Playwright): {uri}");
+            
+            // Navigate and wait for network idle (JS finished loading)
+            var response = await page.GotoAsync(uri.ToString(), new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.NetworkIdle,
+                Timeout = _config.TimeoutSeconds * 1000
+            });
+
+            if (response == null)
+                throw new InvalidOperationException("Navigation returned null response");
+
+            // Get final URL after any client-side redirects
+            var finalUrl = page.Url;
+            var finalUri = new Uri(finalUrl);
+
+            // SSRF protection: validate final URL after any redirects
+            await ValidateHostAsync(finalUri);
+
+            // Check response status
+            if (!response.Ok)
+            {
+                throw new HttpRequestException($"HTTP {response.Status}: {response.StatusText}");
+            }
+
+            // Get rendered HTML content
+            var html = await page.ContentAsync();
+
+            // Validate size
+            if (html.Length > MaxHtmlBytes)
+            {
+                throw new SecurityException($"HTML too large: {html.Length} bytes (max {MaxHtmlBytes})");
+            }
+
+            // Get content type from response headers
+            var headers = await response.AllHeadersAsync();
+            var contentType = headers.TryGetValue("content-type", out var ct) ? ct : "text/html";
+
+            // Sanitize HTML (same as simple mode)
+            var sanitized = await SanitizeHtmlAsync(html, finalUri);
+
+            // Save to temp file
+            var tempFile = CreateTempFile(".html");
+            await File.WriteAllTextAsync(tempFile, sanitized);
+
+            return new WebFetchResult(tempFile, contentType, finalUrl, ".html", isHtmlContent: true);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new InvalidOperationException($"Playwright timeout waiting for page to load: {uri}", ex);
+        }
+        catch (PlaywrightException ex)
+        {
+            throw new InvalidOperationException($"Playwright error fetching {uri}: {ex.Message}", ex);
+        }
     }
 
     #endregion

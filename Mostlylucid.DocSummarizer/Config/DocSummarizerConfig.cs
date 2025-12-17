@@ -8,7 +8,17 @@ namespace Mostlylucid.DocSummarizer.Config;
 public class DocSummarizerConfig
 {
     /// <summary>
-    ///     Ollama configuration
+    ///     Embedding backend (Onnx = fast/zero-config, Ollama = uses Ollama server)
+    /// </summary>
+    public EmbeddingBackend EmbeddingBackend { get; set; } = EmbeddingBackend.Onnx;
+
+    /// <summary>
+    ///     ONNX configuration (used when Backend = Onnx)
+    /// </summary>
+    public OnnxConfig Onnx { get; set; } = new();
+
+    /// <summary>
+    ///     Ollama configuration (used when Backend = Ollama)
     /// </summary>
     public OllamaConfig Ollama { get; set; } = new();
 
@@ -198,9 +208,9 @@ public class QdrantConfig
     public string CollectionName { get; set; } = "documents";
 
     /// <summary>
-    ///     Vector size for embeddings
+    ///     Vector size for embeddings (384 for ONNX all-MiniLM, 768 for Ollama nomic-embed-text)
     /// </summary>
-    public int VectorSize { get; set; } = 768;
+    public int VectorSize { get; set; } = 384;
 
     /// <summary>
     ///     Delete collection after summarization
@@ -345,6 +355,22 @@ public class OutputConfig
 }
 
 /// <summary>
+///     Web fetch mode - determines how web pages are fetched
+/// </summary>
+public enum WebFetchMode
+{
+    /// <summary>
+    ///     Simple HTTP client fetch - fast but cannot execute JavaScript
+    /// </summary>
+    Simple,
+    
+    /// <summary>
+    ///     Playwright headless browser - slower but handles JavaScript-rendered pages (SPAs, React apps)
+    /// </summary>
+    Playwright
+}
+
+/// <summary>
 ///     Web fetch configuration
 /// </summary>
 public class WebFetchConfig
@@ -355,7 +381,13 @@ public class WebFetchConfig
     public bool Enabled { get; set; } = false;
 
     /// <summary>
-    ///     Browser executable path (optional)
+    ///     Fetch mode: Simple (HTTP client) or Playwright (headless browser for JS pages).
+    ///     When set to Playwright, Chromium browser will be auto-installed on first use.
+    /// </summary>
+    public WebFetchMode Mode { get; set; } = WebFetchMode.Simple;
+
+    /// <summary>
+    ///     Browser executable path (optional, for Playwright mode)
     /// </summary>
     public string? BrowserExecutablePath { get; set; }
 

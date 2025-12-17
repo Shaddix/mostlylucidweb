@@ -4,13 +4,12 @@
 <datetime class="hidden">2025-12-21T11:00</datetime>
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
-[![Native AOT](https://img.shields.io/badge/Native%20AOT-Enabled-brightgreen)](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
 > **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
 
-Every claim is traceable. Every fact cites its source. ~18MB binary, runs entirely on your machine.
+Every claim is traceable. Every fact cites its source. Self-contained binary, runs entirely on your machine.
 
 ```bash
 # Human-readable summary
@@ -43,10 +42,10 @@ If you need to *trust* a summary — or feed it to another system — that matte
 - **11 Templates**: brief, bullets, executive, technical, academic, bookreport, meeting...
 - **Large Documents**: Hierarchical reduction handles 500+ pages
 - **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
+- **Playwright Mode**: Headless browser for JavaScript-rendered pages (SPAs, React apps)
+- **ONNX Embeddings**: Zero-config local embeddings - models auto-download on first use
 - **Quality Analysis**: Hallucination detection, entity extraction
-- **Resilient Embeddings**: Polly-based retry with jitter backoff + circuit breaker
-- **Long Text Support**: Automatic chunking with vector averaging for texts >1000 chars
-- **Native AOT**: ~18MB binary, instant startup
+- **Resilient LLM**: Polly-based retry with jitter backoff + circuit breaker
 - **Local Only**: Nothing leaves your machine
 
 ## Using as an LLM Tool
@@ -184,12 +183,12 @@ Pre-built native executables are available from [GitHub Releases](https://github
 
 ```bash
 # Download and extract (Linux/macOS)
-curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v1.0.0/docsummarizer-linux-x64.tar.gz
+curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-linux-x64.tar.gz
 tar -xzf docsummarizer.tar.gz
 chmod +x docsummarizer
 
 # Download and extract (Windows PowerShell)
-Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v1.0.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
+Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
 Expand-Archive -Path "docsummarizer.zip" -DestinationPath "."
 ```
 
@@ -201,12 +200,13 @@ Ollama is the **only requirement** for summarizing Markdown files:
 
 ```bash
 # Install Ollama from https://ollama.ai
-ollama pull qwen2.5:1.5b       # Default model - fast (recommended for speed)
-ollama pull mxbai-embed-large  # For RAG mode only
+ollama pull llama3.2:3b        # Default model - good balance of speed/quality
 ollama serve
 ```
 
-> **Tip**: The default `qwen2.5:1.5b` is optimized for speed (~3s per document). For higher quality summaries, use `--model llama3.2:3b` or `--model ministral-3:3b`.
+> **Note**: No embedding model needed! The tool uses **ONNX embeddings by default** - models auto-download from HuggingFace on first RAG use (~23MB).
+
+> **Speed tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
 
 #### Optional: Docling (PDF/DOCX only)
 
@@ -222,6 +222,15 @@ Only needed for `--mode Rag`. The default MapReduce mode doesn't require Qdrant.
 
 ```bash
 docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+#### Optional: Ollama Embeddings
+
+If you prefer Ollama for embeddings instead of ONNX:
+
+```bash
+ollama pull nomic-embed-text   # Or mxbai-embed-large
+# Then use: --embedding-backend Ollama
 ```
 
 ### Verify Dependencies
@@ -321,7 +330,7 @@ docsummarizer --url "https://example.com/api-docs.html" --web-enabled --structur
 
 **Security**: SSRF protection, DNS rebinding protection, content-type gating, decompression bomb protection, HTML sanitization.
 
-> **Note: JavaScript-rendered pages** — The AOT binary uses simple HTTP fetching which doesn't execute JavaScript. SPAs and client-rendered pages will return empty or partial content. For dynamic pages, either use a pre-rendered URL or build without AOT to enable Playwright support (see README for details).
+**JavaScript-rendered pages**: Use `--web-mode Playwright` for SPAs and React apps (auto-installs Chromium on first use).
 
 ### Structured Mode
 
@@ -407,6 +416,9 @@ docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 | `--template` | `-t` | Summary template (default, brief, bullets, executive, etc.) | `default` |
 | `--words` | `-w` | Target word count (overrides template) | Template default |
 | `--benchmark` | `-b` | Comma-separated models to compare | - |
+| `--embedding-backend` | | Embedding backend: Onnx, Ollama | `Onnx` |
+| `--embedding-model` | | ONNX model name (RAG mode) | `AllMiniLmL6V2` |
+| `--web-mode` | | Web fetch mode: Simple, Playwright | `Simple` |
 | `--analyze` | `-a` | Run quality analysis on summary | `false` |
 
 ## Summarization Modes
@@ -533,9 +545,13 @@ Example `docsummarizer.json`:
 
 ```json
 {
+  "embeddingBackend": "Onnx",
+  "onnx": {
+    "embeddingModel": "AllMiniLmL6V2"
+  },
   "ollama": {
     "model": "llama3.2:3b",
-    "embedModel": "nomic-embed-text",
+    "embedModel": "mxbai-embed-large",
     "baseUrl": "http://localhost:11434",
     "temperature": 0.3,
     "timeoutSeconds": 1200
@@ -566,6 +582,7 @@ Example `docsummarizer.json`:
   },
   "webFetch": {
     "enabled": false,
+    "mode": "Simple",
     "timeoutSeconds": 30,
     "userAgent": "Mozilla/5.0 DocSummarizer/1.0"
   },
@@ -621,13 +638,13 @@ Example `docsummarizer.json`:
 
 | Model | Size | Speed | Quality | Use Case |
 |-------|------|-------|---------|----------|
-| `qwen2.5:1.5b` | 986MB | Very Fast (~3s) | Good | **Default** - speed optimized |
+| `qwen2.5:1.5b` | 986MB | Very Fast (~3s) | Good | Speed optimized |
 | `gemma3:1b` | 815MB | Fast (~10s) | Fair | Alternative small model |
-| `llama3.2:3b` | 2GB | Medium (~15s) | Very Good | Balance of speed/quality |
+| `llama3.2:3b` | 2GB | Medium (~15s) | Very Good | **Default** - good balance |
 | `ministral-3:3b` | 2.9GB | Medium (~20s) | Very Good | Quality-focused |
 | `llama3.1:8b` | 4.7GB | Slow (~45s) | Excellent | High-quality summaries |
 
-> **Tip**: The default `qwen2.5:1.5b` provides good summaries in ~3 seconds. For critical documents where quality matters more than speed, use `--model llama3.2:3b` or larger.
+> **Tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`. For critical documents where quality matters more, use `--model llama3.1:8b`.
 
 ## Build from Source
 
@@ -658,7 +675,7 @@ dotnet publish -c Release -r linux-x64 --self-contained
 dotnet publish -c Release -r osx-x64 --self-contained
 ```
 
-Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~24MB)
+Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~48MB)
 
 ## Troubleshooting
 
@@ -717,8 +734,8 @@ If summaries lack `[chunk-N]` citations:
 ## Performance Tips
 
 - **MapReduce** for speed (parallel chunks)
-- **`ministral-3:3b`** for balance, **`llama3.1:8b`** for quality
-- **Native AOT** for production (instant startup)
+- **`qwen2.5:1.5b`** for speed, **`llama3.2:3b`** for balance, **`llama3.1:8b`** for quality
+- **ONNX embeddings** (default) are faster than Ollama for RAG mode
 - Lower **`maxLlmParallelism`** if experiencing timeouts
 
 ## Resources

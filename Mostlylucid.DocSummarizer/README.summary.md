@@ -1,54 +1,61 @@
 # Document Summary: README.md
 
-*Generated: 2025-12-17 21:44:12*
+*Generated: 2025-12-17 22:29:38*
 
 ## Executive Summary
 
 Here is an executive summary based on the provided topic summaries, claims, and verified entities:
 
-**DocSummarizer: A Cloud-Agnostic Document Summarization Tool**
+**Executive Summary**
 
-DocSummarizer is a self-contained document summarization tool that generates human-readable summaries and structured JSON output without sending data to the cloud. This tool provides a secure alternative for organizations looking to summarize documents locally.
+The Ollama tool has been updated to version 3.0.0, introducing improved resilience, long text handling, and Windows stability fixes. This update enhances the tool's capabilities for documentation and integration, allowing users to turn documents or URLs into evidence-grounded summaries or structured JSON without sending data to the cloud.
 
-Key Facts:
-• DocSummarizer generates summaries from documents without sending data to the cloud.
-• The tool provides human-readable summaries and structured JSON output usable by humans or AI agents.
-• The docsummarizer tool can generate default configurations using `docsummarizer config --output docsummarizer.json`.
+Key highlights include:
 
-By utilizing this tool, organizations can ensure that their document summarization needs are met while maintaining control over sensitive data.
+• The tool now includes new features in version 3.0.0, improving its performance and reliability.
+• A default configuration file can be generated using `docsummarizer config --output docsummarizer.json`.
+• Auto-discovery order for configuration files is specified as: `--config` option, current directory, `.docsummarizer.json`, and `~/.docsummarizer.json`.
+
+Note: The following verified entities have been used in this executive summary:
+
+* Ollama (tool name)
+* docsummarizer (configuration file command)
+
+Please let me know if you'd like me to make any changes.
 
 ## Topic Summaries
 
-### DocSummarizer
+### Documentation and Integration
 
-*Sources: chunk-2, chunk-0, chunk-1*
+*Sources: chunk-0, chunk-3, chunk-2*
 
-• DocSummarizer generates summaries from documents without sending data to the cloud.
-• The tool provides human-readable summaries and structured JSON output usable by humans or AI agents.
+• The content discusses the capabilities of a tool for documentation and integration, allowing users to turn documents or URLs into evidence-grounded summaries or structured JSON without sending data to the cloud.
+• The tool has new features in version 3.0.0, including improved resilience, long text handling, and Windows stability fixes.
+• Users can generate default configurations using the `docsummarizer config` command and customize their settings with a complete configuration reference.
 
-### Pipe to other tools
+### Configuration Options
 
-*Sources: chunk-2, chunk-0, chunk-1*
+*Sources: chunk-2, chunk-3, chunk-0*
 
-• The docsummarizer tool can generate default config using `docsummarizer config --output docsummarizer.json`.
-• Auto-discovery order includes `--config` option, `.docsummarizer.json`, and `~/.docsummarizer.json`.
-• The tool output structure is in JSON format, with fields such as `success`, `source`, `contentType`, `summary`, `keyFacts`, and `topics`.
+• The documentation provides a command to generate a default configuration file using `docsummarizer config --output docsummarizer.json`.
+• Auto-discovery order for configuration files is specified as: `--config` option, current directory, `.docsummarizer.json`, and `~/.docsummarizer.json`.
+• The documentation includes a complete configuration reference in JSON format, detailing various options such as Ollama model, embedModel, baseUrl, temperature, and timeoutSeconds.
 
-### Configuration
+### Troubleshooting Issues
 
-*Sources: chunk-2, chunk-0, chunk-1*
+*Sources: chunk-3, chunk-0, chunk-2*
 
-• The docsummarizer tool can generate default configurations using the `docsummarizer config --output docsummarizer.json` command.
-• Auto-discovery order for configuration files includes `--config`, `docsummarizer.json` in the current directory, `.docsummarizer.json`, and `~/.docsummarizer.json`.
-• The complete configuration reference is provided in JSON format.
+• Troubleshooting issues for the Ollama tool include resolving connection errors, security blocks, and circuit breaker failures.
+• Solutions vary depending on the specific issue, such as running `ollama serve` to connect to Ollama or waiting 30 seconds to restart Ollama.
+• The tool also includes features like Polly Resilience, Long Text Handling, and Windows Stability improvements in version v3.0.0.
 
 ## Processing Trace
 
 | Metric | Value |
 |--------|-------|
 | Document | README.md |
-| Chunks | 3 total, 3 processed |
+| Chunks | 4 total, 3 processed |
 | Topics | 3 |
-| Time | 67.7s |
-| Coverage | 100 % |
+| Time | 34.5s |
+| Coverage | 75% |
 | Citation rate | 0.00 |
