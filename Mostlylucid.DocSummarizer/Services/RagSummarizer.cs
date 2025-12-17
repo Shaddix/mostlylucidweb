@@ -106,6 +106,15 @@ public class RagSummarizer
 
         for (var i = 0; i < chunks.Count; i++)
         {
+            // Add delay between document chunk embeddings to let Ollama recover
+            // This is critical to prevent wsarecv connection errors on Windows
+            if (i > 0)
+            {
+                var baseDelay = 500; // 500ms minimum between chunks
+                var jitter = Random.Shared.Next(0, 500); // 0-500ms jitter
+                await Task.Delay(baseDelay + jitter);
+            }
+            
             var chunk = chunks[i];
             var embedding = await _ollama.EmbedAsync(chunk.Content);
 
@@ -118,6 +127,12 @@ public class RagSummarizer
             // Include order in ID to handle duplicate content (same hash)
             var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
 
+            // Store truncated content in payload to reduce memory pressure
+            // Full retrieval reconstructs from chunk ID if needed
+            var truncatedContent = chunk.Content.Length > 2000 
+                ? chunk.Content[..2000] 
+                : chunk.Content;
+            
             batch.Add(new QdrantPoint
             {
                 Id = pointId.ToString(),
@@ -129,7 +144,7 @@ public class RagSummarizer
                     ["heading"] = chunk.Heading ?? "",
                     ["headingLevel"] = chunk.HeadingLevel,
                     ["order"] = chunk.Order,
-                    ["content"] = chunk.Content,
+                    ["content"] = truncatedContent,
                     ["hash"] = chunk.Hash
                 }
             });
@@ -232,6 +247,10 @@ public class RagSummarizer
             foreach (var c in result.retrieved)
                 allRetrievedChunks.Add(c.chunkId);
 
+            // Clear retrieval results to free memory - we've extracted what we need
+            retrievalResults = null!;
+            synthesisResults = null!;
+            
             // Deduplicate claims using semantic similarity
             var deduplicatedClaims = _textAnalysis.DeduplicateClaims(claimLedger.Claims.ToList());
             if (_verbose) Console.WriteLine($"[Claims] {claimLedger.Claims.Count} claims → {deduplicatedClaims.Count} after dedup");
@@ -252,6 +271,10 @@ public class RagSummarizer
             var executive = await CreateGroundedExecutiveSummaryAsync(
                 topicSummaries, deduplicatedClaims, mergedEntities, focusQuery);
 
+            // Clear intermediate data to free memory before building result
+            deduplicatedClaims.Clear();
+            allEntities.Clear();
+            
             sw.Stop();
 
             // Coverage = % of top-level headings that appear in at least one retrieved chunk
@@ -267,6 +290,9 @@ public class RagSummarizer
                 ? (double)topLevelHeadings.Count(h => retrievedHeadings.Contains(h)) / topLevelHeadings.Count
                 : 1.0;
             var citationRate = CalculateCitationRate(executive);
+            
+            // Build chunk index for output
+            var chunkIndex = chunks.Select(ChunkIndexEntry.FromChunk).ToList();
 
             return new DocumentSummary(
                 executive,
@@ -274,7 +300,7 @@ public class RagSummarizer
                 [],
                 new SummarizationTrace(
                     docId, chunks.Count, allRetrievedChunks.Count,
-                    topics, sw.Elapsed, coverage, citationRate),
+                    topics, sw.Elapsed, coverage, citationRate, chunkIndex),
                 mergedEntities);
         }
         finally

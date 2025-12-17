@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "docsummarizer": {
+      "command": "dotnet",
+      "args": ["run", "--project", "Mostlylucid.DocSummarizer.Mcp/Mostlylucid.DocSummarizer.Mcp.csproj"],
+      "env": {
+        "OLLAMA_MODEL": "llama3.2:3b",
+        "OLLAMA_EMBED_MODEL": "nomic-embed-text",
+        "OLLAMA_BASE_URL": "http://localhost:11434"
+      }
+    }
+  }
+}

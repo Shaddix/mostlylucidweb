@@ -41,6 +41,68 @@ public class DocSummarizerConfig
     ///     Batch processing configuration
     /// </summary>
     public BatchConfig Batch { get; set; } = new();
+
+    /// <summary>
+    ///     Embedding resilience configuration
+    /// </summary>
+    public EmbeddingConfig Embedding { get; set; } = new();
+}
+
+/// <summary>
+///     Embedding service resilience configuration
+/// </summary>
+public class EmbeddingConfig
+{
+    /// <summary>
+    ///     Maximum requests per second to Ollama embedding endpoint.
+    ///     Ollama processes embeddings sequentially, so this prevents overwhelming it.
+    ///     Default is 2 requests/second.
+    /// </summary>
+    public double RequestsPerSecond { get; set; } = 2.0;
+
+    /// <summary>
+    ///     Maximum retry attempts for failed embedding requests.
+    ///     Default is 5 retries.
+    /// </summary>
+    public int MaxRetries { get; set; } = 5;
+
+    /// <summary>
+    ///     Initial delay before first retry in milliseconds.
+    ///     Uses exponential backoff: delay * 2^attempt.
+    ///     Default is 1000ms (1 second).
+    /// </summary>
+    public int InitialRetryDelayMs { get; set; } = 1000;
+
+    /// <summary>
+    ///     Maximum delay between retries in milliseconds.
+    ///     Default is 30000ms (30 seconds).
+    /// </summary>
+    public int MaxRetryDelayMs { get; set; } = 30000;
+
+    /// <summary>
+    ///     Delay between embedding requests in milliseconds.
+    ///     Added on top of rate limiting for extra stability.
+    ///     Default is 100ms.
+    /// </summary>
+    public int DelayBetweenRequestsMs { get; set; } = 100;
+
+    /// <summary>
+    ///     Enable circuit breaker to fail fast after repeated failures.
+    ///     Default is true.
+    /// </summary>
+    public bool EnableCircuitBreaker { get; set; } = true;
+
+    /// <summary>
+    ///     Number of consecutive failures before opening circuit.
+    ///     Default is 3.
+    /// </summary>
+    public int CircuitBreakerThreshold { get; set; } = 3;
+
+    /// <summary>
+    ///     How long to keep circuit open before trying again in seconds.
+    ///     Default is 30 seconds.
+    /// </summary>
+    public int CircuitBreakerDurationSeconds { get; set; } = 30;
 }
 
 /// <summary>
@@ -190,6 +252,55 @@ public class ProcessingConfig
     ///     Minimum chunk tokens
     /// </summary>
     public int MinChunkTokens { get; set; } = 200;
+
+    /// <summary>
+    ///     Memory management settings
+    /// </summary>
+    public MemoryConfig Memory { get; set; } = new();
+}
+
+/// <summary>
+///     Memory management configuration for large document processing
+/// </summary>
+public class MemoryConfig
+{
+    /// <summary>
+    ///     Enable disk-backed chunk storage for large documents.
+    ///     When enabled, chunk content is stored on disk instead of memory
+    ///     when the document exceeds DiskStorageThreshold chunks.
+    /// </summary>
+    public bool EnableDiskStorage { get; set; } = true;
+
+    /// <summary>
+    ///     Number of chunks before switching to disk storage.
+    ///     Default is 100 chunks (~400KB-1.6MB of content).
+    /// </summary>
+    public int DiskStorageThreshold { get; set; } = 100;
+
+    /// <summary>
+    ///     Use streaming chunker for markdown files larger than this size (in bytes).
+    ///     Streaming processes line-by-line without loading entire file.
+    ///     Default is 5MB.
+    /// </summary>
+    public long StreamingThresholdBytes { get; set; } = 5 * 1024 * 1024;
+
+    /// <summary>
+    ///     Batch size for embedding operations. Smaller batches use less memory
+    ///     but may be slower. Default is 10.
+    /// </summary>
+    public int EmbeddingBatchSize { get; set; } = 10;
+
+    /// <summary>
+    ///     Trigger GC after processing this many chunks.
+    ///     Set to 0 to disable periodic GC.
+    /// </summary>
+    public int GcIntervalChunks { get; set; } = 50;
+
+    /// <summary>
+    ///     Maximum memory usage in MB before forcing GC.
+    ///     Set to 0 to disable memory-based GC triggers.
+    /// </summary>
+    public int MaxMemoryMB { get; set; } = 0;
 }
 
 /// <summary>
@@ -226,6 +337,11 @@ public class OutputConfig
     ///     Include open questions in output
     /// </summary>
     public bool IncludeOpenQuestions { get; set; } = false;
+
+    /// <summary>
+    ///     Include document structure/chunk index in output
+    /// </summary>
+    public bool IncludeChunkIndex { get; set; } = false;
 }
 
 /// <summary>

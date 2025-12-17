@@ -1,5 +1,5 @@
 using System.CommandLine;
-using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services;
@@ -8,87 +8,63 @@ using Mostlylucid.DocSummarizer.Services;
 var rootCommand = new RootCommand("Document summarization tool using local LLMs");
 
 // Global options
-var configOption = new Option<string?>("--config", "Path to configuration file (JSON)");
-configOption.AddAlias("-c");
-
-var fileOption = new Option<FileInfo?>("--file", "Path to the document (DOCX, PDF, or MD)");
-fileOption.AddAlias("-f");
-
-var directoryOption = new Option<DirectoryInfo?>("--directory", "Path to directory for batch processing");
-directoryOption.AddAlias("-d");
-
-var urlOption = new Option<string?>("--url", "Web URL to fetch and summarize (requires --web-enabled)");
-urlOption.AddAlias("-u");
-
-var webEnabledOption = new Option<bool>("--web-enabled", () => false, "Enable web URL fetching (required when using --url)");
-
-var modeOption = new Option<SummarizationMode>("--mode", () => SummarizationMode.MapReduce, "Summarization mode: MapReduce, Rag, or Iterative");
-modeOption.AddAlias("-m");
-
-var focusOption = new Option<string?>("--focus", "Focus query for RAG mode (e.g., 'pricing terms', 'security requirements')");
-
-var queryOption = new Option<string?>("--query", "Query the document instead of summarizing");
-queryOption.AddAlias("-q");
-
-var modelOption = new Option<string?>("--model", "Ollama model to use (overrides config)");
-
-var verboseOption = new Option<bool>("--verbose", () => false, "Show detailed progress");
-verboseOption.AddAlias("-v");
-
-var outputFormatOption = new Option<OutputFormat>("--output-format", () => OutputFormat.Console, "Output format: Console, Text, Markdown, Json");
-outputFormatOption.AddAlias("-o");
-
-var outputDirOption = new Option<string?>("--output-dir", "Output directory for file outputs");
-
-var extensionsOption = new Option<string[]?>("--extensions", "File extensions to process in batch mode (e.g., .pdf .docx .md)");
-extensionsOption.AddAlias("-e");
-
-var recursiveOption = new Option<bool>("--recursive", () => false, "Process directories recursively");
-recursiveOption.AddAlias("-r");
-
-var templateOption = new Option<string?>("--template", "Summary template (e.g., 'bookreport' or 'bookreport:500' for custom word count). Available: default, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting");
-templateOption.AddAlias("-t");
-
-var wordsOption = new Option<int?>("--words", "Target word count (overrides template default)");
-wordsOption.AddAlias("-w");
+var configOption = new Option<string?>("--config", "-c") { Description = "Path to configuration file (JSON)" };
+var fileOption = new Option<FileInfo?>("--file", "-f") { Description = "Path to the document (DOCX, PDF, or MD)" };
+var directoryOption = new Option<DirectoryInfo?>("--directory", "-d") { Description = "Path to directory for batch processing" };
+var urlOption = new Option<string?>("--url", "-u") { Description = "Web URL to fetch and summarize (requires --web-enabled)" };
+var webEnabledOption = new Option<bool>("--web-enabled") { Description = "Enable web URL fetching (required when using --url)", DefaultValueFactory = _ => false };
+var modeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode: MapReduce, Rag, or Iterative", DefaultValueFactory = _ => SummarizationMode.MapReduce };
+var focusOption = new Option<string?>("--focus") { Description = "Focus query for RAG mode (e.g., 'pricing terms', 'security requirements')" };
+var queryOption = new Option<string?>("--query", "-q") { Description = "Query the document instead of summarizing" };
+var modelOption = new Option<string?>("--model") { Description = "Ollama model to use (overrides config)" };
+var verboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed progress", DefaultValueFactory = _ => false };
+var outputFormatOption = new Option<OutputFormat>("--output-format", "-o") { Description = "Output format: Console, Text, Markdown, Json", DefaultValueFactory = _ => OutputFormat.Console };
+var outputDirOption = new Option<string?>("--output-dir") { Description = "Output directory for file outputs" };
+var extensionsOption = new Option<string[]?>("--extensions", "-e") { Description = "File extensions to process in batch mode (e.g., .pdf .docx .md)" };
+var recursiveOption = new Option<bool>("--recursive", "-r") { Description = "Process directories recursively", DefaultValueFactory = _ => false };
+var templateOption = new Option<string?>("--template", "-t") { Description = "Summary template (e.g., 'bookreport' or 'bookreport:500' for custom word count). Available: default, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting" };
+var wordsOption = new Option<int?>("--words", "-w") { Description = "Target word count (overrides template default)" };
+var showStructureOption = new Option<bool>("--show-structure", "-s") { Description = "Include document structure/chunk index in output", DefaultValueFactory = _ => false };
 
 // Add options to root command
-rootCommand.AddOption(configOption);
-rootCommand.AddOption(fileOption);
-rootCommand.AddOption(directoryOption);
-rootCommand.AddOption(urlOption);
-rootCommand.AddOption(webEnabledOption);
-rootCommand.AddOption(modeOption);
-rootCommand.AddOption(focusOption);
-rootCommand.AddOption(queryOption);
-rootCommand.AddOption(modelOption);
-rootCommand.AddOption(verboseOption);
-rootCommand.AddOption(outputFormatOption);
-rootCommand.AddOption(outputDirOption);
-rootCommand.AddOption(extensionsOption);
-rootCommand.AddOption(recursiveOption);
-rootCommand.AddOption(templateOption);
-rootCommand.AddOption(wordsOption);
+rootCommand.Options.Add(configOption);
+rootCommand.Options.Add(fileOption);
+rootCommand.Options.Add(directoryOption);
+rootCommand.Options.Add(urlOption);
+rootCommand.Options.Add(webEnabledOption);
+rootCommand.Options.Add(modeOption);
+rootCommand.Options.Add(focusOption);
+rootCommand.Options.Add(queryOption);
+rootCommand.Options.Add(modelOption);
+rootCommand.Options.Add(verboseOption);
+rootCommand.Options.Add(outputFormatOption);
+rootCommand.Options.Add(outputDirOption);
+rootCommand.Options.Add(extensionsOption);
+rootCommand.Options.Add(recursiveOption);
+rootCommand.Options.Add(templateOption);
+rootCommand.Options.Add(wordsOption);
+rootCommand.Options.Add(showStructureOption);
 
-// Main handler (using InvocationContext to avoid parameter limits)
-rootCommand.SetHandler(async (InvocationContext context) =>
+// Main handler
+rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var configPath = context.ParseResult.GetValueForOption(configOption);
-    var file = context.ParseResult.GetValueForOption(fileOption);
-    var directory = context.ParseResult.GetValueForOption(directoryOption);
-    var url = context.ParseResult.GetValueForOption(urlOption);
-    var webEnabled = context.ParseResult.GetValueForOption(webEnabledOption);
-    var mode = context.ParseResult.GetValueForOption(modeOption);
-    var focus = context.ParseResult.GetValueForOption(focusOption);
-    var query = context.ParseResult.GetValueForOption(queryOption);
-    var model = context.ParseResult.GetValueForOption(modelOption);
-    var verbose = context.ParseResult.GetValueForOption(verboseOption);
-    var outputFormat = context.ParseResult.GetValueForOption(outputFormatOption);
-    var outputDir = context.ParseResult.GetValueForOption(outputDirOption);
-    var extensions = context.ParseResult.GetValueForOption(extensionsOption);
-    var recursive = context.ParseResult.GetValueForOption(recursiveOption);
-    var templateName = context.ParseResult.GetValueForOption(templateOption);
-    var targetWords = context.ParseResult.GetValueForOption(wordsOption);
+    var configPath = parseResult.GetValue(configOption);
+    var file = parseResult.GetValue(fileOption);
+    var directory = parseResult.GetValue(directoryOption);
+    var url = parseResult.GetValue(urlOption);
+    var webEnabled = parseResult.GetValue(webEnabledOption);
+    var mode = parseResult.GetValue(modeOption);
+    var focus = parseResult.GetValue(focusOption);
+    var query = parseResult.GetValue(queryOption);
+    var model = parseResult.GetValue(modelOption);
+    var verbose = parseResult.GetValue(verboseOption);
+    var outputFormat = parseResult.GetValue(outputFormatOption);
+    var outputDir = parseResult.GetValue(outputDirOption);
+    var extensions = parseResult.GetValue(extensionsOption);
+    var recursive = parseResult.GetValue(recursiveOption);
+    var templateName = parseResult.GetValue(templateOption);
+    var targetWords = parseResult.GetValue(wordsOption);
+    var showStructure = parseResult.GetValue(showStructureOption);
     
     try
     {
@@ -99,6 +75,7 @@ rootCommand.SetHandler(async (InvocationContext context) =>
         if (model != null) config.Ollama.Model = model;
         config.Output.Verbose = verbose;
         config.Output.Format = outputFormat;
+        config.Output.IncludeChunkIndex = showStructure;
         if (outputDir != null) config.Output.OutputDirectory = outputDir;
         if (extensions != null && extensions.Length > 0) config.Batch.FileExtensions = extensions.ToList();
         config.Batch.Recursive = recursive;
@@ -131,8 +108,7 @@ rootCommand.SetHandler(async (InvocationContext context) =>
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Error: --web-enabled must be specified when using --url");
                 Console.ResetColor();
-                context.ExitCode = 1;
-                return;
+                return 1;
             }
             
             // Enable web fetch in config
@@ -163,9 +139,10 @@ rootCommand.SetHandler(async (InvocationContext context) =>
             {
                 Console.WriteLine("Error: Either --file, --directory, or --url must be specified");
                 Console.WriteLine("       (or run from a directory containing README.md)");
-                context.ExitCode = 1;
+                return 1;
             }
         }
+        return 0;
     }
     catch (Exception ex)
     {
@@ -176,24 +153,23 @@ rootCommand.SetHandler(async (InvocationContext context) =>
         if (verbose)
             Console.WriteLine(ex.StackTrace);
         
-        context.ExitCode = 1;
+        return 1;
     }
 });
 
 // Check command - verify dependencies
 var checkCommand = new Command("check", "Verify dependencies are available");
-var checkVerboseOption = new Option<bool>("--verbose", () => false, "Show detailed model information");
-checkVerboseOption.AddAlias("-v");
-checkCommand.AddOption(checkVerboseOption);
-checkCommand.SetHandler(async (InvocationContext context) =>
+var checkVerboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed model information", DefaultValueFactory = _ => false };
+checkCommand.Options.Add(checkVerboseOption);
+checkCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var verbose = context.ParseResult.GetValueForOption(checkVerboseOption);
+    var verbose = parseResult.GetValue(checkVerboseOption);
     Console.WriteLine("Checking dependencies...\n");
 
     // Check Ollama
     var ollama = new OllamaService();
     var ollamaOk = await ollama.IsAvailableAsync();
-    Console.WriteLine($"  Ollama: {(ollamaOk ? "✓" : "✗")} (http://localhost:11434)");
+    Console.WriteLine($"  Ollama: {(ollamaOk ? "OK" : "FAIL")} (http://localhost:11434)");
 
     if (ollamaOk && verbose)
     {
@@ -234,7 +210,7 @@ checkCommand.SetHandler(async (InvocationContext context) =>
     Console.WriteLine();
     using var docling = new DoclingClient();
     var doclingOk = await docling.IsAvailableAsync();
-    Console.WriteLine($"  Docling: {(doclingOk ? "✓" : "✗")} (http://localhost:5001)");
+    Console.WriteLine($"  Docling: {(doclingOk ? "OK" : "FAIL")} (http://localhost:5001)");
 
     // Check Qdrant (using HTTP client for AOT compatibility)
     var qdrantOk = false;
@@ -245,7 +221,7 @@ checkCommand.SetHandler(async (InvocationContext context) =>
         qdrantOk = true;
     }
     catch { }
-    Console.WriteLine($"  Qdrant: {(qdrantOk ? "✓" : "✗")} (localhost:6333)");
+    Console.WriteLine($"  Qdrant: {(qdrantOk ? "OK" : "FAIL")} (localhost:6333)");
 
     Console.WriteLine();
     if (!ollamaOk || !doclingOk || !qdrantOk)
@@ -256,76 +232,72 @@ checkCommand.SetHandler(async (InvocationContext context) =>
         if (!qdrantOk) Console.WriteLine("  docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant");
         Console.WriteLine();
         Console.WriteLine("To pull the default models:");
-        Console.WriteLine("  ollama pull ministral-3:3b");
+        Console.WriteLine("  ollama pull llama3.2:3b");
         Console.WriteLine("  ollama pull nomic-embed-text");
+        return 1;
     }
     else
     {
         Console.WriteLine("All dependencies available!");
+        return 0;
     }
 });
-rootCommand.AddCommand(checkCommand);
+rootCommand.Subcommands.Add(checkCommand);
 
 // Config command - generate default configuration
 var configCommand = new Command("config", "Generate default configuration file");
-var configOutputOption = new Option<string>("--output", () => "docsummarizer.json", "Output file path");
-configOutputOption.AddAlias("-o");
-configCommand.AddOption(configOutputOption);
-configCommand.SetHandler((InvocationContext context) =>
+var configOutputOption = new Option<string>("--output", "-o") { Description = "Output file path", DefaultValueFactory = _ => "docsummarizer.json" };
+configCommand.Options.Add(configOutputOption);
+configCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var outputPath = context.ParseResult.GetValueForOption(configOutputOption) ?? "docsummarizer.json";
+    var outputPath = parseResult.GetValue(configOutputOption) ?? "docsummarizer.json";
     ConfigurationLoader.CreateDefault(outputPath);
     Console.WriteLine($"Created default configuration: {outputPath}");
+    await Task.CompletedTask;
+    return 0;
 });
-rootCommand.AddCommand(configCommand);
+rootCommand.Subcommands.Add(configCommand);
 
 // Tool command - for LLM tool integration, outputs JSON
-var toolCommand = new Command("tool", "Summarize and output JSON for LLM tool integration");
+var toolCommand = new Command("tool", "Summarize or query documents and output JSON for LLM tool integration");
 
-var toolUrlOption = new Option<string?>("--url", "URL to fetch and summarize");
-toolUrlOption.AddAlias("-u");
+var toolUrlOption = new Option<string?>("--url", "-u") { Description = "URL to fetch and process" };
+var toolFileOption = new Option<FileInfo?>("--file", "-f") { Description = "File to process" };
+var toolAskOption = new Option<string?>("--ask", "-a") { Description = "Ask a question about the document (Q&A mode using RAG)" };
+var toolQueryOption = new Option<string?>("--query", "-q") { Description = "Focus query for summarization (filters summary to specific topic)" };
+var toolModeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode (ignored if --ask is used)", DefaultValueFactory = _ => SummarizationMode.MapReduce };
+var toolModelOption = new Option<string?>("--model") { Description = "Ollama model to use" };
+var toolConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
 
-var toolFileOption = new Option<FileInfo?>("--file", "File to summarize");
-toolFileOption.AddAlias("-f");
+toolCommand.Options.Add(toolUrlOption);
+toolCommand.Options.Add(toolFileOption);
+toolCommand.Options.Add(toolAskOption);
+toolCommand.Options.Add(toolQueryOption);
+toolCommand.Options.Add(toolModeOption);
+toolCommand.Options.Add(toolModelOption);
+toolCommand.Options.Add(toolConfigOption);
 
-var toolQueryOption = new Option<string?>("--query", "Optional focus query");
-toolQueryOption.AddAlias("-q");
-
-var toolModeOption = new Option<SummarizationMode>("--mode", () => SummarizationMode.MapReduce, "Summarization mode");
-toolModeOption.AddAlias("-m");
-
-var toolModelOption = new Option<string?>("--model", "Ollama model to use");
-
-var toolConfigOption = new Option<string?>("--config", "Configuration file path");
-toolConfigOption.AddAlias("-c");
-
-toolCommand.AddOption(toolUrlOption);
-toolCommand.AddOption(toolFileOption);
-toolCommand.AddOption(toolQueryOption);
-toolCommand.AddOption(toolModeOption);
-toolCommand.AddOption(toolModelOption);
-toolCommand.AddOption(toolConfigOption);
-
-toolCommand.SetHandler(async (InvocationContext context) =>
+toolCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var url = context.ParseResult.GetValueForOption(toolUrlOption);
-    var file = context.ParseResult.GetValueForOption(toolFileOption);
-    var query = context.ParseResult.GetValueForOption(toolQueryOption);
-    var mode = context.ParseResult.GetValueForOption(toolModeOption);
-    var model = context.ParseResult.GetValueForOption(toolModelOption);
-    var configPath = context.ParseResult.GetValueForOption(toolConfigOption);
+    var url = parseResult.GetValue(toolUrlOption);
+    var file = parseResult.GetValue(toolFileOption);
+    var ask = parseResult.GetValue(toolAskOption);
+    var query = parseResult.GetValue(toolQueryOption);
+    var mode = parseResult.GetValue(toolModeOption);
+    var model = parseResult.GetValue(toolModelOption);
+    var configPath = parseResult.GetValue(toolConfigOption);
 
-    var output = await RunToolModeAsync(url, file?.FullName, query, mode, model, configPath);
+    var output = await RunToolModeAsync(url, file?.FullName, ask, query, mode, model, configPath);
     
     // Output JSON to stdout
     var json = System.Text.Json.JsonSerializer.Serialize(output, DocSummarizerJsonContext.Default.ToolOutput);
     Console.WriteLine(json);
     
-    context.ExitCode = output.Success ? 0 : 1;
+    return output.Success ? 0 : 1;
 });
-rootCommand.AddCommand(toolCommand);
+rootCommand.Subcommands.Add(toolCommand);
 
-return await rootCommand.InvokeAsync(args);
+return rootCommand.Parse(args).Invoke();
 
 // Helper methods
 static async Task ProcessUrlAsync(
@@ -369,35 +341,47 @@ static async Task ProcessFileAsync(
     string? sourceUrl = null)
 {
     var fileName = sourceUrl ?? Path.GetFileName(filePath);
+    var sw = System.Diagnostics.Stopwatch.StartNew();
     
     if (!string.IsNullOrEmpty(query))
     {
         // Query mode
-        Console.WriteLine($"Querying: {fileName}");
-        Console.WriteLine($"Question: {query}\n");
+        SpectreProgressService.WriteHeader("DocSummarizer", "Query Mode");
+        SpectreProgressService.WriteDocumentInfo(fileName, "Query", config.Ollama.Model);
         
-        var answer = await summarizer.QueryAsync(filePath, query);
-        Console.WriteLine("Answer:");
-        Console.WriteLine(answer);
+        var answer = await SpectreProgressService.WithSpinnerAsync("Querying document...", 
+            () => summarizer.QueryAsync(filePath, query));
+        
+        SpectreProgressService.WriteSummaryPanel(answer, "Answer");
+        SpectreProgressService.WriteCompletion(sw.Elapsed);
     }
     else
     {
-        // Summarize mode - always show basic progress
-        Console.WriteLine($"Summarizing: {fileName}");
-        Console.WriteLine($"Mode: {mode}");
-        Console.WriteLine($"Model: {config.Ollama.Model}");
-        if (!string.IsNullOrEmpty(focus)) Console.WriteLine($"Focus: {focus}");
-        Console.WriteLine();
-        Console.Out.Flush();
-
+        // Summarize mode with Spectre progress
+        SpectreProgressService.WriteHeader("DocSummarizer");
+        SpectreProgressService.WriteDocumentInfo(fileName, mode.ToString(), config.Ollama.Model, focus);
+        
+        // Use SummarizeAsync directly - it now has built-in Spectre progress for conversion
         var summary = await summarizer.SummarizeAsync(filePath, mode, focus);
+        
+        sw.Stop();
+        SpectreProgressService.WriteCompletion(sw.Elapsed);
         
         // Format and output
         var output = OutputFormatter.Format(summary, config.Output, fileName);
         
         if (config.Output.Format == OutputFormat.Console)
         {
-            Console.WriteLine(output);
+            Console.WriteLine();
+            SpectreProgressService.WriteSummaryPanel(summary.ExecutiveSummary, "Summary");
+            
+            // Show topics if available
+            if (summary.TopicSummaries?.Count > 0)
+            {
+                Console.WriteLine();
+                SpectreProgressService.WriteTopicsTree(
+                    summary.TopicSummaries.Select(t => (t.Topic, t.Summary)));
+            }
             
             // Auto-save to .summary.md file
             var fileDir = sourceUrl != null ? Environment.CurrentDirectory : (Path.GetDirectoryName(filePath) ?? Environment.CurrentDirectory);
@@ -432,55 +416,54 @@ static async Task ProcessBatchAsync(
     string? focus,
     DocSummarizerConfig config)
 {
-    Console.WriteLine($"Batch processing directory: {directoryPath}");
-    Console.WriteLine($"Mode: {mode}");
-    if (!string.IsNullOrEmpty(focus)) Console.WriteLine($"Focus: {focus}");
-    Console.WriteLine();
+    SpectreProgressService.WriteHeader("DocSummarizer", "Batch Mode");
+    SpectreProgressService.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
 
     var batchProcessor = new BatchProcessor(summarizer, config.Batch, config.Output.Verbose);
+    var processed = 0;
     
     // Callback to save each file IMMEDIATELY after processing - avoids OOM
     async Task OnFileCompleted(BatchResult result)
     {
+        processed++;
+        var fileName = Path.GetFileName(result.FilePath);
+        Console.WriteLine($"  [{(result.Success ? "OK" : "FAIL")}] {fileName}");
+        
         if (result.Success && result.Summary != null)
         {
-            var fileName = Path.GetFileName(result.FilePath);
             var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
             
-            if (config.Output.Format == OutputFormat.Console)
-            {
-                Console.WriteLine($"\n\n=== {fileName} ===\n");
-                Console.WriteLine(output);
-            }
-            else
+            if (config.Output.Format != OutputFormat.Console)
             {
                 await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
             }
         }
     }
     
-    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
-
-    // Output batch summary (only contains failed files now, not full results)
-    var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
+    Console.WriteLine();
     
-    if (config.Output.Format == OutputFormat.Console)
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
+    sw.Stop();
+
+    // Output batch summary
+    Console.WriteLine();
+    SpectreProgressService.WriteCompletion(sw.Elapsed, batchSummary.FailureCount == 0);
+    Console.WriteLine($"Processed: {batchSummary.SuccessCount} succeeded, {batchSummary.FailureCount} failed");
+    
+    if (config.Output.Format != OutputFormat.Console)
     {
-        Console.WriteLine(batchOutput);
-    }
-    else
-    {
+        var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
         await OutputFormatter.WriteOutputAsync(batchOutput, config.Output, "_batch_summary", config.Output.OutputDirectory);
     }
 }
 
-/// <summary>
-/// Run in tool mode - fetch/read, summarize, and return structured JSON output.
-/// Designed for LLM tool integration with evidence-grounded claims.
-/// </summary>
+// Run in tool mode - fetch/read, summarize or query, and return structured JSON output.
+// Designed for LLM tool integration with evidence-grounded claims.
 static async Task<ToolOutput> RunToolModeAsync(
     string? url,
     string? filePath,
+    string? askQuestion,
     string? focusQuery,
     SummarizationMode mode,
     string? modelOverride,
@@ -548,6 +531,41 @@ static async Task<ToolOutput> RunToolModeAsync(
             config.Processing,
             config.Qdrant);
         
+        var processingTime = DateTime.UtcNow - startTime;
+        
+        // Q&A mode (--ask) vs Summarization mode
+        if (!string.IsNullOrEmpty(askQuestion))
+        {
+            // Query mode - uses RAG to answer a specific question
+            var answer = await summarizer.QueryAsync(tempFilePath, askQuestion);
+            
+            processingTime = DateTime.UtcNow - startTime;
+            
+            return new ToolOutput
+            {
+                Success = true,
+                Source = source,
+                ContentType = contentType,
+                Answer = new ToolAnswer
+                {
+                    Question = askQuestion,
+                    Response = answer,
+                    Mode = "RAG"
+                },
+                Metadata = new ToolMetadata
+                {
+                    ProcessingSeconds = processingTime.TotalSeconds,
+                    ChunksProcessed = 0, // Not tracked in query mode currently
+                    Model = config.Ollama.Model,
+                    Mode = "Query",
+                    CoverageScore = 0,
+                    CitationRate = 0,
+                    FetchedAt = startTime.ToString("o"),
+                    FinalUrl = finalUrl
+                }
+            };
+        }
+        
         // Summarize with chunks for evidence tracking
         var (summary, chunks) = await summarizer.SummarizeWithChunksAsync(tempFilePath, mode, focusQuery);
         
@@ -557,7 +575,7 @@ static async Task<ToolOutput> RunToolModeAsync(
         // Convert to tool output format with grounded claims
         var toolSummary = ConvertToToolSummary(summary, chunkIds);
         
-        var processingTime = DateTime.UtcNow - startTime;
+        processingTime = DateTime.UtcNow - startTime;
         
         return new ToolOutput
         {
@@ -607,9 +625,7 @@ static async Task<ToolOutput> RunToolModeAsync(
     }
 }
 
-/// <summary>
-/// Convert DocumentSummary to ToolSummary with grounded claims
-/// </summary>
+// Convert DocumentSummary to ToolSummary with grounded claims
 static ToolSummary ConvertToToolSummary(DocumentSummary summary, HashSet<string> validChunkIds)
 {
     // Extract key facts from executive summary
@@ -649,9 +665,7 @@ static ToolSummary ConvertToToolSummary(DocumentSummary summary, HashSet<string>
     };
 }
 
-/// <summary>
-/// Extract grounded claims from text, parsing citation references
-/// </summary>
+// Extract grounded claims from text, parsing citation references
 static List<GroundedClaim> ExtractGroundedClaims(string text, HashSet<string> validChunkIds)
 {
     var claims = new List<GroundedClaim>();
@@ -698,18 +712,14 @@ static List<GroundedClaim> ExtractGroundedClaims(string text, HashSet<string> va
     return claims;
 }
 
-/// <summary>
-/// Remove citation markers from text
-/// </summary>
+// Remove citation markers from text
 static string StripCitations(string text)
 {
     return System.Text.RegularExpressions.Regex.Replace(text, @"\s*\[[^\]]+\]", "").Trim();
 }
 
-/// <summary>
-/// Parse template specification with optional word count.
-/// Supports formats: "bookreport", "bookreport:500", "executive:100"
-/// </summary>
+// Parse template specification with optional word count.
+// Supports formats: "bookreport", "bookreport:500", "executive:100"
 static SummaryTemplate ParseTemplate(string templateSpec, int? wordCountOverride)
 {
     var parts = templateSpec.Split(':', 2);

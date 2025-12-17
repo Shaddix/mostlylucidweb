@@ -1,8 +1,15 @@
-# DocSummarizer
+# DocSummarizer v3.0.0
 
 > **Turn documents or URLs into evidence-grounded summaries or structured JSON — usable by humans or AI agents — without sending anything to the cloud.**
 
 Every claim is traceable. Every fact cites its source. Runs entirely on your machine.
+
+## What's New in v3.0.0
+
+- **Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for embedding operations
+- **Long Text Handling**: Automatic chunking with vector averaging for texts >1000 chars
+- **Windows Stability**: Fixed Ollama wsarecv connection issues (GitHub #13340)
+- **Improved Logging**: Clear circuit breaker and retry status messages
 
 ```bash
 # Human-readable summary
@@ -480,10 +487,24 @@ dotnet publish -c Release -r win-x64 --self-contained
 | `WebFetcher` | Security-hardened URL fetching |
 | `MapReduceSummarizer` | Parallel chunk processing with hierarchical reduction |
 | `RagSummarizer` | Vector-based retrieval and synthesis |
-| `OllamaService` | AOT-compatible LLM client |
+| `OllamaService` | AOT-compatible LLM client with Polly resilience |
 | `QdrantHttpClient` | AOT-compatible vector search client |
 | `DoclingClient` | Document conversion |
 | `QualityAnalyzer` | Hallucination detection, entity extraction |
+
+### Embedding Resilience
+
+The `OllamaService` uses Polly v8 for robust embedding operations:
+
+| Feature | Implementation |
+|---------|----------------|
+| **Retry Policy** | Exponential backoff with decorrelated jitter |
+| **Circuit Breaker** | Opens after repeated failures, auto-recovers |
+| **Long Text Handling** | Splits into 1000-char chunks, averages vectors |
+| **Connection Recovery** | Fresh connections per request (Windows wsarecv fix) |
+| **Rate Limiting** | Jittered delays between requests |
+
+**Why chunked embeddings?** Ollama on Windows crashes with embedding requests >1700 chars (GitHub issue #13340). We split long texts into overlapping chunks, embed each, then L2-normalize the averaged vector. This preserves semantic content while avoiding Ollama crashes.
 
 ### Web Fetch Security
 
@@ -509,12 +530,15 @@ The `WebFetcher` implements comprehensive security controls:
 | "Docling unavailable" | Only needed for PDF/DOCX, not Markdown |
 | "Qdrant connection failed" | Only needed for RAG mode |
 | "Security blocked: private IP" | URL resolved to internal address (SSRF protection) |
+| "Circuit breaker is open" | Ollama is overloaded/crashed - wait 30s or restart Ollama |
+| "wsarecv" connection errors | Windows-specific issue - the tool auto-retries with backoff |
 | Repetitive summaries | Use `--model llama3.2:3b` for better quality |
 | Missing citations | Larger models follow citation instructions better |
 
 ## Credits
 
 - [Ollama](https://ollama.ai/) - Local LLM inference
+- [Polly](https://github.com/App-vNext/Polly) - .NET resilience and transient-fault-handling
 - [Docling](https://github.com/docling-project/docling) - Document conversion
 - [Qdrant](https://qdrant.tech/) - Vector database
 - [Spectre.Console](https://spectreconsole.net/) - Terminal UI

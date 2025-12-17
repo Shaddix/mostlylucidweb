@@ -193,7 +193,10 @@ public class DocumentSummarizer
         {
             Console.WriteLine("Converting document with Docling (one-time for benchmark)...");
             Console.Out.Flush();
-            markdown = await _docling.ConvertAsync(filePath);
+            markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+                _docling,
+                filePath,
+                "Converting for benchmark");
             Console.WriteLine("Document converted to markdown");
         }
 
@@ -264,13 +267,14 @@ public class DocumentSummarizer
             }
             else
             {
-                // Always show conversion progress - this can take a long time
+                // Use Spectre progress for conversion with live updates from DoclingClient
                 Console.WriteLine("Converting document with Docling...");
                 Console.Out.Flush();
 
-                markdown = await _progress.WithStatusAsync(
-                    $"Converting {docId} with Docling (timeout: 5 min)...",
-                    async () => await _docling.ConvertAsync(filePath));
+                markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+                    _docling,
+                    filePath,
+                    $"Converting {docId}");
 
                 Console.WriteLine("Document converted to markdown");
 
@@ -352,9 +356,12 @@ public class DocumentSummarizer
             }
             else
             {
-                progress.ReportStage("Converting with Docling...", 0.1f);
-                progress.ReportLlmActivity($"Docling: Converting {docId}");
-                markdown = await _docling.ConvertAsync(filePath);
+                // Use Spectre progress for conversion with live updates from DoclingClient
+                progress.ReportLog($"Converting {docId} with Docling...");
+                markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+                    _docling, 
+                    filePath, 
+                    $"Converting {docId}");
                 progress.ReportLog("Document converted to markdown");
             }
 
@@ -493,12 +500,22 @@ public class DocumentSummarizer
 
         var chunker = await CreateChunkerAsync();
         var chunks = chunker.ChunkByStructure(markdown);
+        
+        // Release markdown after chunking
+        markdown = null!;
 
-        // Index and query
-        await _rag.IndexDocumentAsync(docId, chunks);
-
-        var summary = await _rag.SummarizeAsync(docId, chunks, query);
-        return summary.ExecutiveSummary;
+        try
+        {
+            // Index and query
+            await _rag.IndexDocumentAsync(docId, chunks);
+            var summary = await _rag.SummarizeAsync(docId, chunks, query);
+            return summary.ExecutiveSummary;
+        }
+        finally
+        {
+            // Clear chunks to free memory
+            chunks.Clear();
+        }
     }
 
     private async Task<DocumentSummary> SummarizeIterativeAsync(string docId, List<DocumentChunk> chunks)
@@ -509,6 +526,7 @@ public class DocumentSummarizer
         var ollama = new OllamaService();
         var summary = "";
         var orderedChunks = chunks.OrderBy(c => c.Order).ToList();
+        var chunkCount = orderedChunks.Count;
 
         for (var i = 0; i < orderedChunks.Count; i++)
         {
@@ -535,6 +553,12 @@ public class DocumentSummarizer
 
             summary = await ollama.GenerateAsync(prompt);
         }
+        
+        // Build chunk index before clearing
+        var chunkIndex = orderedChunks.Select(ChunkIndexEntry.FromChunk).ToList();
+        
+        // Clear the ordered chunks copy to free memory
+        orderedChunks.Clear();
 
         _progress.Success("Iterative summarization complete");
 
@@ -542,7 +566,7 @@ public class DocumentSummarizer
             summary,
             [],
             [],
-            new SummarizationTrace(docId, chunks.Count, chunks.Count, [], TimeSpan.Zero, 1.0, 0));
+            new SummarizationTrace(docId, chunkCount, chunkCount, [], TimeSpan.Zero, 1.0, 0, chunkIndex));
     }
 
     /// <summary>
@@ -584,14 +608,10 @@ public class DocumentSummarizer
     }
 
     /// <summary>
-    /// Print simple banner
+    /// Print styled banner - now handled by SpectreProgressService
     /// </summary>
     private static void PrintBanner()
     {
-        Console.WriteLine();
-        Console.WriteLine("===========================================");
-        Console.WriteLine("           D O C S U M M A R I Z E R       ");
-        Console.WriteLine("===========================================");
-        Console.WriteLine();
+        // Banner now handled by SpectreProgressService.WriteHeader() in Program.cs
     }
 }

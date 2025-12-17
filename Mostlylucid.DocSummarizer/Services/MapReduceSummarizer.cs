@@ -105,6 +105,9 @@ public class MapReduceSummarizer
         var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
         var coverage = CalculateCoverage(chunkSummaries, headings);
         var citationRate = CalculateCitationRate(result.ExecutiveSummary);
+        
+        // Build chunk index for output
+        var chunkIndex = chunks.Select(ChunkIndexEntry.FromChunk).ToList();
 
         // Clear chunk summaries to free memory
         chunkSummaries.Clear();
@@ -117,7 +120,7 @@ public class MapReduceSummarizer
         {
             Trace = new SummarizationTrace(
                 docId, chunks.Count, chunks.Count,
-                headings, sw.Elapsed, coverage, citationRate)
+                headings, sw.Elapsed, coverage, citationRate, chunkIndex)
         };
     }
 
@@ -272,7 +275,12 @@ public class MapReduceSummarizer
         else
             Console.WriteLine($"  Final reduction of {intermediateSummaries.Count} intermediate summaries...");
 
-        return await SingleReduceAsync(intermediateSummaries, validChunkIds, retry, true);
+        var result = await SingleReduceAsync(intermediateSummaries, validChunkIds, retry, true);
+        
+        // Clear intermediate summaries to free memory
+        intermediateSummaries.Clear();
+        
+        return result;
     }
 
     /// <summary>

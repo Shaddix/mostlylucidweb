@@ -6,6 +6,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Native AOT](https://img.shields.io/badge/Native%20AOT-Enabled-brightgreen)](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
 > **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
 
@@ -43,6 +44,8 @@ If you need to *trust* a summary — or feed it to another system — that matte
 - **Large Documents**: Hierarchical reduction handles 500+ pages
 - **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
 - **Quality Analysis**: Hallucination detection, entity extraction
+- **Resilient Embeddings**: Polly-based retry with jitter backoff + circuit breaker
+- **Long Text Support**: Automatic chunking with vector averaging for texts >1000 chars
 - **Native AOT**: ~18MB binary, instant startup
 - **Local Only**: Nothing leaves your machine
 
@@ -673,6 +676,16 @@ Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~24MB)
 - For MapReduce mode (default), you can ignore this error
 - To fix: `docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant`
 
+### "Circuit breaker is open"
+- Ollama is overloaded or has crashed
+- Wait 30 seconds for the circuit breaker to reset, or restart Ollama
+- The tool uses Polly resilience policies and will auto-retry
+
+### "wsarecv" or Connection Errors (Windows)
+- This is a known Ollama issue on Windows (GitHub #13340)
+- The tool auto-handles this with retry logic and connection recovery
+- If persistent, restart Ollama and try again
+
 ### "LLM generation timed out"
 - Increase timeout in configuration
 - Split very large documents
@@ -715,6 +728,7 @@ If summaries lack `[chunk-N]` citations:
 - [Docling](https://github.com/docling-project/docling) / [Docling Serve](https://github.com/docling-project/docling-serve)
 - [Qdrant](https://qdrant.tech/) - Local vector database
 - [Ollama](https://ollama.ai/) / [OllamaSharp](https://github.com/awaescher/OllamaSharp)
+- [Polly](https://github.com/App-vNext/Polly) - .NET resilience and transient-fault-handling
 - [Spectre.Console](https://spectreconsole.net/) - Beautiful terminal UI
 
 ### Related

@@ -29,6 +29,8 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(ChunkSummary))]
 [JsonSerializable(typeof(TopicSummary))]
 [JsonSerializable(typeof(SummarizationTrace))]
+[JsonSerializable(typeof(ChunkIndexEntry))]
+[JsonSerializable(typeof(List<ChunkIndexEntry>))]
 [JsonSerializable(typeof(ValidationResult))]
 [JsonSerializable(typeof(SummarizationMode))]
 [JsonSerializable(typeof(BatchResult))]
@@ -73,6 +75,7 @@ namespace Mostlylucid.DocSummarizer.Config;
 // Tool output types (for LLM integration)
 [JsonSerializable(typeof(ToolOutput))]
 [JsonSerializable(typeof(ToolSummary))]
+[JsonSerializable(typeof(ToolAnswer))]
 [JsonSerializable(typeof(ToolTopic))]
 [JsonSerializable(typeof(ToolEntities))]
 [JsonSerializable(typeof(ToolMetadata))]

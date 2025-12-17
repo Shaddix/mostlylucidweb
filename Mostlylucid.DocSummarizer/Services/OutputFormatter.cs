@@ -41,7 +41,8 @@ public static class OutputFormatter
             Verbose = config.Verbose,
             IncludeTopics = template.IncludeTopics,
             IncludeOpenQuestions = template.IncludeQuestions,
-            IncludeTrace = template.IncludeTrace
+            IncludeTrace = template.IncludeTrace,
+            IncludeChunkIndex = config.IncludeChunkIndex // Preserve from original config
         };
     }
 
@@ -102,6 +103,19 @@ public static class OutputFormatter
             sb.AppendLine($"- Citation rate: {summary.Trace.CitationRate:F2}");
         }
 
+        if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })
+        {
+            sb.AppendLine();
+            sb.AppendLine("### Document Structure");
+            sb.AppendLine();
+            foreach (var chunk in summary.Trace.ChunkIndex)
+            {
+                var indent = new string(' ', (chunk.HeadingLevel - 1) * 2);
+                sb.AppendLine($"{indent}[{chunk.Id}] {chunk.Heading} (~{chunk.TokenEstimate} tokens)");
+                sb.AppendLine($"{indent}  {chunk.Preview}");
+            }
+        }
+
         return sb.ToString();
     }
 
@@ -147,6 +161,19 @@ public static class OutputFormatter
             sb.AppendLine($"Time: {summary.Trace.TotalTime.TotalSeconds:F1}s");
             sb.AppendLine($"Coverage: {summary.Trace.CoverageScore:P0}");
             sb.AppendLine($"Citation rate: {summary.Trace.CitationRate:F2}");
+        }
+
+        if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })
+        {
+            sb.AppendLine();
+            sb.AppendLine("DOCUMENT STRUCTURE");
+            sb.AppendLine(new string('-', 80));
+            foreach (var chunk in summary.Trace.ChunkIndex)
+            {
+                var indent = new string(' ', (chunk.HeadingLevel - 1) * 2);
+                sb.AppendLine($"{indent}[{chunk.Id}] {chunk.Heading} (~{chunk.TokenEstimate} tokens)");
+                sb.AppendLine($"{indent}  {chunk.Preview}");
+            }
         }
 
         return sb.ToString();
@@ -262,6 +289,22 @@ public static class OutputFormatter
             sb.AppendLine($"| Time | {summary.Trace.TotalTime.TotalSeconds:F1}s |");
             sb.AppendLine($"| Coverage | {summary.Trace.CoverageScore:P0} |");
             sb.AppendLine($"| Citation rate | {summary.Trace.CitationRate:F2} |");
+        }
+
+        if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Document Structure");
+            sb.AppendLine();
+            sb.AppendLine("| Chunk | Heading | Preview | ~Tokens |");
+            sb.AppendLine("|-------|---------|---------|---------|");
+            foreach (var chunk in summary.Trace.ChunkIndex)
+            {
+                // Escape pipe characters in heading and preview for markdown table
+                var safeHeading = chunk.Heading.Replace("|", "\\|");
+                var safePreview = chunk.Preview.Replace("|", "\\|");
+                sb.AppendLine($"| {chunk.Id} | {safeHeading} | {safePreview} | {chunk.TokenEstimate} |");
+            }
         }
 
         return sb.ToString();

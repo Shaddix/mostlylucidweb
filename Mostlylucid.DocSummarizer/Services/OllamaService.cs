@@ -1,13 +1,20 @@
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Mostlylucid.DocSummarizer.Config;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
 ///     Lightweight Ollama HTTP client for AOT compatibility.
 ///     Replaces OllamaSharp to reduce binary size and avoid reflection.
+///     Uses Polly for resilience (retry with jitter backoff + circuit breaker).
 /// </summary>
 public class OllamaService
 {
@@ -19,23 +26,102 @@ public class OllamaService
     private readonly string _baseUrl;
     private readonly HttpClient _httpClient;
     private readonly TimeSpan _timeout;
+    private readonly EmbeddingConfig _embeddingConfig;
+    private readonly ResiliencePipeline<float[]> _embeddingResiliencePipeline;
 
     public OllamaService(
         string model = "llama3.2:3b",
         string embedModel = "nomic-embed-text",
         string baseUrl = "http://localhost:11434",
-        TimeSpan? timeout = null)
+        TimeSpan? timeout = null,
+        EmbeddingConfig? embeddingConfig = null)
     {
         _timeout = timeout ?? DefaultTimeout;
         _baseUrl = baseUrl.TrimEnd('/');
         Model = model;
         EmbedModel = embedModel;
+        _embeddingConfig = embeddingConfig ?? new EmbeddingConfig();
 
-        _httpClient = new HttpClient
+        // Configure HttpClient with proper connection handling for Windows
+        var handler = new SocketsHttpHandler
+        {
+            // Don't pool connections - create fresh ones to avoid Windows wsarecv issues
+            PooledConnectionLifetime = TimeSpan.Zero,
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(10),
+            MaxConnectionsPerServer = 1, // Ollama processes one at a time anyway
+            ConnectTimeout = TimeSpan.FromSeconds(30),
+            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(15),
+            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+        };
+        
+        _httpClient = new HttpClient(handler)
         {
             BaseAddress = new Uri(_baseUrl),
             Timeout = _timeout + TimeSpan.FromMinutes(1)
         };
+        
+        // Build Polly resilience pipeline for embeddings
+        _embeddingResiliencePipeline = BuildEmbeddingResiliencePipeline();
+    }
+    
+    /// <summary>
+    /// Build resilience pipeline with retry (decorrelated jitter backoff) and circuit breaker
+    /// </summary>
+    private ResiliencePipeline<float[]> BuildEmbeddingResiliencePipeline()
+    {
+        return new ResiliencePipelineBuilder<float[]>()
+            // Retry with decorrelated jitter backoff (Polly's recommended approach)
+            .AddRetry(new RetryStrategyOptions<float[]>
+            {
+                MaxRetryAttempts = _embeddingConfig.MaxRetries,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true, // Decorrelated jitter
+                Delay = TimeSpan.FromMilliseconds(_embeddingConfig.InitialRetryDelayMs),
+                MaxDelay = TimeSpan.FromMilliseconds(_embeddingConfig.MaxRetryDelayMs),
+                ShouldHandle = new PredicateBuilder<float[]>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>()
+                    .Handle<InvalidOperationException>(ex => ex.Message.Contains("embedding")),
+                OnRetry = args =>
+                {
+                    var isConnectionError = args.Outcome.Exception?.Message.Contains("wsarecv") == true ||
+                                           args.Outcome.Exception?.Message.Contains("forcibly closed") == true ||
+                                           args.Outcome.Exception?.Message.Contains("connection") == true;
+                    
+                    Console.WriteLine($"[Ollama] Retry {args.AttemptNumber}/{_embeddingConfig.MaxRetries} after {args.RetryDelay.TotalSeconds:F1}s" +
+                                    (isConnectionError ? " (connection error)" : ""));
+                    return ValueTask.CompletedTask;
+                }
+            })
+            // Circuit breaker to fail fast when Ollama is consistently failing
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<float[]>
+            {
+                FailureRatio = 0.8, // Open circuit if 80% of requests fail
+                MinimumThroughput = _embeddingConfig.CircuitBreakerThreshold,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                BreakDuration = TimeSpan.FromSeconds(_embeddingConfig.CircuitBreakerDurationSeconds),
+                ShouldHandle = new PredicateBuilder<float[]>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>()
+                    .Handle<InvalidOperationException>(),
+                OnOpened = args =>
+                {
+                    Console.WriteLine($"[Ollama] Circuit breaker OPENED - Ollama appears unavailable. Will retry after {args.BreakDuration.TotalSeconds}s");
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = _ =>
+                {
+                    Console.WriteLine("[Ollama] Circuit breaker CLOSED - Ollama is available again");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = _ =>
+                {
+                    Console.WriteLine("[Ollama] Circuit breaker HALF-OPEN - Testing Ollama availability...");
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .Build();
     }
 
     public string Model { get; }
@@ -91,40 +177,234 @@ public class OllamaService
         return sb.ToString().Trim();
     }
 
-    public async Task<float[]> EmbedAsync(string text, int maxRetries = 3)
+    /// <summary>
+    /// Generate embeddings for text with robust retry logic, circuit breaker, and connection recovery.
+    /// For long texts, splits into chunks and averages the resulting vectors to preserve semantic content.
+    /// Addresses Ollama Windows wsarecv connection issues (GitHub issue #13340).
+    /// </summary>
+    public async Task<float[]> EmbedAsync(string text, int maxRetries = 5, CancellationToken cancellationToken = default)
     {
         var cleanText = NormalizeTextForEmbedding(text);
+        
+        // CRITICAL: Ollama on Windows crashes with large embedding requests (wsarecv errors)
+        // Testing shows nomic-embed-text fails at ~1700+ chars despite supporting 8192 tokens.
+        // This appears to be a batch size limitation in Ollama's embedding implementation.
+        // Use very conservative 1000 char limit to ensure reliability and avoid splitting.
+        const int maxCharsPerChunk = 1000;
+        
+        // If text fits in one chunk, embed directly
+        if (cleanText.Length <= maxCharsPerChunk)
+        {
+            return await EmbedSingleChunkAsync(cleanText, maxRetries, cancellationToken);
+        }
+        
+        // Split into overlapping chunks and average embeddings
+        var chunks = SplitTextIntoChunks(cleanText, maxCharsPerChunk, overlap: maxCharsPerChunk / 10);
+        Console.WriteLine($"[Ollama] Text too long ({cleanText.Length} chars), splitting into {chunks.Count} chunks for embedding");
+        
+        var embeddings = new List<float[]>();
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            // Add significant jittered delay between chunk embeddings to let Ollama recover
+            // This is critical to prevent connection pool exhaustion and wsarecv errors on Windows
+            // Ollama processes embeddings sequentially and needs time between requests
+            if (i > 0)
+            {
+                var baseDelay = Math.Max(_embeddingConfig.DelayBetweenRequestsMs * 5, 500); // At least 500ms
+                var jitter = Random.Shared.Next(0, baseDelay); // 0-100% jitter for decorrelation
+                await Task.Delay(baseDelay + jitter, cancellationToken);
+            }
+            
+            var embedding = await EmbedSingleChunkAsync(chunks[i], maxRetries, cancellationToken);
+            embeddings.Add(embedding);
+        }
+        
+        // Average all chunk embeddings to get final vector
+        return AverageEmbeddings(embeddings);
+    }
+    
+    /// <summary>
+    /// Split text into overlapping chunks for embedding
+    /// </summary>
+    private static List<string> SplitTextIntoChunks(string text, int maxChunkSize, int overlap)
+    {
+        var chunks = new List<string>();
+        var stride = maxChunkSize - overlap;
+        
+        for (var i = 0; i < text.Length; i += stride)
+        {
+            var length = Math.Min(maxChunkSize, text.Length - i);
+            chunks.Add(text.Substring(i, length));
+            
+            // Stop if we've covered the entire text
+            if (i + length >= text.Length) break;
+        }
+        
+        return chunks;
+    }
+    
+    /// <summary>
+    /// Average multiple embedding vectors into a single normalized vector
+    /// </summary>
+    private static float[] AverageEmbeddings(List<float[]> embeddings)
+    {
+        if (embeddings.Count == 0)
+            throw new InvalidOperationException("No embeddings to average");
+        
+        if (embeddings.Count == 1)
+            return embeddings[0];
+        
+        var vectorSize = embeddings[0].Length;
+        var result = new float[vectorSize];
+        
+        // Sum all vectors
+        foreach (var embedding in embeddings)
+        {
+            for (var i = 0; i < vectorSize; i++)
+            {
+                result[i] += embedding[i];
+            }
+        }
+        
+        // Average and normalize (L2 normalization for cosine similarity)
+        var count = embeddings.Count;
+        var magnitude = 0.0;
+        for (var i = 0; i < vectorSize; i++)
+        {
+            result[i] /= count;
+            magnitude += result[i] * result[i];
+        }
+        
+        magnitude = Math.Sqrt(magnitude);
+        if (magnitude > 0)
+        {
+            for (var i = 0; i < vectorSize; i++)
+            {
+                result[i] = (float)(result[i] / magnitude);
+            }
+        }
+        
+        return result;
+    }
+    
+    /// <summary>
+    /// Embed a single chunk of text using Polly resilience pipeline (retry + circuit breaker)
+    /// </summary>
+    private async Task<float[]> EmbedSingleChunkAsync(string cleanText, int maxRetries, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _embeddingResiliencePipeline.ExecuteAsync(
+                async ct => await ExecuteEmbeddingRequestAsync(cleanText, ct),
+                cancellationToken);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            throw new InvalidOperationException(
+                $"Circuit breaker is open - Ollama appears unavailable. " +
+                $"Will retry after circuit breaker timeout. " +
+                "This usually indicates Ollama is overloaded or crashed.", ex);
+        }
+    }
+    
+    /// <summary>
+    /// Execute a single embedding request with fresh connection handling
+    /// </summary>
+    private async Task<float[]> ExecuteEmbeddingRequestAsync(string cleanText, CancellationToken cancellationToken)
+    {
         var request = new OllamaEmbedRequest { Model = EmbedModel, Prompt = cleanText };
         var json = JsonSerializer.Serialize(request, DocSummarizerJsonContext.Default.OllamaEmbedRequest);
+        
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(60)); // 60 second timeout per attempt (increased from 30)
+        
+        // Create fresh request to avoid connection pooling issues
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/embeddings")
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        
+        // Add Connection: close header to ensure fresh connection each time
+        // This is the KEY FIX for Windows wsarecv issues
+        httpRequest.Headers.ConnectionClose = true;
+        
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead, cts.Token);
+        }
+        catch (HttpRequestException ex) when (ex.Message.Contains("forcibly closed") || 
+                                               ex.Message.Contains("wsarecv") ||
+                                               ex.Message.Contains("connection"))
+        {
+            // Wrap with more context for debugging
+            throw new HttpRequestException(
+                $"Ollama connection failed (likely Ollama crashed or is overloaded). " +
+                $"Text length: {cleanText.Length} chars. Original error: {ex.Message}", ex);
+        }
 
-        Exception? lastException = null;
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
-            try
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
+            
+            // Check for specific Ollama errors
+            if (errorBody.Contains("caching disabled") || errorBody.Contains("unable to fit"))
             {
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync("/api/embeddings", content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorBody = await response.Content.ReadAsStringAsync();
-                    throw new HttpRequestException(
-                        $"Ollama embedding request failed with status {response.StatusCode}: {errorBody}. " +
-                        $"Request was: {json[..Math.Min(200, json.Length)]}...");
-                }
-
-                var responseJson = await response.Content.ReadAsStringAsync();
-                var embedResponse =
-                    JsonSerializer.Deserialize(responseJson, DocSummarizerJsonContext.Default.OllamaEmbedResponse);
-
-                return embedResponse?.Embedding ?? throw new InvalidOperationException("No embedding returned");
+                throw new InvalidOperationException(
+                    $"Ollama batch size error - text too long ({cleanText.Length} chars). " +
+                    $"Try reducing chunk size. Error: {errorBody}");
             }
-            catch (Exception ex) when (attempt < maxRetries)
-            {
-                lastException = ex;
-                await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
-            }
+            
+            throw new HttpRequestException(
+                $"Ollama embedding request failed with status {response.StatusCode}: {errorBody}. " +
+                $"Text length: {cleanText.Length} chars.");
+        }
 
-        throw lastException ?? new InvalidOperationException("Embedding failed after retries");
+        var responseJson = await response.Content.ReadAsStringAsync(cts.Token);
+        var embedResponse = JsonSerializer.Deserialize(responseJson, DocSummarizerJsonContext.Default.OllamaEmbedResponse);
+
+        if (embedResponse?.Embedding == null || embedResponse.Embedding.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"No embedding returned from Ollama. Response: {responseJson[..Math.Min(200, responseJson.Length)]}");
+        }
+
+        return embedResponse.Embedding;
+    }
+
+    /// <summary>
+    /// Get context window for the embed model (in tokens)
+    /// </summary>
+    public int GetEmbedContextWindow()
+    {
+        return GetEmbedContextWindowForModel(EmbedModel);
+    }
+    
+    private static int GetEmbedContextWindowForModel(string model)
+    {
+        var embedContextWindows = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "snowflake-arctic-embed", 512 },
+            { "snowflake-arctic-embed:latest", 512 },
+            { "snowflake-arctic-embed:xs", 512 },
+            { "snowflake-arctic-embed:s", 512 },
+            { "snowflake-arctic-embed:m", 512 },
+            { "snowflake-arctic-embed:l", 512 },
+            { "nomic-embed-text", 8192 },
+            { "nomic-embed-text:latest", 8192 },
+            { "mxbai-embed-large", 512 },
+            { "mxbai-embed-large:latest", 512 },
+            { "all-minilm", 256 },
+            { "all-minilm:latest", 256 },
+            { "bge-m3", 8192 },
+            { "bge-m3:latest", 8192 },
+        };
+        
+        if (embedContextWindows.TryGetValue(model, out var window))
+            return window;
+        
+        // Default conservative context for unknown embed models
+        return 512;
     }
 
     private static string NormalizeTextForEmbedding(string text)
@@ -133,10 +413,90 @@ public class OllamaService
 
         var sb = new StringBuilder(normalized.Length);
         foreach (var c in normalized)
-            if (c == '\n' || c == '\t' || !char.IsControl(c))
+        {
+            // Keep basic whitespace
+            if (c == '\n' || c == '\t' || c == ' ')
+            {
                 sb.Append(c);
+            }
+            // Keep printable ASCII (0x20-0x7E)
+            else if (c >= 0x20 && c <= 0x7E)
+            {
+                sb.Append(c);
+            }
+            // Keep Latin-1 Supplement (0x80-0xFF) - Western European accents
+            else if (c >= 0x80 && c <= 0xFF)
+            {
+                sb.Append(c);
+            }
+            // SKIP Latin Extended-A/B (0x0100-0x024F) - often garbage from bad PDF fonts
+            else if (c >= 0x0100 && c <= 0x024F)
+            {
+                continue;
+            }
+            // Keep Greek (0x0370-0x03FF)
+            else if (c >= 0x0370 && c <= 0x03FF)
+            {
+                sb.Append(c);
+            }
+            // Keep Cyrillic (0x0400-0x04FF)
+            else if (c >= 0x0400 && c <= 0x04FF)
+            {
+                sb.Append(c);
+            }
+            // Keep Arabic (0x0600-0x06FF)
+            else if (c >= 0x0600 && c <= 0x06FF)
+            {
+                sb.Append(c);
+            }
+            // Keep Hebrew (0x0590-0x05FF)
+            else if (c >= 0x0590 && c <= 0x05FF)
+            {
+                sb.Append(c);
+            }
+            // Keep CJK Unified Ideographs (0x4E00-0x9FFF)
+            else if (c >= 0x4E00 && c <= 0x9FFF)
+            {
+                sb.Append(c);
+            }
+            // Keep Hiragana (0x3040-0x309F)
+            else if (c >= 0x3040 && c <= 0x309F)
+            {
+                sb.Append(c);
+            }
+            // Keep Katakana (0x30A0-0x30FF)
+            else if (c >= 0x30A0 && c <= 0x30FF)
+            {
+                sb.Append(c);
+            }
+            // Keep Hangul Syllables (0xAC00-0xD7AF)
+            else if (c >= 0xAC00 && c <= 0xD7AF)
+            {
+                sb.Append(c);
+            }
+            // Keep Thai (0x0E00-0x0E7F)
+            else if (c >= 0x0E00 && c <= 0x0E7F)
+            {
+                sb.Append(c);
+            }
+            // Keep Devanagari (0x0900-0x097F)
+            else if (c >= 0x0900 && c <= 0x097F)
+            {
+                sb.Append(c);
+            }
+            // Keep common punctuation and symbols
+            else if (char.IsPunctuation(c) || char.IsSymbol(c))
+            {
+                sb.Append(c);
+            }
+        }
 
-        return sb.ToString();
+        // Collapse multiple spaces/newlines
+        var result = sb.ToString();
+        result = Regex.Replace(result, @"[ \t]+", " ");
+        result = Regex.Replace(result, @"\n{3,}", "\n\n");
+        
+        return result.Trim();
     }
 
     public async Task<bool> IsAvailableAsync()
@@ -169,8 +529,7 @@ public class OllamaService
             if (!response.IsSuccessStatusCode) return null;
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            var showResponse =
-                JsonSerializer.Deserialize(responseJson, DocSummarizerJsonContext.Default.OllamaShowResponse);
+            var showResponse = JsonSerializer.Deserialize(responseJson, DocSummarizerJsonContext.Default.OllamaShowResponse);
 
             var modelInfo = new ModelInfo
             {
@@ -220,7 +579,9 @@ public class OllamaService
             { "mistral:latest", 32000 },
             { "tinyllama:latest", 2048 },
             { "nomic-embed-text", 8192 },
-            { "nomic-embed-text:latest", 8192 }
+            { "nomic-embed-text:latest", 8192 },
+            { "snowflake-arctic-embed", 512 },
+            { "snowflake-arctic-embed:latest", 512 }
         };
 
         if (contextWindows.TryGetValue(model, out var knownWindow)) return knownWindow;

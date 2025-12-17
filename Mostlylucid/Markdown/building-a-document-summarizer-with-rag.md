@@ -456,11 +456,25 @@ Pipeline architecture gives you: structured summaries, verifiable citations, any
 
 Same LLM. Better architecture. Better results.
 
+## Embedding Resilience
+
+Ollama embedding requests can fail on Windows due to connection issues (GitHub #13340). The tool uses Polly v8 for robust embedding operations:
+
+| Feature | Implementation |
+|---------|----------------|
+| **Retry Policy** | Exponential backoff with decorrelated jitter |
+| **Circuit Breaker** | Opens after repeated failures, auto-recovers after 30s |
+| **Long Text Handling** | Splits into 1000-char chunks, averages vectors |
+| **Connection Recovery** | Fresh connections per request |
+
+**Why chunked embeddings?** Ollama crashes with embedding requests >1700 chars on Windows. We split long texts into overlapping chunks, embed each, then L2-normalize the averaged vector. This preserves semantic content while avoiding crashes.
+
 ## Resources
 
 - [Docling](https://github.com/docling-project/docling) / [Docling Serve](https://github.com/docling-project/docling-serve)
 - [Qdrant](https://qdrant.tech/) - Local vector database
 - [Ollama](https://ollama.ai/) / [OllamaSharp](https://github.com/awaescher/OllamaSharp)
+- [Polly](https://github.com/App-vNext/Polly) - .NET resilience and transient-fault-handling
 - [Long Document Summarization](https://cloud.google.com/blog/products/ai-machine-learning/long-document-summarization-with-workflows-and-gemini-models) - Google's patterns
 - [Query-Focused Summarization](https://arxiv.org/abs/2404.16130v1) - Why topic-driven works
 

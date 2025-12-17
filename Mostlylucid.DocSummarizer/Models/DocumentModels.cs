@@ -534,7 +534,41 @@ public record SummarizationTrace(
     List<string> Topics,
     TimeSpan TotalTime,
     double CoverageScore,
-    double CitationRate);
+    double CitationRate,
+    List<ChunkIndexEntry>? ChunkIndex = null);
+
+/// <summary>
+/// Index entry for a document chunk - provides overview without full content
+/// </summary>
+public record ChunkIndexEntry(
+    string Id,
+    int Order,
+    string Heading,
+    int HeadingLevel,
+    string Preview,
+    int TokenEstimate)
+{
+    /// <summary>
+    /// Create a chunk index entry from a DocumentChunk
+    /// </summary>
+    public static ChunkIndexEntry FromChunk(DocumentChunk chunk, int previewLength = 80)
+    {
+        var preview = chunk.Content.Length > previewLength
+            ? chunk.Content[..previewLength].Replace('\n', ' ').Replace('\r', ' ').Trim() + "..."
+            : chunk.Content.Replace('\n', ' ').Replace('\r', ' ').Trim();
+        
+        // Estimate tokens (~4 chars per token)
+        var tokenEstimate = chunk.Content.Length / 4;
+        
+        return new ChunkIndexEntry(
+            chunk.Id,
+            chunk.Order,
+            chunk.Heading,
+            chunk.HeadingLevel,
+            preview,
+            tokenEstimate);
+    }
+}
 
 public record ValidationResult(
     int TotalCitations,
@@ -619,11 +653,32 @@ public record ToolOutput
     /// <summary>Content type fetched</summary>
     public string? ContentType { get; init; }
     
-    /// <summary>The summary result (null if failed)</summary>
+    /// <summary>The summary result (null if failed or in Q&A mode)</summary>
     public ToolSummary? Summary { get; init; }
+    
+    /// <summary>The Q&A answer result (null if failed or in summary mode)</summary>
+    public ToolAnswer? Answer { get; init; }
     
     /// <summary>Processing metadata</summary>
     public ToolMetadata? Metadata { get; init; }
+}
+
+/// <summary>
+/// Q&A answer for tool output
+/// </summary>
+public record ToolAnswer
+{
+    /// <summary>The question that was asked</summary>
+    public required string Question { get; init; }
+    
+    /// <summary>The answer generated from the document</summary>
+    public required string Response { get; init; }
+    
+    /// <summary>Mode used (RAG, etc.)</summary>
+    public required string Mode { get; init; }
+    
+    /// <summary>Relevant chunk IDs that informed the answer</summary>
+    public List<string>? SourceChunks { get; init; }
 }
 
 /// <summary>
