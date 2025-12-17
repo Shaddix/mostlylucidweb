@@ -23,33 +23,33 @@ jobs:
     strategy:
       matrix:
         include:
-          # Windows
+          # Windows x64
           - os: windows-latest
             rid: win-x64
             artifact_name: docsummarizer-win-x64
-            executable: Mostlylucid.DocSummarizer.exe
-          - os: windows-latest
-            rid: win-arm64
-            artifact_name: docsummarizer-win-arm64
-            executable: Mostlylucid.DocSummarizer.exe
-          # Linux
+            executable: docsummarizer.exe
+          # Windows ARM64 - requires ARM64 runner or cross-compile toolchain
+          # Skipped for now as GitHub doesn't have Windows ARM64 runners
+          # Linux x64
           - os: ubuntu-latest
             rid: linux-x64
             artifact_name: docsummarizer-linux-x64
-            executable: Mostlylucid.DocSummarizer
-          - os: ubuntu-latest
+            executable: docsummarizer
+          # Linux ARM64 - use ARM64 runner
+          - os: ubuntu-24.04-arm
             rid: linux-arm64
             artifact_name: docsummarizer-linux-arm64
-            executable: Mostlylucid.DocSummarizer
-          # macOS
-          - os: macos-latest
+            executable: docsummarizer
+          # macOS x64 (Intel) - use macos-13 which is Intel
+          - os: macos-13
             rid: osx-x64
             artifact_name: docsummarizer-osx-x64
-            executable: Mostlylucid.DocSummarizer
+            executable: docsummarizer
+          # macOS ARM64 (Apple Silicon) - macos-latest is ARM64
           - os: macos-latest
             rid: osx-arm64
             artifact_name: docsummarizer-osx-arm64
-            executable: Mostlylucid.DocSummarizer
+            executable: docsummarizer
 
     runs-on: ${{ matrix.os }}
     
@@ -173,7 +173,6 @@ jobs:
           | Platform | Architecture | Download |
           |----------|--------------|----------|
           | Windows | x64 | `docsummarizer-win-x64.zip` |
-          | Windows | ARM64 | `docsummarizer-win-arm64.zip` |
           | Linux | x64 | `docsummarizer-linux-x64.tar.gz` |
           | Linux | ARM64 | `docsummarizer-linux-arm64.tar.gz` |
           | macOS | x64 (Intel) | `docsummarizer-osx-x64.tar.gz` |
@@ -183,13 +182,13 @@ jobs:
           
           ```bash
           # Extract and run
-          ./Mostlylucid.DocSummarizer --help
+          ./docsummarizer --help
           
           # Check dependencies
-          ./Mostlylucid.DocSummarizer check --verbose
+          ./docsummarizer check --verbose
           
           # Summarize a document
-          ./Mostlylucid.DocSummarizer -f document.pdf --model gemma3:1b -v
+          ./docsummarizer -f document.pdf -v
           ```
           
           ### Prerequisites
