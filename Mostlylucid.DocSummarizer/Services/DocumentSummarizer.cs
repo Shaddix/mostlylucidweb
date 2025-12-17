@@ -7,12 +7,14 @@ namespace Mostlylucid.DocSummarizer.Services;
 public class DocumentSummarizer
 {
     private readonly DoclingClient _docling;
-    private readonly DocumentChunker _chunker;
+    private readonly OllamaService _ollama;
     private readonly MapReduceSummarizer _mapReduce;
     private readonly RagSummarizer _rag;
     private readonly ProgressService _progress;
+    private readonly ProcessingConfig _processingConfig;
     private readonly bool _verbose;
     private readonly int _maxLlmParallelism;
+    private int? _cachedContextWindow;
 
     public DocumentSummarizer(
         string ollamaModel = "ministral-3:3b",
@@ -20,21 +22,21 @@ public class DocumentSummarizer
         string qdrantHost = "localhost",
         bool verbose = false,
         DoclingConfig? doclingConfig = null,
-        ProcessingConfig? processingConfig = null)
+        ProcessingConfig? processingConfig = null,
+        QdrantConfig? qdrantConfig = null)
     {
         _verbose = verbose;
         _progress = new ProgressService(verbose);
         _docling = new DoclingClient(doclingConfig ?? new DoclingConfig { BaseUrl = doclingUrl });
-        _chunker = new DocumentChunker();
         
-        var processing = processingConfig ?? new ProcessingConfig();
-        _maxLlmParallelism = processing.MaxLlmParallelism > 0 
-            ? processing.MaxLlmParallelism 
+        _processingConfig = processingConfig ?? new ProcessingConfig();
+        _maxLlmParallelism = _processingConfig.MaxLlmParallelism > 0 
+            ? _processingConfig.MaxLlmParallelism 
             : MapReduceSummarizer.DefaultMaxParallelism;
         
-        var ollama = new OllamaService(ollamaModel);
-        _mapReduce = new MapReduceSummarizer(ollama, verbose, _maxLlmParallelism);
-        _rag = new RagSummarizer(ollama, qdrantHost, verbose, _maxLlmParallelism);
+        _ollama = new OllamaService(ollamaModel);
+        _mapReduce = new MapReduceSummarizer(_ollama, verbose, _maxLlmParallelism);
+        _rag = new RagSummarizer(_ollama, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig);
     }
 
     public async Task<DocumentSummary> SummarizeAsync(
@@ -76,19 +78,20 @@ public class DocumentSummarizer
             Console.WriteLine("Document converted to markdown");
         }
 
-        // Chunk the document
+        // Chunk the document with context-aware sizing
         Console.WriteLine("Parsing document structure...");
         Console.Out.Flush();
         
+        var chunker = await CreateChunkerAsync();
         var chunks = await _progress.WithStatusAsync(
             "Parsing document structure...",
             () =>
             {
-                var result = _chunker.ChunkByStructure(markdown);
+                var result = chunker.ChunkByStructure(markdown);
                 return Task.FromResult(result);
             });
         
-        Console.WriteLine($"Created {chunks.Count} chunks from document structure");
+        Console.WriteLine($"Created {chunks.Count} chunks");
         Console.WriteLine();
 
         return mode switch
@@ -115,7 +118,8 @@ public class DocumentSummarizer
             markdown = await _docling.ConvertAsync(filePath);
         }
 
-        var chunks = _chunker.ChunkByStructure(markdown);
+        var chunker = await CreateChunkerAsync();
+        var chunks = chunker.ChunkByStructure(markdown);
         
         // Index and query
         await _rag.IndexDocumentAsync(docId, chunks);
@@ -199,5 +203,49 @@ public class DocumentSummarizer
             [],
             [],
             new SummarizationTrace(docId, chunks.Count, chunks.Count, [], TimeSpan.Zero, 1.0, 0));
+    }
+
+    /// <summary>
+    /// Create a chunker with context-window-aware sizing
+    /// </summary>
+    private async Task<DocumentChunker> CreateChunkerAsync()
+    {
+        // Get context window from model (cache it for subsequent calls)
+        if (_cachedContextWindow == null)
+        {
+            _cachedContextWindow = await _ollama.GetContextWindowAsync();
+            if (_verbose)
+            {
+                Console.WriteLine($"Model context window: {_cachedContextWindow:N0} tokens");
+            }
+        }
+
+        int targetChunkTokens;
+        int minChunkTokens;
+
+        // Use config values if specified, otherwise auto-calculate from context window
+        if (_processingConfig.TargetChunkTokens > 0)
+        {
+            targetChunkTokens = _processingConfig.TargetChunkTokens;
+            minChunkTokens = _processingConfig.MinChunkTokens > 0 
+                ? _processingConfig.MinChunkTokens 
+                : targetChunkTokens / 8;
+        }
+        else
+        {
+            // Auto-calculate: use ~25% of context window to leave room for prompt + response
+            // Minimum 2000 tokens, maximum 16000 tokens per chunk
+            targetChunkTokens = Math.Clamp(_cachedContextWindow.Value / 4, 2000, 16000);
+            minChunkTokens = _processingConfig.MinChunkTokens > 0
+                ? _processingConfig.MinChunkTokens
+                : Math.Max(500, targetChunkTokens / 8);
+        }
+
+        if (_verbose)
+        {
+            Console.WriteLine($"Chunk sizing: target={targetChunkTokens}, min={minChunkTokens} tokens");
+        }
+
+        return new DocumentChunker(_processingConfig.MaxHeadingLevel, targetChunkTokens, minChunkTokens);
     }
 }

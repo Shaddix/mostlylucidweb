@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Mostlylucid.DocSummarizer</RootNamespace>
-    <AssemblyName>Mostlylucid.DocSummarizer</AssemblyName>
+    <AssemblyName>docsummarizer</AssemblyName>
     <Version>1.0.0</Version>
     <Authors>Scott Galloway</Authors>
     <Description>Local-first document summarization tool using LLMs, vector search, and document conversion</Description>
@@ -24,25 +24,12 @@
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>false</InvariantGlobalization>
     
-    <!-- Linker configuration for ARM64 -->
-    <LinkerEnabled>true</LinkerEnabled>
-    <LinkerFlavor>lld</LinkerFlavor>
-    <LinkerGenerateSnapshot>true</LinkerGenerateSnapshot>
-    <LinkerGenerateDebugSymbols>true</LinkerGenerateDebugSymbols>
-    <!-- ARM64 specific linker settings -->
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-arm64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
-    <!-- Fix for cross-OS compilation -->
-    <EnableCrossArchitectureCompilation>true</EnableCrossArchitectureCompilation>
-    <!-- Additional ARM64 settings -->
-    <TargetPlatform>win-arm64</TargetPlatform>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <!-- Allow cross-OS testing -->
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <EnableDynamicCodeGeneration>true</EnableDynamicCodeGeneration>
-    <!-- Fix for cross-OS execution -->
+    <!-- Linker configuration -->
     <UseAppHost>true</UseAppHost>
+    <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -52,6 +39,7 @@
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.1" />
     <PackageReference Include="UglyToad.PdfPig" Version="1.7.0-custom-5" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,14 +52,18 @@
     <TrimmerRootAssembly Include="Qdrant.Client" />
   </ItemGroup>
 
-  <!-- Copy configuration and documentation to output -->
+  <!-- Copy configuration and documentation to output (excluded from single-file bundle) -->
   <ItemGroup>
-    <None Update="appsettings.json">
+    <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="README.md">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="README.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

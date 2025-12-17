@@ -109,7 +109,8 @@ rootCommand.SetHandler(async (context) =>
             config.Qdrant.Host,
             config.Output.Verbose,
             config.Docling,
-            config.Processing);
+            config.Processing,
+            config.Qdrant);
 
         // Determine operation mode
         if (directory != null)
@@ -124,8 +125,20 @@ rootCommand.SetHandler(async (context) =>
         }
         else
         {
-            Console.WriteLine("Error: Either --file or --directory must be specified");
-            Environment.Exit(1);
+            // Default: look for README.md in current directory
+            var defaultFile = Path.Combine(Environment.CurrentDirectory, "README.md");
+            if (File.Exists(defaultFile))
+            {
+                Console.WriteLine("No file specified, using README.md in current directory");
+                Console.WriteLine();
+                await ProcessFileAsync(summarizer, defaultFile, mode, focus, query, config);
+            }
+            else
+            {
+                Console.WriteLine("Error: Either --file or --directory must be specified");
+                Console.WriteLine("       (or run from a directory containing README.md)");
+                Environment.Exit(1);
+            }
         }
     }
     catch (Exception ex)
@@ -283,6 +296,19 @@ static async Task ProcessFileAsync(
         if (config.Output.Format == OutputFormat.Console)
         {
             Console.WriteLine(output);
+            
+            // Auto-save to .summary.md file
+            var fileDir = Path.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
+            var baseName = Path.GetFileNameWithoutExtension(filePath);
+            var summaryPath = Path.Combine(fileDir, $"{baseName}.summary.md");
+            
+            // Format as markdown for file output
+            var markdownConfig = new OutputConfig { Format = OutputFormat.Markdown, IncludeTrace = true };
+            var markdownOutput = OutputFormatter.Format(summary, markdownConfig, fileName);
+            await File.WriteAllTextAsync(summaryPath, markdownOutput);
+            
+            Console.WriteLine();
+            Console.WriteLine($"Saved to: {summaryPath}");
         }
         else
         {

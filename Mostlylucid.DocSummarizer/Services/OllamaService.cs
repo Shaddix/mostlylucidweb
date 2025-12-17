@@ -115,29 +115,8 @@ public class OllamaService
                 Format = showResponse.Details?.Format ?? "unknown"
             };
 
-            // Known context windows for common models
-            var contextWindows = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "ministral-3:3b", 128000 },
-                { "ministral-3:latest", 128000 },
-                { "llama3.2:3b", 128000 },
-                { "llama3.2:latest", 128000 },
-                { "llama3.1:8b", 128000 },
-                { "llama3.1:latest", 128000 },
-                { "gemma3:1b", 32000 },
-                { "gemma3:4b", 128000 },
-                { "gemma3:12b", 128000 },
-                { "qwen2.5:1.5b", 32000 },
-                { "qwen2.5:3b", 32000 },
-                { "tinyllama:latest", 2048 },
-                { "nomic-embed-text", 8192 },
-                { "nomic-embed-text:latest", 8192 }
-            };
-
-            if (contextWindows.TryGetValue(model, out var knownWindow))
-            {
-                modelInfo.ContextWindow = knownWindow;
-            }
+            // Use known context windows based on model name/family
+            modelInfo.ContextWindow = GetContextWindowForModel(model, modelInfo.Family);
 
             return modelInfo;
         }
@@ -145,6 +124,77 @@ public class OllamaService
         {
             return null;
         }
+    }
+    
+    /// <summary>
+    /// Get the context window size for the current model
+    /// </summary>
+    public async Task<int> GetContextWindowAsync()
+    {
+        var info = await GetModelInfoAsync();
+        return info?.ContextWindow ?? 8192; // Conservative default
+    }
+
+    /// <summary>
+    /// Get context window for a model based on name or family
+    /// </summary>
+    private static int GetContextWindowForModel(string model, string family)
+    {
+        // Exact model name matches
+        var contextWindows = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "ministral-3:3b", 128000 },
+            { "ministral-3:latest", 128000 },
+            { "llama3.2:3b", 128000 },
+            { "llama3.2:latest", 128000 },
+            { "llama3.1:8b", 128000 },
+            { "llama3.1:latest", 128000 },
+            { "gemma3:1b", 32000 },
+            { "gemma3:4b", 128000 },
+            { "gemma3:12b", 128000 },
+            { "gemma2:2b", 8192 },
+            { "gemma2:9b", 8192 },
+            { "qwen2.5:1.5b", 32000 },
+            { "qwen2.5:3b", 32000 },
+            { "qwen2.5:7b", 32000 },
+            { "phi3:mini", 128000 },
+            { "phi3:medium", 128000 },
+            { "mistral:7b", 32000 },
+            { "mistral:latest", 32000 },
+            { "tinyllama:latest", 2048 },
+            { "nomic-embed-text", 8192 },
+            { "nomic-embed-text:latest", 8192 }
+        };
+
+        if (contextWindows.TryGetValue(model, out var knownWindow))
+        {
+            return knownWindow;
+        }
+
+        // Family-based defaults
+        var familyLower = family.ToLowerInvariant();
+        if (familyLower.Contains("llama3") || familyLower.Contains("ministral"))
+            return 128000;
+        if (familyLower.Contains("gemma3"))
+            return 32000;
+        if (familyLower.Contains("qwen"))
+            return 32000;
+        if (familyLower.Contains("phi"))
+            return 128000;
+        if (familyLower.Contains("mistral"))
+            return 32000;
+
+        // Model name pattern matching
+        var modelLower = model.ToLowerInvariant();
+        if (modelLower.Contains("llama3") || modelLower.Contains("ministral"))
+            return 128000;
+        if (modelLower.Contains("gemma3"))
+            return 32000;
+        if (modelLower.Contains("qwen"))
+            return 32000;
+
+        // Default for unknown models
+        return 8192;
     }
 
     public async Task<List<string>> GetAvailableModelsAsync()

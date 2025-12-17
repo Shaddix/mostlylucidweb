@@ -95,6 +95,8 @@ public class MapReduceSummarizer
     {
         var results = new ChunkSummary[chunks.Count];
         var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
+        var completed = 0;
+        var lockObj = new object();
         
         await Parallel.ForEachAsync(
             chunks.Select((chunk, index) => (chunk, index)),
@@ -102,8 +104,19 @@ public class MapReduceSummarizer
             async (item, ct) =>
             {
                 results[item.index] = await SummarizeChunkAsync(item.chunk);
+                
+                // Thread-safe progress update
+                int current;
+                lock (lockObj)
+                {
+                    completed++;
+                    current = completed;
+                }
+                Console.Write($"\r  Progress: {current}/{chunks.Count} chunks completed");
+                Console.Out.Flush();
             });
         
+        Console.WriteLine(); // New line after progress
         return results.ToList();
     }
 

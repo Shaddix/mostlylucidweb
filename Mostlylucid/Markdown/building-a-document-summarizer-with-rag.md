@@ -13,66 +13,15 @@ The failure mode isn't "bad model". It's **context collapse + structure loss**.
 
 > **"Offline" means**: no document content leaves your machine. Docling, Ollama, and Qdrant all run locally.
 
+## The Tool
+
+[![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+
+As is my way, I've built a complete CLI tool implementing these patterns: **docsummarizer** - a local-first document summarization tool with Native AOT support, multiple summarization modes, and citation tracking.
+
+See the [docsummarizer tool article](/blog/docsummarizer-tool) for installation, usage, and configuration details.
+
 [TOC]
-
-## Getting Started
-
-Before running the summarizer, you need these local services:
-
-```bash
-# Install Ollama and pull models
-ollama pull ministral-3:3b       # Default (128K context, good quality)
-ollama pull gemma3:1b            # Fast option for testing
-ollama pull nomic-embed-text     # For embeddings (RAG mode)
-
-# Start Docling (document conversion)
-docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
-
-# Start Qdrant (vector database, RAG mode only)
-docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
-```
-
-## Quick Example
-
-```bash
-# Summarize a document with progress feedback
-dotnet run -- -f document.pdf -v
-
-# Output shows parallel processing
-Map Phase: Summarizing 12 chunks (8 parallel)...
-[STARTED] done (2s)
-```
-
-Verify services are running:
-- Ollama: `ollama list` shows your models
-- Docling: `curl http://localhost:5001/health` returns OK
-- Qdrant: `curl http://localhost:6333/` returns version info
-
-Or use the built-in check command:
-
-```bash
-# 1. Install Ollama and pull models
-ollama pull ministral-3:3b       # Default (128K context, good quality)
-ollama pull gemma3:1b            # Fast option for testing
-ollama pull nomic-embed-text     # For embeddings (RAG mode)
-
-# 2. Start Docling (document conversion)
-docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
-
-# 3. Start Qdrant (vector database, RAG mode only)
-docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
-```
-
-Verify services are running:
-- Ollama: `ollama list` shows your models
-- Docling: `curl http://localhost:5001/health` returns OK
-- Qdrant: `curl http://localhost:6333/` returns version info
-
-Or use the built-in check command:
-
-```bash
-dotnet run -- check --verbose
-```
 
 ## The Expensive Mistake
 
@@ -133,6 +82,8 @@ public async Task<string> ConvertAsync(string filePath)
 }
 ```
 
+> **Note**: Markdown files skip this step entirely - they're read directly. Docling is only required for PDF/DOCX conversion.
+
 ## Step 2: Chunk by Structure
 
 Most chunking uses token limits. This is wrong. Documents have **semantic structure** - chunk by headings, not by token math.
@@ -143,7 +94,8 @@ public List<DocumentChunk> ChunkByStructure(string markdown)
     var chunks = new List<DocumentChunk>();
     var lines = markdown.Split('\n');
     var section = new StringBuilder();
-    string heading = ""; int level = 0, index = 0;
+    string? heading = null;
+    int level = 0, index = 0;
     
     foreach (var line in lines)
     {
@@ -151,18 +103,28 @@ public List<DocumentChunk> ChunkByStructure(string markdown)
         if (headingLevel > 0 && headingLevel <= 3)
         {
             if (section.Length > 0)
-                chunks.Add(new DocumentChunk(index++, heading, level, section.ToString().Trim()));
+            {
+                var content = section.ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(content))
+                    chunks.Add(new DocumentChunk(index++, heading ?? "", level, content, HashHelper.ComputeHash(content)));
+                section.Clear();
+            }
             heading = line.TrimStart('#', ' ');
             level = headingLevel;
-            section.Clear();
         }
         else section.AppendLine(line);
     }
     if (section.Length > 0)
-        chunks.Add(new DocumentChunk(index, heading, level, section.ToString().Trim()));
+    {
+        var content = section.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(content))
+            chunks.Add(new DocumentChunk(index, heading ?? "", level, content, HashHelper.ComputeHash(content)));
+    }
     return chunks;
 }
 ```
+
+Each chunk gets a content hash for stable point IDs - if you re-index the same content, it gets the same vector ID in Qdrant.
 
 > **Caveat**: This is a pragmatic chunker, not a full Markdown AST. Known edge cases:
 > - `#` inside code fences will be misdetected as headings
@@ -226,36 +188,51 @@ RAG improves summarization for:
 
 ### Index the Document
 
+Each document gets its own Qdrant collection (named `docsummarizer_{hash}`) to prevent collisions. The collection is deleted after summarization completes, so there's no need for hash-based idempotency checks.
+
 ```csharp
 public async Task IndexDocumentAsync(string docId, List<DocumentChunk> chunks)
 {
-    var existingHashes = await GetExistingHashesAsync(docId);
-    var newChunks = chunks.Where(c => !existingHashes.Contains(c.Hash)).ToList();
+    var collectionName = GetCollectionName(docId); // e.g., "docsummarizer_a1b2c3d4e5f6"
+    await EnsureCollectionAsync(collectionName);
     
-    if (newChunks.Count == 0) return; // Idempotent
+    var pointResults = new PointStruct[chunks.Count];
+    var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
     
-    var points = new List<PointStruct>();
-    foreach (var chunk in newChunks)
-    {
-        var embedding = await EmbedAsync(chunk.Content);
-        var pointId = GenerateStableId(docId, chunk.Hash);
-        
-        points.Add(new PointStruct
+    await Parallel.ForEachAsync(
+        chunks.Select((chunk, index) => (chunk, index)),
+        options,
+        async (item, ct) =>
         {
-            Id = new PointId { Uuid = pointId.ToString() },
-            Vectors = embedding,
-            Payload = { 
-                ["docId"] = docId, 
-                ["chunkId"] = chunk.Id,
-                ["heading"] = chunk.Heading, 
-                ["headingLevel"] = chunk.HeadingLevel,
-                ["order"] = chunk.Order,
-                ["content"] = chunk.Content,
-                ["hash"] = chunk.Hash
-            }
+            var embedding = await _ollama.EmbedAsync(item.chunk.Content);
+            var pointId = GenerateStableId(docId, item.chunk.Hash);
+
+            pointResults[item.index] = new PointStruct
+            {
+                Id = new PointId { Uuid = pointId.ToString() },
+                Vectors = embedding,
+                Payload =
+                {
+                    ["docId"] = docId,
+                    ["chunkId"] = item.chunk.Id,
+                    ["heading"] = item.chunk.Heading ?? "",
+                    ["headingLevel"] = item.chunk.HeadingLevel,
+                    ["order"] = item.chunk.Order,
+                    ["content"] = item.chunk.Content,
+                    ["hash"] = item.chunk.Hash
+                }
+            };
         });
-    }
-    await _qdrant.UpsertAsync("documents", points);
+
+    await _qdrant.UpsertAsync(collectionName, pointResults.ToList());
+}
+
+private static string GetCollectionName(string docId)
+{
+    using var sha = SHA256.Create();
+    var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(docId));
+    var hash = Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+    return $"docsummarizer_{hash}";
 }
 ```
 
@@ -290,15 +267,26 @@ public async Task<DocumentSummary> SummarizeAsync(string docId, string? focus = 
 Prompting for citations isn't enough - validate them:
 
 ```csharp
-public ValidationResult ValidateCitations(string summary, HashSet<string> validIds)
+public record ValidationResult(
+    int TotalCitations,
+    int InvalidCount,
+    bool IsValid,
+    List<string> InvalidCitations);
+
+public static ValidationResult Validate(string summary, HashSet<string> validChunkIds)
 {
     // Flexible: matches [chunk-0], [chunk-12], or any bracketed ID
     var citations = Regex.Matches(summary, @"\[([^\]]+)\]")
         .Select(m => m.Groups[1].Value)
-        .Where(id => id.StartsWith("chunk-"))
+        .Where(id => id.StartsWith("chunk-", StringComparison.OrdinalIgnoreCase))
         .ToList();
-    var invalid = citations.Where(c => !validIds.Contains(c)).ToList();
-    return new ValidationResult(citations.Count, invalid.Count, invalid);
+    var invalid = citations.Where(c => !validChunkIds.Contains(c)).ToList();
+    
+    return new ValidationResult(
+        citations.Count,
+        invalid.Count,
+        invalid.Count == 0 && citations.Count > 0,
+        invalid);
 }
 ```
 
@@ -333,9 +321,13 @@ Log what matters:
 
 ```csharp
 public record SummarizationTrace(
-    string DocId, int TotalChunks, int ChunksRetrieved,
-    List<string> Topics, TimeSpan TotalTime,
-    double CoverageScore, double CitationRate);
+    string DocumentId,
+    int TotalChunks,
+    int ChunksProcessed,
+    List<string> Topics,
+    TimeSpan TotalTime,
+    double CoverageScore,
+    double CitationRate);
 ```
 
 **Metric definitions**:
@@ -348,33 +340,6 @@ public record SummarizationTrace(
 | Citation rate | >0.5 | 0.2-0.5 | <0.2 |
 
 If coverage is low, retrieval is failing. If citations are low, prompts need tightening.
-
-## New: LLM Parallelism Control
-
-For large documents with many chunks, the tool limits concurrent LLM requests to avoid overwhelming Ollama:
-
-```json
-{
-  "processing": {
-    "maxLlmParallelism": 8  // Default: 8 concurrent requests
-  }
-}
-```
-
-Ollama processes one request at a time per model, so high values just queue requests. The default of 8 provides a good balance between throughput and memory usage.
-
-## Fixed: DOCX Conversion Issue
-
-Previously, DOCX files could get stuck in an infinite polling loop due to case-sensitive status comparison. Now fixed to handle lowercase status responses from Docling.
-
-## Performance Tips
-
-1. **Use MapReduce for speed**: Processes chunks in parallel
-2. **Use gemma3:1b for quick tests**: Very fast with reasonable quality
-3. **Cache RAG indices**: Qdrant stores embeddings, re-running is faster
-4. **Native AOT for production**: Instant startup, smaller footprint
-5. **Limit chunk size**: Documents with very large sections may need chunking adjustments
-6. **Adjust parallelism**: Lower `maxLlmParallelism` if experiencing timeouts or memory issues
 
 ## Worked Example
 
@@ -411,105 +376,6 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 | Query-focused ("summarize risks") | RAG-Enhanced |
 | Generic summary, simple doc | Map/Reduce |
 
-## The CLI Tool
-
-The complete implementation is available at [Mostlylucid.DocSummarizer](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer) with pre-built native executables in [GitHub Releases](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer).
-
-### Quick Start
-
-```bash
-# Download pre-built executable (Windows x64)
-curl -L -o docsummarizer.exe https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer/docsummarizer-win-x64.zip
-unzip docsummarizer-win-x64.zip
-
-# Summarize a document with progress feedback
-./docsummarizer.exe -f document.pdf -v
-```
-
-### Features
-
-- **Native AOT compilation** - Compiles to ~18MB native executable for instant startup
-- **Rich progress feedback** - Live terminal UI with [Spectre.Console](https://spectreconsole.net/)
-- **Configurable timeouts** - 10-minute default for large documents/slow models
-- **LLM parallelism control** - Limit concurrent requests to avoid Ollama overload
-- **Batch processing** - Process entire directories
-- **Multiple output formats** - Console, Text, Markdown, JSON
-- **Configuration files** - JSON-based with auto-discovery
-- **Fixed DOCX conversion** - Resolved stuck polling issue with case-sensitive status handling
-
-### Features
-
-- **Native AOT compilation** - Compiles to ~18MB native executable for instant startup
-- **Rich progress feedback** - Live terminal UI with [Spectre.Console](https://spectreconsole.net/)
-- **Configurable timeouts** - 10-minute default for large documents/slow models
-- **LLM parallelism control** - Limit concurrent requests to avoid Ollama overload
-- **Batch processing** - Process entire directories
-- **Multiple output formats** - Console, Text, Markdown, JSON
-- **Configuration files** - JSON-based with auto-discovery
-- **Fixed DOCX conversion** - Resolved stuck polling issue with case-sensitive status handling
-
-### Basic Usage
-
-```bash
-cd Mostlylucid.DocSummarizer
-
-# Check dependencies are running
-./Mostlylucid.DocSummarizer -- check --verbose
-
-# Map/reduce summary (default)
-./Mostlylucid.DocSummarizer -- -f contract.docx -v
-
-# Use a fast small model
-./Mostlylucid.DocSummarizer -- -f contract.docx --model gemma3:1b -v
-
-# RAG with focus query  
-./Mostlylucid.DocSummarizer -- -f contract.docx --mode Rag --focus "pricing terms" -v
-
-# Query indexed document
-./Mostlylucid.DocSummarizer -- -f contract.docx --query "what are the termination penalties?"
-
-# Batch process a directory
-./Mostlylucid.DocSummarizer -- -d ./documents --mode MapReduce -v
-
-# Adjust LLM parallelism (default: 8)
-./Mostlylucid.DocSummarizer -- -f contract.docx --config '{"processing":{"maxLlmParallelism":4}}'
-```
-
-### Progress Feedback
-
-With verbose mode (`-v`), you get a live progress table:
-
-```
-╭───────┬─────────────────────────────────────────┬───────────────╮
-│ Chunk │ Section                                 │    Status     │
-├───────┼─────────────────────────────────────────┼───────────────┤
-│   0   │ 1 The Science of Deduction              │     Done      │
-│   1   │ 2 The Statement of the Case             │ Processing... │
-│   2   │ 3 In Quest of a Solution                │    Pending    │
-...
-```
-
-### Native AOT Compilation
-
-For production deployment with instant startup:
-
-```bash
-# Build native executable
-dotnet publish -c Release -r win-x64 --self-contained
-
-# Output: bin/Release/net10.0/win-x64/publish/Mostlylucid.DocSummarizer.exe (~18MB)
-```
-
-### Model Performance
-
-| Model | Size | Time (12 chapters) | Quality |
-|-------|------|-------------------|---------|
-| `gemma3:1b` | 815MB | **21s** | Good |
-| `ministral-3:3b` | 2.9GB | 107s | Very Good |
-| `llama3.1:8b` | 4.7GB | ~180s | Excellent |
-
-The 10-minute timeout handles even slow models on large documents.
-
 ## Why This Matters Operationally
 
 This matters when you have hundreds or thousands of documents, compliance requirements, or cost sensitivity — which is where most real systems end up. A single API call works for a demo; a pipeline works for production.
@@ -533,12 +399,11 @@ Same LLM. Better architecture. Better results.
 - [Docling](https://github.com/docling-project/docling) / [Docling Serve](https://github.com/docling-project/docling-serve)
 - [Qdrant](https://qdrant.tech/) - Local vector database
 - [Ollama](https://ollama.ai/) / [OllamaSharp](https://github.com/awaescher/OllamaSharp)
-- [Spectre.Console](https://spectreconsole.net/) - Beautiful terminal UI
-- [OllamaSharp Native AOT Support](https://github.com/awaescher/OllamaSharp/blob/main/docs/native-aot-support.md) - AOT configuration guide
 - [Long Document Summarization](https://cloud.google.com/blog/products/ai-machine-learning/long-document-summarization-with-workflows-and-gemini-models) - Google's patterns
 - [Query-Focused Summarization](https://arxiv.org/abs/2404.16130v1) - Why topic-driven works
 
 ### Related
+- [docsummarizer Tool](/blog/docsummarizer-tool) - The CLI tool implementing these patterns
 - [CSV Analysis with Local LLMs](/blog/analysing-large-csv-files-with-local-llms)
 - [Web Content with LLMs](/blog/fetching-and-analysing-web-content-with-llms)
 - [Lawyer GPT Part 9: Docling](/blog/building-a-lawyer-gpt-for-your-blog-part9)

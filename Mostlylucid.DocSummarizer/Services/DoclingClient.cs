@@ -1,6 +1,9 @@
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Mostlylucid.DocSummarizer.Config;
 using UglyToad.PdfPig;
 
@@ -43,6 +46,12 @@ public class DoclingClient : IDisposable
         if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && _config.EnableSplitProcessing)
         {
             return await ConvertPdfWithSplitProcessingAsync(filePath, cancellationToken);
+        }
+        
+        // For DOCX, use split processing by chapters for large files
+        if (filePath.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) && _config.EnableSplitProcessing)
+        {
+            return await ConvertDocxWithSplitProcessingAsync(filePath, cancellationToken);
         }
         
         // For other formats, use standard conversion
@@ -204,6 +213,279 @@ public class DoclingClient : IDisposable
             orderedChunks.Select(c => c.Result));
         
         return combinedMarkdown;
+    }
+
+    /// <summary>
+    /// Convert DOCX using split processing by chapters for large files
+    /// </summary>
+    private async Task<string> ConvertDocxWithSplitProcessingAsync(string filePath, CancellationToken cancellationToken)
+    {
+        // Get chapter boundaries from the DOCX
+        List<DocxChapter> chapters;
+        try
+        {
+            chapters = GetDocxChapters(filePath);
+            Console.WriteLine($"DOCX has {chapters.Count} chapters/sections");
+            Console.Out.Flush();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Could not read DOCX structure: {ex.Message}");
+            Console.WriteLine("Falling back to standard conversion...");
+            return await ConvertStandardAsync(filePath, cancellationToken);
+        }
+
+        // For small DOCX (few chapters), just convert the whole thing
+        if (chapters.Count <= 3)
+        {
+            Console.WriteLine("Small DOCX - using standard conversion...");
+            return await ConvertStandardAsync(filePath, cancellationToken);
+        }
+
+        // Create temp files for each chapter and convert separately
+        var tempDir = Path.Combine(Path.GetTempPath(), $"docsummarizer_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        
+        try
+        {
+            var maxConcurrent = _config.MaxConcurrentChunks;
+            Console.WriteLine($"Split processing: {chapters.Count} chapters (max {maxConcurrent} concurrent)");
+            Console.Out.Flush();
+            
+            var chunkTasks = new List<DocxChunkTask>();
+            var startTime = DateTime.UtcNow;
+            
+            // Create temp DOCX files for each chapter
+            for (int i = 0; i < chapters.Count; i++)
+            {
+                var chapter = chapters[i];
+                var tempPath = Path.Combine(tempDir, $"chapter_{i:D3}.docx");
+                CreateDocxFromChapter(filePath, chapter, tempPath);
+                chunkTasks.Add(new DocxChunkTask(i, chapter.Title, tempPath));
+            }
+            
+            // Process in waves
+            for (int waveStart = 0; waveStart < chunkTasks.Count; waveStart += maxConcurrent)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                var waveChunks = chunkTasks.Skip(waveStart).Take(maxConcurrent).ToList();
+                
+                // Submit this wave
+                Console.Write($"Wave {waveStart / maxConcurrent + 1}: ");
+                foreach (var chunk in waveChunks)
+                {
+                    try
+                    {
+                        chunk.TaskId = await StartConversionAsync(chunk.TempPath, null, null, cancellationToken);
+                        var shortTitle = chunk.Title.Length > 20 ? chunk.Title[..20] + "..." : chunk.Title;
+                        Console.Write($"[{chunk.Index}:{shortTitle}]");
+                        Console.Out.Flush();
+                    }
+                    catch
+                    {
+                        chunk.IsFailed = true;
+                        Console.Write($"[{chunk.Index}:submit-fail]");
+                        Console.Out.Flush();
+                    }
+                }
+                
+                // Poll for this wave to complete
+                var pendingChunks = waveChunks.Where(c => !string.IsNullOrEmpty(c.TaskId) && !c.IsFailed).ToList();
+                while (pendingChunks.Any())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
+                    var elapsed = DateTime.UtcNow - startTime;
+                    if (elapsed > _timeout)
+                    {
+                        throw new TimeoutException($"Split processing timed out after {_timeout.TotalMinutes:F0} minutes");
+                    }
+                    
+                    await Task.Delay(_pollInterval, cancellationToken);
+                    
+                    foreach (var chunk in pendingChunks.ToList())
+                    {
+                        var status = await CheckTaskStatusAsync(chunk.TaskId, cancellationToken);
+                        
+                        if (status == "SUCCESS")
+                        {
+                            chunk.IsComplete = true;
+                            chunk.Result = await GetResultAsync(chunk.TaskId, cancellationToken);
+                            Console.Write($"[{chunk.Index}:ok]");
+                            Console.Out.Flush();
+                            pendingChunks.Remove(chunk);
+                        }
+                        else if (status == "FAILURE" || status == "REVOKED")
+                        {
+                            chunk.IsFailed = true;
+                            Console.Write($"[{chunk.Index}:fail]");
+                            Console.Out.Flush();
+                            pendingChunks.Remove(chunk);
+                        }
+                    }
+                    
+                    if (pendingChunks.Any())
+                    {
+                        Console.Write(".");
+                        Console.Out.Flush();
+                    }
+                }
+                
+                Console.WriteLine();
+            }
+            
+            var totalElapsed = DateTime.UtcNow - startTime;
+            var successCount = chunkTasks.Count(c => c.IsComplete);
+            Console.WriteLine($"Conversion complete: {successCount}/{chapters.Count} chapters in {totalElapsed.TotalSeconds:F0}s");
+            
+            // Concatenate successful results in order
+            var orderedChunks = chunkTasks
+                .Where(c => c.IsComplete && !string.IsNullOrEmpty(c.Result))
+                .OrderBy(c => c.Index)
+                .ToList();
+            
+            if (orderedChunks.Count == 0)
+            {
+                throw new Exception("No chapters were successfully converted");
+            }
+            
+            // Combine with chapter titles as markdown headers
+            var sb = new StringBuilder();
+            foreach (var chunk in orderedChunks)
+            {
+                if (sb.Length > 0) sb.AppendLine("\n---\n");
+                sb.AppendLine(chunk.Result);
+            }
+            
+            return sb.ToString();
+        }
+        finally
+        {
+            // Clean up temp directory
+            try
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extract chapter boundaries from a DOCX file based on Heading1/Heading2 styles
+    /// </summary>
+    private static List<DocxChapter> GetDocxChapters(string filePath)
+    {
+        var chapters = new List<DocxChapter>();
+        
+        using var doc = WordprocessingDocument.Open(filePath, false);
+        var body = doc.MainDocumentPart?.Document?.Body;
+        if (body == null) return chapters;
+        
+        var elements = body.Elements().ToList();
+        var currentChapterStart = 0;
+        string? currentTitle = null;
+        
+        for (int i = 0; i < elements.Count; i++)
+        {
+            if (elements[i] is Paragraph para)
+            {
+                var styleId = para.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
+                
+                // Check for Heading1, Heading2, or Title styles (chapter boundaries)
+                if (styleId != null && (styleId.StartsWith("Heading1", StringComparison.OrdinalIgnoreCase) ||
+                                        styleId.Equals("Title", StringComparison.OrdinalIgnoreCase) ||
+                                        styleId.StartsWith("Heading2", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Save previous chapter if exists
+                    if (currentTitle != null && i > currentChapterStart)
+                    {
+                        chapters.Add(new DocxChapter(currentTitle, currentChapterStart, i - 1));
+                    }
+                    
+                    // Start new chapter
+                    currentTitle = GetParagraphText(para);
+                    if (string.IsNullOrWhiteSpace(currentTitle))
+                        currentTitle = $"Section {chapters.Count + 1}";
+                    currentChapterStart = i;
+                }
+            }
+        }
+        
+        // Add final chapter
+        if (currentTitle != null)
+        {
+            chapters.Add(new DocxChapter(currentTitle, currentChapterStart, elements.Count - 1));
+        }
+        else if (elements.Count > 0)
+        {
+            // No headings found - treat whole doc as one chapter
+            chapters.Add(new DocxChapter("Document", 0, elements.Count - 1));
+        }
+        
+        return chapters;
+    }
+
+    private static string GetParagraphText(Paragraph para)
+    {
+        var sb = new StringBuilder();
+        foreach (var run in para.Elements<Run>())
+        {
+            foreach (var text in run.Elements<Text>())
+            {
+                sb.Append(text.Text);
+            }
+        }
+        return sb.ToString().Trim();
+    }
+
+    /// <summary>
+    /// Create a new DOCX file containing only the specified chapter
+    /// </summary>
+    private static void CreateDocxFromChapter(string sourcePath, DocxChapter chapter, string destPath)
+    {
+        // Copy the source file
+        File.Copy(sourcePath, destPath, overwrite: true);
+        
+        using var doc = WordprocessingDocument.Open(destPath, true);
+        var body = doc.MainDocumentPart?.Document?.Body;
+        if (body == null) return;
+        
+        var elements = body.Elements().ToList();
+        
+        // Remove elements outside the chapter range (in reverse order to preserve indices)
+        for (int i = elements.Count - 1; i >= 0; i--)
+        {
+            if (i < chapter.StartIndex || i > chapter.EndIndex)
+            {
+                elements[i].Remove();
+            }
+        }
+        
+        doc.MainDocumentPart?.Document?.Save();
+    }
+
+    private record DocxChapter(string Title, int StartIndex, int EndIndex);
+    
+    private class DocxChunkTask
+    {
+        public int Index { get; }
+        public string Title { get; }
+        public string TempPath { get; }
+        public string TaskId { get; set; } = "";
+        public bool IsComplete { get; set; }
+        public bool IsFailed { get; set; }
+        public string? Result { get; set; }
+        
+        public DocxChunkTask(int index, string title, string tempPath)
+        {
+            Index = index;
+            Title = title;
+            TempPath = tempPath;
+        }
     }
 
     private async Task<string?> CheckTaskStatusAsync(string taskId, CancellationToken cancellationToken)

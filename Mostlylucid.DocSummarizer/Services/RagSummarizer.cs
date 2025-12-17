@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
@@ -13,7 +14,8 @@ public class RagSummarizer
     private readonly QdrantClient _qdrant;
     private readonly bool _verbose;
     private readonly int _maxParallelism;
-    private const string CollectionName = "documents";
+    private readonly bool _deleteCollectionAfterSummarization;
+    private const string CollectionPrefix = "docsummarizer_";
     private const int VectorSize = 768; // nomic-embed-text
 
     /// <summary>
@@ -22,37 +24,66 @@ public class RagSummarizer
     /// </summary>
     public const int DefaultMaxParallelism = 8;
 
-    public RagSummarizer(OllamaService ollama, string qdrantHost = "localhost", bool verbose = false, int maxParallelism = DefaultMaxParallelism)
+    public RagSummarizer(
+        OllamaService ollama, 
+        string qdrantHost = "localhost", 
+        bool verbose = false, 
+        int maxParallelism = DefaultMaxParallelism,
+        QdrantConfig? qdrantConfig = null)
     {
         _ollama = ollama;
         _qdrant = new QdrantClient(qdrantHost);
         _verbose = verbose;
         _maxParallelism = maxParallelism > 0 ? maxParallelism : DefaultMaxParallelism;
+        _deleteCollectionAfterSummarization = qdrantConfig?.DeleteCollectionAfterSummarization ?? true;
+    }
+
+    /// <summary>
+    /// Generate a unique collection name for a document to prevent collisions
+    /// </summary>
+    private static string GetCollectionName(string docId)
+    {
+        // Create a short hash of the docId to ensure unique collection per document
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(docId));
+        var hash = Convert.ToHexString(bytes)[..12].ToLowerInvariant();
+        return $"{CollectionPrefix}{hash}";
+    }
+
+    /// <summary>
+    /// Delete the collection for a document
+    /// </summary>
+    private async Task DeleteCollectionAsync(string docId)
+    {
+        var collectionName = GetCollectionName(docId);
+        try
+        {
+            await _qdrant.DeleteCollectionAsync(collectionName);
+            if (_verbose) Console.WriteLine($"[Cleanup] Deleted collection {collectionName}");
+        }
+        catch (Exception ex)
+        {
+            if (_verbose) Console.WriteLine($"[Cleanup] Failed to delete collection {collectionName}: {ex.Message}");
+        }
     }
 
     public async Task IndexDocumentAsync(string docId, List<DocumentChunk> chunks)
     {
-        await EnsureCollectionAsync();
+        var collectionName = GetCollectionName(docId);
+        await EnsureCollectionAsync(collectionName);
         
-        var existingHashes = await GetExistingHashesAsync(docId);
-        var newChunks = chunks.Where(c => !existingHashes.Contains(c.Hash)).ToList();
-
-        if (newChunks.Count == 0)
-        {
-            if (_verbose) Console.WriteLine($"[Index] All {chunks.Count} chunks already indexed");
-            return;
-        }
-
         var parallelDesc = _maxParallelism <= 0 ? "unlimited" : _maxParallelism.ToString();
-        Console.WriteLine($"[Index] Indexing {newChunks.Count} new chunks ({parallelDesc} parallel)...");
+        Console.WriteLine($"[Index] Indexing {chunks.Count} chunks ({parallelDesc} parallel)...");
         Console.Out.Flush();
 
         // Use controlled parallelism for embedding
-        var pointResults = new PointStruct[newChunks.Count];
+        var pointResults = new PointStruct[chunks.Count];
         var options = new ParallelOptions { MaxDegreeOfParallelism = _maxParallelism };
+        var completed = 0;
+        var lockObj = new object();
         
         await Parallel.ForEachAsync(
-            newChunks.Select((chunk, index) => (chunk, index)),
+            chunks.Select((chunk, index) => (chunk, index)),
             options,
             async (item, ct) =>
             {
@@ -75,10 +106,26 @@ public class RagSummarizer
                     }
                 };
                 
-                if (_verbose) Console.WriteLine($"  Embedded [{item.chunk.Id}] {item.chunk.Heading}");
+                if (_verbose)
+                {
+                    Console.WriteLine($"  Embedded [{item.chunk.Id}] {item.chunk.Heading}");
+                }
+                else
+                {
+                    // Thread-safe progress update
+                    int current;
+                    lock (lockObj)
+                    {
+                        completed++;
+                        current = completed;
+                    }
+                    Console.Write($"\r  Progress: {current}/{chunks.Count} chunks embedded");
+                    Console.Out.Flush();
+                }
             });
 
-        await _qdrant.UpsertAsync(CollectionName, pointResults.ToList());
+        if (!_verbose) Console.WriteLine(); // New line after progress
+        await _qdrant.UpsertAsync(collectionName, pointResults.ToList());
     }
 
     public async Task<DocumentSummary> SummarizeAsync(
@@ -87,59 +134,71 @@ public class RagSummarizer
         string? focusQuery = null)
     {
         var sw = Stopwatch.StartNew();
+        var collectionName = GetCollectionName(docId);
 
-        // Index first
-        await IndexDocumentAsync(docId, chunks);
-
-        // Extract topics
-        var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
-        var topics = await ExtractTopicsAsync(headings);
-        
-        if (_verbose) Console.WriteLine($"[Topics] Extracted {topics.Count} topics");
-
-        // Retrieve and summarize per topic
-        var topicSummaries = new List<TopicSummary>();
-        var allRetrievedChunks = new HashSet<string>();
-
-        foreach (var topic in topics)
+        try
         {
-            var query = focusQuery != null ? $"{topic} {focusQuery}" : topic;
-            var retrieved = await RetrieveChunksAsync(docId, query, topK: 3);
-            
-            foreach (var c in retrieved) allRetrievedChunks.Add(c.chunkId);
+            // Index first
+            await IndexDocumentAsync(docId, chunks);
 
-            var summary = await SynthesizeTopicAsync(topic, retrieved, focusQuery);
-            topicSummaries.Add(new TopicSummary(topic, summary, retrieved.Select(r => r.chunkId).ToList()));
+            // Extract topics
+            var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
+            var topics = await ExtractTopicsAsync(headings);
             
-            if (_verbose) Console.WriteLine($"  [{topic}] Retrieved {retrieved.Count} chunks");
+            if (_verbose) Console.WriteLine($"[Topics] Extracted {topics.Count} topics");
+
+            // Retrieve and summarize per topic
+            var topicSummaries = new List<TopicSummary>();
+            var allRetrievedChunks = new HashSet<string>();
+
+            foreach (var topic in topics)
+            {
+                var query = focusQuery != null ? $"{topic} {focusQuery}" : topic;
+                var retrieved = await RetrieveChunksAsync(collectionName, query, topK: 3);
+                
+                foreach (var c in retrieved) allRetrievedChunks.Add(c.chunkId);
+
+                var summary = await SynthesizeTopicAsync(topic, retrieved, focusQuery);
+                topicSummaries.Add(new TopicSummary(topic, summary, retrieved.Select(r => r.chunkId).ToList()));
+                
+                if (_verbose) Console.WriteLine($"  [{topic}] Retrieved {retrieved.Count} chunks");
+            }
+
+            // Final synthesis
+            var executive = await CreateExecutiveSummaryAsync(topicSummaries, focusQuery);
+            
+            sw.Stop();
+            
+            // Coverage = % of top-level headings that appear in at least one retrieved chunk
+            var topLevelHeadings = chunks
+                .Where(c => c.HeadingLevel <= 2 && !string.IsNullOrEmpty(c.Heading))
+                .Select(c => c.Heading)
+                .ToList();
+            var retrievedHeadings = chunks
+                .Where(c => allRetrievedChunks.Contains(c.Id))
+                .Select(c => c.Heading)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var coverage = topLevelHeadings.Count > 0 
+                ? (double)topLevelHeadings.Count(h => retrievedHeadings.Contains(h)) / topLevelHeadings.Count
+                : 1.0;
+            var citationRate = CalculateCitationRate(executive);
+
+            return new DocumentSummary(
+                executive,
+                topicSummaries,
+                [],
+                new SummarizationTrace(
+                    docId, chunks.Count, allRetrievedChunks.Count,
+                    topics, sw.Elapsed, coverage, citationRate));
         }
-
-        // Final synthesis
-        var executive = await CreateExecutiveSummaryAsync(topicSummaries, focusQuery);
-        
-        sw.Stop();
-        
-        // Coverage = % of top-level headings that appear in at least one retrieved chunk
-        var topLevelHeadings = chunks
-            .Where(c => c.HeadingLevel <= 2 && !string.IsNullOrEmpty(c.Heading))
-            .Select(c => c.Heading)
-            .ToList();
-        var retrievedHeadings = chunks
-            .Where(c => allRetrievedChunks.Contains(c.Id))
-            .Select(c => c.Heading)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var coverage = topLevelHeadings.Count > 0 
-            ? (double)topLevelHeadings.Count(h => retrievedHeadings.Contains(h)) / topLevelHeadings.Count
-            : 1.0;
-        var citationRate = CalculateCitationRate(executive);
-
-        return new DocumentSummary(
-            executive,
-            topicSummaries,
-            [],
-            new SummarizationTrace(
-                docId, chunks.Count, allRetrievedChunks.Count,
-                topics, sw.Elapsed, coverage, citationRate));
+        finally
+        {
+            // Clean up collection after summarization (unless configured to keep it)
+            if (_deleteCollectionAfterSummarization)
+            {
+                await DeleteCollectionAsync(docId);
+            }
+        }
     }
 
     private async Task<List<string>> ExtractTopicsAsync(List<string> headings)
@@ -164,18 +223,15 @@ public class RagSummarizer
     }
 
     private async Task<List<(string chunkId, string heading, string content)>> RetrieveChunksAsync(
-        string docId, string query, int topK)
+        string collectionName, string query, int topK)
     {
         var queryEmbedding = await _ollama.EmbedAsync(query);
         
+        // No filter needed since each document has its own collection
         var results = await _qdrant.SearchAsync(
-            CollectionName,
+            collectionName,
             queryEmbedding,
-            limit: (ulong)topK,
-            filter: new Filter
-            {
-                Must = { new Condition { Field = new FieldCondition { Key = "docId", Match = new Match { Keyword = docId } } } }
-            });
+            limit: (ulong)topK);
 
         return results.Select(r => (
             r.Payload["chunkId"].StringValue,
@@ -269,37 +325,17 @@ public class RagSummarizer
         return await _ollama.GenerateAsync(prompt);
     }
 
-    private async Task EnsureCollectionAsync()
+    private async Task EnsureCollectionAsync(string collectionName)
     {
         var collections = await _qdrant.ListCollectionsAsync();
-        if (!collections.Any(c => c == CollectionName))
+        if (!collections.Any(c => c == collectionName))
         {
-            await _qdrant.CreateCollectionAsync(CollectionName, new VectorParams
+            await _qdrant.CreateCollectionAsync(collectionName, new VectorParams
             {
                 Size = VectorSize,
                 Distance = Distance.Cosine
             });
-        }
-    }
-
-    private async Task<HashSet<string>> GetExistingHashesAsync(string docId)
-    {
-        try
-        {
-            var result = await _qdrant.ScrollAsync(
-                CollectionName,
-                filter: new Filter
-                {
-                    Must = { new Condition { Field = new FieldCondition { Key = "docId", Match = new Match { Keyword = docId } } } }
-                },
-                limit: 1000,
-                payloadSelector: true);
-
-            return result.Result.Select(p => p.Payload["hash"].StringValue).ToHashSet();
-        }
-        catch
-        {
-            return new HashSet<string>();
+            if (_verbose) Console.WriteLine($"[Index] Created collection {collectionName}");
         }
     }
 

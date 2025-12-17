@@ -49,7 +49,8 @@ public class OllamaConfig
     public string BaseUrl { get; set; } = "http://localhost:11434";
 
     /// <summary>
-    /// Model to use for generation
+    /// Model to use for generation. Default is ministral-3:3b for good quality.
+    /// Models under 3B parameters (e.g., gemma3:1b) produce poor quality summaries.
     /// </summary>
     public string Model { get; set; } = "ministral-3:3b";
 
@@ -131,6 +132,13 @@ public class QdrantConfig
     /// Vector size for embeddings
     /// </summary>
     public int VectorSize { get; set; } = 768;
+
+    /// <summary>
+    /// Delete the Qdrant collection after summarization completes.
+    /// Default is true to prevent stale data and collection name collisions.
+    /// Set to false if you want to reuse the index for subsequent queries.
+    /// </summary>
+    public bool DeleteCollectionAfterSummarization { get; set; } = true;
 }
 
 /// <summary>
@@ -139,9 +147,22 @@ public class QdrantConfig
 public class ProcessingConfig
 {
     /// <summary>
-    /// Maximum heading level to use for chunking (1-6)
+    /// Maximum heading level to use for chunking (1-6).
+    /// Default is 2 (split on H1 and H2 only). Lower values = fewer, larger chunks.
     /// </summary>
-    public int MaxHeadingLevel { get; set; } = 3;
+    public int MaxHeadingLevel { get; set; } = 2;
+
+    /// <summary>
+    /// Target chunk size in tokens. Default 0 means auto-calculate based on model context window.
+    /// Small sections will be merged until they approach this size.
+    /// </summary>
+    public int TargetChunkTokens { get; set; } = 0;
+
+    /// <summary>
+    /// Minimum chunk size in tokens before merging with adjacent sections.
+    /// Default 0 means auto-calculate (1/8 of target).
+    /// </summary>
+    public int MinChunkTokens { get; set; } = 0;
 
     /// <summary>
     /// Number of chunks to retrieve in RAG mode

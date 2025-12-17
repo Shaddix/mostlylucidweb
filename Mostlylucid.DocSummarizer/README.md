@@ -24,33 +24,56 @@ A local-first document summarization tool that uses LLMs (via Ollama), vector se
 
 ## Prerequisites
 
-### Required Services
+### Required: Ollama
 
-1. **Ollama** - Local LLM inference
-   ```bash
-   # Install Ollama from https://ollama.ai
-   ollama pull ministral-3:3b    # Default model (128K context)
-   ollama pull gemma3:1b         # Fast model for quick summaries
-   ollama pull nomic-embed-text  # For embeddings (RAG mode)
-   ollama serve
-   ```
+Ollama is the **only requirement** for summarizing Markdown files:
 
-2. **Docling** - Document to Markdown conversion
-   ```bash
-   docker run -p 5001:5001 quay.io/docling-project/docling-serve
-   ```
+```bash
+# Install Ollama from https://ollama.ai
+ollama pull ministral-3:3b    # Default model - good quality (recommended)
+ollama pull nomic-embed-text  # For RAG mode only
+ollama serve
+```
 
-3. **Qdrant** - Vector database (for RAG mode)
-   ```bash
-   docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
-   ```
+> **Warning**: Models under 3B parameters (e.g., `gemma3:1b`) produce poor quality summaries with repetitive or nonsensical output. Use `ministral-3:3b` or larger.
+
+### Optional: Docling (PDF/DOCX only)
+
+Only needed when summarizing PDF or DOCX files. **Markdown files are read directly - no Docling required.**
+
+```bash
+docker run -p 5001:5001 quay.io/docling-project/docling-serve
+```
+
+### Optional: Qdrant (RAG mode only)
+
+Only needed for `--mode Rag`. The default MapReduce mode doesn't require Qdrant.
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+### Quick Start (Markdown Only)
+
+For Markdown files, you only need Ollama:
+
+```bash
+# Minimal setup
+ollama pull ministral-3:3b && ollama serve
+
+# Summarize README.md in current directory (auto-saves to readme.summary.md)
+docsummarizer
+
+# Summarize a specific file
+docsummarizer -f mydoc.md
+```
 
 ### Check Dependencies
 
-Run the built-in check command to verify all services are available:
+Run the built-in check command to verify services are available:
 
 ```bash
-dotnet run --project Mostlylucid.DocSummarizer -- check --verbose
+docsummarizer check --verbose
 ```
 
 Expected output:
@@ -61,7 +84,6 @@ Checking dependencies...
 
   Available models:
     - ministral-3:3b
-    - gemma3:1b
     - nomic-embed-text
     ... and more
 
@@ -71,11 +93,13 @@ Checking dependencies...
     Parameters: 3.2B
     Context Window: 128,000 tokens
 
-  Docling: ✓ (http://localhost:5001)
-  Qdrant: ✓ (localhost:6334)
+  Docling: ✗ (http://localhost:5001)   # Optional - only for PDF/DOCX
+  Qdrant: ✗ (localhost:6334)           # Optional - only for RAG mode
 
-All dependencies available!
+Some dependencies are not available.
 ```
+
+> **Note**: Docling and Qdrant showing ✗ is fine for Markdown-only workflows.
 
 ## Installation
 
@@ -137,8 +161,8 @@ dotnet run -- --file document.pdf --mode MapReduce
 # Summarize with RAG mode and focus query
 dotnet run -- --file contract.docx --mode Rag --focus "pricing terms"
 
-# Use a fast small model
-dotnet run -- --file document.pdf --model gemma3:1b --verbose
+# Use a higher quality model for important documents
+dotnet run -- --file document.pdf --model llama3.1:8b --verbose
 
 # Query a document
 dotnet run -- --file manual.pdf --query "How do I install the software?"
@@ -146,20 +170,44 @@ dotnet run -- --file manual.pdf --query "How do I install the software?"
 
 ## Usage
 
+### Default Behavior
+
+Running `docsummarizer` with no arguments will:
+1. Look for `README.md` in the current directory
+2. Summarize it using MapReduce mode with `ministral-3:3b`
+3. Print the summary to console
+4. Auto-save to `readme.summary.md`
+
+```bash
+# Just run it - summarizes README.md and saves to readme.summary.md
+docsummarizer
+
+# Output:
+# No file specified, using README.md in current directory
+# Summarizing: README.md
+# Mode: MapReduce
+# Model: ministral-3:3b
+# ...
+# Saved to: readme.summary.md
+```
+
 ### Basic Summarization
 
 ```bash
-# Summarize a PDF with MapReduce (default)
+# Summarize a Markdown file (only needs Ollama)
+dotnet run -- -f document.md
+
+# Summarize a PDF (needs Ollama + Docling)
 dotnet run -- -f document.pdf
 
 # Summarize with verbose output (shows progress)
 dotnet run -- -f document.pdf -v
 
-# Use RAG mode with focus
+# Use RAG mode with focus (needs Ollama + Qdrant)
 dotnet run -- -f document.pdf -m Rag --focus "security requirements"
 
-# Use a smaller/faster model
-dotnet run -- -f document.pdf --model gemma3:1b -v
+# Use a higher quality model for important documents
+dotnet run -- -f document.pdf --model llama3.1:8b -v
 ```
 
 ### Batch Processing
@@ -273,7 +321,7 @@ dotnet run -- -f story.pdf -m Iterative -v
 
 | Model | Size | Speed | Quality | Use Case |
 |-------|------|-------|---------|----------|
-| `gemma3:1b` | 815MB | Very Fast | Good | Quick summaries, testing |
+| `gemma3:1b` | 815MB | Very Fast | Poor | Testing only - not recommended |
 | `ministral-3:3b` | 2.9GB | Fast | Very Good | **Default - best balance** |
 | `llama3.2:3b` | 2GB | Fast | Good | General purpose |
 | `qwen2.5:3b` | 1.9GB | Fast | Good | Multilingual documents |
@@ -356,7 +404,7 @@ AOT compatibility is achieved through:
 ### Components
 
 1. **DoclingClient**: Converts DOCX/PDF to Markdown
-2. **DocumentChunker**: Splits markdown by structure (H1-H3 headings)
+2. **DocumentChunker**: Context-aware splitting (merges small sections to target chunk size)
 3. **OllamaService**: LLM inference and embeddings with configurable timeout
 4. **MapReduceSummarizer**: Parallel chunk processing with progress feedback
 5. **RagSummarizer**: Vector-based retrieval and synthesis
@@ -405,10 +453,12 @@ Example `docsummarizer.json`:
   "qdrant": {
     "host": "localhost",
     "port": 6334,
-    "collectionName": "documents"
+    "deleteCollectionAfterSummarization": true
   },
   "processing": {
-    "maxChunkTokens": 2000,
+    "maxHeadingLevel": 2,
+    "targetChunkTokens": 0,
+    "minChunkTokens": 0,
     "maxLlmParallelism": 8
   },
   "output": {
@@ -515,6 +565,34 @@ To adjust for your system:
 
 Setting a lower value (e.g., 4) can help if you're running on a system with limited memory or experiencing timeouts. Setting it higher (e.g., 16) may help throughput on systems with more resources, but benefits are limited since Ollama serializes requests.
 
+### Chunking Configuration
+
+The chunker intelligently combines small sections to create optimal chunk sizes for the LLM context window:
+
+```json
+{
+  "processing": {
+    "maxHeadingLevel": 2,
+    "targetChunkTokens": 0,
+    "minChunkTokens": 0
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxHeadingLevel` | 2 | Split on H1 and H2 only. Set to 3 for finer granularity. |
+| `targetChunkTokens` | 0 (auto) | Target chunk size. 0 = auto-calculate from model context window (~25% of context). |
+| `minChunkTokens` | 0 (auto) | Minimum size before merging. 0 = 1/8 of target. |
+
+**Auto-calculation**: When set to 0, the tool queries the model's context window and calculates:
+- Target = context_window / 4 (clamped to 2000-16000 tokens)
+- Min = target / 8 (minimum 500 tokens)
+
+For example, with `ministral-3:3b` (128K context):
+- Target = 128000 / 4 = 32000 → clamped to 16000 tokens
+- Min = 16000 / 8 = 2000 tokens
+
 ## Troubleshooting
 
 ### "Could not connect to Ollama"
@@ -522,33 +600,66 @@ Setting a lower value (e.g., 4) can help if you're running on a system with limi
 - Check models are pulled: `ollama list`
 
 ### "Docling service unavailable"
-- Verify Docker container is running: `docker ps`
-- Check port 5001 isn't in use
+- This is **only required for PDF/DOCX files**
+- For Markdown files, you can ignore this error
+- To fix: `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
 
 ### "Qdrant connection failed"
-- Ensure Qdrant container is running
-- Check ports 6333 and 6334 aren't blocked
+- This is **only required for RAG mode** (`--mode Rag`)
+- For MapReduce mode (default), you can ignore this error
+- To fix: `docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant`
 
 ### "LLM generation timed out"
-- Use a faster model: `--model gemma3:1b`
 - Increase timeout in configuration
 - Split very large documents
+- Check Ollama is not overloaded with other requests
 
-### Poor Summary Quality
-- Try a larger model: `--model llama3.1:8b`
-- Use RAG mode with focused query for better retrieval
-- Ensure document has clear heading structure
+### Repetitive or Low-Quality Summaries
 
-### Citations Missing
-- Check `Citation rate` in trace output
-- Try MapReduce mode for better citation tracking
-- May need to adjust prompts if using custom models
+If your summaries contain repetitive bullet points, nonsensical content, or miss key information:
+
+**Symptoms:**
+```
+- **Rule:** Return only bullet points.
+- **Section:** Return bullets only.
+- **Number:** 1. The rule is to provide bullet points.
+```
+
+**Cause**: Model is too small. Models under 3B parameters struggle with summarization instructions.
+
+**Fix**: Use `ministral-3:3b` (default) or larger:
+```bash
+docsummarizer -f doc.md --model ministral-3:3b   # Recommended
+docsummarizer -f doc.md --model llama3.1:8b      # Best quality
+```
+
+**Model size guidelines:**
+| Size | Examples | Quality |
+|------|----------|---------|
+| < 1B | `gemma3:1b`, `tinyllama` | Poor - testing only |
+| 3B | `ministral-3:3b`, `llama3.2:3b` | Good - recommended |
+| 7-8B | `llama3.1:8b`, `mistral:7b` | Excellent |
+
+### Summary Ignores Document Content
+
+If the summary seems generic or doesn't reference specific content:
+- The model may be hallucinating - check `Citation rate` in trace output
+- Try RAG mode (`--mode Rag`) which grounds summaries in retrieved chunks
+- Use `--verbose` to see which chunks are being processed
+
+### Citations Missing or Invalid
+
+If summaries lack `[chunk-N]` citations:
+- Some smaller models struggle to follow citation instructions
+- The tool retries once with stronger prompting, but may still fail
+- Use a 3B+ parameter model for reliable citations
+- Check `Citation rate` in trace - should be > 0.5 for good traceability
 
 ## Performance Tips
 
 1. **Use MapReduce for speed**: Processes chunks in parallel
-2. **Use gemma3:1b for quick tests**: Very fast with reasonable quality
-3. **Cache RAG indices**: Qdrant stores embeddings, re-running is faster
+2. **Use `ministral-3:3b` as default**: Best balance of speed and quality
+3. **Use `llama3.1:8b` for important docs**: Higher quality, slower
 4. **Native AOT for production**: Instant startup, smaller footprint
 5. **Limit chunk size**: Documents with very large sections may need chunking adjustments
 
