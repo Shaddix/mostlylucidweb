@@ -104,7 +104,7 @@ If you need to *trust* a summary — or feed it to another system — that's the
 | **Grounded Output** | Citations, confidence levels, evidence IDs |
 | **Multiple Modes** | Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative |
 | **Tool Mode** | Clean JSON for LLM agents, MCP, CI checks |
-| **13 Templates** | default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict |
+| **14 Templates** | default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict |
 | **Web Fetching** | Security-hardened (SSRF protection, HTML sanitization) |
 | **Playwright Mode** | Headless browser for JavaScript-rendered pages |
 | **ONNX Embeddings** | Zero-config local embeddings, no Ollama embedding model needed |
@@ -444,7 +444,38 @@ docsummarizer check [--verbose]                    # Verify dependencies
 docsummarizer config [-o file]                     # Generate config file
 docsummarizer templates                            # List available templates
 docsummarizer benchmark -f file -m "model1,model2" # Compare models
+docsummarizer benchmark-templates -f file -t "brief,prose,bookreport" # Compare templates
 ```
+
+### Benchmark Templates Command
+
+Compare multiple summary templates on the same document efficiently. Extraction and retrieval are performed once and reused across all templates.
+
+```bash
+# Compare specific templates
+docsummarizer benchmark-templates -f document.pdf -t "brief,prose,executive" -v
+
+# Compare all templates
+docsummarizer benchmark-templates -f novel.docx -t all -o ./results
+
+# Compare templates on a Gutenberg book
+docsummarizer benchmark-templates -f pg1234.zip -t "bookreport,prose" -v
+```
+
+**Options:**
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--file` | `-f` | Document to summarize (required) |
+| `--templates` | `-t` | Comma-separated templates or "all" |
+| `--focus` | `-q` | Focus query for retrieval |
+| `--output-dir` | `-o` | Output directory for summaries |
+| `--verbose` | `-v` | Show detailed progress |
+| `--config` | `-c` | Configuration file |
+
+**Output:**
+- Individual summary files: `{docname}_{template}_summary.md`
+- Benchmark report: `{docname}_benchmark_report.md`
+- Results table showing target vs actual word counts and timing
 
 ## Summarization Modes
 
@@ -607,6 +638,26 @@ Auto-discovery order:
     "maxSentences": 30,
     "usePositionWeighting": true
   },
+  "extraction": {
+    "extractionRatio": 0.15,
+    "minSegments": 10,
+    "maxSegments": 100,
+    "maxSegmentsToEmbed": 200,
+    "mmrLambda": 0.7
+  },
+  "retrieval": {
+    "topK": 25,
+    "fallbackCount": 5,
+    "useRRF": true,
+    "useHybridSearch": true
+  },
+  "adaptiveRetrieval": {
+    "enabled": true,
+    "minCoveragePercent": 5.0,
+    "minTopK": 15,
+    "maxTopK": 100,
+    "narrativeBoost": 1.5
+  },
   "docling": {
     "baseUrl": "http://localhost:5001",
     "timeoutSeconds": 1200,
@@ -650,7 +701,7 @@ Auto-discovery order:
     "userAgent": "Mozilla/5.0 DocSummarizer/3.0"
   },
   "batch": {
-    "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html"],
+    "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html", ".zip"],
     "recursive": false,
     "maxConcurrentFiles": 4,
     "continueOnError": true
@@ -721,7 +772,7 @@ Auto-discovery order:
 | `timeoutSeconds` | `30` | HTTP/browser request timeout |
 | `userAgent` | `Mozilla/5.0...` | User agent for web requests |
 
-#### BERT Extraction Settings
+#### BERT Extraction Settings (Legacy)
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -730,6 +781,49 @@ Auto-discovery order:
 | `minSentences` | `3` | Minimum sentences to extract |
 | `maxSentences` | `30` | Maximum sentences to extract |
 | `usePositionWeighting` | `true` | Weight sentences by position (intro/conclusion bias) |
+
+#### Extraction Settings (BertRag Pipeline)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `extraction.extractionRatio` | `0.15` | Fraction of segments to keep in salience ranking |
+| `extraction.minSegments` | `10` | Minimum segments to extract |
+| `extraction.maxSegments` | `100` | Maximum segments to extract |
+| `extraction.maxSegmentsToEmbed` | `200` | Max segments to embed (pre-filter if more) |
+| `extraction.mmrLambda` | `0.7` | MMR lambda: 0=diversity, 1=relevance |
+
+#### Retrieval Settings (BertRag Pipeline)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `retrieval.topK` | `25` | Base number of segments to retrieve for synthesis |
+| `retrieval.fallbackCount` | `5` | Always include top-N salient segments |
+| `retrieval.useRRF` | `true` | Use Reciprocal Rank Fusion for scoring |
+| `retrieval.useHybridSearch` | `true` | Use hybrid BM25 + dense + salience search |
+
+#### Adaptive Retrieval Settings
+
+Automatically scales retrieval based on document size and content type.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `adaptiveRetrieval.enabled` | `true` | Enable adaptive TopK scaling |
+| `adaptiveRetrieval.minCoveragePercent` | `5.0` | Target ~5% of segments for retrieval |
+| `adaptiveRetrieval.minTopK` | `15` | Minimum segments regardless of document size |
+| `adaptiveRetrieval.maxTopK` | `100` | Maximum segments (LLM context limit) |
+| `adaptiveRetrieval.narrativeBoost` | `1.5` | Retrieve 50% more for fiction/narrative content |
+
+**Content-Type Aware Weighting:**
+
+The extraction phase automatically adjusts segment importance based on content type:
+
+**For Technical/Academic Documents:**
+- **Upweighted:** Abstract (2.5x), Introduction/Conclusion (1.8x), Results (1.3x)
+- **Downweighted:** Code blocks (0.2x), References (0.1x), Appendices (0.2x)
+
+**For Narrative/Fiction:**
+- **Upweighted:** Action scenes (1.3x), Character introductions (1.4x), Long descriptions (1.2x)
+- **Downweighted:** Short dialogue ("Yes", "No") (0.2x)
 
 #### Memory Management Settings
 
