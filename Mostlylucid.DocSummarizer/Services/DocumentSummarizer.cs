@@ -416,44 +416,8 @@ public class DocumentSummarizer
         string? focus,
         IProgressReporter progress)
     {
-        var docId = NormalizeDocId(filePath);
-
-        try
-        {
-        if (_verbose)
-
-                Console.WriteLine($"[{progress}%] Processing: {heading}");
-
-            var prompt = summary.Length == 0
-                ? $"Summarize this section:\n\n{chunk.Content}\n\nSummary:"
-                : $"""
-                   Current summary:
-                   {summary}
-
-                   New section: {chunk.Heading}
-                   {chunk.Content}
-
-                   Update the summary to incorporate this section. Be concise.
-
-                   Updated summary:
-                   """;
-
-            summary = await ollama.GenerateAsync(prompt);
-        }
-        
-        // Build chunk index before clearing
-        var chunkIndex = orderedChunks.Select(ChunkIndexEntry.FromChunk).ToList();
-        
-        // Clear the ordered chunks copy to free memory
-        orderedChunks.Clear();
-
-        _progress.Success("Iterative summarization complete");
-
-        return new DocumentSummary(
-            summary,
-            [],
-            [],
-            new SummarizationTrace(docId, chunkCount, chunkCount, [], TimeSpan.Zero, 1.0, 0, chunkIndex));
+        var (summary, _, _) = await SummarizeInternalAsync(filePath, mode, focus);
+        return summary;
     }
 
     /// <summary>
@@ -509,7 +473,12 @@ public class DocumentSummarizer
             You are given key sentences extracted from a document. 
             Rewrite them into a fluent, coherent summary.
             Preserve the meaning and key facts. Do not add new information.
-            Keep citations like [s1], [s2] etc. in the output.
+            
+            IMPORTANT RULES:
+            - Keep existing citations like [s1], [s2], [s123] exactly as they appear
+            - Do NOT add reference lists, footnotes, or placeholder text like "[insert reference]"
+            - Do NOT add "References:" sections
+            - Just write the summary with inline citations preserved
             
             EXTRACTED CONTENT:
             {extractedText}
@@ -756,8 +725,162 @@ public class DocumentSummarizer
     }
 
     /// <summary>
-    /// Detect content type (fiction vs expository) for position weighting
+    /// Iterative summarization for small documents - sends entire content to LLM
+    /// Best for documents under ~1500 words where the whole text fits in context
     /// </summary>
+    private async Task<DocumentSummary> SummarizeIterativeAsync(string docId, List<DocumentChunk> chunks)
+    {
+        if (_verbose) Console.WriteLine($"[Iterative] Processing {chunks.Count} chunks as single document");
+        
+        // Combine all chunks into single text
+        var fullText = string.Join("\n\n", chunks.Select(c => c.Content));
+        var wordCount = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        
+        if (_verbose) Console.WriteLine($"[Iterative] Document has {wordCount} words");
+        
+        // Build prompt based on template
+        var targetWords = Template.TargetWords > 0 ? Template.TargetWords : 200;
+        var prompt = $@"Summarize the following document in approximately {targetWords} words.
+
+Document:
+{fullText}
+
+Summary:";
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var response = await _ollama.GenerateAsync(prompt);
+        sw.Stop();
+        
+        // Clean up the response
+        var summary = response.Trim();
+        
+        // Build topic summaries from chunk headings if available
+        var topicSummaries = Template.IncludeTopics 
+            ? chunks.Where(c => !string.IsNullOrEmpty(c.Heading))
+                    .Select(c => new TopicSummary(c.Heading, c.Content.Length > 200 ? c.Content[..200] + "..." : c.Content, [c.Id]))
+                    .Take(10)
+                    .ToList()
+            : new List<TopicSummary>();
+        
+        var trace = new SummarizationTrace(
+            docId,
+            chunks.Count,
+            chunks.Count,
+            chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).Distinct().ToList(),
+            sw.Elapsed,
+            1.0, // Full coverage
+            0    // No citations in iterative mode
+        );
+        
+        if (_verbose) Console.WriteLine($"[Iterative] Completed in {sw.Elapsed.TotalSeconds:F1}s");
+        
+        return new DocumentSummary(summary, topicSummaries, new List<string>(), trace);
+    }
+
+    /// <summary>
+    /// Query a document using RAG - retrieves relevant chunks and answers the question
+    /// </summary>
+    public async Task<string> QueryAsync(string filePath, string query)
+    {
+        if (_verbose) Console.WriteLine($"[Query] Processing query: {query}");
+        
+        // Convert document to chunks
+        var chunks = await ConvertToChunksAsync(filePath);
+        
+        if (chunks.Count == 0)
+        {
+            return "Unable to process document - no content found.";
+        }
+        
+        if (_verbose) Console.WriteLine($"[Query] Document has {chunks.Count} chunks");
+        
+        // For small documents, just include everything in context
+        if (chunks.Count <= 5)
+        {
+            var fullText = string.Join("\n\n", chunks.Select(c => c.Content));
+            var prompt = $@"Based on the following document, answer this question: {query}
+
+Document:
+{fullText}
+
+Answer the question directly and concisely. If the answer is not in the document, say so.
+
+Answer:";
+            
+            return await _ollama.GenerateAsync(prompt);
+        }
+        
+        // For larger documents, use semantic search to find relevant chunks
+        if (_verbose) Console.WriteLine("[Query] Using semantic search to find relevant chunks");
+        
+        // Initialize embedder if needed
+        await _embedder.InitializeAsync();
+        
+        // Generate query embedding
+        var queryEmbedding = await _embedder.EmbedAsync(query);
+        
+        // Generate embeddings for all chunks
+        var chunkEmbeddings = new List<(DocumentChunk Chunk, float[] Embedding)>();
+        foreach (var chunk in chunks)
+        {
+            var embedding = await _embedder.EmbedAsync(chunk.Content);
+            chunkEmbeddings.Add((chunk, embedding));
+        }
+        
+        // Find most similar chunks using cosine similarity
+        var rankedChunks = chunkEmbeddings
+            .Select(ce => (ce.Chunk, Similarity: CosineSimilarity(queryEmbedding, ce.Embedding)))
+            .OrderByDescending(x => x.Similarity)
+            .Take(5)
+            .ToList();
+        
+        if (_verbose)
+        {
+            Console.WriteLine($"[Query] Top {rankedChunks.Count} relevant chunks:");
+            foreach (var (chunk, sim) in rankedChunks)
+            {
+                Console.WriteLine($"  - {chunk.Heading ?? "Untitled"}: {sim:F3}");
+            }
+        }
+        
+        // Build context from relevant chunks
+        var context = string.Join("\n\n---\n\n", rankedChunks.Select(r => 
+            $"[{r.Chunk.Id}] {(string.IsNullOrEmpty(r.Chunk.Heading) ? "" : $"# {r.Chunk.Heading}\n")}{r.Chunk.Content}"));
+        
+        var answerPrompt = $@"Based on the following excerpts from a document, answer this question: {query}
+
+Relevant excerpts:
+{context}
+
+Instructions:
+- Answer the question directly and concisely
+- Reference the chunk IDs (e.g., [chunk-0]) when citing information
+- If the answer is not in the provided excerpts, say so
+
+Answer:";
+        
+        return await _ollama.GenerateAsync(answerPrompt);
+    }
+    
+    /// <summary>
+    /// Calculate cosine similarity between two vectors
+    /// </summary>
+    private static float CosineSimilarity(float[] a, float[] b)
+    {
+        if (a.Length != b.Length) return 0;
+        
+        float dotProduct = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.Length; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        
+        var denominator = Math.Sqrt(normA) * Math.Sqrt(normB);
+        return denominator == 0 ? 0 : (float)(dotProduct / denominator);
+    }
+
     private ContentType DetectContentType(List<DocumentChunk> chunks)
     {
         // Use heuristics from first few chunks

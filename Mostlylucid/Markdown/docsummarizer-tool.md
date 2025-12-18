@@ -1,4 +1,4 @@
-# docsummarizer - Local Document Intelligence Tool
+# DocSummarizer Part 2 - Using the Tool
 
 <!--category-- AI, LLM, RAG, C#, Docling, Ollama, Qdrant, Tools -->
 <datetime class="hidden">2025-12-21T11:00</datetime>
@@ -6,6 +6,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+
+This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval.
 
 > **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
 
@@ -19,7 +21,11 @@ docsummarizer -f contract.pdf
 docsummarizer tool -u "https://docs.example.com"
 ```
 
-For the architecture behind this tool, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
+**What this article covers**: Installation, key modes (Auto/BertRag/Bert), templates, and common use cases. 
+
+**What it doesn't cover**: Full command reference, configuration options, troubleshooting, architecture details.
+
+For complete documentation, see the [README](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid.DocSummarizer/README.md). For how it works internally, see [Part 3](/blog/docsummarizer-advanced-concepts).
 
 [TOC]
 
@@ -36,11 +42,14 @@ If you need to *trust* a summary — or feed it to another system — that matte
 
 ## Features
 
+- **🚀 BertRag Pipeline**: Production-grade BERT extraction → retrieval → LLM synthesis
+- **🤖 Auto Mode**: Smart mode selection based on document and query
+- **⚡ Bert Mode**: Pure extractive summarization - no LLM needed, works offline (~3-5s)
 - **Evidence-Grounded Output**: Citations, confidence levels, traceable claims
-- **Multiple Modes**: MapReduce (parallel), RAG (topic-driven), Iterative
+- **Multiple Modes**: Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative
 - **Tool Mode**: Clean JSON for LLM agents, MCP servers, CI checks
 - **11 Templates**: brief, bullets, executive, technical, academic, bookreport, meeting...
-- **Large Documents**: Hierarchical reduction handles 500+ pages
+- **Large Documents**: Handles 500+ pages with hierarchical processing
 - **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
 - **Playwright Mode**: Headless browser for JavaScript-rendered pages (SPAs, React apps)
 - **ONNX Embeddings**: Zero-config local embeddings - models auto-download on first use
@@ -124,7 +133,7 @@ docsummarizer tool [options]
 | `--url` | `-u` | URL to fetch and summarize |
 | `--file` | `-f` | File to summarize |
 | `--query` | `-q` | Optional focus query |
-| `--mode` | `-m` | Summarization mode (MapReduce, Rag, Iterative) |
+| `--mode` | `-m` | Summarization mode (Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative) |
 | `--model` | | Ollama model to use |
 | `--config` | `-c` | Configuration file path |
 
@@ -216,9 +225,9 @@ Only needed when summarizing PDF or DOCX files. **Markdown files are read direct
 docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
 ```
 
-#### Optional: Qdrant (RAG mode only)
+#### Optional: Qdrant (Legacy Rag mode only)
 
-Only needed for `--mode Rag`. The default MapReduce mode doesn't require Qdrant.
+Only needed for the legacy `--mode Rag`. BertRag doesn't use Qdrant (it keeps vectors in memory).
 
 ```bash
 docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
@@ -239,25 +248,28 @@ ollama pull nomic-embed-text   # Or mxbai-embed-large
 docsummarizer check --verbose
 ```
 
-Expected output:
+Expected output shows a formatted table:
 ```
-Checking dependencies...
+              Dependency Status              
+╭─────────┬────────┬────────────────────────╮
+│ Service │ Status │ Endpoint               │
+├─────────┼────────┼────────────────────────┤
+│ Ollama  │   OK   │ http://localhost:11434 │
+│ Docling │ Optional │ http://localhost:5001 │
+│ Qdrant  │ Optional │ localhost:6333        │
+╰─────────┴────────┴────────────────────────╯
 
-  Ollama: ✓ (http://localhost:11434)
+        Default Model Info         
+╭────────────────┬────────────────╮
+│ Property       │ Value          │
+├────────────────┼────────────────┤
+│ Name           │ llama3.2:3b    │
+│ Family         │ llama          │
+│ Parameters     │ 3.2B           │
+│ Context Window │ 128,000 tokens │
+╰────────────────┴────────────────╯
 
-  Available models:
-    - qwen2.5:1.5b
-    - mxbai-embed-large
-    ... and more
-
-  Default model info:
-    Name: qwen2.5:1.5b
-    Family: qwen2
-    Parameters: 1.5B
-    Context Window: 8,192 tokens
-
-  Docling: ✗ (http://localhost:5001)   # Optional - only for PDF/DOCX
-  Qdrant: ✗ (localhost:6334)           # Optional - only for RAG mode
+Ready to summarize! Ollama is available.
 ```
 
 > **Note**: Docling and Qdrant showing ✗ is fine for Markdown-only workflows.
@@ -268,39 +280,97 @@ Checking dependencies...
 
 Running `docsummarizer` with no arguments will:
 1. Look for `README.md` in the current directory
-2. Summarize it using MapReduce mode
-3. Print the summary to console
+2. Summarize it using **Auto mode** (smart mode selection)
+3. Print the summary to console with a nice panel UI
 4. Auto-save to `readme.summary.md`
 
 ```bash
 # Summarize README.md in current directory
 docsummarizer
 
-# Output:
-# Summarizing: README.md
-# Mode: MapReduce
-# Model: qwen2.5:1.5b
-# ...
-# Saved: README_summary.md
+# Shows a formatted panel with:
+# - Document info table (file, mode, model)
+# - Progress indicators during processing
+# - Summary panel with the result
+# - Topics tree if available
+# - Saved: readme.summary.md
 ```
 
 ### Basic Summarization
 
 ```bash
-# Summarize a Markdown file (only needs Ollama)
-docsummarizer -f document.md
-
-# Summarize a PDF (needs Ollama + Docling)
+# Just run it - Auto mode picks the best approach
 docsummarizer -f document.pdf
 
-# Summarize with verbose output (shows progress)
+# Fast mode - no LLM, pure extraction (~3-5s)
+docsummarizer -f document.pdf -m Bert
+
+# Production mode - best quality with perfect citations
+docsummarizer -f document.pdf -m BertRag
+
+# Focused on specific topic
+docsummarizer -f manual.pdf -m BertRag --focus "installation steps"
+
+# Verbose progress
 docsummarizer -f document.pdf -v
+```
 
-# Use RAG mode with focus query (needs Ollama + Qdrant)
-docsummarizer -f document.pdf -m Rag --focus "security requirements"
+## Summarization Modes
 
-# Use a higher quality model for important documents
-docsummarizer -f document.pdf --model llama3.2:3b -v
+The tool evolved from "just MapReduce" to a full pipeline. Here's what each mode actually does:
+
+### Auto (Default)
+
+Picks the right mode based on what you're asking for. Use this unless you have a reason not to.
+
+```bash
+docsummarizer -f doc.pdf
+```
+
+### BertRag (Production)
+
+This is what you want for production. Three-phase pipeline:
+
+1. **Extract** - Parse the document into segments, embed them with BERT
+2. **Retrieve** - Find the relevant segments (semantic search + salience scoring)
+3. **Synthesize** - LLM writes a fluent summary from those segments
+
+```bash
+docsummarizer -f doc.pdf -m BertRag
+docsummarizer -f doc.pdf -m BertRag --focus "payment terms"
+```
+
+**Why use it:** Every claim traces back to a source segment. No hallucination. Scales to any document size. LLM only runs at the end (cheap).
+
+### Bert (Fast, No LLM)
+
+Pure extraction using local ONNX models. No LLM call at all.
+
+```bash
+docsummarizer -f doc.pdf -m Bert
+```
+
+**Why use it:** Works offline. Returns in ~3-5 seconds. Deterministic (same input = same output). Good enough for quick scans.
+
+### BertHybrid
+
+BERT extracts, LLM polishes. Middle ground between Bert and BertRag.
+
+```bash
+docsummarizer -f doc.pdf -m BertHybrid
+```
+
+### MapReduce / Rag / Iterative
+
+The original modes. Still work, but BertRag replaced them for most use cases.
+
+- **MapReduce**: Parallel chunking, good for 100% coverage
+- **Rag**: Vector search, good for focused queries (legacy - BertRag does this better)
+- **Iterative**: Sequential processing, only use for tiny docs
+
+```bash
+docsummarizer -f doc.pdf -m MapReduce  # Full coverage
+docsummarizer -f doc.pdf -m Rag --focus "query"  # Legacy focused mode
 ```
 
 ### Query Mode
@@ -371,27 +441,35 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | `bookreport` | ~400 | Book report style with themes |
 | `meeting` | ~200 | Meeting notes with actions |
 
-### Model Benchmarking
-
-Compare models on the same document:
+To see all available templates with descriptions:
 
 ```bash
-docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
+docsummarizer templates
 ```
+
+### Model Benchmarking
+
+Compare models on the same document using the `benchmark` subcommand:
+
+```bash
+docsummarizer benchmark -f doc.pdf -m "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
+```
+
+The benchmark command parses the document once, then runs each model on the same chunks for fair comparison. Output shows timing, word count, and words/second for each model.
 
 ### Batch Processing
 
-Process entire directories of documents:
+Process entire directories:
 
 ```bash
-# Process all supported files in a directory
-docsummarizer -d ./documents --mode MapReduce -v
+# Use BertRag for quality
+docsummarizer -d ./documents -m BertRag -v
+
+# Fast offline batch (no LLM needed)
+docsummarizer -d ./documents -m Bert -o Json --output-dir ./summaries
 
 # Process only PDFs recursively
 docsummarizer -d ./documents -e .pdf --recursive -v
-
-# Output to Markdown files
-docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 ```
 
 ### Command-Line Options
@@ -402,7 +480,7 @@ docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 | `--directory` | `-d` | Path to directory for batch processing | - |
 | `--url` | `-u` | Web URL to fetch and summarize | - |
 | `--web-enabled` | | Enable web fetching (required for --url) | `false` |
-| `--mode` | `-m` | Summarization mode: MapReduce, Rag, Iterative | `MapReduce` |
+| `--mode` | `-m` | Summarization mode: Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative | `Auto` |
 | `--structured` | `-s` | Use structured JSON extraction mode | `false` |
 | `--focus` | | Focus query for RAG mode | None |
 | `--query` | `-q` | Query mode instead of summarization | None |
@@ -415,7 +493,7 @@ docsummarizer -d ./documents -o Markdown --output-dir ./summaries
 | `--recursive` | `-r` | Process directories recursively | `false` |
 | `--template` | `-t` | Summary template (default, brief, bullets, executive, etc.) | `default` |
 | `--words` | `-w` | Target word count (overrides template) | Template default |
-| `--benchmark` | `-b` | Comma-separated models to compare | - |
+
 | `--embedding-backend` | | Embedding backend: Onnx, Ollama | `Onnx` |
 | `--embedding-model` | | ONNX model name (RAG mode) | `AllMiniLmL6V2` |
 | `--web-mode` | | Web fetch mode: Simple, Playwright | `Simple` |
@@ -660,12 +738,12 @@ dotnet build
 dotnet run -- --help
 ```
 
-### Native AOT Compilation
+### Self-Contained Builds
 
-For production deployment with instant startup:
+For production deployment without requiring .NET runtime installation:
 
 ```bash
-# Build native executable (Windows x64)
+# Build self-contained executable (Windows x64)
 dotnet publish -c Release -r win-x64 --self-contained
 
 # Build for Linux
@@ -675,7 +753,7 @@ dotnet publish -c Release -r linux-x64 --self-contained
 dotnet publish -c Release -r osx-x64 --self-contained
 ```
 
-Output: `bin/Release/net10.0/<runtime>/publish/docsummarizer` (~48MB)
+Output: `bin/Release/net9.0/<runtime>/publish/docsummarizer`
 
 ## Troubleshooting
 
@@ -748,7 +826,12 @@ If summaries lack `[chunk-N]` citations:
 - [Polly](https://github.com/App-vNext/Polly) - .NET resilience and transient-fault-handling
 - [Spectre.Console](https://spectreconsole.net/) - Beautiful terminal UI
 
+## Series Navigation
+
+- **[Part 1: Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag)** - The architecture and patterns
+- **[Part 2: Using the Tool](/blog/docsummarizer-tool)** (this article) - Quick-start guide
+- **[Part 3: Advanced Concepts](/blog/docsummarizer-advanced-concepts)** - Deep dive into BERT, ONNX, embeddings, and hybrid search
+
 ### Related
-- [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag) - The architecture behind this tool
 - [CSV Analysis with Local LLMs](/blog/analysing-large-csv-files-with-local-llms)
 - [Web Content with LLMs](/blog/fetching-and-analysing-web-content-with-llms)

@@ -25,14 +25,20 @@ That's it. ONNX embeddings auto-download. No Docker for Markdown files.
 ### For Humans: Readable Summaries
 
 ```bash
-# Summarize any document
+# Auto-mode: smart selection (default)
 docsummarizer -f report.pdf
+
+# Fast extractive summary (no LLM, ~3-5s)
+docsummarizer -f document.pdf -m Bert
+
+# Production-grade with perfect citations
+docsummarizer -f report.pdf -m BertRag
 
 # Quick bullets for scanning
 docsummarizer -f manual.pdf -t bullets
 
 # Executive summary for leadership
-docsummarizer -f quarterly.pdf -t executive
+docsummarizer -f quarterly.pdf -t executive -m BertRag
 
 # Book report with themes
 docsummarizer -f novel.pdf -t bookreport
@@ -56,26 +62,31 @@ Output includes `keyFacts` with confidence levels, `evidence` IDs, and `entities
 ### For Developers: Batch & Integration
 
 ```bash
-# Process entire directories
-docsummarizer -d ./documents -o Markdown --output-dir ./summaries
+# Process entire directories with BertRag
+docsummarizer -d ./documents -m BertRag -o Markdown --output-dir ./summaries
 
-# Compare models
-docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b"
+# Fast offline batch processing (no LLM)
+docsummarizer -d ./documents -m Bert -o Json --output-dir ./summaries
 
-# RAG mode with vector search
-docsummarizer -f large-manual.pdf -m Rag --focus "installation"
+# Compare models on BertRag pipeline
+docsummarizer -f doc.pdf -m BertRag --benchmark "qwen2.5:1.5b,llama3.2:3b"
+
+# Focused retrieval with production pipeline
+docsummarizer -f large-manual.pdf -m BertRag --focus "security requirements"
 ```
 
 ---
 
 ## What's New in v3.0.0
 
-- **ONNX Embeddings (Default)**: Zero-config local embeddings - models auto-download on first use (~23MB)
-- **Playwright Support**: Summarize JavaScript-rendered pages (SPAs, React apps) with `--web-mode Playwright`
-- **No Ollama Embedding Required**: RAG mode works out-of-the-box without `ollama pull mxbai-embed-large`
-- **Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for LLM operations
-- **Long Text Handling**: Automatic chunking with vector averaging for texts >1000 chars
-- **Windows Stability**: Fixed Ollama wsarecv connection issues (GitHub #13340)
+- **🚀 BertRag Production Pipeline**: BERT extraction → retrieval → LLM synthesis for production-grade summaries with perfect citations
+- **🤖 Auto Mode**: Smart mode selection based on document size, query, and LLM availability
+- **⚡ Bert Mode**: Pure extractive summarization - no LLM needed, works offline, ~3-5s summaries
+- **🔄 BertHybrid Mode**: BERT extracts + LLM polishes for grounded fluency
+- **📦 ONNX Embeddings (Default)**: Zero-config local embeddings - models auto-download on first use (~23MB)
+- **🌐 Playwright Support**: Summarize JavaScript-rendered pages (SPAs, React apps) with `--web-mode Playwright`
+- **🔧 Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for LLM operations
+- **💪 No Ollama Embedding Required**: Works out-of-the-box without `ollama pull mxbai-embed-large`
 
 ---
 
@@ -358,7 +369,7 @@ docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
 | `--url` | `-u` | Web URL to fetch | - |
 | `--web-enabled` | | Enable web fetching | `false` |
 | `--web-mode` | | Simple or Playwright | `Simple` |
-| `--mode` | `-m` | MapReduce, Rag, Iterative | `MapReduce` |
+| `--mode` | `-m` | Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative | `Auto` |
 | `--focus` | | Focus query for RAG | - |
 | `--query` | `-q` | Query mode | - |
 | `--model` | | Ollama model | `llama3.2:3b` |
@@ -394,31 +405,102 @@ docsummarizer templates            # List templates
 
 ## Summarization Modes
 
-### MapReduce (Default)
+DocSummarizer v3.0 introduces a production-grade BERT-based pipeline alongside the original modes.
 
-Best for comprehensive summaries. Handles documents of any size via hierarchical reduction.
+### Auto (Default - Smart Selection)
 
+Let the tool pick the best mode based on document size, query presence, and LLM availability.
+
+```bash
+docsummarizer -f document.pdf
 ```
-Document -> Chunks -> Parallel Summaries -> Batch Reduction -> Final Summary
+
+The Auto mode intelligently selects:
+- **BertRag** for large documents or when embeddings are available
+- **MapReduce** when offline or for comprehensive coverage
+- **Iterative** for small documents that fit in context
+
+### BertRag (Production Pipeline) ⭐ Recommended
+
+The production-grade pipeline combining BERT extraction with LLM synthesis:
+
+1. **Extract**: Parse document into segments with embeddings and salience scores
+2. **Retrieve**: Dual-score ranking (semantic similarity + content salience)  
+3. **Synthesize**: LLM generates fluent summary from top segments
+
+```bash
+docsummarizer -f document.pdf -m BertRag
+docsummarizer -f large-manual.pdf -m BertRag --focus "security requirements"
 ```
 
-### RAG (Focused Queries)
+**Properties:**
+- Perfect citation grounding (every claim traceable to source)
+- Deterministic extraction (reproducible, debuggable)
+- LLM only at synthesis (cost-optimal: cheap CPU work first)
+- Scales to any document size
+- Best quality/traceability balance
 
-Best when you need specific information from a large document.
+### Bert (Fast, No LLM Required)
+
+Pure extractive summarization using local BERT/ONNX models. No LLM needed.
+
+```bash
+docsummarizer -f document.pdf -m Bert
+```
+
+**Use when:**
+- Offline/no LLM available
+- Need instant summaries (~3-5s)
+- Want deterministic, reproducible results
+- Don't need fluent prose (bullet points are fine)
+
+### BertHybrid (Best of Both)
+
+BERT extracts key sentences, LLM polishes into fluent prose.
+
+```bash
+docsummarizer -f document.pdf -m BertHybrid
+```
+
+Combines extraction grounding (no hallucination) with LLM fluency.
+
+### MapReduce (Legacy - Comprehensive)
+
+Parallel chunk summarization with hierarchical reduction. Handles any document size.
+
+```bash
+docsummarizer -f huge-document.pdf -m MapReduce
+```
+
+**When to use:** Full coverage needed, every section matters (contracts, legal docs).
+
+### Rag (Legacy - Focused Queries)
+
+Vector search + focused summarization. Use when you need specific information.
 
 ```bash
 docsummarizer -f manual.pdf -m Rag --focus "installation steps"
 ```
 
+### Iterative (Small Documents)
+
+Sequential chunk processing. Best for documents <10 pages.
+
+```bash
+docsummarizer -f short-report.pdf -m Iterative
+```
+
 ### Mode Selection Guide
 
-| Scenario | Mode |
-|----------|------|
-| Full document summary | MapReduce |
-| Specific topic extraction | RAG |
-| Legal/contracts (every clause matters) | MapReduce |
-| Large manual, specific question | RAG |
-| Narrative/fiction | MapReduce |
+| Scenario | Recommended Mode | Why |
+|----------|-----------------|-----|
+| **Just getting started** | `Auto` | Smart selection, works everywhere |
+| **Production system** | `BertRag` | Best quality + traceability |
+| **Need speed, offline** | `Bert` | No LLM needed, ~3-5s |
+| **Large doc, full coverage** | `BertRag` or `MapReduce` | BertRag for quality, MapReduce for 100% coverage |
+| **Specific question** | `BertRag --focus "query"` | Focused retrieval + synthesis |
+| **Legal/compliance** | `MapReduce` | Every clause matters |
+| **Quick summary** | `Bert` | Instant, deterministic |
 
 ## Configuration
 
@@ -447,9 +529,17 @@ Auto-discovery order:
   "ollama": {
     "model": "llama3.2:3b",
     "embedModel": "mxbai-embed-large",
+    "classifierModel": "tinyllama",
     "baseUrl": "http://localhost:11434",
     "temperature": 0.3,
     "timeoutSeconds": 1200
+  },
+  "bert": {
+    "lambda": 0.7,
+    "extractionRatio": 0.15,
+    "minSentences": 3,
+    "maxSentences": 30,
+    "usePositionWeighting": true
   },
   "docling": {
     "baseUrl": "http://localhost:5001",
@@ -463,29 +553,51 @@ Auto-discovery order:
     "host": "localhost",
     "port": 6333,
     "collectionName": "documents",
-    "vectorSize": 384
+    "vectorSize": 384,
+    "deleteCollectionAfterSummarization": true
   },
   "processing": {
     "maxHeadingLevel": 2,
     "targetChunkTokens": 1500,
     "minChunkTokens": 200,
-    "maxLlmParallelism": 2
+    "maxLlmParallelism": 2,
+    "memory": {
+      "enableDiskStorage": true,
+      "diskStorageThreshold": 100,
+      "streamingThresholdBytes": 5242880,
+      "embeddingBatchSize": 10,
+      "gcIntervalChunks": 50,
+      "maxMemoryMB": 0
+    }
   },
   "output": {
     "format": "Console",
     "verbose": false,
-    "includeTrace": false
+    "includeTrace": false,
+    "includeTopics": true,
+    "includeOpenQuestions": false
   },
   "webFetch": {
     "enabled": false,
     "mode": "Simple",
     "timeoutSeconds": 30,
-    "userAgent": "Mozilla/5.0 DocSummarizer/1.0"
+    "userAgent": "Mozilla/5.0 DocSummarizer/3.0"
   },
   "batch": {
     "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html"],
     "recursive": false,
+    "maxConcurrentFiles": 4,
     "continueOnError": true
+  },
+  "embedding": {
+    "requestsPerSecond": 2.0,
+    "maxRetries": 5,
+    "initialRetryDelayMs": 1000,
+    "maxRetryDelayMs": 30000,
+    "delayBetweenRequestsMs": 100,
+    "enableCircuitBreaker": true,
+    "circuitBreakerThreshold": 3,
+    "circuitBreakerDurationSeconds": 30
   }
 }
 ```
@@ -536,6 +648,39 @@ Auto-discovery order:
 | `mode` | `Simple` | `Simple` (HTTP) or `Playwright` (headless browser) |
 | `timeoutSeconds` | `30` | HTTP/browser request timeout |
 | `userAgent` | `Mozilla/5.0...` | User agent for web requests |
+
+#### BERT Extraction Settings
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `lambda` | `0.7` | Balance between relevance (1.0) and diversity (0.0) |
+| `extractionRatio` | `0.15` | Target ~15% of sentences for extraction |
+| `minSentences` | `3` | Minimum sentences to extract |
+| `maxSentences` | `30` | Maximum sentences to extract |
+| `usePositionWeighting` | `true` | Weight sentences by position (intro/conclusion bias) |
+
+#### Memory Management Settings
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enableDiskStorage` | `true` | Spill embeddings to disk for large documents |
+| `diskStorageThreshold` | `100` | Chunks before spilling to disk |
+| `streamingThresholdBytes` | `5242880` | 5MB threshold for streaming mode |
+| `embeddingBatchSize` | `10` | Batch size for embedding generation |
+| `gcIntervalChunks` | `50` | Force GC every N chunks |
+| `maxMemoryMB` | `0` | Memory limit (0 = unlimited) |
+
+#### Embedding Resilience Settings
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `requestsPerSecond` | `2.0` | Rate limit for embedding requests |
+| `maxRetries` | `5` | Maximum retry attempts |
+| `initialRetryDelayMs` | `1000` | Initial retry delay |
+| `maxRetryDelayMs` | `30000` | Maximum retry delay |
+| `enableCircuitBreaker` | `true` | Enable circuit breaker for failures |
+| `circuitBreakerThreshold` | `3` | Failures before circuit opens |
+| `circuitBreakerDurationSeconds` | `30` | Duration circuit stays open |
 
 ## Model Recommendations
 

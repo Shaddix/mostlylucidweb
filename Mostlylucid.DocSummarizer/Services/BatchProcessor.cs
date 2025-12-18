@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
+using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
@@ -46,66 +47,85 @@ public class BatchProcessor
         var files = FindMatchingFiles(directoryPath);
         var totalFiles = files.Count;
 
-        Console.WriteLine($"Found {totalFiles} files to process");
-        Console.WriteLine();
+        AnsiConsole.MarkupLine($"[cyan]Found[/] [yellow]{totalFiles}[/] [cyan]files to process[/]");
+        AnsiConsole.WriteLine();
 
         if (totalFiles == 0)
         {
-            Console.WriteLine("No files found matching criteria");
+            AnsiConsole.MarkupLine("[yellow]No files found matching criteria[/]");
             return new BatchSummary(0, 0, 0, new List<BatchResult>(), sw.Elapsed);
         }
 
         using var _ = ProgressService.EnterInteractiveContext();
 
-        for (var i = 0; i < files.Count; i++)
-        {
-            var file = files[i];
-            if (cancellationToken.IsCancellationRequested) break;
-
-            var fileName = Path.GetFileName(file);
-            var progress = (i + 1) * 100 / totalFiles;
-            
-            Console.WriteLine($"[{i + 1}/{totalFiles}] ({progress}%) Processing: {TruncateFileName(fileName, 50)}");
-            Console.Out.Flush();
-
-            var result = await ProcessFileAsync(file, mode, focus, cancellationToken);
-
-            if (onFileCompleted != null)
+        // Use Spectre progress for batch processing
+        await AnsiConsole.Progress()
+            .AutoRefresh(true)
+            .AutoClear(false)
+            .HideCompleted(false)
+            .Columns(
+                new TaskDescriptionColumn(),
+                new ProgressBarColumn(),
+                new PercentageColumn(),
+                new SpinnerColumn())
+            .StartAsync(async ctx =>
             {
-                try
+                var overallTask = ctx.AddTask("[cyan]Batch Processing[/]", maxValue: totalFiles);
+                
+                for (var i = 0; i < files.Count; i++)
                 {
-                    await onFileCompleted(result);
-                }
-                catch (Exception ex)
-                {
-                    await LogErrorAsync(file, $"Failed to save output: {ex.Message}", ex.StackTrace);
-                }
-            }
+                    var file = files[i];
+                    if (cancellationToken.IsCancellationRequested) break;
 
-            if (result.Success)
-            {
-                successCount++;
-                if (_verbose) Console.WriteLine($"  [OK] Completed in {result.ProcessingTime.TotalSeconds:F1}s");
-            }
-            else
-            {
-                failureCount++;
-                Console.WriteLine($"  [ERROR] {result.Error}");
-                if (result.Error != null)
-                {
-                    failedFiles.Add((file, result.Error, result.StackTrace));
-                    await LogErrorAsync(file, result.Error, result.StackTrace);
+                    var fileName = Path.GetFileName(file);
+                    overallTask.Description = $"[cyan]Processing:[/] {Markup.Escape(TruncateFileName(fileName, 40))}";
+
+                    var result = await ProcessFileAsync(file, mode, focus, cancellationToken);
+
+                    if (onFileCompleted != null)
+                    {
+                        try
+                        {
+                            await onFileCompleted(result);
+                        }
+                        catch (Exception ex)
+                        {
+                            await LogErrorAsync(file, $"Failed to save output: {ex.Message}", ex.StackTrace);
+                        }
+                    }
+
+                    if (result.Success)
+                    {
+                        successCount++;
+                        SpectreProgressService.WriteBatchProgress(i + 1, totalFiles, fileName, true);
+                        if (_verbose) 
+                            AnsiConsole.MarkupLine($"  [dim]Completed in {result.ProcessingTime.TotalSeconds:F1}s[/]");
+                    }
+                    else
+                    {
+                        failureCount++;
+                        SpectreProgressService.WriteBatchProgress(i + 1, totalFiles, fileName, false);
+                        AnsiConsole.MarkupLine($"  [red]Error:[/] {Markup.Escape(result.Error ?? "Unknown error")}");
+                        if (result.Error != null)
+                        {
+                            failedFiles.Add((file, result.Error, result.StackTrace));
+                            await LogErrorAsync(file, result.Error, result.StackTrace);
+                        }
+                    }
+
+                    overallTask.Increment(1);
+                    result = null; // Allow GC
+
+                    if (failureCount > 0 && !_config.ContinueOnError) break;
                 }
-            }
-
-            result = null; // Allow GC
-
-            if (failureCount > 0 && !_config.ContinueOnError) break;
-        }
+                
+                overallTask.Description = "[green]Batch processing complete[/]";
+                overallTask.StopTask();
+            });
 
         sw.Stop();
 
-        Console.WriteLine();
+        AnsiConsole.WriteLine();
         DisplayBatchSummary(totalFiles, successCount, failureCount, failedFiles, sw.Elapsed);
 
         return new BatchSummary(
@@ -116,35 +136,57 @@ public class BatchProcessor
             sw.Elapsed);
     }
 
-    private void DisplayBatchSummary(int total, int success, int failed,
+    private static void DisplayBatchSummary(int total, int success, int failed,
         List<(string Path, string Error, string? StackTrace)> failedFiles, TimeSpan elapsed)
     {
-        Console.WriteLine(new string('=', 50));
-        Console.WriteLine("  BATCH PROCESSING SUMMARY");
-        Console.WriteLine(new string('=', 50));
-        Console.WriteLine($"  Total Files:  {total}");
-        Console.WriteLine($"  Successful:   {success}");
-        Console.WriteLine($"  Failed:       {failed}");
-        Console.WriteLine($"  Success Rate: {(total > 0 ? (double)success / total * 100 : 0):F1}%");
-        Console.WriteLine($"  Duration:     {elapsed.TotalMinutes:F1} minutes");
-        Console.WriteLine(new string('=', 50));
+        // Use Spectre table for summary
+        var summaryTable = new Table()
+            .Border(TableBorder.Double)
+            .BorderColor(Color.Blue)
+            .Title("[cyan]Batch Processing Summary[/]");
+        
+        summaryTable.AddColumn(new TableColumn("[blue]Metric[/]").Centered());
+        summaryTable.AddColumn(new TableColumn("[blue]Value[/]").RightAligned());
+        
+        summaryTable.AddRow("[cyan]Total Files[/]", $"[white]{total}[/]");
+        summaryTable.AddRow("[green]Successful[/]", $"[green]{success}[/]");
+        summaryTable.AddRow(failed > 0 ? "[red]Failed[/]" : "[dim]Failed[/]", 
+            failed > 0 ? $"[red]{failed}[/]" : $"[dim]{failed}[/]");
+        
+        var successRate = total > 0 ? (double)success / total * 100 : 0;
+        var rateColor = successRate >= 90 ? "green" : successRate >= 70 ? "yellow" : "red";
+        summaryTable.AddRow("[cyan]Success Rate[/]", $"[{rateColor}]{successRate:F1}%[/]");
+        summaryTable.AddRow("[cyan]Duration[/]", $"[white]{elapsed.TotalMinutes:F1} minutes[/]");
+        
+        AnsiConsole.Write(summaryTable);
 
         if (failedFiles.Count > 0)
         {
-            Console.WriteLine();
-            Console.WriteLine("FAILED FILES:");
+            AnsiConsole.WriteLine();
+            
+            var failedTable = new Table()
+                .Border(TableBorder.Rounded)
+                .BorderColor(Color.Red)
+                .Title("[red]Failed Files[/]");
+            
+            failedTable.AddColumn(new TableColumn("[red]File[/]"));
+            failedTable.AddColumn(new TableColumn("[red]Error[/]"));
+            
             foreach (var (path, error, _) in failedFiles.Take(20))
             {
                 var fileName = Path.GetFileName(path);
                 var shortError = error.Length > 50 ? error[..47] + "..." : error;
-                Console.WriteLine($"  - {TruncateFileName(fileName, 30)}: {shortError}");
+                failedTable.AddRow(
+                    Markup.Escape(TruncateFileName(fileName, 30)),
+                    Markup.Escape(shortError));
             }
 
             if (failedFiles.Count > 20)
-                Console.WriteLine($"  ... and {failedFiles.Count - 20} more");
-
-            if (!string.IsNullOrEmpty(_errorLogPath))
-                Console.WriteLine($"\nFull error details logged to: {_errorLogPath}");
+            {
+                failedTable.AddRow($"[dim]... and {failedFiles.Count - 20} more[/]", "");
+            }
+            
+            AnsiConsole.Write(failedTable);
         }
     }
 

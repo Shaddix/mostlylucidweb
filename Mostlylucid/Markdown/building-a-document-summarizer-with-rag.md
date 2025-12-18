@@ -13,13 +13,19 @@ The failure mode isn't "bad model". It's **context collapse + structure loss**.
 
 > **"Offline" means**: no document content leaves your machine. Docling, Ollama, and Qdrant all run locally.
 
-## The Tool
+## The Series
 
-[![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+This is **Part 1** of the DocSummarizer series:
+
+1. **Part 1: Architecture & Patterns** (this article) - Why the pipeline approach works and how to build it
+2. **[Part 2: Using the Tool](/blog/docsummarizer-tool)** - Quick-start guide: installation, modes, templates
+3. **[Part 3: Advanced Concepts](/blog/docsummarizer-advanced-concepts)** - Deep dive: BERT embeddings, ONNX, hybrid search, failure modes
+
+---
 
 As is my way, I've built a complete CLI tool implementing these patterns: **docsummarizer** - a local-first document summarization tool with ONNX embeddings, Playwright support for SPAs, multiple summarization modes, and citation tracking.
 
-See the [docsummarizer tool article](/blog/docsummarizer-tool) for installation, usage, and configuration details.
+[![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
 [TOC]
 
@@ -423,20 +429,15 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 
 **Trace**: Coverage 0.83, Citation rate 0.71, Total time 12.5s
 
-## When to Use What
+## Evolution: From MapReduce/RAG to BertRag
 
-Common misconception: "RAG is for long documents." **No.** RAG is for *focused queries*. MapReduce with hierarchical reduction handles length; RAG intentionally skips non-matching content.
+The patterns above (MapReduce, hierarchical reduction, RAG with citations) were the v1.0 implementation. They work, and this article explains why they're better than naive LLM calls.
 
-| Scenario | Approach |
-|----------|----------|
-| "Summarize this document" | Map/Reduce |
-| 500-page manual, need everything | Map/Reduce (hierarchical) |
-| "What are the security requirements?" | RAG |
-| Compliance audit | Map/Reduce |
-| Re-querying same document | RAG |
+But the tool evolved. **v3.0 introduced BertRag**: a production pipeline that combines BERT-based extraction with LLM synthesis. It's faster, more accurate, and has perfect citation grounding.
 
-**MapReduce**: Every chunk contributes. Nothing missed.
-**RAG**: Only relevant chunks. Faster for focused queries, may miss context.
+**For the current implementation**, see [Part 2](/blog/docsummarizer-tool) (how to use it) and [Part 3](/blog/docsummarizer-advanced-concepts) (how it works under the hood).
+
+**This article's value**: Understanding the architecture principles (pipeline not API call, chunking by structure, citation validation, hierarchical reduction) that make *any* document summarizer work well.
 
 ## Why This Matters Operationally
 
@@ -456,31 +457,13 @@ Pipeline architecture gives you: structured summaries, verifiable citations, any
 
 Same LLM. Better architecture. Better results.
 
-## Embedding Options
+## Implementation Note: Embeddings
 
-DocSummarizer v3.0.0 supports two embedding backends for RAG mode:
+This article was written during v1.0-v2.0 development when Ollama embeddings were the primary backend. **v3.0 switched to ONNX embeddings by default** - zero-config local models that auto-download from HuggingFace.
 
-### ONNX Embeddings (Default)
+The concepts (vector search, semantic matching, citation grounding) remain the same. The implementation details changed to remove external dependencies.
 
-Zero-config local embeddings using ONNX Runtime. Models auto-download from HuggingFace on first use (~23MB for AllMiniLmL6V2).
-
-```bash
-# Just works - no setup required
-docsummarizer -f doc.pdf -m Rag
-```
-
-### Ollama Embeddings (Optional)
-
-If you prefer Ollama embeddings, use `--embedding-backend Ollama`. Note: Ollama embedding requests can fail on Windows due to connection issues (GitHub #13340). The tool uses Polly v8 for robust operations:
-
-| Feature | Implementation |
-|---------|----------------|
-| **Retry Policy** | Exponential backoff with decorrelated jitter |
-| **Circuit Breaker** | Opens after repeated failures, auto-recovers after 30s |
-| **Long Text Handling** | Splits into 1000-char chunks, averages vectors |
-| **Connection Recovery** | Fresh connections per request |
-
-**Why chunked embeddings?** Ollama crashes with embedding requests >1700 chars on Windows. We split long texts into overlapping chunks, embed each, then L2-normalize the averaged vector. This preserves semantic content while avoiding crashes.
+For current embedding implementation details, see [Part 3](/blog/docsummarizer-advanced-concepts) which covers ONNX Runtime, BERT tokenization, and mean pooling.
 
 ## Resources
 
@@ -492,7 +475,6 @@ If you prefer Ollama embeddings, use `--embedding-backend Ollama`. Note: Ollama 
 - [Query-Focused Summarization](https://arxiv.org/abs/2404.16130v1) - Why topic-driven works
 
 ### Related
-- [docsummarizer Tool](/blog/docsummarizer-tool) - The CLI tool implementing these patterns
 - [CSV Analysis with Local LLMs](/blog/analysing-large-csv-files-with-local-llms)
 - [Web Content with LLMs](/blog/fetching-and-analysing-web-content-with-llms)
 - [Lawyer GPT Part 9: Docling](/blog/building-a-lawyer-gpt-for-your-blog-part9)

@@ -1,8 +1,10 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.Diagnostics;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services;
+using Spectre.Console;
 
 // Root command
 var rootCommand = new RootCommand("Document summarization tool using local LLMs");
@@ -187,82 +189,138 @@ checkCommand.Options.Add(checkVerboseOption);
 checkCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var verbose = parseResult.GetValue(checkVerboseOption);
-    Console.WriteLine("Checking dependencies...\n");
+    
+    SpectreProgressService.WriteHeader("DocSummarizer", "Dependency Check");
 
-    // Check Ollama
-    var ollama = new OllamaService();
-    var ollamaOk = await ollama.IsAvailableAsync();
-    Console.WriteLine($"  Ollama: {(ollamaOk ? "OK" : "FAIL")} (http://localhost:11434)");
+    // Check dependencies with spinner
+    bool ollamaOk = false, doclingOk = false, qdrantOk = false;
+    ModelInfo? modelInfo = null;
+    List<string>? availableModels = null;
+    
+    await AnsiConsole.Status()
+        .Spinner(Spinner.Known.Dots)
+        .SpinnerStyle(Style.Parse("cyan"))
+        .StartAsync("Checking dependencies...", async _ =>
+        {
+            var ollama = new OllamaService();
+            ollamaOk = await ollama.IsAvailableAsync();
+            
+            using var docling = new DoclingClient();
+            doclingOk = await docling.IsAvailableAsync();
+            
+            try
+            {
+                var qdrant = new QdrantHttpClient("localhost", 6333);
+                await qdrant.ListCollectionsAsync();
+                qdrantOk = true;
+            }
+            catch { }
+            
+            if (ollamaOk && verbose)
+            {
+                modelInfo = await ollama.GetModelInfoAsync();
+                availableModels = await ollama.GetAvailableModelsAsync();
+            }
+        });
 
-    if (ollamaOk && verbose)
+    // Display status table
+    var statusTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Blue)
+        .Title("[cyan]Dependency Status[/]");
+    
+    statusTable.AddColumn(new TableColumn("[blue]Service[/]").LeftAligned());
+    statusTable.AddColumn(new TableColumn("[blue]Status[/]").Centered());
+    statusTable.AddColumn(new TableColumn("[blue]Endpoint[/]").LeftAligned());
+    
+    statusTable.AddRow(
+        "[cyan]Ollama[/]",
+        ollamaOk ? "[green]OK[/]" : "[red]FAIL[/]",
+        "http://localhost:11434");
+    statusTable.AddRow(
+        "[cyan]Docling[/]",
+        doclingOk ? "[green]OK[/]" : "[yellow]Optional[/]",
+        "http://localhost:5001");
+    statusTable.AddRow(
+        "[cyan]Qdrant[/]",
+        qdrantOk ? "[green]OK[/]" : "[yellow]Optional[/]",
+        "localhost:6333");
+    
+    AnsiConsole.Write(statusTable);
+    AnsiConsole.WriteLine();
+
+    // Show verbose model info
+    if (verbose && ollamaOk)
     {
-        Console.WriteLine("\n  Available models:");
-        var models = await ollama.GetAvailableModelsAsync();
-        foreach (var modelItem in models.Take(10))
-        {
-            Console.WriteLine($"    - {modelItem}");
-        }
-        if (models.Count > 10)
-        {
-            Console.WriteLine($"    ... and {models.Count - 10} more");
-        }
-
-        Console.WriteLine("\n  Default model info:");
-        var modelInfo = await ollama.GetModelInfoAsync();
         if (modelInfo != null)
         {
-            Console.WriteLine($"    Name: {modelInfo.Name}");
-            Console.WriteLine($"    Family: {modelInfo.Family}");
-            Console.WriteLine($"    Parameters: {modelInfo.ParameterCount}");
-            Console.WriteLine($"    Quantization: {modelInfo.QuantizationLevel}");
-            Console.WriteLine($"    Context Window: {modelInfo.ContextWindow:N0} tokens");
-            Console.WriteLine($"    Format: {modelInfo.Format}");
+            var modelTable = new Table()
+                .Border(TableBorder.Rounded)
+                .BorderColor(Color.Green)
+                .Title("[green]Default Model Info[/]");
+            
+            modelTable.AddColumn(new TableColumn("[green]Property[/]"));
+            modelTable.AddColumn(new TableColumn("[green]Value[/]"));
+            
+            modelTable.AddRow("Name", Markup.Escape(modelInfo.Name ?? "N/A"));
+            modelTable.AddRow("Family", Markup.Escape(modelInfo.Family ?? "N/A"));
+            modelTable.AddRow("Parameters", Markup.Escape(modelInfo.ParameterCount ?? "N/A"));
+            modelTable.AddRow("Quantization", Markup.Escape(modelInfo.QuantizationLevel ?? "N/A"));
+            modelTable.AddRow("Context Window", $"{modelInfo.ContextWindow:N0} tokens");
+            modelTable.AddRow("Format", Markup.Escape(modelInfo.Format ?? "N/A"));
+            
+            AnsiConsole.Write(modelTable);
+            AnsiConsole.WriteLine();
         }
         
-        Console.WriteLine("\n  Embed model info:");
-        var embedInfo = await ollama.GetModelInfoAsync(ollama.EmbedModel);
-        if (embedInfo != null)
+        if (availableModels != null && availableModels.Count > 0)
         {
-            Console.WriteLine($"    Name: {embedInfo.Name}");
-            Console.WriteLine($"    Family: {embedInfo.Family}");
-            Console.WriteLine($"    Parameters: {embedInfo.ParameterCount}");
+            AnsiConsole.MarkupLine("[cyan]Available Models:[/]");
+            var modelList = new Tree("[blue]Models[/]");
+            foreach (var m in availableModels.Take(10))
+            {
+                modelList.AddNode(Markup.Escape(m));
+            }
+            if (availableModels.Count > 10)
+            {
+                modelList.AddNode($"[dim]... and {availableModels.Count - 10} more[/]");
+            }
+            AnsiConsole.Write(modelList);
+            AnsiConsole.WriteLine();
         }
     }
 
-    // Check Docling
-    Console.WriteLine();
-    using var docling = new DoclingClient();
-    var doclingOk = await docling.IsAvailableAsync();
-    Console.WriteLine($"  Docling: {(doclingOk ? "OK" : "FAIL")} (http://localhost:5001)");
-
-    // Check Qdrant (using HTTP client for AOT compatibility)
-    var qdrantOk = false;
-    try
+    // Show help for missing dependencies
+    if (!ollamaOk || (!doclingOk && verbose) || (!qdrantOk && verbose))
     {
-        var qdrant = new QdrantHttpClient("localhost", 6333);
-        await qdrant.ListCollectionsAsync();
-        qdrantOk = true;
+        var helpPanel = new Panel(
+            new Rows(
+                ollamaOk ? Text.Empty : new Text("ollama serve", new Style(Color.Yellow)),
+                doclingOk ? Text.Empty : new Text("docker run -p 5001:5001 quay.io/docling-project/docling-serve", new Style(Color.Yellow)),
+                qdrantOk ? Text.Empty : new Text("docker run -p 6333:6333 qdrant/qdrant", new Style(Color.Yellow)),
+                Text.Empty,
+                new Text("Pull default models:", new Style(Color.Cyan1)),
+                new Text("  ollama pull llama3.2:3b", new Style(Color.White))))
+        {
+            Header = new PanelHeader("[yellow] Missing Dependencies [/]"),
+            Border = BoxBorder.Rounded,
+            BorderStyle = new Style(Color.Yellow)
+        };
+        AnsiConsole.Write(helpPanel);
     }
-    catch { }
-    Console.WriteLine($"  Qdrant: {(qdrantOk ? "OK" : "FAIL")} (localhost:6333)");
 
-    Console.WriteLine();
-    if (!ollamaOk || !doclingOk || !qdrantOk)
+    // Final status
+    if (ollamaOk)
     {
-        Console.WriteLine("Some dependencies are not available. To start them:");
-        if (!ollamaOk) Console.WriteLine("  ollama serve");
-        if (!doclingOk) Console.WriteLine("  docker run -p 5001:5001 quay.io/docling-project/docling-serve");
-        if (!qdrantOk) Console.WriteLine("  docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant");
-        Console.WriteLine();
-        Console.WriteLine("To pull the default models:");
-        Console.WriteLine("  ollama pull llama3.2:3b");
-        Console.WriteLine("  ollama pull nomic-embed-text");
-        return 1;
+        AnsiConsole.MarkupLine("[green]Ready to summarize![/] Ollama is available.");
+        if (!doclingOk) AnsiConsole.MarkupLine("[dim]Note: Docling unavailable - PDF/DOCX conversion disabled[/]");
+        if (!qdrantOk) AnsiConsole.MarkupLine("[dim]Note: Qdrant unavailable - RAG mode will use in-memory vectors[/]");
+        return 0;
     }
     else
     {
-        Console.WriteLine("All dependencies available!");
-        return 0;
+        AnsiConsole.MarkupLine("[red]Ollama is required but not available.[/]");
+        return 1;
     }
 });
 rootCommand.Subcommands.Add(checkCommand);
@@ -280,6 +338,251 @@ configCommand.SetAction(async (parseResult, cancellationToken) =>
     return 0;
 });
 rootCommand.Subcommands.Add(configCommand);
+
+// Benchmark command - compare models on the same document
+var benchmarkCommand = new Command("benchmark", "Compare multiple models on the same document");
+var benchmarkFileOption = new Option<FileInfo?>("--file", "-f") { Description = "Document to summarize (required)" };
+var benchmarkModelsOption = new Option<string?>("--models", "-m") { Description = "Comma-separated list of models to compare (e.g., 'qwen2.5:1.5b,llama3.2:3b,ministral-3:3b')" };
+var benchmarkModeOption = new Option<SummarizationMode>("--mode") { Description = "Summarization mode to use", DefaultValueFactory = _ => SummarizationMode.MapReduce };
+var benchmarkConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+
+benchmarkCommand.Options.Add(benchmarkFileOption);
+benchmarkCommand.Options.Add(benchmarkModelsOption);
+benchmarkCommand.Options.Add(benchmarkModeOption);
+benchmarkCommand.Options.Add(benchmarkConfigOption);
+
+benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var file = parseResult.GetValue(benchmarkFileOption);
+    var modelsString = parseResult.GetValue(benchmarkModelsOption);
+    var mode = parseResult.GetValue(benchmarkModeOption);
+    var configPath = parseResult.GetValue(benchmarkConfigOption);
+    
+    if (file == null)
+    {
+        AnsiConsole.MarkupLine("[red]Error: --file is required[/]");
+        return 1;
+    }
+    
+    if (string.IsNullOrEmpty(modelsString))
+    {
+        AnsiConsole.MarkupLine("[red]Error: --models is required[/]");
+        return 1;
+    }
+    
+    var models = modelsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    
+    if (models.Length == 0)
+    {
+        AnsiConsole.MarkupLine("[red]Error: No models specified[/]");
+        return 1;
+    }
+    
+    if (!file.Exists)
+    {
+        AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+        return 1;
+    }
+    
+    SpectreProgressService.WriteHeader("DocSummarizer", "Model Benchmark");
+    
+    // Display benchmark info
+    var infoTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Blue);
+    
+    infoTable.AddColumn("[blue]Property[/]");
+    infoTable.AddColumn("[blue]Value[/]");
+    infoTable.AddRow("[cyan]Document[/]", Markup.Escape(file.Name));
+    infoTable.AddRow("[cyan]Mode[/]", $"[yellow]{mode}[/]");
+    infoTable.AddRow("[cyan]Models[/]", $"[green]{models.Length}[/]");
+    
+    AnsiConsole.Write(infoTable);
+    AnsiConsole.WriteLine();
+    
+    // Load config
+    var config = ConfigurationLoader.Load(configPath);
+    config.Output.Verbose = false; // Keep output clean
+    
+    // Store results
+    var results = new List<(string Model, TimeSpan Duration, int Words, string Summary)>();
+    
+    // First, convert the document once and reuse chunks
+    AnsiConsole.MarkupLine("[cyan]Converting document...[/]");
+    
+    var baseSummarizer = new DocumentSummarizer(
+        config.Ollama.Model,
+        config.Docling.BaseUrl,
+        config.Qdrant.Host,
+        verbose: false,
+        config.Docling,
+        config.Processing,
+        config.Qdrant,
+        ollamaConfig: config.Ollama,
+        onnxConfig: config.Onnx,
+        embeddingBackend: config.EmbeddingBackend);
+    
+    var docId = Path.GetFileNameWithoutExtension(file.Name);
+    var chunks = await SpectreProgressService.WithSpinnerAsync(
+        "Parsing document...",
+        () => baseSummarizer.ConvertToChunksAsync(file.FullName));
+    
+    AnsiConsole.MarkupLine($"[green]Document parsed: {chunks.Count} chunks[/]");
+    AnsiConsole.WriteLine();
+    
+    // Benchmark each model
+    foreach (var model in models)
+    {
+        AnsiConsole.MarkupLine($"[cyan]Testing model:[/] [yellow]{Markup.Escape(model)}[/]");
+        
+        try
+        {
+            config.Ollama.Model = model;
+            
+            var summarizer = new DocumentSummarizer(
+                model,
+                config.Docling.BaseUrl,
+                config.Qdrant.Host,
+                verbose: false,
+                config.Docling,
+                config.Processing,
+                config.Qdrant,
+                ollamaConfig: config.Ollama,
+                onnxConfig: config.Onnx,
+                embeddingBackend: config.EmbeddingBackend);
+            
+            var sw = Stopwatch.StartNew();
+            var summary = await SpectreProgressService.WithSpinnerAsync(
+                $"Summarizing with {model}...",
+                () => summarizer.SummarizeFromChunksAsync(docId, chunks, mode));
+            sw.Stop();
+            
+            var wordCount = summary.ExecutiveSummary.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            results.Add((model, sw.Elapsed, wordCount, summary.ExecutiveSummary));
+            
+            AnsiConsole.MarkupLine($"  [green]Completed in {sw.Elapsed.TotalSeconds:F1}s ({wordCount} words)[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"  [red]Failed: {Markup.Escape(ex.Message)}[/]");
+            results.Add((model, TimeSpan.Zero, 0, $"Error: {ex.Message}"));
+        }
+        
+        AnsiConsole.WriteLine();
+    }
+    
+    // Display results table
+    var resultsTable = new Table()
+        .Border(TableBorder.Double)
+        .BorderColor(Color.Green)
+        .Title("[green]Benchmark Results[/]");
+    
+    resultsTable.AddColumn(new TableColumn("[green]Model[/]").LeftAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Time[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Words[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Speed[/]").RightAligned());
+    
+    foreach (var (model, duration, words, _) in results.OrderBy(r => r.Duration))
+    {
+        var speed = duration.TotalSeconds > 0 ? words / duration.TotalSeconds : 0;
+        var timeColor = duration.TotalSeconds < 10 ? "green" : duration.TotalSeconds < 30 ? "yellow" : "red";
+        
+        resultsTable.AddRow(
+            Markup.Escape(model),
+            $"[{timeColor}]{duration.TotalSeconds:F1}s[/]",
+            $"{words}",
+            $"{speed:F1} w/s");
+    }
+    
+    AnsiConsole.Write(resultsTable);
+    AnsiConsole.WriteLine();
+    
+    // Show fastest model
+    var fastest = results.Where(r => r.Duration > TimeSpan.Zero).OrderBy(r => r.Duration).FirstOrDefault();
+    if (fastest.Model != null)
+    {
+        AnsiConsole.MarkupLine($"[green]Fastest:[/] [yellow]{Markup.Escape(fastest.Model)}[/] ({fastest.Duration.TotalSeconds:F1}s)");
+    }
+    
+    // Optionally show summaries (only in interactive mode)
+    AnsiConsole.WriteLine();
+    var showSummaries = false;
+    if (Environment.UserInteractive && !Console.IsInputRedirected)
+    {
+        try
+        {
+            showSummaries = AnsiConsole.Confirm("Show summary comparisons?", false);
+        }
+        catch
+        {
+            // Non-interactive mode, skip the prompt
+        }
+    }
+    
+    if (showSummaries)
+    {
+        foreach (var (model, _, _, summary) in results.Where(r => !r.Summary.StartsWith("Error:")))
+        {
+            var panel = new Panel(Markup.Escape(summary.Length > 500 ? summary[..500] + "..." : summary))
+            {
+                Header = new PanelHeader($" {model} ", Justify.Center),
+                Border = BoxBorder.Rounded,
+                BorderStyle = new Style(Color.Cyan1),
+                Padding = new Padding(1, 0)
+            };
+            AnsiConsole.Write(panel);
+            AnsiConsole.WriteLine();
+        }
+    }
+    
+    return 0;
+});
+rootCommand.Subcommands.Add(benchmarkCommand);
+
+// Templates command - list available templates
+var templatesCommand = new Command("templates", "List available summary templates");
+templatesCommand.SetAction((parseResult, cancellationToken) =>
+{
+    SpectreProgressService.WriteHeader("DocSummarizer", "Templates");
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Cyan1)
+        .Title("[cyan]Available Templates[/]");
+    
+    table.AddColumn(new TableColumn("[cyan]Name[/]").LeftAligned());
+    table.AddColumn(new TableColumn("[cyan]Words[/]").RightAligned());
+    table.AddColumn(new TableColumn("[cyan]Description[/]"));
+    
+    var presets = new[]
+    {
+        ("default", "~500", "General purpose summary"),
+        ("brief", "~50", "Quick scanning"),
+        ("oneliner", "~25", "Single sentence"),
+        ("bullets", "auto", "Key takeaways as bullet points"),
+        ("executive", "~150", "C-suite reports"),
+        ("detailed", "~1000", "Comprehensive analysis"),
+        ("technical", "~300", "Tech documentation"),
+        ("academic", "~250", "Research papers"),
+        ("citations", "auto", "Key quotes with sources"),
+        ("bookreport", "~800", "Book report style"),
+        ("meeting", "~200", "Meeting notes with actions")
+    };
+    
+    foreach (var (name, words, desc) in presets)
+    {
+        table.AddRow($"[yellow]{name}[/]", $"[dim]{words}[/]", desc);
+    }
+    
+    AnsiConsole.Write(table);
+    AnsiConsole.WriteLine();
+    
+    AnsiConsole.MarkupLine("[dim]Usage: docsummarizer -f doc.pdf -t executive[/]");
+    AnsiConsole.MarkupLine("[dim]       docsummarizer -f doc.pdf -t bookreport:500[/]");
+    
+    return Task.FromResult(0);
+});
+rootCommand.Subcommands.Add(templatesCommand);
 
 // Tool command - for LLM tool integration, outputs JSON
 var toolCommand = new Command("tool", "Summarize or query documents and output JSON for LLM tool integration");

@@ -46,16 +46,16 @@ public class PipelinedBertRagSummarizer : IDisposable
     private readonly Random _rand = new(1234); // stable but non-cryptographic
     
     // Embedding budget controls
-    private readonly int _globalEmbedBudget = 1800;
-    private readonly int _bootstrapChunks = 6;
-    private readonly double _bootstrapRate = 0.15;
-    private readonly int _bootstrapCap = 200;
-    private readonly int _chunkCap = 24;
-    private readonly int _trickleEveryChunks = 5;
-    private readonly int _trickleCount = 6;
-    private readonly int _expectedChunks = 38;
-    private readonly double _tailStartFraction = 0.7; // start reserving for last 30%
-    private readonly int _tailReserve = 0;
+    private readonly int _globalEmbedBudget = 800;
+    private readonly int _bootstrapChunks = 4;
+    private readonly double _bootstrapRate = 0.20;
+    private readonly int _bootstrapCap = 100;
+    private readonly int _chunkCap = 20;
+    private readonly int _trickleEveryChunks = 3;
+    private readonly int _trickleCount = 5;
+    private readonly int _expectedChunks = 40;
+    private readonly double _tailStartFraction = 0.75;
+    private readonly int _tailReserve = 100;
     private int _embeddedBudgetUsed = 0;
     private bool _tailReleased = false;
     
@@ -831,6 +831,10 @@ public class PipelinedBertRagSummarizer : IDisposable
 
     private static ExtractedEntities ExtractEntities(List<Segment> segments, ContentType contentType)
     {
+        // Skip entity extraction for expository/technical content - produces noise (code tokens)
+        if (contentType == ContentType.Expository)
+            return ExtractedEntities.Empty;
+            
         var text = string.Join(" ", segments.Select(s => s.Text));
         var tokens = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(t => t.Trim(

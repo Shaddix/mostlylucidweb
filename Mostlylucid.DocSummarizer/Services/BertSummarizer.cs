@@ -292,8 +292,10 @@ public class BertSummarizer : IDisposable
             CitationRate: 1.0 // BERT extraction always has perfect citations
         );
         
-        // Extract entities from selected sentences (simple extraction)
-        var entities = ExtractSimpleEntities(selectedSentences);
+        // Extract entities from selected sentences (skip for expository/technical content - produces noise)
+        var entities = contentType == ContentType.Expository 
+            ? ExtractedEntities.Empty 
+            : ExtractSimpleEntities(selectedSentences);
         
         return new DocumentSummary(
             executiveSummary,
