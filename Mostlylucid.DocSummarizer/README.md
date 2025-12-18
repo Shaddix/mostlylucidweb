@@ -719,6 +719,17 @@ Auto-discovery order:
 | `gcIntervalChunks` | `50` | Force GC every N chunks |
 | `maxMemoryMB` | `0` | Memory limit (0 = unlimited) |
 
+#### Chunk Cache Settings (Docling output)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enableChunkCache` | `true` | Persist Docling-converted chunks to skip reconversion |
+| `cacheDirectory` | `~/.docsummarizer/chunks` | Where chunk cache files are stored |
+| `retentionDays` | `14` | Delete cached chunks older than N days (`0` = keep) |
+| `versionToken` | `v1` | Bump to invalidate old cache layout/content |
+
+When enabled, Docling conversion is skipped if the file hash and version match, reusing cached chunks and reducing repeat runs to milliseconds.
+
 #### Embedding Resilience Settings
 
 | Option | Default | Description |
@@ -791,10 +802,12 @@ dotnet publish -c Release -r win-x64 --self-contained
 | Component | Purpose |
 |-----------|---------|
 | `DocumentSummarizer` | Main orchestrator |
+| `UIService` | Unified terminal UI (Spectre.Console with fallbacks) |
 | `WebFetcher` | Security-hardened URL fetching (Simple + Playwright modes) |
 | `MapReduceSummarizer` | Parallel chunk processing with hierarchical reduction |
 | `RagSummarizer` | Vector-based retrieval and synthesis |
 | `OnnxEmbeddingService` | Local ONNX-based embeddings (default) |
+| `HuggingFaceTokenizer` | Universal tokenizer (WordPiece, BPE, Unigram) |
 | `OllamaEmbeddingService` | Ollama-based embeddings (optional) |
 | `OllamaService` | LLM client with Polly resilience |
 | `QdrantHttpClient` | Vector search client |
@@ -809,7 +822,10 @@ Text -> IEmbeddingService -> float[]
               +-- OnnxEmbeddingService (default, zero-config)
               |       |
               |       +-- Auto-downloads model from HuggingFace
-              |       +-- BertTokenizer for text preprocessing
+              |       +-- HuggingFaceTokenizer (universal format)
+              |       |       +-- WordPiece (BERT models)
+              |       |       +-- BPE (GPT/RoBERTa models)  
+              |       |       +-- Unigram (T5/XLNet models)
               |       +-- ONNX Runtime for inference
               |
               +-- OllamaEmbeddingService (optional)
@@ -817,6 +833,22 @@ Text -> IEmbeddingService -> float[]
                       +-- Requires Ollama server
                       +-- Polly resilience for reliability
 ```
+
+### Universal Tokenizer
+
+The `HuggingFaceTokenizer` supports all major tokenizer formats by parsing `tokenizer.json`:
+
+| Format | Models | Description |
+|--------|--------|-------------|
+| **WordPiece** | BERT, MiniLM, BGE, GTE | Greedy longest-match subword tokenization |
+| **BPE** | GPT-2, RoBERTa, MPNet | Byte-pair encoding with learned merges |
+| **Unigram** | T5, XLNet, SentencePiece | Probabilistic subword tokenization |
+
+Features:
+- Auto-detects tokenizer type from `tokenizer.json`
+- Falls back to `vocab.txt` for legacy BERT models
+- Supports pre-tokenizers: Whitespace, BERT, Metaspace, ByteLevel
+- Supports normalizers: BERT, Lowercase, NFC, NFKC
 
 ### LLM Resilience
 

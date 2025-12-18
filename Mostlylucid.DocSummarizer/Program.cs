@@ -6,6 +6,9 @@ using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services;
 using Spectre.Console;
 
+// Create UI service for consistent output
+var ui = new UIService();
+
 // Root command
 var rootCommand = new RootCommand("Document summarization tool using local LLMs");
 
@@ -139,17 +142,17 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             
             // Enable web fetch in config
             config.WebFetch.Enabled = true;
-            await ProcessUrlAsync(summarizer, url, mode, focus, query, config);
+            await ProcessUrlAsync(summarizer, url, mode, focus, query, config, ui);
         }
         else if (directory != null)
         {
             // Batch processing mode
-            await ProcessBatchAsync(summarizer, directory.FullName, mode, focus, config);
+            await ProcessBatchAsync(summarizer, directory.FullName, mode, focus, config, ui);
         }
         else if (file != null)
         {
             // Single file mode
-            await ProcessFileAsync(summarizer, file.FullName, mode, focus, query, config);
+            await ProcessFileAsync(summarizer, file.FullName, mode, focus, query, config, ui);
         }
         else
         {
@@ -157,14 +160,13 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             var defaultFile = Path.Combine(Environment.CurrentDirectory, "README.md");
             if (File.Exists(defaultFile))
             {
-                Console.WriteLine("No file specified, using README.md in current directory");
+                ui.Info("No file specified, using README.md in current directory");
                 Console.WriteLine();
-                await ProcessFileAsync(summarizer, defaultFile, mode, focus, query, config);
+                await ProcessFileAsync(summarizer, defaultFile, mode, focus, query, config, ui);
             }
             else
             {
-                Console.WriteLine("Error: Either --file, --directory, or --url must be specified");
-                Console.WriteLine("       (or run from a directory containing README.md)");
+                ui.Error("Either --file, --directory, or --url must be specified (or run from a directory containing README.md)");
                 return 1;
             }
         }
@@ -635,14 +637,14 @@ static async Task ProcessUrlAsync(
     SummarizationMode mode,
     string? focus,
     string? query,
-    DocSummarizerConfig config)
+    DocSummarizerConfig config,
+    IUIService ui)
 {
-    Console.WriteLine($"Fetching URL: {url}");
-    Console.WriteLine($"Mode: {mode}");
-    Console.WriteLine($"Model: {config.Ollama.Model}");
-    if (!string.IsNullOrEmpty(focus)) Console.WriteLine($"Focus: {focus}");
+    ui.Info($"Fetching URL: {url}");
+    ui.Info($"Mode: {mode}");
+    ui.Info($"Model: {config.Ollama.Model}");
+    if (!string.IsNullOrEmpty(focus)) ui.Info($"Focus: {focus}");
     Console.WriteLine();
-    Console.Out.Flush();
 
     // Use WebFetcher with configured mode (Simple or Playwright)
     var fetcher = new WebFetcher(config.WebFetch);
@@ -650,14 +652,12 @@ static async Task ProcessUrlAsync(
     
     if (string.IsNullOrWhiteSpace(result.TempFilePath) || !File.Exists(result.TempFilePath))
     {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine("Error: Failed to fetch content from URL");
-        Console.ResetColor();
+        ui.Error("Failed to fetch content from URL");
         return;
     }
 
     // Process the file - cleanup happens automatically via IDisposable
-    await ProcessFileAsync(summarizer, result.TempFilePath, mode, focus, query, config, url);
+    await ProcessFileAsync(summarizer, result.TempFilePath, mode, focus, query, config, ui, url);
 }
 
 static async Task ProcessFileAsync(
@@ -667,6 +667,7 @@ static async Task ProcessFileAsync(
     string? focus,
     string? query,
     DocSummarizerConfig config,
+    IUIService ui,
     string? sourceUrl = null)
 {
     var fileName = sourceUrl ?? Path.GetFileName(filePath);
@@ -675,26 +676,26 @@ static async Task ProcessFileAsync(
     if (!string.IsNullOrEmpty(query))
     {
         // Query mode
-        SpectreProgressService.WriteHeader("DocSummarizer", "Query Mode");
-        SpectreProgressService.WriteDocumentInfo(fileName, "Query", config.Ollama.Model);
+        ui.WriteHeader("DocSummarizer", "Query Mode");
+        ui.WriteDocumentInfo(fileName, "Query", config.Ollama.Model);
         
-        var answer = await SpectreProgressService.WithSpinnerAsync("Querying document...", 
+        var answer = await ui.WithSpinnerAsync("Querying document...", 
             () => summarizer.QueryAsync(filePath, query));
         
-        SpectreProgressService.WriteSummaryPanel(answer, "Answer");
-        SpectreProgressService.WriteCompletion(sw.Elapsed);
+        ui.WriteSummary(answer, "Answer");
+        ui.WriteCompletion(sw.Elapsed);
     }
     else
     {
-        // Summarize mode with Spectre progress
-        SpectreProgressService.WriteHeader("DocSummarizer");
-        SpectreProgressService.WriteDocumentInfo(fileName, mode.ToString(), config.Ollama.Model, focus);
+        // Summarize mode
+        ui.WriteHeader("DocSummarizer");
+        ui.WriteDocumentInfo(fileName, mode.ToString(), config.Ollama.Model, focus);
         
-        // Use SummarizeAsync directly - it now has built-in Spectre progress for conversion
+        // Use SummarizeAsync directly - it now has built-in progress for conversion
         var summary = await summarizer.SummarizeAsync(filePath, mode, focus);
         
         sw.Stop();
-        SpectreProgressService.WriteCompletion(sw.Elapsed);
+        ui.WriteCompletion(sw.Elapsed);
         
         // Format and output
         var output = OutputFormatter.Format(summary, config.Output, fileName);
@@ -702,21 +703,20 @@ static async Task ProcessFileAsync(
         if (config.Output.Format == OutputFormat.Console)
         {
             Console.WriteLine();
-            SpectreProgressService.WriteSummaryPanel(summary.ExecutiveSummary, "Summary");
+            ui.WriteSummary(summary.ExecutiveSummary, "Summary");
             
             // Show extracted entities (characters, locations, etc.) if available
             if (summary.Entities != null && summary.Entities.HasAny)
             {
                 Console.WriteLine();
-                SpectreProgressService.WriteEntities(summary.Entities);
+                ui.WriteEntities(summary.Entities);
             }
             
             // Show topics if available
             if (summary.TopicSummaries?.Count > 0)
             {
                 Console.WriteLine();
-                SpectreProgressService.WriteTopicsTree(
-                    summary.TopicSummaries.Select(t => (t.Topic, t.Summary)));
+                ui.WriteTopics(summary.TopicSummaries.Select(t => (t.Topic, t.Summary)));
             }
             
             // Auto-save to .summary.md file
@@ -730,7 +730,7 @@ static async Task ProcessFileAsync(
             await File.WriteAllTextAsync(summaryPath, markdownOutput);
             
             Console.WriteLine();
-            Console.WriteLine($"Saved to: {summaryPath}");
+            ui.Success($"Saved to: {summaryPath}");
         }
         else
         {
@@ -750,47 +750,53 @@ static async Task ProcessBatchAsync(
     string directoryPath,
     SummarizationMode mode,
     string? focus,
-    DocSummarizerConfig config)
+    DocSummarizerConfig config,
+    IUIService ui)
 {
-    SpectreProgressService.WriteHeader("DocSummarizer", "Batch Mode");
-    SpectreProgressService.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
+    ui.WriteHeader("DocSummarizer", "Batch Mode");
+    ui.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
 
     var batchProcessor = new BatchProcessor(summarizer, config.Batch, config.Output.Verbose);
+    var totalFiles = 0;
     var processed = 0;
     
-    // Callback to save each file IMMEDIATELY after processing - avoids OOM
-    async Task OnFileCompleted(BatchResult result)
+    // Enter batch context to prevent nested progress bars
+    using (ui.EnterBatchContext())
     {
-        processed++;
-        var fileName = Path.GetFileName(result.FilePath);
-        Console.WriteLine($"  [{(result.Success ? "OK" : "FAIL")}] {fileName}");
-        
-        if (result.Success && result.Summary != null)
+        // Callback to save each file IMMEDIATELY after processing - avoids OOM
+        async Task OnFileCompleted(BatchResult result)
         {
-            var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
+            processed++;
+            var fileName = Path.GetFileName(result.FilePath);
+            ui.WriteBatchProgress(processed, totalFiles, fileName, result.Success);
             
-            if (config.Output.Format != OutputFormat.Console)
+            if (result.Success && result.Summary != null)
             {
-                await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+                var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
+                
+                if (config.Output.Format != OutputFormat.Console)
+                {
+                    await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+                }
             }
         }
-    }
-    
-    Console.WriteLine();
-    
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
-    sw.Stop();
+        
+        Console.WriteLine();
+        
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
+        sw.Stop();
 
-    // Output batch summary
-    Console.WriteLine();
-    SpectreProgressService.WriteCompletion(sw.Elapsed, batchSummary.FailureCount == 0);
-    Console.WriteLine($"Processed: {batchSummary.SuccessCount} succeeded, {batchSummary.FailureCount} failed");
-    
-    if (config.Output.Format != OutputFormat.Console)
-    {
-        var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
-        await OutputFormatter.WriteOutputAsync(batchOutput, config.Output, "_batch_summary", config.Output.OutputDirectory);
+        // Output batch summary
+        Console.WriteLine();
+        ui.WriteCompletion(sw.Elapsed, batchSummary.FailureCount == 0);
+        ui.Success($"Processed: {batchSummary.SuccessCount} succeeded, {batchSummary.FailureCount} failed");
+        
+        if (config.Output.Format != OutputFormat.Console)
+        {
+            var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
+            await OutputFormatter.WriteOutputAsync(batchOutput, config.Output, "_batch_summary", config.Output.OutputDirectory);
+        }
     }
 }
 

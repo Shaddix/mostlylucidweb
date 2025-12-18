@@ -3,6 +3,8 @@
 <!--category-- AI, LLM, Agents, C#, Systems Design -->
 <datetime class="hidden">2025-12-19T10:00</datetime>
 
+> **📌 Note**: This article teaches the fundamentals of web content extraction with LLMs using the simplest possible approach. For production use cases (web summarization, document analysis, agent tools), see **[DocSummarizer](/blog/building-a-document-summarizer-with-rag)** [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer) - it implements the architecture shown here but production-grade: BERT embeddings, hybrid search, Playwright for SPAs, SSRF protection, validated citations, and proper coverage tracking.
+
 When you ask ChatGPT to "read this article and summarize it," what actually happens? If you imagine the AI opening a browser and reading like you would - that's not how it works.
 
 **LLMs don't browse the web. They reason over fragments your code selects.**
@@ -779,6 +781,7 @@ dotnet run
 - [nomic-embed-text](https://ollama.ai/library/nomic-embed-text) - Embeddings (~275MB)
 
 **Related Articles**
+- **[DocSummarizer Series](/blog/building-a-document-summarizer-with-rag)** - **The FAR BETTER approach** for web content summarization. This article shows the simplest way to fetch and analyze; DocSummarizer shows the production-grade way with BERT extraction, hybrid search, validated citations, and proper coverage tracking.
 - [Analysing Large CSV Files with Local LLMs](/blog/analysing-large-csv-files-with-local-llms) - Same pattern: LLM reasons, code computes
 - [Why I Don't Use LangChain](/blog/why-i-dont-use-langchain) - Framework-less agent design
 - [RAG Primer](/blog/rag-primer) - Understanding retrieval-augmented generation

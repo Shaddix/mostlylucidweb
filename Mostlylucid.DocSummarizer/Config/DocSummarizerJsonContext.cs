@@ -23,8 +23,10 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(OutputConfig))]
 [JsonSerializable(typeof(BatchConfig))]
 [JsonSerializable(typeof(OutputFormat))]
+[JsonSerializable(typeof(ChunkCacheConfig))]
 // Document types
 [JsonSerializable(typeof(DocumentSummary))]
+
 [JsonSerializable(typeof(DocumentChunk))]
 [JsonSerializable(typeof(ChunkSummary))]
 [JsonSerializable(typeof(TopicSummary))]
@@ -69,6 +71,7 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(OutputStyle))]
 [JsonSerializable(typeof(SummaryTone))]
 [JsonSerializable(typeof(AudienceLevel))]
+[JsonSerializable(typeof(ChunkCacheEntry))]
 // Web fetch types
 [JsonSerializable(typeof(WebFetchConfig))]
 [JsonSerializable(typeof(WebFetchMode))]
@@ -95,6 +98,7 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(Dictionary<string, JsonElement>))]
+[JsonSerializable(typeof(Dictionary<string, int>))]
 public partial class DocSummarizerJsonContext : JsonSerializerContext
 {
 }

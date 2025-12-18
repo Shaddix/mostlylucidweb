@@ -1,5 +1,119 @@
 # Changelog - DocSummarizer
 
+## v2.7.0 - Universal Tokenizer & Unified UI (2025-12-18)
+
+### New Features
+
+#### Universal Tokenizer Support
+
+The ONNX embedding service now supports multiple tokenizer formats via `HuggingFaceTokenizer`:
+
+- **WordPiece** (BERT-style) - existing support, now unified
+- **BPE** (GPT-style, RoBERTa) - NEW
+- **Unigram** (SentencePiece, T5, XLNet) - NEW
+
+The tokenizer automatically detects the format from `tokenizer.json` files:
+
+```bash
+# Same usage - now works with more model types
+docsummarizer -f document.pdf -m BertRag
+```
+
+**How it works:**
+1. Prefers `tokenizer.json` (universal HuggingFace format)
+2. Falls back to `vocab.txt` (legacy WordPiece) if needed
+3. Auto-detects tokenizer type: WordPiece, BPE, or Unigram
+4. Supports all pre-tokenizers: Whitespace, BERT, Metaspace, ByteLevel, Sequence
+5. Supports all normalizers: BERT, Lowercase, NFC, NFKC, Sequence
+
+**Models now supported:**
+- All existing BERT models (AllMiniLM, BGE, GTE, etc.)
+- Future BPE models (GPT-style, RoBERTa, MPNet)
+- Future Unigram models (T5, XLNet, SentencePiece)
+
+#### Unified UI Service
+
+New `UIService` consolidates 5+ progress/display implementations into one consistent interface:
+
+```csharp
+// Single unified interface for all UI output
+IUIService ui = new UIService(verbose: true);
+
+ui.WriteHeader("DocSummarizer", "Batch Mode");
+ui.WriteDocumentInfo(fileName, mode, model, focus);
+await ui.WithSpinnerAsync("Processing...", async () => await task());
+ui.WriteSummary(result.ExecutiveSummary);
+ui.WriteCompletion(elapsed);
+```
+
+**Features:**
+- Automatic fallback to simple console when in batch context
+- Prevents nested Spectre.Console progress bar conflicts
+- Consistent styling across all operations
+- Batch context management via `ui.EnterBatchContext()`
+
+**Replaces:**
+- `ProgressService` (plain Console.WriteLine)
+- `SpectreProgressService` (rich Spectre output)
+- `SimpleProgressService` (simple console)
+- `ConsoleProgressReporter` / `NullProgressReporter`
+- Direct `Console.WriteLine` and `AnsiConsole` calls in Program.cs
+
+### Improvements
+
+- **Batch Mode**: Now properly enters batch context to prevent nested progress bar errors
+- **Code Cleanup**: Removed deprecated `BertTokenizer` class (was ~100 lines in OnnxEmbeddingService.cs)
+- **Consistency**: All CLI operations now use unified `IUIService` interface
+
+### Files Added
+
+```
+Services/
+├── Onnx/HuggingFaceTokenizer.cs    # Universal tokenizer (WordPiece, BPE, Unigram)
+└── UIService.cs                     # Unified UI service with IUIService interface
+```
+
+### Files Modified
+
+```
+Services/Onnx/OnnxEmbeddingService.cs   # Use HuggingFaceTokenizer, removed BertTokenizer
+Program.cs                               # Updated to use UIService
+```
+
+### Breaking Changes
+
+None - all changes are backward compatible.
+
+### Technical Details
+
+#### HuggingFaceTokenizer Architecture
+
+```
+tokenizer.json → TokenizerConfig → ITokenizerModel
+                       |                  |
+                       |                  +-- WordPieceModel (BERT)
+                       |                  +-- BpeModel (GPT/RoBERTa)
+                       |                  +-- UnigramModel (T5/XLNet)
+                       |
+                       +-- PreTokenizer (Whitespace, BERT, Metaspace, ByteLevel)
+                       +-- Normalizer (BERT, Lowercase, NFC, NFKC)
+```
+
+#### UIService Architecture
+
+```
+IUIService
+    |
+    +-- UIService (Spectre.Console implementation)
+            |
+            +-- WriteHeader(), WriteSummary(), WriteTopics(), etc.
+            +-- WithSpinnerAsync() - automatic fallback in batch mode
+            +-- EnterBatchContext() - prevents nested progress bars
+            +-- UIServiceProgressAdapter - bridges to legacy IProgressReporter
+```
+
+---
+
 ## v2.6.0 - LLM Tool Mode, Web Fetching & Security Hardening (2025-12-17)
 
 ### New Features

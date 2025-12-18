@@ -1,4 +1,5 @@
 using Mostlylucid.DocSummarizer.Models;
+using System.IO;
 using Mostlylucid.DocSummarizer.Services;
 
 namespace Mostlylucid.DocSummarizer.Config;
@@ -285,12 +286,18 @@ public class ProcessingConfig
     ///     Memory management settings
     /// </summary>
     public MemoryConfig Memory { get; set; } = new();
-
+ 
+    /// <summary>
+    ///     Chunk cache settings for reusing Docling output
+    /// </summary>
+    public ChunkCacheConfig ChunkCache { get; set; } = new();
+ 
     /// <summary>
     ///     Summary length adaptation settings
     /// </summary>
     public SummaryLengthConfig SummaryLength { get; set; } = new();
-}
+ }
+
 
 /// <summary>
 ///     Memory management configuration for large document processing
@@ -334,6 +341,33 @@ public class MemoryConfig
     ///     Set to 0 to disable memory-based GC triggers.
     /// </summary>
     public int MaxMemoryMB { get; set; } = 0;
+}
+
+/// <summary>
+///     Persistent chunk cache configuration
+/// </summary>
+public class ChunkCacheConfig
+{
+    /// <summary>
+    ///     Enable disk chunk cache to avoid re-converting unchanged documents.
+    /// </summary>
+    public bool EnableChunkCache { get; set; } = true;
+
+    /// <summary>
+    ///     Directory to store cached chunks. Defaults to user profile .docsummarizer/chunks.
+    /// </summary>
+    public string? CacheDirectory { get; set; }
+        = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".docsummarizer", "chunks");
+
+    /// <summary>
+    ///     Retention period in days before cached chunks are deleted.
+    /// </summary>
+    public int RetentionDays { get; set; } = 14;
+
+    /// <summary>
+    ///     Version token to invalidate old cache layouts.
+    /// </summary>
+    public string VersionToken { get; set; } = "v1";
 }
 
 /// <summary>
