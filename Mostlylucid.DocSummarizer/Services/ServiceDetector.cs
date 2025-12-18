@@ -139,7 +139,7 @@ public class ServiceFeatures
     /// <summary>Semantic search across documents</summary>
     public bool SemanticSearch => _services.OnnxAvailable && _services.QdrantAvailable;
     
-    /// <summary>Document Q&A with RAG</summary>
+    /// <summary>Document QA with RAG</summary>
     public bool DocumentQA => _services.OllamaAvailable && _services.OnnxAvailable;
     
     /// <summary>Best available mode description</summary>

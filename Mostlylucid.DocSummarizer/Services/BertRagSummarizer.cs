@@ -715,13 +715,41 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             ? 0
             : (double)synthesisSegments.Count / extraction.AllSegments.Count;
         var targetWords = Template.TargetWords > 0 ? Template.TargetWords : 300;
+        
+        // Extract document title from the first H1 heading - this is CRITICAL
+        // In markdown, the first H1 (# Title) is always the document/article title
+        var headings = extraction.AllSegments
+            .Where(s => s.Type == SegmentType.Heading)
+            .OrderBy(s => s.Index)
+            .ToList();
+        
+        if (_verbose)
+        {
+            AnsiConsole.MarkupLine($"[dim]Found {headings.Count} headings in AllSegments[/]");
+            foreach (var h in headings.Take(5))
+            {
+                AnsiConsole.MarkupLine($"[dim]  H{h.HeadingLevel}: \"{h.Text}\" (idx={h.Index})[/]");
+            }
+        }
+        
+        var documentTitle = headings
+            .Where(s => s.HeadingLevel == 1)
+            .Select(s => s.Text.TrimStart('#', ' '))
+            .FirstOrDefault();
+        
+        if (_verbose)
+        {
+            AnsiConsole.MarkupLine($"[dim]Document title: {documentTitle ?? "(not found)"}[/]");
+        }
+        
         var synthesisPrompt = BuildSynthesisPrompt(
             extraction.ContentType, 
             targetWords, 
             focusQuery, 
             sectionStructure.ToString(), 
             contextBuilder.ToString(),
-            coverage);
+            coverage,
+            documentTitle);
         
         var rawSummary = await _ollama.GenerateAsync(synthesisPrompt, temperature: 0.3);
         var executiveSummary = CleanSynthesisResponse(rawSummary);
@@ -942,9 +970,16 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         string? focusQuery,
         string sectionStructure,
         string context,
-        double coverage)
+        double coverage,
+        string? documentTitle = null)
     {
         var focusLine = string.IsNullOrEmpty(focusQuery) ? "" : $"FOCUS: {focusQuery}\n";
+        
+        // Build document title line - this is CRITICAL for accurate summaries
+        // The first H1 heading typically contains the document name/subject
+        var titleLine = string.IsNullOrEmpty(documentTitle) 
+            ? "" 
+            : $"DOCUMENT TITLE: {documentTitle}\nYou are summarizing a document titled \"{documentTitle}\". Use this title to accurately identify the subject.\n\n";
         
         // For short templates, don't add coverage warnings - they bloat the output
         var isCompact = targetWords <= 100;
@@ -959,12 +994,15 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             var topicSummaries = context;
             var customPrompt = Template.GetExecutivePrompt(topicSummaries, focusQuery);
             
+            // Add document title at the start for custom prompts too
+            var titlePrefix = string.IsNullOrEmpty(documentTitle) ? "" : $"DOCUMENT: {documentTitle}\n\n";
+            
             // Add strict word limit for compact templates
             var wordLimit = isCompact 
                 ? $"\n\nSTRICT WORD LIMIT: Maximum {targetWords} words. Do NOT exceed this. Be extremely concise."
                 : "";
             
-            return customPrompt + wordLimit;
+            return titlePrefix + customPrompt + wordLimit;
         }
         
         // Build word limit instruction - stricter for small targets
@@ -981,7 +1019,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         {
             // FICTION/NARRATIVE prompt - book report style
             return $"""
-                You are writing a book report / plot summary. Your job is to describe WHAT HAPPENS, not transcribe dialogue.
+                {titleLine}You are writing a book report / plot summary. Your job is to describe WHAT HAPPENS, not transcribe dialogue.
 
                 INSTRUCTIONS:
                 1. Write at the SCENE level, not the dialogue level
@@ -1013,7 +1051,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         {
             // EXPOSITORY/TECHNICAL prompt - improved synthesis
             return $"""
-                You are generating a factual executive summary from retrieved document segments.
+                {titleLine}You are generating a factual executive summary from retrieved document segments.
                 Your goals are: accuracy, clarity, non-redundancy, readable human prose.
                 This is NOT a rewrite of source text. It is a synthesis.
 

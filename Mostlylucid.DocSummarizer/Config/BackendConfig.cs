@@ -38,7 +38,7 @@ public class OnnxConfig
 {
     /// <summary>
     ///     Directory to store downloaded models.
-    ///     Default: ~/.docsummarizer/models
+    ///     Default: [app directory]/models (travels with the tool)
     /// </summary>
     public string ModelDirectory { get; set; } = GetDefaultModelDirectory();
     
@@ -80,8 +80,9 @@ public class OnnxConfig
     
     private static string GetDefaultModelDirectory()
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        return Path.Combine(home, ".docsummarizer", "models");
+        // Use app directory/models so models travel with the tool
+        var appDir = AppContext.BaseDirectory;
+        return Path.Combine(appDir, "models");
     }
 }
 

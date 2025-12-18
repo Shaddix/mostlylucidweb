@@ -208,7 +208,10 @@ public class PipelinedBertRagSummarizer : IDisposable
             var currentHeadingPath = string.Join(" > ", headingPath.Reverse());
             
             // Add heading
-            if (!string.IsNullOrEmpty(section.Heading) && section.Heading.Length >= _extractionConfig.MinSegmentLength)
+            // EXCEPTION: First H1 heading is ALWAYS included (it's the document title)
+            var isDocumentTitle = section.Level == 1 && segments.Count == 0 && chunkIndex == 0;
+            if (!string.IsNullOrEmpty(section.Heading) && 
+                (section.Heading.Length >= _extractionConfig.MinSegmentLength || isDocumentTitle))
             {
                 var idx = Interlocked.Increment(ref _segmentCounter);
                 var segment = new Segment(docId, section.Heading, SegmentType.Heading, idx, 0, section.Heading.Length)
@@ -216,7 +219,8 @@ public class PipelinedBertRagSummarizer : IDisposable
                     SectionTitle = section.Heading,
                     HeadingPath = currentHeadingPath,
                     HeadingLevel = section.Level,
-                    PositionWeight = 1.1,
+                    // Document title gets extra boost
+                    PositionWeight = isDocumentTitle ? 2.0 : 1.1,
                     ChunkIndex = chunkIndex
                 };
                 segments.Add(segment);

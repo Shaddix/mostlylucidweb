@@ -39,8 +39,8 @@ public enum ContentType
 }
 
 /// <summary>
-/// Position weighting configuration based on document type
-/// Based on BERT summarization research (Liu & Lapata 2019) and BookSum (Kryscinski 2021)
+/// Position weighting configuration based on document type.
+/// Based on BERT summarization research (Liu and Lapata 2019) and BookSum (Kryscinski 2021).
 /// </summary>
 public static class PositionWeights
 {
@@ -459,39 +459,24 @@ public record ChunkSummary(
 /// Structured map output for better reduce merging.
 /// Produces facts + uncertainty instead of prose.
 /// </summary>
+/// <param name="ChunkId">Chunk identifier</param>
+/// <param name="Order">Order in document</param>
+/// <param name="Heading">Section heading</param>
+/// <param name="Entities">Named entities: types, classes, modules, people, organizations</param>
+/// <param name="Functions">Functions, methods, or actions described in this chunk</param>
+/// <param name="KeyFlows">Key flows or relationships: A to B to C</param>
+/// <param name="Facts">Facts with confidence levels</param>
+/// <param name="Uncertainties">Explicit not enough context flags</param>
+/// <param name="Quotables">Very short quotable excerpts (optional)</param>
 public record StructuredMapOutput(
     string ChunkId,
     int Order,
     string Heading,
-    
-    /// <summary>
-    /// Named entities: types, classes, modules, people, organizations
-    /// </summary>
     List<EntityReference> Entities,
-    
-    /// <summary>
-    /// Functions, methods, or actions described in this chunk
-    /// </summary>
     List<FunctionReference> Functions,
-    
-    /// <summary>
-    /// Key flows or relationships: A -> B -> C
-    /// </summary>
     List<FlowReference> KeyFlows,
-    
-    /// <summary>
-    /// Facts with confidence levels
-    /// </summary>
     List<FactClaim> Facts,
-    
-    /// <summary>
-    /// Explicit "not enough context" flags
-    /// </summary>
     List<UncertaintyFlag> Uncertainties,
-    
-    /// <summary>
-    /// Very short quotable excerpts (optional)
-    /// </summary>
     List<string> Quotables);
 
 /// <summary>
@@ -585,17 +570,14 @@ public enum UncertaintyType
 /// <summary>
 /// Result of the stitcher pass that dedupes and resolves entities before final reduce
 /// </summary>
+/// <param name="Entities">Deduplicated entities with merge info</param>
+/// <param name="References">Adjacency list: who calls/uses what</param>
+/// <param name="Collisions">Name collisions that could not be auto-resolved</param>
+/// <param name="CoverageMap">Coverage map: which chunks cover which topics</param>
 public record StitcherOutput(
-    /// <summary>Deduplicated entities with merge info</summary>
     List<MergedEntity> Entities,
-    
-    /// <summary>Adjacency list: who calls/uses what</summary>
     Dictionary<string, List<string>> References,
-    
-    /// <summary>Name collisions that couldn't be auto-resolved</summary>
     List<NameCollision> Collisions,
-    
-    /// <summary>Coverage map: which chunks cover which topics</summary>
     Dictionary<string, List<string>> CoverageMap);
 
 /// <summary>
@@ -761,7 +743,7 @@ public enum SummarizationMode
     
     /// <summary>
     /// RAG-based: semantic search + focused summarization.
-    /// Best for: focus queries, Q&A, when you need specific information.
+    /// Best for: focus queries, question-answering, when you need specific information.
     /// </summary>
     Rag,
     
@@ -853,10 +835,10 @@ public record ToolOutput
     /// <summary>Content type fetched</summary>
     public string? ContentType { get; init; }
     
-    /// <summary>The summary result (null if failed or in Q&A mode)</summary>
+    /// <summary>The summary result (null if failed or in QA mode)</summary>
     public ToolSummary? Summary { get; init; }
     
-    /// <summary>The Q&A answer result (null if failed or in summary mode)</summary>
+    /// <summary>The QA answer result (null if failed or in summary mode)</summary>
     public ToolAnswer? Answer { get; init; }
     
     /// <summary>Processing metadata</summary>
@@ -864,7 +846,7 @@ public record ToolOutput
 }
 
 /// <summary>
-/// Q&A answer for tool output
+/// QA answer for tool output
 /// </summary>
 public record ToolAnswer
 {

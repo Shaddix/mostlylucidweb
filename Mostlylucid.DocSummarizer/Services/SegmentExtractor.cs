@@ -291,6 +291,16 @@ public class SegmentExtractor : IDisposable
         var charOffset = 0;
         var headingPath = new Stack<string>();
         
+        // DEBUG: Print first few sections
+        if (_verbose)
+        {
+            AnsiConsole.MarkupLine($"[dim]Parsed {parsedDoc.Sections.Count} sections:[/]");
+            foreach (var s in parsedDoc.Sections.Take(5))
+            {
+                AnsiConsole.MarkupLine($"[dim]  Level {s.Level}: \"{s.Heading}\" ({s.Heading.Length} chars)[/]");
+            }
+        }
+        
         // Convert parsed sections to segments
         foreach (var section in parsedDoc.Sections)
         {
@@ -303,7 +313,10 @@ public class SegmentExtractor : IDisposable
             var currentHeadingPath = string.Join(" > ", headingPath.Reverse());
             
             // Add heading as a segment if substantial
-            if (!string.IsNullOrEmpty(section.Heading) && section.Heading.Length >= _config.MinSegmentLength)
+            // EXCEPTION: First H1 heading is ALWAYS included (it's the document title)
+            var isDocumentTitle = section.Level == 1 && segments.Count == 0;
+            if (!string.IsNullOrEmpty(section.Heading) && 
+                (section.Heading.Length >= _config.MinSegmentLength || isDocumentTitle))
             {
                 var headingSegment = new Segment(docId, section.Heading, SegmentType.Heading, segments.Count, charOffset, charOffset + section.Heading.Length)
                 {
@@ -312,7 +325,8 @@ public class SegmentExtractor : IDisposable
                     HeadingLevel = section.Level
                 };
                 // Headings get slight salience boost (they're summary-like)
-                headingSegment.PositionWeight = 1.1;
+                // Document title gets extra boost
+                headingSegment.PositionWeight = isDocumentTitle ? 2.0 : 1.1;
                 segments.Add(headingSegment);
                 charOffset += section.Heading.Length + 1;
             }
@@ -1509,6 +1523,15 @@ public class SegmentExtractor : IDisposable
             if (segment.Type == SegmentType.Heading && weight > 0.3)
             {
                 weight *= 1.5;
+                
+                // 5a. SPECIAL: First H1 heading is the DOCUMENT TITLE - highest priority
+                // In markdown, # Title is always the article/document name - MUST be in summary
+                if (segment.HeadingLevel == 1 && segment.Index <= 5)
+                {
+                    // First H1 heading (within first 5 segments) is the document title
+                    // Give it maximum priority to ensure it's always retrieved
+                    weight *= 3.0; // Combined with 1.5 above = 4.5x boost
+                }
             }
             
             return weight;

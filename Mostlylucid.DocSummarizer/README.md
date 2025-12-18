@@ -6,26 +6,28 @@ Every claim is traceable. Every fact cites its source. Runs entirely on your mac
 
 ---
 
-## Quick Start (30 seconds)
+## Quick Start
+
+### Fastest: Pure Extractive (No LLM, ~1-3 seconds)
+
+```bash
+# Zero setup - just run! ONNX models auto-download on first use.
+docsummarizer -f document.pdf -m Bert
+```
+
+**Bert mode** uses local ONNX embeddings only. No LLM, no network (after first model download). This is mechanical extraction — it finds and ranks the most important sentences using semantic similarity, not AI generation.
+
+### With LLM Synthesis (~5-10 seconds)
 
 ```bash
 # 1. Install Ollama from https://ollama.ai, then:
 ollama pull llama3.2:3b && ollama serve
 
-# 2. Run (no other setup needed!)
+# 2. Run with LLM-powered synthesis
 docsummarizer -f document.pdf
 ```
 
-That's it. ONNX embeddings auto-download. No Docker for Markdown files.
-
-### Offline Mode (No Ollama Required)
-
-```bash
-# Pure extractive summarization - works completely offline
-docsummarizer -f document.pdf -m Bert
-```
-
-Bert mode uses local ONNX models only. No LLM, no network (after first model download). ~3-5 seconds per document.
+ONNX embeddings auto-download. No Docker for Markdown files.
 
 ---
 
