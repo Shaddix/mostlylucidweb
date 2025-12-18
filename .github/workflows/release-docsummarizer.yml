@@ -196,16 +196,20 @@ jobs:
           
           **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DocSummarizer/README.md)** | **[Blog Post](https://www.mostlylucid.net/blog/docsummarizer-tool)**
           
-          ### What's New in v3.0
+          ### What's New
           
-          - 🚀 **BertRag Pipeline** - Production-grade BERT extraction → retrieval → LLM synthesis
-          - ⚡ **Bert Mode** - Pure extractive summarization, no LLM needed (~3-5s)
-          - 🤖 **Auto Mode** - Smart mode selection based on document size and query
-          - 📦 **ONNX Embeddings** - Zero-config local embeddings (no `ollama pull` needed!)
+          **Summarization Modes:**
+          - ⚡ **Bert Mode** - Pure extractive summarization, completely offline, no LLM needed (~3-5s)
+          - 🚀 **BertRag Mode** - Production-grade BERT extraction → retrieval → LLM synthesis
+          - 🤖 **Auto Mode** - Smart mode selection based on document characteristics
+          
+          **Key Features:**
+          - 📦 **ONNX Embeddings** - Zero-config local embeddings (auto-downloads ~23MB model)
+          - 📚 **ZIP Archive Support** - Summarize Project Gutenberg books directly from ZIP
+          - 🎯 **Adaptive Retrieval** - Auto-scales context based on document size and type
+          - 📊 **14 Templates** - prose, brief, executive, bookreport, technical, academic, and more
+          - 🔍 **Template Benchmarking** - Compare multiple templates on the same document
           - 🌐 **Playwright Support** - Summarize JavaScript-rendered pages (SPAs, React apps)
-          - 🔧 **Polly Resilience** - Retry with jitter backoff + circuit breaker
-          - 🔍 **Query Mode** - Ask questions about documents with semantic search
-          - 📊 **Benchmark Command** - Compare models on the same document
           - 🎨 **Spectre.Console UI** - Beautiful progress bars and tables
           
           ### Downloads
@@ -219,35 +223,42 @@ jobs:
           | macOS | x64 (Intel) | `docsummarizer-osx-x64.tar.gz` |
           | macOS | ARM64 (Apple Silicon) | `docsummarizer-osx-arm64.tar.gz` |
           
-          ### Quick Start (30 seconds)
+          ### Quick Start
           
+          **Fully Offline (Bert mode - no dependencies):**
           ```bash
-          # 1. Install Ollama from https://ollama.ai, then:
+          ./docsummarizer -f document.md -m Bert
+          ```
+          ONNX model auto-downloads on first run (~23MB). Works with Markdown/TXT files.
+          
+          **With LLM (better quality):**
+          ```bash
+          # Install Ollama from https://ollama.ai, then:
           ollama pull llama3.2:3b && ollama serve
           
-          # 2. Extract and run (no other setup needed!)
           ./docsummarizer -f document.pdf
           ```
-          
-          That's it! ONNX embeddings auto-download. No Docker for Markdown files.
           
           ### Example Commands
           
           ```bash
-          # Fast mode - no LLM, ~3-5s
-          ./docsummarizer -f doc.pdf -m Bert
+          # Offline mode - no LLM needed
+          ./docsummarizer -f doc.md -m Bert
           
-          # Production mode - best quality
+          # Best quality with LLM
           ./docsummarizer -f doc.pdf -m BertRag
+          
+          # Summarize a Gutenberg book from ZIP
+          ./docsummarizer -f pg1234.zip -t bookreport
+          
+          # Compare templates on same document
+          ./docsummarizer benchmark-templates -f doc.pdf -t "brief,prose,executive"
           
           # Ask questions about a document
           ./docsummarizer -f manual.pdf --query "How do I install?"
           
-          # JSON for AI agents
+          # JSON output for AI agents
           ./docsummarizer tool -f contract.pdf
-          
-          # Compare models
-          ./docsummarizer benchmark -f doc.pdf -m "qwen2.5:1.5b,llama3.2:3b"
           
           # List available templates
           ./docsummarizer templates
@@ -255,11 +266,21 @@ jobs:
           
           ### Prerequisites
           
-          **Required:** [Ollama](https://ollama.ai/) - `ollama pull llama3.2:3b && ollama serve`
+          **For Bert mode:** None! Works completely offline after first model download.
           
-          **Optional (PDF/DOCX only):** [Docling](https://github.com/docling-project/docling-serve) - `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
+          **For LLM modes (Auto, BertRag):** [Ollama](https://ollama.ai/) - `ollama pull llama3.2:3b && ollama serve`
           
-          **Optional (legacy RAG mode):** [Qdrant](https://qdrant.tech/) - `docker run -p 6333:6333 qdrant/qdrant`
+          **For PDF/DOCX/PPTX/XLSX/Images:** [Docling](https://github.com/docling-project/docling-serve) - `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
+          
+          ### Supported Formats
+          
+          | Format | Requirements |
+          |--------|--------------|
+          | Markdown (.md), Text (.txt) | None - works offline |
+          | ZIP archives (.zip) | None - extracts text/HTML automatically |
+          | PDF, DOCX, PPTX, XLSX | Docling service |
+          | Images (PNG, JPG, TIFF) | Docling service (OCR) |
+          | HTML, URLs | Built-in (optional Playwright for JS-rendered pages) |
           
         files: |
           ./artifacts/**/*.zip
