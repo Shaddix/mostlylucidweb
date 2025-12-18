@@ -17,7 +17,9 @@ This is part of my "Time-Boxed Tools" approach: give myself a fixed window to bu
 
 DocSummarizer started as a demonstration of how you *should* build document summarizers with LLMs - the pipeline approach I outlined in Part 1. Most tutorials show you how to shove text into an LLM and hope for the best. I wanted to show proper architecture: chunking, embeddings, retrieval, citation validation.
 
-But as I always do, I got interested in the problem space. Four days later, I'd dug into the research - how do state-of-the-art systems actually handle summarization? What makes retrieval work well? Why do some embeddings outperform others? - and implemented versions of these approaches. What started as "here's the right pattern" became ONNX embeddings running locally, hybrid search combining BM25 with dense retrieval, Maximal Marginal Relevance for diversity, and Reciprocal Rank Fusion for combining signals.
+But as I always do, I got interested in the problem space. Four days later, I'd dug into the research. How do production-grade systems actually handle summarization? What makes retrieval work well? Why do some embeddings outperform others? 
+
+I implemented versions of these approaches. What started as "here's the right pattern" became ONNX embeddings running locally, hybrid search combining BM25 with dense retrieval, Maximal Marginal Relevance for diversity, and Reciprocal Rank Fusion for combining signals.
 
 **Fair warning**: This is the "I went too far" deep dive. If you just want to use the tool, read Part 2. If you want to understand *why* it works and *how* the pieces fit together, keep reading.
 
@@ -194,6 +196,8 @@ DocSummarizer includes several embedding models, each with different trade-offs:
 | `BgeSmallEnV15` | 384 | 512 | ~34MB | Better for technical docs | Yes |
 | `GteSmall` | 384 | 512 | ~34MB | General purpose | No |
 | `MultiQaMiniLm` | 384 | 512 | ~23MB | Optimized for Q&A | No |
+
+**Note**: All registry entries point to WordPiece-compatible ONNX exports (using `vocab.txt`). BPE/Unigram models are not yet supported.
 
 **BGE instruction format**: Some models (like BGE) require prefixes for optimal performance. The exact format depends on the model:
 
@@ -880,7 +884,8 @@ public class BertRagSummarizer
     /// Key properties:
     /// - LLM only at synthesis (no LLM-in-the-loop evaluation)
     /// - Deterministic extraction (reproducible, debuggable)
-    /// - Perfect citations (every claim traceable to source)
+    /// - Validated citations (every claim traceable to source segment)
+    /// - Scales to any document size
     /// - Cost-optimal (cheap CPU work first, expensive LLM last)
     /// </summary>
     public async Task<DocumentSummary> SummarizeAsync(
@@ -909,7 +914,7 @@ public class BertRagSummarizer
 
 When building and using DocSummarizer, I've hit these issues (and you will too):
 
-1. **Tokenizer mismatch → garbage embeddings**: Loading a WordPiece vocab for a BPE-trained model produces valid-looking but semantically meaningless vectors. Always verify the tokenizer matches the model's training regime.
+1. **Tokenizer mismatch → nonsense embeddings**: Loading a WordPiece vocab for a BPE-trained model produces valid-looking but semantically meaningless vectors. Always verify the tokenizer matches the model's training regime.
 
 2. **Dominant-topic bias in single-centroid scoring**: Using one document centroid systematically down-ranks minority topics (constraints, exceptions, edge cases). Multi-anchor retrieval fixes this but adds complexity.
 
@@ -942,6 +947,8 @@ if (coverage < 0.05)
 // Append coverage footer to every summary
 var footer = $"\n\n---\nCoverage: {coverage:P1} ({scope})\nConfidence: {confidence}";
 ```
+
+**Important**: This is a *summary of retrieved evidence*, not a guarantee of full-document coverage. When we say "sampled 3%", that's exactly what happened - the system saw 3% of the document and summarized that.
 
 **Adaptive sampling with multiple topic anchors**: The pre-filter uses multiple anchors (k-means-style clustering of a stratified sample) to ensure minority topics aren't systematically excluded. This prevents the "dominant theme bias" where a single centroid down-ranks important-but-rare content like constraints, exceptions, or conclusions.
 
@@ -1040,6 +1047,8 @@ Real-world performance on a typical developer machine (Ryzen 5600X, 32GB RAM, no
 | **End-to-end (25-page PDF)** | ~15-20s | Includes chunking, embedding, retrieval, LLM synthesis |
 
 **Test environment**: Ryzen 5600X (6-core), 32GB RAM, no GPU. Embedding uses all-MiniLM-L6-v2 (quantized, 256 token max), 8-thread parallel batching. Retrieval corpus: 500 segments. Your mileage will vary with different models, hardware, and document complexity.
+
+**Main driver is embedding throughput** (model choice + token length + batch size). Retrieval and fusion are basically free - they take milliseconds. This reinforces the "LLM last" principle: do cheap CPU work (embedding, retrieval) first, expensive LLM work only on filtered content.
 
 **Scaling**: The hierarchical extraction handles 500+ page documents (novels, manuals) by processing in batches and keeping only top-K per batch in memory.
 

@@ -92,7 +92,7 @@ public async Task<string> ConvertAsync(string filePath)
 
 ## Step 2: Chunk by Structure
 
-Most chunking uses token limits. This is wrong. Documents have **semantic structure** - chunk by headings, not by token math.
+Most chunking starts with token limits. **For documents, structure-first chunking usually wins**. Documents have semantic structure - chunk by headings, not by token math alone.
 
 ```csharp
 public List<DocumentChunk> ChunkByStructure(string markdown)
@@ -244,13 +244,15 @@ Process chunks sequentially, refining a running summary.
 
 Use RAG when you want to **focus** rather than **cover**: query-focused summaries, multi-query scenarios (index once, query many), semantic matching.
 
-**RAG is NOT for handling long documents** - that's hierarchical MapReduce. RAG intentionally skips non-matching content.
+**RAG isn't a *length solution*. It's a *relevance solution*.** For full coverage on long documents, use hierarchical MapReduce. RAG intentionally skips non-matching content to retrieve what matters for your query.
 
 **Key insight**: Wrong summary usually means wrong retrieval, not "dumb model". Debug selection first.
 
 ### Index the Document
 
-Each document gets its own Qdrant collection (named `docsummarizer_{hash}`) to prevent collisions. The collection is deleted after summarization completes, so there's no need for hash-based idempotency checks.
+**Note**: This describes the legacy v1.0 `Rag` mode. The current v3.0 `BertRag` mode uses in-memory vectors by default (no Qdrant required), with optional persistent storage for re-querying scenarios.
+
+In the legacy mode, each document gets its own Qdrant collection (named `docsummarizer_{hash}`) to prevent collisions. The collection is ephemeral (created, used, deleted) - no incremental reuse. For persistent storage with re-querying, use the v3.0 `BertRag` mode with an `IVectorStore` implementation.
 
 ```csharp
 public async Task IndexDocumentAsync(string docId, List<DocumentChunk> chunks)
@@ -337,10 +339,9 @@ public record ValidationResult(
 
 public static ValidationResult Validate(string summary, HashSet<string> validChunkIds)
 {
-    // Flexible: matches [chunk-0], [chunk-12], or any bracketed ID
-    var citations = Regex.Matches(summary, @"\[([^\]]+)\]")
+    // Match citation format: [chunk-N] where N is digits
+    var citations = Regex.Matches(summary, @"\[(chunk-\d+)\]")
         .Select(m => m.Groups[1].Value)
-        .Where(id => id.StartsWith("chunk-", StringComparison.OrdinalIgnoreCase))
         .ToList();
     var invalid = citations.Where(c => !validChunkIds.Contains(c)).ToList();
     
@@ -393,7 +394,7 @@ public record SummarizationTrace(
 ```
 
 **Metric definitions**:
-- **Coverage score**: % of top-level headings that appear in at least one retrieved chunk
+- **Coverage score**: % of top-level headings that appear in at least one retrieved chunk (**proxy for topical coverage**, not proof of full-document reading)
 - **Citation rate**: Total citation count ÷ bullet point count
 
 | Metric | Good | Warning | Bad |
@@ -424,7 +425,7 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 - **Recovery**: RPO 1min, RTO 15min [chunk-11]
 ```
 
-**Evidence** (from chunk-10):
+**Evidence** (verbatim excerpt from chunk-10):
 > "The system shall support 10,000 transactions per second with p99 latency under 100ms under normal load conditions."
 
 **Trace**: Coverage 0.83, Citation rate 0.71, Total time 12.5s
@@ -433,11 +434,34 @@ Settlement Service [chunk-2, chunk-3, chunk-4].
 
 The patterns above (MapReduce, hierarchical reduction, RAG with citations) were the v1.0 implementation. They work, and this article explains why they're better than naive LLM calls.
 
-But the tool evolved. **v3.0 introduced BertRag**: a production pipeline that combines BERT-based extraction with LLM synthesis. It's faster, more accurate, and has perfect citation grounding.
+But the tool evolved. **v3.0 introduced BertRag**: a production pipeline that combines BERT-based extraction with LLM synthesis. It's faster, more accurate, and has validated citation grounding.
 
 **For the current implementation**, see [Part 2](/blog/docsummarizer-tool) (how to use it) and [Part 3](/blog/docsummarizer-advanced-concepts) (how it works under the hood).
 
 **This article's value**: Understanding the architecture principles (pipeline not API call, chunking by structure, citation validation, hierarchical reduction) that make *any* document summarizer work well.
+
+### Quick Mode Selection Guide
+
+| Need | Use |
+|------|-----|
+| Full coverage of document | **MapReduce** (every chunk contributes) |
+| Coverage + long documents (100+ pages) | **MapReduce with hierarchical reduction** |
+| Specific topic or question | **RAG** (legacy) or **BertRag** (current) |
+| Many queries on same document | **BertRag with persistent storage** |
+| Production default | **BertRag** (extraction + retrieval + synthesis) |
+| Fastest (no LLM) | **Bert** (pure extraction, v3.0+) |
+
+### Debug Playbook
+
+When summaries aren't what you expected:
+
+1. **Bad/irrelevant summary** → Check the retrieval set. Are the right chunks being selected? If not, your topic extraction or query embedding is off.
+
+2. **Missing citations** → Tighten the prompt instructions, validate output, retry with stronger citation requirements. Small models (<3B params) struggle with citation discipline.
+
+3. **Low coverage score** → Either topic extraction failed to identify key themes, or your chunking broke semantic boundaries (e.g., split mid-section).
+
+4. **Repetitive content** → Deduplication is failing. Check if chunks have high semantic overlap (should merge at chunking stage, not retrieval).
 
 ## Why This Matters Operationally
 

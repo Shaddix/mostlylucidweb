@@ -160,73 +160,84 @@ public class SegmentExtractor : IDisposable
         // Segments to keep from each batch (aggressive pruning)
         var keepPerBatch = Math.Max(50, _config.MaxSegments / numBatches);
         
-        AnsiConsole.MarkupLine($"[cyan]Hierarchical extraction:[/] {numBatches} batches, ~{keepPerBatch} kept per batch");
+        if (!ProgressService.IsInInteractiveContext)
+            AnsiConsole.MarkupLine($"[cyan]Hierarchical extraction:[/] {numBatches} batches, ~{keepPerBatch} kept per batch");
         
         var batchWinners = new List<Segment>();
         float[]? globalCentroid = null;
         
-        // Process each batch with overall progress
-        await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new RemainingTimeColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
-            {
-                var overallTask = ctx.AddTask($"[cyan]Processing {allSegments.Count} segments[/]", maxValue: allSegments.Count);
-                
-                for (int batch = 0; batch < numBatches; batch++)
+        // Process batches - avoid nested progress displays in batch mode
+        if (ProgressService.IsInInteractiveContext)
+        {
+            // Non-interactive mode for batch processing - no Spectre progress bar
+            globalCentroid = await ProcessBatchesWithoutProgressAsync(
+                allSegments, numBatches, batchSize, keepPerBatch, contentType, batchWinners, ct);
+        }
+        else
+        {
+            // Interactive mode - use Spectre progress bar
+            await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new RemainingTimeColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
                 {
-                    ct.ThrowIfCancellationRequested();
+                    var overallTask = ctx.AddTask($"[cyan]Processing {allSegments.Count} segments[/]", maxValue: allSegments.Count);
                     
-                    var batchStart = batch * batchSize;
-                    var batchSegments = allSegments.Skip(batchStart).Take(batchSize).ToList();
-                    
-                    // Update task description for current batch
-                    overallTask.Description = $"[cyan]Batch {batch + 1}/{numBatches}: embedding {batchSegments.Count} segments[/]";
-                    
-                    // Generate embeddings for this batch (inner progress handled by the method)
-                    await GenerateEmbeddingsInnerAsync(batchSegments, ct, overallTask);
-                    
-                    // Calculate batch centroid
-                    var batchCentroid = CalculateCentroid(batchSegments);
-                    
-                    // Accumulate for global centroid
-                    if (globalCentroid == null)
-                        globalCentroid = batchCentroid.ToArray();
-                    else
+                    for (int batch = 0; batch < numBatches; batch++)
                     {
-                        for (int i = 0; i < globalCentroid.Length && i < batchCentroid.Length; i++)
-                            globalCentroid[i] = (globalCentroid[i] * batch + batchCentroid[i]) / (batch + 1);
+                        ct.ThrowIfCancellationRequested();
+                        
+                        var batchStart = batch * batchSize;
+                        var batchSegments = allSegments.Skip(batchStart).Take(batchSize).ToList();
+                        
+                        // Update task description for current batch
+                        overallTask.Description = $"[cyan]Batch {batch + 1}/{numBatches}: embedding {batchSegments.Count} segments[/]";
+                        
+                        // Generate embeddings for this batch (inner progress handled by the method)
+                        await GenerateEmbeddingsInnerAsync(batchSegments, ct, overallTask);
+                        
+                        // Calculate batch centroid
+                        var batchCentroid = CalculateCentroid(batchSegments);
+                        
+                        // Accumulate for global centroid
+                        if (globalCentroid == null)
+                            globalCentroid = batchCentroid.ToArray();
+                        else
+                        {
+                            for (int i = 0; i < globalCentroid.Length && i < batchCentroid.Length; i++)
+                                globalCentroid[i] = (globalCentroid[i] * batch + batchCentroid[i]) / (batch + 1);
+                        }
+                        
+                        // Score batch segments using MMR (with content-type adjustments)
+                        ComputeSalienceScores(batchSegments, batchCentroid, contentType);
+                        
+                        // Keep top-K from this batch
+                        var batchTop = batchSegments
+                            .OrderByDescending(s => s.SalienceScore)
+                            .Take(keepPerBatch)
+                            .ToList();
+                        
+                        batchWinners.AddRange(batchTop);
+                        
+                        // Clear embeddings from non-winners to free memory
+                        foreach (var segment in batchSegments.Where(s => !batchTop.Contains(s)))
+                        {
+                            segment.Embedding = null;
+                        }
                     }
                     
-                    // Score batch segments using MMR (with content-type adjustments)
-                    ComputeSalienceScores(batchSegments, batchCentroid, contentType);
-                    
-                    // Keep top-K from this batch
-                    var batchTop = batchSegments
-                        .OrderByDescending(s => s.SalienceScore)
-                        .Take(keepPerBatch)
-                        .ToList();
-                    
-                    batchWinners.AddRange(batchTop);
-                    
-                    // Clear embeddings from non-winners to free memory
-                    foreach (var segment in batchSegments.Where(s => !batchTop.Contains(s)))
-                    {
-                        segment.Embedding = null;
-                    }
-                }
-                
-                overallTask.Description = $"[green]Extracted {batchWinners.Count} candidate segments[/]";
-                overallTask.StopTask();
-            });
-        
-        AnsiConsole.MarkupLine($"[dim]Batch phase complete: {batchWinners.Count} candidates[/]");
+                    overallTask.Description = $"[green]Extracted {batchWinners.Count} candidate segments[/]";
+                    overallTask.StopTask();
+                });
+            
+            AnsiConsole.MarkupLine($"[dim]Batch phase complete: {batchWinners.Count} candidates[/]");
+        }
         
         // Global re-ranking with MMR
         if (_verbose) AnsiConsole.MarkupLine("[dim]Global re-ranking with MMR...[/]");
@@ -1143,6 +1154,13 @@ public class SegmentExtractor : IDisposable
     /// </summary>
     private async Task GenerateEmbeddingsAsync(List<Segment> segments, CancellationToken ct)
     {
+        // Use non-interactive mode if already in a batch context
+        if (ProgressService.IsInInteractiveContext)
+        {
+            await GenerateEmbeddingsWithoutProgressAsync(segments, ct);
+            return;
+        }
+        
         await _embeddingService.InitializeAsync(ct);
         
         const int batchSize = 32;
@@ -1207,7 +1225,90 @@ public class SegmentExtractor : IDisposable
                 var rate = processed / sw.Elapsed.TotalSeconds;
                 var remaining = (total - processed) / rate;
                 var eta = TimeSpan.FromSeconds(remaining);
-                task.Description = $"[cyan]Embedding: {processed}/{total} (~{eta:mm\\:ss} remaining)[/]";
+            task.Description = $"[cyan]Embedding: {processed}/{total} (~{eta:mm\\:ss} remaining)[/]";
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Process batches without Spectre progress display (for batch mode)
+    /// </summary>
+    private async Task<float[]?> ProcessBatchesWithoutProgressAsync(
+        List<Segment> allSegments,
+        int numBatches,
+        int batchSize,
+        int keepPerBatch,
+        ContentType contentType,
+        List<Segment> batchWinners,
+        CancellationToken ct)
+    {
+        float[]? globalCentroid = null;
+        
+        for (int batch = 0; batch < numBatches; batch++)
+        {
+            ct.ThrowIfCancellationRequested();
+            
+            var batchStart = batch * batchSize;
+            var batchSegments = allSegments.Skip(batchStart).Take(batchSize).ToList();
+            
+            // Generate embeddings without progress display
+            await GenerateEmbeddingsWithoutProgressAsync(batchSegments, ct);
+            
+            // Calculate batch centroid
+            var batchCentroid = CalculateCentroid(batchSegments);
+            
+            // Accumulate for global centroid
+            if (globalCentroid == null)
+                globalCentroid = batchCentroid.ToArray();
+            else
+            {
+                for (int i = 0; i < globalCentroid.Length && i < batchCentroid.Length; i++)
+                    globalCentroid[i] = (globalCentroid[i] * batch + batchCentroid[i]) / (batch + 1);
+            }
+            
+            // Score batch segments using MMR
+            ComputeSalienceScores(batchSegments, batchCentroid, contentType);
+            
+            // Keep top-K from this batch
+            var batchTop = batchSegments
+                .OrderByDescending(s => s.SalienceScore)
+                .Take(keepPerBatch)
+                .ToList();
+            
+            batchWinners.AddRange(batchTop);
+            
+            // Clear embeddings from non-winners to free memory
+            foreach (var segment in batchSegments.Where(s => !batchTop.Contains(s)))
+            {
+                segment.Embedding = null;
+            }
+        }
+        
+        return globalCentroid;
+    }
+    
+    /// <summary>
+    /// Generate embeddings without Spectre progress display (for batch mode)
+    /// </summary>
+    private async Task GenerateEmbeddingsWithoutProgressAsync(List<Segment> segments, CancellationToken ct)
+    {
+        await _embeddingService.InitializeAsync(ct);
+        
+        const int batchSize = 64;
+        var total = segments.Count;
+        
+        for (int i = 0; i < total; i += batchSize)
+        {
+            ct.ThrowIfCancellationRequested();
+            
+            var batch = segments.Skip(i).Take(batchSize).ToList();
+            var texts = batch.Select(s => s.Text).ToList();
+            
+            var embeddings = await _embeddingService.EmbedBatchAsync(texts, ct);
+            
+            for (int j = 0; j < batch.Count; j++)
+            {
+                batch[j].Embedding = embeddings[j];
             }
         }
     }

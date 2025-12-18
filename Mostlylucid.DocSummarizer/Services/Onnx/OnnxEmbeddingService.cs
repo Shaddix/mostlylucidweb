@@ -12,7 +12,7 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
     private readonly EmbeddingModelInfo _modelInfo;
     private readonly int _maxSequenceLength;
     private InferenceSession? _session;
-    private BertTokenizer? _tokenizer;
+    private HuggingFaceTokenizer? _tokenizer;
     private bool _initialized;
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private readonly OnnxModelDownloader _downloader;
@@ -52,7 +52,12 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
             };
 
             _session = new InferenceSession(paths.ModelPath, options);
-            _tokenizer = new BertTokenizer(paths.VocabPath);
+            
+            // Prefer tokenizer.json (universal format) with vocab.txt fallback
+            _tokenizer = File.Exists(paths.TokenizerPath)
+                ? HuggingFaceTokenizer.FromFile(paths.TokenizerPath)
+                : HuggingFaceTokenizer.FromVocabFile(paths.VocabPath);
+            
             _initialized = true;
         }
         finally
@@ -202,102 +207,4 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
     }
 }
 
-/// <summary>
-///     Simple BERT WordPiece tokenizer
-/// </summary>
-public class BertTokenizer
-{
-    private readonly Dictionary<string, int> _vocab;
-    private const int ClsTokenId = 101;  // [CLS]
-    private const int SepTokenId = 102;  // [SEP]
-    private const int PadTokenId = 0;    // [PAD]
-    private const int UnkTokenId = 100;  // [UNK]
 
-    public BertTokenizer(string vocabPath)
-    {
-        _vocab = File.ReadAllLines(vocabPath)
-            .Select((word, index) => (word, index))
-            .ToDictionary(x => x.word, x => x.index);
-    }
-
-    public (long[] InputIds, long[] AttentionMask, long[] TokenTypeIds) Encode(string text, int maxLength)
-    {
-        var tokens = Tokenize(text.ToLowerInvariant()).ToList();
-        
-        // Truncate to fit special tokens
-        if (tokens.Count > maxLength - 2)
-            tokens = tokens.Take(maxLength - 2).ToList();
-
-        // Add special tokens
-        var inputIds = new List<long> { ClsTokenId };
-        inputIds.AddRange(tokens.Select(t => (long)GetTokenId(t)));
-        inputIds.Add(SepTokenId);
-
-        // Pad to maxLength
-        var padCount = maxLength - inputIds.Count;
-        inputIds.AddRange(Enumerable.Repeat((long)PadTokenId, padCount));
-
-        var attentionMask = inputIds.Select(id => id != PadTokenId ? 1L : 0L).ToArray();
-        var tokenTypeIds = new long[maxLength]; // All zeros for single sentence
-
-        return (inputIds.ToArray(), attentionMask, tokenTypeIds);
-    }
-
-    private IEnumerable<string> Tokenize(string text)
-    {
-        // Basic whitespace + punctuation tokenization
-        var words = text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
-        foreach (var word in words)
-        {
-            // Split on punctuation
-            var cleanWord = word.Trim();
-            foreach (var subword in WordPieceTokenize(cleanWord))
-                yield return subword;
-        }
-    }
-
-    private IEnumerable<string> WordPieceTokenize(string word)
-    {
-        if (string.IsNullOrEmpty(word))
-            yield break;
-
-        if (_vocab.ContainsKey(word))
-        {
-            yield return word;
-            yield break;
-        }
-
-        int start = 0;
-        while (start < word.Length)
-        {
-            int end = word.Length;
-            string? curSubstr = null;
-
-            while (start < end)
-            {
-                var substr = word[start..end];
-                if (start > 0) substr = "##" + substr;
-
-                if (_vocab.ContainsKey(substr))
-                {
-                    curSubstr = substr;
-                    break;
-                }
-                end--;
-            }
-
-            if (curSubstr == null)
-            {
-                yield return "[UNK]";
-                yield break;
-            }
-
-            yield return curSubstr;
-            start = end;
-        }
-    }
-
-    private int GetTokenId(string token) => 
-        _vocab.GetValueOrDefault(token, UnkTokenId);
-}

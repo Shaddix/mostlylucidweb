@@ -641,6 +641,12 @@ Auto-discovery order:
     "enableCircuitBreaker": true,
     "circuitBreakerThreshold": 3,
     "circuitBreakerDurationSeconds": 30
+  },
+  "bertRag": {
+    "vectorStore": 0,
+    "collectionName": "docsummarizer",
+    "persistVectors": true,
+    "reuseExistingEmbeddings": true
   }
 }
 ```
@@ -724,6 +730,23 @@ Auto-discovery order:
 | `enableCircuitBreaker` | `true` | Enable circuit breaker for failures |
 | `circuitBreakerThreshold` | `3` | Failures before circuit opens |
 | `circuitBreakerDurationSeconds` | `30` | Duration circuit stays open |
+
+#### BertRag Persistence Settings (Learning Summarizer)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `vectorStore` | `0` (InMemory) | `0` = InMemory (no persistence), `1` = Qdrant (persistent) |
+| `collectionName` | `docsummarizer` | Name of vector collection for segments |
+| `persistVectors` | `true` | Keep vectors between runs (Qdrant only) |
+| `reuseExistingEmbeddings` | `true` | Skip re-embedding unchanged segments |
+
+When using Qdrant persistence (`vectorStore: 1`):
+- First run embeds all segments (~15-20s)
+- Subsequent runs load from cache (~0.5s for segment lookup)
+- Changed content is detected and re-embedded
+- Requires Qdrant server on port 6334 (gRPC)
+
+See [LEARNING_SUMMARIZER.md](LEARNING_SUMMARIZER.md) for detailed architecture documentation.
 
 ## Model Recommendations
 

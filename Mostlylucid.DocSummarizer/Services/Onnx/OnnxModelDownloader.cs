@@ -78,7 +78,8 @@ public class OnnxModelDownloader
             await using (var contentStream = await response.Content.ReadAsStreamAsync(ct))
             await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
             {
-                if (_verbose && totalBytes > 1_000_000)
+                // Skip Spectre progress if in batch mode or not verbose
+                if (_verbose && totalBytes > 1_000_000 && !ProgressService.IsInInteractiveContext)
                 {
                     await AnsiConsole.Progress()
                         .AutoClear(true)
