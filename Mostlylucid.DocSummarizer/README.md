@@ -368,6 +368,7 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | Template | Words | Best For |
 |----------|-------|----------|
 | `default` | ~500 | General purpose |
+| `prose` | ~400 | Clean multi-paragraph prose (no metadata) |
 | `brief` | ~50 | Quick scanning |
 | `oneliner` | ~25 | Single sentence |
 | `bullets` | auto | Key takeaways |
@@ -378,6 +379,7 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | `citations` | auto | Key quotes with sources |
 | `bookreport` | ~800 | Book report style |
 | `meeting` | ~200 | Meeting notes with actions |
+| `strict` | ~60 | Ultra-concise, no fluff |
 
 ### Benchmarking
 
