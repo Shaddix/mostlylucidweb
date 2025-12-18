@@ -255,7 +255,20 @@ public class BatchProcessor
                 var excluded = _config.ExcludePatterns.Any(p =>
                     relativePath.Contains(p, StringComparison.OrdinalIgnoreCase));
 
-                if (!excluded) matchedFiles.Add(file);
+                if (!excluded)
+                {
+                    // Skip summary output files to prevent infinite loops
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    if (fileName.EndsWith("_summary", StringComparison.OrdinalIgnoreCase) ||
+                        fileName.EndsWith(".summary", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (_verbose)
+                            Spectre.Console.AnsiConsole.MarkupLine($"[dim]Skipping summary file: {Path.GetFileName(file)}[/]");
+                        continue;
+                    }
+                    
+                    matchedFiles.Add(file);
+                }
             }
         }
 

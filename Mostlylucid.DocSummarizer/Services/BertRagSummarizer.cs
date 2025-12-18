@@ -69,6 +69,137 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     private const string PipelineVersion = "v1";
     
     /// <summary>
+    /// Extract and retrieve segments without synthesis - for template benchmarking.
+    /// Returns the extraction result and retrieved segments that can be reused across templates.
+    /// </summary>
+    public async Task<(ExtractionResult extraction, List<Segment> retrieved)> ExtractAndRetrieveAsync(
+        string docId,
+        string markdown,
+        string? focusQuery = null,
+        ContentType contentType = ContentType.Unknown,
+        CancellationToken ct = default)
+    {
+        // Compute content hash for stable document identification
+        var contentHash = ComputeContentHash(markdown);
+        var stableDocId = CreateStableDocId(docId, contentHash);
+        var collectionName = _bertRagConfig.CollectionName;
+        
+        ExtractionResult extraction;
+        
+        // === Phase 1: Extract (or load from store) ===
+        if (_vectorStore != null && _bertRagConfig.ReuseExistingEmbeddings)
+        {
+            await _vectorStore.InitializeAsync(collectionName, 384, ct);
+            
+            var hasDoc = await _vectorStore.HasDocumentAsync(collectionName, stableDocId, ct);
+            if (hasDoc)
+            {
+                if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Loading from store[/]");
+                var storedSegments = await _vectorStore.GetDocumentSegmentsAsync(collectionName, stableDocId, ct);
+                
+                if (storedSegments.Count > 0)
+                {
+                    var topBySalience = storedSegments
+                        .OrderByDescending(s => s.SalienceScore)
+                        .Take(_retrievalConfig.TopK)
+                        .ToList();
+                    
+                    extraction = new ExtractionResult
+                    {
+                        AllSegments = storedSegments,
+                        TopBySalience = topBySalience,
+                        ContentType = contentType,
+                        ExtractionTime = TimeSpan.Zero
+                    };
+                    
+                    if (_verbose) AnsiConsole.MarkupLine($"[dim]Loaded {storedSegments.Count} segments from store[/]");
+                }
+                else
+                {
+                    extraction = await ExtractAndStoreAsync(stableDocId, markdown, contentType, ct);
+                }
+            }
+            else
+            {
+                extraction = await ExtractAndStoreAsync(stableDocId, markdown, contentType, ct);
+            }
+        }
+        else
+        {
+            if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Extraction[/]");
+            extraction = await _extractor.ExtractAsync(stableDocId, markdown, contentType, ct);
+        }
+        
+        if (extraction.AllSegments.Count == 0)
+        {
+            return (extraction, new List<Segment>());
+        }
+        
+        // === Phase 2: Retrieve ===
+        if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 2: Retrieval[/]");
+        var retrieved = await RetrieveAsync(extraction, focusQuery, ct);
+        
+        if (_verbose)
+        {
+            AnsiConsole.MarkupLine($"[dim]Retrieved {retrieved.Count} segments for synthesis[/]");
+        }
+        
+        return (extraction, retrieved);
+    }
+    
+    /// <summary>
+    /// Synthesize summary from pre-extracted and pre-retrieved segments.
+    /// Used for template benchmarking - allows running synthesis with different templates
+    /// on the same extraction/retrieval results.
+    /// </summary>
+    public async Task<DocumentSummary> SynthesizeFromRetrievedAsync(
+        string docId,
+        ExtractionResult extraction,
+        List<Segment> retrieved,
+        string? focusQuery = null,
+        CancellationToken ct = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        if (retrieved.Count == 0)
+        {
+            return CreateEmptySummary(docId, "No segments found in document");
+        }
+        
+        // === Phase 3: Synthesize (using current template) ===
+        if (_verbose) AnsiConsole.MarkupLine($"[bold cyan]Phase 3: Synthesis with template '{Template.Name}'[/]");
+        var summary = await SynthesizeAsync(docId, retrieved, extraction, focusQuery, ct);
+        
+        stopwatch.Stop();
+        
+        // Build trace with timing info
+        var coverage = extraction.AllSegments.Count == 0
+            ? 0
+            : (double)retrieved.Count / extraction.AllSegments.Count;
+        var trace = new SummarizationTrace(
+            docId,
+            extraction.AllSegments.Count,
+            retrieved.Count,
+            extraction.AllSegments
+                .Where(s => s.Type == SegmentType.Heading)
+                .Select(s => s.Text)
+                .Take(10)
+                .ToList(),
+            stopwatch.Elapsed,
+            CoverageScore: coverage,
+            CitationRate: 1.0
+        );
+        
+        return new DocumentSummary(
+            summary.ExecutiveSummary,
+            summary.TopicSummaries,
+            summary.OpenQuestions,
+            trace,
+            summary.Entities
+        );
+    }
+    
+    /// <summary>
     /// Canonicalize text before hashing: normalize whitespace, trim, lowercase.
     /// This ensures trivial formatting changes don't bust the cache.
     /// </summary>
@@ -332,6 +463,36 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     }
 
     /// <summary>
+    /// Calculate adaptive TopK based on document size and content type.
+    /// Larger documents and narrative content get more segments to maintain quality.
+    /// </summary>
+    private int CalculateAdaptiveTopK(int totalSegments, ContentType contentType)
+    {
+        if (!_retrievalConfig.AdaptiveTopK)
+            return _retrievalConfig.TopK;
+        
+        // Calculate TopK to meet minimum coverage percentage
+        var coverageTopK = (int)Math.Ceiling(totalSegments * _retrievalConfig.MinCoveragePercent / 100.0);
+        
+        // Apply narrative boost for fiction/stories (they need more context to avoid hallucinations)
+        if (contentType == ContentType.Narrative)
+        {
+            coverageTopK = (int)Math.Ceiling(coverageTopK * _retrievalConfig.NarrativeBoost);
+        }
+        
+        // Clamp to configured min/max
+        var adaptiveTopK = Math.Max(_retrievalConfig.MinTopK, Math.Min(_retrievalConfig.MaxTopK, coverageTopK));
+        
+        if (_verbose && adaptiveTopK != _retrievalConfig.TopK)
+        {
+            var contentLabel = contentType == ContentType.Narrative ? "narrative" : "expository";
+            AnsiConsole.MarkupLine($"[dim]Adaptive TopK: {adaptiveTopK} (base {_retrievalConfig.TopK}, {totalSegments} segments, {contentLabel})[/]");
+        }
+        
+        return adaptiveTopK;
+    }
+
+    /// <summary>
     /// Retrieve segments using hybrid search: Dense + BM25 (sparse) + Salience via RRF.
     /// 
     /// Three-way RRF combines:
@@ -354,11 +515,14 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         var segments = extraction.AllSegments;
         var topBySalience = extraction.TopBySalience;
         
+        // Calculate adaptive TopK based on document size and type
+        var effectiveTopK = CalculateAdaptiveTopK(segments.Count, extraction.ContentType);
+        
         // If no query, just return top by salience (generic summary)
         if (string.IsNullOrWhiteSpace(focusQuery))
         {
             if (_verbose) AnsiConsole.MarkupLine("[dim]No focus query - using salience-only ranking[/]");
-            return topBySalience.Take(_retrievalConfig.TopK).ToList();
+            return topBySalience.Take(effectiveTopK).ToList();
         }
         
         // Embed the query for dense retrieval
@@ -387,15 +551,15 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
                     focusQuery, 
                     bm25, 
                     _retrievalConfig.RrfK, 
-                    _retrievalConfig.TopK);
+                    effectiveTopK);
                 
-                if (_verbose) AnsiConsole.MarkupLine($"[dim]Using Hybrid RRF: Dense + BM25 + Salience (k={_retrievalConfig.RrfK})[/]");
+                if (_verbose) AnsiConsole.MarkupLine($"[dim]Using Hybrid RRF: Dense + BM25 + Salience (k={_retrievalConfig.RrfK}, topK={effectiveTopK})[/]");
             }
             else
             {
                 // Standard: Dense + Salience via two-way RRF
-                topByRetrieval = RetrieveWithRRF(segments, _retrievalConfig.RrfK, _retrievalConfig.TopK);
-                if (_verbose) AnsiConsole.MarkupLine($"[dim]Using RRF: Dense + Salience (k={_retrievalConfig.RrfK})[/]");
+                topByRetrieval = RetrieveWithRRF(segments, _retrievalConfig.RrfK, effectiveTopK);
+                if (_verbose) AnsiConsole.MarkupLine($"[dim]Using RRF: Dense + Salience (k={_retrievalConfig.RrfK}, topK={effectiveTopK})[/]");
             }
         }
         else
@@ -410,10 +574,10 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             topByRetrieval = segments
                 .Where(s => s.QuerySimilarity >= _retrievalConfig.MinSimilarity)
                 .OrderByDescending(s => s.RetrievalScore)
-                .Take(_retrievalConfig.TopK)
+                .Take(effectiveTopK)
                 .ToList();
             
-            if (_verbose) AnsiConsole.MarkupLine($"[dim]Using weighted sum (alpha={alpha})[/]");
+            if (_verbose) AnsiConsole.MarkupLine($"[dim]Using weighted sum (alpha={alpha}, topK={effectiveTopK})[/]");
         }
         
         // Merge with fallback bucket (ensures global coverage even if query is narrow)
@@ -561,8 +725,13 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         
         var rawSummary = await _ollama.GenerateAsync(synthesisPrompt, temperature: 0.3);
         var executiveSummary = CleanSynthesisResponse(rawSummary);
-        executiveSummary = ApplyCoverageGuard(executiveSummary, coverage);
-        executiveSummary = AppendCoverageFooter(executiveSummary, coverage);
+        
+        // Only add coverage metadata if template wants it
+        if (Template.IncludeCoverageMetadata)
+        {
+            executiveSummary = ApplyCoverageGuard(executiveSummary, coverage);
+            executiveSummary = AppendCoverageFooter(executiveSummary, coverage);
+        }
         
         // Build topic summaries from sections with lightweight annotations
         var topicSummaries = new List<TopicSummary>();
@@ -606,12 +775,15 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     /// </summary>
     private static ExtractedEntities ExtractEntities(List<Segment> segments, ContentType contentType)
     {
+        // Skip entity extraction for expository/technical content - produces noise (code tokens)
         if (contentType == ContentType.Expository)
-        {
             return ExtractedEntities.Empty;
-        }
-        // Improved heuristic entity extraction for narrative: merge proper noun spans and drop stopwords
+        
+        // For unknown content type, check if it looks like code-heavy content
         var text = string.Join(" ", segments.Select(s => s.Text));
+        if (contentType == ContentType.Unknown && LooksLikeCodeContent(text))
+            return ExtractedEntities.Empty;
+            
         var tokens = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(t => t.Trim(
                 ',', '.', '!', '?', ';', ':', '"', '\'', '(', ')', '[', ']', '{', '}', '—', '–'))
@@ -624,13 +796,28 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         var monthStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         var miscStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Baker", "Street", "Wharf" };
         
+        // Code/technical keywords that should not be treated as character names
+        var codeStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            // Assembly/low-level
+            "MOV", "MOVX", "CALL", "RET", "JMP", "JNZ", "JZ", "PUSH", "POP", "ADD", "SUB", "MUL", "DIV",
+            // VB/Basic
+            "Dim", "Sub", "Function", "End", "If", "Then", "Else", "For", "Next", "Do", "Loop", "While",
+            // C-style
+            "Int", "Void", "Char", "Float", "Double", "Bool", "String", "Null", "True", "False",
+            // Common programming
+            "API", "HTTP", "JSON", "XML", "HTML", "CSS", "URL", "URI", "SQL", "REST", "GET", "POST", "PUT", "DELETE",
+            "CPU", "GPU", "RAM", "ROM", "BIOS", "FPGA", "ASIC", "VHDL", "HDL", "RTL",
+            // General technical acronyms
+            "ID", "IO", "UI", "UX", "OS", "VM", "SDK", "IDE", "CLI", "GUI"
+        };
+        
         var candidates = new List<string>();
         int i = 0;
         while (i < tokens.Count)
         {
             var tok = tokens[i];
-            // Start of a proper span: capitalized or honorific
-            if (IsProper(tok, honorifics))
+            if (IsProper(tok, honorifics, codeStop))
             {
                 var span = new List<string> { tok };
                 var j = i + 1;
@@ -649,7 +836,6 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             }
         }
         
-        // Merge duplicates and filter
         var merged = candidates
             .Select(c => c.Trim())
             .Where(c => c.Length > 2)
@@ -661,35 +847,55 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         var final = new List<string>();
         foreach (var name in merged)
         {
-            // Drop standalone stopwords
             if (dayStop.Contains(name) || monthStop.Contains(name)) continue;
             if (placeStop.Contains(name)) continue;
             if (honorifics.Contains(name)) continue;
             if (miscStop.Contains(name)) continue;
-            
-            // Drop single-word common places unless combined
+            if (codeStop.Contains(name)) continue;
             if (name.Equals("Street", StringComparison.OrdinalIgnoreCase) || name.Equals("Wharf", StringComparison.OrdinalIgnoreCase))
                 continue;
-            
+            // Skip all-uppercase words (likely acronyms/code)
+            if (name.Length <= 5 && name.All(char.IsUpper))
+                continue;
             final.Add(name);
             if (final.Count >= 12) break;
         }
         
-        // Narrative: treat as characters; Expository: keep same list as characters for now
         var characters = contentType == ContentType.Narrative ? final : final;
         return new ExtractedEntities(characters, new List<string>(), new List<string>(), new List<string>(), new List<string>());
         
-        bool IsProper(string token, HashSet<string> honors) =>
-            honors.Contains(token) || (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(char.IsLetter));
+        bool IsProper(string token, HashSet<string> honors, HashSet<string> codeWords)
+        {
+            // Reject code keywords
+            if (codeWords.Contains(token)) return false;
+            // Reject all-caps short words (likely acronyms/code)
+            if (token.Length <= 5 && token.All(char.IsUpper)) return false;
+            // Accept honorifics or proper nouns (capital start, rest lowercase letters)
+            return honors.Contains(token) || 
+                   (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c)));
+        }
         
         bool IsContinuation(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return false;
-            if (placeStop.Contains(token)) return true; // allow Baker Street
+            if (placeStop.Contains(token)) return true;
             if (honorifics.Contains(token)) return true;
-            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(char.IsLetter)) return true;
+            // Only continue with proper nouns (capital start, rest lowercase)
+            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c))) return true;
             return false;
         }
+    }
+    
+    /// <summary>
+    /// Check if text appears to be code-heavy content (FPGA, assembly, programming)
+    /// </summary>
+    private static bool LooksLikeCodeContent(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        var codeIndicators = new[] { "```", "function", "class", "void", "int ", "return", "if (", "for (", "while (", 
+            "0x", "mov ", "call ", "push ", "pop ", "fpga", "vhdl", "register", "memory address" };
+        var codeCount = codeIndicators.Count(ind => lower.Contains(ind));
+        return codeCount >= 3;
     }
 
     /// <summary>
@@ -727,8 +933,10 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     /// 
     /// For NARRATIVE (fiction): Focus on plot, characters, setting, themes
     /// For EXPOSITORY (technical): Focus on key points, structure, citations
+    /// 
+    /// If template has a custom ExecutivePrompt, use that instead.
     /// </summary>
-    private static string BuildSynthesisPrompt(
+    private string BuildSynthesisPrompt(
         ContentType contentType,
         int targetWords,
         string? focusQuery,
@@ -737,9 +945,37 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         double coverage)
     {
         var focusLine = string.IsNullOrEmpty(focusQuery) ? "" : $"FOCUS: {focusQuery}\n";
-        var coverageLine = coverage < 0.05
-            ? "Coverage is very low (<5%). Use cautious language like 'in the sampled sections' and avoid definitive endings."
-            : "Use standard confident tone consistent with evidence.";
+        
+        // For short templates, don't add coverage warnings - they bloat the output
+        var isCompact = targetWords <= 100;
+        var coverageLine = isCompact ? "" : (coverage < 0.05
+            ? "Note: Coverage is low. Focus on what IS present, avoid definitive conclusions about the whole."
+            : "");
+        
+        // Check if template has custom prompt - if so, use it with context
+        if (!string.IsNullOrEmpty(Template.ExecutivePrompt))
+        {
+            // Build topic summaries string from context for template placeholder
+            var topicSummaries = context;
+            var customPrompt = Template.GetExecutivePrompt(topicSummaries, focusQuery);
+            
+            // Add strict word limit for compact templates
+            var wordLimit = isCompact 
+                ? $"\n\nSTRICT WORD LIMIT: Maximum {targetWords} words. Do NOT exceed this. Be extremely concise."
+                : "";
+            
+            return customPrompt + wordLimit;
+        }
+        
+        // Build word limit instruction - stricter for small targets
+        var wordInstruction = targetWords switch
+        {
+            <= 30 => $"STRICT: Write EXACTLY 1 sentence, maximum {targetWords} words. No preamble.",
+            <= 60 => $"STRICT: Write 2-3 sentences maximum, no more than {targetWords} words total.",
+            <= 100 => $"STRICT: Maximum {targetWords} words. Be extremely concise.",
+            <= 200 => $"Write approximately {targetWords} words (±20%).",
+            _ => $"Write approximately {targetWords} words in 3-6 paragraphs."
+        };
         
         if (contentType == ContentType.Narrative)
         {
@@ -755,44 +991,62 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
                 5. Identify the INCITING INCIDENT (what starts the plot)
                 6. Note any THEMES or central conflicts
                 7. Use past tense, third person
-                8. Include citation references like [s1], [s2] as evidence
-                9. Write ~{targetWords} words
+                8. {wordInstruction}
 
-                COVERAGE RULE:
+                IMPORTANT:
+                - Do NOT include citation references like [s1], [s2] in your text - write clean prose
+                - Do NOT quote dialogue verbatim (paraphrase instead)
+                - Do NOT list every conversation ("He said X, she replied Y")
+                - Do NOT treat all moments as equally important
+                - Do NOT invent characters or events not in the segments below
+
                 {coverageLine}
-
-                DO NOT:
-                - Quote dialogue verbatim (paraphrase instead)
-                - List every conversation ("He said X, she replied Y")
-                - Treat all moments as equally important
 
                 {focusLine}
                 {sectionStructure}
                 {context}
 
-                Write a book report that describes what happens in this story:
+                Write a book report that describes what happens:
                 """;
         }
         else
         {
-            // EXPOSITORY/TECHNICAL prompt - standard summary
+            // EXPOSITORY/TECHNICAL prompt - improved synthesis
             return $"""
-                You are a precise summarization assistant. Your job is to synthesize the retrieved segments into a fluent summary.
+                You are generating a factual executive summary from retrieved document segments.
+                Your goals are: accuracy, clarity, non-redundancy, readable human prose.
+                This is NOT a rewrite of source text. It is a synthesis.
 
                 RULES:
-                1. Use ONLY information from the retrieved segments
-                2. PRESERVE citation references like [s1], [s2], [li3] etc.
-                3. Write fluent, coherent prose (~{targetWords} words)
-                4. Organize logically (intro → main points → conclusion)
-                5. Do NOT add information not in the segments
-                6. Do NOT make judgments about importance - that's already been done
-                7. If coverage is low (<5%), use cautious language ("in the sampled sections") and avoid definitive conclusions.
+                1. Do NOT mention segment IDs, citations, or list indices in the prose.
+                   Evidence tracking is handled separately - write clean readable text.
+                2. Do NOT repeat the same idea more than once, even if it appears in multiple segments.
+                   If several segments say the same thing, summarize the idea once.
+                3. Prefer the author's intent over literal phrasing.
+                   If the author corrects themselves, describe the correction clearly and briefly.
+                4. Write like a technical blog summary, not an academic paper.
+                   Natural language. No parenthetical references. No hedging unless uncertainty is explicit.
+                5. If the document is reflective or corrective, capture the arc:
+                   - what was originally claimed
+                   - why it was wrong or outdated  
+                   - what the author now believes or intends to do
+                6. Avoid absolutist or textbook language unless the source explicitly uses it.
+                   Good: "the author realised compression doesn't remove encryption"
+                   Bad: "compression and encryption are exclusive processes"
+                7. Assume the reader is technical but not reading the source.
+                   Be concise, but explanatory where it helps understanding.
+                8. {wordInstruction}
+
+                {coverageLine}
+
+                ANTI-REDUNDANCY: Before writing, mentally group the retrieved segments by meaning.
+                Each group should appear AT MOST ONCE in the summary.
 
                 {focusLine}
                 {sectionStructure}
                 {context}
 
-                Write a fluent summary that preserves all citations:
+                Write a clean executive summary (no citations in text):
                 """;
         }
     }

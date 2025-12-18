@@ -83,6 +83,12 @@ public class SummaryTemplate
     public AudienceLevel Audience { get; set; } = AudienceLevel.General;
 
     /// <summary>
+    ///     Include coverage metadata (disclaimer + footer).
+    ///     Set to false for clean prose output without any metadata.
+    /// </summary>
+    public bool IncludeCoverageMetadata { get; set; } = true;
+
+    /// <summary>
     ///     Get the LLM prompt for executive summary based on template settings
     /// </summary>
     public string GetExecutivePrompt(string topicSummaries, string? focus)
@@ -243,6 +249,7 @@ public class SummaryTemplate
             IncludeCitations = false,
             IncludeQuestions = false,
             IncludeTrace = false,
+            IncludeCoverageMetadata = false,
             Tone = SummaryTone.Professional,
             Audience = AudienceLevel.Executive,
             ExecutivePrompt = """
@@ -250,6 +257,7 @@ public class SummaryTemplate
 
                               Write 2-3 sentences summarizing the main point of this document.
                               Use ONLY facts from the text above. Be specific. No hedging.
+                              STRICT: Maximum 50 words total.
                               """
         };
 
@@ -267,13 +275,51 @@ public class SummaryTemplate
             IncludeCitations = false,
             IncludeQuestions = false,
             IncludeTrace = false,
+            IncludeCoverageMetadata = false,
             Tone = SummaryTone.Professional,
             Audience = AudienceLevel.Executive,
             ExecutivePrompt = """
                               {topics}
 
-                              Write ONE sentence (≤25 words) capturing the main point.
+                              Write ONE sentence (maximum 25 words) capturing the main point.
                               Use specific facts from text. No hedging. No "this document discusses".
+                              """
+        };
+
+        /// <summary>
+        ///     Prose - clean multi-paragraph summary without any metadata or formatting
+        /// </summary>
+        public static SummaryTemplate Prose => new()
+        {
+            Name = "prose",
+            Description = "Clean multi-paragraph prose summary - no metadata, just content",
+            TargetWords = 400,
+            Paragraphs = 4,
+            OutputStyle = OutputStyle.Prose,
+            IncludeTopics = false,
+            IncludeCitations = false,
+            IncludeQuestions = false,
+            IncludeTrace = false,
+            IncludeCoverageMetadata = false,
+            Tone = SummaryTone.Professional,
+            Audience = AudienceLevel.General,
+            ExecutivePrompt = """
+                              {topics}
+
+                              Write a clear, well-structured summary in 3-5 paragraphs (~400 words).
+
+                              Structure:
+                              - Paragraph 1: What is this about? The main subject and context.
+                              - Paragraph 2-3: Key points, findings, or events. What matters most.
+                              - Paragraph 4: Conclusions, implications, or outcomes (if applicable).
+
+                              Rules:
+                              - Write flowing prose, not bullet points
+                              - Use specific names, terms, and facts from the text
+                              - No citations, references, or metadata
+                              - No "this document discusses" or "the author states"
+                              - Write as if explaining to someone who hasn't read the source
+                              - Be informative and direct
                               """
         };
 
@@ -454,22 +500,31 @@ public class SummaryTemplate
             IncludeCitations = false,
             IncludeQuestions = false,
             IncludeTrace = false,
+            IncludeCoverageMetadata = false,
             Tone = SummaryTone.Casual,
             Audience = AudienceLevel.General,
             ExecutivePrompt = """
                               {topics}
 
-                              Book report using ONLY information above. Third person prose.
+                              Write a book report based ONLY on the text segments above.
 
-                              Overview: Title and author (from DOCUMENT line). Genre. 2 sentences.
-                              Setting: Where/when (from text). 2 sentences.
-                              Characters: 3-4 main characters mentioned above. 1 paragraph.
-                              Plot: Events described above only. 2 paragraphs.
-                              Themes: 2-3 themes evident in text. 1 paragraph.
+                              CRITICAL ANTI-HALLUCINATION RULES:
+                              - You have LIMITED excerpts, not the full book
+                              - ONLY describe scenes/events explicitly shown in segments above
+                              - ONLY mention characters whose names appear in the text above
+                              - If you don't see enough plot details, say "the excerpts show..." 
+                              - Do NOT fill gaps with knowledge of the book from elsewhere
+                              - Do NOT invent character relationships not stated above
+                              - If unsure about a detail, OMIT it rather than guess
 
-                              STRICT: Only use names, events, places from the text above.
-                              Do NOT add characters or plot from memory of other books.
-                              NO "the story shows". NO first person.
+                              Structure (~400 words):
+                              1. Overview: Title/author if visible. Genre based on content. (2 sentences)
+                              2. Setting: Only locations/times explicitly mentioned. (2 sentences)
+                              3. Characters: Only those named in text above with roles shown. (1 paragraph)
+                              4. What happens: Describe ONLY scenes shown in excerpts. (2 paragraphs)
+                              5. Themes: Based on what's visible in excerpts. (1 paragraph)
+
+                              Write in third person past tense. No dialogue quotes.
                               """
         };
 
@@ -525,6 +580,7 @@ public class SummaryTemplate
             IncludeCitations = true,
             IncludeQuestions = false,
             IncludeTrace = false,
+            IncludeCoverageMetadata = false,
             Tone = SummaryTone.Professional,
             Audience = AudienceLevel.Executive,
             ExecutivePrompt = """
@@ -539,7 +595,6 @@ public class SummaryTemplate
 
                               CONTENT RULES:
                               - Lead with highest-confidence facts only
-                              - Include [chunk-N] citations after each claim
                               - If unsure, OMIT - do NOT hedge
                               - NO phrases like "appears to", "seems", "possibly", "likely", "assuming"
                               - Synthesize insights, do NOT restate facts
@@ -551,7 +606,7 @@ public class SummaryTemplate
         /// </summary>
         public static IReadOnlyList<string> AvailableTemplates => new[]
         {
-            "default", "brief", "oneliner", "bullets", "executive", "detailed", "technical", "academic", "citations", "bookreport", "meeting", "strict"
+            "default", "prose", "brief", "oneliner", "bullets", "executive", "detailed", "technical", "academic", "citations", "bookreport", "meeting", "strict"
         };
 
         /// <summary>
@@ -563,6 +618,7 @@ public class SummaryTemplate
             {
                 "brief" => Brief,
                 "oneliner" or "one-liner" => OneLiner,
+                "prose" or "plain" or "clean" => Prose,
                 "bullets" or "bullet" => Bullets,
                 "executive" or "exec" => Executive,
                 "detailed" or "full" => Detailed,

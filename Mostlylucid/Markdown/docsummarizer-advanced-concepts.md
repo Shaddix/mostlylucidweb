@@ -966,7 +966,7 @@ public class TextAnalysisService
 }
 ```
 
-## The Complete BERT-RAG Pipeline
+## The Complete BertRag Pipeline
 
 DocSummarizer's production pipeline (`BertRagSummarizer`) combines all these concepts:
 

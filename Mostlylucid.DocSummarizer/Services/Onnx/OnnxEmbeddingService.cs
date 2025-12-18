@@ -11,6 +11,7 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 {
     private readonly EmbeddingModelInfo _modelInfo;
     private readonly int _maxSequenceLength;
+    private readonly OnnxConfig _config;
     private InferenceSession? _session;
     private HuggingFaceTokenizer? _tokenizer;
     private bool _initialized;
@@ -20,6 +21,7 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
     public OnnxEmbeddingService(OnnxConfig config, bool verbose = false)
     {
+        _config = config;
         _modelInfo = OnnxModelRegistry.GetEmbeddingModel(config.EmbeddingModel, config.UseQuantized);
         _maxSequenceLength = Math.Min(config.MaxEmbeddingSequenceLength, _modelInfo.MaxSequenceLength);
         _downloader = new OnnxModelDownloader(config, verbose);
@@ -45,13 +47,14 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
             var paths = await _downloader.EnsureEmbeddingModelAsync(_modelInfo, ct);
             
-            var options = new SessionOptions
-            {
-                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
-                ExecutionMode = ExecutionMode.ORT_SEQUENTIAL
-            };
+            var options = CreateSessionOptions();
 
             _session = new InferenceSession(paths.ModelPath, options);
+            
+            if (ProgressService.ShouldShowVerbose(_verbose))
+            {
+                Console.WriteLine($"[ONNX] Model loaded: {_modelInfo.Name} ({_modelInfo.EmbeddingDimension}d)");
+            }
             
             // Prefer tokenizer.json (universal format) with vocab.txt fallback
             _tokenizer = File.Exists(paths.TokenizerPath)
@@ -204,6 +207,81 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
     {
         _session?.Dispose();
         _initLock.Dispose();
+    }
+    
+    private SessionOptions CreateSessionOptions()
+    {
+        var options = new SessionOptions
+        {
+            GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+            ExecutionMode = ExecutionMode.ORT_SEQUENTIAL
+        };
+        
+        if (_config.InferenceThreads > 0)
+        {
+            options.IntraOpNumThreads = _config.InferenceThreads;
+        }
+        
+        // Configure execution provider based on config
+        switch (_config.ExecutionProvider)
+        {
+            case OnnxExecutionProvider.Cuda:
+                try
+                {
+                    options.AppendExecutionProvider_CUDA(_config.GpuDeviceId);
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] Using CUDA GPU device {_config.GpuDeviceId}");
+                }
+                catch (Exception ex)
+                {
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] CUDA not available: {ex.Message}, falling back to CPU");
+                }
+                break;
+                
+            case OnnxExecutionProvider.DirectMl:
+                try
+                {
+                    options.AppendExecutionProvider_DML(_config.GpuDeviceId);
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] Using DirectML GPU device {_config.GpuDeviceId}");
+                }
+                catch (Exception ex)
+                {
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] DirectML not available: {ex.Message}, falling back to CPU");
+                }
+                break;
+                
+            case OnnxExecutionProvider.Auto:
+                // Try DirectML first (has package installed), then CUDA, then CPU
+                var gpuSelected = false;
+                try
+                {
+                    options.AppendExecutionProvider_DML(_config.GpuDeviceId);
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] Auto-selected DirectML GPU device {_config.GpuDeviceId}");
+                    gpuSelected = true;
+                }
+                catch (Exception dmlEx)
+                {
+                    ProgressService.WriteVerbose(_verbose, $"[ONNX] DirectML not available: {dmlEx.Message}");
+                    try
+                    {
+                        options.AppendExecutionProvider_CUDA(_config.GpuDeviceId);
+                        ProgressService.WriteVerbose(_verbose, $"[ONNX] Auto-selected CUDA GPU device {_config.GpuDeviceId}");
+                        gpuSelected = true;
+                    }
+                    catch (Exception cudaEx)
+                    {
+                        ProgressService.WriteVerbose(_verbose, $"[ONNX] CUDA not available: {cudaEx.Message}");
+                    }
+                }
+                if (!gpuSelected) ProgressService.WriteVerbose(_verbose, "[ONNX] No GPU available, using CPU");
+                break;
+                
+            case OnnxExecutionProvider.Cpu:
+            default:
+                ProgressService.WriteVerbose(_verbose, "[ONNX] Using CPU");
+                break;
+        }
+        
+        return options;
     }
 }
 

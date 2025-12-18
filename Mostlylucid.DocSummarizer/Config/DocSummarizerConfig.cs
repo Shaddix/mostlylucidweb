@@ -68,6 +68,21 @@ public class DocSummarizerConfig
     ///     BertRag pipeline configuration (vector storage, persistence)
     /// </summary>
     public BertRagConfig BertRag { get; set; } = new();
+    
+    /// <summary>
+    ///     Extraction phase configuration (segment parsing and salience scoring)
+    /// </summary>
+    public ExtractionConfigSection Extraction { get; set; } = new();
+    
+    /// <summary>
+    ///     Retrieval phase configuration (segment selection for synthesis)
+    /// </summary>
+    public RetrievalConfigSection Retrieval { get; set; } = new();
+    
+    /// <summary>
+    ///     Adaptive retrieval configuration (auto-scales based on document size/type)
+    /// </summary>
+    public AdaptiveRetrievalConfig AdaptiveRetrieval { get; set; } = new();
 }
 
 /// <summary>
@@ -749,4 +764,150 @@ public class BertRagConfig
     ///     Only applies when PersistVectors = true and VectorStore = Qdrant.
     /// </summary>
     public bool ReuseExistingEmbeddings { get; set; } = true;
+}
+
+/// <summary>
+///     Extraction phase configuration (segment parsing and salience scoring)
+/// </summary>
+public class ExtractionConfigSection
+{
+    /// <summary>
+    ///     Fraction of segments to keep in salience ranking (0.15 = top 15%)
+    /// </summary>
+    public double ExtractionRatio { get; set; } = 0.15;
+    
+    /// <summary>
+    ///     Minimum segments to extract regardless of ratio
+    /// </summary>
+    public int MinSegments { get; set; } = 10;
+    
+    /// <summary>
+    ///     Maximum segments to extract regardless of ratio
+    /// </summary>
+    public int MaxSegments { get; set; } = 100;
+    
+    /// <summary>
+    ///     Maximum segments to embed (pre-filter if document has more)
+    /// </summary>
+    public int MaxSegmentsToEmbed { get; set; } = 200;
+    
+    /// <summary>
+    ///     MMR lambda: 0=diversity, 1=relevance (0.7 = slight relevance bias)
+    /// </summary>
+    public double MmrLambda { get; set; } = 0.7;
+    
+    /// <summary>
+    ///     Convert to the internal ExtractionConfig model
+    /// </summary>
+    public ExtractionConfig ToExtractionConfig() => new()
+    {
+        ExtractionRatio = ExtractionRatio,
+        MinSegments = MinSegments,
+        MaxSegments = MaxSegments,
+        MaxSegmentsToEmbed = MaxSegmentsToEmbed,
+        MmrLambda = MmrLambda
+    };
+}
+
+/// <summary>
+///     Retrieval phase configuration (segment selection for synthesis)
+/// </summary>
+public class RetrievalConfigSection
+{
+    /// <summary>
+    ///     Base number of segments to retrieve for synthesis.
+    ///     May be scaled by adaptive retrieval based on document size/type.
+    /// </summary>
+    public int TopK { get; set; } = 25;
+    
+    /// <summary>
+    ///     Always include top-N salient segments regardless of query match
+    /// </summary>
+    public int FallbackCount { get; set; } = 5;
+    
+    /// <summary>
+    ///     Use RRF (Reciprocal Rank Fusion) for combining scores - recommended
+    /// </summary>
+    public bool UseRRF { get; set; } = true;
+    
+    /// <summary>
+    ///     RRF k parameter (standard is 60)
+    /// </summary>
+    public int RrfK { get; set; } = 60;
+    
+    /// <summary>
+    ///     Use hybrid search (BM25 + dense + salience) - recommended
+    /// </summary>
+    public bool UseHybridSearch { get; set; } = true;
+    
+    /// <summary>
+    ///     Query-salience blend alpha (only used when UseRRF = false)
+    /// </summary>
+    public double Alpha { get; set; } = 0.6;
+    
+    /// <summary>
+    ///     Minimum similarity threshold (only for non-RRF mode)
+    /// </summary>
+    public double MinSimilarity { get; set; } = 0.3;
+    
+    /// <summary>
+    ///     Convert to the internal RetrievalConfig model
+    /// </summary>
+    public RetrievalConfig ToRetrievalConfig() => new()
+    {
+        TopK = TopK,
+        FallbackCount = FallbackCount,
+        UseRRF = UseRRF,
+        RrfK = RrfK,
+        UseHybridSearch = UseHybridSearch,
+        Alpha = Alpha,
+        MinSimilarity = MinSimilarity
+    };
+}
+
+/// <summary>
+///     Adaptive retrieval configuration - auto-scales TopK based on document characteristics
+/// </summary>
+public class AdaptiveRetrievalConfig
+{
+    /// <summary>
+    ///     Enable adaptive scaling of TopK based on document size and content type.
+    ///     When enabled, longer documents and narrative content get more segments.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+    
+    /// <summary>
+    ///     Minimum coverage percentage to aim for (5.0 = retrieve ~5% of segments).
+    ///     Higher values improve summary quality but increase synthesis time.
+    /// </summary>
+    public double MinCoveragePercent { get; set; } = 5.0;
+    
+    /// <summary>
+    ///     Minimum TopK regardless of document size
+    /// </summary>
+    public int MinTopK { get; set; } = 15;
+    
+    /// <summary>
+    ///     Maximum TopK regardless of document size (limited by LLM context)
+    /// </summary>
+    public int MaxTopK { get; set; } = 100;
+    
+    /// <summary>
+    ///     Boost factor for narrative content (fiction, stories).
+    ///     Fiction needs more context to avoid hallucinations.
+    ///     1.5 = retrieve 50% more segments for narrative content.
+    /// </summary>
+    public double NarrativeBoost { get; set; } = 1.5;
+    
+    /// <summary>
+    ///     Apply adaptive settings to a RetrievalConfig
+    /// </summary>
+    public void ApplyTo(RetrievalConfig config)
+    {
+        config.AdaptiveTopK = Enabled;
+        config.MinCoveragePercent = MinCoveragePercent;
+        config.MinTopK = MinTopK;
+        config.MaxTopK = MaxTopK;
+        config.NarrativeBoost = NarrativeBoost;
+    }
 }

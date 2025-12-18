@@ -475,8 +475,13 @@ public static class OutputFormatter
             _ => ".txt"
         };
 
-        // Create output file path
+        // Create output file path - avoid double _summary suffix
         var baseFileName = Path.GetFileNameWithoutExtension(fileName);
+        if (baseFileName.EndsWith("_summary", StringComparison.OrdinalIgnoreCase))
+        {
+            // Already has _summary suffix, don't add another
+            baseFileName = baseFileName[..^8]; // Remove existing _summary
+        }
         var outputPath = Path.Combine(directory, $"{baseFileName}_summary{extension}");
 
         // Write file

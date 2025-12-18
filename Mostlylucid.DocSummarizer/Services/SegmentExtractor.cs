@@ -43,7 +43,7 @@ public class SegmentExtractor : IDisposable
         var stopwatch = Stopwatch.StartNew();
         
         // 1. Parse document into segments
-        if (_verbose) AnsiConsole.MarkupLine("[dim]Parsing document into segments...[/]");
+        ProgressService.WriteVerboseMarkup(_verbose, "[dim]Parsing document into segments...[/]");
         var segments = ParseToSegments(docId, markdown, contentType);
         
         if (segments.Count == 0)
@@ -62,11 +62,11 @@ public class SegmentExtractor : IDisposable
         if (contentType == ContentType.Unknown)
         {
             effectiveContentType = DetectContentTypeFromSegments(segments);
-            if (_verbose && effectiveContentType != ContentType.Unknown)
+            if (ProgressService.ShouldShowVerbose(_verbose) && effectiveContentType != ContentType.Unknown)
                 AnsiConsole.MarkupLine($"[dim]Detected content type: {effectiveContentType}[/]");
         }
         
-        if (_verbose)
+        if (ProgressService.ShouldShowVerbose(_verbose))
         {
             var counts = segments.GroupBy(s => s.Type).Select(g => $"{g.Key}:{g.Count()}");
             AnsiConsole.MarkupLine($"[dim]Found {segments.Count} segments ({string.Join(", ", counts)})[/]");
@@ -87,20 +87,20 @@ public class SegmentExtractor : IDisposable
             );
             targetEmbedCount = Math.Min(targetEmbedCount, 500); // Hard cap at 500
             
-            if (_verbose) AnsiConsole.MarkupLine($"[dim]Large document ({segments.Count} segments) - semantic pre-filtering to ~{targetEmbedCount}[/]");
+            ProgressService.WriteVerboseMarkup(_verbose, $"[dim]Large document ({segments.Count} segments) - semantic pre-filtering to ~{targetEmbedCount}[/]");
             (segmentsToEmbed, centroid) = await SemanticPreFilterAsync(segments, targetEmbedCount, ct);
-            if (_verbose) AnsiConsole.MarkupLine($"[dim]Pre-filtered to {segmentsToEmbed.Count} segments[/]");
+            ProgressService.WriteVerboseMarkup(_verbose, $"[dim]Pre-filtered to {segmentsToEmbed.Count} segments[/]");
         }
         else if (segments.Count > _config.MaxSegmentsToEmbed)
         {
             // Fallback: if pre-filter disabled but too many segments, use hierarchical
-            if (_verbose) AnsiConsole.MarkupLine($"[dim]Large document ({segments.Count} segments) - using hierarchical extraction[/]");
+            ProgressService.WriteVerboseMarkup(_verbose, $"[dim]Large document ({segments.Count} segments) - using hierarchical extraction[/]");
             return await ExtractHierarchicalAsync(docId, segments, contentType, stopwatch, ct);
         }
         else
         {
             // Standard extraction for normal-sized documents
-            if (_verbose) AnsiConsole.MarkupLine("[dim]Generating embeddings...[/]");
+            ProgressService.WriteVerboseMarkup(_verbose, "[dim]Generating embeddings...[/]");
             await GenerateEmbeddingsAsync(segmentsToEmbed, ct);
             
             // Calculate document centroid
@@ -108,7 +108,7 @@ public class SegmentExtractor : IDisposable
         }
         
         // 4. Score segments by salience using MMR (with content-type adjustments)
-        if (_verbose) AnsiConsole.MarkupLine("[dim]Computing salience scores with MMR...[/]");
+        ProgressService.WriteVerboseMarkup(_verbose, "[dim]Computing salience scores with MMR...[/]");
         ComputeSalienceScores(segments, centroid, effectiveContentType);
         
         // 5. Build fallback bucket (top-N by salience for coverage guarantee)
@@ -1434,79 +1434,154 @@ public class SegmentExtractor : IDisposable
     /// - Upweight character introductions (first mentions of names)
     /// - Upweight plot-relevant sentences (contains action verbs)
     /// 
-    /// For EXPOSITORY (technical):
-    /// - Normal weighting (position-based is sufficient)
+    /// For EXPOSITORY (technical/academic):
+    /// - De-weight code blocks (appendix material)
+    /// - De-weight reference lists
+    /// - Upweight abstract, introduction, conclusion sections
     /// </summary>
     private static double ComputeContentTypeWeight(Segment segment, ContentType contentType)
     {
-        // Default weight
+        // === EXPOSITORY/TECHNICAL ADJUSTMENTS ===
+        if (contentType == ContentType.Expository || contentType == ContentType.Unknown)
+        {
+            var weight = 1.0;
+            var text = segment.Text;
+            var heading = segment.HeadingPath.ToLowerInvariant();
+            var sectionTitle = segment.SectionTitle.ToLowerInvariant();
+            
+            // 1. HEAVILY DE-WEIGHT CODE BLOCKS (usually appendix/implementation details)
+            if (segment.Type == SegmentType.CodeBlock)
+            {
+                weight *= 0.2; // Code is rarely summary-worthy
+            }
+            
+            // 2. DE-WEIGHT REFERENCE/BIBLIOGRAPHY SECTIONS
+            if (heading.Contains("reference") || heading.Contains("bibliograph") || 
+                sectionTitle.Contains("reference") || sectionTitle.Contains("bibliograph"))
+            {
+                weight *= 0.1; // References are boilerplate
+            }
+            
+            // Also de-weight list items that look like citations [1] Author, "Title"...
+            if (segment.Type == SegmentType.ListItem)
+            {
+                var looksLikeCitation = System.Text.RegularExpressions.Regex.IsMatch(
+                    text, @"^\[\d+\]|^\d+\.\s+[A-Z]\.\s*[A-Z]|Proceedings|Conference|Journal|IEEE|ACM",
+                    System.Text.RegularExpressions.RegexOptions.None);
+                if (looksLikeCitation)
+                    weight *= 0.15;
+            }
+            
+            // 3. DE-WEIGHT APPENDIX/VITA/ACKNOWLEDGEMENTS
+            if (heading.Contains("appendix") || heading.Contains("vita") || 
+                heading.Contains("acknowledgement") || heading.Contains("acknowledgment") ||
+                sectionTitle.Contains("appendix") || sectionTitle.Contains("vita"))
+            {
+                weight *= 0.2;
+            }
+            
+            // 4. UPWEIGHT KEY ACADEMIC SECTIONS
+            // Abstract - highest priority
+            if (heading.Contains("abstract") || sectionTitle.Contains("abstract"))
+            {
+                weight *= 2.5;
+            }
+            // Introduction/Conclusion - high priority
+            else if (heading.Contains("introduction") || heading.Contains("conclusion") ||
+                     sectionTitle.Contains("introduction") || sectionTitle.Contains("conclusion"))
+            {
+                weight *= 1.8;
+            }
+            // Summary/Overview - high priority
+            else if (heading.Contains("summary") || heading.Contains("overview") ||
+                     sectionTitle.Contains("summary") || sectionTitle.Contains("overview"))
+            {
+                weight *= 1.6;
+            }
+            // Results/Discussion - moderate priority
+            else if (heading.Contains("result") || heading.Contains("discussion") ||
+                     sectionTitle.Contains("result") || sectionTitle.Contains("discussion"))
+            {
+                weight *= 1.3;
+            }
+            
+            // 5. UPWEIGHT HEADINGS (structural markers)
+            if (segment.Type == SegmentType.Heading && weight > 0.3)
+            {
+                weight *= 1.5;
+            }
+            
+            return weight;
+        }
+        
+        // === NARRATIVE (fiction) uses existing logic below ===
         if (contentType != ContentType.Narrative)
             return 1.0;
         
         // === FICTION-SPECIFIC ADJUSTMENTS ===
-        var text = segment.Text;
-        var weight = 1.0;
+        var narrativeText = segment.Text;
+        var narrativeWeight = 1.0;
         
         // 1. De-weight SHORT DIALOGUE (conversational filler)
         // Dialogue starts with quote, is short, ends with speech tag
-        var isDialogue = text.StartsWith('"') || text.StartsWith('"') || text.StartsWith("'");
-        var isShort = text.Length < 60;
+        var isDialogue = narrativeText.StartsWith('"') || narrativeText.StartsWith('"') || narrativeText.StartsWith("'");
+        var isShort = narrativeText.Length < 60;
         var hasSimpleSpeechTag = System.Text.RegularExpressions.Regex.IsMatch(
-            text, @"\b(said|asked|replied|answered|cried|shouted|whispered|muttered)\b", 
+            narrativeText, @"\b(said|asked|replied|answered|cried|shouted|whispered|muttered)\b", 
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         
         if (isDialogue && isShort)
         {
             // Very short dialogue ("Yes", "No, indeed") - heavily de-weight
-            if (text.Length < 30)
-                weight *= 0.2;
+            if (narrativeText.Length < 30)
+                narrativeWeight *= 0.2;
             else
-                weight *= 0.5;
+                narrativeWeight *= 0.5;
         }
-        else if (isDialogue && hasSimpleSpeechTag && text.Length < 100)
+        else if (isDialogue && hasSimpleSpeechTag && narrativeText.Length < 100)
         {
             // Short dialogue with speech tag - moderate de-weight
-            weight *= 0.6;
+            narrativeWeight *= 0.6;
         }
         
         // 2. Upweight NARRATIVE DESCRIPTION (non-dialogue)
         if (!isDialogue)
         {
             // Narrative prose - slight upweight
-            weight *= 1.2;
+            narrativeWeight *= 1.2;
             
             // Action verbs indicate plot-relevant content
             var hasActionVerbs = System.Text.RegularExpressions.Regex.IsMatch(
-                text, @"\b(walked|ran|entered|left|opened|closed|found|discovered|saw|heard|felt|took|gave|came|went|arrived|departed|killed|died|attacked|escaped|hid|searched|followed)\b",
+                narrativeText, @"\b(walked|ran|entered|left|opened|closed|found|discovered|saw|heard|felt|took|gave|came|went|arrived|departed|killed|died|attacked|escaped|hid|searched|followed)\b",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             
             if (hasActionVerbs)
-                weight *= 1.3;
+                narrativeWeight *= 1.3;
             
             // Scene-setting (place/time indicators)
             var hasSceneSetting = System.Text.RegularExpressions.Regex.IsMatch(
-                text, @"\b(morning|evening|night|day|room|house|street|door|window|chapter|later|earlier|meanwhile|suddenly|finally)\b",
+                narrativeText, @"\b(morning|evening|night|day|room|house|street|door|window|chapter|later|earlier|meanwhile|suddenly|finally)\b",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             
             if (hasSceneSetting)
-                weight *= 1.2;
+                narrativeWeight *= 1.2;
         }
         
         // 3. Upweight CHARACTER INTRODUCTIONS
         // Look for "Mr./Mrs./Miss/Dr. + Name" or "Name, a/the [role]"
         var hasCharacterIntro = System.Text.RegularExpressions.Regex.IsMatch(
-            text, @"\b(Mr\.|Mrs\.|Miss|Dr\.|Captain|Inspector|Professor)\s+[A-Z][a-z]+\b",
+            narrativeText, @"\b(Mr\.|Mrs\.|Miss|Dr\.|Captain|Inspector|Professor)\s+[A-Z][a-z]+\b",
             System.Text.RegularExpressions.RegexOptions.None);
         
         if (hasCharacterIntro)
-            weight *= 1.4;
+            narrativeWeight *= 1.4;
         
         // 4. Upweight LONGER SUBSTANTIVE CONTENT
         // Longer sentences in fiction often contain more plot/description
-        if (text.Length > 150 && !isDialogue)
-            weight *= 1.2;
+        if (narrativeText.Length > 150 && !isDialogue)
+            narrativeWeight *= 1.2;
         
-        return weight;
+        return narrativeWeight;
     }
 
     public void Dispose()

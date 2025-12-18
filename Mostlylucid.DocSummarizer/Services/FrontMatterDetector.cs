@@ -148,14 +148,16 @@ public class FrontMatterDetector
     }
 
     /// <summary>
-    /// Apply the profile to filter markdown content
+    /// Apply the profile to filter markdown content.
+    /// NOTE: The profile indices are relative to markdown AFTER metadata stripping,
+    /// since AnalyzeAsync strips metadata before calculating indices.
     /// </summary>
     public string ApplyProfile(string markdown, DocumentProfile profile)
     {
-        // Strip metadata front matter first
+        // Strip metadata front matter first (same as AnalyzeAsync does before calculating indices)
         markdown = StripMetadataFrontMatter(markdown, null);
 
-        // Skip to main content start
+        // Skip to main content start (index is relative to post-metadata-stripped content)
         if (profile.MainContentStartIndex > 0 && profile.MainContentStartIndex < markdown.Length)
         {
             if (_verbose)

@@ -42,6 +42,8 @@ var doclingDisableSplitOption = new Option<bool?>("--no-split") { Description = 
 var doclingMinPagesForSplitOption = new Option<int?>("--min-pages-split") { Description = "Minimum pages before enabling split processing (default: 60)" };
 var doclingPdfBackendOption = new Option<string?>("--pdf-backend") { Description = "PDF backend: pypdfium2 (fast) or docling (accurate)" };
 var doclingGpuOption = new Option<bool?>("--docling-gpu") { Description = "Force GPU mode for Docling (auto-detected if not set). Use --docling-gpu=true or --docling-gpu=false" };
+var onnxGpuOption = new Option<string?>("--onnx-gpu") { Description = "ONNX execution provider: cpu, cuda, directml, auto. Use cuda for NVIDIA, directml for AMD/Intel" };
+var gpuDeviceIdOption = new Option<int?>("--gpu-device") { Description = "GPU device ID for ONNX (default: 0). Use nvidia-smi -L to list devices. Set to 1 if GPU 0 is integrated graphics" };
 
 // Add options to root command
 rootCommand.Options.Add(configOption);
@@ -71,6 +73,8 @@ rootCommand.Options.Add(doclingDisableSplitOption);
 rootCommand.Options.Add(doclingMinPagesForSplitOption);
 rootCommand.Options.Add(doclingPdfBackendOption);
 rootCommand.Options.Add(doclingGpuOption);
+rootCommand.Options.Add(onnxGpuOption);
+rootCommand.Options.Add(gpuDeviceIdOption);
 
 // Main handler
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -114,6 +118,15 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         if (embeddingBackend.HasValue) config.EmbeddingBackend = embeddingBackend.Value;
         if (!string.IsNullOrEmpty(embeddingModel))
             config.Onnx.EmbeddingModel = Enum.Parse<OnnxEmbeddingModel>(embeddingModel, ignoreCase: true);
+        
+        // Parse ONNX GPU options
+        var onnxGpu = parseResult.GetValue(onnxGpuOption);
+        var gpuDeviceId = parseResult.GetValue(gpuDeviceIdOption);
+        
+        if (!string.IsNullOrEmpty(onnxGpu))
+            config.Onnx.ExecutionProvider = Enum.Parse<OnnxExecutionProvider>(onnxGpu, ignoreCase: true);
+        if (gpuDeviceId.HasValue)
+            config.Onnx.GpuDeviceId = gpuDeviceId.Value;
         
         // Parse web fetch mode
         var webMode = parseResult.GetValue(webModeOption);
@@ -648,6 +661,220 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
 });
 rootCommand.Subcommands.Add(benchmarkCommand);
 
+// Benchmark Templates command - compare templates on the same document
+var benchmarkTemplatesCommand = new Command("benchmark-templates", "Compare multiple summary templates on the same document (reuses extraction)");
+var btFileOption = new Option<FileInfo?>("--file", "-f") { Description = "Document to summarize (required)" };
+var btTemplatesOption = new Option<string?>("--templates", "-t") { Description = "Comma-separated list of templates to compare (e.g., 'default,brief,executive,technical'). Use 'all' for all templates." };
+var btFocusOption = new Option<string?>("--focus", "-q") { Description = "Focus query for retrieval (optional)" };
+var btOutputDirOption = new Option<string?>("--output-dir", "-o") { Description = "Output directory for summary files (defaults to document directory)" };
+var btConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+var btVerboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed progress", DefaultValueFactory = _ => false };
+
+benchmarkTemplatesCommand.Options.Add(btFileOption);
+benchmarkTemplatesCommand.Options.Add(btTemplatesOption);
+benchmarkTemplatesCommand.Options.Add(btFocusOption);
+benchmarkTemplatesCommand.Options.Add(btOutputDirOption);
+benchmarkTemplatesCommand.Options.Add(btConfigOption);
+benchmarkTemplatesCommand.Options.Add(btVerboseOption);
+
+benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var file = parseResult.GetValue(btFileOption);
+    var templatesString = parseResult.GetValue(btTemplatesOption);
+    var focus = parseResult.GetValue(btFocusOption);
+    var outputDir = parseResult.GetValue(btOutputDirOption);
+    var configPath = parseResult.GetValue(btConfigOption);
+    var verbose = parseResult.GetValue(btVerboseOption);
+    
+    if (file == null)
+    {
+        AnsiConsole.MarkupLine("[red]Error: --file is required[/]");
+        return 1;
+    }
+    
+    if (!file.Exists)
+    {
+        AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+        return 1;
+    }
+    
+    // Parse templates - "all" means all available templates
+    var templateNames = new List<string>();
+    if (string.IsNullOrWhiteSpace(templatesString) || templatesString.Equals("all", StringComparison.OrdinalIgnoreCase))
+    {
+        templateNames.AddRange(SummaryTemplate.Presets.AvailableTemplates);
+    }
+    else
+    {
+        templateNames.AddRange(templatesString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+    
+    if (templateNames.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[red]Error: No templates specified[/]");
+        return 1;
+    }
+    
+    SpectreProgressService.WriteHeader("DocSummarizer", "Template Benchmark");
+    
+    // Display benchmark info
+    var infoTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Blue);
+    
+    infoTable.AddColumn("[blue]Property[/]");
+    infoTable.AddColumn("[blue]Value[/]");
+    infoTable.AddRow("[cyan]Document[/]", Markup.Escape(file.Name));
+    infoTable.AddRow("[cyan]Templates[/]", $"[green]{templateNames.Count}[/] ({string.Join(", ", templateNames.Take(5))}{(templateNames.Count > 5 ? "..." : "")})");
+    if (!string.IsNullOrEmpty(focus)) infoTable.AddRow("[cyan]Focus[/]", Markup.Escape(focus));
+    
+    AnsiConsole.Write(infoTable);
+    AnsiConsole.WriteLine();
+    
+    // Load config
+    var config = ConfigurationLoader.Load(configPath);
+    config.Output.Verbose = verbose;
+    
+    // Read the document content
+    var extension = file.Extension.ToLowerInvariant();
+    string markdown;
+    
+    if (extension is ".md" or ".txt" or ".text")
+    {
+        markdown = await File.ReadAllTextAsync(file.FullName, cancellationToken);
+    }
+    else if (extension is ".zip")
+    {
+        // Extract text from ZIP (e.g., Project Gutenberg archives)
+        AnsiConsole.MarkupLine("[cyan]Extracting text from ZIP archive...[/]");
+        var archiveInfo = ArchiveHandler.InspectArchive(file.FullName);
+        if (archiveInfo == null || !archiveInfo.IsValid)
+        {
+            AnsiConsole.MarkupLine($"[red]Error: {archiveInfo?.Error ?? "Invalid archive"}[/]");
+            return 1;
+        }
+        if (verbose)
+        {
+            var gutenbergTag = archiveInfo.IsGutenberg ? " (Gutenberg)" : "";
+            AnsiConsole.MarkupLine($"[dim]Archive: {Markup.Escape(archiveInfo.MainFileName ?? "unknown")} ({archiveInfo.MainFileSize / 1024:N0} KB){gutenbergTag}[/]");
+        }
+        markdown = await ArchiveHandler.ExtractTextAsync(file.FullName, ct: cancellationToken);
+        AnsiConsole.MarkupLine($"[green]Extracted {markdown.Length / 1024:N0} KB of text[/]");
+    }
+    else
+    {
+        // Use Docling for PDF/DOCX
+        AnsiConsole.MarkupLine("[cyan]Converting document with Docling...[/]");
+        var docling = new DoclingClient(config.Docling);
+        markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+            docling,
+            file.FullName,
+            $"Converting {file.Name}");
+        AnsiConsole.MarkupLine("[green]Document converted[/]");
+    }
+    
+    var docId = Path.GetFileNameWithoutExtension(file.Name);
+    
+    // Create extraction and retrieval configs from loaded config
+    var extractionConfig = config.Extraction.ToExtractionConfig();
+    var retrievalConfig = config.Retrieval.ToRetrievalConfig();
+    
+    // Apply adaptive retrieval settings
+    config.AdaptiveRetrieval.ApplyTo(retrievalConfig);
+    
+    if (verbose)
+    {
+        AnsiConsole.MarkupLine($"[dim]Extraction: ratio={extractionConfig.ExtractionRatio}, MMR={extractionConfig.MmrLambda}[/]");
+        AnsiConsole.MarkupLine($"[dim]Retrieval: TopK={retrievalConfig.TopK}, Adaptive={retrievalConfig.AdaptiveTopK}, MaxTopK={retrievalConfig.MaxTopK}[/]");
+    }
+    
+    // Create benchmark service with config-loaded settings
+    await using var benchmarkService = new TemplateBenchmarkService(
+        config.Onnx,
+        new OllamaService(config.Ollama.Model, 
+            timeout: TimeSpan.FromSeconds(config.Ollama.TimeoutSeconds),
+            classifierModel: config.Ollama.ClassifierModel),
+        config.BertRag,
+        extractionConfig: extractionConfig,
+        retrievalConfig: retrievalConfig,
+        verbose: verbose);
+    
+    AnsiConsole.WriteLine();
+    
+    // Run benchmark
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var results = await benchmarkService.BenchmarkTemplatesAsync(
+        docId,
+        markdown,
+        templateNames,
+        focus,
+        ct: cancellationToken);
+    sw.Stop();
+    
+    AnsiConsole.WriteLine();
+    
+    // Display results table
+    var resultsTable = new Table()
+        .Border(TableBorder.Double)
+        .BorderColor(Color.Green)
+        .Title("[green]Template Benchmark Results[/]");
+    
+    resultsTable.AddColumn(new TableColumn("[green]Template[/]").LeftAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Target[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Actual[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Diff[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Time[/]").RightAligned());
+    
+    foreach (var r in results.TemplateResults)
+    {
+        if (r.Success)
+        {
+            var diff = r.ActualWordCount - r.TargetWords;
+            var diffStr = r.TargetWords > 0 ? $"{diff:+#;-#;0}" : "n/a";
+            var diffColor = r.TargetWords > 0 
+                ? (Math.Abs(diff) <= r.TargetWords * 0.2 ? "green" : Math.Abs(diff) <= r.TargetWords * 0.5 ? "yellow" : "red")
+                : "dim";
+            
+            resultsTable.AddRow(
+                $"[yellow]{Markup.Escape(r.TemplateName)}[/]",
+                r.TargetWords > 0 ? $"{r.TargetWords}" : "[dim]auto[/]",
+                $"{r.ActualWordCount}",
+                $"[{diffColor}]{diffStr}[/]",
+                $"{r.SynthesisTime.TotalSeconds:F2}s");
+        }
+        else
+        {
+            resultsTable.AddRow(
+                $"[red]{Markup.Escape(r.TemplateName)}[/]",
+                $"{r.TargetWords}",
+                "[red]FAILED[/]",
+                "-",
+                "-");
+        }
+    }
+    
+    AnsiConsole.Write(resultsTable);
+    AnsiConsole.WriteLine();
+    
+    // Summary stats
+    var successCount = results.TemplateResults.Count(r => r.Success);
+    var avgSynthesisTime = results.TemplateResults.Where(r => r.Success).Average(r => r.SynthesisTime.TotalSeconds);
+    
+    AnsiConsole.MarkupLine($"[cyan]Extraction:[/] {results.TotalSegments} segments, {results.RetrievedSegments} retrieved in {results.TotalExtractionTime.TotalSeconds:F2}s");
+    AnsiConsole.MarkupLine($"[cyan]Synthesis:[/] {successCount}/{templateNames.Count} templates, avg {avgSynthesisTime:F2}s per template");
+    AnsiConsole.MarkupLine($"[cyan]Total:[/] {sw.Elapsed.TotalSeconds:F1}s");
+    AnsiConsole.WriteLine();
+    
+    // Save results
+    var effectiveOutputDir = outputDir ?? Path.GetDirectoryName(file.FullName) ?? Environment.CurrentDirectory;
+    await benchmarkService.SaveResultsAsync(results, effectiveOutputDir, docId);
+    
+    AnsiConsole.MarkupLine($"[green]Results saved to:[/] {effectiveOutputDir}");
+    
+    return 0;
+});
+rootCommand.Subcommands.Add(benchmarkTemplatesCommand);
+
 // Templates command - list available templates
 var templatesCommand = new Command("templates", "List available summary templates");
 templatesCommand.SetAction((parseResult, cancellationToken) =>
@@ -826,7 +1053,10 @@ static async Task ProcessFileAsync(
             // Auto-save to .summary.md file
             var fileDir = sourceUrl != null ? Environment.CurrentDirectory : (Path.GetDirectoryName(filePath) ?? Environment.CurrentDirectory);
             var baseName = sourceUrl != null ? SanitizeFileName(new Uri(sourceUrl).Host) : Path.GetFileNameWithoutExtension(filePath);
-            var summaryPath = Path.Combine(fileDir, $"{baseName}.summary.md");
+            // Avoid double _summary suffix
+            if (baseName.EndsWith("_summary", StringComparison.OrdinalIgnoreCase))
+                baseName = baseName[..^8];
+            var summaryPath = Path.Combine(fileDir, $"{baseName}_summary.md");
             
             // Format as markdown for file output
             var markdownConfig = new OutputConfig { Format = OutputFormat.Markdown, IncludeTrace = true };
@@ -859,6 +1089,21 @@ static async Task ProcessBatchAsync(
 {
     ui.WriteHeader("DocSummarizer", "Batch Mode");
     ui.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
+    
+    // Determine effective output directory
+    var effectiveOutputDir = config.Output.OutputDirectory ?? directoryPath;
+    var outputInSourceDir = string.Equals(
+        Path.GetFullPath(effectiveOutputDir), 
+        Path.GetFullPath(directoryPath), 
+        StringComparison.OrdinalIgnoreCase);
+    
+    // Warn if output is going to source directory (files with _summary suffix will be auto-skipped)
+    if (outputInSourceDir && config.Output.Format != OutputFormat.Console)
+    {
+        AnsiConsole.MarkupLine("[yellow]Note:[/] Output files will be saved alongside source files.");
+        AnsiConsole.MarkupLine("[dim]  Files ending in _summary will be automatically skipped to prevent loops.[/]");
+        AnsiConsole.WriteLine();
+    }
 
     var batchProcessor = new BatchProcessor(summarizer, config.Batch, config.Output.Verbose);
     var totalFiles = 0;
@@ -880,7 +1125,9 @@ static async Task ProcessBatchAsync(
                 
                 if (config.Output.Format != OutputFormat.Console)
                 {
-                    await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+                    // Use --output-dir if specified, otherwise save next to source file
+                    var outputDir = config.Output.OutputDirectory ?? Path.GetDirectoryName(result.FilePath);
+                    await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, outputDir);
                 }
             }
         }

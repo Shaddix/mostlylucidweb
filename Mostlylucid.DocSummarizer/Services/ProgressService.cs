@@ -1,3 +1,5 @@
+using Spectre.Console;
+
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
@@ -30,9 +32,35 @@ public class ProgressService
     }
 
     /// <summary>
-    /// Check if we're already inside an interactive display
+    /// Check if we're already inside an interactive display (batch mode progress bar)
     /// </summary>
     public static bool IsInInteractiveContext => _isInInteractiveDisplay.Value;
+    
+    /// <summary>
+    /// Check if verbose output should be shown.
+    /// Returns false if in batch mode (to prevent progress bar corruption).
+    /// </summary>
+    public static bool ShouldShowVerbose(bool verbose) => verbose && !IsInInteractiveContext;
+    
+    /// <summary>
+    /// Write verbose output to console, but only if not in batch mode.
+    /// Prevents console output from corrupting progress bars.
+    /// </summary>
+    public static void WriteVerbose(bool verbose, string message)
+    {
+        if (verbose && !IsInInteractiveContext)
+            Console.WriteLine(message);
+    }
+    
+    /// <summary>
+    /// Write verbose output using Spectre markup, but only if not in batch mode.
+    /// Prevents console output from corrupting progress bars.
+    /// </summary>
+    public static void WriteVerboseMarkup(bool verbose, string markup)
+    {
+        if (verbose && !IsInInteractiveContext)
+            Spectre.Console.AnsiConsole.MarkupLine(markup);
+    }
 
     /// <summary>
     /// Enter an interactive display context

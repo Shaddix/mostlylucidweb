@@ -48,7 +48,7 @@ If you need to *trust* a summary — or feed it to another system — that matte
 - **Evidence-Grounded Output**: Citations, confidence levels, traceable claims
 - **Multiple Modes**: Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative
 - **Tool Mode**: Clean JSON for LLM agents, MCP servers, CI checks
-- **11 Templates**: brief, bullets, executive, technical, academic, bookreport, meeting...
+- **13 Templates**: default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict
 - **Large Documents**: Handles 500+ pages with hierarchical processing
 - **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
 - **Playwright Mode**: Headless browser for JavaScript-rendered pages (SPAs, React apps)
@@ -325,7 +325,7 @@ docsummarizer -f document.pdf
 # Fast mode - no LLM, pure extraction (~3-5s)
 docsummarizer -f document.pdf -m Bert
 
-# Production mode - best quality with perfect citations
+# Production mode - best quality with validated citations
 docsummarizer -f document.pdf -m BertRag
 
 # Focused on specific topic
@@ -449,17 +449,19 @@ docsummarizer -f doc.pdf -t detailed --words 300
 
 | Template | Words | Best For |
 |----------|-------|----------|
-| `default` | ~200 | General purpose |
-| `brief` | ~50 | Quick scanning |
-| `oneliner` | ~25 | Single sentence |
-| `bullets` | auto | Key takeaways |
-| `executive` | ~150 | C-suite reports |
-| `detailed` | ~500 | Comprehensive analysis |
-| `technical` | ~300 | Tech documentation |
-| `academic` | ~250 | Research papers |
-| `citations` | auto | Key quotes with sources |
-| `bookreport` | ~400 | Book report style with themes |
-| `meeting` | ~200 | Meeting notes with actions |
+| `default` | ~300 | Balanced summary with topics (2 paragraphs) |
+| `prose` | ~400 | Clean multi-paragraph prose - no metadata |
+| `brief` | ~50 | Quick 2-3 sentence summary |
+| `oneliner` | ~25 | Single sentence summary |
+| `bullets` | auto | Bullet point list (5-7 items) |
+| `executive` | ~150 | Executive briefing with recommendations |
+| `detailed` | ~1000 | Comprehensive with full topics |
+| `technical` | ~350 | Technical docs with implementation details |
+| `academic` | ~250 | Academic abstract format |
+| `citations` | auto | Key quotes with source citations only |
+| `bookreport` | ~500 | Book report (setting, characters, plot, themes) |
+| `meeting` | ~200 | Meeting notes (decisions, actions, questions) |
+| `strict` | ~60 | Token-efficient, 3 bullets max, no hedging |
 
 To see all available templates with descriptions:
 

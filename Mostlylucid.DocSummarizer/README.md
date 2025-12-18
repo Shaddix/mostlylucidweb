@@ -40,7 +40,7 @@ docsummarizer -f report.pdf
 # Fast extractive summary (no LLM, ~3-5s)
 docsummarizer -f document.pdf -m Bert
 
-# Production-grade with perfect citations
+# Production-grade with validated citations
 docsummarizer -f report.pdf -m BertRag
 
 # Quick bullets for scanning
@@ -102,9 +102,9 @@ If you need to *trust* a summary — or feed it to another system — that's the
 | Category | What You Get |
 |----------|--------------|
 | **Grounded Output** | Citations, confidence levels, evidence IDs |
-| **Multiple Modes** | MapReduce (parallel), RAG (focused), Iterative |
+| **Multiple Modes** | Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative |
 | **Tool Mode** | Clean JSON for LLM agents, MCP, CI checks |
-| **11 Templates** | brief, bullets, executive, technical, academic, bookreport, meeting... |
+| **13 Templates** | default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict |
 | **Web Fetching** | Security-hardened (SSRF protection, HTML sanitization) |
 | **Playwright Mode** | Headless browser for JavaScript-rendered pages |
 | **ONNX Embeddings** | Zero-config local embeddings, no Ollama embedding model needed |
@@ -203,12 +203,35 @@ docsummarizer
 # Summarize a specific file
 docsummarizer -f document.pdf
 
-# Use RAG mode with focus query
-docsummarizer -f contract.pdf -m Rag --focus "payment terms"
+# Summarize a Project Gutenberg ZIP archive
+docsummarizer -f pg1234.zip
+
+# Use BertRag mode with focus query
+docsummarizer -f contract.pdf -m BertRag --focus "payment terms"
 
 # Verbose progress
 docsummarizer -f document.pdf -v
 ```
+
+### Project Gutenberg ZIP Archives
+
+DocSummarizer has special support for Project Gutenberg book archives:
+
+```bash
+# Download and summarize a Gutenberg book
+curl -O https://www.gutenberg.org/cache/epub/1342/pg1342.zip
+docsummarizer -f pg1342.zip -t bookreport
+
+# Or use a URL directly
+docsummarizer --url "https://www.gutenberg.org/cache/epub/1342/pg1342.zip" --web-enabled -t bookreport
+```
+
+**Features:**
+- **Auto-detection**: Recognizes Gutenberg ZIP structure (pg####.html, pg####-images.html)
+- **Smart extraction**: Prefers HTML > Markdown > TXT (HTML has better structure)
+- **Boilerplate removal**: Strips Project Gutenberg headers, footers, and license text
+- **HTML conversion**: Converts Gutenberg HTML to clean Markdown
+- **Works with any ZIP**: Not limited to Gutenberg - works with any ZIP containing text files
 
 ### Web URL Fetching (Security-Hardened)
 

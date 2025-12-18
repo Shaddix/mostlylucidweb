@@ -34,7 +34,8 @@
         <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
         
         <!-- ONNX Runtime for local ML inference -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.0" />
+        <!-- DirectML includes CPU fallback and supports AMD/Intel/NVIDIA GPUs on Windows -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.22.0" />
         
         <!-- Markdig for proper markdown AST parsing -->
         <PackageReference Include="Markdig" Version="0.40.0" />

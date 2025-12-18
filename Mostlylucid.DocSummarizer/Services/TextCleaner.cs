@@ -149,22 +149,30 @@ public static class TextCleaner
     
     #region Whitespace and Formatting
     
-    private static readonly Regex ExtraWhitespaceRegex = new(
-        @"[\xa0\n]+", RegexOptions.Compiled);
+    private static readonly Regex NonBreakingSpaceRegex = new(
+        @"\xa0+", RegexOptions.Compiled);
     
     private static readonly Regex MultipleSpacesRegex = new(
         @"[ ]{2,}", RegexOptions.Compiled);
     
+    private static readonly Regex MultipleNewlinesRegex = new(
+        @"\n{3,}", RegexOptions.Compiled);
+    
     /// <summary>
     /// Cleans extra whitespace characters that appear between words.
+    /// Preserves newlines for markdown structure, but normalizes non-breaking spaces.
     /// Example: "ITEM 1.     BUSINESS" -> "ITEM 1. BUSINESS"
     /// </summary>
     public static string CleanExtraWhitespace(string text)
     {
         if (string.IsNullOrEmpty(text)) return text;
         
-        text = ExtraWhitespaceRegex.Replace(text, " ");
+        // Replace non-breaking spaces with regular spaces
+        text = NonBreakingSpaceRegex.Replace(text, " ");
+        // Collapse multiple spaces
         text = MultipleSpacesRegex.Replace(text, " ");
+        // Collapse excessive newlines (but keep double newlines for paragraphs)
+        text = MultipleNewlinesRegex.Replace(text, "\n\n");
         return text.Trim();
     }
     
