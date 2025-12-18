@@ -1,9 +1,151 @@
-# New Features - DocSummarizer v2.0
+# New Features - DocSummarizer v2.7
 
 ## Overview
 
 DocSummarizer has been significantly enhanced with new features making it a comprehensive, production-ready document
 processing tool with AOT compilation support.
+
+## Universal Tokenizer (New in v2.7)
+
+The ONNX embedding service now supports multiple tokenizer formats via `HuggingFaceTokenizer`, enabling support for a wider range of embedding models.
+
+### Supported Tokenizer Types
+
+| Type | Models | How It Works |
+|------|--------|--------------|
+| **WordPiece** | BERT, MiniLM, BGE, GTE | Greedy longest-match subword splitting with `##` prefix |
+| **BPE** | GPT-2, RoBERTa, MPNet | Byte-pair encoding with learned merge rules |
+| **Unigram** | T5, XLNet, SentencePiece | Viterbi-based probabilistic tokenization |
+
+### How It Works
+
+```
+tokenizer.json → Parse Config → Detect Type → Create Model
+                      |
+                      +-- vocab: Dictionary<string, int>
+                      +-- model.type: "WordPiece" | "BPE" | "Unigram"
+                      +-- merges: (BPE only) merge rules
+                      +-- pre_tokenizer: Whitespace, BERT, Metaspace, ByteLevel
+                      +-- normalizer: BERT, Lowercase, NFC, NFKC
+```
+
+### Automatic Format Detection
+
+The tokenizer automatically:
+1. Prefers `tokenizer.json` (universal HuggingFace format)
+2. Falls back to `vocab.txt` (legacy WordPiece) if needed
+3. Resolves special tokens ([CLS], [SEP], [PAD], [UNK]) from config
+
+### Pre-tokenizers
+
+| Type | Description | Used By |
+|------|-------------|---------|
+| Whitespace | Split on whitespace | General |
+| BERT | Split on whitespace + punctuation | BERT models |
+| Metaspace | Replace spaces with ▁ | SentencePiece |
+| ByteLevel | GPT-2 style byte-level | GPT/RoBERTa |
+| Sequence | Chain multiple pre-tokenizers | Complex pipelines |
+
+### Normalizers
+
+| Type | Description |
+|------|-------------|
+| BERT | Clean whitespace, handle Chinese chars, optional lowercase |
+| Lowercase | Convert to lowercase |
+| NFC/NFKC | Unicode normalization |
+| Sequence | Chain multiple normalizers |
+
+### Usage
+
+No changes needed - the tokenizer is used automatically:
+
+```bash
+# Same commands work with more models
+docsummarizer -f document.pdf -m BertRag
+docsummarizer -f document.pdf --embedding-model BgeSmallEnV15
+```
+
+## Unified UI Service (New in v2.7)
+
+The `UIService` consolidates multiple progress/display implementations into one consistent interface.
+
+### The Problem
+
+Previously, DocSummarizer had 5+ different UI implementations:
+- `ProgressService` - Plain Console.WriteLine
+- `SpectreProgressService` - Rich Spectre.Console output  
+- `SimpleProgressService` - Simple console output
+- `ConsoleProgressReporter` / `NullProgressReporter` - IProgressReporter implementations
+- Direct `Console.WriteLine` and `AnsiConsole` calls
+
+This led to inconsistent output and the "nested progress bar" error in batch mode.
+
+### The Solution
+
+```csharp
+// Single unified interface
+public interface IUIService
+{
+    // Headers & Structure
+    void WriteHeader(string title, string? subtitle = null);
+    void WriteDocumentInfo(string document, string mode, string model, string? focus = null);
+    void WriteDivider(string? title = null);
+    
+    // Messages
+    void Info(string message);
+    void Success(string message);
+    void Warning(string message);
+    void Error(string message, Exception? ex = null);
+    
+    // Results
+    void WriteSummary(string summary, string title = "Summary");
+    void WriteEntities(ExtractedEntities? entities);
+    void WriteTopics(IEnumerable<(string Topic, string Summary)> topics);
+    void WriteCompletion(TimeSpan elapsed, bool success = true);
+    
+    // Progress
+    Task<T> WithSpinnerAsync<T>(string message, Func<Task<T>> operation);
+    IDisposable EnterBatchContext();
+    void WriteBatchProgress(int current, int total, string fileName, bool success);
+}
+```
+
+### Features
+
+1. **Automatic Fallback**: Rich Spectre.Console output when interactive, simple console in batch mode
+2. **Batch Context**: `EnterBatchContext()` prevents nested progress bar errors
+3. **Consistent Styling**: Same look across all operations
+4. **Legacy Bridge**: `UIServiceProgressAdapter` connects to `IProgressReporter`
+
+### Usage
+
+```csharp
+var ui = new UIService(verbose: true);
+
+// Headers
+ui.WriteHeader("DocSummarizer", "Batch Mode");
+ui.WriteDocumentInfo("report.pdf", "BertRag", "llama3.2:3b");
+
+// Progress (auto-fallback in batch mode)
+var result = await ui.WithSpinnerAsync("Summarizing...", async () => 
+    await summarizer.SummarizeAsync(filePath, mode));
+
+// Results
+ui.WriteSummary(result.ExecutiveSummary);
+ui.WriteEntities(result.Entities);
+ui.WriteTopics(result.TopicSummaries.Select(t => (t.Topic, t.Summary)));
+ui.WriteCompletion(elapsed);
+
+// Batch mode - prevents nested progress bars
+using (ui.EnterBatchContext())
+{
+    foreach (var file in files)
+    {
+        var success = await ProcessFile(file);
+        ui.WriteBatchProgress(current, total, file.Name, success);
+    }
+}
+```
 
 ## Summary Templates (New in v2.1)
 

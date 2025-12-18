@@ -416,4 +416,38 @@ public class RetrievalConfig
     /// Weight for salience scores in hybrid RRF fusion.
     /// </summary>
     public double SalienceWeight { get; set; } = 0.5;
+    
+    /// <summary>
+    /// Enable adaptive TopK scaling based on document size and type.
+    /// When enabled, TopK is automatically increased for longer documents
+    /// and narrative content to maintain minimum coverage.
+    /// Default: true
+    /// </summary>
+    public bool AdaptiveTopK { get; set; } = true;
+    
+    /// <summary>
+    /// Minimum coverage percentage to aim for (e.g., 5.0 = retrieve ~5% of segments).
+    /// Only used when AdaptiveTopK = true.
+    /// Default: 5.0 (5% of document for better narrative coverage)
+    /// </summary>
+    public double MinCoveragePercent { get; set; } = 5.0;
+    
+    /// <summary>
+    /// Maximum TopK regardless of document size (limited by LLM context).
+    /// Default: 100
+    /// </summary>
+    public int MaxTopK { get; set; } = 100;
+    
+    /// <summary>
+    /// Minimum TopK regardless of document size.
+    /// Default: 15
+    /// </summary>
+    public int MinTopK { get; set; } = 15;
+    
+    /// <summary>
+    /// Boost multiplier for narrative content (fiction needs more context).
+    /// e.g., 1.5 = retrieve 50% more segments for narrative content.
+    /// Default: 1.5
+    /// </summary>
+    public double NarrativeBoost { get; set; } = 1.5;
 }

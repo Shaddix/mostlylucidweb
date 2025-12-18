@@ -40,7 +40,7 @@ docsummarizer -f report.pdf
 # Fast extractive summary (no LLM, ~3-5s)
 docsummarizer -f document.pdf -m Bert
 
-# Production-grade with perfect citations
+# Production-grade with validated citations
 docsummarizer -f report.pdf -m BertRag
 
 # Quick bullets for scanning
@@ -102,9 +102,9 @@ If you need to *trust* a summary — or feed it to another system — that's the
 | Category | What You Get |
 |----------|--------------|
 | **Grounded Output** | Citations, confidence levels, evidence IDs |
-| **Multiple Modes** | MapReduce (parallel), RAG (focused), Iterative |
+| **Multiple Modes** | Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative |
 | **Tool Mode** | Clean JSON for LLM agents, MCP, CI checks |
-| **11 Templates** | brief, bullets, executive, technical, academic, bookreport, meeting... |
+| **14 Templates** | default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict |
 | **Web Fetching** | Security-hardened (SSRF protection, HTML sanitization) |
 | **Playwright Mode** | Headless browser for JavaScript-rendered pages |
 | **ONNX Embeddings** | Zero-config local embeddings, no Ollama embedding model needed |
@@ -203,12 +203,35 @@ docsummarizer
 # Summarize a specific file
 docsummarizer -f document.pdf
 
-# Use RAG mode with focus query
-docsummarizer -f contract.pdf -m Rag --focus "payment terms"
+# Summarize a Project Gutenberg ZIP archive
+docsummarizer -f pg1234.zip
+
+# Use BertRag mode with focus query
+docsummarizer -f contract.pdf -m BertRag --focus "payment terms"
 
 # Verbose progress
 docsummarizer -f document.pdf -v
 ```
+
+### Project Gutenberg ZIP Archives
+
+DocSummarizer has special support for Project Gutenberg book archives:
+
+```bash
+# Download and summarize a Gutenberg book
+curl -O https://www.gutenberg.org/cache/epub/1342/pg1342.zip
+docsummarizer -f pg1342.zip -t bookreport
+
+# Or use a URL directly
+docsummarizer --url "https://www.gutenberg.org/cache/epub/1342/pg1342.zip" --web-enabled -t bookreport
+```
+
+**Features:**
+- **Auto-detection**: Recognizes Gutenberg ZIP structure (pg####.html, pg####-images.html)
+- **Smart extraction**: Prefers HTML > Markdown > TXT (HTML has better structure)
+- **Boilerplate removal**: Strips Project Gutenberg headers, footers, and license text
+- **HTML conversion**: Converts Gutenberg HTML to clean Markdown
+- **Works with any ZIP**: Not limited to Gutenberg - works with any ZIP containing text files
 
 ### Web URL Fetching (Security-Hardened)
 
@@ -345,6 +368,7 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | Template | Words | Best For |
 |----------|-------|----------|
 | `default` | ~500 | General purpose |
+| `prose` | ~400 | Clean multi-paragraph prose (no metadata) |
 | `brief` | ~50 | Quick scanning |
 | `oneliner` | ~25 | Single sentence |
 | `bullets` | auto | Key takeaways |
@@ -355,6 +379,7 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | `citations` | auto | Key quotes with sources |
 | `bookreport` | ~800 | Book report style |
 | `meeting` | ~200 | Meeting notes with actions |
+| `strict` | ~60 | Ultra-concise, no fluff |
 
 ### Benchmarking
 
@@ -421,7 +446,38 @@ docsummarizer check [--verbose]                    # Verify dependencies
 docsummarizer config [-o file]                     # Generate config file
 docsummarizer templates                            # List available templates
 docsummarizer benchmark -f file -m "model1,model2" # Compare models
+docsummarizer benchmark-templates -f file -t "brief,prose,bookreport" # Compare templates
 ```
+
+### Benchmark Templates Command
+
+Compare multiple summary templates on the same document efficiently. Extraction and retrieval are performed once and reused across all templates.
+
+```bash
+# Compare specific templates
+docsummarizer benchmark-templates -f document.pdf -t "brief,prose,executive" -v
+
+# Compare all templates
+docsummarizer benchmark-templates -f novel.docx -t all -o ./results
+
+# Compare templates on a Gutenberg book
+docsummarizer benchmark-templates -f pg1234.zip -t "bookreport,prose" -v
+```
+
+**Options:**
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--file` | `-f` | Document to summarize (required) |
+| `--templates` | `-t` | Comma-separated templates or "all" |
+| `--focus` | `-q` | Focus query for retrieval |
+| `--output-dir` | `-o` | Output directory for summaries |
+| `--verbose` | `-v` | Show detailed progress |
+| `--config` | `-c` | Configuration file |
+
+**Output:**
+- Individual summary files: `{docname}_{template}_summary.md`
+- Benchmark report: `{docname}_benchmark_report.md`
+- Results table showing target vs actual word counts and timing
 
 ## Summarization Modes
 
@@ -584,6 +640,26 @@ Auto-discovery order:
     "maxSentences": 30,
     "usePositionWeighting": true
   },
+  "extraction": {
+    "extractionRatio": 0.15,
+    "minSegments": 10,
+    "maxSegments": 100,
+    "maxSegmentsToEmbed": 200,
+    "mmrLambda": 0.7
+  },
+  "retrieval": {
+    "topK": 25,
+    "fallbackCount": 5,
+    "useRRF": true,
+    "useHybridSearch": true
+  },
+  "adaptiveRetrieval": {
+    "enabled": true,
+    "minCoveragePercent": 5.0,
+    "minTopK": 15,
+    "maxTopK": 100,
+    "narrativeBoost": 1.5
+  },
   "docling": {
     "baseUrl": "http://localhost:5001",
     "timeoutSeconds": 1200,
@@ -627,7 +703,7 @@ Auto-discovery order:
     "userAgent": "Mozilla/5.0 DocSummarizer/3.0"
   },
   "batch": {
-    "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html"],
+    "fileExtensions": [".pdf", ".docx", ".md", ".txt", ".html", ".zip"],
     "recursive": false,
     "maxConcurrentFiles": 4,
     "continueOnError": true
@@ -641,6 +717,12 @@ Auto-discovery order:
     "enableCircuitBreaker": true,
     "circuitBreakerThreshold": 3,
     "circuitBreakerDurationSeconds": 30
+  },
+  "bertRag": {
+    "vectorStore": 0,
+    "collectionName": "docsummarizer",
+    "persistVectors": true,
+    "reuseExistingEmbeddings": true
   }
 }
 ```
@@ -692,7 +774,7 @@ Auto-discovery order:
 | `timeoutSeconds` | `30` | HTTP/browser request timeout |
 | `userAgent` | `Mozilla/5.0...` | User agent for web requests |
 
-#### BERT Extraction Settings
+#### BERT Extraction Settings (Legacy)
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -701,6 +783,49 @@ Auto-discovery order:
 | `minSentences` | `3` | Minimum sentences to extract |
 | `maxSentences` | `30` | Maximum sentences to extract |
 | `usePositionWeighting` | `true` | Weight sentences by position (intro/conclusion bias) |
+
+#### Extraction Settings (BertRag Pipeline)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `extraction.extractionRatio` | `0.15` | Fraction of segments to keep in salience ranking |
+| `extraction.minSegments` | `10` | Minimum segments to extract |
+| `extraction.maxSegments` | `100` | Maximum segments to extract |
+| `extraction.maxSegmentsToEmbed` | `200` | Max segments to embed (pre-filter if more) |
+| `extraction.mmrLambda` | `0.7` | MMR lambda: 0=diversity, 1=relevance |
+
+#### Retrieval Settings (BertRag Pipeline)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `retrieval.topK` | `25` | Base number of segments to retrieve for synthesis |
+| `retrieval.fallbackCount` | `5` | Always include top-N salient segments |
+| `retrieval.useRRF` | `true` | Use Reciprocal Rank Fusion for scoring |
+| `retrieval.useHybridSearch` | `true` | Use hybrid BM25 + dense + salience search |
+
+#### Adaptive Retrieval Settings
+
+Automatically scales retrieval based on document size and content type.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `adaptiveRetrieval.enabled` | `true` | Enable adaptive TopK scaling |
+| `adaptiveRetrieval.minCoveragePercent` | `5.0` | Target ~5% of segments for retrieval |
+| `adaptiveRetrieval.minTopK` | `15` | Minimum segments regardless of document size |
+| `adaptiveRetrieval.maxTopK` | `100` | Maximum segments (LLM context limit) |
+| `adaptiveRetrieval.narrativeBoost` | `1.5` | Retrieve 50% more for fiction/narrative content |
+
+**Content-Type Aware Weighting:**
+
+The extraction phase automatically adjusts segment importance based on content type:
+
+**For Technical/Academic Documents:**
+- **Upweighted:** Abstract (2.5x), Introduction/Conclusion (1.8x), Results (1.3x)
+- **Downweighted:** Code blocks (0.2x), References (0.1x), Appendices (0.2x)
+
+**For Narrative/Fiction:**
+- **Upweighted:** Action scenes (1.3x), Character introductions (1.4x), Long descriptions (1.2x)
+- **Downweighted:** Short dialogue ("Yes", "No") (0.2x)
 
 #### Memory Management Settings
 
@@ -713,6 +838,17 @@ Auto-discovery order:
 | `gcIntervalChunks` | `50` | Force GC every N chunks |
 | `maxMemoryMB` | `0` | Memory limit (0 = unlimited) |
 
+#### Chunk Cache Settings (Docling output)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enableChunkCache` | `true` | Persist Docling-converted chunks to skip reconversion |
+| `cacheDirectory` | `~/.docsummarizer/chunks` | Where chunk cache files are stored |
+| `retentionDays` | `14` | Delete cached chunks older than N days (`0` = keep) |
+| `versionToken` | `v1` | Bump to invalidate old cache layout/content |
+
+When enabled, Docling conversion is skipped if the file hash and version match, reusing cached chunks and reducing repeat runs to milliseconds.
+
 #### Embedding Resilience Settings
 
 | Option | Default | Description |
@@ -724,6 +860,23 @@ Auto-discovery order:
 | `enableCircuitBreaker` | `true` | Enable circuit breaker for failures |
 | `circuitBreakerThreshold` | `3` | Failures before circuit opens |
 | `circuitBreakerDurationSeconds` | `30` | Duration circuit stays open |
+
+#### BertRag Persistence Settings (Learning Summarizer)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `vectorStore` | `0` (InMemory) | `0` = InMemory (no persistence), `1` = Qdrant (persistent) |
+| `collectionName` | `docsummarizer` | Name of vector collection for segments |
+| `persistVectors` | `true` | Keep vectors between runs (Qdrant only) |
+| `reuseExistingEmbeddings` | `true` | Skip re-embedding unchanged segments |
+
+When using Qdrant persistence (`vectorStore: 1`):
+- First run embeds all segments (~15-20s)
+- Subsequent runs load from cache (~0.5s for segment lookup)
+- Changed content is detected and re-embedded
+- Requires Qdrant server on port 6334 (gRPC)
+
+See [LEARNING_SUMMARIZER.md](LEARNING_SUMMARIZER.md) for detailed architecture documentation.
 
 ## Model Recommendations
 
@@ -768,10 +921,12 @@ dotnet publish -c Release -r win-x64 --self-contained
 | Component | Purpose |
 |-----------|---------|
 | `DocumentSummarizer` | Main orchestrator |
+| `UIService` | Unified terminal UI (Spectre.Console with fallbacks) |
 | `WebFetcher` | Security-hardened URL fetching (Simple + Playwright modes) |
 | `MapReduceSummarizer` | Parallel chunk processing with hierarchical reduction |
 | `RagSummarizer` | Vector-based retrieval and synthesis |
 | `OnnxEmbeddingService` | Local ONNX-based embeddings (default) |
+| `HuggingFaceTokenizer` | Universal tokenizer (WordPiece, BPE, Unigram) |
 | `OllamaEmbeddingService` | Ollama-based embeddings (optional) |
 | `OllamaService` | LLM client with Polly resilience |
 | `QdrantHttpClient` | Vector search client |
@@ -786,7 +941,10 @@ Text -> IEmbeddingService -> float[]
               +-- OnnxEmbeddingService (default, zero-config)
               |       |
               |       +-- Auto-downloads model from HuggingFace
-              |       +-- BertTokenizer for text preprocessing
+              |       +-- HuggingFaceTokenizer (universal format)
+              |       |       +-- WordPiece (BERT models)
+              |       |       +-- BPE (GPT/RoBERTa models)  
+              |       |       +-- Unigram (T5/XLNet models)
               |       +-- ONNX Runtime for inference
               |
               +-- OllamaEmbeddingService (optional)
@@ -794,6 +952,22 @@ Text -> IEmbeddingService -> float[]
                       +-- Requires Ollama server
                       +-- Polly resilience for reliability
 ```
+
+### Universal Tokenizer
+
+The `HuggingFaceTokenizer` supports all major tokenizer formats by parsing `tokenizer.json`:
+
+| Format | Models | Description |
+|--------|--------|-------------|
+| **WordPiece** | BERT, MiniLM, BGE, GTE | Greedy longest-match subword tokenization |
+| **BPE** | GPT-2, RoBERTa, MPNet | Byte-pair encoding with learned merges |
+| **Unigram** | T5, XLNet, SentencePiece | Probabilistic subword tokenization |
+
+Features:
+- Auto-detects tokenizer type from `tokenizer.json`
+- Falls back to `vocab.txt` for legacy BERT models
+- Supports pre-tokenizers: Whitespace, BERT, Metaspace, ByteLevel
+- Supports normalizers: BERT, Lowercase, NFC, NFKC
 
 ### LLM Resilience
 

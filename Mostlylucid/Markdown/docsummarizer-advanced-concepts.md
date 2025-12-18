@@ -17,7 +17,9 @@ This is part of my "Time-Boxed Tools" approach: give myself a fixed window to bu
 
 DocSummarizer started as a demonstration of how you *should* build document summarizers with LLMs - the pipeline approach I outlined in Part 1. Most tutorials show you how to shove text into an LLM and hope for the best. I wanted to show proper architecture: chunking, embeddings, retrieval, citation validation.
 
-But as I always do, I got interested in the problem space. Four days later, I'd dug into the research - how do state-of-the-art systems actually handle summarization? What makes retrieval work well? Why do some embeddings outperform others? - and implemented versions of these approaches. What started as "here's the right pattern" became ONNX embeddings running locally, hybrid search combining BM25 with dense retrieval, Maximal Marginal Relevance for diversity, and Reciprocal Rank Fusion for combining signals.
+But as I always do, I got interested in the problem space. Four days later, I'd dug into the research. How do production-grade systems actually handle summarization? What makes retrieval work well? Why do some embeddings outperform others? 
+
+I implemented versions of these approaches. What started as "here's the right pattern" became ONNX embeddings running locally, hybrid search combining BM25 with dense retrieval, Maximal Marginal Relevance for diversity, and Reciprocal Rank Fusion for combining signals.
 
 **Fair warning**: This is the "I went too far" deep dive. If you just want to use the tool, read Part 2. If you want to understand *why* it works and *how* the pieces fit together, keep reading.
 
@@ -90,11 +92,20 @@ flowchart TB
 
 ## Understanding Embeddings
 
+### The Problem: How Do You Find Relevant Content Without Keywords?
+
+When summarizing a 500-page manual, you need to find relevant sections. Traditional keyword search fails:
+- User asks "How do I reset the device?"
+- Manual says "To restore factory settings..." 
+- Keyword search misses it (no shared words)
+
+You need **semantic search** - matching by meaning, not just words.
+
 ### What Are Embeddings?
 
-Embeddings are dense vector representations of text that capture semantic meaning. Unlike keyword search, embeddings understand that "automobile" and "car" are similar, even though they share no characters.
+Embeddings solve this by turning text into dense vectors (arrays of numbers) that capture semantic meaning. Similar meanings = similar vectors, regardless of exact wording.
 
-Here's the intuition: imagine a 384-dimensional space where every piece of text has a position. Texts with similar meanings cluster together, regardless of the specific words used.
+Here's the intuition: imagine a 384-dimensional space where every piece of text has a position. Texts with similar meanings cluster together.
 
 ```mermaid
 graph LR
@@ -118,15 +129,21 @@ graph LR
     A -.-|"far"| D
 ```
 
-### Sentence Transformer Models (MiniLM, BGE, GTE)
+### Why Sentence Transformers (Not Raw BERT)?
 
-The models we use are **sentence transformers** - transformer encoders specifically trained for embedding similarity tasks. They're based on the [BERT architecture](https://arxiv.org/abs/1810.04805) but fine-tuned using contrastive learning to produce embeddings optimized for semantic similarity.
+**Problem**: I needed embeddings that work for semantic similarity. Raw BERT was designed for classification tasks, not similarity search.
 
-We're not using raw BERT output for semantic search. Models like `all-MiniLM-L6-v2` and `bge-small-en-v1.5` have been trained on billions of text pairs to produce embeddings where cosine similarity correlates with semantic similarity.
+**Solution**: Use **sentence transformers** - models specifically trained on similarity tasks using contrastive learning. They're based on the [BERT architecture](https://arxiv.org/abs/1810.04805) but fine-tuned differently.
+
+Models like `all-MiniLM-L6-v2` and `bge-small-en-v1.5` were trained on billions of text pairs like:
+- "How to reset device" ↔ "Restore factory settings" (similar)
+- "How to reset device" ↔ "Product specifications" (dissimilar)
+
+The training teaches them: similar meanings = close vectors (high cosine similarity).
 
 > **Related**: If you want to understand how transformer models work at a deeper level - including attention mechanisms, encoder-decoder architecture, and why embeddings work - see my article on [How Neural Machine Translation Works](/blog/how-neural-machine-translation-works). It covers the same transformer concepts from a translation perspective.
 
-For embeddings, we take the model's output layer and apply **mean pooling** - averaging the embeddings of all tokens to get a single vector for the entire text.
+**Implementation**: We take the model's output layer and apply **mean pooling** - averaging the embeddings of all tokens to get a single vector for the entire text.
 
 ```mermaid
 flowchart LR
@@ -175,14 +192,26 @@ flowchart LR
 
 ## ONNX: Running ML Models Locally
 
+### The Problem: Python Dependency Hell
+
+I wanted embeddings to "just work" when someone runs the tool. The standard approach:
+1. Install Python + PyTorch + transformers
+2. Download models manually
+3. Hope version conflicts don't break everything
+
+This sucks. Users want `docsummarizer -f doc.pdf`, not a 30-step setup guide.
+
 ### Why ONNX?
 
-ONNX (Open Neural Network Exchange) is an open format for representing machine learning models. The killer feature: **runtime inference without Python dependencies**.
+ONNX (Open Neural Network Exchange) is an open format for ML models. The killer feature: **runtime inference without Python**.
 
-DocSummarizer uses ONNX Runtime to:
-1. Download pre-trained models from HuggingFace automatically (one-time, ~23-34MB)
-2. Run inference locally with minimal configuration
-3. Work entirely on the CPU without GPU dependencies
+**What I get with ONNX Runtime:**
+1. **Zero external dependencies** - No Python, PyTorch, CUDA drivers
+2. **Auto-download models** - First run downloads from HuggingFace (~23-34MB), then cached
+3. **Pure .NET** - Works anywhere .NET runs (Windows, Linux, macOS, ARM64)
+4. **CPU inference** - No GPU required, runs on cheap hardware
+
+Trade-off: Slightly slower than GPU PyTorch, but way faster than asking users to install Python.
 
 ### The Model Registry
 
@@ -194,6 +223,8 @@ DocSummarizer includes several embedding models, each with different trade-offs:
 | `BgeSmallEnV15` | 384 | 512 | ~34MB | Better for technical docs | Yes |
 | `GteSmall` | 384 | 512 | ~34MB | General purpose | No |
 | `MultiQaMiniLm` | 384 | 512 | ~23MB | Optimized for Q&A | No |
+
+**Note**: All registry entries point to WordPiece-compatible ONNX exports (using `vocab.txt`). BPE/Unigram models are not yet supported.
 
 **BGE instruction format**: Some models (like BGE) require prefixes for optimal performance. The exact format depends on the model:
 
@@ -429,14 +460,30 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
 ## RAG: Retrieval-Augmented Generation
 
-### The Problem RAG Solves
+### The Problem: LLMs Can't Read 500-Page Documents
 
-LLMs have a context window limit. Feed them a 500-page PDF, and they either truncate it or hallucinate details. RAG solves this by:
+**The naive approach fails:**
+```csharp
+var text = File.ReadAllText("500-page-manual.txt"); // 2MB of text
+var summary = await llm.GenerateAsync($"Summarize: {text}"); // ❌ Doesn't fit in context
+```
 
-1. **Chunking**: Split the document into manageable pieces
-2. **Embedding**: Convert chunks to vectors
-3. **Retrieval**: Find relevant chunks for the query
-4. **Synthesis**: Let the LLM summarize only what it can see
+Even with 128K context windows, you can't just dump huge documents in:
+- **Truncation**: Only the first 100 pages fit, rest ignored
+- **Hallucination**: LLM invents "facts" to fill gaps
+- **Cost**: Processing 2MB of text costs $$$ per query
+- **Quality**: LLMs get confused with massive context ("lost in the middle" problem)
+
+### The Solution: RAG (Retrieval-Augmented Generation)
+
+Instead of sending everything, send only what's relevant:
+
+1. **Chunking**: Split the document into segments
+2. **Embedding**: Convert segments to vectors (semantic representation)
+3. **Retrieval**: Find the 10-20 most relevant segments for the query
+4. **Synthesis**: LLM summarizes only those segments
+
+**Why this works:** The LLM sees 10KB of highly relevant content instead of 2MB of mostly irrelevant text.
 
 ```mermaid
 flowchart LR
@@ -557,9 +604,24 @@ public class SegmentExtractor
 }
 ```
 
-### Maximal Marginal Relevance (MMR)
+### The Problem: Semantic Search Returns Duplicates
 
-MMR balances **relevance** (similarity to query/centroid) with **diversity** (dissimilarity to already-selected items). This prevents the summary from repeating similar content.
+**Without MMR**, retrieval for "How does caching work?" returned:
+1. "Caching overview" (0.95 similarity)
+2. "Introduction to caching" (0.94 similarity)  
+3. "What is caching?" (0.93 similarity)
+4. "Cache implementation details" (0.85 similarity)
+
+The top 3 results all say the same thing. I'm wasting context window on repetition.
+
+### The Solution: Maximal Marginal Relevance (MMR)
+
+MMR balances **relevance** (similarity to query) with **diversity** (dissimilarity to already-selected items).
+
+**Formula:**
+$$MMR = \lambda \cdot \text{sim}(s, query) - (1 - \lambda) \cdot \max_{s' \in Selected} \text{sim}(s, s')$$
+
+**What it does:** Penalizes candidates similar to already-selected segments. This prevents the summary from being 5 versions of the same paragraph.
 
 ```mermaid
 flowchart TB
@@ -644,9 +706,24 @@ private List<Segment> SelectSentencesMMR(
 
 ## Hybrid Search with RRF
 
-### Why Hybrid Search?
+### The Problem: Semantic Search Misses Exact Matches
 
-Dense (semantic) search and sparse (lexical) search have complementary strengths:
+I ran into this when testing:
+
+**Query**: "What's the API endpoint for authentication?"
+
+**Semantic search returned:**
+1. "User login flow overview" (high similarity)
+2. "Security best practices" (high similarity)
+3. "Session management" (high similarity)
+
+**What it missed**: The actual API endpoint buried in code examples: `POST /api/v1/auth/login`
+
+**Why**: Embedding models are trained on natural language, not code/URLs/exact terms. The endpoint `POST /api/v1/auth/login` doesn't semantically match "authentication endpoint" - it's a literal technical reference.
+
+### The Solution: Hybrid Search (Semantic + Lexical)
+
+Combine two retrieval methods with complementary strengths:
 
 | Search Type | Strengths | Weaknesses |
 |-------------|-----------|------------|
@@ -790,7 +867,29 @@ public class BM25Scorer
 
 ## TF-IDF for Content Centrality
 
-DocSummarizer uses TF-IDF to estimate **content centrality** - whether a term represents core content, supporting detail, or incidental colour. This is not about truth (a repeated claim can be false, a rare fact can be true), but about *centrality to the document*:
+### The Problem: How Do You Distinguish Core Content from Trivia?
+
+When summarizing a novel, I got results like:
+
+> "The protagonist wore a blue coat. Watson noted the weather was mild. The study had oak furniture..."
+
+These are accurate extractions, but they're **colour** (scene-setting details), not **core plot points**.
+
+**Challenge**: How do you tell the difference between:
+- **Core content**: Appears throughout the document (character names, main themes, key events)
+- **Supporting detail**: Appears in some sections (subplots, explanations)
+- **Colour**: Rare, specific details (what someone was wearing, furniture descriptions)
+
+### The Solution: TF-IDF for Centrality Classification
+
+TF-IDF (Term Frequency - Inverse Document Frequency) estimates **how central a term is to the document**, not its truth value.
+
+**Logic:**
+- **High DF (>50% of chunks)**: "Sherlock", "Watson", "murder" → Core content
+- **Medium DF (20-50%)**: "Baker Street", "investigation" → Supporting detail  
+- **Low DF (<20%)**: "blue coat", "oak furniture" → Incidental colour
+
+This is not about truth (a repeated claim can be false, a rare fact can be true). It's about *centrality to the document*.
 
 ```mermaid
 flowchart LR
@@ -867,7 +966,7 @@ public class TextAnalysisService
 }
 ```
 
-## The Complete BERT-RAG Pipeline
+## The Complete BertRag Pipeline
 
 DocSummarizer's production pipeline (`BertRagSummarizer`) combines all these concepts:
 
@@ -880,7 +979,8 @@ public class BertRagSummarizer
     /// Key properties:
     /// - LLM only at synthesis (no LLM-in-the-loop evaluation)
     /// - Deterministic extraction (reproducible, debuggable)
-    /// - Perfect citations (every claim traceable to source)
+    /// - Validated citations (every claim traceable to source segment)
+    /// - Scales to any document size
     /// - Cost-optimal (cheap CPU work first, expensive LLM last)
     /// </summary>
     public async Task<DocumentSummary> SummarizeAsync(
@@ -909,7 +1009,7 @@ public class BertRagSummarizer
 
 When building and using DocSummarizer, I've hit these issues (and you will too):
 
-1. **Tokenizer mismatch → garbage embeddings**: Loading a WordPiece vocab for a BPE-trained model produces valid-looking but semantically meaningless vectors. Always verify the tokenizer matches the model's training regime.
+1. **Tokenizer mismatch → nonsense embeddings**: Loading a WordPiece vocab for a BPE-trained model produces valid-looking but semantically meaningless vectors. Always verify the tokenizer matches the model's training regime.
 
 2. **Dominant-topic bias in single-centroid scoring**: Using one document centroid systematically down-ranks minority topics (constraints, exceptions, edge cases). Multi-anchor retrieval fixes this but adds complexity.
 
@@ -942,6 +1042,10 @@ if (coverage < 0.05)
 // Append coverage footer to every summary
 var footer = $"\n\n---\nCoverage: {coverage:P1} ({scope})\nConfidence: {confidence}";
 ```
+
+**Important**: This is a *summary of retrieved evidence*, not a guarantee of full-document coverage. When we say "sampled 3%", that's exactly what happened - the system saw 3% of the document and summarized that.
+
+**The sampling isn't random** - it's *semantic*. We use multi-anchor clustering to ensure minority topics aren't excluded. A random 3% might miss all the constraints and edge cases. A semantic 3% tries to capture one representative segment from each major theme. It's still partial coverage, but it's intentionally diverse partial coverage.
 
 **Adaptive sampling with multiple topic anchors**: The pre-filter uses multiple anchors (k-means-style clustering of a stratified sample) to ensure minority topics aren't systematically excluded. This prevents the "dominant theme bias" where a single centroid down-ranks important-but-rare content like constraints, exceptions, or conclusions.
 
@@ -1040,6 +1144,8 @@ Real-world performance on a typical developer machine (Ryzen 5600X, 32GB RAM, no
 | **End-to-end (25-page PDF)** | ~15-20s | Includes chunking, embedding, retrieval, LLM synthesis |
 
 **Test environment**: Ryzen 5600X (6-core), 32GB RAM, no GPU. Embedding uses all-MiniLM-L6-v2 (quantized, 256 token max), 8-thread parallel batching. Retrieval corpus: 500 segments. Your mileage will vary with different models, hardware, and document complexity.
+
+**Main driver is embedding throughput** (model choice + token length + batch size). Retrieval and fusion are basically free - they take milliseconds. This reinforces the "LLM last" principle: do cheap CPU work (embedding, retrieval) first, expensive LLM work only on filtered content.
 
 **Scaling**: The hierarchical extraction handles 500+ page documents (novels, manuals) by processing in batches and keeping only top-K per batch in memory.
 

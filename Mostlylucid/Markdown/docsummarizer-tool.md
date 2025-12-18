@@ -5,7 +5,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
 This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval.
 
@@ -48,7 +48,7 @@ If you need to *trust* a summary — or feed it to another system — that matte
 - **Evidence-Grounded Output**: Citations, confidence levels, traceable claims
 - **Multiple Modes**: Auto, BertRag, Bert, BertHybrid, MapReduce, Rag, Iterative
 - **Tool Mode**: Clean JSON for LLM agents, MCP servers, CI checks
-- **11 Templates**: brief, bullets, executive, technical, academic, bookreport, meeting...
+- **13 Templates**: default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict
 - **Large Documents**: Handles 500+ pages with hierarchical processing
 - **Web Fetching**: Security-hardened (SSRF protection, HTML sanitization)
 - **Playwright Mode**: Headless browser for JavaScript-rendered pages (SPAs, React apps)
@@ -192,20 +192,30 @@ Pre-built native executables are available from [GitHub Releases](https://github
 
 ```bash
 # Download and extract (Linux/macOS)
-curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-linux-x64.tar.gz
+curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.1.0/docsummarizer-linux-x64.tar.gz
 tar -xzf docsummarizer.tar.gz
 chmod +x docsummarizer
 
 # Download and extract (Windows PowerShell)
-Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
+Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.1.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
 Expand-Archive -Path "docsummarizer.zip" -DestinationPath "."
 ```
 
 ### Prerequisites
 
-#### Required: Ollama
+#### Bert Mode (No External Services)
 
-Ollama is the **only requirement** for summarizing Markdown files:
+For pure extractive summarization, **no external services required**:
+
+```bash
+docsummarizer -f document.md -m Bert
+```
+
+ONNX models auto-download from HuggingFace on first use (~23MB). Returns in ~3-5 seconds.
+
+#### LLM Modes (Auto, BertRag, MapReduce, etc.)
+
+For LLM-powered summarization, Ollama is required:
 
 ```bash
 # Install Ollama from https://ollama.ai
@@ -213,24 +223,34 @@ ollama pull llama3.2:3b        # Default model - good balance of speed/quality
 ollama serve
 ```
 
-> **Note**: No embedding model needed! The tool uses **ONNX embeddings by default** - models auto-download from HuggingFace on first RAG use (~23MB).
-
 > **Speed tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
 
-#### Optional: Docling (PDF/DOCX only)
+#### Optional: Docling (Binary Formats)
 
-Only needed when summarizing PDF or DOCX files. **Markdown files are read directly - no Docling required.**
+Required for PDF, DOCX, XLSX, PPTX, HTML, images (PNG/JPG/TIFF), CSV, VTT, and AsciiDoc files. **Markdown and plain text files are read directly - no Docling required.**
 
 ```bash
 docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
 ```
 
-#### Optional: Qdrant (Legacy Rag mode only)
+#### Optional: Qdrant (Persistent Vector Storage)
 
-Only needed for the legacy `--mode Rag`. BertRag doesn't use Qdrant (it keeps vectors in memory).
+Not required by default - BertRag uses in-memory vectors. Enable Qdrant for persistent storage to avoid re-embedding documents on subsequent runs:
 
 ```bash
 docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+Then configure in `docsummarizer.json`:
+
+```json
+{
+  "bertRag": {
+    "vectorStore": "Qdrant",
+    "collectionName": "docsummarizer",
+    "persistVectors": true
+  }
+}
 ```
 
 #### Optional: Ollama Embeddings
@@ -305,7 +325,7 @@ docsummarizer -f document.pdf
 # Fast mode - no LLM, pure extraction (~3-5s)
 docsummarizer -f document.pdf -m Bert
 
-# Production mode - best quality with perfect citations
+# Production mode - best quality with validated citations
 docsummarizer -f document.pdf -m BertRag
 
 # Focused on specific topic
@@ -429,17 +449,19 @@ docsummarizer -f doc.pdf -t detailed --words 300
 
 | Template | Words | Best For |
 |----------|-------|----------|
-| `default` | ~200 | General purpose |
-| `brief` | ~50 | Quick scanning |
-| `oneliner` | ~25 | Single sentence |
-| `bullets` | auto | Key takeaways |
-| `executive` | ~150 | C-suite reports |
-| `detailed` | ~500 | Comprehensive analysis |
-| `technical` | ~300 | Tech documentation |
-| `academic` | ~250 | Research papers |
-| `citations` | auto | Key quotes with sources |
-| `bookreport` | ~400 | Book report style with themes |
-| `meeting` | ~200 | Meeting notes with actions |
+| `default` | ~300 | Balanced summary with topics (2 paragraphs) |
+| `prose` | ~400 | Clean multi-paragraph prose - no metadata |
+| `brief` | ~50 | Quick 2-3 sentence summary |
+| `oneliner` | ~25 | Single sentence summary |
+| `bullets` | auto | Bullet point list (5-7 items) |
+| `executive` | ~150 | Executive briefing with recommendations |
+| `detailed` | ~1000 | Comprehensive with full topics |
+| `technical` | ~350 | Technical docs with implementation details |
+| `academic` | ~250 | Academic abstract format |
+| `citations` | auto | Key quotes with source citations only |
+| `bookreport` | ~500 | Book report (setting, characters, plot, themes) |
+| `meeting` | ~200 | Meeting notes (decisions, actions, questions) |
+| `strict` | ~60 | Token-efficient, 3 bullets max, no hedging |
 
 To see all available templates with descriptions:
 

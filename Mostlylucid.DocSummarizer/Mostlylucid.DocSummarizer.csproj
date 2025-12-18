@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Mostlylucid.DocSummarizer</RootNamespace>
         <AssemblyName>docsummarizer</AssemblyName>
-        <Version>3.0.0</Version>
+        <Version>3.1.0</Version>
         <Authors>Scott Galloway</Authors>
         <Description>Local-first document summarization tool using LLMs, vector search, and document conversion</Description>
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>
@@ -26,6 +26,7 @@
 
     <ItemGroup>
         <PackageReference Include="Polly.Core" Version="8.6.5" />
+        <PackageReference Include="Qdrant.Client" Version="1.16.1" />
         <PackageReference Include="System.CommandLine" Version="2.0.1" />
         <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="9.0.0" />
         <PackageReference Include="Spectre.Console" Version="0.50.0" />
@@ -33,13 +34,15 @@
         <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
         
         <!-- ONNX Runtime for local ML inference -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.0" />
+        <!-- DirectML includes CPU fallback and supports AMD/Intel/NVIDIA GPUs on Windows -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.22.0" />
         
         <!-- Markdig for proper markdown AST parsing -->
         <PackageReference Include="Markdig" Version="0.40.0" />
         
         <!-- Playwright for headless browser web fetching (JS-rendered pages) -->
         <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.1" />
     </ItemGroup>
 
 

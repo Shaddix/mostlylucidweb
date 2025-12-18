@@ -483,83 +483,155 @@ public class RagSummarizer
         
         var backendName = _useOnnxEmbedding ? "ONNX" : "Ollama";
         
-        await AnsiConsole.Progress()
-            .AutoClear(false)
-            .HideCompleted(false)
-            .Columns(
-                new TaskDescriptionColumn(),
-                new ProgressBarColumn(),
-                new PercentageColumn(),
-                new SpinnerColumn())
-            .StartAsync(async ctx =>
-            {
-                var task = ctx.AddTask($"[cyan]Embedding {chunks.Count} chunks ({backendName})[/]", maxValue: chunks.Count);
-
-                for (var i = 0; i < chunks.Count; i++)
+        // Use non-interactive mode if already in a batch context to avoid nested progress bars
+        if (ProgressService.IsInInteractiveContext)
+        {
+            await EmbedChunksWithoutProgressAsync(chunks, docId, collectionName, batch, batchSize);
+        }
+        else
+        {
+            await AnsiConsole.Progress()
+                .AutoClear(false)
+                .HideCompleted(false)
+                .Columns(
+                    new TaskDescriptionColumn(),
+                    new ProgressBarColumn(),
+                    new PercentageColumn(),
+                    new SpinnerColumn())
+                .StartAsync(async ctx =>
                 {
-                    // Only add delays for Ollama - ONNX is local and fast
-                    if (!_useOnnxEmbedding && i > 0)
+                    var task = ctx.AddTask($"[cyan]Embedding {chunks.Count} chunks ({backendName})[/]", maxValue: chunks.Count);
+
+                    for (var i = 0; i < chunks.Count; i++)
                     {
-                        var baseDelay = 500; // 500ms minimum between chunks
-                        var jitter = Random.Shared.Next(0, 500); // 0-500ms jitter
-                        await Task.Delay(baseDelay + jitter);
+                        // Only add delays for Ollama - ONNX is local and fast
+                        if (!_useOnnxEmbedding && i > 0)
+                        {
+                            var baseDelay = 500; // 500ms minimum between chunks
+                            var jitter = Random.Shared.Next(0, 500); // 0-500ms jitter
+                            await Task.Delay(baseDelay + jitter);
+                        }
+
+                        var chunk = chunks[i];
+                        var embedding = await _embedder.EmbedAsync(chunk.Content);
+
+                        // Validate embedding dimensions
+                        if (embedding.Length != _vectorSize)
+                            throw new InvalidOperationException(
+                                $"Embedding dimension mismatch: expected {_vectorSize}, got {embedding.Length}. " +
+                                $"Check your embedding model configuration.");
+
+                        // Include order in ID to handle duplicate content (same hash)
+                        var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
+
+                        // Store truncated content in payload to reduce memory pressure
+                        var truncatedContent = chunk.Content.Length > 2000
+                            ? chunk.Content[..2000]
+                            : chunk.Content;
+
+                        batch.Add(new QdrantPoint
+                        {
+                            Id = pointId.ToString(),
+                            Vector = embedding,
+                            Payload = new Dictionary<string, object>
+                            {
+                                ["docId"] = docId,
+                                ["chunkId"] = chunk.Id,
+                                ["heading"] = chunk.Heading ?? "",
+                                ["headingLevel"] = chunk.HeadingLevel,
+                                ["order"] = chunk.Order,
+                                ["content"] = truncatedContent,
+                                ["hash"] = chunk.Hash,
+                                ["pageStart"] = chunk.PageStart?.ToString() ?? string.Empty,
+                                ["pageEnd"] = chunk.PageEnd?.ToString() ?? string.Empty
+                            }
+                        });
+
+                        // Upsert batch when full to free memory
+                        if (batch.Count >= batchSize)
+                        {
+                            await _qdrant.UpsertAsync(collectionName, batch);
+                            batch.Clear();
+                        }
+
+                        task.Increment(1);
+                        
+                        if (_verbose)
+                            AnsiConsole.MarkupLine($"  [grey]Embedded {Markup.Escape($"[{chunk.Id}]")} {Markup.Escape(chunk.Heading ?? "")}[/]");
                     }
 
-                    var chunk = chunks[i];
-                    var embedding = await _embedder.EmbedAsync(chunk.Content);
-
-                    // Validate embedding dimensions
-                    if (embedding.Length != _vectorSize)
-                        throw new InvalidOperationException(
-                            $"Embedding dimension mismatch: expected {_vectorSize}, got {embedding.Length}. " +
-                            $"Check your embedding model configuration.");
-
-                    // Include order in ID to handle duplicate content (same hash)
-                    var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
-
-                    // Store truncated content in payload to reduce memory pressure
-                    var truncatedContent = chunk.Content.Length > 2000
-                        ? chunk.Content[..2000]
-                        : chunk.Content;
-
-                    batch.Add(new QdrantPoint
-                    {
-                        Id = pointId.ToString(),
-                        Vector = embedding,
-                        Payload = new Dictionary<string, object>
-                        {
-                            ["docId"] = docId,
-                            ["chunkId"] = chunk.Id,
-                            ["heading"] = chunk.Heading ?? "",
-                            ["headingLevel"] = chunk.HeadingLevel,
-                            ["order"] = chunk.Order,
-                            ["content"] = truncatedContent,
-                            ["hash"] = chunk.Hash,
-                            ["pageStart"] = chunk.PageStart?.ToString() ?? string.Empty,
-                            ["pageEnd"] = chunk.PageEnd?.ToString() ?? string.Empty
-                        }
-                    });
-
-                    // Upsert batch when full to free memory
-                    if (batch.Count >= batchSize)
+                    // Upsert remaining batch
+                    if (batch.Count > 0)
                     {
                         await _qdrant.UpsertAsync(collectionName, batch);
                         batch.Clear();
                     }
+                });
+        }
+    }
+    
+    /// <summary>
+    /// Embed chunks without Spectre progress display (for batch mode)
+    /// </summary>
+    private async Task EmbedChunksWithoutProgressAsync(
+        List<DocumentChunk> chunks,
+        string docId,
+        string collectionName,
+        List<QdrantPoint> batch,
+        int batchSize)
+    {
+        for (var i = 0; i < chunks.Count; i++)
+        {
+            // Only add delays for Ollama - ONNX is local and fast
+            if (!_useOnnxEmbedding && i > 0)
+            {
+                var baseDelay = 500;
+                var jitter = Random.Shared.Next(0, 500);
+                await Task.Delay(baseDelay + jitter);
+            }
 
-                    task.Increment(1);
-                    
-                    if (_verbose)
-                        AnsiConsole.MarkupLine($"  [grey]Embedded {Markup.Escape($"[{chunk.Id}]")} {Markup.Escape(chunk.Heading ?? "")}[/]");
-                }
+            var chunk = chunks[i];
+            var embedding = await _embedder.EmbedAsync(chunk.Content);
 
-                // Upsert remaining batch
-                if (batch.Count > 0)
+            if (embedding.Length != _vectorSize)
+                throw new InvalidOperationException(
+                    $"Embedding dimension mismatch: expected {_vectorSize}, got {embedding.Length}.");
+
+            var pointId = GenerateStableId(docId, chunk.Hash, chunk.Order);
+            var truncatedContent = chunk.Content.Length > 2000
+                ? chunk.Content[..2000]
+                : chunk.Content;
+
+            batch.Add(new QdrantPoint
+            {
+                Id = pointId.ToString(),
+                Vector = embedding,
+                Payload = new Dictionary<string, object>
                 {
-                    await _qdrant.UpsertAsync(collectionName, batch);
-                    batch.Clear();
+                    ["docId"] = docId,
+                    ["chunkId"] = chunk.Id,
+                    ["heading"] = chunk.Heading ?? "",
+                    ["headingLevel"] = chunk.HeadingLevel,
+                    ["order"] = chunk.Order,
+                    ["content"] = truncatedContent,
+                    ["hash"] = chunk.Hash,
+                    ["pageStart"] = chunk.PageStart?.ToString() ?? string.Empty,
+                    ["pageEnd"] = chunk.PageEnd?.ToString() ?? string.Empty
                 }
             });
+
+            if (batch.Count >= batchSize)
+            {
+                await _qdrant.UpsertAsync(collectionName, batch);
+                batch.Clear();
+            }
+        }
+
+        if (batch.Count > 0)
+        {
+            await _qdrant.UpsertAsync(collectionName, batch);
+            batch.Clear();
+        }
     }
 
     public async Task<DocumentSummary> SummarizeAsync(

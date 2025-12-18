@@ -6,6 +6,9 @@ using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services;
 using Spectre.Console;
 
+// Create UI service for consistent output
+var ui = new UIService();
+
 // Root command
 var rootCommand = new RootCommand("Document summarization tool using local LLMs");
 
@@ -31,6 +34,17 @@ var embeddingBackendOption = new Option<EmbeddingBackend?>("--embedding-backend"
 var embeddingModelOption = new Option<string?>("--embedding-model") { Description = "ONNX embedding model: AllMiniLmL6V2 (default), BgeSmallEnV15, GteSmall, MultiQaMiniLm, ParaphraseMiniLmL3" };
 var webModeOption = new Option<WebFetchMode?>("--web-mode") { Description = "Web fetch mode: Simple (fast HTTP) or Playwright (headless browser for JS-rendered pages)" };
 
+// Docling options for performance tuning
+var doclingUrlOption = new Option<string?>("--docling-url") { Description = "Docling service URL (default: http://localhost:5001)" };
+var doclingPagesPerChunkOption = new Option<int?>("--pages-per-chunk") { Description = "Pages per chunk for PDF split processing (default: 50, use higher for GPU)" };
+var doclingMaxConcurrentOption = new Option<int?>("--max-concurrent-chunks") { Description = "Max concurrent chunks to process (default: 2, use 1 for GPU)" };
+var doclingDisableSplitOption = new Option<bool?>("--no-split") { Description = "Disable split processing - process entire PDF at once (best for GPU)" };
+var doclingMinPagesForSplitOption = new Option<int?>("--min-pages-split") { Description = "Minimum pages before enabling split processing (default: 60)" };
+var doclingPdfBackendOption = new Option<string?>("--pdf-backend") { Description = "PDF backend: pypdfium2 (fast) or docling (accurate)" };
+var doclingGpuOption = new Option<bool?>("--docling-gpu") { Description = "Force GPU mode for Docling (auto-detected if not set). Use --docling-gpu=true or --docling-gpu=false" };
+var onnxGpuOption = new Option<string?>("--onnx-gpu") { Description = "ONNX execution provider: cpu, cuda, directml, auto. Use cuda for NVIDIA, directml for AMD/Intel" };
+var gpuDeviceIdOption = new Option<int?>("--gpu-device") { Description = "GPU device ID for ONNX (default: 0). Use nvidia-smi -L to list devices. Set to 1 if GPU 0 is integrated graphics" };
+
 // Add options to root command
 rootCommand.Options.Add(configOption);
 rootCommand.Options.Add(fileOption);
@@ -52,6 +66,15 @@ rootCommand.Options.Add(showStructureOption);
 rootCommand.Options.Add(embeddingBackendOption);
 rootCommand.Options.Add(embeddingModelOption);
 rootCommand.Options.Add(webModeOption);
+rootCommand.Options.Add(doclingUrlOption);
+rootCommand.Options.Add(doclingPagesPerChunkOption);
+rootCommand.Options.Add(doclingMaxConcurrentOption);
+rootCommand.Options.Add(doclingDisableSplitOption);
+rootCommand.Options.Add(doclingMinPagesForSplitOption);
+rootCommand.Options.Add(doclingPdfBackendOption);
+rootCommand.Options.Add(doclingGpuOption);
+rootCommand.Options.Add(onnxGpuOption);
+rootCommand.Options.Add(gpuDeviceIdOption);
 
 // Main handler
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -96,9 +119,55 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         if (!string.IsNullOrEmpty(embeddingModel))
             config.Onnx.EmbeddingModel = Enum.Parse<OnnxEmbeddingModel>(embeddingModel, ignoreCase: true);
         
+        // Parse ONNX GPU options
+        var onnxGpu = parseResult.GetValue(onnxGpuOption);
+        var gpuDeviceId = parseResult.GetValue(gpuDeviceIdOption);
+        
+        if (!string.IsNullOrEmpty(onnxGpu))
+            config.Onnx.ExecutionProvider = Enum.Parse<OnnxExecutionProvider>(onnxGpu, ignoreCase: true);
+        if (gpuDeviceId.HasValue)
+            config.Onnx.GpuDeviceId = gpuDeviceId.Value;
+        
         // Parse web fetch mode
         var webMode = parseResult.GetValue(webModeOption);
         if (webMode.HasValue) config.WebFetch.Mode = webMode.Value;
+        
+        // Parse Docling options for performance tuning
+        var doclingUrl = parseResult.GetValue(doclingUrlOption);
+        var pagesPerChunk = parseResult.GetValue(doclingPagesPerChunkOption);
+        var maxConcurrent = parseResult.GetValue(doclingMaxConcurrentOption);
+        var noSplit = parseResult.GetValue(doclingDisableSplitOption);
+        var minPagesForSplit = parseResult.GetValue(doclingMinPagesForSplitOption);
+        var pdfBackend = parseResult.GetValue(doclingPdfBackendOption);
+        
+        if (!string.IsNullOrEmpty(doclingUrl)) config.Docling.BaseUrl = doclingUrl;
+        if (pagesPerChunk.HasValue) config.Docling.PagesPerChunk = pagesPerChunk.Value;
+        if (maxConcurrent.HasValue) config.Docling.MaxConcurrentChunks = maxConcurrent.Value;
+        if (noSplit == true) config.Docling.EnableSplitProcessing = false;
+        if (minPagesForSplit.HasValue) config.Docling.MinPagesForSplit = minPagesForSplit.Value;
+        if (!string.IsNullOrEmpty(pdfBackend)) config.Docling.PdfBackend = pdfBackend;
+        
+        // Get explicit GPU setting from CLI
+        var doclingGpu = parseResult.GetValue(doclingGpuOption);
+        
+        // Detect available services and auto-adapt config
+        // Pass GPU override to detection so it displays correctly
+        var detectedServices = await ServiceDetector.DetectAndDisplayAsync(config, verbose, doclingGpu);
+        
+        // Auto-optimize Docling config based on GPU detection (unless user specified explicit values)
+        if (config.Docling.AutoDetectGpu && !pagesPerChunk.HasValue && !maxConcurrent.HasValue)
+        {
+            var optimizedDocling = detectedServices.GetOptimizedDoclingConfig(config.Docling);
+            config.Docling.PagesPerChunk = optimizedDocling.PagesPerChunk;
+            config.Docling.MaxConcurrentChunks = optimizedDocling.MaxConcurrentChunks;
+            config.Docling.MinPagesForSplit = optimizedDocling.MinPagesForSplit;
+            
+            if (verbose && detectedServices.DoclingAvailable)
+            {
+                var gpuStatus = detectedServices.DoclingHasGpu ? "GPU" : "CPU";
+                AnsiConsole.MarkupLine($"[dim]Docling ({gpuStatus}): pages/chunk={config.Docling.PagesPerChunk}, concurrent={config.Docling.MaxConcurrentChunks}, min-split={config.Docling.MinPagesForSplit}[/]");
+            }
+        }
         
         // Get template - supports "template:wordcount" syntax (e.g., "bookreport:500")
         var template = ParseTemplate(templateName ?? "default", targetWords);
@@ -106,7 +175,19 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         // Show template info if verbose
         if (verbose && !string.IsNullOrEmpty(templateName))
         {
-            Console.WriteLine($"Template: {template.Name} ({template.Description}){(template.TargetWords > 0 ? $" [~{template.TargetWords} words]" : "")}");
+            var wordInfo = template.TargetWords > 0 ? $" (~{template.TargetWords} words)" : "";
+            AnsiConsole.MarkupLine($"[dim]Template: {Markup.Escape(template.Name)} ({Markup.Escape(template.Description)}){Markup.Escape(wordInfo)}[/]");
+        }
+        
+        // Auto-select best mode based on available services
+        var effectiveMode = detectedServices.GetRecommendedMode(mode);
+        if (effectiveMode != mode && mode == SummarizationMode.Auto)
+        {
+            if (verbose)
+            {
+                AnsiConsole.MarkupLine($"[dim]Auto-selected mode: {effectiveMode} ({detectedServices.Features.BestModeDescription})[/]");
+            }
+            mode = effectiveMode;
         }
 
         // Create summarizer with ONNX embedding by default (fast, no external deps)
@@ -120,7 +201,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             config.Qdrant,
             ollamaConfig: config.Ollama,
             onnxConfig: config.Onnx,
-            embeddingBackend: config.EmbeddingBackend);
+            embeddingBackend: config.EmbeddingBackend,
+            bertRagConfig: config.BertRag);
         summarizer.SetTemplate(template);
  
         // Determine operation mode
@@ -138,17 +220,17 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             
             // Enable web fetch in config
             config.WebFetch.Enabled = true;
-            await ProcessUrlAsync(summarizer, url, mode, focus, query, config);
+            await ProcessUrlAsync(summarizer, url, mode, focus, query, config, ui);
         }
         else if (directory != null)
         {
             // Batch processing mode
-            await ProcessBatchAsync(summarizer, directory.FullName, mode, focus, config);
+            await ProcessBatchAsync(summarizer, directory.FullName, mode, focus, config, ui);
         }
         else if (file != null)
         {
             // Single file mode
-            await ProcessFileAsync(summarizer, file.FullName, mode, focus, query, config);
+            await ProcessFileAsync(summarizer, file.FullName, mode, focus, query, config, ui);
         }
         else
         {
@@ -156,14 +238,13 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             var defaultFile = Path.Combine(Environment.CurrentDirectory, "README.md");
             if (File.Exists(defaultFile))
             {
-                Console.WriteLine("No file specified, using README.md in current directory");
+                ui.Info("No file specified, using README.md in current directory");
                 Console.WriteLine();
-                await ProcessFileAsync(summarizer, defaultFile, mode, focus, query, config);
+                await ProcessFileAsync(summarizer, defaultFile, mode, focus, query, config, ui);
             }
             else
             {
-                Console.WriteLine("Error: Either --file, --directory, or --url must be specified");
-                Console.WriteLine("       (or run from a directory containing README.md)");
+                ui.Error("Either --file, --directory, or --url must be specified (or run from a directory containing README.md)");
                 return 1;
             }
         }
@@ -185,43 +266,28 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 // Check command - verify dependencies
 var checkCommand = new Command("check", "Verify dependencies are available");
 var checkVerboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed model information", DefaultValueFactory = _ => false };
+var checkConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
 checkCommand.Options.Add(checkVerboseOption);
+checkCommand.Options.Add(checkConfigOption);
 checkCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var verbose = parseResult.GetValue(checkVerboseOption);
+    var configPath = parseResult.GetValue(checkConfigOption);
     
     SpectreProgressService.WriteHeader("DocSummarizer", "Dependency Check");
 
-    // Check dependencies with spinner
-    bool ollamaOk = false, doclingOk = false, qdrantOk = false;
-    ModelInfo? modelInfo = null;
-    List<string>? availableModels = null;
+    // Load config for detection
+    var config = ConfigurationLoader.Load(configPath);
     
-    await AnsiConsole.Status()
-        .Spinner(Spinner.Known.Dots)
-        .SpinnerStyle(Style.Parse("cyan"))
-        .StartAsync("Checking dependencies...", async _ =>
-        {
-            var ollama = new OllamaService();
-            ollamaOk = await ollama.IsAvailableAsync();
-            
-            using var docling = new DoclingClient();
-            doclingOk = await docling.IsAvailableAsync();
-            
-            try
-            {
-                var qdrant = new QdrantHttpClient("localhost", 6333);
-                await qdrant.ListCollectionsAsync();
-                qdrantOk = true;
-            }
-            catch { }
-            
-            if (ollamaOk && verbose)
-            {
-                modelInfo = await ollama.GetModelInfoAsync();
-                availableModels = await ollama.GetAvailableModelsAsync();
-            }
-        });
+    // Use unified service detection
+    var detected = await ServiceDetector.DetectAsync(config, verbose);
+    
+    ModelInfo? modelInfo = null;
+    if (detected.OllamaAvailable && verbose)
+    {
+        var ollama = new OllamaService();
+        modelInfo = await ollama.GetModelInfoAsync();
+    }
 
     // Display status table
     var statusTable = new Table()
@@ -231,26 +297,79 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     
     statusTable.AddColumn(new TableColumn("[blue]Service[/]").LeftAligned());
     statusTable.AddColumn(new TableColumn("[blue]Status[/]").Centered());
-    statusTable.AddColumn(new TableColumn("[blue]Endpoint[/]").LeftAligned());
+    statusTable.AddColumn(new TableColumn("[blue]Details[/]").LeftAligned());
     
     statusTable.AddRow(
         "[cyan]Ollama[/]",
-        ollamaOk ? "[green]OK[/]" : "[red]FAIL[/]",
-        "http://localhost:11434");
+        detected.OllamaAvailable ? "[green]OK[/]" : "[red]FAIL[/]",
+        detected.OllamaAvailable ? $"{detected.AvailableModels.Count} models" : "Run: ollama serve");
     statusTable.AddRow(
         "[cyan]Docling[/]",
-        doclingOk ? "[green]OK[/]" : "[yellow]Optional[/]",
-        "http://localhost:5001");
+        detected.DoclingAvailable ? "[green]OK[/]" : "[yellow]Optional[/]",
+        detected.DoclingAvailable 
+            ? (detected.DoclingHasGpu ? "[cyan]GPU accelerated[/]" : "CPU mode") 
+            : "PDF/DOCX disabled");
     statusTable.AddRow(
         "[cyan]Qdrant[/]",
-        qdrantOk ? "[green]OK[/]" : "[yellow]Optional[/]",
-        "localhost:6333");
+        detected.QdrantAvailable ? "[green]OK[/]" : "[yellow]Optional[/]",
+        detected.QdrantAvailable ? "Vector persistence enabled" : "Using in-memory vectors");
+    statusTable.AddRow(
+        "[cyan]ONNX[/]",
+        "[green]OK[/]",
+        "Embedded (always available)");
     
     AnsiConsole.Write(statusTable);
     AnsiConsole.WriteLine();
+    
+    // Display features table
+    var featuresTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Cyan1)
+        .Title("[cyan]Available Features[/]");
+    
+    featuresTable.AddColumn(new TableColumn("[cyan]Feature[/]").LeftAligned());
+    featuresTable.AddColumn(new TableColumn("[cyan]Status[/]").Centered());
+    featuresTable.AddColumn(new TableColumn("[cyan]Requires[/]").LeftAligned());
+    
+    var f = detected.Features;
+    featuresTable.AddRow(
+        "PDF/DOCX conversion",
+        f.PdfConversion ? "[green]✓[/]" : "[red]✗[/]",
+        "Docling");
+    featuresTable.AddRow(
+        "Fast GPU conversion",
+        f.FastPdfConversion ? "[green]✓[/]" : "[yellow]○[/]",
+        "Docling + CUDA");
+    featuresTable.AddRow(
+        "BERT summarization",
+        f.BertSummarization ? "[green]✓[/]" : "[red]✗[/]",
+        "ONNX (embedded)");
+    featuresTable.AddRow(
+        "LLM summarization",
+        f.LlmSummarization ? "[green]✓[/]" : "[yellow]○[/]",
+        "Ollama");
+    featuresTable.AddRow(
+        "Document Q&A",
+        f.DocumentQA ? "[green]✓[/]" : "[yellow]○[/]",
+        "Ollama + ONNX");
+    featuresTable.AddRow(
+        "Vector persistence",
+        f.VectorPersistence ? "[green]✓[/]" : "[yellow]○[/]",
+        "Qdrant");
+    featuresTable.AddRow(
+        "Cross-session cache",
+        f.CrossSessionCache ? "[green]✓[/]" : "[yellow]○[/]",
+        "Qdrant");
+    
+    AnsiConsole.Write(featuresTable);
+    AnsiConsole.WriteLine();
+    
+    // Best mode recommendation
+    AnsiConsole.MarkupLine($"[cyan]Recommended mode:[/] {f.BestModeDescription}");
+    AnsiConsole.WriteLine();
 
     // Show verbose model info
-    if (verbose && ollamaOk)
+    if (verbose && detected.OllamaAvailable)
     {
         if (modelInfo != null)
         {
@@ -273,17 +392,17 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
             AnsiConsole.WriteLine();
         }
         
-        if (availableModels != null && availableModels.Count > 0)
+        if (detected.AvailableModels.Count > 0)
         {
             AnsiConsole.MarkupLine("[cyan]Available Models:[/]");
             var modelList = new Tree("[blue]Models[/]");
-            foreach (var m in availableModels.Take(10))
+            foreach (var m in detected.AvailableModels.Take(10))
             {
                 modelList.AddNode(Markup.Escape(m));
             }
-            if (availableModels.Count > 10)
+            if (detected.AvailableModels.Count > 10)
             {
-                modelList.AddNode($"[dim]... and {availableModels.Count - 10} more[/]");
+                modelList.AddNode($"[dim]... and {detected.AvailableModels.Count - 10} more[/]");
             }
             AnsiConsole.Write(modelList);
             AnsiConsole.WriteLine();
@@ -291,13 +410,13 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     }
 
     // Show help for missing dependencies
-    if (!ollamaOk || (!doclingOk && verbose) || (!qdrantOk && verbose))
+    if (!detected.OllamaAvailable || (!detected.DoclingAvailable && verbose) || (!detected.QdrantAvailable && verbose))
     {
         var helpPanel = new Panel(
             new Rows(
-                ollamaOk ? Text.Empty : new Text("ollama serve", new Style(Color.Yellow)),
-                doclingOk ? Text.Empty : new Text("docker run -p 5001:5001 quay.io/docling-project/docling-serve", new Style(Color.Yellow)),
-                qdrantOk ? Text.Empty : new Text("docker run -p 6333:6333 qdrant/qdrant", new Style(Color.Yellow)),
+                detected.OllamaAvailable ? Text.Empty : new Text("ollama serve", new Style(Color.Yellow)),
+                detected.DoclingAvailable ? Text.Empty : new Text("docker run -p 5001:5001 quay.io/docling-project/docling-serve", new Style(Color.Yellow)),
+                detected.QdrantAvailable ? Text.Empty : new Text("docker run -p 6333:6333 qdrant/qdrant", new Style(Color.Yellow)),
                 Text.Empty,
                 new Text("Pull default models:", new Style(Color.Cyan1)),
                 new Text("  ollama pull llama3.2:3b", new Style(Color.White))))
@@ -310,16 +429,17 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     }
 
     // Final status
-    if (ollamaOk)
+    if (detected.OllamaAvailable || detected.Features.BertSummarization)
     {
-        AnsiConsole.MarkupLine("[green]Ready to summarize![/] Ollama is available.");
-        if (!doclingOk) AnsiConsole.MarkupLine("[dim]Note: Docling unavailable - PDF/DOCX conversion disabled[/]");
-        if (!qdrantOk) AnsiConsole.MarkupLine("[dim]Note: Qdrant unavailable - RAG mode will use in-memory vectors[/]");
+        AnsiConsole.MarkupLine("[green]Ready to summarize![/]");
+        if (!detected.OllamaAvailable) AnsiConsole.MarkupLine("[dim]Note: Ollama unavailable - using BERT-only mode[/]");
+        if (!detected.DoclingAvailable) AnsiConsole.MarkupLine("[dim]Note: Docling unavailable - PDF/DOCX conversion disabled[/]");
+        if (!detected.QdrantAvailable) AnsiConsole.MarkupLine("[dim]Note: Qdrant unavailable - using in-memory vectors (no persistence)[/]");
         return 0;
     }
     else
     {
-        AnsiConsole.MarkupLine("[red]Ollama is required but not available.[/]");
+        AnsiConsole.MarkupLine("[red]No summarization backend available.[/]");
         return 1;
     }
 });
@@ -420,7 +540,8 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
         config.Qdrant,
         ollamaConfig: config.Ollama,
         onnxConfig: config.Onnx,
-        embeddingBackend: config.EmbeddingBackend);
+        embeddingBackend: config.EmbeddingBackend,
+        bertRagConfig: config.BertRag);
     
     var docId = Path.GetFileNameWithoutExtension(file.Name);
     var chunks = await SpectreProgressService.WithSpinnerAsync(
@@ -449,7 +570,8 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
                 config.Qdrant,
                 ollamaConfig: config.Ollama,
                 onnxConfig: config.Onnx,
-                embeddingBackend: config.EmbeddingBackend);
+                embeddingBackend: config.EmbeddingBackend,
+                bertRagConfig: config.BertRag);
             
             var sw = Stopwatch.StartNew();
             var summary = await SpectreProgressService.WithSpinnerAsync(
@@ -539,6 +661,220 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
 });
 rootCommand.Subcommands.Add(benchmarkCommand);
 
+// Benchmark Templates command - compare templates on the same document
+var benchmarkTemplatesCommand = new Command("benchmark-templates", "Compare multiple summary templates on the same document (reuses extraction)");
+var btFileOption = new Option<FileInfo?>("--file", "-f") { Description = "Document to summarize (required)" };
+var btTemplatesOption = new Option<string?>("--templates", "-t") { Description = "Comma-separated list of templates to compare (e.g., 'default,brief,executive,technical'). Use 'all' for all templates." };
+var btFocusOption = new Option<string?>("--focus", "-q") { Description = "Focus query for retrieval (optional)" };
+var btOutputDirOption = new Option<string?>("--output-dir", "-o") { Description = "Output directory for summary files (defaults to document directory)" };
+var btConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+var btVerboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed progress", DefaultValueFactory = _ => false };
+
+benchmarkTemplatesCommand.Options.Add(btFileOption);
+benchmarkTemplatesCommand.Options.Add(btTemplatesOption);
+benchmarkTemplatesCommand.Options.Add(btFocusOption);
+benchmarkTemplatesCommand.Options.Add(btOutputDirOption);
+benchmarkTemplatesCommand.Options.Add(btConfigOption);
+benchmarkTemplatesCommand.Options.Add(btVerboseOption);
+
+benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var file = parseResult.GetValue(btFileOption);
+    var templatesString = parseResult.GetValue(btTemplatesOption);
+    var focus = parseResult.GetValue(btFocusOption);
+    var outputDir = parseResult.GetValue(btOutputDirOption);
+    var configPath = parseResult.GetValue(btConfigOption);
+    var verbose = parseResult.GetValue(btVerboseOption);
+    
+    if (file == null)
+    {
+        AnsiConsole.MarkupLine("[red]Error: --file is required[/]");
+        return 1;
+    }
+    
+    if (!file.Exists)
+    {
+        AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+        return 1;
+    }
+    
+    // Parse templates - "all" means all available templates
+    var templateNames = new List<string>();
+    if (string.IsNullOrWhiteSpace(templatesString) || templatesString.Equals("all", StringComparison.OrdinalIgnoreCase))
+    {
+        templateNames.AddRange(SummaryTemplate.Presets.AvailableTemplates);
+    }
+    else
+    {
+        templateNames.AddRange(templatesString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+    
+    if (templateNames.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[red]Error: No templates specified[/]");
+        return 1;
+    }
+    
+    SpectreProgressService.WriteHeader("DocSummarizer", "Template Benchmark");
+    
+    // Display benchmark info
+    var infoTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Blue);
+    
+    infoTable.AddColumn("[blue]Property[/]");
+    infoTable.AddColumn("[blue]Value[/]");
+    infoTable.AddRow("[cyan]Document[/]", Markup.Escape(file.Name));
+    infoTable.AddRow("[cyan]Templates[/]", $"[green]{templateNames.Count}[/] ({string.Join(", ", templateNames.Take(5))}{(templateNames.Count > 5 ? "..." : "")})");
+    if (!string.IsNullOrEmpty(focus)) infoTable.AddRow("[cyan]Focus[/]", Markup.Escape(focus));
+    
+    AnsiConsole.Write(infoTable);
+    AnsiConsole.WriteLine();
+    
+    // Load config
+    var config = ConfigurationLoader.Load(configPath);
+    config.Output.Verbose = verbose;
+    
+    // Read the document content
+    var extension = file.Extension.ToLowerInvariant();
+    string markdown;
+    
+    if (extension is ".md" or ".txt" or ".text")
+    {
+        markdown = await File.ReadAllTextAsync(file.FullName, cancellationToken);
+    }
+    else if (extension is ".zip")
+    {
+        // Extract text from ZIP (e.g., Project Gutenberg archives)
+        AnsiConsole.MarkupLine("[cyan]Extracting text from ZIP archive...[/]");
+        var archiveInfo = ArchiveHandler.InspectArchive(file.FullName);
+        if (archiveInfo == null || !archiveInfo.IsValid)
+        {
+            AnsiConsole.MarkupLine($"[red]Error: {archiveInfo?.Error ?? "Invalid archive"}[/]");
+            return 1;
+        }
+        if (verbose)
+        {
+            var gutenbergTag = archiveInfo.IsGutenberg ? " (Gutenberg)" : "";
+            AnsiConsole.MarkupLine($"[dim]Archive: {Markup.Escape(archiveInfo.MainFileName ?? "unknown")} ({archiveInfo.MainFileSize / 1024:N0} KB){gutenbergTag}[/]");
+        }
+        markdown = await ArchiveHandler.ExtractTextAsync(file.FullName, ct: cancellationToken);
+        AnsiConsole.MarkupLine($"[green]Extracted {markdown.Length / 1024:N0} KB of text[/]");
+    }
+    else
+    {
+        // Use Docling for PDF/DOCX
+        AnsiConsole.MarkupLine("[cyan]Converting document with Docling...[/]");
+        var docling = new DoclingClient(config.Docling);
+        markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+            docling,
+            file.FullName,
+            $"Converting {file.Name}");
+        AnsiConsole.MarkupLine("[green]Document converted[/]");
+    }
+    
+    var docId = Path.GetFileNameWithoutExtension(file.Name);
+    
+    // Create extraction and retrieval configs from loaded config
+    var extractionConfig = config.Extraction.ToExtractionConfig();
+    var retrievalConfig = config.Retrieval.ToRetrievalConfig();
+    
+    // Apply adaptive retrieval settings
+    config.AdaptiveRetrieval.ApplyTo(retrievalConfig);
+    
+    if (verbose)
+    {
+        AnsiConsole.MarkupLine($"[dim]Extraction: ratio={extractionConfig.ExtractionRatio}, MMR={extractionConfig.MmrLambda}[/]");
+        AnsiConsole.MarkupLine($"[dim]Retrieval: TopK={retrievalConfig.TopK}, Adaptive={retrievalConfig.AdaptiveTopK}, MaxTopK={retrievalConfig.MaxTopK}[/]");
+    }
+    
+    // Create benchmark service with config-loaded settings
+    await using var benchmarkService = new TemplateBenchmarkService(
+        config.Onnx,
+        new OllamaService(config.Ollama.Model, 
+            timeout: TimeSpan.FromSeconds(config.Ollama.TimeoutSeconds),
+            classifierModel: config.Ollama.ClassifierModel),
+        config.BertRag,
+        extractionConfig: extractionConfig,
+        retrievalConfig: retrievalConfig,
+        verbose: verbose);
+    
+    AnsiConsole.WriteLine();
+    
+    // Run benchmark
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    var results = await benchmarkService.BenchmarkTemplatesAsync(
+        docId,
+        markdown,
+        templateNames,
+        focus,
+        ct: cancellationToken);
+    sw.Stop();
+    
+    AnsiConsole.WriteLine();
+    
+    // Display results table
+    var resultsTable = new Table()
+        .Border(TableBorder.Double)
+        .BorderColor(Color.Green)
+        .Title("[green]Template Benchmark Results[/]");
+    
+    resultsTable.AddColumn(new TableColumn("[green]Template[/]").LeftAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Target[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Actual[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Diff[/]").RightAligned());
+    resultsTable.AddColumn(new TableColumn("[green]Time[/]").RightAligned());
+    
+    foreach (var r in results.TemplateResults)
+    {
+        if (r.Success)
+        {
+            var diff = r.ActualWordCount - r.TargetWords;
+            var diffStr = r.TargetWords > 0 ? $"{diff:+#;-#;0}" : "n/a";
+            var diffColor = r.TargetWords > 0 
+                ? (Math.Abs(diff) <= r.TargetWords * 0.2 ? "green" : Math.Abs(diff) <= r.TargetWords * 0.5 ? "yellow" : "red")
+                : "dim";
+            
+            resultsTable.AddRow(
+                $"[yellow]{Markup.Escape(r.TemplateName)}[/]",
+                r.TargetWords > 0 ? $"{r.TargetWords}" : "[dim]auto[/]",
+                $"{r.ActualWordCount}",
+                $"[{diffColor}]{diffStr}[/]",
+                $"{r.SynthesisTime.TotalSeconds:F2}s");
+        }
+        else
+        {
+            resultsTable.AddRow(
+                $"[red]{Markup.Escape(r.TemplateName)}[/]",
+                $"{r.TargetWords}",
+                "[red]FAILED[/]",
+                "-",
+                "-");
+        }
+    }
+    
+    AnsiConsole.Write(resultsTable);
+    AnsiConsole.WriteLine();
+    
+    // Summary stats
+    var successCount = results.TemplateResults.Count(r => r.Success);
+    var avgSynthesisTime = results.TemplateResults.Where(r => r.Success).Average(r => r.SynthesisTime.TotalSeconds);
+    
+    AnsiConsole.MarkupLine($"[cyan]Extraction:[/] {results.TotalSegments} segments, {results.RetrievedSegments} retrieved in {results.TotalExtractionTime.TotalSeconds:F2}s");
+    AnsiConsole.MarkupLine($"[cyan]Synthesis:[/] {successCount}/{templateNames.Count} templates, avg {avgSynthesisTime:F2}s per template");
+    AnsiConsole.MarkupLine($"[cyan]Total:[/] {sw.Elapsed.TotalSeconds:F1}s");
+    AnsiConsole.WriteLine();
+    
+    // Save results
+    var effectiveOutputDir = outputDir ?? Path.GetDirectoryName(file.FullName) ?? Environment.CurrentDirectory;
+    await benchmarkService.SaveResultsAsync(results, effectiveOutputDir, docId);
+    
+    AnsiConsole.MarkupLine($"[green]Results saved to:[/] {effectiveOutputDir}");
+    
+    return 0;
+});
+rootCommand.Subcommands.Add(benchmarkTemplatesCommand);
+
 // Templates command - list available templates
 var templatesCommand = new Command("templates", "List available summary templates");
 templatesCommand.SetAction((parseResult, cancellationToken) =>
@@ -557,8 +893,10 @@ templatesCommand.SetAction((parseResult, cancellationToken) =>
     var presets = new[]
     {
         ("default", "~500", "General purpose summary"),
+        ("prose", "~400", "Clean multi-paragraph prose (no metadata)"),
         ("brief", "~50", "Quick scanning"),
         ("oneliner", "~25", "Single sentence"),
+        ("strict", "~60", "Ultra-concise, no fluff"),
         ("bullets", "auto", "Key takeaways as bullet points"),
         ("executive", "~150", "C-suite reports"),
         ("detailed", "~1000", "Comprehensive analysis"),
@@ -632,14 +970,14 @@ static async Task ProcessUrlAsync(
     SummarizationMode mode,
     string? focus,
     string? query,
-    DocSummarizerConfig config)
+    DocSummarizerConfig config,
+    IUIService ui)
 {
-    Console.WriteLine($"Fetching URL: {url}");
-    Console.WriteLine($"Mode: {mode}");
-    Console.WriteLine($"Model: {config.Ollama.Model}");
-    if (!string.IsNullOrEmpty(focus)) Console.WriteLine($"Focus: {focus}");
+    ui.Info($"Fetching URL: {url}");
+    ui.Info($"Mode: {mode}");
+    ui.Info($"Model: {config.Ollama.Model}");
+    if (!string.IsNullOrEmpty(focus)) ui.Info($"Focus: {focus}");
     Console.WriteLine();
-    Console.Out.Flush();
 
     // Use WebFetcher with configured mode (Simple or Playwright)
     var fetcher = new WebFetcher(config.WebFetch);
@@ -647,14 +985,12 @@ static async Task ProcessUrlAsync(
     
     if (string.IsNullOrWhiteSpace(result.TempFilePath) || !File.Exists(result.TempFilePath))
     {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine("Error: Failed to fetch content from URL");
-        Console.ResetColor();
+        ui.Error("Failed to fetch content from URL");
         return;
     }
 
     // Process the file - cleanup happens automatically via IDisposable
-    await ProcessFileAsync(summarizer, result.TempFilePath, mode, focus, query, config, url);
+    await ProcessFileAsync(summarizer, result.TempFilePath, mode, focus, query, config, ui, url);
 }
 
 static async Task ProcessFileAsync(
@@ -664,6 +1000,7 @@ static async Task ProcessFileAsync(
     string? focus,
     string? query,
     DocSummarizerConfig config,
+    IUIService ui,
     string? sourceUrl = null)
 {
     var fileName = sourceUrl ?? Path.GetFileName(filePath);
@@ -672,26 +1009,26 @@ static async Task ProcessFileAsync(
     if (!string.IsNullOrEmpty(query))
     {
         // Query mode
-        SpectreProgressService.WriteHeader("DocSummarizer", "Query Mode");
-        SpectreProgressService.WriteDocumentInfo(fileName, "Query", config.Ollama.Model);
+        ui.WriteHeader("DocSummarizer", "Query Mode");
+        ui.WriteDocumentInfo(fileName, "Query", config.Ollama.Model);
         
-        var answer = await SpectreProgressService.WithSpinnerAsync("Querying document...", 
+        var answer = await ui.WithSpinnerAsync("Querying document...", 
             () => summarizer.QueryAsync(filePath, query));
         
-        SpectreProgressService.WriteSummaryPanel(answer, "Answer");
-        SpectreProgressService.WriteCompletion(sw.Elapsed);
+        ui.WriteSummary(answer, "Answer");
+        ui.WriteCompletion(sw.Elapsed);
     }
     else
     {
-        // Summarize mode with Spectre progress
-        SpectreProgressService.WriteHeader("DocSummarizer");
-        SpectreProgressService.WriteDocumentInfo(fileName, mode.ToString(), config.Ollama.Model, focus);
+        // Summarize mode
+        ui.WriteHeader("DocSummarizer");
+        ui.WriteDocumentInfo(fileName, mode.ToString(), config.Ollama.Model, focus);
         
-        // Use SummarizeAsync directly - it now has built-in Spectre progress for conversion
+        // Use SummarizeAsync directly - it now has built-in progress for conversion
         var summary = await summarizer.SummarizeAsync(filePath, mode, focus);
         
         sw.Stop();
-        SpectreProgressService.WriteCompletion(sw.Elapsed);
+        ui.WriteCompletion(sw.Elapsed);
         
         // Format and output
         var output = OutputFormatter.Format(summary, config.Output, fileName);
@@ -699,27 +1036,29 @@ static async Task ProcessFileAsync(
         if (config.Output.Format == OutputFormat.Console)
         {
             Console.WriteLine();
-            SpectreProgressService.WriteSummaryPanel(summary.ExecutiveSummary, "Summary");
+            ui.WriteSummary(summary.ExecutiveSummary, "Summary");
             
             // Show extracted entities (characters, locations, etc.) if available
             if (summary.Entities != null && summary.Entities.HasAny)
             {
                 Console.WriteLine();
-                SpectreProgressService.WriteEntities(summary.Entities);
+                ui.WriteEntities(summary.Entities);
             }
             
             // Show topics if available
             if (summary.TopicSummaries?.Count > 0)
             {
                 Console.WriteLine();
-                SpectreProgressService.WriteTopicsTree(
-                    summary.TopicSummaries.Select(t => (t.Topic, t.Summary)));
+                ui.WriteTopics(summary.TopicSummaries.Select(t => (t.Topic, t.Summary)));
             }
             
             // Auto-save to .summary.md file
             var fileDir = sourceUrl != null ? Environment.CurrentDirectory : (Path.GetDirectoryName(filePath) ?? Environment.CurrentDirectory);
             var baseName = sourceUrl != null ? SanitizeFileName(new Uri(sourceUrl).Host) : Path.GetFileNameWithoutExtension(filePath);
-            var summaryPath = Path.Combine(fileDir, $"{baseName}.summary.md");
+            // Avoid double _summary suffix
+            if (baseName.EndsWith("_summary", StringComparison.OrdinalIgnoreCase))
+                baseName = baseName[..^8];
+            var summaryPath = Path.Combine(fileDir, $"{baseName}_summary.md");
             
             // Format as markdown for file output
             var markdownConfig = new OutputConfig { Format = OutputFormat.Markdown, IncludeTrace = true };
@@ -727,7 +1066,7 @@ static async Task ProcessFileAsync(
             await File.WriteAllTextAsync(summaryPath, markdownOutput);
             
             Console.WriteLine();
-            Console.WriteLine($"Saved to: {summaryPath}");
+            ui.Success($"Saved to: {summaryPath}");
         }
         else
         {
@@ -747,47 +1086,70 @@ static async Task ProcessBatchAsync(
     string directoryPath,
     SummarizationMode mode,
     string? focus,
-    DocSummarizerConfig config)
+    DocSummarizerConfig config,
+    IUIService ui)
 {
-    SpectreProgressService.WriteHeader("DocSummarizer", "Batch Mode");
-    SpectreProgressService.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
+    ui.WriteHeader("DocSummarizer", "Batch Mode");
+    ui.WriteDocumentInfo(directoryPath, mode.ToString(), config.Ollama.Model, focus);
+    
+    // Determine effective output directory
+    var effectiveOutputDir = config.Output.OutputDirectory ?? directoryPath;
+    var outputInSourceDir = string.Equals(
+        Path.GetFullPath(effectiveOutputDir), 
+        Path.GetFullPath(directoryPath), 
+        StringComparison.OrdinalIgnoreCase);
+    
+    // Warn if output is going to source directory (files with _summary suffix will be auto-skipped)
+    if (outputInSourceDir && config.Output.Format != OutputFormat.Console)
+    {
+        AnsiConsole.MarkupLine("[yellow]Note:[/] Output files will be saved alongside source files.");
+        AnsiConsole.MarkupLine("[dim]  Files ending in _summary will be automatically skipped to prevent loops.[/]");
+        AnsiConsole.WriteLine();
+    }
 
     var batchProcessor = new BatchProcessor(summarizer, config.Batch, config.Output.Verbose);
+    var totalFiles = 0;
     var processed = 0;
     
-    // Callback to save each file IMMEDIATELY after processing - avoids OOM
-    async Task OnFileCompleted(BatchResult result)
+    // Enter batch context to prevent nested progress bars
+    using (ui.EnterBatchContext())
     {
-        processed++;
-        var fileName = Path.GetFileName(result.FilePath);
-        Console.WriteLine($"  [{(result.Success ? "OK" : "FAIL")}] {fileName}");
-        
-        if (result.Success && result.Summary != null)
+        // Callback to save each file IMMEDIATELY after processing - avoids OOM
+        async Task OnFileCompleted(BatchResult result)
         {
-            var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
+            processed++;
+            var fileName = Path.GetFileName(result.FilePath);
+            ui.WriteBatchProgress(processed, totalFiles, fileName, result.Success);
             
-            if (config.Output.Format != OutputFormat.Console)
+            if (result.Success && result.Summary != null)
             {
-                await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, config.Output.OutputDirectory);
+                var output = OutputFormatter.Format(result.Summary, config.Output, fileName);
+                
+                if (config.Output.Format != OutputFormat.Console)
+                {
+                    // Use --output-dir if specified, otherwise save next to source file
+                    var outputDir = config.Output.OutputDirectory ?? Path.GetDirectoryName(result.FilePath);
+                    await OutputFormatter.WriteOutputAsync(output, config.Output, fileName, outputDir);
+                }
             }
         }
-    }
-    
-    Console.WriteLine();
-    
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
-    sw.Stop();
+        
+        Console.WriteLine();
+        
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var batchSummary = await batchProcessor.ProcessDirectoryAsync(directoryPath, mode, focus, OnFileCompleted);
+        sw.Stop();
 
-    // Output batch summary
-    Console.WriteLine();
-    SpectreProgressService.WriteCompletion(sw.Elapsed, batchSummary.FailureCount == 0);
-    Console.WriteLine($"Processed: {batchSummary.SuccessCount} succeeded, {batchSummary.FailureCount} failed");
-    
-    if (config.Output.Format != OutputFormat.Console)
-    {
-        var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
-        await OutputFormatter.WriteOutputAsync(batchOutput, config.Output, "_batch_summary", config.Output.OutputDirectory);
+        // Output batch summary
+        Console.WriteLine();
+        ui.WriteCompletion(sw.Elapsed, batchSummary.FailureCount == 0);
+        ui.Success($"Processed: {batchSummary.SuccessCount} succeeded, {batchSummary.FailureCount} failed");
+        
+        if (config.Output.Format != OutputFormat.Console)
+        {
+            var batchOutput = OutputFormatter.FormatBatch(batchSummary, config.Output);
+            await OutputFormatter.WriteOutputAsync(batchOutput, config.Output, "_batch_summary", config.Output.OutputDirectory);
+        }
     }
 }
 
@@ -865,7 +1227,8 @@ static async Task<ToolOutput> RunToolModeAsync(
             config.Qdrant,
             ollamaConfig: config.Ollama,
             onnxConfig: config.Onnx,
-            embeddingBackend: config.EmbeddingBackend);
+            embeddingBackend: config.EmbeddingBackend,
+            bertRagConfig: config.BertRag);
         
         var processingTime = DateTime.UtcNow - startTime;
         

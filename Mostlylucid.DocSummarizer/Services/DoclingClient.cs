@@ -30,6 +30,7 @@ public class DoclingClient : IDisposable
     private readonly HttpClient _http;
     private readonly TimeSpan _pollInterval;
     private readonly TimeSpan _timeout;
+    private bool? _hasGpu;
     
     /// <summary>
     /// Progress callback - receives updates during conversion
@@ -42,6 +43,11 @@ public class DoclingClient : IDisposable
     /// Parameters: (chunkIndex, startPage, endPage, markdown)
     /// </summary>
     public Action<int, int, int, string>? OnChunkComplete { get; set; }
+    
+    /// <summary>
+    /// Whether Docling is running with GPU acceleration (detected on first use)
+    /// </summary>
+    public bool? HasGpu => _hasGpu;
 
     public DoclingClient(DoclingConfig? config = null)
     {
@@ -123,9 +129,11 @@ public class DoclingClient : IDisposable
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
-        if (totalPages <= _config.PagesPerChunk)
+        // Use MinPagesForSplit if set, otherwise fall back to PagesPerChunk
+        var minPagesForSplit = _config.MinPagesForSplit > 0 ? _config.MinPagesForSplit : _config.PagesPerChunk;
+        if (totalPages <= minPagesForSplit)
         {
-            Report(0, 1, 0, 1, "Small PDF - standard conversion");
+            Report(0, 1, 0, 1, $"PDF ({totalPages} pages) - standard conversion");
             return await ConvertStandardAsync(filePath, cancellationToken);
         }
 
@@ -627,6 +635,132 @@ public class DoclingClient : IDisposable
             return response.IsSuccessStatusCode;
         }
         catch { return false; }
+    }
+    
+    /// <summary>
+    /// Detect if Docling is running with GPU acceleration and adapt config accordingly.
+    /// Call this before processing to optimize settings.
+    /// </summary>
+    public async Task<DoclingCapabilities> DetectCapabilitiesAsync()
+    {
+        var capabilities = new DoclingCapabilities();
+        
+        try
+        {
+            // Try /health endpoint first (standard)
+            var response = await _http.GetAsync($"{_baseUrl}/health");
+            if (!response.IsSuccessStatusCode)
+            {
+                capabilities.Available = false;
+                return capabilities;
+            }
+            
+            capabilities.Available = true;
+            
+            // Try to get more detailed info - Docling serve may have /info or similar
+            // Check response body for GPU indicators
+            var healthContent = await response.Content.ReadAsStringAsync();
+            
+            // Look for GPU/CUDA indicators in health response
+            var lowerContent = healthContent.ToLowerInvariant();
+            if (lowerContent.Contains("cuda") || lowerContent.Contains("gpu") || lowerContent.Contains("nvidia"))
+            {
+                capabilities.HasGpu = true;
+            }
+            
+            // Try /v1/info or /info endpoint if available
+            try
+            {
+                var infoResponse = await _http.GetAsync($"{_baseUrl}/v1/info");
+                if (infoResponse.IsSuccessStatusCode)
+                {
+                    var infoContent = await infoResponse.Content.ReadAsStringAsync();
+                    var lowerInfo = infoContent.ToLowerInvariant();
+                    
+                    if (lowerInfo.Contains("cuda") || lowerInfo.Contains("gpu") || lowerInfo.Contains("nvidia"))
+                    {
+                        capabilities.HasGpu = true;
+                    }
+                    
+                    // Try to parse accelerator info
+                    if (lowerInfo.Contains("\"accelerator\""))
+                    {
+                        capabilities.HasGpu = lowerInfo.Contains("\"cuda\"") || lowerInfo.Contains("\"gpu\"");
+                    }
+                }
+            }
+            catch
+            {
+                // Info endpoint not available, that's fine
+            }
+            
+            // If we still don't know, try a timing-based heuristic
+            // GPU conversion is typically 5-10x faster
+            if (!capabilities.HasGpu.HasValue && _config.AutoDetectGpu)
+            {
+                capabilities.HasGpu = await DetectGpuByTimingAsync();
+            }
+            
+            _hasGpu = capabilities.HasGpu;
+        }
+        catch
+        {
+            capabilities.Available = false;
+        }
+        
+        return capabilities;
+    }
+    
+    /// <summary>
+    /// Detect GPU by timing a small conversion (fallback method)
+    /// </summary>
+    private async Task<bool?> DetectGpuByTimingAsync()
+    {
+        // This is a rough heuristic - don't use unless needed
+        // A GPU typically processes pages in <1 second each, CPU takes 3-10 seconds
+        return null; // For now, don't do timing detection - too invasive
+    }
+    
+    /// <summary>
+    /// Get optimal config settings based on detected capabilities
+    /// </summary>
+    public DoclingConfig GetOptimizedConfig(DoclingCapabilities? capabilities = null)
+    {
+        var hasGpu = capabilities?.HasGpu ?? _hasGpu ?? false;
+        
+        // Create a copy of current config with optimized settings
+        var optimized = new DoclingConfig
+        {
+            BaseUrl = _config.BaseUrl,
+            TimeoutSeconds = _config.TimeoutSeconds,
+            PdfBackend = _config.PdfBackend,
+            AutoDetectGpu = _config.AutoDetectGpu
+        };
+        
+        if (hasGpu)
+        {
+            // GPU-optimized settings:
+            // - Larger chunks (GPU handles them efficiently)
+            // - Single concurrent (GPU parallelism is internal)
+            // - Higher threshold before splitting (GPU can handle more pages at once)
+            optimized.EnableSplitProcessing = _config.EnableSplitProcessing;
+            optimized.PagesPerChunk = Math.Max(_config.PagesPerChunk, 100);
+            optimized.MaxConcurrentChunks = 1;
+            optimized.MinPagesForSplit = Math.Max(_config.MinPagesForSplit, 150);
+        }
+        else
+        {
+            // CPU-optimized settings:
+            // - Smaller chunks (lower memory usage)
+            // - Multiple concurrent (use CPU cores)
+            // - Lower threshold for splitting (avoid memory issues)
+            optimized.EnableSplitProcessing = true;
+            optimized.PagesPerChunk = Math.Min(_config.PagesPerChunk, 30);
+            optimized.MaxConcurrentChunks = Math.Max(_config.MaxConcurrentChunks, 2);
+            optimized.MinPagesForSplit = Math.Min(_config.MinPagesForSplit, 40);
+        }
+        
+        return optimized;
     }
 
     private record DocxChapter(string Title, int StartIndex, int EndIndex);

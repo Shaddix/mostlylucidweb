@@ -1,4 +1,5 @@
 using Mostlylucid.DocSummarizer.Config;
+using System.Security.Cryptography;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
 
@@ -26,6 +27,16 @@ public class DocumentSummarizer
     // BERT config for lazy initialization (model downloaded on first use)
     private readonly OnnxConfig _onnxConfig;
     private readonly BertConfig _bertConfig;
+    private readonly BertRagConfig _bertRagConfig;
+    
+    // Vector store for persistent caching (optional)
+    private readonly IVectorStore? _vectorStore;
+
+    // Persistent chunk cache
+    private readonly ChunkCacheService _chunkCache;
+
+    // Front matter detector for filtering junk content
+    private readonly FrontMatterDetector _frontMatterDetector;
 
     /// <summary>
     ///     Temp directory for intermediate files
@@ -44,7 +55,8 @@ public class DocumentSummarizer
         OllamaConfig? ollamaConfig = null,
         OnnxConfig? onnxConfig = null,
         EmbeddingBackend embeddingBackend = EmbeddingBackend.Onnx,
-        BertConfig? bertConfig = null)
+        BertConfig? bertConfig = null,
+        BertRagConfig? bertRagConfig = null)
     {
         _verbose = verbose;
         _progress = new ProgressService(verbose);
@@ -71,6 +83,7 @@ public class DocumentSummarizer
         // Store ONNX and BERT config for lazy initialization
         _onnxConfig = onnxConfig ?? new OnnxConfig();
         _bertConfig = bertConfig ?? new BertConfig();
+        _bertRagConfig = bertRagConfig ?? new BertRagConfig();
         
         // Create embedding service based on backend choice
         _embedder = embeddingBackend == EmbeddingBackend.Onnx
@@ -78,6 +91,23 @@ public class DocumentSummarizer
             : new OllamaEmbeddingService(_ollama);
         
         _rag = new RagSummarizer(_ollama, _embedder, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig, Template, null, _lengthConfig);
+
+        _chunkCache = new ChunkCacheService(_processingConfig.ChunkCache, verbose);
+
+        // Front matter detector uses sentinel LLM for ambiguous cases
+        _frontMatterDetector = new FrontMatterDetector(_ollama, verbose);
+        
+        // Create vector store if Qdrant persistence is enabled
+        if (_bertRagConfig.VectorStore == VectorStoreBackend.Qdrant)
+        {
+            var qConfig = qdrantConfig ?? new QdrantConfig { Host = qdrantHost };
+            _vectorStore = new QdrantVectorStore(qConfig, verbose, deleteOnDispose: !_bertRagConfig.PersistVectors);
+        }
+        else if (_bertRagConfig.PersistVectors)
+        {
+            // In-memory store for caching within session (not persistent across runs)
+            _vectorStore = new InMemoryVectorStore(verbose);
+        }
     }
 
     /// <summary>
@@ -249,11 +279,22 @@ public class DocumentSummarizer
         string? focus)
     {
         var docId = NormalizeDocId(filePath);
+        var fileHash = ComputeFileHash(filePath);
+        List<DocumentChunk>? cachedChunks = null;
 
-
+        if (_chunkCache.Enabled)
+        {
+            cachedChunks = await _chunkCache.TryLoadAsync(docId, fileHash);
+            if (_verbose && cachedChunks != null)
+            {
+                Console.WriteLine($"[Cache] Reusing {cachedChunks.Count} cached chunks for {docId}");
+            }
+        }
+ 
         try
         {
         if (_verbose)
+
             {
                 PrintBanner();
                 _progress.WriteDivider("Document Processing");
@@ -264,107 +305,127 @@ public class DocumentSummarizer
                 Console.WriteLine();
             }
 
-            // Check if it's a direct-read format (markdown or plain text)
-            string markdown;
+            List<DocumentChunk> chunks;
+            string? markdownForBert = null;
             string? tempMarkdownPath = null;
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
             var isDirectRead = extension is ".md" or ".txt" or ".text";
+            var fromCache = cachedChunks != null;
 
-            if (isDirectRead)
+            if (fromCache)
             {
-                var formatName = extension == ".md" ? "markdown" : "text";
-                Console.WriteLine($"Reading {formatName} file...");
-                Console.Out.Flush();
-
-                // Check file size - stream to temp if large
-                var fileInfo = new FileInfo(filePath);
-                if (fileInfo.Length > LargeFileSizeThreshold)
-                {
-                    if (_verbose)
-                        Console.WriteLine($"[Memory] Large file ({fileInfo.Length / 1024:N0}KB), streaming...");
-                    tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
-                    File.Copy(filePath, tempMarkdownPath, true);
-                    markdown = await File.ReadAllTextAsync(tempMarkdownPath);
-                }
-                else
-                {
-                    markdown = await File.ReadAllTextAsync(filePath);
-                }
+                chunks = cachedChunks!;
+                if (_verbose) Console.WriteLine("[Cache] Skipping Docling conversion (cache hit)");
             }
             else
             {
-                // Use Spectre progress for conversion with live updates from DoclingClient
-                Console.WriteLine("Converting document with Docling...");
+                // Check if it's a direct-read format (markdown or plain text)
+                string markdown;
+
+                if (isDirectRead)
+                {
+                    var formatName = extension == ".md" ? "markdown" : "text";
+                    Console.WriteLine($"Reading {formatName} file...");
+                    Console.Out.Flush();
+
+                    // Check file size - stream to temp if large
+                    var fileInfo = new FileInfo(filePath);
+                    if (fileInfo.Length > LargeFileSizeThreshold)
+                    {
+                        if (_verbose)
+                            Console.WriteLine($"[Memory] Large file ({fileInfo.Length / 1024:N0}KB), streaming...");
+                        tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
+                        File.Copy(filePath, tempMarkdownPath, true);
+                        markdown = await File.ReadAllTextAsync(tempMarkdownPath);
+                    }
+                    else
+                    {
+                        markdown = await File.ReadAllTextAsync(filePath);
+                    }
+
+                    // Filter front matter for directly-read files too
+                    markdown = await FilterFrontMatterAsync(markdown);
+                }
+                else
+                {
+                    // Use Spectre progress for conversion with live updates from DoclingClient
+                    Console.WriteLine("Converting document with Docling...");
+                    Console.Out.Flush();
+
+                    // If PDF/DOCX and split processing enabled, stream with pipelined BertRag
+                    var isPdfOrDocx = extension is ".pdf" or ".docx";
+                    var canPipeline = isPdfOrDocx && _processingConfig.EnableSplitProcessing;
+
+                    if (canPipeline && mode is SummarizationMode.BertRag or SummarizationMode.Auto)
+                    {
+                        var pipelineResult = await SummarizeBertRagPipelinedAsync(filePath, docId, focus);
+                        return (pipelineResult.summary, new List<DocumentChunk>(), pipelineResult.docId);
+                    }
+
+                    markdown = await SpectreProgressService.RunConversionWithProgressAsync(
+                        _docling,
+                        filePath,
+                        $"Converting {docId}");
+
+                    Console.WriteLine("Document converted to markdown");
+
+                    // Filter front matter and junk content
+                    markdown = await FilterFrontMatterAsync(markdown);
+
+                    // For large converted content, write to temp to allow GC of the string
+                    if (markdown.Length > LargeFileSizeThreshold)
+                    {
+                        if (_verbose)
+                            Console.WriteLine(
+                                $"[Memory] Large content ({markdown.Length / 1024:N0}KB), caching to temp...");
+                        tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
+                        await File.WriteAllTextAsync(tempMarkdownPath, markdown);
+                        // Force GC to reclaim the string memory before chunking
+                        GC.Collect(0, GCCollectionMode.Optimized);
+                    }
+                }
+
+                // Chunk the document with context-aware sizing
+                Console.WriteLine("Parsing document structure...");
                 Console.Out.Flush();
 
-                // If PDF/DOCX and split processing enabled, stream with pipelined BertRag
-                var isPdfOrDocx = extension is ".pdf" or ".docx";
-                var canPipeline = isPdfOrDocx && _processingConfig.EnableSplitProcessing;
+                var chunker = await CreateChunkerAsync();
+                chunks = await _progress.WithStatusAsync(
+                    "Parsing document structure...",
+                    () =>
+                    {
+                        var result = chunker.ChunkByStructure(markdown);
+                        return Task.FromResult(result);
+                    });
 
-                if (canPipeline && mode is SummarizationMode.BertRag or SummarizationMode.Auto)
-                {
-                    var pipelineResult = await SummarizeBertRagPipelinedAsync(filePath, docId, focus);
-                    return (pipelineResult.summary, new List<DocumentChunk>(), pipelineResult.docId);
-                }
+                // Release markdown string after chunking
+                markdown = null!;
+                if (tempMarkdownPath != null) GC.Collect(0, GCCollectionMode.Optimized);
 
-                markdown = await SpectreProgressService.RunConversionWithProgressAsync(
-                    _docling,
-                    filePath,
-                    $"Converting {docId}");
+                Console.WriteLine($"Created {chunks.Count} chunks");
+                Console.WriteLine();
 
-                Console.WriteLine("Document converted to markdown");
-
-                // For large converted content, write to temp to allow GC of the string
-                if (markdown.Length > LargeFileSizeThreshold)
-                {
-                    if (_verbose)
-                        Console.WriteLine(
-                            $"[Memory] Large content ({markdown.Length / 1024:N0}KB), caching to temp...");
-                    tempMarkdownPath = Path.Combine(GetTempDir(), "content.md");
-                    await File.WriteAllTextAsync(tempMarkdownPath, markdown);
-                    // Force GC to reclaim the string memory before chunking
-                    GC.Collect(0, GCCollectionMode.Optimized);
-                }
+                // Persist chunks for reuse
+                await _chunkCache.SaveAsync(docId, fileHash, chunks, CancellationToken.None);
             }
-
-            // Chunk the document with context-aware sizing
-            Console.WriteLine("Parsing document structure...");
-            Console.Out.Flush();
-
-            var chunker = await CreateChunkerAsync();
-            var chunks = await _progress.WithStatusAsync(
-                "Parsing document structure...",
-                () =>
-                {
-                    var result = chunker.ChunkByStructure(markdown);
-                    return Task.FromResult(result);
-                });
-
-            // Release markdown string after chunking
-            markdown = null!;
-            if (tempMarkdownPath != null) GC.Collect(0, GCCollectionMode.Optimized);
-
-            Console.WriteLine($"Created {chunks.Count} chunks");
-            Console.WriteLine();
-
 
             var totalWords = CountWords(chunks);
-            if (totalWords < _lengthConfig.MinWordsForSummary)
-            {
-                if (_verbose)
-                {
-                    _progress.Warning($"Document has {totalWords} words; below summary threshold {_lengthConfig.MinWordsForSummary}. Returning original text.");
-                }
+             if (totalWords < _lengthConfig.MinWordsForSummary)
+             {
+                 if (_verbose)
+                 {
+                     _progress.Warning($"Document has {totalWords} words; below summary threshold {_lengthConfig.MinWordsForSummary}. Returning original text.");
+                 }
+ 
+                 var direct = BuildDirectSummary(docId, chunks, totalWords);
+                 return (direct, chunks, docId);
+             }
+ 
+             // For BERT modes, we need the markdown content
+             // Re-read from temp file if we cached it, or reconstruct from chunks
+             if (mode is SummarizationMode.Bert or SummarizationMode.BertHybrid or SummarizationMode.BertRag or SummarizationMode.Auto)
+             {
 
-                var direct = BuildDirectSummary(docId, chunks, totalWords);
-                return (direct, chunks, docId);
-            }
-
-            // For BERT modes, we need the markdown content
-            // Re-read from temp file if we cached it, or reconstruct from chunks
-            string? markdownForBert = null;
-            if (mode is SummarizationMode.Bert or SummarizationMode.BertHybrid or SummarizationMode.BertRag or SummarizationMode.Auto)
-            {
                 if (tempMarkdownPath != null && File.Exists(tempMarkdownPath))
                 {
                     markdownForBert = await File.ReadAllTextAsync(tempMarkdownPath);
@@ -587,7 +648,7 @@ public class DocumentSummarizer
         var contentType = DetectContentTypeFromMarkdown(markdown);
         if (_verbose) Console.WriteLine($"[BertRag] Content type: {contentType}");
         
-        // Create and run the pipeline
+        // Create and run the pipeline with vector store for caching
         using var bertRag = new BertRagSummarizer(
             _onnxConfig,
             _ollama,
@@ -609,7 +670,9 @@ public class DocumentSummarizer
                 MinSimilarity = 0.3
             },
             template: Template,
-            verbose: _verbose);
+            verbose: _verbose,
+            vectorStore: _vectorStore,
+            bertRagConfig: _bertRagConfig);
         
         var result = await bertRag.SummarizeAsync(docId, markdown, focusQuery, contentType);
         
@@ -1060,8 +1123,48 @@ Answer:";
         return sanitized.Length > 40 ? sanitized[..40] : sanitized;
     }
 
+    private static string ComputeFileHash(string filePath)
+    {
+        using var sha = SHA256.Create();
+        using var stream = File.OpenRead(filePath);
+        var bytes = sha.ComputeHash(stream);
+        return Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+    }
+ 
     private static void PrintBanner()
     {
         // Banner now handled by SpectreProgressService.WriteHeader() in Program.cs
     }
+
+    /// <summary>
+    /// Filter front matter, junk content, and other non-main content from markdown
+    /// </summary>
+    private async Task<string> FilterFrontMatterAsync(string markdown)
+    {
+        // Quick check - if no front matter detected, skip expensive analysis
+        if (!_frontMatterDetector.HasFrontMatterToFilter(markdown))
+        {
+            return markdown;
+        }
+
+        if (_verbose) Console.WriteLine("[FrontMatter] Analyzing document structure...");
+
+        var profile = await _frontMatterDetector.AnalyzeAsync(markdown);
+        
+        if (profile.MainContentStartIndex > 0 || profile.JunkRanges.Count > 0 || profile.SkipPatterns.Count > 0)
+        {
+            var originalLength = markdown.Length;
+            markdown = _frontMatterDetector.ApplyProfile(markdown, profile);
+            var filteredLength = markdown.Length;
+            
+            if (_verbose && filteredLength < originalLength)
+            {
+                var reduction = (originalLength - filteredLength) * 100.0 / originalLength;
+                Console.WriteLine($"[FrontMatter] Filtered {reduction:F1}% ({(originalLength - filteredLength) / 1024:N0} KB) of front matter/junk");
+            }
+        }
+
+        return markdown;
+    }
 }
+

@@ -1,5 +1,200 @@
 # Changelog - DocSummarizer
 
+## v3.1.0 - Documentation Improvements & Template Expansion (2025-12-18)
+
+### Documentation Updates
+
+#### Comprehensive Blog Series
+
+Three detailed blog articles covering DocSummarizer architecture, usage, and internals:
+
+- **[Part 1: Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag)** - Architecture, design patterns, and why structure-first beats naive LLM calls
+- **[Part 2: Using the Tool](/blog/docsummarizer-tool)** - Quick-start guide, modes, templates, and common workflows
+- **[Part 3: Advanced Concepts](/blog/docsummarizer-advanced-concepts)** - Deep dive into BERT, ONNX, embeddings, hybrid search, and the BertRag pipeline
+
+#### Documentation Improvements
+
+- **Terminology Consistency**: Standardized "BertRag" (not "BERT-RAG" or "Bert-Rag") across all documentation
+- **Accurate Claims**: Changed "perfect citations" → "validated citations" in user-facing docs to avoid overselling
+- **Mode Corrections**: Updated all references from legacy modes (MapReduce/Rag as primary) to current production modes (Auto/BertRag/Bert)
+- **Template Count Fix**: Corrected from "11 templates" to "13 templates" with full documentation
+- **Performance Verification**: Validated all benchmark numbers against source code (3-5s for Bert, ~15-20s for full pipeline, 500+ page support)
+- **Feature Completeness**: Verified all user-facing features are documented (Project Gutenberg ZIP support, all 13 templates, all 7 modes)
+
+### New Features
+
+#### Two New Summary Templates
+
+**`prose`** - Clean multi-paragraph prose summary without metadata:
+```bash
+docsummarizer -f doc.pdf -t prose
+```
+- 400-word target, 4 paragraphs
+- No citations, no metadata, no formatting
+- Just flowing prose for clean presentation
+- Perfect for embedding in reports or presentations
+
+**`strict`** - Token-efficient summary with hard constraints:
+```bash
+docsummarizer -f doc.pdf -t strict
+```
+- Exactly 3 bullet points, ≤60 words total
+- No hedging language ("appears to", "seems", "possibly")
+- Highest-confidence facts only
+- Optimized for token-constrained contexts
+
+**Total templates now: 13**
+- default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict
+
+### Improvements
+
+- **README**: Updated version badge references
+- **Cross-References**: Added navigation between Part 1, Part 2, and Part 3 articles
+- **Honest Limitations**: Clarified coverage scores as "proxy for topical coverage, not proof of full-document reading"
+- **Problem-Solution Framing**: Restructured Part 3 to use "problem-solution" pattern for better learning
+- **Failure Modes**: Added "Common Failure Modes" section with 6 real issues and fixes
+
+### Files Modified
+
+```
+Mostlylucid/Markdown/
+├── building-a-document-summarizer-with-rag.md           # Part 1 - consistency fixes
+├── docsummarizer-tool.md                                # Part 2 - template updates
+├── docsummarizer-advanced-concepts.md                   # Part 3 - technical depth
+└── fetching-and-analysing-web-content-with-llms.md     # Cross-reference added
+
+Mostlylucid.DocSummarizer/
+├── README.md                                            # Version badge, terminology
+├── CHANGELOG.md                                         # This file
+└── Config/SummaryTemplates.cs                          # Prose + Strict templates
+```
+
+### Bug Fixes
+
+- Fixed inconsistent mode naming in documentation
+- Corrected template count from 11 to 13
+- Fixed terminology inconsistencies (BertRag vs BERT-RAG)
+
+### Breaking Changes
+
+None - all changes are documentation and template additions.
+
+---
+
+## v2.7.0 - Universal Tokenizer & Unified UI (2025-12-18)
+
+### New Features
+
+#### Universal Tokenizer Support
+
+The ONNX embedding service now supports multiple tokenizer formats via `HuggingFaceTokenizer`:
+
+- **WordPiece** (BERT-style) - existing support, now unified
+- **BPE** (GPT-style, RoBERTa) - NEW
+- **Unigram** (SentencePiece, T5, XLNet) - NEW
+
+The tokenizer automatically detects the format from `tokenizer.json` files:
+
+```bash
+# Same usage - now works with more model types
+docsummarizer -f document.pdf -m BertRag
+```
+
+**How it works:**
+1. Prefers `tokenizer.json` (universal HuggingFace format)
+2. Falls back to `vocab.txt` (legacy WordPiece) if needed
+3. Auto-detects tokenizer type: WordPiece, BPE, or Unigram
+4. Supports all pre-tokenizers: Whitespace, BERT, Metaspace, ByteLevel, Sequence
+5. Supports all normalizers: BERT, Lowercase, NFC, NFKC, Sequence
+
+**Models now supported:**
+- All existing BERT models (AllMiniLM, BGE, GTE, etc.)
+- Future BPE models (GPT-style, RoBERTa, MPNet)
+- Future Unigram models (T5, XLNet, SentencePiece)
+
+#### Unified UI Service
+
+New `UIService` consolidates 5+ progress/display implementations into one consistent interface:
+
+```csharp
+// Single unified interface for all UI output
+IUIService ui = new UIService(verbose: true);
+
+ui.WriteHeader("DocSummarizer", "Batch Mode");
+ui.WriteDocumentInfo(fileName, mode, model, focus);
+await ui.WithSpinnerAsync("Processing...", async () => await task());
+ui.WriteSummary(result.ExecutiveSummary);
+ui.WriteCompletion(elapsed);
+```
+
+**Features:**
+- Automatic fallback to simple console when in batch context
+- Prevents nested Spectre.Console progress bar conflicts
+- Consistent styling across all operations
+- Batch context management via `ui.EnterBatchContext()`
+
+**Replaces:**
+- `ProgressService` (plain Console.WriteLine)
+- `SpectreProgressService` (rich Spectre output)
+- `SimpleProgressService` (simple console)
+- `ConsoleProgressReporter` / `NullProgressReporter`
+- Direct `Console.WriteLine` and `AnsiConsole` calls in Program.cs
+
+### Improvements
+
+- **Batch Mode**: Now properly enters batch context to prevent nested progress bar errors
+- **Code Cleanup**: Removed deprecated `BertTokenizer` class (was ~100 lines in OnnxEmbeddingService.cs)
+- **Consistency**: All CLI operations now use unified `IUIService` interface
+
+### Files Added
+
+```
+Services/
+├── Onnx/HuggingFaceTokenizer.cs    # Universal tokenizer (WordPiece, BPE, Unigram)
+└── UIService.cs                     # Unified UI service with IUIService interface
+```
+
+### Files Modified
+
+```
+Services/Onnx/OnnxEmbeddingService.cs   # Use HuggingFaceTokenizer, removed BertTokenizer
+Program.cs                               # Updated to use UIService
+```
+
+### Breaking Changes
+
+None - all changes are backward compatible.
+
+### Technical Details
+
+#### HuggingFaceTokenizer Architecture
+
+```
+tokenizer.json → TokenizerConfig → ITokenizerModel
+                       |                  |
+                       |                  +-- WordPieceModel (BERT)
+                       |                  +-- BpeModel (GPT/RoBERTa)
+                       |                  +-- UnigramModel (T5/XLNet)
+                       |
+                       +-- PreTokenizer (Whitespace, BERT, Metaspace, ByteLevel)
+                       +-- Normalizer (BERT, Lowercase, NFC, NFKC)
+```
+
+#### UIService Architecture
+
+```
+IUIService
+    |
+    +-- UIService (Spectre.Console implementation)
+            |
+            +-- WriteHeader(), WriteSummary(), WriteTopics(), etc.
+            +-- WithSpinnerAsync() - automatic fallback in batch mode
+            +-- EnterBatchContext() - prevents nested progress bars
+            +-- UIServiceProgressAdapter - bridges to legacy IProgressReporter
+```
+
+---
+
 ## v2.6.0 - LLM Tool Mode, Web Fetching & Security Hardening (2025-12-17)
 
 ### New Features

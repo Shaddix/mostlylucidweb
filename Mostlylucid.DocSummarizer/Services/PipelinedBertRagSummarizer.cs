@@ -93,7 +93,8 @@ public class PipelinedBertRagSummarizer : IDisposable
         var segments = ParseChunkToSegments(docId, markdown, chunkIndex);
         
         if (_verbose && segments.Count > 0)
-            AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: parsed {segments.Count} segments[/]");
+            if (!ProgressService.IsInInteractiveContext)
+                AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: parsed {segments.Count} segments[/]");
         
         // Guaranteed coverage: headings + first/last 2 sentences per chunk
         var guaranteed = new HashSet<Segment>();
@@ -170,7 +171,8 @@ public class PipelinedBertRagSummarizer : IDisposable
         if (_verbose)
         {
             var pct = segments.Count == 0 ? 0 : (double)toEmbed.Count / segments.Count;
-            AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: embedding {toEmbed.Count}/{segments.Count} ({pct:P0}), budget used={_embeddedBudgetUsed}/{_globalEmbedBudget}[/]");
+            if (!ProgressService.IsInInteractiveContext)
+                AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: embedding {toEmbed.Count}/{segments.Count} ({pct:P0}), budget used={_embeddedBudgetUsed}/{_globalEmbedBudget}[/]");
         }
         
         // Detect content type from first chunk
@@ -178,7 +180,8 @@ public class PipelinedBertRagSummarizer : IDisposable
         {
             _detectedContentType = SegmentExtractor.DetectContentTypeFromSegments(segments);
             if (_verbose && _detectedContentType != ContentType.Unknown)
-                AnsiConsole.MarkupLine($"[dim]Detected content type: {_detectedContentType}[/]");
+                if (!ProgressService.IsInInteractiveContext)
+                    AnsiConsole.MarkupLine($"[dim]Detected content type: {_detectedContentType}[/]");
         }
         
         // Start background embedding if not already started
@@ -416,7 +419,8 @@ public class PipelinedBertRagSummarizer : IDisposable
                 _embeddedBudgetUsed += batch.Count;
                 
                 if (_verbose && batch.Count > 0)
-                    AnsiConsole.MarkupLine($"[dim]Background embedded {batch.Count} segments (budget { _embeddedBudgetUsed}/{_globalEmbedBudget})[/]");
+                    if (!ProgressService.IsInInteractiveContext)
+                        AnsiConsole.MarkupLine($"[dim]Background embedded {batch.Count} segments (budget { _embeddedBudgetUsed}/{_globalEmbedBudget})[/]");
             }
             else
             {
@@ -438,7 +442,8 @@ public class PipelinedBertRagSummarizer : IDisposable
         var stopwatch = Stopwatch.StartNew();
         
         if (_verbose)
-            AnsiConsole.MarkupLine($"[bold cyan]Finalizing: {_accumulatedSegments.Count} segments from {_chunksReceived} chunks[/]");
+            if (!ProgressService.IsInInteractiveContext)
+                AnsiConsole.MarkupLine($"[bold cyan]Finalizing: {_accumulatedSegments.Count} segments from {_chunksReceived} chunks[/]");
         
         // Wait for pending embeddings to complete
         await WaitForPendingEmbeddingsAsync(ct);
@@ -465,7 +470,8 @@ public class PipelinedBertRagSummarizer : IDisposable
         var centroid = CalculateCentroid(segments);
         
         // Compute salience scores with MMR
-        if (_verbose) AnsiConsole.MarkupLine("[dim]Computing salience scores with MMR...[/]");
+        if (_verbose && !ProgressService.IsInInteractiveContext) 
+            AnsiConsole.MarkupLine("[dim]Computing salience scores with MMR...[/]");
         ComputeSalienceScores(segments, centroid, _detectedContentType);
         
         // Retrieve top segments
@@ -759,40 +765,61 @@ public class PipelinedBertRagSummarizer : IDisposable
         INSTRUCTIONS:
         1. Write at the SCENE level, not the dialogue level
         2. Describe ACTIONS: who did what, where, when
-        3. Identify KEY CHARACTERS and their roles
+        3. Identify KEY CHARACTERS and their roles (detective, narrator, client, villain)
         4. Describe the SETTING (place, time period, atmosphere)
-        5. Use past tense, third person
-        6. Include citation references like [s1], [s2] as evidence
-        7. Write ~{targetWords} words
+        5. Identify the INCITING INCIDENT (what starts the plot)
+        6. Note any THEMES or central conflicts
+        7. Use past tense, third person
+        8. Write ~{targetWords} words in flowing prose
+
+        IMPORTANT:
+        - Do NOT include citation references like [s1], [s2] in your text - write clean prose
+        - Do NOT quote dialogue verbatim (paraphrase instead)
+        - Do NOT list every conversation ("He said X, she replied Y")
+        - Do NOT treat all moments as equally important
 
         COVERAGE RULE:
-        {(coverage < 0.05 ? "Coverage is very low (<5%). Use cautious language like 'in the sampled sections' and avoid definitive endings." : "Use tone consistent with evidence.")}
-
-        DO NOT:
-        - Quote dialogue verbatim (paraphrase instead)
-        - List every conversation
+        {(coverage < 0.05 ? "Coverage is very low (<5%). Use cautious language like 'in the sampled sections' and avoid definitive endings." : "Use confident tone consistent with evidence.")}
 
         {focusLine}
         {context}
 
-        Write a book report:
+        Write a book report that describes what happens:
         """;
 
     private static string BuildExpositoryPrompt(int targetWords, string focusLine, string context, double coverage) => $"""
-        You are a precise summarization assistant. Your job is to synthesize the retrieved segments into a fluent summary.
+        You are generating a factual executive summary from retrieved document segments.
+        Your goals are: accuracy, clarity, non-redundancy, readable human prose.
+        This is NOT a rewrite of source text. It is a synthesis.
 
         RULES:
-        1. Use ONLY information from the retrieved segments
-        2. PRESERVE citation references like [s1], [s2], [li3] etc.
-        3. Write fluent, coherent prose (~{targetWords} words)
-        4. Organize logically (intro -> main points -> conclusion)
-        5. Do NOT add information not in the segments
-        6. If coverage is low (<5%), use cautious language ("in the sampled sections") and avoid definitive conclusions.
+        1. Do NOT mention segment IDs, citations, or list indices in the prose.
+           Evidence tracking is handled separately - write clean readable text.
+        2. Do NOT repeat the same idea more than once, even if it appears in multiple segments.
+           If several segments say the same thing, summarize the idea once.
+        3. Prefer the author's intent over literal phrasing.
+           If the author corrects themselves, describe the correction clearly and briefly.
+        4. Write like a technical blog summary, not an academic paper.
+           Natural language. No parenthetical references. No hedging unless uncertainty is explicit.
+        5. If the document is reflective or corrective, capture the arc:
+           - what was originally claimed
+           - why it was wrong or outdated  
+           - what the author now believes or intends to do
+        6. Avoid absolutist or textbook language unless the source explicitly uses it.
+           Good: "the author realised compression doesn't remove encryption"
+           Bad: "compression and encryption are exclusive processes"
+        7. Assume the reader is technical but not reading the source.
+           Be concise, but explanatory where it helps understanding.
+        8. Write ~{targetWords} words in 3-6 short paragraphs or tight bullet points.
+        9. {(coverage < 0.05 ? "Coverage is very low (<5%). Use cautious language and avoid definitive conclusions." : "Use confident tone consistent with evidence.")}
+
+        ANTI-REDUNDANCY: Before writing, mentally group the retrieved segments by meaning.
+        Each group should appear AT MOST ONCE in the summary.
 
         {focusLine}
         {context}
 
-        Write a fluent summary that preserves all citations:
+        Write a clean executive summary (no citations in text):
         """;
 
     private static string ApplyCoverageGuard(string summary, double coverage)
@@ -834,8 +861,12 @@ public class PipelinedBertRagSummarizer : IDisposable
         // Skip entity extraction for expository/technical content - produces noise (code tokens)
         if (contentType == ContentType.Expository)
             return ExtractedEntities.Empty;
-            
+        
+        // For unknown content type, check if it looks like code-heavy content
         var text = string.Join(" ", segments.Select(s => s.Text));
+        if (contentType == ContentType.Unknown && LooksLikeCodeContent(text))
+            return ExtractedEntities.Empty;
+            
         var tokens = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(t => t.Trim(
                 ',', '.', '!', '?', ';', ':', '"', '\'', '(', ')', '[', ']', '{', '}', '—', '–'))
@@ -848,12 +879,28 @@ public class PipelinedBertRagSummarizer : IDisposable
         var monthStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         var miscStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Baker", "Street", "Wharf" };
         
+        // Code/technical keywords that should not be treated as character names
+        var codeStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            // Assembly/low-level
+            "MOV", "MOVX", "CALL", "RET", "JMP", "JNZ", "JZ", "PUSH", "POP", "ADD", "SUB", "MUL", "DIV",
+            // VB/Basic
+            "Dim", "Sub", "Function", "End", "If", "Then", "Else", "For", "Next", "Do", "Loop", "While",
+            // C-style
+            "Int", "Void", "Char", "Float", "Double", "Bool", "String", "Null", "True", "False",
+            // Common programming
+            "API", "HTTP", "JSON", "XML", "HTML", "CSS", "URL", "URI", "SQL", "REST", "GET", "POST", "PUT", "DELETE",
+            "CPU", "GPU", "RAM", "ROM", "BIOS", "FPGA", "ASIC", "VHDL", "HDL", "RTL",
+            // General technical acronyms
+            "ID", "IO", "UI", "UX", "OS", "VM", "SDK", "IDE", "CLI", "GUI"
+        };
+        
         var candidates = new List<string>();
         int i = 0;
         while (i < tokens.Count)
         {
             var tok = tokens[i];
-            if (IsProper(tok, honorifics))
+            if (IsProper(tok, honorifics, codeStop))
             {
                 var span = new List<string> { tok };
                 var j = i + 1;
@@ -887,7 +934,11 @@ public class PipelinedBertRagSummarizer : IDisposable
             if (placeStop.Contains(name)) continue;
             if (honorifics.Contains(name)) continue;
             if (miscStop.Contains(name)) continue;
+            if (codeStop.Contains(name)) continue;
             if (name.Equals("Street", StringComparison.OrdinalIgnoreCase) || name.Equals("Wharf", StringComparison.OrdinalIgnoreCase))
+                continue;
+            // Skip all-uppercase words (likely acronyms/code)
+            if (name.Length <= 5 && name.All(char.IsUpper))
                 continue;
             final.Add(name);
             if (final.Count >= 12) break;
@@ -896,17 +947,38 @@ public class PipelinedBertRagSummarizer : IDisposable
         var characters = contentType == ContentType.Narrative ? final : final;
         return new ExtractedEntities(characters, new List<string>(), new List<string>(), new List<string>(), new List<string>());
         
-        bool IsProper(string token, HashSet<string> honors) =>
-            honors.Contains(token) || (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(char.IsLetter));
+        bool IsProper(string token, HashSet<string> honors, HashSet<string> codeWords)
+        {
+            // Reject code keywords
+            if (codeWords.Contains(token)) return false;
+            // Reject all-caps short words (likely acronyms/code)
+            if (token.Length <= 5 && token.All(char.IsUpper)) return false;
+            // Accept honorifics or proper nouns (capital start, rest lowercase letters)
+            return honors.Contains(token) || 
+                   (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c)));
+        }
         
         bool IsContinuation(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) return false;
             if (placeStop.Contains(token)) return true;
             if (honorifics.Contains(token)) return true;
-            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(char.IsLetter)) return true;
+            // Only continue with proper nouns (capital start, rest lowercase)
+            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c))) return true;
             return false;
         }
+    }
+    
+    /// <summary>
+    /// Check if text appears to be code-heavy content (FPGA, assembly, programming)
+    /// </summary>
+    private static bool LooksLikeCodeContent(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        var codeIndicators = new[] { "```", "function", "class", "void", "int ", "return", "if (", "for (", "while (", 
+            "0x", "mov ", "call ", "push ", "pop ", "fpga", "vhdl", "register", "memory address" };
+        var codeCount = codeIndicators.Count(ind => lower.Contains(ind));
+        return codeCount >= 3;
     }
 
     private static string CleanResponse(string response)

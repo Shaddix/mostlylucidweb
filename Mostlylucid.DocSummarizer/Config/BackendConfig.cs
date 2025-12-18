@@ -17,6 +17,21 @@ public enum EmbeddingBackend
 }
 
 /// <summary>
+///     ONNX execution provider (GPU vs CPU)
+/// </summary>
+public enum OnnxExecutionProvider
+{
+    /// <summary>CPU only (default, always works)</summary>
+    Cpu,
+    /// <summary>NVIDIA CUDA GPU</summary>
+    Cuda,
+    /// <summary>DirectML (Windows GPU, works with AMD/Intel/NVIDIA)</summary>
+    DirectMl,
+    /// <summary>Auto-detect best available</summary>
+    Auto
+}
+
+/// <summary>
 ///     ONNX embedding configuration
 /// </summary>
 public class OnnxConfig
@@ -46,6 +61,22 @@ public class OnnxConfig
     ///     Number of threads for ONNX inference (0 = auto)
     /// </summary>
     public int InferenceThreads { get; set; } = 0;
+    
+    /// <summary>
+    ///     Execution provider for ONNX Runtime.
+    ///     Cpu = CPU only (always works, default for stability)
+    ///     Cuda = NVIDIA GPU (requires CUDA runtime)
+    ///     DirectMl = Windows GPU (AMD/Intel/NVIDIA - may crash on some systems)
+    ///     Auto = Try DirectML first, then CUDA, fall back to CPU
+    /// </summary>
+    public OnnxExecutionProvider ExecutionProvider { get; set; } = OnnxExecutionProvider.Cpu;
+    
+    /// <summary>
+    ///     GPU device ID (0 = first GPU, 1 = second GPU, etc.)
+    ///     Use this to select NVIDIA GPU when you have integrated graphics.
+    ///     Run 'nvidia-smi -L' to list GPU IDs.
+    /// </summary>
+    public int GpuDeviceId { get; set; } = 0;
     
     private static string GetDefaultModelDirectory()
     {

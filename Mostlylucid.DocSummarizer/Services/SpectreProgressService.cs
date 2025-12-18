@@ -136,10 +136,17 @@ public class SpectreProgressService : IProgressReporter
     }
 
     /// <summary>
-    /// Display a status spinner while doing work
+    /// Display a status spinner while doing work.
+    /// Falls back to simple execution if already in an interactive context.
     /// </summary>
     public static async Task<T> WithSpinnerAsync<T>(string message, Func<Task<T>> task)
     {
+        // Skip spinner if already in a batch context to avoid nested interactive displays
+        if (ProgressService.IsInInteractiveContext)
+        {
+            return await task();
+        }
+        
         return await AnsiConsole.Status()
             .Spinner(Spinner.Known.Dots)
             .SpinnerStyle(Style.Parse("cyan"))
@@ -300,13 +307,22 @@ public class SpectreProgressService : IProgressReporter
     }
 
     /// <summary>
-    /// Run document conversion with real-time progress from DoclingClient
+    /// Run document conversion with real-time progress from DoclingClient.
+    /// If already inside an interactive context (e.g., batch processing), falls back to
+    /// simple console output to avoid Spectre.Console nested progress bar conflicts.
     /// </summary>
     public static async Task<string> RunConversionWithProgressAsync(
         DoclingClient docling,
         string filePath,
         string description)
     {
+        // If we're already inside a Spectre progress context (e.g., batch mode),
+        // use a simple non-interactive fallback to avoid "concurrent interactive functions" error
+        if (ProgressService.IsInInteractiveContext)
+        {
+            return await RunConversionWithoutProgressAsync(docling, filePath, description);
+        }
+        
         string result = "";
         
         await AnsiConsole.Progress()
@@ -352,6 +368,40 @@ public class SpectreProgressService : IProgressReporter
             });
         
         return result;
+    }
+    
+    /// <summary>
+    /// Run document conversion without interactive progress display.
+    /// Used when already inside a batch processing context.
+    /// </summary>
+    private static async Task<string> RunConversionWithoutProgressAsync(
+        DoclingClient docling,
+        string filePath,
+        string description)
+    {
+        // Simple console output - no Spectre progress bar
+        var lastPercent = -1;
+        
+        docling.OnProgress = progress =>
+        {
+            // Only output on significant progress changes to avoid flooding
+            var currentPercent = (int)(progress.Percent / 10) * 10;
+            if (currentPercent > lastPercent)
+            {
+                lastPercent = currentPercent;
+                // Don't write anything - batch mode handles its own progress
+            }
+        };
+        
+        try
+        {
+            var result = await docling.ConvertAsync(filePath);
+            return result;
+        }
+        finally
+        {
+            docling.OnProgress = null;
+        }
     }
     
     /// <summary>
