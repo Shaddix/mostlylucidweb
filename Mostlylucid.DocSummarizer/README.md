@@ -1,4 +1,4 @@
-# DocSummarizer v3.0.0
+# DocSummarizer
 
 > **Turn documents or URLs into evidence-grounded summaries or structured JSON — usable by humans or AI agents — without sending anything to the cloud.**
 
@@ -17,6 +17,15 @@ docsummarizer -f document.pdf
 ```
 
 That's it. ONNX embeddings auto-download. No Docker for Markdown files.
+
+### Offline Mode (No Ollama Required)
+
+```bash
+# Pure extractive summarization - works completely offline
+docsummarizer -f document.pdf -m Bert
+```
+
+Bert mode uses local ONNX models only. No LLM, no network (after first model download). ~3-5 seconds per document.
 
 ---
 
@@ -68,25 +77,12 @@ docsummarizer -d ./documents -m BertRag -o Markdown --output-dir ./summaries
 # Fast offline batch processing (no LLM)
 docsummarizer -d ./documents -m Bert -o Json --output-dir ./summaries
 
-# Compare models on BertRag pipeline
-docsummarizer -f doc.pdf -m BertRag --benchmark "qwen2.5:1.5b,llama3.2:3b"
+# Compare models
+docsummarizer benchmark -f doc.pdf -m "qwen2.5:1.5b,llama3.2:3b"
 
 # Focused retrieval with production pipeline
 docsummarizer -f large-manual.pdf -m BertRag --focus "security requirements"
 ```
-
----
-
-## What's New in v3.0.0
-
-- **🚀 BertRag Production Pipeline**: BERT extraction → retrieval → LLM synthesis for production-grade summaries with perfect citations
-- **🤖 Auto Mode**: Smart mode selection based on document size, query, and LLM availability
-- **⚡ Bert Mode**: Pure extractive summarization - no LLM needed, works offline, ~3-5s summaries
-- **🔄 BertHybrid Mode**: BERT extracts + LLM polishes for grounded fluency
-- **📦 ONNX Embeddings (Default)**: Zero-config local embeddings - models auto-download on first use (~23MB)
-- **🌐 Playwright Support**: Summarize JavaScript-rendered pages (SPAs, React apps) with `--web-mode Playwright`
-- **🔧 Polly Resilience**: Retry with decorrelated jitter backoff + circuit breaker for LLM operations
-- **💪 No Ollama Embedding Required**: Works out-of-the-box without `ollama pull mxbai-embed-large`
 
 ---
 
@@ -120,7 +116,15 @@ If you need to *trust* a summary — or feed it to another system — that's the
 
 ### Prerequisites
 
-**Required: Ollama** (for LLM summarization)
+**For Bert mode (offline, no LLM):** Nothing required! Just run:
+```bash
+docsummarizer -f document.md -m Bert
+```
+ONNX models auto-download on first use (~23MB).
+
+---
+
+**For LLM-powered modes (Auto, BertRag, BertHybrid, MapReduce):** Ollama
 
 ```bash
 # Install from https://ollama.ai
@@ -130,15 +134,17 @@ ollama serve
 
 > **Note**: Embedding models are handled automatically via ONNX. No need to pull `mxbai-embed-large` or any other embedding model unless you specifically want to use Ollama embeddings with `--embedding-backend Ollama`.
 
-> **Speed tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
+> **Speed tip**: For faster LLM summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
 
-**Optional: Docling** (for PDF/DOCX)
+---
+
+**For PDF/DOCX files:** Docling (optional - Markdown works without it)
 
 ```bash
 docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
 ```
 
-**Optional: Qdrant** (for RAG mode)
+**For legacy RAG mode:** Qdrant (optional - BertRag doesn't need it)
 
 ```bash
 docker run -d -p 6333:6333 qdrant/qdrant
@@ -352,11 +358,24 @@ docsummarizer -f doc.pdf -t detailed --words 300
 
 ### Benchmarking
 
-Compare models on the same document:
+Compare models on the same document using the `benchmark` subcommand:
 
 ```bash
-docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
+docsummarizer benchmark -f doc.pdf -m "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
 ```
+
+The benchmark parses the document once, then tests each model on the same chunks for fair comparison. Shows timing, word count, and words/second.
+
+### Query Mode
+
+Ask questions about a document instead of summarizing:
+
+```bash
+docsummarizer -f manual.pdf --query "How do I install the software?"
+docsummarizer -f contract.pdf -q "What are the payment terms?"
+```
+
+For small documents, sends full text to LLM. For larger documents, uses semantic search to find relevant chunks first.
 
 ## Command Reference
 
@@ -378,7 +397,7 @@ docsummarizer -f doc.pdf --benchmark "qwen2.5:1.5b,llama3.2:3b,ministral-3:3b"
 | `--verbose` | `-v` | Show progress | `false` |
 | `--template` | `-t` | Summary template | `default` |
 | `--output-format` | `-o` | Console, Text, Markdown, Json | `Console` |
-| `--benchmark` | `-b` | Models to compare | - |
+
 
 ### Tool Command (LLM Integration)
 
@@ -398,14 +417,15 @@ docsummarizer tool [options]
 ### Other Commands
 
 ```bash
-docsummarizer check [--verbose]    # Verify dependencies
-docsummarizer config [-o file]     # Generate config file
-docsummarizer templates            # List templates
+docsummarizer check [--verbose]                    # Verify dependencies
+docsummarizer config [-o file]                     # Generate config file
+docsummarizer templates                            # List available templates
+docsummarizer benchmark -f file -m "model1,model2" # Compare models
 ```
 
 ## Summarization Modes
 
-DocSummarizer v3.0 introduces a production-grade BERT-based pipeline alongside the original modes.
+DocSummarizer includes a production-grade BERT-based pipeline alongside the original modes.
 
 ### Auto (Default - Smart Selection)
 
@@ -440,19 +460,42 @@ docsummarizer -f large-manual.pdf -m BertRag --focus "security requirements"
 - Scales to any document size
 - Best quality/traceability balance
 
-### Bert (Fast, No LLM Required)
+### Bert (Fast, No LLM Required) ⚡
 
-Pure extractive summarization using local BERT/ONNX models. No LLM needed.
+Pure extractive summarization using local ONNX models. **No Ollama or any LLM needed.**
 
 ```bash
+# Basic usage - works completely offline
 docsummarizer -f document.pdf -m Bert
+
+# Batch processing without LLM
+docsummarizer -d ./documents -m Bert -o Json --output-dir ./summaries
+
+# With templates (still no LLM)
+docsummarizer -f report.pdf -m Bert -t bullets
 ```
 
+**How it works:**
+1. Parses document into sentences using ONNX tokenizer
+2. Generates sentence embeddings locally (ONNX Runtime)
+3. Ranks sentences using MMR (Maximal Marginal Relevance) for diversity
+4. Extracts top sentences based on relevance + position weighting
+5. Groups by topic headings for structured output
+
+**Properties:**
+- ⚡ **~3-5 seconds** for most documents
+- 🔒 **100% offline** - no network calls after first model download
+- 🎯 **Deterministic** - same input = same output every time
+- 💾 **~23MB model** - auto-downloads on first use from HuggingFace
+- 📊 **No hallucination** - only extracts actual sentences from the document
+
 **Use when:**
-- Offline/no LLM available
-- Need instant summaries (~3-5s)
-- Want deterministic, reproducible results
-- Don't need fluent prose (bullet points are fine)
+- No Ollama/LLM installed or available
+- Air-gapped or offline environments
+- Need instant summaries for triage
+- CI/CD pipelines where speed matters
+- Want reproducible, auditable results
+- Processing large batches where LLM cost/time is prohibitive
 
 ### BertHybrid (Best of Both)
 

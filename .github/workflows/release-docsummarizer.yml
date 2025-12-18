@@ -169,16 +169,21 @@ jobs:
         body: |
           ## DocSummarizer v${{ steps.get_version.outputs.VERSION }}
           
-          A local-first document summarization tool using LLMs (Ollama), vector search (Qdrant), and document conversion (Docling).
+          > **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
           
-          **[Full Documentation (README)](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DocSummarizer/README.md)**
+          **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DocSummarizer/README.md)** | **[Blog Post](https://www.mostlylucid.net/blog/docsummarizer-tool)**
           
-          ### Features
-          - **Native AOT compiled** - Fast startup, minimal memory footprint
-          - **Multiple summarization modes** - MapReduce, RAG, Iterative
-          - **Rich progress feedback** - Spectre.Console terminal UI
-          - **10-minute timeout** - Handles large documents and slow models
-          - **Batch processing** - Process entire directories
+          ### What's New in v3.0
+          
+          - 🚀 **BertRag Pipeline** - Production-grade BERT extraction → retrieval → LLM synthesis
+          - ⚡ **Bert Mode** - Pure extractive summarization, no LLM needed (~3-5s)
+          - 🤖 **Auto Mode** - Smart mode selection based on document size and query
+          - 📦 **ONNX Embeddings** - Zero-config local embeddings (no `ollama pull` needed!)
+          - 🌐 **Playwright Support** - Summarize JavaScript-rendered pages (SPAs, React apps)
+          - 🔧 **Polly Resilience** - Retry with jitter backoff + circuit breaker
+          - 🔍 **Query Mode** - Ask questions about documents with semantic search
+          - 📊 **Benchmark Command** - Compare models on the same document
+          - 🎨 **Spectre.Console UI** - Beautiful progress bars and tables
           
           ### Downloads
           
@@ -191,24 +196,47 @@ jobs:
           | macOS | x64 (Intel) | `docsummarizer-osx-x64.tar.gz` |
           | macOS | ARM64 (Apple Silicon) | `docsummarizer-osx-arm64.tar.gz` |
           
-          ### Quick Start
+          ### Quick Start (30 seconds)
           
           ```bash
-          # Extract and run
-          ./docsummarizer --help
+          # 1. Install Ollama from https://ollama.ai, then:
+          ollama pull llama3.2:3b && ollama serve
           
-          # Check dependencies
-          ./docsummarizer check --verbose
+          # 2. Extract and run (no other setup needed!)
+          ./docsummarizer -f document.pdf
+          ```
           
-          # Summarize a document
-          ./docsummarizer -f document.pdf -v
+          That's it! ONNX embeddings auto-download. No Docker for Markdown files.
+          
+          ### Example Commands
+          
+          ```bash
+          # Fast mode - no LLM, ~3-5s
+          ./docsummarizer -f doc.pdf -m Bert
+          
+          # Production mode - best quality
+          ./docsummarizer -f doc.pdf -m BertRag
+          
+          # Ask questions about a document
+          ./docsummarizer -f manual.pdf --query "How do I install?"
+          
+          # JSON for AI agents
+          ./docsummarizer tool -f contract.pdf
+          
+          # Compare models
+          ./docsummarizer benchmark -f doc.pdf -m "qwen2.5:1.5b,llama3.2:3b"
+          
+          # List available templates
+          ./docsummarizer templates
           ```
           
           ### Prerequisites
           
-          - [Ollama](https://ollama.ai/) with models: `ollama pull ministral-3:3b && ollama pull nomic-embed-text`
-          - [Docling](https://github.com/docling-project/docling-serve): `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
-          - [Qdrant](https://qdrant.tech/) (for RAG mode): `docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant`
+          **Required:** [Ollama](https://ollama.ai/) - `ollama pull llama3.2:3b && ollama serve`
+          
+          **Optional (PDF/DOCX only):** [Docling](https://github.com/docling-project/docling-serve) - `docker run -p 5001:5001 quay.io/docling-project/docling-serve`
+          
+          **Optional (legacy RAG mode):** [Qdrant](https://qdrant.tech/) - `docker run -p 6333:6333 qdrant/qdrant`
           
         files: |
           ./artifacts/**/*.zip
