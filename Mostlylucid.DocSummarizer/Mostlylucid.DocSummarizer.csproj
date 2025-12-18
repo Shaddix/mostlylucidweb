@@ -35,6 +35,9 @@
         <!-- ONNX Runtime for local ML inference -->
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.0" />
         
+        <!-- Markdig for proper markdown AST parsing -->
+        <PackageReference Include="Markdig" Version="0.40.0" />
+        
         <!-- Playwright for headless browser web fetching (JS-rendered pages) -->
         <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
     </ItemGroup>

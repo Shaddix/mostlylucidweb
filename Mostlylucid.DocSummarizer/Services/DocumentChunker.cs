@@ -36,19 +36,17 @@ public class DocumentChunker
         // Extract page markers before processing
         var pageMap = ExtractPageMarkers(markdown);
         
-        // Remove page markers from content for cleaner processing
-        var cleanMarkdown = PageMarkerRegex.Replace(markdown, "");
-        
-        // Check if document has markdown headings
-        var hasHeadings = HasMarkdownHeadings(cleanMarkdown);
-
+        // Determine if document has markdown headings (ignore markers for detection)
+        var hasHeadings = HasMarkdownHeadings(PageMarkerRegex.Replace(markdown, ""));
+ 
         // First pass: split by structure (headings) or paragraphs for plain text
         var rawSections = hasHeadings
-            ? SplitByHeadings(cleanMarkdown)
-            : SplitByParagraphs(cleanMarkdown);
-
+            ? SplitByHeadings(markdown)
+            : SplitByParagraphs(markdown);
+ 
         // Second pass: merge small sections to approach target size
         var mergedSections = MergeSections(rawSections);
+
 
         // Convert to chunks with page info
         var chunks = new List<DocumentChunk>();
@@ -152,58 +150,57 @@ public class DocumentChunker
         // Split on double newlines (blank lines) - handles \n\n and \r\n\r\n
         var paragraphs = Regex
             .Split(text, @"\r?\n\s*\r?\n")
-            .Where(p => !string.IsNullOrWhiteSpace(p))
             .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
             .ToList();
 
         if (paragraphs.Count == 0)
         {
-            // No paragraphs found, treat whole text as one section
-            if (!string.IsNullOrWhiteSpace(text)) sections.Add(new RawSection("Document", 1, text.Trim()));
+            if (!string.IsNullOrWhiteSpace(text))
+                sections.Add(new RawSection("Document", 1, text.Trim()));
             return sections;
         }
 
-        // Try to extract a title from the first paragraph if it's short
-        var firstPara = paragraphs[0];
-        var hasTitle = firstPara.Length < 200 && !firstPara.Contains('\n');
+        int? currentPageStart = null;
+        int? currentPageEnd = null;
+        var paragraphIndex = 0;
 
-        if (hasTitle && paragraphs.Count > 1)
+        foreach (var rawPara in paragraphs)
         {
-            // First paragraph is likely a title
-            var title = firstPara.Length > 80 ? firstPara[..77] + "..." : firstPara;
-            var content = string.Join("\n\n", paragraphs.Skip(1));
-            sections.Add(new RawSection(title, 1, content));
-        }
-        else
-        {
-            // Group paragraphs into logical sections
-            // Each section starts with a paragraph number for reference
-            var paragraphIndex = 0;
-            foreach (var para in paragraphs)
+            var para = rawPara;
+            var match = PageMarkerRegex.Match(para);
+            if (match.Success)
             {
-                paragraphIndex++;
-                var heading = $"Paragraph {paragraphIndex}";
+                currentPageStart = int.Parse(match.Groups[1].Value);
+                currentPageEnd = match.Groups[2].Success
+                    ? int.Parse(match.Groups[2].Value)
+                    : currentPageStart;
 
-                // Try to use first sentence or first N chars as heading
-                var firstSentenceEnd = para.IndexOfAny(['.', '!', '?']);
-                if (firstSentenceEnd > 0 && firstSentenceEnd < 100)
-                {
-                    heading = para[..(firstSentenceEnd + 1)];
-                }
-                else if (para.Length < 100)
-                {
-                    heading = para;
-                }
-                else
-                {
-                    // Use first 80 chars
-                    var cutoff = para.LastIndexOf(' ', Math.Min(80, para.Length - 1));
-                    if (cutoff < 20) cutoff = 80;
-                    heading = para[..Math.Min(cutoff, para.Length)] + "...";
-                }
-
-                sections.Add(new RawSection(heading, 1, para));
+                para = PageMarkerRegex.Replace(para, "").Trim();
+                if (string.IsNullOrWhiteSpace(para))
+                    continue;
             }
+
+            paragraphIndex++;
+            var heading = $"Paragraph {paragraphIndex}";
+
+            var firstSentenceEnd = para.IndexOfAny(['.', '!', '?']);
+            if (firstSentenceEnd > 0 && firstSentenceEnd < 100)
+            {
+                heading = para[..(firstSentenceEnd + 1)];
+            }
+            else if (para.Length < 100)
+            {
+                heading = para;
+            }
+            else
+            {
+                var cutoff = para.LastIndexOf(' ', Math.Min(80, para.Length - 1));
+                if (cutoff < 20) cutoff = 80;
+                heading = para[..Math.Min(cutoff, para.Length)] + "...";
+            }
+
+            sections.Add(new RawSection(heading, 1, para, currentPageStart, currentPageEnd));
         }
 
         return sections;
@@ -271,6 +268,25 @@ public class DocumentChunker
         var currentLevel = 0;
         var currentContent = new StringBuilder();
         var currentTokens = 0;
+        int? currentPageStart = null;
+        int? currentPageEnd = null;
+
+        void FlushCurrent()
+        {
+            if (currentContent.Length == 0) return;
+            merged.Add(new RawSection(
+                currentHeading,
+                currentLevel,
+                currentContent.ToString().Trim(),
+                currentPageStart,
+                currentPageEnd));
+            currentContent.Clear();
+            currentTokens = 0;
+            currentHeading = "";
+            currentLevel = 0;
+            currentPageStart = null;
+            currentPageEnd = null;
+        }
 
         foreach (var section in sections)
         {
@@ -283,19 +299,19 @@ public class DocumentChunker
             // If adding this section would exceed target, flush current and start new
             if (currentContent.Length > 0 && currentTokens + fullSectionTokens > _targetChunkTokens)
             {
-                // Only flush if current chunk is big enough, otherwise keep merging
                 if (currentTokens >= _minChunkTokens)
                 {
-                    merged.Add(new RawSection(currentHeading, currentLevel, currentContent.ToString().Trim()));
+                    FlushCurrent();
+
                     currentHeading = section.Heading;
                     currentLevel = section.Level;
-                    currentContent.Clear();
                     currentContent.AppendLine(section.Content);
                     currentTokens = sectionTokens;
+                    currentPageStart = section.PageStart;
+                    currentPageEnd = section.PageEnd ?? section.PageStart;
                 }
                 else
                 {
-                    // Current chunk too small, merge anyway
                     if (currentContent.Length > 0) currentContent.AppendLine();
                     if (!string.IsNullOrEmpty(section.Heading))
                     {
@@ -305,21 +321,32 @@ public class DocumentChunker
 
                     currentContent.AppendLine(section.Content);
                     currentTokens += fullSectionTokens;
+
+                    if (section.PageStart.HasValue)
+                    {
+                        currentPageStart = currentPageStart.HasValue
+                            ? Math.Min(currentPageStart.Value, section.PageStart.Value)
+                            : section.PageStart;
+                        var sectionEnd = (section.PageEnd ?? section.PageStart)!.Value;
+                        currentPageEnd = currentPageEnd.HasValue
+                            ? Math.Max(currentPageEnd.Value, sectionEnd)
+                            : sectionEnd;
+                    }
                 }
             }
             else
             {
-                // Merge into current chunk
                 if (currentContent.Length == 0)
                 {
                     currentHeading = section.Heading;
                     currentLevel = section.Level;
                     currentContent.AppendLine(section.Content);
                     currentTokens = sectionTokens;
+                    currentPageStart = section.PageStart;
+                    currentPageEnd = section.PageEnd ?? section.PageStart;
                 }
                 else
                 {
-                    // Append with sub-heading preserved
                     if (currentContent.Length > 0) currentContent.AppendLine();
                     if (!string.IsNullOrEmpty(section.Heading))
                     {
@@ -329,18 +356,27 @@ public class DocumentChunker
 
                     currentContent.AppendLine(section.Content);
                     currentTokens += fullSectionTokens;
+
+                    if (section.PageStart.HasValue)
+                    {
+                        currentPageStart = currentPageStart.HasValue
+                            ? Math.Min(currentPageStart.Value, section.PageStart.Value)
+                            : section.PageStart;
+                        var sectionEnd = (section.PageEnd ?? section.PageStart)!.Value;
+                        currentPageEnd = currentPageEnd.HasValue
+                            ? Math.Max(currentPageEnd.Value, sectionEnd)
+                            : sectionEnd;
+                    }
                 }
             }
         }
 
-        // Flush final chunk
-        if (currentContent.Length > 0)
-            merged.Add(new RawSection(currentHeading, currentLevel, currentContent.ToString().Trim()));
-
+        FlushCurrent();
         return merged;
     }
 
     private int EstimateTokens(string text)
+
     {
         if (string.IsNullOrEmpty(text)) return 0;
         return text.Length / CharsPerToken;

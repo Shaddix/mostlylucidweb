@@ -167,6 +167,18 @@ public class SummaryTemplate
                 .Replace("{heading}", heading)
                 .Replace("{content}", content);
 
+        if (Name.Equals("bookreport", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"""
+                    Section: {heading}
+
+                    Content:
+                    {content}
+
+                    Summarize this section in 2-3 tight sentences (≤90 words). Write in third person, no dialogue, no first-person voice. Cover only the key beats and named characters; avoid paraphrasing line-by-line. Keep prose flowing (no bullets) and be concise.
+                    """;
+        }
+
         var bulletGuide = MaxBullets > 0 ? $"{MaxBullets} bullet points" : "2-4 bullet points";
 
         return $"""
@@ -179,27 +191,42 @@ public class SummaryTemplate
                 """;
     }
 
+
     /// <summary>
     ///     Built-in templates
     /// </summary>
     public static class Presets
     {
         /// <summary>
-        ///     Default template - balanced prose with topics
+        ///     Default template - balanced prose with topics, auto-adapts to document type
         /// </summary>
         public static SummaryTemplate Default => new()
         {
             Name = "default",
             Description = "Balanced summary with executive overview and topic breakdowns",
-            TargetWords = 500,
-            Paragraphs = 3,
+            TargetWords = 300,
+            Paragraphs = 2,
             OutputStyle = OutputStyle.Prose,
             IncludeTopics = true,
             IncludeCitations = true,
-            IncludeQuestions = true,
+            IncludeQuestions = false,
             IncludeTrace = false,
             Tone = SummaryTone.Professional,
-            Audience = AudienceLevel.General
+            Audience = AudienceLevel.General,
+            ExecutivePrompt = """
+                              {topics}
+
+                              Summarize in 2 paragraphs using ONLY facts above:
+
+                              Paragraph 1: What is this? Main subject, key actors/components. Be specific.
+                              Paragraph 2: What happens/what does it do? Key events, findings, or functions.
+
+                              Rules:
+                              - Use exact names from text (people, places, functions, classes)
+                              - NO "this document discusses" or "the significance lies in"
+                              - NO interpretation or outside knowledge
+                              - Cite [chunk-N] for key claims
+                              """
         };
 
         /// <summary>
@@ -217,7 +244,13 @@ public class SummaryTemplate
             IncludeQuestions = false,
             IncludeTrace = false,
             Tone = SummaryTone.Professional,
-            Audience = AudienceLevel.Executive
+            Audience = AudienceLevel.Executive,
+            ExecutivePrompt = """
+                              {topics}
+
+                              Write 2-3 sentences summarizing the main point of this document.
+                              Use ONLY facts from the text above. Be specific. No hedging.
+                              """
         };
 
         /// <summary>
@@ -239,7 +272,8 @@ public class SummaryTemplate
             ExecutivePrompt = """
                               {topics}
 
-                              Write a single sentence (maximum 25 words) that captures the main point of this document.
+                              Write ONE sentence (≤25 words) capturing the main point.
+                              Use specific facts from text. No hedging. No "this document discusses".
                               """
         };
 
@@ -261,8 +295,12 @@ public class SummaryTemplate
             ExecutivePrompt = """
                               {topics}
 
-                              List the 5-7 most important points from this document as bullet points.
-                              Start each bullet with a verb. Include source citations.
+                              List 5-7 key points as bullets. For each:
+                              - Start with action verb
+                              - State specific fact from text (names, numbers, outcomes)
+                              - End with [chunk-N] citation
+
+                              ONLY facts from text above. No interpretation. No hedging.
                               """
         };
 
@@ -314,30 +352,37 @@ public class SummaryTemplate
         };
 
         /// <summary>
-        ///     Technical - for technical documentation
+        ///     Technical - for technical documentation, code, APIs
         /// </summary>
         public static SummaryTemplate Technical => new()
         {
             Name = "technical",
             Description = "Technical summary preserving implementation details",
-            TargetWords = 300,
+            TargetWords = 350,
             OutputStyle = OutputStyle.Mixed,
             IncludeTopics = true,
             IncludeCitations = true,
-            IncludeQuestions = true,
+            IncludeQuestions = false,
             IncludeTrace = false,
             Tone = SummaryTone.Technical,
             Audience = AudienceLevel.Technical,
             ExecutivePrompt = """
                               {topics}
 
-                              Write a technical summary that:
-                              1. Explains the purpose and scope
-                              2. Lists key technical components/features
-                              3. Notes any requirements, dependencies, or limitations
-                              4. Highlights implementation considerations
+                              Technical summary using ONLY information from text above:
 
-                              Use technical terminology where appropriate. Include citations.
+                              **Purpose**: What does this do? What problem does it solve? (2-3 sentences)
+
+                              **Components**: Key classes, functions, APIs, or features mentioned:
+                              - [component] → [what it does]
+                              - (list 3-5 from text)
+
+                              **Usage**: How to use it (if described). Config options, parameters.
+
+                              **Requirements**: Dependencies, prerequisites, limitations mentioned.
+
+                              Use exact names from text. Include code terms. Cite [chunk-N].
+                              NO assumptions about implementation not stated in text.
                               """
         };
 
@@ -360,14 +405,15 @@ public class SummaryTemplate
             ExecutivePrompt = """
                               {topics}
 
-                              Write an academic abstract following this structure:
-                              - Background/Context (1-2 sentences)
-                              - Purpose/Objective (1 sentence)
-                              - Methods/Approach (1-2 sentences)
-                              - Key Findings (2-3 sentences)
-                              - Conclusions/Implications (1-2 sentences)
+                              Write an academic abstract using ONLY claims from text above:
 
-                              Use formal academic language. Cite sources.
+                              Background: Context and motivation stated in text. (1-2 sentences)
+                              Objective: Purpose or research question. (1 sentence)
+                              Method: Approach or methodology described. (1-2 sentences)
+                              Results: Key findings with specific data/outcomes. (2-3 sentences)
+                              Conclusion: Implications or significance claimed. (1-2 sentences)
+
+                              Formal language. Cite [chunk-N]. NO claims not in source text.
                               """
         };
 
@@ -400,12 +446,12 @@ public class SummaryTemplate
         public static SummaryTemplate BookReport => new()
         {
             Name = "bookreport",
-            Description = "Classic book report style with setting, characters, plot, and themes",
-            TargetWords = 800,
-            Paragraphs = 6,
+            Description = "Human-style book report with setting, characters, plot, and themes",
+            TargetWords = 500,
+            Paragraphs = 5,
             OutputStyle = OutputStyle.Prose,
-            IncludeTopics = true,
-            IncludeCitations = true,
+            IncludeTopics = false,
+            IncludeCitations = false,
             IncludeQuestions = false,
             IncludeTrace = false,
             Tone = SummaryTone.Casual,
@@ -413,21 +459,17 @@ public class SummaryTemplate
             ExecutivePrompt = """
                               {topics}
 
-                              Write a comprehensive book report style summary with these sections:
+                              Book report using ONLY information above. Third person prose.
 
-                              **Overview**: What is this document about? Who wrote it and why? Set the scene. (3-4 sentences)
+                              Overview: Title and author (from DOCUMENT line). Genre. 2 sentences.
+                              Setting: Where/when (from text). 2 sentences.
+                              Characters: 3-4 main characters mentioned above. 1 paragraph.
+                              Plot: Events described above only. 2 paragraphs.
+                              Themes: 2-3 themes evident in text. 1 paragraph.
 
-                              **Setting**: Where and when does this take place? Describe the world/context.
-
-                              **Main Characters**: Who are the important people? Describe each major character's personality, motivations, and role in the story. Include at least 4-5 characters.
-
-                              **Plot Summary**: What happens? Summarize the key events in chronological order. Include the main conflict, key turning points, and resolution. This should be detailed - at least 3-4 paragraphs.
-
-                              **Themes & Motifs**: What are the main themes explored? What messages or lessons does the author convey? Discuss at least 3 major themes.
-
-                              **Analysis & Opinion**: Is this work effective? What makes it memorable? What are its strengths and weaknesses?
-
-                              Write in an engaging, accessible style. Include citations where you reference specific events or quotes.
+                              STRICT: Only use names, events, places from the text above.
+                              Do NOT add characters or plot from memory of other books.
+                              NO "the story shows". NO first person.
                               """
         };
 

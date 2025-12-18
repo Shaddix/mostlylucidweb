@@ -81,9 +81,10 @@ public class RagSummarizer
             (@"\b(heart|soul|love|passion|desire)\b", 0.15),
         };
         
-        // Technical indicators
+        // Technical indicators (software + hardware/electronics)
         var technicalPatterns = new (string pattern, double weight)[]
         {
+            // Software patterns
             (@"\b(function|class|method|api|interface|module)\b", 0.35),
             (@"\b(parameter|argument|return|async|await)\b", 0.3),
             (@"```|\bcode\b|`[^`]+`", 0.4),
@@ -92,6 +93,22 @@ public class RagSummarizer
             (@"\b(version|v\d+\.\d+|release)\b", 0.2),
             (@"\b(http|https|url|endpoint|request|response)\b", 0.25),
             (@"\b(json|xml|yaml|config|schema)\b", 0.25),
+            // Hardware/Electronics patterns (VHDL, FPGA, Digital Logic)
+            (@"\b(vhdl|verilog|hdl|rtl|fpga|asic|cpld)\b", 0.5),
+            (@"\b(flip.?flop|latch|register|counter|decoder|multiplexer|mux)\b", 0.4),
+            (@"\b(logic gate|and gate|or gate|nand|nor|xor|inverter)\b", 0.4),
+            (@"\b(signal|port|entity|architecture|component|process)\b", 0.35),
+            (@"\b(clock|reset|enable|input|output|inout)\b", 0.25),
+            (@"\b(std_logic|std_logic_vector|integer|boolean)\b", 0.45),
+            (@"\b(synthesis|simulation|testbench|waveform)\b", 0.35),
+            (@"\b(timing|propagation delay|setup time|hold time)\b", 0.35),
+            (@"\b(combinational|sequential|synchronous|asynchronous)\b", 0.3),
+            (@"\b(truth table|karnaugh|boolean algebra|state machine|fsm)\b", 0.4),
+            (@"\b(bit|byte|word|bus|address|memory|ram|rom)\b", 0.25),
+            // React/Frontend patterns  
+            (@"\b(react|component|props|state|hooks?|usestate|useeffect)\b", 0.45),
+            (@"\b(jsx|tsx|webpack|babel|npm|yarn)\b", 0.35),
+            (@"\b(dom|virtual dom|render|mount|unmount)\b", 0.3),
         };
         
         // Academic indicators
@@ -196,48 +213,61 @@ public class RagSummarizer
     }
     
     /// <summary>
-    /// Fast LLM-based classification for when heuristics are uncertain
-    /// Uses a minimal prompt to get quick classification from any model
+    /// Sentinel LLM classification - sends first chunk with a simple binary question
+    /// Uses a small/fast classifier model (e.g., tinyllama ~2K context) for speed
     /// </summary>
     private async Task<DocumentClassification> ClassifyDocumentWithLlmAsync(List<DocumentChunk> chunks)
     {
-        // Take a small sample - just first 500 chars from first 2 chunks
-        var sample = string.Join("\n", chunks.Take(2).Select(c => 
-            c.Content.Length > 250 ? c.Content[..250] : c.Content));
+        // Take first chunk only - enough context for classification
+        var firstChunk = chunks.FirstOrDefault();
+        if (firstChunk == null)
+            return new DocumentClassification(DocumentType.Unknown, 0, [], "sentinel-empty");
         
+        // IMPORTANT: Small models like tinyllama have ~2K context
+        // Keep sample to ~400 chars to leave room for prompt + response
+        var sample = firstChunk.Content.Length > 400 
+            ? firstChunk.Content[..400] 
+            : firstChunk.Content;
+        
+        // Ultra-compact prompt for small context models
         var prompt = $"""
-            Classify this text into ONE category. Reply with ONLY the category name.
+            Is this FICTION or TECHNICAL? Answer ONE word.
             
-            Categories: FICTION, TECHNICAL, ACADEMIC, BUSINESS, LEGAL, NEWS, REFERENCE
-            
-            Text sample:
             {sample}
             
-            Category:
+            Answer:
             """;
         
         try
         {
-            var response = await _ollama.GenerateAsync(prompt);
-            var cleaned = response.Trim().ToUpperInvariant().TrimEnd('.', ':', ' ');
+            // Use the classifier model (small/fast) instead of main model
+            var classifierModel = _ollama.ClassifierModel;
+            if (_verbose) Console.WriteLine($"[Sentinel] Using {classifierModel} for classification");
             
-            // Parse response
-            var docType = cleaned switch
-            {
-                var s when s.Contains("FICTION") => DocumentType.Fiction,
-                var s when s.Contains("TECHNICAL") => DocumentType.Technical,
-                var s when s.Contains("ACADEMIC") => DocumentType.Academic,
-                var s when s.Contains("BUSINESS") => DocumentType.Business,
-                var s when s.Contains("LEGAL") => DocumentType.Legal,
-                var s when s.Contains("NEWS") => DocumentType.News,
-                var s when s.Contains("REFERENCE") || s.Contains("TUTORIAL") => DocumentType.Reference,
-                _ => DocumentType.Unknown
-            };
+            var response = await _ollama.GenerateWithModelAsync(classifierModel, prompt, temperature: 0.1);
+            var cleaned = response.Trim().ToUpperInvariant().Split('\n')[0].Trim();
+            
+            // Simple binary classification
+            var isFiction = cleaned.Contains("FICTION") || cleaned.Contains("NOVEL") || cleaned.Contains("STORY");
+            var isTechnical = cleaned.Contains("TECHNICAL") || cleaned.Contains("TEXTBOOK") || 
+                              cleaned.Contains("MANUAL") || cleaned.Contains("DOCUMENT") ||
+                              cleaned.Contains("EDUCATION") || cleaned.Contains("NON-FICTION") ||
+                              cleaned.Contains("NONFICTION");
+            
+            DocumentType docType;
+            if (isFiction && !isTechnical)
+                docType = DocumentType.Fiction;
+            else if (isTechnical && !isFiction)
+                docType = DocumentType.Technical;
+            else
+                docType = DocumentType.Unknown;
+            
+            if (_verbose) Console.WriteLine($"[Sentinel] Response: '{cleaned}' → {docType}");
             
             return new DocumentClassification(
                 docType,
-                docType == DocumentType.Unknown ? 0.3 : 0.8,
-                [cleaned],
+                docType == DocumentType.Unknown ? 0.3 : 0.85,
+                [$"{classifierModel}:{cleaned}"],
                 "llm");
         }
         catch
@@ -261,23 +291,24 @@ public class RagSummarizer
                 $"[{string.Join(", ", heuristicResult.Indicators.Take(3))}]");
         }
         
-        // If high confidence, use heuristic result
+        // If high confidence heuristic, use it directly
         if (heuristicResult.IsHighConfidence)
             return heuristicResult;
         
-        // If low confidence and LLM fallback enabled, try LLM
-        if (useLlmFallback && heuristicResult.IsLowConfidence)
+        // For uncertain cases (low confidence OR Unknown), use sentinel LLM
+        // The sentinel is fast (single chunk, simple question) and more accurate than heuristics
+        if (useLlmFallback && (heuristicResult.IsLowConfidence || heuristicResult.Type == DocumentType.Unknown))
         {
-            if (_verbose) Console.WriteLine("[Classify] Low confidence, trying LLM...");
+            if (_verbose) Console.WriteLine("[Classify] Uncertain, asking sentinel LLM...");
             
             var llmResult = await ClassifyDocumentWithLlmAsync(chunks);
             
             if (_verbose)
             {
-                Console.WriteLine($"[Classify] LLM: {llmResult.Type} ({llmResult.Confidence:P0})");
+                Console.WriteLine($"[Classify] Sentinel: {llmResult.Type} ({llmResult.Confidence:P0})");
             }
             
-            // If LLM gives a clear answer, use it
+            // If sentinel gives a clear answer, use it
             if (llmResult.Type != DocumentType.Unknown)
                 return llmResult;
         }
@@ -287,87 +318,65 @@ public class RagSummarizer
     }
     
     /// <summary>
-    /// Adaptive parameters based on document size
+    /// Override document type based on template selection when classification is uncertain
+    /// This allows user intent (choosing bookreport = fiction, technical = technical) to guide processing
     /// </summary>
-    private record DocumentSizeProfile(
-        int TopicCount,           // How many topics to extract
-        int ChunksPerTopic,       // How many chunks to retrieve per topic
-        int MaxCharacters,        // Entity cap for characters
-        int MaxLocations,         // Entity cap for locations
-        int MaxOther,             // Entity cap for orgs/events/dates
-        int BulletCount,          // Executive summary bullets
-        int WordsPerBullet,       // Max words per bullet
-        int TopClaimsCount)       // Top claims to include in synthesis
+    private static DocumentClassification OverrideDocTypeFromTemplate(DocumentClassification classification, string? templateName)
     {
-        /// <summary>
-        /// Get appropriate profile based on chunk count
-        /// </summary>
-        public static DocumentSizeProfile ForChunks(int chunkCount) => chunkCount switch
+        if (string.IsNullOrEmpty(templateName))
+            return classification;
+        
+        // Only override if classification is uncertain (low confidence) or Unknown
+        // High-confidence classifications should be trusted
+        if (classification.IsHighConfidence && classification.Type != DocumentType.Unknown)
+            return classification;
+        
+        var templateLower = templateName.ToLowerInvariant();
+        
+        // Template → DocumentType mapping
+        var inferredType = templateLower switch
         {
-            // Tiny docs (< 5 pages / ~10 chunks): minimal processing
-            < 10 => new(
-                TopicCount: 2,
-                ChunksPerTopic: 2,
-                MaxCharacters: 4,
-                MaxLocations: 3,
-                MaxOther: 2,
-                BulletCount: 2,
-                WordsPerBullet: 25,
-                TopClaimsCount: 5),
-            
-            // Small docs (5-20 pages / 10-40 chunks): light processing
-            < 40 => new(
-                TopicCount: 3,
-                ChunksPerTopic: 3,
-                MaxCharacters: 5,
-                MaxLocations: 4,
-                MaxOther: 3,
-                BulletCount: 3,
-                WordsPerBullet: 20,
-                TopClaimsCount: 8),
-            
-            // Medium docs (20-100 pages / 40-200 chunks): standard processing
-            < 200 => new(
-                TopicCount: 4,
-                ChunksPerTopic: 3,
-                MaxCharacters: 6,
-                MaxLocations: 4,
-                MaxOther: 3,
-                BulletCount: 3,
-                WordsPerBullet: 20,
-                TopClaimsCount: 10),
-            
-            // Large docs (100-500 pages / 200-1000 chunks): expanded processing
-            < 1000 => new(
-                TopicCount: 5,
-                ChunksPerTopic: 4,
-                MaxCharacters: 8,
-                MaxLocations: 5,
-                MaxOther: 4,
-                BulletCount: 4,
-                WordsPerBullet: 20,
-                TopClaimsCount: 12),
-            
-            // Very large docs (500+ pages / 1000+ chunks): comprehensive but efficient
-            _ => new(
-                TopicCount: 6,
-                ChunksPerTopic: 5,
-                MaxCharacters: 10,
-                MaxLocations: 6,
-                MaxOther: 5,
-                BulletCount: 5,
-                WordsPerBullet: 18,
-                TopClaimsCount: 15)
+            "bookreport" or "book-report" or "book" => DocumentType.Fiction,
+            "technical" or "tech" => DocumentType.Technical,
+            "academic" => DocumentType.Academic,
+            "meeting" or "meetingnotes" or "notes" => DocumentType.Business,
+            _ => (DocumentType?)null
         };
         
-        public string SizeCategory => TopicCount switch
+        if (inferredType == null)
+            return classification;
+        
+        // If we inferred a type and classification was uncertain, use the template-inferred type
+        return new DocumentClassification(
+            inferredType.Value,
+            Math.Max(classification.Confidence, 0.6), // Boost confidence slightly
+            [.. classification.Indicators, $"template:{templateName}"],
+            "template-override");
+    }
+    
+    /// <summary>
+    /// Adaptive parameters derived from configured summary length tiers
+    /// </summary>
+    private record DocumentSizeProfile(
+        SummaryLengthTier Tier,
+        int WordCount,
+        int ChunkCount)
+    {
+        public static DocumentSizeProfile FromConfig(SummaryLengthConfig config, int wordCount, int chunkCount)
         {
-            <= 2 => "tiny",
-            <= 3 => "small", 
-            <= 4 => "medium",
-            <= 5 => "large",
-            _ => "very large"
-        };
+            var tier = config.GetOrderedTiers().FirstOrDefault(t => wordCount <= t.MaxWords) ?? config.VeryLarge;
+            return new DocumentSizeProfile(tier, wordCount, chunkCount);
+        }
+
+        public string SizeCategory => Tier.Name;
+        public int TopicCount => Math.Max(1, Math.Min(Tier.Topics, ChunkCount));
+        public int ChunksPerTopic => Math.Max(1, Math.Min(Tier.ChunksPerTopic, ChunkCount));
+        public int MaxCharacters => Math.Max(1, Tier.MaxCharacters);
+        public int MaxLocations => Math.Max(0, Tier.MaxLocations);
+        public int MaxOther => Math.Max(0, Tier.MaxOther);
+        public int BulletCount => Math.Max(1, Tier.BulletCount);
+        public int WordsPerBullet => Math.Max(8, Tier.WordsPerBullet);
+        public int TopClaimsCount => Math.Max(3, Tier.TopClaims);
     }
 
     private readonly bool _deleteCollectionAfterSummarization;
@@ -379,6 +388,7 @@ public class RagSummarizer
     private readonly QdrantHttpClient _qdrant;
     private readonly bool _verbose;
     private readonly TextAnalysisService _textAnalysis;
+    private readonly SummaryLengthConfig _lengthConfig;
 
     public RagSummarizer(
         OllamaService ollama,
@@ -388,12 +398,14 @@ public class RagSummarizer
         int maxParallelism = DefaultMaxParallelism,
         QdrantConfig? qdrantConfig = null,
         SummaryTemplate? template = null,
-        TextAnalysisService? textAnalysis = null)
+        TextAnalysisService? textAnalysis = null,
+        SummaryLengthConfig? lengthConfig = null)
     {
         _ollama = ollama;
         _embedder = embedder;
         _useOnnxEmbedding = embedder is not OllamaEmbeddingService;
         _textAnalysis = textAnalysis ?? new TextAnalysisService();
+        _lengthConfig = lengthConfig ?? new SummaryLengthConfig();
 
         // Use HTTP client instead of gRPC - gRPC has AOT compatibility issues with System.Single marshalling
         var port = qdrantConfig?.Port ?? 6333; // REST port
@@ -522,7 +534,9 @@ public class RagSummarizer
                             ["headingLevel"] = chunk.HeadingLevel,
                             ["order"] = chunk.Order,
                             ["content"] = truncatedContent,
-                            ["hash"] = chunk.Hash
+                            ["hash"] = chunk.Hash,
+                            ["pageStart"] = chunk.PageStart?.ToString() ?? string.Empty,
+                            ["pageEnd"] = chunk.PageEnd?.ToString() ?? string.Empty
                         }
                     });
 
@@ -557,15 +571,32 @@ public class RagSummarizer
         var collectionName = GetCollectionName(docId);
         
         // Get adaptive parameters based on document size
-        var profile = DocumentSizeProfile.ForChunks(chunks.Count);
-        if (_verbose) Console.WriteLine($"[Profile] {profile.SizeCategory} document ({chunks.Count} chunks) → {profile.TopicCount} topics, {profile.ChunksPerTopic} chunks/topic");
+        var totalWords = CountWords(chunks);
+        var profile = DocumentSizeProfile.FromConfig(_lengthConfig, totalWords, chunks.Count);
+        if (_verbose)
+        {
+            Console.WriteLine($"[Profile] {profile.SizeCategory} document ({chunks.Count} chunks / {totalWords:N0} words) → {profile.TopicCount} topics, {profile.ChunksPerTopic} chunks/topic");
+        }
+
+        var chunkLookup = chunks.ToDictionary(c => c.Id, StringComparer.OrdinalIgnoreCase);
+
+        // Use sentinel LLM for classification when heuristics are uncertain
+        // The sentinel is fast (tiny model + minimal prompt) so always enable it
+        var docType = await ClassifyDocumentHybridAsync(chunks, useLlmFallback: true);
         
-        // Classify document type for adaptive prompts (fast heuristic, LLM fallback if uncertain)
-        var docType = await ClassifyDocumentHybridAsync(chunks, useLlmFallback: !_useOnnxEmbedding);
+        // Template can override document type when there's a strong semantic match
+        // This handles cases where user explicitly chooses bookreport for fiction or technical for docs
+        docType = OverrideDocTypeFromTemplate(docType, Template.Name);
+        
         if (_verbose) Console.WriteLine($"[DocType] {docType.Type} ({docType.Confidence:P0}, {docType.Method})");
 
         try
         {
+            // Extract document title/author from early content for grounding
+            var documentTitle = ExtractDocumentTitle(chunks, docId);
+            if (_verbose && !string.IsNullOrEmpty(documentTitle)) 
+                Console.WriteLine($"[Title] Detected: {documentTitle}");
+            
             // Build TF-IDF index from all chunks to identify distinctive vs common terms
             // This helps us classify claims as fact/inference/colour later
             if (_verbose) Console.WriteLine("[TF-IDF] Building term frequency index...");
@@ -576,9 +607,16 @@ public class RagSummarizer
 
             // Extract topics - constrain to actual headings where possible
             var headings = chunks.Select(c => c.Heading).Where(h => !string.IsNullOrEmpty(h)).ToList();
-            var topics = await ExtractTopicsAsync(headings, profile.TopicCount);
+            var topics = await ExtractTopicsAsync(headings, profile.TopicCount, docType.Type);
+            
+            // Fallback: if topic extraction failed, use headings directly
+            if (topics.Count == 0 && headings.Count > 0)
+            {
+                if (_verbose) Console.WriteLine("[Topics] Extraction failed, falling back to headings");
+                topics = headings.Take(profile.TopicCount).ToList();
+            }
 
-            if (_verbose) Console.WriteLine($"[Topics] Extracted {topics.Count} topics");
+            if (_verbose) Console.WriteLine($"[Topics] Using {topics.Count} topics: {string.Join(", ", topics.Take(3))}{(topics.Count > 3 ? "..." : "")}");
 
             // Retrieve and summarize per topic - run in parallel for speed
             var allRetrievedChunks = new HashSet<string>();
@@ -589,33 +627,32 @@ public class RagSummarizer
             var retrievalTasks = topics.Select(async topic =>
             {
                 var query = focusQuery != null ? $"{topic} {focusQuery}" : topic;
-                var retrieved = await RetrieveChunksAsync(collectionName, query, profile.ChunksPerTopic);
+                var retrieved = await RetrieveChunksAsync(collectionName, query, profile.ChunksPerTopic, chunkLookup);
                 return (topic, retrieved);
             }).ToList();
 
             var retrievalResults = await Task.WhenAll(retrievalTasks);
 
             // Now synthesize topics in parallel (LLM calls - this is the slow part)
-            var synthesizeTasks = retrievalResults.Select(async r =>
+            var templateName = Template.Name;
+            var synthesizeTasks = retrievalResults.Select(async result =>
             {
-                var (topic, retrieved) = r;
-                var (summary, entities, claims) = await SynthesizeTopicWithClaimsAsync(topic, retrieved, focusQuery, docType.Type, chunks.Count);
+                var topic = result.topic;
+                var retrieved = result.retrieved;
+                var (summary, entities, claims) = await SynthesizeTopicWithClaimsAsync(topic, retrieved, focusQuery, docType.Type, templateName);
 
                 if (_verbose) Console.WriteLine($"  [{topic}] Retrieved {retrieved.Count} chunks, {claims.Count} claims");
 
-                return (topic, summary, entities, claims, chunkIds: retrieved.Select(c => c.chunkId).ToList());
+                return (topic, summary, entities, claims, chunkIds: retrieved.Select(c => c.Id).ToList());
             }).ToList();
 
             var synthesisResults = await Task.WhenAll(synthesizeTasks);
 
-            // Build results maintaining topic order, with post-processing to clean summaries
+            // Build results maintaining topic order - clean up meta-commentary from summaries
             var topicSummaries = synthesisResults
-                .Select(r => new TopicSummary(
-                    CleanTopicName(r.topic), 
-                    CleanTopicSummary(r.summary), 
-                    r.chunkIds))
-                .Where(t => !string.IsNullOrWhiteSpace(t.Summary) && t.Summary.Length > 10)
+                .Select(r => new TopicSummary(CleanTopicName(r.topic), CleanTopicSummary(r.summary), r.chunkIds))
                 .ToList();
+
 
             foreach (var result in synthesisResults)
             {
@@ -628,7 +665,7 @@ public class RagSummarizer
 
             foreach (var result in retrievalResults)
             foreach (var c in result.retrieved)
-                allRetrievedChunks.Add(c.chunkId);
+                allRetrievedChunks.Add(c.Id);
 
             // Clear retrieval results to free memory - we've extracted what we need
             retrievalResults = null!;
@@ -651,8 +688,17 @@ public class RagSummarizer
             }
             
             // Create executive summary using weighted claims AND entities for grounding
-            var executive = await CreateGroundedExecutiveSummaryAsync(
-                topicSummaries, deduplicatedClaims, mergedEntities, focusQuery, profile);
+            var validChunkIds = chunkLookup.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var executiveRaw = await CreateGroundedExecutiveSummaryAsync(
+                topicSummaries,
+                deduplicatedClaims,
+                mergedEntities,
+                focusQuery,
+                profile,
+                documentTitle ?? docId,
+                docType.Type,
+                validChunkIds);
+
 
             // Clear intermediate data to free memory before building result
             deduplicatedClaims.Clear();
@@ -672,7 +718,13 @@ public class RagSummarizer
             var coverage = topLevelHeadings.Count > 0
                 ? (double)topLevelHeadings.Count(h => retrievedHeadings.Contains(h)) / topLevelHeadings.Count
                 : 1.0;
-            var citationRate = CalculateCitationRate(executive);
+            var citationRate = CalculateCitationRate(executiveRaw);
+
+            // Convert chunk citations to user-friendly page references
+            var executive = ReplaceChunkCitations(executiveRaw, chunkLookup);
+            var finalTopicSummaries = topicSummaries
+                .Select(ts => ts with { Summary = ReplaceChunkCitations(ts.Summary, chunkLookup) })
+                .ToList();
             
             // Build chunk index for output - cap for very large docs to save memory
             var chunkIndex = chunks.Count > 500 
@@ -686,7 +738,7 @@ public class RagSummarizer
 
             return new DocumentSummary(
                 executive,
-                topicSummaries,
+                finalTopicSummaries,
                 [],
                 new SummarizationTrace(
                     docId, chunks.Count, allRetrievedChunks.Count,
@@ -713,252 +765,311 @@ public class RagSummarizer
             entities.Organizations.Take(profile.MaxOther).ToList());
     }
 
-    private async Task<List<string>> ExtractTopicsAsync(List<string> headings, int maxTopics = 5)
+    private async Task<List<string>> ExtractTopicsAsync(List<string> headings, int maxTopics = 5, DocumentType docType = DocumentType.Unknown)
     {
+        // For small docs or technical content, just use the headings directly
+        // Topic extraction adds value mainly for fiction/narrative where chapters don't map to themes
+        if (headings.Count <= maxTopics || docType is DocumentType.Technical or DocumentType.Reference)
+        {
+            return headings.Take(maxTopics).ToList();
+        }
+        
         // For small models, limit headings to avoid overwhelming context
         var limitedHeadings = headings.Take(15).ToList();
 
-        var prompt = $"""
-                      Extract {maxTopics} main THEMES (not chapter titles) from these headings:
-                      {string.Join(", ", limitedHeadings)}
+        var prompt = docType == DocumentType.Fiction 
+            ? $"""
+              Extract {maxTopics} main THEMES from these chapter headings:
+              {string.Join(", ", limitedHeadings)}
 
-                      Rules:
-                      - Output ONE theme per line
-                      - Each theme max 6 words
-                      - No bullets, numbers, or explanations
-                      - Focus on abstract themes, not plot events
-                      
-                      Example good themes: "Social class and marriage", "Family duty vs personal desire"
-                      Example bad themes: "Chapter 1 Introduction", "The events at Longbourn"
-                      """;
+              Rules:
+              - Output ONE theme per line
+              - Each theme max 6 words
+              - No bullets, numbers, or explanations
+              - Focus on abstract themes, not plot events
+              
+              Example: "Social class and marriage", "Family duty vs personal desire"
+              """
+            : $"""
+              List {maxTopics} KEY TOPICS from these section headings:
+              {string.Join(", ", limitedHeadings)}
+
+              Output ONE topic per line. Max 6 words each. No bullets or numbers.
+              """;
 
         var response = await _ollama.GenerateAsync(prompt);
         return response.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(t => t.Trim().TrimStart('-', '*', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', ' '))
-            .Where(t => t.Length > 2 && t.Length < 60 && !t.StartsWith("Example", StringComparison.OrdinalIgnoreCase))
+            .Select(t => t.Trim().TrimStart('-', '*', '•', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', ')', ' '))
+            .Where(t => t.Length > 2 && t.Length < 60)
+            .Where(t => !IsTopicMetaCommentary(t))
             .Take(maxTopics)
             .ToList();
     }
+    
+    /// <summary>
+    /// Detect meta-commentary in topic extraction that should be filtered out
+    /// </summary>
+    private static bool IsTopicMetaCommentary(string line)
+    {
+        var metaPatterns = new[]
+        {
+            @"^(here are|here is|the following|below are)",
+            @"^(example|e\.g\.|for example|such as)",
+            @"(key topics?|main themes?|extracted|identified)\s*[:.]?\s*$",
+            @"^\d+\s+(key|main|important)",
+            @"^(based on|from the|according to)",
+            @"^(note:|disclaimer|caveat)",
+        };
+        
+        var lower = line.ToLowerInvariant();
+        return metaPatterns.Any(p => Regex.IsMatch(lower, p, RegexOptions.IgnoreCase));
+    }
 
-    private async Task<List<(string chunkId, string heading, string content, int order)>> RetrieveChunksAsync(
-        string collectionName, string query, int topK)
+    private async Task<List<DocumentChunk>> RetrieveChunksAsync(
+        string collectionName,
+        string query,
+        int topK,
+        IReadOnlyDictionary<string, DocumentChunk> chunkLookup)
     {
         var queryEmbedding = await _embedder.EmbedAsync(query);
 
-        // No filter needed since each document has its own collection
-        var results = await _qdrant.SearchAsync(collectionName, queryEmbedding, topK);
+        // Request extra chunks to account for boilerplate filtering
+        var results = await _qdrant.SearchAsync(collectionName, queryEmbedding, topK + 3);
+        var retrieved = new List<DocumentChunk>();
 
-        return results.Select(r =>
+        foreach (var result in results)
         {
-            var payload = r.GetPayloadStrings();
+            if (retrieved.Count >= topK)
+                break;
+                
+            var payload = result.GetPayloadStrings();
+            var chunkId = payload.GetValueOrDefault("chunkId", "");
+            var content = payload.GetValueOrDefault("content", "");
+            
+            // Skip boilerplate content (Project Gutenberg headers, licenses, etc.)
+            if (MapReduceSummarizer.IsBoilerplate(content))
+                continue;
+
+            if (!string.IsNullOrEmpty(chunkId) && chunkLookup.TryGetValue(chunkId, out var existing))
+            {
+                // Also check the full content from lookup for boilerplate
+                if (!MapReduceSummarizer.IsBoilerplate(existing.Content))
+                    retrieved.Add(existing);
+                continue;
+            }
+
+            var heading = payload.GetValueOrDefault("heading", "");
+            var hash = payload.GetValueOrDefault("hash", "");
             var orderStr = payload.GetValueOrDefault("order", "0");
+            var headingLevelStr = payload.GetValueOrDefault("headingLevel", "1");
+            var pageStartStr = payload.GetValueOrDefault("pageStart", "");
+            var pageEndStr = payload.GetValueOrDefault("pageEnd", "");
+
             int.TryParse(orderStr, out var order);
-            return (
-                payload.GetValueOrDefault("chunkId", ""),
-                payload.GetValueOrDefault("heading", ""),
-                payload.GetValueOrDefault("content", ""),
-                order
-            );
-        }).ToList();
+            int.TryParse(headingLevelStr, out var headingLevel);
+            int? pageStart = int.TryParse(pageStartStr, out var ps) ? ps : null;
+            int? pageEnd = int.TryParse(pageEndStr, out var pe) ? pe : null;
+
+            retrieved.Add(new DocumentChunk(order, heading, headingLevel, content, hash, pageStart, pageEnd));
+        }
+
+        return retrieved;
     }
     
     /// <summary>
-    /// Convert chunk order to estimated page reference for citations
-    /// Uses ~2 chunks per page as rough estimate for typical documents
+    /// Build chunk context for synthesis prompts. Includes chunk identifiers for citations
+    /// and page hints for better grounding.
     /// </summary>
-    private static string GetPageCitation(int chunkOrder, int totalChunks)
+    private static string BuildChunkContext(List<DocumentChunk> chunks, int maxContentPerChunk)
     {
-        // Estimate: ~2 chunks per page for typical documents
-        // Adjust based on total chunks to get reasonable page numbers
-        var estimatedPage = (chunkOrder / 2) + 1;
-        return $"[p.{estimatedPage}]";
-    }
-    
-    /// <summary>
-    /// Build context with page-based citations instead of chunk IDs
-    /// </summary>
-    private static string BuildContextWithPageCitations(
-        List<(string chunkId, string heading, string content, int order)> chunks,
-        int maxContentPerChunk,
-        int totalChunks)
-    {
-        return string.Join("\n", chunks.Select(c =>
+        return string.Join("\n", chunks.Select(chunk =>
         {
-            var truncated = c.content.Length > maxContentPerChunk
-                ? c.content[..maxContentPerChunk] + "..."
-                : c.content;
-            var pageCite = GetPageCitation(c.order, totalChunks);
-            return $"{pageCite}: {truncated}";
+            var truncated = chunk.Content.Length > maxContentPerChunk
+                ? chunk.Content[..maxContentPerChunk] + "..."
+                : chunk.Content;
+            var pageHint = chunk.PageStart.HasValue ? $" (p.{chunk.PageStart})" : string.Empty;
+            return $"[{chunk.Id}]{pageHint}: {truncated}";
         }));
     }
 
-    private async Task<string> SynthesizeTopicAsync(
-        string topic,
-        List<(string chunkId, string heading, string content, int order)> chunks,
-        string? focus,
-        DocumentType docType = DocumentType.Unknown,
-        int totalChunks = 100)
-    {
-        var (summary, _) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, docType, totalChunks);
-        return summary;
-    }
-    
     private async Task<(string summary, ExtractedEntities? entities)> SynthesizeTopicWithEntitiesAsync(
         string topic,
-        List<(string chunkId, string heading, string content, int order)> chunks,
+        List<DocumentChunk> chunks,
         string? focus,
-        DocumentType docType = DocumentType.Unknown,
-        int totalChunks = 100)
+        DocumentType docType,
+        string? templateName = null)
     {
-        // Adaptive content truncation based on chunk count
         var maxContentPerChunk = chunks.Count switch
         {
             <= 2 => 800,
             <= 4 => 500,
             _ => 350
         };
-        
-        // Build context with page-based citations instead of chunk IDs
-        var context = BuildContextWithPageCitations(chunks, maxContentPerChunk, totalChunks);
 
-        // Get document-type-specific prompt
-        var prompt = GetTopicSynthesisPrompt(topic, context, focus, docType);
-        var response = await _ollama.GenerateAsync(prompt);
-        var (summary, entities) = ParseSummaryAndEntities(response);
+        var context = BuildChunkContext(chunks, maxContentPerChunk);
         
-        return (summary, entities);
-    }
-    
-    private async Task<(string summary, ExtractedEntities? entities)> SynthesizeTopicWithEntitiesAsync(
-        string topic,
-        List<(string chunkId, string heading, string content)> chunks,
-        string? focus,
-        DocumentType docType = DocumentType.Unknown)
-    {
-        // Adaptive content truncation based on chunk count
-        var maxContentPerChunk = chunks.Count switch
-        {
-            <= 2 => 800,
-            <= 4 => 500,
-            _ => 350
-        };
+        // Get summary with tight prompt (no entity extraction mixed in)
+        var summaryPrompt = GetTopicSynthesisPrompt(topic, context, focus, docType, templateName);
+        var summaryResponse = await _ollama.GenerateAsync(summaryPrompt);
+        var summary = CleanSynthesisResponse(summaryResponse);
         
-        var context = string.Join("\n", chunks.Select(c =>
+        // Extract entities separately with focused prompt (only for fiction/bookreport)
+        ExtractedEntities? entities = null;
+        if (templateName?.Equals("bookreport", StringComparison.OrdinalIgnoreCase) == true ||
+            docType == DocumentType.Fiction)
         {
-            var truncated = c.content.Length > maxContentPerChunk
-                ? c.content[..maxContentPerChunk] + "..."
-                : c.content;
-            return $"[{c.chunkId}]: {truncated}";
-        }));
-
-        // Get document-type-specific prompt
-        var prompt = GetTopicSynthesisPrompt(topic, context, focus, docType);
-        var response = await _ollama.GenerateAsync(prompt);
-        var (summary, entities) = ParseSummaryAndEntities(response);
+            entities = await ExtractEntitiesFromChunksAsync(chunks, maxContentPerChunk);
+        }
         
         return (summary, entities);
     }
     
     /// <summary>
-    /// Generate tight, document-type-specific prompts for topic synthesis
-    /// Uses page citations [p.N] instead of chunk citations
+    /// Clean synthesis response - strip any meta-commentary the LLM added despite instructions
     /// </summary>
-    private static string GetTopicSynthesisPrompt(string topic, string context, string? focus, DocumentType docType)
+    private static string CleanSynthesisResponse(string response)
     {
-        var focusLine = focus != null ? $"Focus: {focus}\n" : "";
+        if (string.IsNullOrWhiteSpace(response)) return "";
         
-        // Base entity extraction (same for all types)
-        const string entityBlock = """
-            ENTITIES:
-            Characters: [names or "none"]
-            Locations: [places or "none"]  
-            Dates: [dates or "none"]
-            Events: [events or "none"]
-            Organizations: [orgs or "none"]
+        // Take only the first substantive line (ignore any headers or meta)
+        var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            // Skip meta-commentary lines
+            if (IsMetaCommentary(trimmed)) continue;
+            // Skip empty or very short lines
+            if (trimmed.Length < 15) continue;
+            // Skip lines that look like entity headers
+            if (Regex.IsMatch(trimmed, @"^(Characters|Locations|Events|ENTITIES):", RegexOptions.IgnoreCase)) continue;
+            
+            // Found a good line - clean it up and return
+            return RemoveHedgingInline(trimmed);
+        }
+        
+        return response.Trim();
+    }
+    
+    /// <summary>
+    /// Extract entities from chunks with a separate, focused prompt
+    /// </summary>
+    private async Task<ExtractedEntities?> ExtractEntitiesFromChunksAsync(List<DocumentChunk> chunks, int maxContentPerChunk)
+    {
+        // Use smaller content sample for entity extraction
+        var sample = string.Join("\n", chunks.Take(3).Select(c => 
+            c.Content.Length > maxContentPerChunk / 2 
+                ? c.Content[..(maxContentPerChunk / 2)] 
+                : c.Content));
+        
+        var prompt = $"""
+            Text:
+            {sample}
+            ---
+            Extract from text above. One line each, comma-separated:
+            Characters: [names]
+            Locations: [places]
+            Write "none" if not found. No other text.
             """;
+        
+        var response = await _ollama.GenerateAsync(prompt);
+        return ParseCompactEntityResponse(response);
+    }
+    
+    /// <summary>
+    /// Parse compact entity response format - handles both | and newline separators
+    /// </summary>
+    private static ExtractedEntities? ParseCompactEntityResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response)) return null;
+        
+        var characters = new List<string>();
+        var locations = new List<string>();
+        var events = new List<string>();
+        
+        // First try to split by newline (more common), then by |
+        var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            var colonIdx = trimmed.IndexOf(':');
+            if (colonIdx < 0) continue;
+            
+            var type = trimmed[..colonIdx].Trim().ToLowerInvariant();
+            var valuesRaw = trimmed[(colonIdx + 1)..];
+            
+            // Clean up common LLM artifacts
+            valuesRaw = Regex.Replace(valuesRaw, @"\[|\]|\*\*?", "");
+            valuesRaw = Regex.Replace(valuesRaw, @"\s*-\s*", ", ");
+            
+            var values = valuesRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(v => v.Trim().Trim('"', '\'', '*', '[', ']', '-'))
+                .Where(v => v.Length > 1 && 
+                       !v.Equals("none", StringComparison.OrdinalIgnoreCase) &&
+                       !v.StartsWith("Location", StringComparison.OrdinalIgnoreCase) &&
+                       !v.StartsWith("Event", StringComparison.OrdinalIgnoreCase) &&
+                       !v.StartsWith("Character", StringComparison.OrdinalIgnoreCase))
+                .Where(IsValidEntityEntry)
+                .ToList();
+            
+            if (type.Contains("character")) characters.AddRange(values);
+            else if (type.Contains("location")) locations.AddRange(values);
+            else if (type.Contains("event")) events.AddRange(values);
+        }
+        
+        if (characters.Count == 0 && locations.Count == 0 && events.Count == 0)
+            return null;
+        
+        return new ExtractedEntities(
+            characters.Distinct(StringComparer.OrdinalIgnoreCase).Take(10).ToList(),
+            locations.Distinct(StringComparer.OrdinalIgnoreCase).Take(5).ToList(),
+            [],
+            events.Distinct(StringComparer.OrdinalIgnoreCase).Take(5).ToList(),
+            []);
+    }
+    
+    /// <summary>
+    /// Generate ultra-tight prompts for topic synthesis - minimal tokens, maximum signal
+    /// Enforces strict grounding in source text
+    /// </summary>
+    private static string GetTopicSynthesisPrompt(string topic, string context, string? focus, DocumentType docType, string? templateName = null)
+    {
+        var focusLine = focus != null ? $"(Focus:{focus})" : "";
+        
+        // Get document-type-specific instruction
+        var instruction = GetDocTypeInstruction(docType, templateName);
+        
+        // Ultra-compact prompt with strict grounding
+        return $"""
+            Topic:{topic} {focusLine}
+            ---
+            {context}
+            ---
+            Write 1 sentence: {instruction} Use [chunk-N] citation.
+            ONLY facts from text above. Third person. NO lists. NO headers.
+            """;
+    }
+    
+    /// <summary>
+    /// Get compact instruction based on document type
+    /// </summary>
+    private static string GetDocTypeInstruction(DocumentType docType, string? templateName)
+    {
+        // Bookreport: extract plot from THIS text only
+        if (templateName?.Equals("bookreport", StringComparison.OrdinalIgnoreCase) == true)
+            return "What happens in THIS text? Name characters, describe action.";
         
         return docType switch
         {
-            DocumentType.Fiction => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [One sentence insight about theme/meaning, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Insight not plot. No "the story shows". No author name. Use exact [p.N] page cite from context.
-                """,
-            
-            DocumentType.Technical => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [What this does/solves, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Function over description. No "this section explains". Use exact [p.N] page cite.
-                """,
-            
-            DocumentType.Academic => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [Key finding or argument, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Claim not method. No "the study shows". Use exact [p.N] page cite.
-                """,
-            
-            DocumentType.Business => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [Business implication or action, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Impact not description. No "the report indicates". Use exact [p.N] page cite.
-                """,
-            
-            DocumentType.Legal => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [Legal effect or requirement, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Obligation not description. No "the document states". Use exact [p.N] page cite.
-                """,
-            
-            DocumentType.News => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [What happened and why it matters, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: News value not narrative. No "according to". Use exact [p.N] page cite.
-                """,
-            
-            DocumentType.Reference => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [Key concept or how-to, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Actionable info. No "this guide explains". Use exact [p.N] page cite.
-                """,
-            
-            // Unknown/default - generic but tight
-            _ => $"""
-                [{topic}]
-                {context}
-                {focusLine}
-                SUMMARY: [One insight, max 18 words] [p.N]
-                {entityBlock}
-                
-                Rules: Insight not restatement. No filler phrases. Use exact [p.N] page cite from context.
-                """
+            DocumentType.Fiction => "Theme insight from THIS text.",
+            DocumentType.Technical => "What it does (from text).",
+            DocumentType.Academic => "Key finding stated in text.",
+            DocumentType.Business => "Business impact from text.",
+            DocumentType.Legal => "Legal effect stated.",
+            DocumentType.News => "What happened (from text).",
+            DocumentType.Reference => "Key concept from text.",
+            _ => "Main point from text."
         };
     }
     
@@ -968,12 +1079,32 @@ public class RagSummarizer
         ExtractedEntities? entities = null;
         
         // Try to extract structured entities from response
-        var summaryMatch = Regex.Match(response, @"SUMMARY:\s*(.+?)(?=ENTITIES:|$)", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        var entitiesMatch = Regex.Match(response, @"ENTITIES:\s*(.+)$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        // Look for SUMMARY: followed by content, stopping at ENTITIES:, **ENTITIES, or end
+        var summaryMatch = Regex.Match(response, 
+            @"SUMMARY:\s*(.+?)(?=\n\s*\*{0,2}ENTITIES|\n\s*Characters:|\n\s*\*\*Characters|$)", 
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
+        // Match ENTITIES block - can start with ENTITIES:, **ENTITIES**, or go straight to entity types
+        var entitiesMatch = Regex.Match(response, 
+            @"(?:ENTITIES:\s*|^\s*\*{0,2}ENTITIES\*{0,2}\s*\n?)(.+)$", 
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
         
         if (summaryMatch.Success)
         {
             summary = summaryMatch.Groups[1].Value.Trim();
+            // Clean up any trailing ** or markdown artifacts
+            summary = Regex.Replace(summary, @"\s*\*{2,}\s*$", "").Trim();
+        }
+        else
+        {
+            // No explicit SUMMARY: marker - try to find content before ENTITIES or entity type markers
+            var beforeEntities = Regex.Match(response, 
+                @"^(.+?)(?=\n\s*\*{0,2}ENTITIES|\n\s*\*{0,2}Characters:|\n\s*- \*\*Characters)", 
+                RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (beforeEntities.Success)
+            {
+                summary = beforeEntities.Groups[1].Value.Trim();
+            }
         }
         
         if (entitiesMatch.Success)
@@ -981,6 +1112,21 @@ public class RagSummarizer
             var entitiesText = entitiesMatch.Groups[1].Value;
             entities = ParseEntitiesBlock(entitiesText);
         }
+        else
+        {
+            // Try direct entity type matching without ENTITIES: header
+            var directEntityMatch = Regex.Match(response, 
+                @"(?:\n|^)\s*\*{0,2}Characters\*{0,2}:\s*.+", 
+                RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (directEntityMatch.Success)
+            {
+                entities = ParseEntitiesBlock(directEntityMatch.Value);
+            }
+        }
+        
+        // Final cleanup: remove any ENTITIES text that leaked into summary
+        summary = Regex.Replace(summary, @"\n\s*\*{0,2}(Characters|Locations|Dates|Events|Organizations)\*{0,2}:.*$", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        summary = summary.Trim();
         
         return (summary, entities);
     }
@@ -998,12 +1144,18 @@ public class RagSummarizer
     
     private static List<string> ExtractEntityList(string text, string entityType)
     {
+        // Define the list of all entity types for boundary detection
+        var allEntityTypes = new[] { "Characters", "Locations", "Dates", "Events", "Organizations" };
+        var otherTypes = allEntityTypes.Where(t => !t.Equals(entityType, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var boundaryPattern = string.Join("|", otherTypes);
+        
         // Try multiple patterns - LLMs format these inconsistently
+        // The boundary now explicitly stops at other entity type labels
         var patterns = new[]
         {
-            $@"{entityType}:\s*\**\s*(.+?)(?=\n\**[A-Z]|\n---|\nENTITIES|$)",
-            $@"\*\*{entityType}:\*\*\s*(.+?)(?=\n\*\*|\n---|\nENTITIES|$)",
-            $@"- \*\*{entityType}\*\*:\s*(.+?)(?=\n- \*\*|\n---|\nENTITIES|$)"
+            $@"{entityType}:\s*\**\s*(.+?)(?=\n\**\s*({boundaryPattern}):|\n---|\nRules:|\nENTITIES|$)",
+            $@"\*\*{entityType}:\*\*\s*(.+?)(?=\n\*\*\s*({boundaryPattern})|\n---|\nRules:|\nENTITIES|$)",
+            $@"- \*\*{entityType}\*\*:\s*(.+?)(?=\n- \*\*\s*({boundaryPattern})|\n---|\nRules:|\nENTITIES|$)"
         };
         
         string? value = null;
@@ -1027,13 +1179,18 @@ public class RagSummarizer
             return [];
         }
         
-        // Clean up markdown artifacts and split
-        value = Regex.Replace(value, @"\*\*|\[\d+\]|\[chunk-\d+\]", ""); // Remove ** and citations
+        // Clean up markdown artifacts and common parser failures
+        value = Regex.Replace(value, @"\*\*|\[\d+\]|\[chunk-\d+\]|\[chunk-N\]?", ""); // Remove ** and citations
         value = Regex.Replace(value, @"\n\s*-\s*", ", "); // Convert bullet lists to comma-separated
+        value = Regex.Replace(value, @"\d+\.\s*(Locations?|Events?|Characters?|Dates?|Organizations?|Orgs?):\s*", ""); // Remove section headers
+        value = Regex.Replace(value, @"Citation:\s*", ""); // Remove Citation: prefix
+        value = Regex.Replace(value, @"\(not specified[^)]*\)", ""); // Remove "(not specified...)"
+        value = Regex.Replace(value, @"but not specified.*$", "", RegexOptions.IgnoreCase); // Remove trailing qualifiers
         
         // Split by comma, semicolon, or newline and clean up
         var rawEntities = value.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim().Trim('[', ']', '"', '\'', '*', '-', ' '))
+            .Select(s => s.Trim().Trim('[', ']', '"', '\'', '*', '-', '+', ' '))
+            .Where(s => s.Length > 1) // Filter out single chars
             .ToList();
         
         // Apply strict filtering to remove parser failures
@@ -1065,6 +1222,12 @@ public class RagSummarizer
             @"(mentioned|described|referred|appears|seems)", // Meta-language
             @"^(the|a|an)\s.*family$",                // "the X family" - too vague
             @"^\w+\s+family\s*\([^)]*$",              // Incomplete parenthetical like "Lucas family (Sir William"
+            // New patterns for parser artifacts
+            @"^\d+\.\s*(Locations?|Events?|Characters?|Dates?|Organizations?):", // Numbered section headers
+            @"^Citation:", // Citation headers
+            @"\[chunk-", // Chunk references leaked through
+            @"^\+\s*$", // Just a plus sign
+            @"^but\s+not\s+specified", // Incomplete statements
         };
         
         return !invalidPatterns.Any(p => 
@@ -1091,149 +1254,446 @@ public class RagSummarizer
     
     /// <summary>
     /// Create executive summary using weighted claims AND extracted entities for grounding
-    /// This addresses the "creosote problem" where models over-emphasize incidental details
+    /// Enforces strict grounding - only information from the source text
     /// </summary>
     private async Task<string> CreateGroundedExecutiveSummaryAsync(
         List<TopicSummary> topicSummaries,
         List<Claim> weightedClaims,
         ExtractedEntities? entities,
         string? focus,
-        DocumentSizeProfile? profile = null)
+        DocumentSizeProfile? profile = null,
+        string? documentLabel = null,
+        DocumentType? documentType = null,
+        HashSet<string>? validChunkIds = null)
     {
-        profile ??= DocumentSizeProfile.ForChunks(50); // Default to medium
-        
-        // Get top claims by weight (facts first, then inferences, colour last)
+        profile ??= DocumentSizeProfile.FromConfig(_lengthConfig, 4000, 50);
+        validChunkIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var topClaims = weightedClaims
             .OrderByDescending(c => c.Weight)
             .Take(profile.TopClaimsCount)
             .ToList();
-        
-        // Build context from both topic summaries and weighted claims
+
         var topicContext = string.Join("\n", topicSummaries.Select(t =>
         {
             var truncated = t.Summary.Length > 200 ? t.Summary[..200] + "..." : t.Summary;
             return $"- {t.Topic}: {truncated}";
         }));
-        
-        // Add highest-weighted claims as prioritized facts
+
         var claimsByType = topClaims.GroupBy(c => c.Type).OrderByDescending(g => (int)g.Key);
         var claimContext = new StringBuilder();
-        
+
         foreach (var group in claimsByType)
         {
             var typeLabel = group.Key switch
             {
                 ClaimType.Fact => "Key Facts",
-                ClaimType.Inference => "Key Inferences", 
+                ClaimType.Inference => "Key Inferences",
                 _ => "Supporting Details"
             };
-            
+
             claimContext.AppendLine($"\n{typeLabel}:");
             foreach (var claim in group.Take(3))
             {
                 claimContext.AppendLine($"  - {claim.Render()}");
             }
         }
+
+        var claimContextText = claimContext.ToString().Trim();
+        var entityContext = BuildEntityContext(entities, profile);
         
-        // Build entity grounding context - CRITICAL for keeping summary factual
-        // Use profile caps to scale with document size
-        var entityContext = new StringBuilder();
-        if (entities != null && entities.HasAny)
-        {
-            entityContext.AppendLine("\nVERIFIED ENTITIES (only use these names):");
-            if (entities.Characters.Count > 0)
-                entityContext.AppendLine($"  Characters: {string.Join(", ", entities.Characters.Take(profile.MaxCharacters))}");
-            if (entities.Locations.Count > 0)
-                entityContext.AppendLine($"  Locations: {string.Join(", ", entities.Locations.Take(profile.MaxLocations))}");
-            if (entities.Organizations.Count > 0)
-                entityContext.AppendLine($"  Organizations: {string.Join(", ", entities.Organizations.Take(profile.MaxOther))}");
-            if (entities.Events.Count > 0)
-                entityContext.AppendLine($"  Key Events: {string.Join(", ", entities.Events.Take(profile.MaxOther))}");
-            if (entities.Dates.Count > 0)
-                entityContext.AppendLine($"  Dates: {string.Join(", ", entities.Dates.Take(profile.MaxOther))}");
-        }
+        // Build evidence block with document title for grounding
+        var titleLine = !string.IsNullOrEmpty(documentLabel) ? $"DOCUMENT: {documentLabel}\n\n" : "";
         
-        var prompt = $"""
-            Write {profile.BulletCount} bullet points synthesizing these topics and claims.
+        // Tell the LLM which chunk IDs are valid
+        var chunkHint = validChunkIds.Count > 0 
+            ? $"Valid citations: [chunk-0] to [chunk-{validChunkIds.Count - 1}]\n\n"
+            : "";
+        
+        var evidenceBlock = titleLine + chunkHint + BuildEvidenceBlock(topicContext, claimContextText, entityContext);
+
+        // Add strict grounding instruction
+        var groundingRule = $"""
             
-            TOPICS:
-            {topicContext}
-            
-            KEY CLAIMS:
-            {claimContext}
-            {entityContext}
-            
-            {(focus != null ? $"Focus on: {focus}\n" : "")}
-            
-            FORMAT: Start directly with • (no preamble)
-            • [insight, max {profile.WordsPerBullet} words] [chunk-N]
-            • [different insight] [chunk-N]
-            • [different insight] [chunk-N]
-            
-            RULES:
-            1. Each bullet = ONE unique insight (what it MEANS, not what happens)
-            2. Use DIFFERENT [chunk-N] citations for each bullet - no repeats
-            3. NO filler: "as seen in", "as evidenced by", "the text shows"
-            4. NO meta: "Here is", "This summary", "the novel explores"
-            5. NO author references: "Jane Austen", "Austen's portrayal"
-            6. Use ONLY names from VERIFIED ENTITIES list
-            
-            BAD EXAMPLE: "Social class is explored through relationships, as seen in the text [chunk-4]"
-            GOOD EXAMPLE: "Social class functions as invisible currency in the marriage market [chunk-4]"
+            CRITICAL: Use ONLY information from the text above. Do NOT add:
+            - Characters, events, or plot points not mentioned above
+            - Details from other books or stories
+            - Your own interpretation or speculation
+            If unsure, omit. Write in third person.
+            Only use citations [chunk-0] to [chunk-{Math.Max(0, validChunkIds.Count - 1)}].
             """;
 
+        var templatePrompt = Template.GetExecutivePrompt(evidenceBlock, focus);
+        var adaptiveGuide = Template.ExecutivePrompt == null
+            ? BuildAdaptiveFormatGuide(Template, profile)
+            : string.Empty;
+
+        var prompt = string.IsNullOrWhiteSpace(adaptiveGuide)
+            ? $"{templatePrompt}{groundingRule}"
+            : $"{templatePrompt}\n\n{adaptiveGuide}{groundingRule}";
+
         var rawResponse = await _ollama.GenerateAsync(prompt);
+
+        var cleanedSummary = CleanExecutiveSummary(rawResponse, Template, profile);
         
-        // Post-process to remove meta-commentary and fix common issues
-        return CleanExecutiveSummary(rawResponse, profile.BulletCount);
+        // Validate citations against actual chunks - remove any hallucinated chunk IDs
+        cleanedSummary = ValidateChunkCitations(cleanedSummary, validChunkIds);
+        
+        var expectedBullets = GetExpectedBulletCount(Template, profile);
+        var summaryWithCitations = Template.IncludeCitations
+            ? EnsureUniqueCitations(cleanedSummary, topClaims, topicSummaries, expectedBullets, validChunkIds)
+            : cleanedSummary;
+
+        return summaryWithCitations;
+    }
+
+    private static string BuildEntityContext(ExtractedEntities? entities, DocumentSizeProfile profile)
+    {
+        if (entities == null || !entities.HasAny)
+            return string.Empty;
+
+        // Compact format: single line per entity type, saves ~20 tokens
+        var parts = new List<string>();
+        
+        if (entities.Characters.Count > 0)
+            parts.Add($"Characters:{string.Join(",", entities.Characters.Take(profile.MaxCharacters))}");
+        if (entities.Locations.Count > 0)
+            parts.Add($"Locations:{string.Join(",", entities.Locations.Take(profile.MaxLocations))}");
+        if (entities.Organizations.Count > 0)
+            parts.Add($"Orgs:{string.Join(",", entities.Organizations.Take(profile.MaxOther))}");
+        if (entities.Events.Count > 0)
+            parts.Add($"Events:{string.Join(",", entities.Events.Take(profile.MaxOther))}");
+
+        return parts.Count > 0 ? $"ENTITIES: {string.Join(" | ", parts)}" : string.Empty;
+    }
+
+    private static string BuildEvidenceBlock(string topicContext, string claimContext, string entityContext)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("TOPICS:");
+        builder.AppendLine(topicContext);
+
+        if (!string.IsNullOrWhiteSpace(claimContext))
+        {
+            builder.AppendLine();
+            builder.AppendLine("CLAIMS:");
+            builder.AppendLine(claimContext);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entityContext))
+        {
+            builder.AppendLine();
+            builder.AppendLine(entityContext);
+        }
+
+        return builder.ToString().Trim();
+    }
+
+    private static string BuildAdaptiveFormatGuide(SummaryTemplate template, DocumentSizeProfile profile)
+    {
+        // Compact format guide - saves ~30 tokens
+        var bulletCount = GetExpectedBulletCount(template, profile);
+        
+        return template.OutputStyle switch
+        {
+            OutputStyle.Bullets or OutputStyle.CitationsOnly => 
+                $"Format: {bulletCount} bullets, ≤{profile.WordsPerBullet} words each. Cite [chunk-N].",
+            OutputStyle.Mixed => 
+                $"Format: 1 paragraph (≤60 words) + {bulletCount} bullets. Cite [chunk-N].",
+            _ when template.Paragraphs > 0 => 
+                $"Format: {template.Paragraphs} paragraph(s), ≤{profile.BulletCount * profile.WordsPerBullet} words total.",
+            _ => 
+                $"Format: ≤{profile.BulletCount * profile.WordsPerBullet} words. Cite [chunk-N]."
+        };
+    }
+
+    private static int GetExpectedBulletCount(SummaryTemplate template, DocumentSizeProfile profile)
+    {
+        if (template.MaxBullets > 0)
+            return template.MaxBullets;
+
+        return template.OutputStyle is OutputStyle.Bullets or OutputStyle.Mixed or OutputStyle.CitationsOnly
+            ? profile.BulletCount
+            : Math.Max(profile.BulletCount, 3);
+    }
+
+    /// <summary>
+    /// Ensure each executive summary bullet has a unique chunk citation; fill in missing ones from claims/topics
+    /// Only uses citations that reference actual chunks in the document
+    /// </summary>
+    private static string EnsureUniqueCitations(
+        string summary,
+        List<Claim> claims,
+        List<TopicSummary> topics,
+        int maxBullets,
+        HashSet<string>? validChunkIds = null)
+    {
+        validChunkIds ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        
+        var lines = summary.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.TrimEnd())
+            .ToList();
+        var processed = new List<string>();
+        var usedChunkIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Only accept chunk IDs that exist in the document
+        Queue<string> BuildCandidateQueue(IEnumerable<string> source) =>
+            new(source
+                .Where(IsValidChunkId)
+                .Where(id => validChunkIds.Count == 0 || validChunkIds.Contains(id))
+                .Select(id => id.Trim())
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        var claimCandidates = BuildCandidateQueue(claims.SelectMany(c => c.Evidence).Select(e => e.ChunkId));
+        var topicCandidates = BuildCandidateQueue(topics.SelectMany(t => t.SourceChunks ?? Enumerable.Empty<string>()));
+
+        string? NextCandidate()
+        {
+            while (claimCandidates.Count > 0)
+            {
+                var id = claimCandidates.Dequeue();
+                if (!usedChunkIds.Contains(id))
+                    return id;
+            }
+
+            while (topicCandidates.Count > 0)
+            {
+                var id = topicCandidates.Dequeue();
+                if (!usedChunkIds.Contains(id))
+                    return id;
+            }
+
+            return null;
+        }
+
+        for (var i = 0; i < lines.Count && processed.Count < maxBullets; i++)
+        {
+            var line = lines[i];
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var match = Regex.Match(line, @"\[(chunk-\d+)\]");
+            string? assignedId = null;
+
+            if (match.Success)
+            {
+                var existingId = match.Groups[1].Value;
+                var isValidExisting = validChunkIds.Count == 0 || validChunkIds.Contains(existingId);
+                
+                if (isValidExisting && !usedChunkIds.Contains(existingId))
+                {
+                    usedChunkIds.Add(existingId);
+                    assignedId = existingId;
+                }
+                else
+                {
+                    // Either invalid chunk ID or already used - replace with valid one
+                    var replacement = NextCandidate();
+                    if (!string.IsNullOrEmpty(replacement))
+                    {
+                        var replaced = false;
+                        line = Regex.Replace(line, @"\[(chunk-\d+)\]", _ =>
+                        {
+                            if (replaced)
+                                return _.Value;
+                            replaced = true;
+                            return $"[{replacement}]";
+                        });
+                        usedChunkIds.Add(replacement);
+                        assignedId = replacement;
+                    }
+                    else
+                    {
+                        // No valid replacement - remove the invalid citation
+                        line = Regex.Replace(line, @"\s*\[(chunk-\d+)\]", "");
+                    }
+                }
+            }
+
+            if (assignedId == null)
+            {
+                var newId = NextCandidate();
+                if (!string.IsNullOrEmpty(newId))
+                {
+                    line = line.TrimEnd() + $" [{newId}]";
+                    usedChunkIds.Add(newId);
+                }
+            }
+
+            processed.Add(line);
+        }
+
+        return string.Join("\n", processed);
+    }
+    
+    private static bool IsValidChunkId(string? chunkId)
+    {
+        if (string.IsNullOrWhiteSpace(chunkId))
+            return false;
+        if (!chunkId.StartsWith("chunk-", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return int.TryParse(chunkId[6..], out _);
     }
     
     /// <summary>
-    /// Post-process executive summary to remove meta-commentary and fix citation issues
+    /// Post-process executive summary to remove meta-commentary and keep formatting consistent with the template
     /// </summary>
-    private static string CleanExecutiveSummary(string summary, int maxBullets = 3)
+    private static string CleanExecutiveSummary(string summary, SummaryTemplate template, DocumentSizeProfile profile)
     {
-        var lines = summary.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var cleanedLines = new List<string>();
-        var seenContent = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        
-        foreach (var line in lines)
+        var (paragraphs, bullets) = SplitSummarySegments(summary);
+
+        var formatted = template.OutputStyle switch
         {
-            var trimmed = line.Trim();
-            
-            // Skip meta-commentary lines
+            OutputStyle.Bullets or OutputStyle.CitationsOnly =>
+                string.Join("\n", CleanBulletLines(bullets, template, profile)),
+            OutputStyle.Mixed =>
+                CleanMixedSummary(paragraphs, bullets, template, profile),
+            _ =>
+                CleanProseParagraphs(
+                    paragraphs.Count > 0 ? paragraphs : bullets.Select(StripBulletPrefix).ToList(),
+                    template)
+        };
+
+        return formatted.Trim();
+    }
+
+    private static (List<string> paragraphs, List<string> bullets) SplitSummarySegments(string summary)
+    {
+        var paragraphs = new List<string>();
+        var bullets = new List<string>();
+        var currentParagraph = new List<string>();
+
+        foreach (var rawLine in summary.Split('\n'))
+        {
+            var trimmed = rawLine.Trim();
+
+            if (string.IsNullOrEmpty(trimmed))
+            {
+                FlushParagraph();
+                continue;
+            }
+
             if (IsMetaCommentary(trimmed))
                 continue;
-            
-            // Skip empty bullet markers
-            if (trimmed is "•" or "-" or "*")
+
+            trimmed = Regex.Replace(trimmed, @"\[(\d{1,2})\](?!\d)", "");
+            trimmed = RemoveHedgingInline(trimmed);
+
+            if (string.IsNullOrWhiteSpace(trimmed))
                 continue;
-            
-            // Fix invented citations like [1], [2] -> remove them (better no citation than fake)
-            var cleaned = Regex.Replace(trimmed, @"\[(\d{1,2})\](?!\d)", "");
-            
-            // Remove hedging phrases inline
-            cleaned = RemoveHedgingInline(cleaned);
-            
-            // Normalize the bullet point format
-            cleaned = NormalizeBullet(cleaned);
-            
-            // Skip if too short or duplicate content
-            if (string.IsNullOrWhiteSpace(cleaned) || cleaned.Length < 10)
+
+            if (IsBulletLine(trimmed))
+            {
+                FlushParagraph();
+                bullets.Add(trimmed);
                 continue;
-            
-            // Dedupe similar content
-            var normalized = Regex.Replace(cleaned.ToLowerInvariant(), @"[^\w\s]", "");
-            if (seenContent.Any(s => ComputeSimpleSimilarity(s, normalized) > 0.7))
-                continue;
-            
-            seenContent.Add(normalized);
-            cleanedLines.Add(cleaned);
+            }
+
+            currentParagraph.Add(trimmed);
         }
-        
-        // Enforce bullet max from profile
-        return string.Join("\n", cleanedLines.Take(maxBullets));
+
+        FlushParagraph();
+        return (paragraphs, bullets);
+
+        void FlushParagraph()
+        {
+            if (currentParagraph.Count == 0) return;
+            var paragraph = string.Join(" ", currentParagraph).Trim();
+            if (paragraph.Length >= 10)
+                paragraphs.Add(paragraph);
+            currentParagraph.Clear();
+        }
     }
+
+    private static bool IsBulletLine(string line)
+    {
+        if (line.StartsWith('•') || line.StartsWith('-') || line.StartsWith('*') || line.StartsWith('+'))
+            return true;
+
+        return Regex.IsMatch(line, @"^\d+[\.\)]\s");
+    }
+
+    private static List<string> CleanBulletLines(List<string> bulletLines, SummaryTemplate template, DocumentSizeProfile profile)
+    {
+        if (bulletLines.Count == 0)
+            return new List<string>();
+
+        var cleaned = new List<string>();
+        var seenContent = new List<string>();
+        var maxBullets = GetExpectedBulletCount(template, profile);
+
+        foreach (var line in bulletLines)
+        {
+            var normalized = NormalizeBullet(line);
+            if (string.IsNullOrWhiteSpace(normalized) || normalized.Length < 5)
+                continue;
+
+            var dedupeKey = Regex.Replace(normalized.ToLowerInvariant(), @"[^\w\s]", "");
+            if (seenContent.Any(s => ComputeSimpleSimilarity(s, dedupeKey) > 0.7))
+                continue;
+
+            seenContent.Add(dedupeKey);
+            cleaned.Add(normalized);
+
+            if (cleaned.Count >= maxBullets)
+                break;
+        }
+
+        return cleaned;
+    }
+
+    private static string CleanMixedSummary(List<string> paragraphs, List<string> bullets, SummaryTemplate template, DocumentSizeProfile profile)
+    {
+        var sections = new List<string>();
+        var prose = CleanProseParagraphs(paragraphs, template, maxParagraphsOverride: 1);
+        if (!string.IsNullOrWhiteSpace(prose))
+            sections.Add(prose);
+
+        var bulletSection = CleanBulletLines(bullets, template, profile);
+        if (bulletSection.Count > 0)
+            sections.Add(string.Join("\n", bulletSection));
+
+        if (sections.Count == 0 && bullets.Count > 0)
+            sections.Add(string.Join("\n", CleanBulletLines(bullets, template, profile)));
+
+        return string.Join("\n\n", sections.Where(s => !string.IsNullOrWhiteSpace(s)));
+    }
+
+    private static string CleanProseParagraphs(List<string> paragraphs, SummaryTemplate template, int? maxParagraphsOverride = null)
+    {
+        if (paragraphs.Count == 0)
+            return string.Empty;
+
+        var maxParagraphs = maxParagraphsOverride ?? (template.Paragraphs > 0 ? template.Paragraphs : paragraphs.Count);
+        var cleaned = new List<string>();
+        var seenContent = new List<string>();
+
+        foreach (var paragraph in paragraphs)
+        {
+            var normalized = Regex.Replace(paragraph.ToLowerInvariant(), @"[^\w\s]", "");
+            if (seenContent.Any(s => ComputeSimpleSimilarity(s, normalized) > 0.75))
+                continue;
+
+            seenContent.Add(normalized);
+            cleaned.Add(paragraph);
+
+            if (cleaned.Count >= maxParagraphs)
+                break;
+        }
+
+        return string.Join("\n\n", cleaned);
+    }
+
+    private static string StripBulletPrefix(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return string.Empty;
+
+        var withoutNumbering = Regex.Replace(line, @"^\d+[\.\)]\s*", "");
+        return withoutNumbering.TrimStart('•', '-', '*', '+', ' ', '\t');
+    }
+
     
     /// <summary>
     /// Remove hedging phrases and filler language inline while preserving the core claim
@@ -1279,23 +1739,15 @@ public class RagSummarizer
     /// </summary>
     private static string NormalizeBullet(string line)
     {
-        // Remove existing bullet markers and normalize
-        var content = line.TrimStart('•', '-', '*', ' ', '\t');
-        
-        // If it looks like a bullet point, ensure it starts with •
-        if (content.Length > 0 && (line.StartsWith("•") || line.StartsWith("-") || line.StartsWith("*")))
-        {
-            return "• " + content;
-        }
-        
-        // If no bullet but has content, add one
-        if (content.Length > 20)
-        {
-            return "• " + content;
-        }
-        
-        return content;
+        if (string.IsNullOrWhiteSpace(line))
+            return string.Empty;
+
+        var withoutNumbering = Regex.Replace(line, @"^\d+[\.\)]\s*", "");
+        var content = withoutNumbering.TrimStart('•', '-', '*', '+', ' ', '\t');
+
+        return string.IsNullOrWhiteSpace(content) ? string.Empty : "• " + content;
     }
+
     
     /// <summary>
     /// Simple word overlap similarity for deduplication
@@ -1324,21 +1776,65 @@ public class RagSummarizer
     }
     
     /// <summary>
-    /// Clean topic summary to remove meta-commentary and filler
+    /// Clean topic summary to remove meta-commentary, filler, and leaked entity blocks
     /// </summary>
     private static string CleanTopicSummary(string summary)
     {
         if (string.IsNullOrWhiteSpace(summary)) return "";
         
+        // First, strip any ENTITIES block that leaked into the summary
+        summary = Regex.Replace(summary, 
+            @"\n?\s*\*{0,2}ENTITIES\*{0,2}:?\s*\n?.*$", 
+            "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
+        // Strip individual entity type lines that might have leaked
+        summary = Regex.Replace(summary, 
+            @"\n?\s*\*{0,2}(Characters|Locations|Dates|Events|Organizations|Orgs)\*{0,2}:\s*[^\n]*", 
+            "", RegexOptions.IgnoreCase);
+        
+        // Strip "Rules:" section and anything after
+        summary = Regex.Replace(summary, 
+            @"\n?\s*Rules?:.*$", 
+            "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
+        // Strip "Full Names:" sections which LLM adds
+        summary = Regex.Replace(summary,
+            @"\*{0,2}Full Names\*{0,2}:.*$",
+            "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
+        // Strip "Plot Events" meta-sections 
+        summary = Regex.Replace(summary,
+            @"\*{0,2}Plot Events( and Character Actions)?\*{0,2}:.*$",
+            "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        
         var lines = summary.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var cleanedLines = new List<string>();
+        var hitEntitySection = false;
         
         foreach (var line in lines)
         {
             var trimmed = line.Trim();
             
+            // Stop if we hit an entity section marker (including numbered variants)
+            if (Regex.IsMatch(trimmed, @"^\*{0,2}(ENTITIES|Characters|Locations|Dates|Events|Organizations|Full Names)\*{0,2}:", RegexOptions.IgnoreCase) ||
+                Regex.IsMatch(trimmed, @"^\d+\.\s*(Characters|Locations|Events|Dates|Organizations):", RegexOptions.IgnoreCase))
+            {
+                hitEntitySection = true;
+                continue;
+            }
+            
+            // Skip everything after entity section starts
+            if (hitEntitySection)
+                continue;
+            
             // Skip meta-commentary
             if (IsMetaCommentary(trimmed))
+                continue;
+            
+            // Skip lines that look like entity lists (start with + or have entity-like patterns)
+            if (trimmed.StartsWith("+") || 
+                Regex.IsMatch(trimmed, @"^\*\s*\*\*[A-Z]") ||
+                Regex.IsMatch(trimmed, @"^-\s*\*\*[A-Z]"))
                 continue;
             
             // Remove filler phrases
@@ -1368,7 +1864,18 @@ public class RagSummarizer
             @"^\*\*Executive Summary\*\*",
             @"^Executive Summary:?\s*$",
             @"^(The novel|The book|The story|The author)\s+(shows|reveals|demonstrates|explores)",
-            @"^Here are the"
+            @"^Here are the",
+            // New patterns for topic synthesis meta-commentary
+            @"^\*\*SUMMARY\*\*\s*$",
+            @"^\*\*Summary\s*\(\d+\s*words?\)\*\*",
+            @"^SUMMARY\s*\(\d+\s*words?\)",
+            @"^Key events and character actions:",
+            @"^(Characters|Locations|Events|Dates|Organizations):\s*$",
+            @"^Rules:",
+            @"in the requested format",
+            @"in the given section",
+            @"for the provided text",
+            @"entities,?\s*and\s*rules",
         };
         
         return metaPatterns.Any(p => 
@@ -1392,17 +1899,13 @@ public class RagSummarizer
     /// </summary>
     private async Task<(string summary, ExtractedEntities? entities, List<Claim> claims)> SynthesizeTopicWithClaimsAsync(
         string topic,
-        List<(string chunkId, string heading, string content, int order)> chunks,
+        List<DocumentChunk> chunks,
         string? focus,
-        DocumentType docType = DocumentType.Unknown,
-        int totalChunks = 100)
+        DocumentType docType,
+        string? templateName = null)
     {
-        // Get base summary and entities with document-type-aware prompts
-        var (summary, entities) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, docType, totalChunks);
-        
-        // Extract and classify claims from the summary
+        var (summary, entities) = await SynthesizeTopicWithEntitiesAsync(topic, chunks, focus, docType, templateName);
         var claims = ExtractAndClassifyClaims(summary, topic, chunks);
-        
         return (summary, entities, claims);
     }
     
@@ -1410,31 +1913,24 @@ public class RagSummarizer
     /// Extract claims from summary text and classify using TF-IDF
     /// </summary>
     private List<Claim> ExtractAndClassifyClaims(
-        string summary, 
+        string summary,
         string topic,
-        List<(string chunkId, string heading, string content, int order)> sourceChunks)
+        List<DocumentChunk> sourceChunks)
     {
         var claims = new List<Claim>();
-        
-        // Split summary into bullet points / sentences
         var lines = summary.Split('\n')
             .Select(l => l.Trim().TrimStart('-', '*', '•').Trim())
             .Where(l => l.Length > 10)
             .ToList();
-        
-        var sourceText = string.Join(" ", sourceChunks.Select(c => c.content));
-        
+
+        var sourceText = string.Join(" ", sourceChunks.Select(c => c.Content));
+
         foreach (var line in lines)
         {
-            // Extract citations from the line
             var citations = ExtractCitations(line);
-            
-            // Classify claim type using TF-IDF analysis
-            var claimType = ClassifyClaimType(line, sourceText, sourceChunks);
-            
-            // Assess confidence based on evidence
+            var claimType = ClassifyClaimType(line, sourceText);
             var confidence = AssessClaimConfidence(line, citations, sourceChunks);
-            
+
             claims.Add(new Claim(
                 Text: RemoveCitations(line),
                 Type: claimType,
@@ -1442,10 +1938,10 @@ public class RagSummarizer
                 Evidence: citations,
                 Topic: topic));
         }
-        
+
         return claims;
     }
-    
+
     /// <summary>
     /// Classify claim type using TF-IDF to detect "colour" vs "fact"
     /// High TF-IDF terms that appear rarely = likely colour (incidental details)
@@ -1453,67 +1949,54 @@ public class RagSummarizer
     /// </summary>
     private ClaimType ClassifyClaimType(
         string claimText,
-        string fullSourceText,
-        List<(string chunkId, string heading, string content, int order)> sourceChunks)
+        string fullSourceText)
     {
         var terms = _textAnalysis.Tokenize(claimText);
         if (terms.Count == 0) return ClaimType.Colour;
-        
-        // Get distinctive terms in this claim
+
         var distinctiveTerms = terms
             .Select(t => (term: t, type: _textAnalysis.ClassifyTermImportance(t)))
             .ToList();
-        
-        // Count term types
+
         var factTerms = distinctiveTerms.Count(t => t.type == ClaimType.Fact);
         var colourTerms = distinctiveTerms.Count(t => t.type == ClaimType.Colour);
-        
-        // If claim is dominated by rare/distinctive terms, it's likely colour
+
         if (colourTerms > factTerms * 2)
             return ClaimType.Colour;
-        
-        // If claim has mostly common terms, it's likely a fact
+
         if (factTerms > colourTerms)
             return ClaimType.Fact;
-        
-        // Check if claim text appears verbatim or near-verbatim in source
+
         var similarity = _textAnalysis.ComputeCombinedSimilarity(
             _textAnalysis.NormalizeForComparison(claimText),
             _textAnalysis.NormalizeForComparison(fullSourceText));
-        
-        if (similarity > 0.7)
-            return ClaimType.Fact;
-        
-        return ClaimType.Inference;
+
+        return similarity > 0.7 ? ClaimType.Fact : ClaimType.Inference;
     }
-    
+
     /// <summary>
     /// Assess confidence level based on evidence quality
     /// </summary>
     private ConfidenceLevel AssessClaimConfidence(
         string claimText,
         List<Citation> citations,
-        List<(string chunkId, string heading, string content, int order)> sourceChunks)
+        List<DocumentChunk> sourceChunks)
     {
-        // No citations = low confidence
         if (citations.Count == 0)
             return ConfidenceLevel.Low;
-        
-        // Multiple citations = high confidence
+
         if (citations.Count >= 2)
             return ConfidenceLevel.High;
-        
-        // Single citation - verify it actually supports the claim
-        var citedChunk = sourceChunks.FirstOrDefault(c => c.chunkId == citations[0].ChunkId);
-        if (citedChunk.content == null)
+
+        var citedChunk = sourceChunks.FirstOrDefault(c => c.Id.Equals(citations[0].ChunkId, StringComparison.OrdinalIgnoreCase));
+        if (citedChunk == null)
             return ConfidenceLevel.Uncertain;
-        
-        // Check if key terms from claim appear in cited chunk
+
         var claimTerms = _textAnalysis.Tokenize(claimText);
-        var chunkTerms = _textAnalysis.Tokenize(citedChunk.content);
+        var chunkTerms = _textAnalysis.Tokenize(citedChunk.Content);
         var overlap = claimTerms.Intersect(chunkTerms, StringComparer.OrdinalIgnoreCase).Count();
         var overlapRatio = claimTerms.Count > 0 ? (double)overlap / claimTerms.Count : 0;
-        
+
         return overlapRatio switch
         {
             > 0.5 => ConfidenceLevel.High,
@@ -1521,6 +2004,7 @@ public class RagSummarizer
             _ => ConfidenceLevel.Low
         };
     }
+
     
     /// <summary>
     /// Extract citation references from text
@@ -1594,11 +2078,147 @@ public class RagSummarizer
         return new Guid(bytes.Take(16).ToArray());
     }
 
+    private static string ReplaceChunkCitations(string text, IReadOnlyDictionary<string, DocumentChunk> chunkLookup)
+    {
+        return Regex.Replace(text, @"\[chunk-(\d+)\]", match =>
+        {
+            var id = $"chunk-{match.Groups[1].Value}";
+            if (chunkLookup.TryGetValue(id, out var chunk))
+            {
+                return $"[{FormatChunkCitation(chunk)}]";
+            }
+            // Invalid chunk ID - remove it entirely rather than leaving hallucinated reference
+            return "";
+        });
+    }
+    
+    /// <summary>
+    /// Validate and fix chunk citations - removes invalid IDs, ensures citations reference real chunks
+    /// </summary>
+    private static string ValidateChunkCitations(string text, HashSet<string> validChunkIds)
+    {
+        if (string.IsNullOrEmpty(text) || validChunkIds.Count == 0)
+            return text;
+        
+        return Regex.Replace(text, @"\[chunk-(\d+)\]", match =>
+        {
+            var id = $"chunk-{match.Groups[1].Value}";
+            // Keep valid citations, remove invalid ones
+            return validChunkIds.Contains(id) ? match.Value : "";
+        });
+    }
+
+    private static string FormatChunkCitation(DocumentChunk chunk)
+    {
+        if (chunk.PageStart.HasValue)
+        {
+            if (chunk.PageEnd.HasValue && chunk.PageEnd != chunk.PageStart)
+            {
+                return $"pp.{chunk.PageStart}-{chunk.PageEnd}";
+            }
+            return $"p.{chunk.PageStart}";
+        }
+
+        return $"§{chunk.Order + 1}";
+    }
+
     private static double CalculateCitationRate(string summary)
     {
         var bullets = summary.Split('\n').Count(l => l.TrimStart().StartsWith('-'));
         if (bullets == 0) return 0;
         var citations = Regex.Matches(summary, @"\[chunk-\d+\]").Count;
         return (double)citations / bullets;
+    }
+
+    private static int CountWords(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        var count = 0;
+        var inWord = false;
+
+        foreach (var ch in text)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '\'' || ch == '’')
+            {
+                if (!inWord)
+                {
+                    count++;
+                    inWord = true;
+                }
+            }
+            else if (char.IsWhiteSpace(ch) || char.IsPunctuation(ch))
+            {
+                inWord = false;
+            }
+            else
+            {
+                inWord = false;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Extract document title and author from early content (e.g., Project Gutenberg headers)
+    /// </summary>
+    private static string? ExtractDocumentTitle(List<DocumentChunk> chunks, string docId)
+    {
+        if (chunks.Count == 0) return null;
+        
+        var firstChunk = chunks[0].Content;
+        var lines = firstChunk.Split('\n').Take(30).ToList();
+        
+        string? title = null;
+        string? author = null;
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            
+            // Project Gutenberg format: "Title: X"
+            if (trimmed.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
+            {
+                title = trimmed[6..].Trim();
+            }
+            // Author line
+            else if (trimmed.StartsWith("Author:", StringComparison.OrdinalIgnoreCase))
+            {
+                author = trimmed[7..].Trim();
+            }
+            // "by Author Name" pattern
+            else if (trimmed.StartsWith("by ", StringComparison.OrdinalIgnoreCase) && trimmed.Length < 50)
+            {
+                author = trimmed[3..].Trim();
+            }
+            // Look for title in first heading
+            else if (title == null && chunks[0].Heading != null && 
+                     !chunks[0].Heading.StartsWith("Project", StringComparison.OrdinalIgnoreCase))
+            {
+                title = chunks[0].Heading;
+            }
+        }
+        
+        // Fall back to filename
+        if (string.IsNullOrEmpty(title))
+        {
+            var fileName = Path.GetFileNameWithoutExtension(docId);
+            if (!string.IsNullOrEmpty(fileName) && fileName.Length > 3)
+                title = fileName.Replace('-', ' ').Replace('_', ' ');
+        }
+        
+        if (title != null && author != null)
+            return $"{title} by {author}";
+        return title;
+    }
+
+    private static int CountWords(IEnumerable<DocumentChunk> chunks)
+    {
+        var total = 0;
+        foreach (var chunk in chunks)
+        {
+            total += CountWords(chunk.Content);
+        }
+        return total;
     }
 }

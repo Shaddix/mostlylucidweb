@@ -1,4 +1,5 @@
 using Mostlylucid.DocSummarizer.Models;
+using Mostlylucid.DocSummarizer.Services;
 
 namespace Mostlylucid.DocSummarizer.Config;
 
@@ -21,6 +22,11 @@ public class DocSummarizerConfig
     ///     Ollama configuration (used when Backend = Ollama)
     /// </summary>
     public OllamaConfig Ollama { get; set; } = new();
+
+    /// <summary>
+    ///     BERT extractive summarization configuration (used when Mode = Bert)
+    /// </summary>
+    public BertConfig Bert { get; set; } = new();
 
     /// <summary>
     ///     Docling configuration
@@ -126,7 +132,7 @@ public class OllamaConfig
     public string BaseUrl { get; set; } = "http://localhost:11434";
 
     /// <summary>
-    ///     Model to use for generation
+    ///     Model to use for generation (main summarization work)
     /// </summary>
     public string Model { get; set; } = "llama3.2:3b";
 
@@ -134,6 +140,13 @@ public class OllamaConfig
     ///     Model to use for embeddings
     /// </summary>
     public string EmbedModel { get; set; } = "nomic-embed-text";
+
+    /// <summary>
+    ///     Small/fast model for document classification (sentinel).
+    ///     Uses first chunk to classify fiction vs technical.
+    ///     Set to empty string to use main model, or use a tiny model like "tinyllama" or "qwen2.5:1.5b".
+    /// </summary>
+    public string ClassifierModel { get; set; } = "tinyllama";
 
     /// <summary>
     ///     Temperature for generation
@@ -267,6 +280,11 @@ public class ProcessingConfig
     ///     Memory management settings
     /// </summary>
     public MemoryConfig Memory { get; set; } = new();
+
+    /// <summary>
+    ///     Summary length adaptation settings
+    /// </summary>
+    public SummaryLengthConfig SummaryLength { get; set; } = new();
 }
 
 /// <summary>
@@ -311,6 +329,168 @@ public class MemoryConfig
     ///     Set to 0 to disable memory-based GC triggers.
     /// </summary>
     public int MaxMemoryMB { get; set; } = 0;
+}
+
+/// <summary>
+///     Summary length adaptation configuration
+/// </summary>
+public class SummaryLengthConfig
+{
+    /// <summary>
+    ///     Minimum word count before generating a summary. Documents shorter than this are returned as-is.
+    /// </summary>
+    public int MinWordsForSummary { get; set; } = 150;
+
+    /// <summary>
+    ///     Tier for very short documents.
+    /// </summary>
+    public SummaryLengthTier Tiny { get; set; } = new()
+    {
+        Name = "tiny",
+        MaxWords = 600,
+        Topics = 2,
+        ChunksPerTopic = 2,
+        BulletCount = 2,
+        WordsPerBullet = 18,
+        TopClaims = 5,
+        MaxCharacters = 4,
+        MaxLocations = 3,
+        MaxOther = 2
+    };
+
+    /// <summary>
+    ///     Tier for short documents.
+    /// </summary>
+    public SummaryLengthTier Small { get; set; } = new()
+    {
+        Name = "small",
+        MaxWords = 2000,
+        Topics = 3,
+        ChunksPerTopic = 3,
+        BulletCount = 3,
+        WordsPerBullet = 20,
+        TopClaims = 8,
+        MaxCharacters = 5,
+        MaxLocations = 4,
+        MaxOther = 3
+    };
+
+    /// <summary>
+    ///     Tier for medium-length documents.
+    /// </summary>
+    public SummaryLengthTier Medium { get; set; } = new()
+    {
+        Name = "medium",
+        MaxWords = 6000,
+        Topics = 4,
+        ChunksPerTopic = 3,
+        BulletCount = 3,
+        WordsPerBullet = 20,
+        TopClaims = 10,
+        MaxCharacters = 6,
+        MaxLocations = 4,
+        MaxOther = 3
+    };
+
+    /// <summary>
+    ///     Tier for long documents.
+    /// </summary>
+    public SummaryLengthTier Large { get; set; } = new()
+    {
+        Name = "large",
+        MaxWords = 20000,
+        Topics = 5,
+        ChunksPerTopic = 4,
+        BulletCount = 4,
+        WordsPerBullet = 20,
+        TopClaims = 12,
+        MaxCharacters = 8,
+        MaxLocations = 5,
+        MaxOther = 4
+    };
+
+    /// <summary>
+    ///     Tier for very large documents.
+    /// </summary>
+    public SummaryLengthTier VeryLarge { get; set; } = new()
+    {
+        Name = "very large",
+        MaxWords = int.MaxValue,
+        Topics = 6,
+        ChunksPerTopic = 5,
+        BulletCount = 5,
+        WordsPerBullet = 18,
+        TopClaims = 15,
+        MaxCharacters = 10,
+        MaxLocations = 6,
+        MaxOther = 5
+    };
+
+    /// <summary>
+    ///     Get tiers ordered by max word count.
+    /// </summary>
+    public IEnumerable<SummaryLengthTier> GetOrderedTiers()
+    {
+        return new[] { Tiny, Small, Medium, Large, VeryLarge }
+            .OrderBy(t => t.MaxWords)
+            .ThenBy(t => t.Name);
+    }
+}
+
+/// <summary>
+///     Configuration for a specific summary length tier
+/// </summary>
+public class SummaryLengthTier
+{
+    /// <summary>
+    ///     Human-readable name for logging
+    /// </summary>
+    public string Name { get; set; } = "tier";
+
+    /// <summary>
+    ///     Maximum word count included in this tier
+    /// </summary>
+    public int MaxWords { get; set; } = 1000;
+
+    /// <summary>
+    ///     Number of topics to extract
+    /// </summary>
+    public int Topics { get; set; } = 3;
+
+    /// <summary>
+    ///     Number of chunks to retrieve per topic
+    /// </summary>
+    public int ChunksPerTopic { get; set; } = 3;
+
+    /// <summary>
+    ///     Number of bullets in the executive summary
+    /// </summary>
+    public int BulletCount { get; set; } = 3;
+
+    /// <summary>
+    ///     Maximum words per bullet in the executive summary
+    /// </summary>
+    public int WordsPerBullet { get; set; } = 20;
+
+    /// <summary>
+    ///     Number of claims to prioritize during synthesis
+    /// </summary>
+    public int TopClaims { get; set; } = 8;
+
+    /// <summary>
+    ///     Maximum number of characters to surface in grounding
+    /// </summary>
+    public int MaxCharacters { get; set; } = 6;
+
+    /// <summary>
+    ///     Maximum number of locations to surface in grounding
+    /// </summary>
+    public int MaxLocations { get; set; } = 4;
+
+    /// <summary>
+    ///     Maximum number of events/organizations/dates to surface
+    /// </summary>
+    public int MaxOther { get; set; } = 3;
 }
 
 /// <summary>

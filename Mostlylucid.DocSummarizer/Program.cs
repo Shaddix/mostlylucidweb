@@ -13,7 +13,7 @@ var fileOption = new Option<FileInfo?>("--file", "-f") { Description = "Path to 
 var directoryOption = new Option<DirectoryInfo?>("--directory", "-d") { Description = "Path to directory for batch processing" };
 var urlOption = new Option<string?>("--url", "-u") { Description = "Web URL to fetch and summarize (requires --web-enabled)" };
 var webEnabledOption = new Option<bool>("--web-enabled") { Description = "Enable web URL fetching (required when using --url)", DefaultValueFactory = _ => false };
-var modeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode: MapReduce, Rag, or Iterative", DefaultValueFactory = _ => SummarizationMode.MapReduce };
+var modeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode: Auto (smart selection), BertRag (production pipeline), Bert (fast, no LLM), BertHybrid (BERT+LLM polish), Iterative (small docs), MapReduce (legacy), Rag (legacy)", DefaultValueFactory = _ => SummarizationMode.Auto };
 var focusOption = new Option<string?>("--focus") { Description = "Focus query for RAG mode (e.g., 'pricing terms', 'security requirements')" };
 var queryOption = new Option<string?>("--query", "-q") { Description = "Query the document instead of summarizing" };
 var modelOption = new Option<string?>("--model") { Description = "Ollama model to use (overrides config)" };
@@ -119,8 +119,10 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             ollamaConfig: config.Ollama,
             onnxConfig: config.Onnx,
             embeddingBackend: config.EmbeddingBackend);
-
+        summarizer.SetTemplate(template);
+ 
         // Determine operation mode
+
         if (!string.IsNullOrEmpty(url))
         {
             // Web URL mode
@@ -286,7 +288,7 @@ var toolUrlOption = new Option<string?>("--url", "-u") { Description = "URL to f
 var toolFileOption = new Option<FileInfo?>("--file", "-f") { Description = "File to process" };
 var toolAskOption = new Option<string?>("--ask", "-a") { Description = "Ask a question about the document (Q&A mode using RAG)" };
 var toolQueryOption = new Option<string?>("--query", "-q") { Description = "Focus query for summarization (filters summary to specific topic)" };
-var toolModeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode (ignored if --ask is used)", DefaultValueFactory = _ => SummarizationMode.MapReduce };
+var toolModeOption = new Option<SummarizationMode>("--mode", "-m") { Description = "Summarization mode: Auto, BertRag, Bert, BertHybrid, Iterative, MapReduce, Rag (ignored if --ask is used)", DefaultValueFactory = _ => SummarizationMode.Auto };
 var toolModelOption = new Option<string?>("--model") { Description = "Ollama model to use" };
 var toolConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
 
@@ -395,6 +397,13 @@ static async Task ProcessFileAsync(
         {
             Console.WriteLine();
             SpectreProgressService.WriteSummaryPanel(summary.ExecutiveSummary, "Summary");
+            
+            // Show extracted entities (characters, locations, etc.) if available
+            if (summary.Entities != null && summary.Entities.HasAny)
+            {
+                Console.WriteLine();
+                SpectreProgressService.WriteEntities(summary.Entities);
+            }
             
             // Show topics if available
             if (summary.TopicSummaries?.Count > 0)

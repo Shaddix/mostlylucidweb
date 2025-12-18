@@ -35,6 +35,13 @@ public class DoclingClient : IDisposable
     /// Progress callback - receives updates during conversion
     /// </summary>
     public Action<ConversionProgress>? OnProgress { get; set; }
+    
+    /// <summary>
+    /// Chunk completion callback - fires when each chunk's markdown is ready.
+    /// Use this for pipelined processing (e.g., start embedding while other chunks convert).
+    /// Parameters: (chunkIndex, startPage, endPage, markdown)
+    /// </summary>
+    public Action<int, int, int, string>? OnChunkComplete { get; set; }
 
     public DoclingClient(DoclingConfig? config = null)
     {
@@ -180,16 +187,29 @@ public class DoclingClient : IDisposable
                 {
                     var status = await CheckTaskStatusAsync(chunk.TaskId, cancellationToken);
 
-                    if (status == "SUCCESS")
-                    {
-                        chunk.IsComplete = true;
-                        chunk.Result = await GetResultAsync(chunk.TaskId, cancellationToken);
-                        pendingChunks.Remove(chunk);
-                        completedChunks++;
-                        
-                        Report(completedChunks, numChunks, waveNumber, totalWaves, 
-                            $"Wave {waveNumber}/{totalWaves}: {completedChunks}/{numChunks} chunks done");
-                    }
+                        if (status == "SUCCESS")
+                        {
+                            chunk.IsComplete = true;
+                            chunk.Result = await GetResultAsync(chunk.TaskId, cancellationToken);
+                            pendingChunks.Remove(chunk);
+                            completedChunks++;
+                            
+                            Report(completedChunks, numChunks, waveNumber, totalWaves, 
+                                $"Wave {waveNumber}/{totalWaves}: {completedChunks}/{numChunks} chunks done");
+                            
+                            // Fire chunk completion callback for pipelined processing
+                            if (OnChunkComplete != null && !string.IsNullOrEmpty(chunk.Result))
+                            {
+                                try
+                                {
+                                    OnChunkComplete(chunk.Index, chunk.StartPage, chunk.EndPage, chunk.Result);
+                                }
+                                catch
+                                {
+                                    // Don't let callback errors break conversion
+                                }
+                            }
+                        }
                     else if (status == "FAILURE" || status == "REVOKED")
                     {
                         chunk.IsFailed = true;
@@ -327,6 +347,19 @@ public class DoclingClient : IDisposable
                             
                             Report(completedChunks, chapters.Count, waveNumber, totalWaves,
                                 $"Wave {waveNumber}/{totalWaves}: {completedChunks}/{chapters.Count} chapters done");
+                            
+                            // Fire chunk completion callback for pipelined processing (DOCX)
+                            if (OnChunkComplete != null && !string.IsNullOrEmpty(chunk.Result))
+                            {
+                                try
+                                {
+                                    OnChunkComplete(chunk.Index, chunk.Index, chunk.Index, chunk.Result);
+                                }
+                                catch
+                                {
+                                    // Don't let callback errors break conversion
+                                }
+                            }
                         }
                         else if (status == "FAILURE" || status == "REVOKED")
                         {

@@ -34,12 +34,15 @@ public class OllamaService
         string embedModel = "nomic-embed-text",
         string baseUrl = "http://localhost:11434",
         TimeSpan? timeout = null,
-        EmbeddingConfig? embeddingConfig = null)
+        EmbeddingConfig? embeddingConfig = null,
+        string? classifierModel = null)
     {
         _timeout = timeout ?? DefaultTimeout;
         _baseUrl = baseUrl.TrimEnd('/');
         Model = model;
         EmbedModel = embedModel;
+        // Classifier model defaults to main model if not specified or empty
+        ClassifierModel = string.IsNullOrWhiteSpace(classifierModel) ? model : classifierModel;
         _embeddingConfig = embeddingConfig ?? new EmbeddingConfig();
 
         // Configure HttpClient with proper connection handling for Windows
@@ -127,10 +130,25 @@ public class OllamaService
     public string Model { get; }
 
     public string EmbedModel { get; }
+    
+    /// <summary>
+    /// Small/fast model for document classification (sentinel). 
+    /// Defaults to main model if not specified.
+    /// </summary>
+    public string ClassifierModel { get; }
 
     public TimeSpan Timeout => _timeout;
 
     public async Task<string> GenerateAsync(string prompt, double temperature = 0.3,
+        CancellationToken cancellationToken = default)
+    {
+        return await GenerateWithModelAsync(Model, prompt, temperature, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Generate text using a specific model (useful for sentinel/classifier models)
+    /// </summary>
+    public async Task<string> GenerateWithModelAsync(string modelName, string prompt, double temperature = 0.3,
         CancellationToken cancellationToken = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -138,7 +156,7 @@ public class OllamaService
 
         var request = new OllamaGenerateRequest
         {
-            Model = Model,
+            Model = modelName,
             Prompt = prompt,
             Options = new OllamaOptions { Temperature = temperature }
         };

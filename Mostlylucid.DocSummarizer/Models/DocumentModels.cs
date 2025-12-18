@@ -12,6 +12,97 @@ public enum OutputFormat
     Json
 }
 
+/// <summary>
+/// Position of a chunk within the document structure
+/// </summary>
+public enum ChunkPosition
+{
+    /// <summary>First 10-15% of document - states purpose, scope, thesis</summary>
+    Introduction,
+    /// <summary>Middle 70-80% of document - details, examples, supporting content</summary>
+    Body,
+    /// <summary>Last 10-15% of document - summary, conclusions, implications</summary>
+    Conclusion
+}
+
+/// <summary>
+/// Document content type - affects position weighting strategy
+/// </summary>
+public enum ContentType
+{
+    /// <summary>Unknown or mixed content - use moderate position weighting</summary>
+    Unknown,
+    /// <summary>Fiction/narrative - uniform weighting, narrative continuity matters more</summary>
+    Narrative,
+    /// <summary>Technical/academic - strong position bias (intro/conclusion high importance)</summary>
+    Expository
+}
+
+/// <summary>
+/// Position weighting configuration based on document type
+/// Based on BERT summarization research (Liu & Lapata 2019) and BookSum (Kryscinski 2021)
+/// </summary>
+public static class PositionWeights
+{
+    /// <summary>
+    /// Get position weight for a chunk based on document content type.
+    /// 
+    /// Technical/Expository (BERT-style):
+    ///   - Intro (first 15%): 1.5x - thesis, purpose, scope
+    ///   - Conclusion (last 15%): 1.3x - findings, implications  
+    ///   - Body: 1.0x - supporting details
+    ///   
+    /// Fiction/Narrative (BookSum-style):
+    ///   - Opening (first 10%): 1.2x - scene setting, character intro
+    ///   - Resolution (last 10%): 1.15x - plot resolution
+    ///   - Body: 1.0x - plot development (all important for continuity)
+    /// </summary>
+    public static double GetWeight(ChunkPosition position, ContentType contentType) => contentType switch
+    {
+        ContentType.Expository => position switch
+        {
+            ChunkPosition.Introduction => 1.5,  // Thesis, purpose, scope
+            ChunkPosition.Conclusion => 1.3,    // Findings, implications
+            ChunkPosition.Body => 1.0,
+            _ => 1.0
+        },
+        ContentType.Narrative => position switch
+        {
+            ChunkPosition.Introduction => 1.2,  // Scene setting, but not too high
+            ChunkPosition.Conclusion => 1.15,   // Resolution matters but whole arc important
+            ChunkPosition.Body => 1.0,          // Narrative continuity - all matters
+            _ => 1.0
+        },
+        _ => position switch  // Unknown/default - moderate weighting
+        {
+            ChunkPosition.Introduction => 1.3,
+            ChunkPosition.Conclusion => 1.2,
+            ChunkPosition.Body => 1.0,
+            _ => 1.0
+        }
+    };
+    
+    /// <summary>
+    /// Get the percentage of document that counts as introduction
+    /// </summary>
+    public static double GetIntroThreshold(ContentType contentType) => contentType switch
+    {
+        ContentType.Expository => 0.15,  // Technical docs: first 15%
+        ContentType.Narrative => 0.10,   // Fiction: first 10% (opening scene)
+        _ => 0.12                         // Default: 12%
+    };
+    
+    /// <summary>
+    /// Get the percentage at which conclusion starts
+    /// </summary>
+    public static double GetConclusionThreshold(ContentType contentType) => contentType switch
+    {
+        ContentType.Expository => 0.85,  // Technical docs: last 15%
+        ContentType.Narrative => 0.90,   // Fiction: last 10% (resolution)
+        _ => 0.88                         // Default: last 12%
+    };
+}
+
 public record DocumentChunk(
     int Order,
     string Heading,
@@ -19,9 +110,52 @@ public record DocumentChunk(
     string Content,
     string Hash,
     int? PageStart = null,
-    int? PageEnd = null)
+    int? PageEnd = null,
+    int TotalChunks = 0)
 {
     public string Id => $"chunk-{Order}";
+    
+    /// <summary>
+    /// Determine the position of this chunk in the document structure.
+    /// Uses default thresholds (15% intro, 15% conclusion).
+    /// For content-type-specific thresholds, use GetPosition(ContentType).
+    /// </summary>
+    public ChunkPosition Position => GetPosition(ContentType.Unknown);
+    
+    /// <summary>
+    /// Determine the position of this chunk with content-type-specific thresholds.
+    /// </summary>
+    public ChunkPosition GetPosition(ContentType contentType)
+    {
+        if (TotalChunks <= 0) return ChunkPosition.Body;
+        
+        var position = (double)Order / TotalChunks;
+        var introThreshold = PositionWeights.GetIntroThreshold(contentType);
+        var conclusionThreshold = PositionWeights.GetConclusionThreshold(contentType);
+        
+        if (position < introThreshold) return ChunkPosition.Introduction;
+        if (position >= conclusionThreshold) return ChunkPosition.Conclusion;
+        
+        return ChunkPosition.Body;
+    }
+    
+    /// <summary>
+    /// Get the default position weight for this chunk (assumes expository content).
+    /// For content-type-specific weighting, use GetPositionWeight(ContentType).
+    /// </summary>
+    public double PositionWeight => GetPositionWeight(ContentType.Unknown);
+    
+    /// <summary>
+    /// Get the position weight for this chunk based on content type.
+    /// 
+    /// Technical/Expository: Intro 1.5x, Conclusion 1.3x, Body 1.0x
+    /// Fiction/Narrative: Intro 1.2x, Conclusion 1.15x, Body 1.0x (more uniform)
+    /// </summary>
+    public double GetPositionWeight(ContentType contentType)
+    {
+        var position = GetPosition(contentType);
+        return PositionWeights.GetWeight(position, contentType);
+    }
     
     /// <summary>
     /// Get a human-readable reference (page number if available, otherwise section number)
@@ -36,6 +170,11 @@ public record DocumentChunk(
     public string Citation => PageStart.HasValue
         ? $"[p.{PageStart}]"
         : $"[§{Order + 1}]";
+    
+    /// <summary>
+    /// Create a new chunk with the total chunks count set (for position calculation)
+    /// </summary>
+    public DocumentChunk WithTotalChunks(int totalChunks) => this with { TotalChunks = totalChunks };
 }
 
 #region Claim Ledger System
@@ -588,9 +727,60 @@ public record ValidationResult(
 
 public enum SummarizationMode
 {
+    /// <summary>
+    /// Automatic mode selection based on document size, LLM availability, and query presence.
+    /// Picks the optimal mode for each situation.
+    /// </summary>
+    Auto,
+    
+    /// <summary>
+    /// Pure BERT extractive summarization using local ONNX models.
+    /// No LLM required - fastest, deterministic, perfect citation grounding.
+    /// Best for: offline use, quick summaries, when LLM unavailable.
+    /// </summary>
+    Bert,
+    
+    /// <summary>
+    /// Hybrid: BERT extracts key sentences, LLM polishes into fluent prose.
+    /// Combines grounding (no hallucination) with fluency.
+    /// Best for: large documents, balanced speed/quality.
+    /// </summary>
+    BertHybrid,
+    
+    /// <summary>
+    /// Simple iterative summarization - sends chunks to LLM sequentially.
+    /// Best for: small documents that fit in context window.
+    /// </summary>
+    Iterative,
+    
+    /// <summary>
+    /// Map-Reduce: parallel chunk summarization then synthesis.
+    /// Best for: large documents, when you need full coverage.
+    /// </summary>
     MapReduce,
+    
+    /// <summary>
+    /// RAG-based: semantic search + focused summarization.
+    /// Best for: focus queries, Q&A, when you need specific information.
+    /// </summary>
     Rag,
-    Iterative
+    
+    /// <summary>
+    /// BERT→RAG pipeline: production-grade summarization.
+    /// 1. Extract: Parse into segments with embeddings + salience scores
+    /// 2. Retrieve: Dual-score ranking (query similarity + salience)
+    /// 3. Synthesize: LLM generates fluent summary from retrieved segments
+    /// 
+    /// Properties:
+    /// - LLM only at synthesis (no LLM-in-the-loop evaluation)
+    /// - Deterministic extraction (reproducible, debuggable)
+    /// - Perfect citations (every claim traceable to source segment)
+    /// - Scales to any document size
+    /// - Cost-optimal (cheap CPU work first, expensive LLM last)
+    /// 
+    /// Best for: large documents, production systems, when you need both quality and traceability.
+    /// </summary>
+    BertRag
 }
 
 public static class HashHelper

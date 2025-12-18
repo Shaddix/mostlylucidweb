@@ -102,17 +102,66 @@ public class OnnxEmbeddingService : IEmbeddingService, IDisposable
     }
 
     /// <summary>
-    ///     Generate embeddings for multiple texts
+    ///     Generate embeddings for multiple texts with parallelism
     /// </summary>
     public async Task<float[][]> EmbedBatchAsync(IEnumerable<string> texts, CancellationToken ct = default)
     {
-        var results = new List<float[]>();
-        foreach (var text in texts)
+        await InitializeAsync(ct);
+        
+        var textList = texts.ToList();
+        var results = new float[textList.Count][];
+        
+        // Process in parallel - ONNX runtime is thread-safe for inference
+        // Use bounded parallelism to avoid memory issues
+        var maxParallel = Math.Min(Environment.ProcessorCount, 8);
+        
+        await Parallel.ForEachAsync(
+            textList.Select((text, index) => (text, index)),
+            new ParallelOptions { MaxDegreeOfParallelism = maxParallel, CancellationToken = ct },
+            async (item, token) =>
+            {
+                results[item.index] = await EmbedSingleAsync(item.text, token);
+            });
+        
+        return results;
+    }
+
+    /// <summary>
+    ///     Internal single embedding (no init check - called from batch)
+    /// </summary>
+    private Task<float[]> EmbedSingleAsync(string text, CancellationToken ct)
+    {
+        if (_session == null || _tokenizer == null)
+            throw new InvalidOperationException("Model not initialized");
+
+        // Prepend instruction if model requires it
+        if (_modelInfo.RequiresInstruction && !string.IsNullOrEmpty(_modelInfo.QueryInstruction))
+            text = _modelInfo.QueryInstruction + text;
+
+        // Tokenize
+        var (inputIds, attentionMask, tokenTypeIds) = _tokenizer.Encode(text, _maxSequenceLength);
+
+        // Create tensors
+        var inputIdsTensor = new DenseTensor<long>(inputIds, new[] { 1, inputIds.Length });
+        var attentionMaskTensor = new DenseTensor<long>(attentionMask, new[] { 1, attentionMask.Length });
+        var tokenTypeIdsTensor = new DenseTensor<long>(tokenTypeIds, new[] { 1, tokenTypeIds.Length });
+
+        var inputs = new List<NamedOnnxValue>
         {
-            ct.ThrowIfCancellationRequested();
-            results.Add(await EmbedAsync(text, ct));
-        }
-        return results.ToArray();
+            NamedOnnxValue.CreateFromTensor("input_ids", inputIdsTensor),
+            NamedOnnxValue.CreateFromTensor("attention_mask", attentionMaskTensor),
+            NamedOnnxValue.CreateFromTensor("token_type_ids", tokenTypeIdsTensor)
+        };
+
+        // Run inference (synchronous but called from parallel context)
+        using var results = _session.Run(inputs);
+        
+        // Get last_hidden_state output
+        var output = results.First(r => r.Name == "last_hidden_state" || r.Name == "output_0");
+        var outputTensor = output.AsTensor<float>();
+
+        // Mean pooling with attention mask
+        return Task.FromResult(MeanPool(outputTensor, attentionMask, _modelInfo.EmbeddingDimension));
     }
 
     private static float[] MeanPool(Tensor<float> hiddenStates, long[] attentionMask, int hiddenSize)

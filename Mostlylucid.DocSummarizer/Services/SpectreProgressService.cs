@@ -181,6 +181,66 @@ public class SpectreProgressService : IProgressReporter
         AnsiConsole.Write(tree);
         AnsiConsole.WriteLine();
     }
+    
+    /// <summary>
+    /// Display extracted entities (characters, locations, events, etc.)
+    /// </summary>
+    public static void WriteEntities(Models.ExtractedEntities? entities)
+    {
+        if (entities == null || !entities.HasAny)
+            return;
+        
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(Color.Cyan1)
+            .Title("[cyan]Extracted Entities[/]");
+        
+        table.AddColumn(new TableColumn("[blue]Type[/]").Centered());
+        table.AddColumn(new TableColumn("[blue]Values[/]").LeftAligned());
+        
+        if (entities.Characters.Count > 0)
+        {
+            var chars = string.Join(", ", entities.Characters.Take(12));
+            if (entities.Characters.Count > 12)
+                chars += $", [dim]+{entities.Characters.Count - 12} more[/]";
+            table.AddRow("[yellow]Characters[/]", Markup.Escape(chars));
+        }
+        
+        if (entities.Locations.Count > 0)
+        {
+            var locs = string.Join(", ", entities.Locations.Take(8));
+            if (entities.Locations.Count > 8)
+                locs += $", [dim]+{entities.Locations.Count - 8} more[/]";
+            table.AddRow("[green]Locations[/]", Markup.Escape(locs));
+        }
+        
+        if (entities.Events.Count > 0)
+        {
+            var evts = string.Join(", ", entities.Events.Take(6));
+            if (entities.Events.Count > 6)
+                evts += $", [dim]+{entities.Events.Count - 6} more[/]";
+            table.AddRow("[magenta]Key Events[/]", Markup.Escape(evts));
+        }
+        
+        if (entities.Organizations.Count > 0)
+        {
+            var orgs = string.Join(", ", entities.Organizations.Take(6));
+            if (entities.Organizations.Count > 6)
+                orgs += $", [dim]+{entities.Organizations.Count - 6} more[/]";
+            table.AddRow("[orange1]Organizations[/]", Markup.Escape(orgs));
+        }
+        
+        if (entities.Dates.Count > 0)
+        {
+            var dates = string.Join(", ", entities.Dates.Take(6));
+            if (entities.Dates.Count > 6)
+                dates += $", [dim]+{entities.Dates.Count - 6} more[/]";
+            table.AddRow("[aqua]Dates[/]", Markup.Escape(dates));
+        }
+        
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+    }
 
     /// <summary>
     /// Display batch progress
