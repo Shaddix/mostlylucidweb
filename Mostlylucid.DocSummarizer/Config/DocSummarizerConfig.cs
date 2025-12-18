@@ -181,24 +181,68 @@ public class DoclingConfig
     public int TimeoutSeconds { get; set; } = 1200;
 
     /// <summary>
-    ///     Enable split processing for large PDFs
+    ///     Enable split processing for large PDFs.
+    ///     For CUDA-enabled Docling, set to false to let GPU process entire document.
+    ///     For CPU-only Docling, keep true to avoid memory issues.
     /// </summary>
     public bool EnableSplitProcessing { get; set; } = true;
 
     /// <summary>
-    ///     Pages per chunk for split processing
+    ///     Pages per chunk for split processing.
+    ///     Larger chunks = fewer API calls = faster for GPU.
+    ///     Smaller chunks = lower memory usage = better for CPU.
+    ///     Default: 50 pages (good for GPU with 8GB+ VRAM).
+    ///     For CPU or low VRAM, try 20-30.
     /// </summary>
-    public int PagesPerChunk { get; set; } = 10;
+    public int PagesPerChunk { get; set; } = 50;
 
     /// <summary>
-    ///     Maximum concurrent chunks
+    ///     Maximum concurrent chunks to process.
+    ///     For GPU: use 1-2 (GPU handles parallelism internally).
+    ///     For CPU: use 2-4 depending on cores.
+    ///     Higher values can cause GPU OOM or CPU thrashing.
     /// </summary>
-    public int MaxConcurrentChunks { get; set; } = 4;
+    public int MaxConcurrentChunks { get; set; } = 2;
 
     /// <summary>
-    ///     PDF backend to use
+    ///     PDF backend to use: "pypdfium2" (fast) or "docling" (more accurate for complex layouts).
     /// </summary>
     public string PdfBackend { get; set; } = "pypdfium2";
+    
+    /// <summary>
+    ///     Minimum pages before enabling split processing.
+    ///     Documents smaller than this are processed as a single chunk.
+    ///     Default: 60 pages.
+    /// </summary>
+    public int MinPagesForSplit { get; set; } = 60;
+    
+    /// <summary>
+    ///     Auto-detect GPU and adapt settings accordingly.
+    ///     When true, queries Docling for CUDA/GPU support and optimizes chunk sizes.
+    ///     Default: true.
+    /// </summary>
+    public bool AutoDetectGpu { get; set; } = true;
+}
+
+/// <summary>
+///     Detected Docling capabilities
+/// </summary>
+public class DoclingCapabilities
+{
+    /// <summary>
+    ///     Whether Docling service is available
+    /// </summary>
+    public bool Available { get; set; }
+    
+    /// <summary>
+    ///     Whether GPU/CUDA acceleration is available (null = unknown)
+    /// </summary>
+    public bool? HasGpu { get; set; }
+    
+    /// <summary>
+    ///     Detected accelerator type (e.g., "cuda", "cpu", "mps")
+    /// </summary>
+    public string? Accelerator { get; set; }
 }
 
 /// <summary>
@@ -367,7 +411,21 @@ public class ChunkCacheConfig
     /// <summary>
     ///     Version token to invalidate old cache layouts.
     /// </summary>
-    public string VersionToken { get; set; } = "v1";
+    public string VersionToken { get; set; } = "v2";
+
+    /// <summary>
+    ///     Enable lazy content loading - keeps only metadata in memory and loads content on-demand.
+    ///     Significantly reduces memory usage for large documents.
+    ///     Default is true.
+    /// </summary>
+    public bool LazyLoadContent { get; set; } = true;
+
+    /// <summary>
+    ///     Chunk count threshold below which content is kept in memory even with LazyLoadContent enabled.
+    ///     Small documents don't benefit from lazy loading and the overhead isn't worth it.
+    ///     Default is 20 chunks.
+    /// </summary>
+    public int LazyLoadThreshold { get; set; } = 20;
 }
 
 /// <summary>

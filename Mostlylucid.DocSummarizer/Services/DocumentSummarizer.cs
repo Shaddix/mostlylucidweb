@@ -35,6 +35,9 @@ public class DocumentSummarizer
     // Persistent chunk cache
     private readonly ChunkCacheService _chunkCache;
 
+    // Front matter detector for filtering junk content
+    private readonly FrontMatterDetector _frontMatterDetector;
+
     /// <summary>
     ///     Temp directory for intermediate files
     /// </summary>
@@ -90,6 +93,9 @@ public class DocumentSummarizer
         _rag = new RagSummarizer(_ollama, _embedder, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig, Template, null, _lengthConfig);
 
         _chunkCache = new ChunkCacheService(_processingConfig.ChunkCache, verbose);
+
+        // Front matter detector uses sentinel LLM for ambiguous cases
+        _frontMatterDetector = new FrontMatterDetector(_ollama, verbose);
         
         // Create vector store if Qdrant persistence is enabled
         if (_bertRagConfig.VectorStore == VectorStoreBackend.Qdrant)
@@ -336,6 +342,9 @@ public class DocumentSummarizer
                     {
                         markdown = await File.ReadAllTextAsync(filePath);
                     }
+
+                    // Filter front matter for directly-read files too
+                    markdown = await FilterFrontMatterAsync(markdown);
                 }
                 else
                 {
@@ -359,6 +368,9 @@ public class DocumentSummarizer
                         $"Converting {docId}");
 
                     Console.WriteLine("Document converted to markdown");
+
+                    // Filter front matter and junk content
+                    markdown = await FilterFrontMatterAsync(markdown);
 
                     // For large converted content, write to temp to allow GC of the string
                     if (markdown.Length > LargeFileSizeThreshold)
@@ -1122,6 +1134,37 @@ Answer:";
     private static void PrintBanner()
     {
         // Banner now handled by SpectreProgressService.WriteHeader() in Program.cs
+    }
+
+    /// <summary>
+    /// Filter front matter, junk content, and other non-main content from markdown
+    /// </summary>
+    private async Task<string> FilterFrontMatterAsync(string markdown)
+    {
+        // Quick check - if no front matter detected, skip expensive analysis
+        if (!_frontMatterDetector.HasFrontMatterToFilter(markdown))
+        {
+            return markdown;
+        }
+
+        if (_verbose) Console.WriteLine("[FrontMatter] Analyzing document structure...");
+
+        var profile = await _frontMatterDetector.AnalyzeAsync(markdown);
+        
+        if (profile.MainContentStartIndex > 0 || profile.JunkRanges.Count > 0 || profile.SkipPatterns.Count > 0)
+        {
+            var originalLength = markdown.Length;
+            markdown = _frontMatterDetector.ApplyProfile(markdown, profile);
+            var filteredLength = markdown.Length;
+            
+            if (_verbose && filteredLength < originalLength)
+            {
+                var reduction = (originalLength - filteredLength) * 100.0 / originalLength;
+                Console.WriteLine($"[FrontMatter] Filtered {reduction:F1}% ({(originalLength - filteredLength) / 1024:N0} KB) of front matter/junk");
+            }
+        }
+
+        return markdown;
     }
 }
 

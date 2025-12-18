@@ -17,9 +17,10 @@ public class ProgressService
     public static readonly TimeSpan DefaultDoclingTimeout = TimeSpan.FromMinutes(5);
 
     /// <summary>
-    /// Track if we're already inside an interactive display
+    /// Track if we're already inside an interactive display.
+    /// Uses AsyncLocal to flow across async continuations properly.
     /// </summary>
-    [ThreadStatic] private static bool _isInInteractiveDisplay;
+    private static readonly AsyncLocal<bool> _isInInteractiveDisplay = new();
 
     private readonly bool _verbose;
 
@@ -31,14 +32,14 @@ public class ProgressService
     /// <summary>
     /// Check if we're already inside an interactive display
     /// </summary>
-    public static bool IsInInteractiveContext => _isInInteractiveDisplay;
+    public static bool IsInInteractiveContext => _isInInteractiveDisplay.Value;
 
     /// <summary>
     /// Enter an interactive display context
     /// </summary>
     public static IDisposable EnterInteractiveContext()
     {
-        _isInInteractiveDisplay = true;
+        _isInInteractiveDisplay.Value = true;
         return new InteractiveContextGuard();
     }
 
@@ -241,7 +242,7 @@ public class ProgressService
     {
         public void Dispose()
         {
-            _isInInteractiveDisplay = false;
+            _isInInteractiveDisplay.Value = false;
         }
     }
 }

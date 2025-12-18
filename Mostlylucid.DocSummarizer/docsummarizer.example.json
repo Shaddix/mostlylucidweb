@@ -46,9 +46,20 @@
     "ragTopK": 3,
     "ragMaxTopics": 8,
     "enableParallel": true,
-    "maxDegreeOfParallelism": -1
+    "maxDegreeOfParallelism": -1,
+    "chunkCache": {
+      // Enable to persist Docling chunks (skip reconversion if unchanged)
+      "enableChunkCache": true,
+      // Directory for cached chunks (defaults to ~/.docsummarizer/chunks)
+      "cacheDirectory": null,
+      // Delete cached chunks older than N days (0 = keep forever)
+      "retentionDays": 14,
+      // Bump to invalidate old cache layouts
+      "versionToken": "v1"
+    }
   },
   "output": {
+
     "format": "Console",
     // Console, Text, Markdown, Json
     "outputDirectory": null,

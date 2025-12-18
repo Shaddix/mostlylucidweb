@@ -34,6 +34,15 @@ var embeddingBackendOption = new Option<EmbeddingBackend?>("--embedding-backend"
 var embeddingModelOption = new Option<string?>("--embedding-model") { Description = "ONNX embedding model: AllMiniLmL6V2 (default), BgeSmallEnV15, GteSmall, MultiQaMiniLm, ParaphraseMiniLmL3" };
 var webModeOption = new Option<WebFetchMode?>("--web-mode") { Description = "Web fetch mode: Simple (fast HTTP) or Playwright (headless browser for JS-rendered pages)" };
 
+// Docling options for performance tuning
+var doclingUrlOption = new Option<string?>("--docling-url") { Description = "Docling service URL (default: http://localhost:5001)" };
+var doclingPagesPerChunkOption = new Option<int?>("--pages-per-chunk") { Description = "Pages per chunk for PDF split processing (default: 50, use higher for GPU)" };
+var doclingMaxConcurrentOption = new Option<int?>("--max-concurrent-chunks") { Description = "Max concurrent chunks to process (default: 2, use 1 for GPU)" };
+var doclingDisableSplitOption = new Option<bool?>("--no-split") { Description = "Disable split processing - process entire PDF at once (best for GPU)" };
+var doclingMinPagesForSplitOption = new Option<int?>("--min-pages-split") { Description = "Minimum pages before enabling split processing (default: 60)" };
+var doclingPdfBackendOption = new Option<string?>("--pdf-backend") { Description = "PDF backend: pypdfium2 (fast) or docling (accurate)" };
+var doclingGpuOption = new Option<bool?>("--docling-gpu") { Description = "Force GPU mode for Docling (auto-detected if not set). Use --docling-gpu=true or --docling-gpu=false" };
+
 // Add options to root command
 rootCommand.Options.Add(configOption);
 rootCommand.Options.Add(fileOption);
@@ -55,6 +64,13 @@ rootCommand.Options.Add(showStructureOption);
 rootCommand.Options.Add(embeddingBackendOption);
 rootCommand.Options.Add(embeddingModelOption);
 rootCommand.Options.Add(webModeOption);
+rootCommand.Options.Add(doclingUrlOption);
+rootCommand.Options.Add(doclingPagesPerChunkOption);
+rootCommand.Options.Add(doclingMaxConcurrentOption);
+rootCommand.Options.Add(doclingDisableSplitOption);
+rootCommand.Options.Add(doclingMinPagesForSplitOption);
+rootCommand.Options.Add(doclingPdfBackendOption);
+rootCommand.Options.Add(doclingGpuOption);
 
 // Main handler
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -103,13 +119,62 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         var webMode = parseResult.GetValue(webModeOption);
         if (webMode.HasValue) config.WebFetch.Mode = webMode.Value;
         
+        // Parse Docling options for performance tuning
+        var doclingUrl = parseResult.GetValue(doclingUrlOption);
+        var pagesPerChunk = parseResult.GetValue(doclingPagesPerChunkOption);
+        var maxConcurrent = parseResult.GetValue(doclingMaxConcurrentOption);
+        var noSplit = parseResult.GetValue(doclingDisableSplitOption);
+        var minPagesForSplit = parseResult.GetValue(doclingMinPagesForSplitOption);
+        var pdfBackend = parseResult.GetValue(doclingPdfBackendOption);
+        
+        if (!string.IsNullOrEmpty(doclingUrl)) config.Docling.BaseUrl = doclingUrl;
+        if (pagesPerChunk.HasValue) config.Docling.PagesPerChunk = pagesPerChunk.Value;
+        if (maxConcurrent.HasValue) config.Docling.MaxConcurrentChunks = maxConcurrent.Value;
+        if (noSplit == true) config.Docling.EnableSplitProcessing = false;
+        if (minPagesForSplit.HasValue) config.Docling.MinPagesForSplit = minPagesForSplit.Value;
+        if (!string.IsNullOrEmpty(pdfBackend)) config.Docling.PdfBackend = pdfBackend;
+        
+        // Get explicit GPU setting from CLI
+        var doclingGpu = parseResult.GetValue(doclingGpuOption);
+        
+        // Detect available services and auto-adapt config
+        // Pass GPU override to detection so it displays correctly
+        var detectedServices = await ServiceDetector.DetectAndDisplayAsync(config, verbose, doclingGpu);
+        
+        // Auto-optimize Docling config based on GPU detection (unless user specified explicit values)
+        if (config.Docling.AutoDetectGpu && !pagesPerChunk.HasValue && !maxConcurrent.HasValue)
+        {
+            var optimizedDocling = detectedServices.GetOptimizedDoclingConfig(config.Docling);
+            config.Docling.PagesPerChunk = optimizedDocling.PagesPerChunk;
+            config.Docling.MaxConcurrentChunks = optimizedDocling.MaxConcurrentChunks;
+            config.Docling.MinPagesForSplit = optimizedDocling.MinPagesForSplit;
+            
+            if (verbose && detectedServices.DoclingAvailable)
+            {
+                var gpuStatus = detectedServices.DoclingHasGpu ? "GPU" : "CPU";
+                AnsiConsole.MarkupLine($"[dim]Docling ({gpuStatus}): pages/chunk={config.Docling.PagesPerChunk}, concurrent={config.Docling.MaxConcurrentChunks}, min-split={config.Docling.MinPagesForSplit}[/]");
+            }
+        }
+        
         // Get template - supports "template:wordcount" syntax (e.g., "bookreport:500")
         var template = ParseTemplate(templateName ?? "default", targetWords);
         
         // Show template info if verbose
         if (verbose && !string.IsNullOrEmpty(templateName))
         {
-            Console.WriteLine($"Template: {template.Name} ({template.Description}){(template.TargetWords > 0 ? $" [~{template.TargetWords} words]" : "")}");
+            var wordInfo = template.TargetWords > 0 ? $" (~{template.TargetWords} words)" : "";
+            AnsiConsole.MarkupLine($"[dim]Template: {Markup.Escape(template.Name)} ({Markup.Escape(template.Description)}){Markup.Escape(wordInfo)}[/]");
+        }
+        
+        // Auto-select best mode based on available services
+        var effectiveMode = detectedServices.GetRecommendedMode(mode);
+        if (effectiveMode != mode && mode == SummarizationMode.Auto)
+        {
+            if (verbose)
+            {
+                AnsiConsole.MarkupLine($"[dim]Auto-selected mode: {effectiveMode} ({detectedServices.Features.BestModeDescription})[/]");
+            }
+            mode = effectiveMode;
         }
 
         // Create summarizer with ONNX embedding by default (fast, no external deps)
@@ -188,43 +253,28 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 // Check command - verify dependencies
 var checkCommand = new Command("check", "Verify dependencies are available");
 var checkVerboseOption = new Option<bool>("--verbose", "-v") { Description = "Show detailed model information", DefaultValueFactory = _ => false };
+var checkConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
 checkCommand.Options.Add(checkVerboseOption);
+checkCommand.Options.Add(checkConfigOption);
 checkCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var verbose = parseResult.GetValue(checkVerboseOption);
+    var configPath = parseResult.GetValue(checkConfigOption);
     
     SpectreProgressService.WriteHeader("DocSummarizer", "Dependency Check");
 
-    // Check dependencies with spinner
-    bool ollamaOk = false, doclingOk = false, qdrantOk = false;
-    ModelInfo? modelInfo = null;
-    List<string>? availableModels = null;
+    // Load config for detection
+    var config = ConfigurationLoader.Load(configPath);
     
-    await AnsiConsole.Status()
-        .Spinner(Spinner.Known.Dots)
-        .SpinnerStyle(Style.Parse("cyan"))
-        .StartAsync("Checking dependencies...", async _ =>
-        {
-            var ollama = new OllamaService();
-            ollamaOk = await ollama.IsAvailableAsync();
-            
-            using var docling = new DoclingClient();
-            doclingOk = await docling.IsAvailableAsync();
-            
-            try
-            {
-                var qdrant = new QdrantHttpClient("localhost", 6333);
-                await qdrant.ListCollectionsAsync();
-                qdrantOk = true;
-            }
-            catch { }
-            
-            if (ollamaOk && verbose)
-            {
-                modelInfo = await ollama.GetModelInfoAsync();
-                availableModels = await ollama.GetAvailableModelsAsync();
-            }
-        });
+    // Use unified service detection
+    var detected = await ServiceDetector.DetectAsync(config, verbose);
+    
+    ModelInfo? modelInfo = null;
+    if (detected.OllamaAvailable && verbose)
+    {
+        var ollama = new OllamaService();
+        modelInfo = await ollama.GetModelInfoAsync();
+    }
 
     // Display status table
     var statusTable = new Table()
@@ -234,26 +284,79 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     
     statusTable.AddColumn(new TableColumn("[blue]Service[/]").LeftAligned());
     statusTable.AddColumn(new TableColumn("[blue]Status[/]").Centered());
-    statusTable.AddColumn(new TableColumn("[blue]Endpoint[/]").LeftAligned());
+    statusTable.AddColumn(new TableColumn("[blue]Details[/]").LeftAligned());
     
     statusTable.AddRow(
         "[cyan]Ollama[/]",
-        ollamaOk ? "[green]OK[/]" : "[red]FAIL[/]",
-        "http://localhost:11434");
+        detected.OllamaAvailable ? "[green]OK[/]" : "[red]FAIL[/]",
+        detected.OllamaAvailable ? $"{detected.AvailableModels.Count} models" : "Run: ollama serve");
     statusTable.AddRow(
         "[cyan]Docling[/]",
-        doclingOk ? "[green]OK[/]" : "[yellow]Optional[/]",
-        "http://localhost:5001");
+        detected.DoclingAvailable ? "[green]OK[/]" : "[yellow]Optional[/]",
+        detected.DoclingAvailable 
+            ? (detected.DoclingHasGpu ? "[cyan]GPU accelerated[/]" : "CPU mode") 
+            : "PDF/DOCX disabled");
     statusTable.AddRow(
         "[cyan]Qdrant[/]",
-        qdrantOk ? "[green]OK[/]" : "[yellow]Optional[/]",
-        "localhost:6333");
+        detected.QdrantAvailable ? "[green]OK[/]" : "[yellow]Optional[/]",
+        detected.QdrantAvailable ? "Vector persistence enabled" : "Using in-memory vectors");
+    statusTable.AddRow(
+        "[cyan]ONNX[/]",
+        "[green]OK[/]",
+        "Embedded (always available)");
     
     AnsiConsole.Write(statusTable);
     AnsiConsole.WriteLine();
+    
+    // Display features table
+    var featuresTable = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Cyan1)
+        .Title("[cyan]Available Features[/]");
+    
+    featuresTable.AddColumn(new TableColumn("[cyan]Feature[/]").LeftAligned());
+    featuresTable.AddColumn(new TableColumn("[cyan]Status[/]").Centered());
+    featuresTable.AddColumn(new TableColumn("[cyan]Requires[/]").LeftAligned());
+    
+    var f = detected.Features;
+    featuresTable.AddRow(
+        "PDF/DOCX conversion",
+        f.PdfConversion ? "[green]✓[/]" : "[red]✗[/]",
+        "Docling");
+    featuresTable.AddRow(
+        "Fast GPU conversion",
+        f.FastPdfConversion ? "[green]✓[/]" : "[yellow]○[/]",
+        "Docling + CUDA");
+    featuresTable.AddRow(
+        "BERT summarization",
+        f.BertSummarization ? "[green]✓[/]" : "[red]✗[/]",
+        "ONNX (embedded)");
+    featuresTable.AddRow(
+        "LLM summarization",
+        f.LlmSummarization ? "[green]✓[/]" : "[yellow]○[/]",
+        "Ollama");
+    featuresTable.AddRow(
+        "Document Q&A",
+        f.DocumentQA ? "[green]✓[/]" : "[yellow]○[/]",
+        "Ollama + ONNX");
+    featuresTable.AddRow(
+        "Vector persistence",
+        f.VectorPersistence ? "[green]✓[/]" : "[yellow]○[/]",
+        "Qdrant");
+    featuresTable.AddRow(
+        "Cross-session cache",
+        f.CrossSessionCache ? "[green]✓[/]" : "[yellow]○[/]",
+        "Qdrant");
+    
+    AnsiConsole.Write(featuresTable);
+    AnsiConsole.WriteLine();
+    
+    // Best mode recommendation
+    AnsiConsole.MarkupLine($"[cyan]Recommended mode:[/] {f.BestModeDescription}");
+    AnsiConsole.WriteLine();
 
     // Show verbose model info
-    if (verbose && ollamaOk)
+    if (verbose && detected.OllamaAvailable)
     {
         if (modelInfo != null)
         {
@@ -276,17 +379,17 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
             AnsiConsole.WriteLine();
         }
         
-        if (availableModels != null && availableModels.Count > 0)
+        if (detected.AvailableModels.Count > 0)
         {
             AnsiConsole.MarkupLine("[cyan]Available Models:[/]");
             var modelList = new Tree("[blue]Models[/]");
-            foreach (var m in availableModels.Take(10))
+            foreach (var m in detected.AvailableModels.Take(10))
             {
                 modelList.AddNode(Markup.Escape(m));
             }
-            if (availableModels.Count > 10)
+            if (detected.AvailableModels.Count > 10)
             {
-                modelList.AddNode($"[dim]... and {availableModels.Count - 10} more[/]");
+                modelList.AddNode($"[dim]... and {detected.AvailableModels.Count - 10} more[/]");
             }
             AnsiConsole.Write(modelList);
             AnsiConsole.WriteLine();
@@ -294,13 +397,13 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     }
 
     // Show help for missing dependencies
-    if (!ollamaOk || (!doclingOk && verbose) || (!qdrantOk && verbose))
+    if (!detected.OllamaAvailable || (!detected.DoclingAvailable && verbose) || (!detected.QdrantAvailable && verbose))
     {
         var helpPanel = new Panel(
             new Rows(
-                ollamaOk ? Text.Empty : new Text("ollama serve", new Style(Color.Yellow)),
-                doclingOk ? Text.Empty : new Text("docker run -p 5001:5001 quay.io/docling-project/docling-serve", new Style(Color.Yellow)),
-                qdrantOk ? Text.Empty : new Text("docker run -p 6333:6333 qdrant/qdrant", new Style(Color.Yellow)),
+                detected.OllamaAvailable ? Text.Empty : new Text("ollama serve", new Style(Color.Yellow)),
+                detected.DoclingAvailable ? Text.Empty : new Text("docker run -p 5001:5001 quay.io/docling-project/docling-serve", new Style(Color.Yellow)),
+                detected.QdrantAvailable ? Text.Empty : new Text("docker run -p 6333:6333 qdrant/qdrant", new Style(Color.Yellow)),
                 Text.Empty,
                 new Text("Pull default models:", new Style(Color.Cyan1)),
                 new Text("  ollama pull llama3.2:3b", new Style(Color.White))))
@@ -313,16 +416,17 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     }
 
     // Final status
-    if (ollamaOk)
+    if (detected.OllamaAvailable || detected.Features.BertSummarization)
     {
-        AnsiConsole.MarkupLine("[green]Ready to summarize![/] Ollama is available.");
-        if (!doclingOk) AnsiConsole.MarkupLine("[dim]Note: Docling unavailable - PDF/DOCX conversion disabled[/]");
-        if (!qdrantOk) AnsiConsole.MarkupLine("[dim]Note: Qdrant unavailable - RAG mode will use in-memory vectors[/]");
+        AnsiConsole.MarkupLine("[green]Ready to summarize![/]");
+        if (!detected.OllamaAvailable) AnsiConsole.MarkupLine("[dim]Note: Ollama unavailable - using BERT-only mode[/]");
+        if (!detected.DoclingAvailable) AnsiConsole.MarkupLine("[dim]Note: Docling unavailable - PDF/DOCX conversion disabled[/]");
+        if (!detected.QdrantAvailable) AnsiConsole.MarkupLine("[dim]Note: Qdrant unavailable - using in-memory vectors (no persistence)[/]");
         return 0;
     }
     else
     {
-        AnsiConsole.MarkupLine("[red]Ollama is required but not available.[/]");
+        AnsiConsole.MarkupLine("[red]No summarization backend available.[/]");
         return 1;
     }
 });
