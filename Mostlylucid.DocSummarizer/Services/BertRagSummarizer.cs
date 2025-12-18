@@ -389,6 +389,10 @@ public class BertRagSummarizer : IDisposable
     /// </summary>
     private static ExtractedEntities ExtractEntities(List<Segment> segments, ContentType contentType)
     {
+        if (contentType == ContentType.Expository)
+        {
+            return ExtractedEntities.Empty;
+        }
         // Improved heuristic entity extraction for narrative: merge proper noun spans and drop stopwords
         var text = string.Join(" ", segments.Select(s => s.Text));
         var tokens = text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
