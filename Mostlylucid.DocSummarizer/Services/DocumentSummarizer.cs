@@ -26,6 +26,10 @@ public class DocumentSummarizer
     // BERT config for lazy initialization (model downloaded on first use)
     private readonly OnnxConfig _onnxConfig;
     private readonly BertConfig _bertConfig;
+    private readonly BertRagConfig _bertRagConfig;
+    
+    // Vector store for persistent caching (optional)
+    private readonly IVectorStore? _vectorStore;
 
     /// <summary>
     ///     Temp directory for intermediate files
@@ -44,7 +48,8 @@ public class DocumentSummarizer
         OllamaConfig? ollamaConfig = null,
         OnnxConfig? onnxConfig = null,
         EmbeddingBackend embeddingBackend = EmbeddingBackend.Onnx,
-        BertConfig? bertConfig = null)
+        BertConfig? bertConfig = null,
+        BertRagConfig? bertRagConfig = null)
     {
         _verbose = verbose;
         _progress = new ProgressService(verbose);
@@ -71,6 +76,7 @@ public class DocumentSummarizer
         // Store ONNX and BERT config for lazy initialization
         _onnxConfig = onnxConfig ?? new OnnxConfig();
         _bertConfig = bertConfig ?? new BertConfig();
+        _bertRagConfig = bertRagConfig ?? new BertRagConfig();
         
         // Create embedding service based on backend choice
         _embedder = embeddingBackend == EmbeddingBackend.Onnx
@@ -78,6 +84,18 @@ public class DocumentSummarizer
             : new OllamaEmbeddingService(_ollama);
         
         _rag = new RagSummarizer(_ollama, _embedder, qdrantHost, verbose, _maxLlmParallelism, qdrantConfig, Template, null, _lengthConfig);
+        
+        // Create vector store if Qdrant persistence is enabled
+        if (_bertRagConfig.VectorStore == VectorStoreBackend.Qdrant)
+        {
+            var qConfig = qdrantConfig ?? new QdrantConfig { Host = qdrantHost };
+            _vectorStore = new QdrantVectorStore(qConfig, verbose, deleteOnDispose: !_bertRagConfig.PersistVectors);
+        }
+        else if (_bertRagConfig.PersistVectors)
+        {
+            // In-memory store for caching within session (not persistent across runs)
+            _vectorStore = new InMemoryVectorStore(verbose);
+        }
     }
 
     /// <summary>
@@ -587,7 +605,7 @@ public class DocumentSummarizer
         var contentType = DetectContentTypeFromMarkdown(markdown);
         if (_verbose) Console.WriteLine($"[BertRag] Content type: {contentType}");
         
-        // Create and run the pipeline
+        // Create and run the pipeline with vector store for caching
         using var bertRag = new BertRagSummarizer(
             _onnxConfig,
             _ollama,
@@ -609,7 +627,9 @@ public class DocumentSummarizer
                 MinSimilarity = 0.3
             },
             template: Template,
-            verbose: _verbose);
+            verbose: _verbose,
+            vectorStore: _vectorStore,
+            bertRagConfig: _bertRagConfig);
         
         var result = await bertRag.SummarizeAsync(docId, markdown, focusQuery, contentType);
         

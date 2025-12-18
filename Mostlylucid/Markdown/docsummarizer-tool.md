@@ -203,9 +203,19 @@ Expand-Archive -Path "docsummarizer.zip" -DestinationPath "."
 
 ### Prerequisites
 
-#### Required: Ollama
+#### Bert Mode (No External Services)
 
-Ollama is the **only requirement** for summarizing Markdown files:
+For pure extractive summarization, **no external services required**:
+
+```bash
+docsummarizer -f document.md -m Bert
+```
+
+ONNX models auto-download from HuggingFace on first use (~23MB). Returns in ~3-5 seconds.
+
+#### LLM Modes (Auto, BertRag, MapReduce, etc.)
+
+For LLM-powered summarization, Ollama is required:
 
 ```bash
 # Install Ollama from https://ollama.ai
@@ -213,24 +223,34 @@ ollama pull llama3.2:3b        # Default model - good balance of speed/quality
 ollama serve
 ```
 
-> **Note**: No embedding model needed! The tool uses **ONNX embeddings by default** - models auto-download from HuggingFace on first RAG use (~23MB).
-
 > **Speed tip**: For faster summaries (~3s vs ~15s), use `--model qwen2.5:1.5b`
 
-#### Optional: Docling (PDF/DOCX only)
+#### Optional: Docling (Binary Formats)
 
-Only needed when summarizing PDF or DOCX files. **Markdown files are read directly - no Docling required.**
+Required for PDF, DOCX, XLSX, PPTX, HTML, images (PNG/JPG/TIFF), CSV, VTT, and AsciiDoc files. **Markdown and plain text files are read directly - no Docling required.**
 
 ```bash
 docker run -d -p 5001:5001 quay.io/docling-project/docling-serve
 ```
 
-#### Optional: Qdrant (Legacy Rag mode only)
+#### Optional: Qdrant (Persistent Vector Storage)
 
-Only needed for the legacy `--mode Rag`. BertRag doesn't use Qdrant (it keeps vectors in memory).
+Not required by default - BertRag uses in-memory vectors. Enable Qdrant for persistent storage to avoid re-embedding documents on subsequent runs:
 
 ```bash
 docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+Then configure in `docsummarizer.json`:
+
+```json
+{
+  "bertRag": {
+    "vectorStore": "Qdrant",
+    "collectionName": "docsummarizer",
+    "persistVectors": true
+  }
+}
 ```
 
 #### Optional: Ollama Embeddings

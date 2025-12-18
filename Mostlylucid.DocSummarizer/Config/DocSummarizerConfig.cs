@@ -62,6 +62,11 @@ public class DocSummarizerConfig
     ///     Embedding resilience configuration
     /// </summary>
     public EmbeddingConfig Embedding { get; set; } = new();
+
+    /// <summary>
+    ///     BertRag pipeline configuration (vector storage, persistence)
+    /// </summary>
+    public BertRagConfig BertRag { get; set; } = new();
 }
 
 /// <summary>
@@ -620,4 +625,36 @@ public class BatchConfig
     ///     Exclude patterns for files
     /// </summary>
     public List<string> ExcludePatterns { get; set; } = new();
+}
+
+/// <summary>
+///     BertRag pipeline configuration
+/// </summary>
+public class BertRagConfig
+{
+    /// <summary>
+    ///     Vector store backend for segment storage.
+    ///     InMemory (default) = no external dependencies, vectors lost on exit.
+    ///     Qdrant = persistent storage, requires Qdrant server.
+    /// </summary>
+    public VectorStoreBackend VectorStore { get; set; } = VectorStoreBackend.InMemory;
+
+    /// <summary>
+    ///     Collection name for vector storage.
+    ///     Used by both InMemory and Qdrant backends.
+    /// </summary>
+    public string CollectionName { get; set; } = "docsummarizer";
+
+    /// <summary>
+    ///     Whether to persist vectors between runs (only applies to Qdrant backend).
+    ///     When true, documents are only re-embedded if content has changed.
+    ///     When false, collection is deleted after summarization.
+    /// </summary>
+    public bool PersistVectors { get; set; } = true;
+
+    /// <summary>
+    ///     Whether to reuse existing embeddings if document is already indexed.
+    ///     Only applies when PersistVectors = true and VectorStore = Qdrant.
+    /// </summary>
+    public bool ReuseExistingEmbeddings { get; set; } = true;
 }

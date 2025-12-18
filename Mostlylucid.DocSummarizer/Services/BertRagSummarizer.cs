@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
@@ -21,14 +22,24 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// - Perfect citations (every claim traceable to source segment)
 /// - Scales to any document size (extraction is O(n), retrieval is O(log n))
 /// - Cost-optimal (cheap CPU work first, expensive LLM last)
+/// 
+/// Vector Storage:
+/// - Default: In-memory (no persistence, segments extracted each run)
+/// - Optional: IVectorStore for persistent storage (Qdrant, etc.)
+///   - Documents identified by content hash for stable reuse
+///   - Avoids re-embedding when document content unchanged
 /// </summary>
-public class BertRagSummarizer : IDisposable
+public class BertRagSummarizer : IDisposable, IAsyncDisposable
 {
     private readonly SegmentExtractor _extractor;
     private readonly OnnxEmbeddingService _queryEmbedder;
     private readonly OllamaService _ollama;
     private readonly RetrievalConfig _retrievalConfig;
     private readonly bool _verbose;
+    
+    // Vector store support
+    private readonly IVectorStore? _vectorStore;
+    private readonly BertRagConfig _bertRagConfig;
     
     public SummaryTemplate Template { get; private set; }
 
@@ -38,7 +49,9 @@ public class BertRagSummarizer : IDisposable
         ExtractionConfig? extractionConfig = null,
         RetrievalConfig? retrievalConfig = null,
         SummaryTemplate? template = null,
-        bool verbose = false)
+        bool verbose = false,
+        IVectorStore? vectorStore = null,
+        BertRagConfig? bertRagConfig = null)
     {
         _extractor = new SegmentExtractor(onnxConfig, extractionConfig, verbose);
         _queryEmbedder = new OnnxEmbeddingService(onnxConfig, verbose);
@@ -46,12 +59,115 @@ public class BertRagSummarizer : IDisposable
         _retrievalConfig = retrievalConfig ?? new RetrievalConfig();
         Template = template ?? SummaryTemplate.Presets.Default;
         _verbose = verbose;
+        _vectorStore = vectorStore;
+        _bertRagConfig = bertRagConfig ?? new BertRagConfig();
     }
 
     public void SetTemplate(SummaryTemplate template) => Template = template;
+    
+    // Pipeline version - increment when changing extraction/synthesis logic
+    private const string PipelineVersion = "v1";
+    
+    /// <summary>
+    /// Canonicalize text before hashing: normalize whitespace, trim, lowercase.
+    /// This ensures trivial formatting changes don't bust the cache.
+    /// </summary>
+    private static string Canonicalize(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return "";
+        
+        // Normalize line endings
+        var normalized = text.Replace("\r\n", "\n").Replace("\r", "\n");
+        
+        // Collapse multiple whitespace to single space
+        normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ");
+        
+        return normalized.Trim().ToLowerInvariant();
+    }
+    
+    /// <summary>
+    /// Compute a stable content hash for document identification.
+    /// Canonicalizes text first to avoid cache busting on trivial changes.
+    /// </summary>
+    private static string ComputeContentHash(string content)
+    {
+        var canonical = Canonicalize(content);
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(canonical));
+        return Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+    }
+    
+    /// <summary>
+    /// Generate a versioned cache key that includes all factors affecting output.
+    /// Called BEFORE retrieval - uses config-based factors only.
+    /// </summary>
+    private string GeneratePreRetrievalCacheKey(string contentHash, string? focusQuery, string modelName)
+    {
+        var queryHash = string.IsNullOrEmpty(focusQuery) 
+            ? "noquery" 
+            : ComputeContentHash(focusQuery);
+        
+        // Include all template settings that affect output
+        var templateConfig = $"{Template.Name}_{Template.TargetWords}_{Template.OutputStyle}_{Template.MaxBullets}";
+        var templateHash = ComputeContentHash(templateConfig);
+        
+        // Include retrieval config 
+        var retrievalConfig = $"{_retrievalConfig.TopK}_{_retrievalConfig.Alpha}_{_retrievalConfig.UseRRF}_{_retrievalConfig.UseHybridSearch}";
+        var retrievalHash = ComputeContentHash(retrievalConfig);
+        
+        var modelHash = ComputeContentHash(modelName);
+        
+        return $"{PipelineVersion}_{contentHash}_{queryHash}_{templateHash}_{retrievalHash}_{modelHash}";
+    }
+    
+    /// <summary>
+    /// Generate the final cache key using actual retrieved segment IDs.
+    /// This ensures the cache is invalidated if retrieval returns different segments
+    /// (due to embedding drift, config changes, or document updates).
+    /// </summary>
+    private string GenerateSynthesisCacheKey(string preRetrievalKey, List<Segment> retrievedSegments)
+    {
+        // Hash the ordered list of retrieved segment content hashes
+        // This captures exactly which content will be synthesized
+        var segmentHashes = string.Join("_", retrievedSegments
+            .OrderBy(s => s.Index)
+            .Select(s => s.ContentHash));
+        
+        var retrievedHash = ComputeContentHash(segmentHashes);
+        
+        return $"{preRetrievalKey}_{retrievedHash}";
+    }
+    
+    /// <summary>
+    /// Create a stable document ID from filename and content hash.
+    /// Format: {sanitized_filename}_{content_hash}
+    /// This allows reuse when content unchanged, but re-indexes on changes.
+    /// </summary>
+    private static string CreateStableDocId(string docId, string contentHash)
+    {
+        var sanitized = SanitizeDocId(docId);
+        return $"{sanitized}_{contentHash}";
+    }
+    
+    private static string SanitizeDocId(string docId)
+    {
+        var sb = new StringBuilder();
+        foreach (var c in docId)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sb.Append(c);
+            else if (c == '.' || c == '-' || c == ' ')
+                sb.Append('_');
+        }
+        return sb.ToString().ToLowerInvariant();
+    }
 
     /// <summary>
     /// Full pipeline: Extract → Retrieve → Synthesize
+    /// With optional vector store persistence and summary caching.
+    /// 
+    /// Cache strategy:
+    /// 1. Pre-retrieval key: config-based (fast lookup for exact same request)
+    /// 2. Post-retrieval key: includes actual segment hashes (ensures correctness)
     /// </summary>
     public async Task<DocumentSummary> SummarizeAsync(
         string docId,
@@ -62,9 +178,66 @@ public class BertRagSummarizer : IDisposable
     {
         var stopwatch = Stopwatch.StartNew();
         
-        // === Phase 1: Extract ===
-        if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Extraction[/]");
-        var extraction = await _extractor.ExtractAsync(docId, markdown, contentType, ct);
+        // Compute content hash for stable document identification
+        var contentHash = ComputeContentHash(markdown);
+        var stableDocId = CreateStableDocId(docId, contentHash);
+        var collectionName = _bertRagConfig.CollectionName;
+        
+        // Get model name for cache key (from Ollama service)
+        var modelName = _ollama.Model ?? "unknown";
+        
+        // Pre-retrieval cache key (fast path for exact same request)
+        var preRetrievalKey = GeneratePreRetrievalCacheKey(contentHash, focusQuery, modelName);
+        
+        ExtractionResult extraction;
+        
+        // === Phase 1: Extract (or load from store) ===
+        if (_vectorStore != null && _bertRagConfig.ReuseExistingEmbeddings)
+        {
+            await _vectorStore.InitializeAsync(collectionName, 384, ct); // 384 = all-MiniLM-L6-v2 dimension
+            
+            var hasDoc = await _vectorStore.HasDocumentAsync(collectionName, stableDocId, ct);
+            if (hasDoc)
+            {
+                if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Loading from store[/]");
+                var storedSegments = await _vectorStore.GetDocumentSegmentsAsync(collectionName, stableDocId, ct);
+                
+                if (storedSegments.Count > 0)
+                {
+                    // Reconstruct extraction result from stored segments
+                    var topBySalience = storedSegments
+                        .OrderByDescending(s => s.SalienceScore)
+                        .Take(_retrievalConfig.TopK)
+                        .ToList();
+                    
+                    extraction = new ExtractionResult
+                    {
+                        AllSegments = storedSegments,
+                        TopBySalience = topBySalience,
+                        ContentType = contentType,
+                        ExtractionTime = TimeSpan.Zero
+                    };
+                    
+                    if (_verbose) AnsiConsole.MarkupLine($"[dim]Loaded {storedSegments.Count} segments from store[/]");
+                }
+                else
+                {
+                    // Fallback to extraction if store returned empty
+                    extraction = await ExtractAndStoreAsync(stableDocId, markdown, contentType, ct);
+                }
+            }
+            else
+            {
+                // Document not in store - extract and store
+                extraction = await ExtractAndStoreAsync(stableDocId, markdown, contentType, ct);
+            }
+        }
+        else
+        {
+            // No vector store - extract normally
+            if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Extraction[/]");
+            extraction = await _extractor.ExtractAsync(stableDocId, markdown, contentType, ct);
+        }
         
         if (extraction.AllSegments.Count == 0)
         {
@@ -80,6 +253,22 @@ public class BertRagSummarizer : IDisposable
             AnsiConsole.MarkupLine($"[dim]Retrieved {retrieved.Count} segments for synthesis[/]");
         }
         
+        // Generate final cache key using actual retrieved segment hashes
+        // This ensures we don't serve stale cache if retrieval changes
+        var synthesisCacheKey = GenerateSynthesisCacheKey(preRetrievalKey, retrieved);
+        
+        // === Check Synthesis Cache (post-retrieval) ===
+        if (_vectorStore != null && _bertRagConfig.ReuseExistingEmbeddings)
+        {
+            var cached = await _vectorStore.GetCachedSummaryAsync(collectionName, synthesisCacheKey, ct);
+            if (cached != null)
+            {
+                if (_verbose) AnsiConsole.MarkupLine("[green]Using cached synthesis (segment match)[/]");
+                stopwatch.Stop();
+                return cached;
+            }
+        }
+        
         // === Phase 3: Synthesize ===
         if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 3: Synthesis[/]");
         var summary = await SynthesizeAsync(docId, retrieved, extraction, focusQuery, ct);
@@ -87,7 +276,6 @@ public class BertRagSummarizer : IDisposable
         stopwatch.Stop();
         
         // Build trace with citation map
-        var citationMap = retrieved.ToDictionary(s => s.Citation, s => s.ToCitation());
         var coverage = extraction.AllSegments.Count == 0
             ? 0
             : (double)retrieved.Count / extraction.AllSegments.Count;
@@ -105,13 +293,42 @@ public class BertRagSummarizer : IDisposable
             CitationRate: 1.0 // BERT-RAG always has perfect citations
         );
         
-        return new DocumentSummary(
+        var result = new DocumentSummary(
             summary.ExecutiveSummary,
             summary.TopicSummaries,
             summary.OpenQuestions,
             trace,
             summary.Entities
         );
+        
+        // === Cache the summary using segment-based key ===
+        if (_vectorStore != null && _bertRagConfig.PersistVectors)
+        {
+            await _vectorStore.CacheSummaryAsync(collectionName, synthesisCacheKey, result, ct);
+        }
+        
+        return result;
+    }
+    
+    /// <summary>
+    /// Extract segments and store them in the vector store
+    /// </summary>
+    private async Task<ExtractionResult> ExtractAndStoreAsync(
+        string stableDocId,
+        string markdown,
+        ContentType contentType,
+        CancellationToken ct)
+    {
+        if (_verbose) AnsiConsole.MarkupLine("[bold cyan]Phase 1: Extraction[/]");
+        var extraction = await _extractor.ExtractAsync(stableDocId, markdown, contentType, ct);
+        
+        if (_vectorStore != null && _bertRagConfig.PersistVectors && extraction.AllSegments.Count > 0)
+        {
+            if (_verbose) AnsiConsole.MarkupLine("[dim]Storing segments in vector store...[/]");
+            await _vectorStore.UpsertSegmentsAsync(_bertRagConfig.CollectionName, extraction.AllSegments, ct);
+        }
+        
+        return extraction;
     }
 
     /// <summary>
@@ -660,5 +877,16 @@ public class BertRagSummarizer : IDisposable
     {
         _extractor.Dispose();
         _queryEmbedder.Dispose();
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        _extractor.Dispose();
+        _queryEmbedder.Dispose();
+        
+        if (_vectorStore != null)
+        {
+            await _vectorStore.DisposeAsync();
+        }
     }
 }

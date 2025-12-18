@@ -120,7 +120,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             config.Qdrant,
             ollamaConfig: config.Ollama,
             onnxConfig: config.Onnx,
-            embeddingBackend: config.EmbeddingBackend);
+            embeddingBackend: config.EmbeddingBackend,
+            bertRagConfig: config.BertRag);
         summarizer.SetTemplate(template);
  
         // Determine operation mode
@@ -420,7 +421,8 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
         config.Qdrant,
         ollamaConfig: config.Ollama,
         onnxConfig: config.Onnx,
-        embeddingBackend: config.EmbeddingBackend);
+        embeddingBackend: config.EmbeddingBackend,
+        bertRagConfig: config.BertRag);
     
     var docId = Path.GetFileNameWithoutExtension(file.Name);
     var chunks = await SpectreProgressService.WithSpinnerAsync(
@@ -449,7 +451,8 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
                 config.Qdrant,
                 ollamaConfig: config.Ollama,
                 onnxConfig: config.Onnx,
-                embeddingBackend: config.EmbeddingBackend);
+                embeddingBackend: config.EmbeddingBackend,
+                bertRagConfig: config.BertRag);
             
             var sw = Stopwatch.StartNew();
             var summary = await SpectreProgressService.WithSpinnerAsync(
@@ -865,7 +868,8 @@ static async Task<ToolOutput> RunToolModeAsync(
             config.Qdrant,
             ollamaConfig: config.Ollama,
             onnxConfig: config.Onnx,
-            embeddingBackend: config.EmbeddingBackend);
+            embeddingBackend: config.EmbeddingBackend,
+            bertRagConfig: config.BertRag);
         
         var processingTime = DateTime.UtcNow - startTime;
         
