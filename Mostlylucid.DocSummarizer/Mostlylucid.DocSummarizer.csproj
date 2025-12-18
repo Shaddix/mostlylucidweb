@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Mostlylucid.DocSummarizer</RootNamespace>
         <AssemblyName>docsummarizer</AssemblyName>
-        <Version>3.0.0</Version>
+        <Version>3.1.0</Version>
         <Authors>Scott Galloway</Authors>
         <Description>Local-first document summarization tool using LLMs, vector search, and document conversion</Description>
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb</RepositoryUrl>

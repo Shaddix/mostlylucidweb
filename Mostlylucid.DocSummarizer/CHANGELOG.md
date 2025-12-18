@@ -1,5 +1,86 @@
 # Changelog - DocSummarizer
 
+## v3.1.0 - Documentation Improvements & Template Expansion (2025-12-18)
+
+### Documentation Updates
+
+#### Comprehensive Blog Series
+
+Three detailed blog articles covering DocSummarizer architecture, usage, and internals:
+
+- **[Part 1: Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag)** - Architecture, design patterns, and why structure-first beats naive LLM calls
+- **[Part 2: Using the Tool](/blog/docsummarizer-tool)** - Quick-start guide, modes, templates, and common workflows
+- **[Part 3: Advanced Concepts](/blog/docsummarizer-advanced-concepts)** - Deep dive into BERT, ONNX, embeddings, hybrid search, and the BertRag pipeline
+
+#### Documentation Improvements
+
+- **Terminology Consistency**: Standardized "BertRag" (not "BERT-RAG" or "Bert-Rag") across all documentation
+- **Accurate Claims**: Changed "perfect citations" → "validated citations" in user-facing docs to avoid overselling
+- **Mode Corrections**: Updated all references from legacy modes (MapReduce/Rag as primary) to current production modes (Auto/BertRag/Bert)
+- **Template Count Fix**: Corrected from "11 templates" to "13 templates" with full documentation
+- **Performance Verification**: Validated all benchmark numbers against source code (3-5s for Bert, ~15-20s for full pipeline, 500+ page support)
+- **Feature Completeness**: Verified all user-facing features are documented (Project Gutenberg ZIP support, all 13 templates, all 7 modes)
+
+### New Features
+
+#### Two New Summary Templates
+
+**`prose`** - Clean multi-paragraph prose summary without metadata:
+```bash
+docsummarizer -f doc.pdf -t prose
+```
+- 400-word target, 4 paragraphs
+- No citations, no metadata, no formatting
+- Just flowing prose for clean presentation
+- Perfect for embedding in reports or presentations
+
+**`strict`** - Token-efficient summary with hard constraints:
+```bash
+docsummarizer -f doc.pdf -t strict
+```
+- Exactly 3 bullet points, ≤60 words total
+- No hedging language ("appears to", "seems", "possibly")
+- Highest-confidence facts only
+- Optimized for token-constrained contexts
+
+**Total templates now: 13**
+- default, prose, brief, oneliner, bullets, executive, detailed, technical, academic, citations, bookreport, meeting, strict
+
+### Improvements
+
+- **README**: Updated version badge references
+- **Cross-References**: Added navigation between Part 1, Part 2, and Part 3 articles
+- **Honest Limitations**: Clarified coverage scores as "proxy for topical coverage, not proof of full-document reading"
+- **Problem-Solution Framing**: Restructured Part 3 to use "problem-solution" pattern for better learning
+- **Failure Modes**: Added "Common Failure Modes" section with 6 real issues and fixes
+
+### Files Modified
+
+```
+Mostlylucid/Markdown/
+├── building-a-document-summarizer-with-rag.md           # Part 1 - consistency fixes
+├── docsummarizer-tool.md                                # Part 2 - template updates
+├── docsummarizer-advanced-concepts.md                   # Part 3 - technical depth
+└── fetching-and-analysing-web-content-with-llms.md     # Cross-reference added
+
+Mostlylucid.DocSummarizer/
+├── README.md                                            # Version badge, terminology
+├── CHANGELOG.md                                         # This file
+└── Config/SummaryTemplates.cs                          # Prose + Strict templates
+```
+
+### Bug Fixes
+
+- Fixed inconsistent mode naming in documentation
+- Corrected template count from 11 to 13
+- Fixed terminology inconsistencies (BertRag vs BERT-RAG)
+
+### Breaking Changes
+
+None - all changes are documentation and template additions.
+
+---
+
 ## v2.7.0 - Universal Tokenizer & Unified UI (2025-12-18)
 
 ### New Features

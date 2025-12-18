@@ -5,7 +5,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
-[![Version](https://img.shields.io/badge/version-3.0.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+[![Version](https://img.shields.io/badge/version-3.1.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
 
 This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval.
 
@@ -192,12 +192,12 @@ Pre-built native executables are available from [GitHub Releases](https://github
 
 ```bash
 # Download and extract (Linux/macOS)
-curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-linux-x64.tar.gz
+curl -L -o docsummarizer.tar.gz https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.1.0/docsummarizer-linux-x64.tar.gz
 tar -xzf docsummarizer.tar.gz
 chmod +x docsummarizer
 
 # Download and extract (Windows PowerShell)
-Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.0.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
+Invoke-WebRequest -Uri "https://github.com/scottgal/mostlylucidweb/releases/download/docsummarizer-v3.1.0/docsummarizer-win-x64.zip" -OutFile "docsummarizer.zip"
 Expand-Archive -Path "docsummarizer.zip" -DestinationPath "."
 ```
 

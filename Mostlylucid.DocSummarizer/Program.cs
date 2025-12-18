@@ -893,8 +893,10 @@ templatesCommand.SetAction((parseResult, cancellationToken) =>
     var presets = new[]
     {
         ("default", "~500", "General purpose summary"),
+        ("prose", "~400", "Clean multi-paragraph prose (no metadata)"),
         ("brief", "~50", "Quick scanning"),
         ("oneliner", "~25", "Single sentence"),
+        ("strict", "~60", "Ultra-concise, no fluff"),
         ("bullets", "auto", "Key takeaways as bullet points"),
         ("executive", "~150", "C-suite reports"),
         ("detailed", "~1000", "Comprehensive analysis"),
