@@ -1,20 +1,41 @@
 # DataSummarizer
 
-A DuckDB-first CLI that turns any CSV/Excel/Parquet/JSON into a **reproducible statistical profile**. Optionally, a local LLM (via Ollama) can ask questions using **only**:
+A DuckDB-first CLI that turns any CSV/Excel/Parquet/JSON into a **reproducible statistical profile**. Built on **.NET 10** for high-performance local analytics.
+
+Optionally, a local LLM (via Ollama) can ask questions using **only**:
 
 - The computed profile (schema + stats + alerts + patterns), and/or
 - **DuckDB query results** produced locally from LLM-generated SQL
 
-This keeps the “facts” deterministic and puts the LLM in the role of *query generator + narrator*.
+This keeps the "facts" deterministic and puts the LLM in the role of *query generator + narrator*.
 
-## Trust Model (v1)
+## Who this is for (and who it isn't)
 
-- **Deterministic**: profiling, alerts, target analysis, registry ingestion, drift validation.
+**✔ This tool is for you if:**
+- You want a fast, local, repeatable first-pass on a dataset
+- You care about determinism and reproducibility  
+- You want LLM help without handing it your raw data
+- You need to profile datasets larger than RAM
+- You want data contracts and drift detection
+
+**✘ This is NOT:**
+- A replacement for full exploratory data analysis (EDA)
+- AutoML or automatic model building
+- A system that guesses answers without computed evidence
+- A cloud service (everything runs locally)
+
+## Trust Model
+
+- **Deterministic**: profiling, alerts, target analysis, constraint validation, segment comparison, registry ingestion.
 - **Heuristic** (fast, approximate): distribution labels, trend/seasonality detection, FK/monotonic hints.
 - **LLM-generated** (optional): narrative summaries, SQL generation, and result summarization.
 - **Data stays local** by default: DuckDB is embedded; LLM calls go to your local Ollama endpoint.
 
 > If you want *zero* row-level data exposure to the LLM, run with `--no-llm`.
+
+### SQL Safety
+
+Generated SQL is executed in a **read-only, constrained context** (no COPY/ATTACH/INSTALL/EXPORT; results limited to 20 rows). The LLM sees the profile schema but does not have arbitrary database access.
 
 ---
 

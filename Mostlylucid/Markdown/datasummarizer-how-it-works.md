@@ -15,7 +15,7 @@ If you've ever opened a new dataset and immediately asked:
 
 …you already know what *data profiling* is for.
 
-**DataSummarizer** is a CLI tool I built to make that first pass fast, local, and repeatable. It combines deterministic profiling with optional LLM narration to give you both **facts** and **insights** about your data.
+**DataSummarizer** is a CLI tool I built to make that first pass fast, local, and repeatable. Built on **.NET 10** for high-performance local analytics, it combines deterministic profiling with optional LLM narration to give you both **facts** and **insights** about your data.
 
 - **DuckDB** computes a deterministic statistical profile (no in-memory loading).
 - An **LLM** (optional) either narrates that profile *or* generates SQL that DuckDB runs locally.
@@ -29,6 +29,23 @@ This builds on the same philosophy as my [CSV analysis with local LLMs](/blog/an
 
 ---
 
+## Who this is for (and who it isn't)
+
+**✔ This tool is for you if:**
+- You want a fast, local, repeatable first-pass on a dataset
+- You care about determinism and reproducibility
+- You want LLM help without handing it your raw data
+- You need to profile datasets larger than RAM
+- You want data contracts and drift detection
+
+**✘ This is NOT:**
+- A replacement for full exploratory data analysis (EDA)
+- AutoML or automatic model building
+- A system that guesses answers without computed evidence
+- A cloud service (everything runs locally)
+
+---
+
 ## Trust model (in plain English)
 
 - **Deterministic**: profiling, alerts, target analysis, constraint validation, segment comparison, registry ingestion.
@@ -37,6 +54,26 @@ This builds on the same philosophy as my [CSV analysis with local LLMs](/blog/an
 - **Data stays local**: DuckDB is embedded; LLM calls go to your local Ollama endpoint.
 
 If you want *zero* row-level exposure to the LLM, run with `--no-llm`.
+
+---
+
+## Heuristics (what the pattern labels actually mean)
+
+These are intentionally simple and fast (good enough for a first pass):
+
+| Pattern | Detection Logic |
+|---------|----------------|
+| **Text formats** | Regex match rate ≥10% of non-null values (email/URL/UUID/phone/etc.) |
+| **Novel text patterns** | Dominant character-class structure covers ≥70% of sampled distinct values |
+| **Distribution labels** | Based on skewness + kurtosis; bimodal uses 10-bin histogram with ≥2 peaks |
+| **FK overlap hint** | Value overlap >90% between candidate columns |
+| **Monotonic hint** | >95% of transitions increase/decrease (first 10k rows) |
+| **Seasonality** | Day-of-week count variation (CV >0.3) |
+| **Trends** | Linear fit vs date (R² threshold) or row order |
+
+These are **not** formal statistical tests - they're fast heuristics to flag "check this" candidates.
+
+**Why this matters:** The Trust Model says "heuristic" - these thresholds document what that means. This is approximation with stated intent (flag, not prove), not magic.
 
 ---
 
@@ -176,6 +213,8 @@ When you run `--query`, DataSummarizer takes one of two paths:
 1. **Profile-only answers** (no SQL): for broad questions like "tell me about this data", the LLM sees the profile and writes a short narrative.
 2. **SQL-backed answers**: for specific questions, the LLM generates DuckDB SQL using the profiled schema, DuckDB executes it locally, and the LLM summarizes the result.
 
+**SQL safety:** Generated SQL is executed in a **read-only, constrained context** (no COPY/ATTACH/INSTALL/EXPORT; results limited to 20 rows). The LLM sees the profile schema but does not have arbitrary database access.
+
 ```bash
 # Profile-grounded overview (no SQL, profile only)
 datasummarizer -f sales.csv --model qwen2.5-coder:7b \
@@ -208,11 +247,17 @@ datasummarizer -f sales.csv --model qwen2.5-coder:7b --interactive
 
 ## The registry: profiling many datasets
 
-If you have a folder full of files and want cross-dataset questions ("which dataset contains churn?"), DataSummarizer can ingest profiles into a local **Registry**.
+If you have a folder full of files and want cross-dataset questions ("which dataset contains churn?"), DataSummarizer can ingest profiles into a local **Registry** (profile store + similarity index).
 
-- The **Registry** is a DuckDB file (set via `--vector-db`).
-- It stores computed profile JSON + derived text embeddings for similarity search.
-- It does **not** copy full tables; profiling reads original files in place.
+**Registry vs Store:**
+- The **Registry** (`--vector-db`) is optimized for cross-dataset search and Q&A (profiles + embeddings)
+- The **Store** (`--store-path`) is optimized for profile persistence and drift tracking
+- Both are DuckDB files; the Registry includes a similarity index for semantic search
+
+**What's stored:**
+- Computed profile JSON + derived text embeddings for similarity search
+- Conversation turns for session-aware Q&A
+- It does **not** copy full tables; profiling reads original files in place
 
 ```bash
 # Ingest a directory (recursive, supports globs)
@@ -275,6 +320,8 @@ This generates **41 constraints** from the source data including:
 - `Geography` values should be in {France, Germany, Spain}
 - `Gender` values should be in {Male, Female}
 - `EstimatedSalary` should have unique values (100% cardinality)
+
+**Important:** Auto-generated constraints are **advisory by default** — review before enforcing in CI. Constraints like "100% uniqueness" may be overly strict for production data.
 
 ### Validate new data against constraints
 
@@ -430,24 +477,6 @@ It's deliberately narrow:
 If the model is missing or incompatible, it safely no-ops.
 
 This is useful for flagging columns that might need extra attention (e.g., high-risk PII, leakage candidates, data quality issues).
-
----
-
-## Heuristics (what the pattern labels actually mean)
-
-These are intentionally simple and fast (good enough for a first pass):
-
-| Pattern | Detection Logic |
-|---------|----------------|
-| **Text formats** | Regex match rate ≥10% of non-null values (email/URL/UUID/phone/etc.) |
-| **Novel text patterns** | Dominant character-class structure covers ≥70% of sampled distinct values |
-| **Distribution labels** | Based on skewness + kurtosis; bimodal uses 10-bin histogram with ≥2 peaks |
-| **FK overlap hint** | Value overlap >90% between candidate columns |
-| **Monotonic hint** | >95% of transitions increase/decrease (first 10k rows) |
-| **Seasonality** | Day-of-week count variation (CV >0.3) |
-| **Trends** | Linear fit vs date (R² threshold) or row order |
-
-These are **not** formal statistical tests - they're fast heuristics to flag "check this" candidates.
 
 ---
 
