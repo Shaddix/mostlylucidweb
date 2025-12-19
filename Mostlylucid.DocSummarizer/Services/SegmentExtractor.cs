@@ -297,7 +297,8 @@ public class SegmentExtractor : IDisposable
             AnsiConsole.MarkupLine($"[dim]Parsed {parsedDoc.Sections.Count} sections:[/]");
             foreach (var s in parsedDoc.Sections.Take(5))
             {
-                AnsiConsole.MarkupLine($"[dim]  Level {s.Level}: \"{s.Heading}\" ({s.Heading.Length} chars)[/]");
+                var escapedHeading = Markup.Escape(s.Heading);
+                AnsiConsole.MarkupLine($"[dim]  Level {s.Level}: \"{escapedHeading}\" ({s.Heading.Length} chars)[/]");
             }
         }
         
@@ -1177,7 +1178,6 @@ public class SegmentExtractor : IDisposable
         
         await _embeddingService.InitializeAsync(ct);
         
-        const int batchSize = 32;
         var total = segments.Count;
         
         await AnsiConsole.Progress()

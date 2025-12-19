@@ -1,0 +1,607 @@
+[
+  {
+    "SourcePath": "sampledata/Bank\u002BCustomer\u002BChurn/Bank_Churn.csv",
+    "SourceType": 0,
+    "SheetName": null,
+    "RowCount": 10000,
+    "ColumnCount": 13,
+    "Columns": [
+      {
+        "Name": "CustomerId",
+        "DuckDbType": "BIGINT",
+        "InferredType": 6,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 9438,
+        "NullPercent": 0,
+        "UniquePercent": 94.38,
+        "Min": 15565701,
+        "Max": 15815690,
+        "Mean": 15690940.5694,
+        "Median": 15690809,
+        "StdDev": 71936.18612274907,
+        "Q25": 15628719,
+        "Q75": 15753338,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Surname",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 4,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2923,
+        "NullPercent": 0,
+        "UniquePercent": 29.23,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": 6.4349,
+        "MaxLength": 23,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "CreditScore",
+        "DuckDbType": "BIGINT",
+        "InferredType": 1,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 509,
+        "NullPercent": 0,
+        "UniquePercent": 5.09,
+        "Min": 350,
+        "Max": 850,
+        "Mean": 650.5288,
+        "Median": 652,
+        "StdDev": 96.65329873613035,
+        "Q25": 584,
+        "Q75": 718,
+        "Skewness": -0.07158512765059949,
+        "OutlierCount": 15,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": 67,
+        "TextPatterns": [],
+        "Distribution": 1,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Geography",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2,
+        "NullPercent": 0,
+        "UniquePercent": 0.02,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "France",
+            "Count": 5014,
+            "Percent": 50.14
+          },
+          {
+            "Value": "Germany",
+            "Count": 2509,
+            "Percent": 25.09
+          },
+          {
+            "Value": "Spain",
+            "Count": 2477,
+            "Percent": 24.77
+          }
+        ],
+        "ImbalanceRatio": 1.0028,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Gender",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2,
+        "NullPercent": 0,
+        "UniquePercent": 0.02,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "Male",
+            "Count": 5457,
+            "Percent": 54.57
+          },
+          {
+            "Value": "Female",
+            "Count": 4543,
+            "Percent": 45.43
+          }
+        ],
+        "ImbalanceRatio": 1.0914,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Age",
+        "DuckDbType": "BIGINT",
+        "InferredType": 1,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 67,
+        "NullPercent": 0,
+        "UniquePercent": 0.67,
+        "Min": 18,
+        "Max": 92,
+        "Mean": 38.9218,
+        "Median": 37,
+        "StdDev": 10.48780645170459,
+        "Q25": 32,
+        "Q75": 44,
+        "Skewness": 1.0110168871709346,
+        "OutlierCount": 359,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": 6,
+        "TextPatterns": [],
+        "Distribution": 4,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Tenure",
+        "DuckDbType": "BIGINT",
+        "InferredType": 1,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 12,
+        "NullPercent": 0,
+        "UniquePercent": 0.12,
+        "Min": 0,
+        "Max": 10,
+        "Mean": 5.0128,
+        "Median": 5,
+        "StdDev": 2.8921743770496837,
+        "Q25": 3,
+        "Q75": 7,
+        "Skewness": 0.010988160759615038,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "2",
+            "Count": 1048,
+            "Percent": 10.48
+          },
+          {
+            "Value": "1",
+            "Count": 1035,
+            "Percent": 10.35
+          },
+          {
+            "Value": "7",
+            "Count": 1028,
+            "Percent": 10.28
+          },
+          {
+            "Value": "8",
+            "Count": 1025,
+            "Percent": 10.25
+          },
+          {
+            "Value": "5",
+            "Count": 1012,
+            "Percent": 10.12
+          },
+          {
+            "Value": "3",
+            "Count": 1009,
+            "Percent": 10.09
+          },
+          {
+            "Value": "4",
+            "Count": 989,
+            "Percent": 9.89
+          },
+          {
+            "Value": "9",
+            "Count": 984,
+            "Percent": 9.84
+          },
+          {
+            "Value": "6",
+            "Count": 967,
+            "Percent": 9.67
+          },
+          {
+            "Value": "10",
+            "Count": 490,
+            "Percent": 4.9
+          }
+        ],
+        "ImbalanceRatio": 1.2576,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": 2,
+        "TextPatterns": [],
+        "Distribution": 0,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Balance",
+        "DuckDbType": "DOUBLE",
+        "InferredType": 1,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 6938,
+        "NullPercent": 0,
+        "UniquePercent": 69.38,
+        "Min": 0,
+        "Max": 250898.09,
+        "Mean": 76485.88928799961,
+        "Median": 97158.41598245614,
+        "StdDev": 62397.40520238599,
+        "Q25": 0,
+        "Q75": 127628.58779630178,
+        "Skewness": -0.14106638115041292,
+        "OutlierCount": 0,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": 48211.759999999995,
+        "TextPatterns": [],
+        "Distribution": 2,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "NumOfProducts",
+        "DuckDbType": "BIGINT",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 4,
+        "NullPercent": 0,
+        "UniquePercent": 0.04,
+        "Min": 1,
+        "Max": 4,
+        "Mean": 1.5302,
+        "Median": 1,
+        "StdDev": 0.5816543579989917,
+        "Q25": 1,
+        "Q75": 2,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "1",
+            "Count": 5084,
+            "Percent": 50.84
+          },
+          {
+            "Value": "2",
+            "Count": 4590,
+            "Percent": 45.9
+          },
+          {
+            "Value": "3",
+            "Count": 266,
+            "Percent": 2.66
+          },
+          {
+            "Value": "4",
+            "Count": 60,
+            "Percent": 0.6
+          }
+        ],
+        "ImbalanceRatio": 2.0336000000000003,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "HasCrCard",
+        "DuckDbType": "BIGINT",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2,
+        "NullPercent": 0,
+        "UniquePercent": 0.02,
+        "Min": 0,
+        "Max": 1,
+        "Mean": 0.7055,
+        "Median": 1,
+        "StdDev": 0.45584046447513327,
+        "Q25": 0,
+        "Q75": 1,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "1",
+            "Count": 7055,
+            "Percent": 70.55
+          },
+          {
+            "Value": "0",
+            "Count": 2945,
+            "Percent": 29.45
+          }
+        ],
+        "ImbalanceRatio": 1.411,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "IsActiveMember",
+        "DuckDbType": "BIGINT",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2,
+        "NullPercent": 0,
+        "UniquePercent": 0.02,
+        "Min": 0,
+        "Max": 1,
+        "Mean": 0.5151,
+        "Median": 1,
+        "StdDev": 0.49979692845891815,
+        "Q25": 0,
+        "Q75": 1,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "1",
+            "Count": 5151,
+            "Percent": 51.51
+          },
+          {
+            "Value": "0",
+            "Count": 4849,
+            "Percent": 48.49
+          }
+        ],
+        "ImbalanceRatio": 1.0302,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "EstimatedSalary",
+        "DuckDbType": "DOUBLE",
+        "InferredType": 1,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 10465,
+        "NullPercent": 0,
+        "UniquePercent": 100,
+        "Min": 11.58,
+        "Max": 199992.48,
+        "Mean": 100090.2398809998,
+        "Median": 100001.987038273,
+        "StdDev": 57510.49281769821,
+        "Q25": 51016.946222989536,
+        "Q75": 149232.85043245845,
+        "Skewness": 0.0020847320959777836,
+        "OutlierCount": 0,
+        "TopValues": null,
+        "ImbalanceRatio": null,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": 48940.13,
+        "TextPatterns": [],
+        "Distribution": 2,
+        "Trend": null,
+        "TimeSeries": null
+      },
+      {
+        "Name": "Exited",
+        "DuckDbType": "BIGINT",
+        "InferredType": 2,
+        "Count": 10000,
+        "NullCount": 0,
+        "UniqueCount": 2,
+        "NullPercent": 0,
+        "UniquePercent": 0.02,
+        "Min": 0,
+        "Max": 1,
+        "Mean": 0.2037,
+        "Median": 0,
+        "StdDev": 0.40276858399486065,
+        "Q25": 0,
+        "Q75": 0,
+        "Skewness": null,
+        "OutlierCount": 0,
+        "TopValues": [
+          {
+            "Value": "0",
+            "Count": 7963,
+            "Percent": 79.63
+          },
+          {
+            "Value": "1",
+            "Count": 2037,
+            "Percent": 20.37
+          }
+        ],
+        "ImbalanceRatio": 1.5926,
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null
+      }
+    ],
+    "Alerts": [
+      {
+        "Severity": 0,
+        "Column": "Age",
+        "Type": 5,
+        "Message": "359 outliers (3.6%)"
+      }
+    ],
+    "Correlations": [],
+    "Insights": [
+      {
+        "Title": "Dataset Overview",
+        "Description": "Dataset contains 10,000 rows and 13 columns. 5 numeric, 6 categorical, 0 date/time columns.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "RelatedColumns": []
+      },
+      {
+        "Title": "\u0027CreditScore\u0027 Distribution",
+        "Description": "Column follows a normal (bell curve) distribution.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "RelatedColumns": [
+          "CreditScore"
+        ]
+      },
+      {
+        "Title": "\u0027Age\u0027 Distribution",
+        "Description": "Column is right-skewed (tail extends right).",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "RelatedColumns": [
+          "Age"
+        ]
+      },
+      {
+        "Title": "\u0027Balance\u0027 Distribution",
+        "Description": "Column is uniformly distributed across its range.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "RelatedColumns": [
+          "Balance"
+        ]
+      },
+      {
+        "Title": "\u0027EstimatedSalary\u0027 Distribution",
+        "Description": "Column is uniformly distributed across its range.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "RelatedColumns": [
+          "EstimatedSalary"
+        ]
+      }
+    ],
+    "Patterns": [],
+    "ProfileTime": "00:00:02.4957238"
+  }
+]

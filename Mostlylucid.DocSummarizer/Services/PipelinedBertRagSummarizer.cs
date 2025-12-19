@@ -807,18 +807,37 @@ public class PipelinedBertRagSummarizer : IDisposable
         INSTRUCTIONS:
         1. Write at the SCENE level, not the dialogue level
         2. Describe ACTIONS: who did what, where, when
-        3. Identify KEY CHARACTERS and their roles (detective, narrator, client, villain)
+        3. Identify KEY CHARACTERS and their roles - be PRECISE about relationships
+           - If X is Y's daughter, state that clearly
+           - If X banishes Y, specify WHO banishes WHOM
+           - Do NOT blur or merge characters who appear together
         4. Describe the SETTING (place, time period, atmosphere)
         5. Identify the INCITING INCIDENT (what starts the plot)
-        6. Note any THEMES or central conflicts
+        6. Note SPECIFIC themes tied to SPECIFIC scenes (not abstract generalizations)
         7. Use past tense, third person
         8. Write ~{targetWords} words in flowing prose
+
+        GROUNDING REQUIREMENTS (critical for accuracy):
+        - When mentioning a character relationship, it MUST appear in the segments below
+        - When claiming a theme exists, tie it to a specific scene or action
+        - Use markers like "In Act II..." or "When [character] does X..." to anchor claims
+        - If you're uncertain about a detail, omit it rather than guess
+
+        FORBIDDEN PHRASES (academic fog - do not use):
+        - "raises questions about..."
+        - "explores the complexities of..."
+        - "offers a nuanced exploration..."
+        - "demonstrates the tension between..."
+        - "reflects the broader themes of..."
+        - "serves as a metaphor for..."
+        These phrases signal you're guessing, not summarizing.
 
         IMPORTANT:
         - Do NOT include citation references like [s1], [s2] in your text - write clean prose
         - Do NOT quote dialogue verbatim (paraphrase instead)
         - Do NOT list every conversation ("He said X, she replied Y")
         - Do NOT treat all moments as equally important
+        - Do NOT invent tensions or conflicts not explicitly present
 
         COVERAGE RULE:
         {(coverage < 0.05 ? "Coverage is very low (<5%). Use cautious language like 'in the sampled sections' and avoid definitive endings." : "Use confident tone consistent with evidence.")}

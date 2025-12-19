@@ -169,7 +169,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         }
         
         // === Phase 3: Synthesize (using current template) ===
-        if (_verbose) AnsiConsole.MarkupLine($"[bold cyan]Phase 3: Synthesis with template '{Template.Name}'[/]");
+        if (_verbose) AnsiConsole.MarkupLine($"[bold cyan]Phase 3: Synthesis with template '{Markup.Escape(Template.Name)}'[/]");
         var summary = await SynthesizeAsync(docId, retrieved, extraction, focusQuery, ct);
         
         stopwatch.Stop();
@@ -615,7 +615,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         
         if (_verbose)
         {
-            AnsiConsole.MarkupLine($"[dim]Query: \"{focusQuery}\"[/]");
+            AnsiConsole.MarkupLine($"[dim]Query: \"{Markup.Escape(focusQuery ?? "")}\"[/]");
             AnsiConsole.MarkupLine($"[dim]Top by retrieval: {topByRetrieval.Count}, fallback added: {result.Count - topByRetrieval.Count}[/]");
         }
         
@@ -751,7 +751,8 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             AnsiConsole.MarkupLine($"[dim]Found {headings.Count} headings in AllSegments[/]");
             foreach (var h in headings.Take(5))
             {
-                AnsiConsole.MarkupLine($"[dim]  H{h.HeadingLevel}: \"{h.Text}\" (idx={h.Index})[/]");
+                var escapedText = Markup.Escape(h.Text);
+                AnsiConsole.MarkupLine($"[dim]  H{h.HeadingLevel}: \"{escapedText}\" (idx={h.Index})[/]");
             }
         }
         
@@ -768,7 +769,8 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         
         if (_verbose)
         {
-            AnsiConsole.MarkupLine($"[dim]Document title: {documentTitle ?? "(not found)"}[/]");
+            var escapedTitle = Markup.Escape(documentTitle ?? "(not found)");
+            AnsiConsole.MarkupLine($"[dim]Document title: {escapedTitle}[/]");
         }
         
         var synthesisPrompt = BuildSynthesisPrompt(

@@ -502,7 +502,7 @@ benchmarkCommand.SetAction(async (parseResult, cancellationToken) =>
     
     if (!file.Exists)
     {
-        AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+        AnsiConsole.MarkupLine($"[red]Error: File not found: {Markup.Escape(file.FullName)}[/]");
         return 1;
     }
     
@@ -696,7 +696,7 @@ benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
     
     if (!file.Exists)
     {
-        AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+        AnsiConsole.MarkupLine($"[red]Error: File not found: {Markup.Escape(file.FullName)}[/]");
         return 1;
     }
     
@@ -752,7 +752,7 @@ benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
         var archiveInfo = ArchiveHandler.InspectArchive(file.FullName);
         if (archiveInfo == null || !archiveInfo.IsValid)
         {
-            AnsiConsole.MarkupLine($"[red]Error: {archiveInfo?.Error ?? "Invalid archive"}[/]");
+            AnsiConsole.MarkupLine($"[red]Error: {Markup.Escape(archiveInfo?.Error ?? "Invalid archive")}[/]");
             return 1;
         }
         if (verbose)
@@ -874,7 +874,7 @@ benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
     var effectiveOutputDir = outputDir ?? Path.GetDirectoryName(file.FullName) ?? Environment.CurrentDirectory;
     await benchmarkService.SaveResultsAsync(results, effectiveOutputDir, docId);
     
-    AnsiConsole.MarkupLine($"[green]Results saved to:[/] {effectiveOutputDir}");
+    AnsiConsole.MarkupLine($"[green]Results saved to:[/] {Markup.Escape(effectiveOutputDir)}");
     
     return 0;
 });
@@ -1018,7 +1018,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
     {
         if (!file.Exists)
         {
-            AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+            AnsiConsole.MarkupLine($"[red]Error: File not found: {Markup.Escape(file.FullName)}[/]");
             return 1;
         }
         filesToSearch.Add(file);
@@ -1028,7 +1028,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
     {
         if (!directory.Exists)
         {
-            AnsiConsole.MarkupLine($"[red]Error: Directory not found: {directory.FullName}[/]");
+            AnsiConsole.MarkupLine($"[red]Error: Directory not found: {Markup.Escape(directory.FullName)}[/]");
             return 1;
         }
         
@@ -1091,7 +1091,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
             
             if (!outputJson)
             {
-                AnsiConsole.MarkupLine($"[dim]Searching Qdrant collection '{collectionName}'...[/]");
+                AnsiConsole.MarkupLine($"[dim]Searching Qdrant collection '{Markup.Escape(collectionName)}'...[/]");
             }
             
             // Search across ALL indexed documents (docId: null = no filter)
@@ -1119,7 +1119,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
         {
             if (!outputJson)
             {
-                AnsiConsole.MarkupLine($"[yellow]Qdrant search failed ({ex.GetType().Name}). Falling back to on-demand extraction...[/]");
+                AnsiConsole.MarkupLine($"[yellow]Qdrant search failed ({Markup.Escape(ex.GetType().Name)}). Falling back to on-demand extraction...[/]");
             }
         }
     }
@@ -1135,7 +1135,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
             processedFiles++;
             if (!outputJson && filesToSearch.Count > 1)
             {
-                AnsiConsole.MarkupLine($"[dim]Processing ({processedFiles}/{filesToSearch.Count}): {searchFile.Name}[/]");
+                AnsiConsole.MarkupLine($"[dim]Processing ({processedFiles}/{filesToSearch.Count}): {Markup.Escape(searchFile.Name)}[/]");
             }
             
             try
@@ -1172,7 +1172,7 @@ searchCommand.SetAction(async (parseResult, cancellationToken) =>
             {
                 if (!outputJson)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]Warning: Failed to process {searchFile.Name}: {ex.Message}[/]");
+                    AnsiConsole.MarkupLine($"[yellow]Warning: Failed to process {Markup.Escape(searchFile.Name)}: {Markup.Escape(ex.Message)}[/]");
                 }
             }
         }
@@ -1455,7 +1455,7 @@ cacheRmCommand.SetAction(async (parseResult, cancellationToken) =>
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Failed:[/] {Markup.Escape(collection)} - {ex.Message}");
+            AnsiConsole.MarkupLine($"[red]Failed:[/] {Markup.Escape(collection)} - {Markup.Escape(ex.Message)}");
         }
     }
     

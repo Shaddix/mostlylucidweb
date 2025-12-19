@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Mostlylucid.Summarizer.Shared</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- LLM client -->
+    <PackageReference Include="OllamaSharp" Version="5.1.5" />
+    
+    <!-- CLI output -->
+    <PackageReference Include="Spectre.Console" Version="0.50.0" />
+    
+    <!-- Resilience -->
+    <PackageReference Include="Polly" Version="8.5.2" />
+  </ItemGroup>
+
+</Project>

@@ -84,6 +84,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.LlmWebFetcher",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.DocSummarizer", "Mostlylucid.DocSummarizer\Mostlylucid.DocSummarizer.csproj", "{DF808644-F4D7-4881-A4EA-A035CF1C7988}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.DataSummarizer", "Mostlylucid.DataSummarizer\Mostlylucid.DataSummarizer.csproj", "{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -466,6 +468,18 @@ Global
 		{DF808644-F4D7-4881-A4EA-A035CF1C7988}.Release|x64.Build.0 = Release|Any CPU
 		{DF808644-F4D7-4881-A4EA-A035CF1C7988}.Release|x86.ActiveCfg = Release|Any CPU
 		{DF808644-F4D7-4881-A4EA-A035CF1C7988}.Release|x86.Build.0 = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|x64.Build.0 = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Debug|x86.Build.0 = Debug|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|x64.ActiveCfg = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|x64.Build.0 = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|x86.ActiveCfg = Release|Any CPU
+		{5BB5EC43-5EF6-4FC9-878A-1F30E2930CCF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

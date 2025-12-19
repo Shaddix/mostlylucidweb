@@ -2,6 +2,7 @@ using Mostlylucid.DocSummarizer.Config;
 using System.Security.Cryptography;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
+using Mostlylucid.DocSummarizer.Services.Utilities;
 using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
@@ -105,17 +106,8 @@ public class DocumentSummarizer
         // Front matter detector uses sentinel LLM for ambiguous cases
         _frontMatterDetector = new FrontMatterDetector(_ollama, verbose);
         
-        // Create vector store if Qdrant persistence is enabled
-        if (_bertRagConfig.VectorStore == VectorStoreBackend.Qdrant)
-        {
-            var qConfig = qdrantConfig ?? new QdrantConfig { Host = qdrantHost };
-            _vectorStore = new QdrantVectorStore(qConfig, verbose, deleteOnDispose: !_bertRagConfig.PersistVectors);
-        }
-        else if (_bertRagConfig.PersistVectors)
-        {
-            // In-memory store for caching within session (not persistent across runs)
-            _vectorStore = new InMemoryVectorStore(verbose);
-        }
+        // Create vector store based on configured backend
+        _vectorStore = CreateVectorStore(_bertRagConfig, qdrantConfig, qdrantHost, verbose);
     }
 
     /// <summary>
@@ -134,6 +126,63 @@ public class DocumentSummarizer
     }
 
     /// <summary>
+    ///     Create vector store based on configured backend with fallback support
+    /// </summary>
+    private static IVectorStore? CreateVectorStore(
+        BertRagConfig bertRagConfig, 
+        QdrantConfig? qdrantConfig, 
+        string qdrantHost, 
+        bool verbose)
+    {
+        switch (bertRagConfig.VectorStore)
+        {
+            case VectorStoreBackend.DuckDB:
+                try
+                {
+                    return new DuckDbVectorStore(
+                        GetDuckDbPath(),
+                        vectorDimension: 384,
+                        verbose: verbose);
+                }
+                catch (Exception ex)
+                {
+                    // DuckDB native library may fail to load on some systems
+                    // Fall back to in-memory store
+                    if (verbose)
+                    {
+                        Console.WriteLine($"[VectorStore] DuckDB initialization failed: {ex.Message}");
+                        Console.WriteLine("[VectorStore] Falling back to in-memory vector store");
+                    }
+                    return bertRagConfig.PersistVectors ? new InMemoryVectorStore(verbose) : null;
+                }
+                
+            case VectorStoreBackend.Qdrant:
+                return new QdrantVectorStore(
+                    qdrantConfig ?? new QdrantConfig { Host = qdrantHost },
+                    verbose,
+                    deleteOnDispose: !bertRagConfig.PersistVectors);
+                
+            case VectorStoreBackend.InMemory when bertRagConfig.PersistVectors:
+                return new InMemoryVectorStore(verbose);
+                
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    ///     Get the path for the DuckDB database file
+    /// </summary>
+    private static string GetDuckDbPath()
+    {
+        var docsummarizerDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), 
+            ".docsummarizer");
+        Directory.CreateDirectory(docsummarizerDir);
+        return Path.Combine(docsummarizerDir, "vectors.duckdb");
+    }
+
+    /// <summary>
     ///     Get or create temp directory for intermediate files
     /// </summary>
     private string GetTempDir()
@@ -142,7 +191,7 @@ public class DocumentSummarizer
         {
             _tempDir = Path.Combine(Path.GetTempPath(), $"docsummarizer_{Guid.NewGuid():N}");
             Directory.CreateDirectory(_tempDir);
-            if (_verbose) AnsiConsole.MarkupLine($"[dim][Temp] Using temp directory: {_tempDir}[/]");
+            if (_verbose) AnsiConsole.MarkupLine($"[dim][Temp] Using temp directory: {Markup.Escape(_tempDir)}[/]");
         }
 
         return _tempDir;
@@ -318,6 +367,7 @@ public class DocumentSummarizer
             string? tempMarkdownPath = null;
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
             var isDirectRead = extension is ".md" or ".txt" or ".text";
+            var isArchive = extension is ".zip";
             var fromCache = cachedChunks != null;
 
             if (fromCache)
@@ -330,7 +380,36 @@ public class DocumentSummarizer
                 // Check if it's a direct-read format (markdown or plain text)
                 string markdown;
 
-                if (isDirectRead)
+                // Handle ZIP archives (e.g., Gutenberg downloads)
+                if (isArchive)
+                {
+                    Console.WriteLine("Extracting text from ZIP archive...");
+                    Console.Out.Flush();
+                    
+                    var archiveInfo = ArchiveHandler.InspectArchive(filePath);
+                    if (archiveInfo == null || !archiveInfo.IsValid)
+                    {
+                        throw new InvalidOperationException($"Cannot process archive: {archiveInfo?.Error ?? "Invalid archive"}");
+                    }
+                    
+                    if (_verbose)
+                    {
+                        var gutenbergTag = archiveInfo.IsGutenberg ? " (Gutenberg)" : "";
+                        Console.WriteLine($"[Archive] {archiveInfo.MainFileName} ({archiveInfo.MainFileSize / 1024:N0} KB){gutenbergTag}");
+                    }
+                    
+                    markdown = await ArchiveHandler.ExtractTextAsync(filePath);
+                    
+                    if (_verbose)
+                    {
+                        Console.WriteLine($"[Archive] Extracted {markdown.Length / 1024:N0} KB of text");
+                    }
+                    
+                    // Filter front matter
+                    markdown = await FilterFrontMatterAsync(markdown);
+                    markdownForBert = markdown;
+                }
+                else if (isDirectRead)
                 {
                     var formatName = extension == ".md" ? "markdown" : "text";
                     Console.WriteLine($"Reading {formatName} file...");
@@ -456,7 +535,7 @@ public class DocumentSummarizer
             if (mode == SummarizationMode.Auto)
             {
                 var llmAvailable = await IsLlmAvailableAsync();
-                effectiveMode = await AutoSelectModeAsync(chunks, focus, llmAvailable);
+                effectiveMode = await AutoSelectModeAsync(chunks, markdownForBert, focus, llmAvailable);
                 if (_verbose) Console.WriteLine($"[Auto] Selected mode: {effectiveMode}");
             }
 
@@ -468,6 +547,7 @@ public class DocumentSummarizer
                 SummarizationMode.Bert => await SummarizeBertAsync(markdownForBert!, chunks),
                 SummarizationMode.BertHybrid => await SummarizeBertHybridAsync(markdownForBert!, chunks, docId),
                 SummarizationMode.BertRag => await SummarizeBertRagAsync(markdownForBert!, docId, focus),
+                SummarizationMode.Hierarchical => await SummarizeHierarchicalAsync(markdownForBert!, docId, focus),
                 SummarizationMode.Auto => throw new InvalidOperationException("Auto mode should have been resolved"),
                 _ => throw new ArgumentException($"Unknown mode: {effectiveMode}")
             };
@@ -703,6 +783,95 @@ public class DocumentSummarizer
     }
 
     /// <summary>
+    /// Hierarchical collection summarization for anthologies and complete works.
+    /// 
+    /// Strategy (Map-Reduce with sampling):
+    /// 1. DETECT: Identify collection structure (Shakespeare plays, story anthologies, etc.)
+    /// 2. PARTITION: Split into individual works using H1 boundaries
+    /// 3. SAMPLE: For large collections, sample representative works from each category
+    /// 4. MAP: Summarize each work independently with progress indicator
+    /// 5. REDUCE: Synthesize work summaries into collection overview
+    /// </summary>
+    private async Task<DocumentSummary> SummarizeHierarchicalAsync(string markdown, string docId, string? focusQuery)
+    {
+        _progress.WriteDivider("Hierarchical Collection Summarization");
+        if (_verbose)
+        {
+            Console.WriteLine("[Hierarchical] Analyzing collection structure...");
+        }
+        
+        // Detect collection structure
+        var collectionInfo = Services.Utilities.CollectionDetector.AnalyzeMarkdown(markdown);
+        
+        if (!collectionInfo.IsCollection)
+        {
+            if (_verbose)
+            {
+                Console.WriteLine("[Hierarchical] Not a collection (detected as single document or chaptered novel)");
+                Console.WriteLine("[Hierarchical] Falling back to BertRag mode");
+            }
+            return await SummarizeBertRagAsync(markdown, docId, focusQuery);
+        }
+        
+        if (_verbose)
+        {
+            Console.WriteLine($"[Hierarchical] Collection detected: {collectionInfo.CollectionTitle ?? "Untitled"}");
+            Console.WriteLine($"[Hierarchical] Works found: {collectionInfo.Works.Count}");
+            Console.WriteLine($"[Hierarchical] Strategy: {collectionInfo.GetRecommendedStrategy()}");
+            if (collectionInfo.IsShakespeare)
+                Console.WriteLine("[Hierarchical] Shakespeare detected - using genre-aware sampling");
+        }
+        
+        // Create segment extractor for work-level summarization
+        using var extractor = new SegmentExtractor(_onnxConfig, new ExtractionConfig
+        {
+            MmrLambda = _bertConfig.Lambda,
+            ExtractionRatio = _bertConfig.ExtractionRatio,
+            MinSegments = _bertConfig.MinSentences,
+            MaxSegments = _bertConfig.MaxSentences * 2
+        }, _verbose);
+        
+        // Create and run hierarchical summarizer
+        await using var hierarchicalSummarizer = new HierarchicalCollectionSummarizer(
+            _ollama,
+            extractor,
+            verbose: _verbose,
+            maxWorksToSummarize: 15,
+            targetWordsPerWork: 150,
+            targetWordsFinal: Template.TargetWords > 0 ? Template.TargetWords : 800);
+        
+        var collectionResult = await hierarchicalSummarizer.SummarizeAsync(
+            markdown,
+            collectionInfo,
+            focusQuery);
+        
+        // Convert CollectionSummaryResult to DocumentSummary
+        var topicSummaries = collectionResult.WorkSummaries
+            .Select(w => new TopicSummary(
+                w.Title,
+                w.Summary,
+                new List<string> { $"work-{w.Title.ToLowerInvariant().Replace(" ", "-")}" }))
+            .ToList();
+        
+        var trace = new SummarizationTrace(
+            docId,
+            collectionResult.TotalWorksInCollection,
+            collectionResult.WorksSummarized,
+            collectionResult.WorkSummaries.Select(w => w.Title).ToList(),
+            collectionResult.ProcessingTime,
+            (double)collectionResult.WorksSummarized / collectionResult.TotalWorksInCollection,
+            0);
+        
+        _progress.Success($"Hierarchical summarization complete ({collectionResult.WorksSummarized}/{collectionResult.TotalWorksInCollection} works)");
+        
+        return new DocumentSummary(
+            collectionResult.ExecutiveSummary,
+            topicSummaries,
+            new List<string>(),
+            trace);
+    }
+
+    /// <summary>
     /// Detect content type from raw markdown (for cases where we don't have chunks yet)
     /// </summary>
     private ContentType DetectContentTypeFromMarkdown(string markdown)
@@ -737,11 +906,13 @@ public class DocumentSummarizer
     /// - Small (500-1500 words, 1-2 pages): Iterative - simple and effective
     /// - Medium (1500-8000 words, 2-15 pages): BertHybrid - BERT extract + LLM polish
     /// - Large (8000+ words, 15+ pages): BertRag - production pipeline with recall-safe pre-filtering
+    /// - Collections (detected structure): Hierarchical - anthology/complete works handling
     /// 
     /// BertRag is also used when a focus query is provided (retrieval-optimized).
     /// </summary>
     private async Task<SummarizationMode> AutoSelectModeAsync(
-        List<DocumentChunk> chunks, 
+        List<DocumentChunk> chunks,
+        string? markdown,
         string? focus,
         bool llmAvailable)
     {
@@ -762,6 +933,30 @@ public class DocumentSummarizer
         {
             if (_verbose) Console.WriteLine("[Auto] No LLM available -> Bert (extractive only)");
             return SummarizationMode.Bert;
+        }
+        
+        // For large documents, check if it's a collection (anthology, complete works, etc.)
+        // Only check if we have the markdown content and the document is large enough
+        if (totalWords >= 20000 && !string.IsNullOrEmpty(markdown))
+        {
+            // Quick collection detection - use lightweight heuristics first
+            if (CollectionDetector.QuickIsCollection(markdown))
+            {
+                if (_verbose) Console.WriteLine("[Auto] Quick collection detection triggered, analyzing structure...");
+                
+                var collectionInfo = CollectionDetector.AnalyzeMarkdown(markdown);
+                if (collectionInfo.IsCollection && collectionInfo.Works.Count >= 3)
+                {
+                    if (_verbose)
+                    {
+                        Console.WriteLine($"[Auto] Collection detected: {collectionInfo.Works.Count} works");
+                        if (collectionInfo.IsShakespeare)
+                            Console.WriteLine("[Auto] Shakespeare collection detected");
+                        Console.WriteLine("[Auto] -> Hierarchical (collection summarization)");
+                    }
+                    return SummarizationMode.Hierarchical;
+                }
+            }
         }
         
         // Tiny documents (<500 words, ~1 page): Just use LLM directly

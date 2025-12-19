@@ -18,10 +18,10 @@ public static class StopwordLists
 {
     private static readonly Lazy<HashSet<string>> _stopwords = new(LoadStopwords);
     private static readonly Lazy<HashSet<string>> _honorifics = new(() => LoadEmbeddedList("honorifics.txt"));
-    private static readonly Lazy<HashSet<string>> _placeIndicators = new(() => LoadEmbeddedList("place_indicators.txt"));
-    private static readonly Lazy<HashSet<string>> _codeKeywords = new(() => LoadEmbeddedList("code_keywords.txt"));
-    private static readonly Lazy<HashSet<string>> _dayNames = new(LoadDayNames);
-    private static readonly Lazy<HashSet<string>> _monthNames = new(LoadMonthNames);
+    private static readonly Lazy<HashSet<string>> _placeIndicators = new(() => LoadEmbeddedList("place-indicators.txt"));
+    private static readonly Lazy<HashSet<string>> _codeKeywords = new(() => LoadEmbeddedList("code-keywords.txt"));
+    private static readonly Lazy<HashSet<string>> _dayNames = new(() => LoadEmbeddedList("day-names.txt"));
+    private static readonly Lazy<HashSet<string>> _monthNames = new(() => LoadEmbeddedList("month-names.txt"));
 
     /// <summary>
     /// Combined stopwords from dotnet-stop-words + custom additions
@@ -241,14 +241,14 @@ public static class StopwordLists
             "admiral", "adm", "adm.", "commander", "cmdr", "cmdr.",
             "inspector", "detective", "officer", "constable"
         },
-        "place_indicators.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        "place-indicators.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "street", "st", "st.", "road", "rd", "rd.", "avenue", "ave", "ave.",
             "boulevard", "blvd", "blvd.", "drive", "dr", "lane", "ln", "ln.",
             "court", "ct", "ct.", "place", "pl", "pl.", "way", "circle", "cir",
             "terrace", "ter", "square", "sq", "alley", "aly", "wharf", "yard"
         },
-        "code_keywords.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        "code-keywords.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             // C-style
             "class", "interface", "public", "private", "protected", "static",
@@ -262,17 +262,18 @@ public static class StopwordLists
             // Assembly
             "mov", "call", "ret", "jmp", "push", "pop", "add", "sub"
         },
+        "day-names.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+            "mon", "tue", "tues", "wed", "weds", "thu", "thur", "thurs", "fri", "sat", "sun"
+        },
+        "month-names.txt" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december",
+            "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
+        },
         _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     };
 
-    private static HashSet<string> LoadDayNames() => new(StringComparer.OrdinalIgnoreCase)
-    {
-        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
-    };
-
-    private static HashSet<string> LoadMonthNames() => new(StringComparer.OrdinalIgnoreCase)
-    {
-        "january", "february", "march", "april", "may", "june",
-        "july", "august", "september", "october", "november", "december"
-    };
 }

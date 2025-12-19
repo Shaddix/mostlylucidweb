@@ -1,0 +1,30 @@
+# Month names (excluded from entity extraction)
+# One word per line, lines starting with # are comments
+
+# Full month names
+January
+February
+March
+April
+May
+June
+July
+August
+September
+October
+November
+December
+
+# Abbreviated month names
+Jan
+Feb
+Mar
+Apr
+Jun
+Jul
+Aug
+Sep
+Sept
+Oct
+Nov
+Dec

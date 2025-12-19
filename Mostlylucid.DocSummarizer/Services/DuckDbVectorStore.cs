@@ -45,7 +45,8 @@ public sealed class DuckDbVectorStore : IVectorStore
         _dbPath = dbPath ?? ":memory:";
         _vectorDimension = vectorDimension;
         _verbose = verbose;
-        _connection = new DuckDBConnection($"Data Source={_dbPath}");
+        // Use DataSource (no space) - matches working CsvLlm pattern
+        _connection = new DuckDBConnection($"DataSource={_dbPath}");
         _connection.Open();
     }
 
@@ -502,9 +503,9 @@ public sealed class DuckDbVectorStore : IVectorStore
         
         await using var cmd = _connection.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO summary_cache (cache_key, collection, evidence_hash, summary_json)
-            VALUES ($key, $collection, $hash, $json)
-            ON CONFLICT (cache_key) DO UPDATE SET summary_json = $json, created_at = CURRENT_TIMESTAMP
+            INSERT INTO summary_cache (cache_key, collection, evidence_hash, summary_json, created_at)
+            VALUES ($key, $collection, $hash, $json, current_timestamp)
+            ON CONFLICT (cache_key) DO UPDATE SET summary_json = excluded.summary_json, created_at = excluded.created_at
             """;
         cmd.Parameters.Add(new DuckDBParameter("key", cacheKey));
         cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));

@@ -605,19 +605,16 @@ public record NameCollision(
 /// <summary>
 /// Reduce output that preserves contradictions and tracks coverage
 /// </summary>
+/// <param name="ExecutiveSummary">The executive summary text</param>
+/// <param name="Contradictions">Contradictions found (not resolved, preserved)</param>
+/// <param name="Coverage">What parts are definitely covered vs inferred</param>
+/// <param name="RetrievalQuestions">Questions that need retrieval to answer</param>
+/// <param name="OverallConfidence">Confidence in overall synthesis</param>
 public record LossAwareReduceOutput(
     string ExecutiveSummary,
-    
-    /// <summary>Contradictions found (not resolved, preserved)</summary>
     List<Contradiction> Contradictions,
-    
-    /// <summary>What parts are definitely covered vs inferred</summary>
     CoverageReport Coverage,
-    
-    /// <summary>Questions that need retrieval to answer</summary>
     List<string> RetrievalQuestions,
-    
-    /// <summary>Confidence in overall synthesis</summary>
     ConfidenceLevel OverallConfidence);
 
 /// <summary>
@@ -631,17 +628,14 @@ public record Contradiction(
 /// <summary>
 /// Coverage report showing what's covered vs inferred
 /// </summary>
+/// <param name="DirectlyCovered">Topics with direct evidence</param>
+/// <param name="Inferred">Topics inferred from context</param>
+/// <param name="NotCovered">Topics with no coverage</param>
+/// <param name="CoverageRatio">Overall coverage ratio (0-1)</param>
 public record CoverageReport(
-    /// <summary>Topics with direct evidence</summary>
     List<string> DirectlyCovered,
-    
-    /// <summary>Topics inferred from context</summary>
     List<string> Inferred,
-    
-    /// <summary>Topics with no coverage</summary>
     List<string> NotCovered,
-    
-    /// <summary>Overall coverage ratio (0-1)</summary>
     double CoverageRatio);
 
 #endregion
@@ -762,7 +756,26 @@ public enum SummarizationMode
     /// 
     /// Best for: large documents, production systems, when you need both quality and traceability.
     /// </summary>
-    BertRag
+    BertRag,
+    
+    /// <summary>
+    /// Hierarchical collection summarization for anthologies and complete works.
+    /// 
+    /// Strategy (Map-Reduce with sampling):
+    /// 1. DETECT: Identify collection structure (Shakespeare plays, story anthologies, etc.)
+    /// 2. PARTITION: Split into individual works using H1 boundaries
+    /// 3. SAMPLE: For large collections, sample representative works from each category
+    /// 4. MAP: Summarize each work independently with progress indicator
+    /// 5. REDUCE: Synthesize work summaries into collection overview
+    /// 
+    /// Properties:
+    /// - Avoids the "only saw one play" problem
+    /// - Ensures coverage across all works/genres
+    /// - Produces hierarchical output (collection + individual work summaries)
+    /// 
+    /// Best for: Shakespeare complete works, story anthologies, essay collections, multi-book series.
+    /// </summary>
+    Hierarchical
 }
 
 public static class HashHelper

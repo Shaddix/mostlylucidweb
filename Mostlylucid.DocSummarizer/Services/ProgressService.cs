@@ -157,7 +157,7 @@ public class ProgressService
         IList<T> items,
         Func<T, string> getName,
         Func<T, int, Dictionary<T, string>, Task> processItem,
-        int maxParallel = 1)
+        int maxParallel = 1) where T : notnull
     {
         var statuses = items.ToDictionary(x => x, _ => "Pending");
 

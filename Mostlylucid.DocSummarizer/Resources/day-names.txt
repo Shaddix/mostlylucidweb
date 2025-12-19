@@ -1,4 +1,7 @@
 # Day names (excluded from entity extraction)
+# One word per line, lines starting with # are comments
+
+# Full day names
 Monday
 Tuesday
 Wednesday
@@ -6,3 +9,16 @@ Thursday
 Friday
 Saturday
 Sunday
+
+# Abbreviated day names
+Mon
+Tue
+Tues
+Wed
+Weds
+Thu
+Thur
+Thurs
+Fri
+Sat
+Sun

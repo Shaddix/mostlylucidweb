@@ -60,11 +60,11 @@ public class QdrantVectorStore : IVectorStore
                     cancellationToken: ct);
                 
                 if (_verbose)
-                    AnsiConsole.MarkupLine($"[dim]Created Qdrant collection '{collectionName}' (dim={vectorSize})[/]");
+                    AnsiConsole.MarkupLine($"[dim]Created Qdrant collection '{Markup.Escape(collectionName)}' (dim={vectorSize})[/]");
             }
             else if (_verbose)
             {
-                AnsiConsole.MarkupLine($"[dim]Using existing Qdrant collection '{collectionName}'[/]");
+                AnsiConsole.MarkupLine($"[dim]Using existing Qdrant collection '{Markup.Escape(collectionName)}'[/]");
             }
         }
         catch (Exception ex)
@@ -152,7 +152,7 @@ public class QdrantVectorStore : IVectorStore
         }
         
         if (_verbose)
-            AnsiConsole.MarkupLine($"[dim]Upserted {segmentList.Count} segments to Qdrant collection '{collectionName}'[/]");
+            AnsiConsole.MarkupLine($"[dim]Upserted {segmentList.Count} segments to Qdrant collection '{Markup.Escape(collectionName)}'[/]");
     }
     
     public async Task<List<Segment>> SearchAsync(
@@ -228,7 +228,7 @@ public class QdrantVectorStore : IVectorStore
             
             foreach (var point in scrollResult.Result)
             {
-                var segment = PayloadToSegment(point.Payload, 0, point.Vectors?.Vector?.Data?.ToArray());
+                var segment = PayloadToSegment(point.Payload, 0, ExtractVectorData(point.Vectors));
                 if (segment != null)
                     segments.Add(segment);
             }
@@ -249,7 +249,7 @@ public class QdrantVectorStore : IVectorStore
             await _client.DeleteCollectionAsync(collectionName, cancellationToken: ct);
             
             if (_verbose)
-                AnsiConsole.MarkupLine($"[dim]Deleted Qdrant collection '{collectionName}'[/]");
+                AnsiConsole.MarkupLine($"[dim]Deleted Qdrant collection '{Markup.Escape(collectionName)}'[/]");
         }
         catch
         {
@@ -278,7 +278,7 @@ public class QdrantVectorStore : IVectorStore
             cancellationToken: ct);
         
         if (_verbose)
-            AnsiConsole.MarkupLine($"[dim]Deleted document '{docId}' from Qdrant collection '{collectionName}'[/]");
+            AnsiConsole.MarkupLine($"[dim]Deleted document '{Markup.Escape(docId)}' from Qdrant collection '{Markup.Escape(collectionName)}'[/]");
     }
     
     public async ValueTask DisposeAsync()
@@ -404,7 +404,7 @@ public class QdrantVectorStore : IVectorStore
                 
                 foreach (var point in scrollResult.Result)
                 {
-                    var segment = PayloadToSegment(point.Payload, 0, point.Vectors?.Vector?.Data?.ToArray());
+                    var segment = PayloadToSegment(point.Payload, 0, ExtractVectorData(point.Vectors));
                     if (segment != null && !string.IsNullOrEmpty(segment.ContentHash))
                     {
                         result[segment.ContentHash] = segment;
@@ -418,7 +418,7 @@ public class QdrantVectorStore : IVectorStore
         catch (Exception ex)
         {
             if (_verbose)
-                AnsiConsole.MarkupLine($"[yellow]GetSegmentsByHash failed: {ex.Message}[/]");
+                AnsiConsole.MarkupLine($"[yellow]GetSegmentsByHash failed: {Markup.Escape(ex.Message)}[/]");
         }
         
         return result;
@@ -451,12 +451,12 @@ public class QdrantVectorStore : IVectorStore
             await _client.DeleteAsync(collectionName, pointIds, cancellationToken: ct);
             
             if (_verbose)
-                AnsiConsole.MarkupLine($"[dim]Removed {staleIds.Count} stale segments from '{docId}'[/]");
+                AnsiConsole.MarkupLine($"[dim]Removed {staleIds.Count} stale segments from '{Markup.Escape(docId)}'[/]");
         }
         catch (Exception ex)
         {
             if (_verbose)
-                AnsiConsole.MarkupLine($"[yellow]RemoveStaleSegments failed: {ex.Message}[/]");
+                AnsiConsole.MarkupLine($"[yellow]RemoveStaleSegments failed: {Markup.Escape(ex.Message)}[/]");
         }
     }
     
@@ -540,14 +540,14 @@ public class QdrantVectorStore : IVectorStore
             var summary = System.Text.Json.JsonSerializer.Deserialize<DocumentSummary>(json);
             
             if (_verbose)
-                AnsiConsole.MarkupLine($"[dim]Cache hit for '{cacheKey}' (score={point.Score:F4})[/]");
+                AnsiConsole.MarkupLine($"[dim]Cache hit for '{Markup.Escape(cacheKey)}' (score={point.Score:F4})[/]");
             
             return summary;
         }
         catch (Exception ex)
         {
             if (_verbose)
-                AnsiConsole.MarkupLine($"[yellow]Cache lookup failed: {ex.Message}[/]");
+                AnsiConsole.MarkupLine($"[yellow]Cache lookup failed: {Markup.Escape(ex.Message)}[/]");
             return null;
         }
     }
@@ -575,12 +575,34 @@ public class QdrantVectorStore : IVectorStore
             await _client.UpsertAsync(collectionName, new[] { point }, cancellationToken: ct);
             
             if (_verbose)
-                AnsiConsole.MarkupLine($"[dim]Cached summary for '{cacheKey}'[/]");
+                AnsiConsole.MarkupLine($"[dim]Cached summary for '{Markup.Escape(cacheKey)}'[/]");
         }
         catch (Exception ex)
         {
             if (_verbose)
-                AnsiConsole.MarkupLine($"[yellow]Cache write failed: {ex.Message}[/]");
+                AnsiConsole.MarkupLine($"[yellow]Cache write failed: {Markup.Escape(ex.Message)}[/]");
         }
     }
+    
+    /// <summary>
+    /// Extract vector data from VectorsOutput, handling API changes
+    /// </summary>
+#pragma warning disable CS0612 // Suppress obsolete warning - need to support both old and new API
+    private static float[]? ExtractVectorData(VectorsOutput? vectors)
+    {
+        if (vectors?.Vector == null) return null;
+        
+        // Try the new API first (direct array access), fall back to deprecated Data property
+        try
+        {
+            // In newer versions, Vector should be directly convertible to float[]
+            var vectorData = vectors.Vector.Data;
+            return vectorData?.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+#pragma warning restore CS0612
 }

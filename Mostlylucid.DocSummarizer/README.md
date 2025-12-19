@@ -8,11 +8,55 @@ Every claim is traceable. Every fact cites its source. Runs entirely on your mac
 
 ## Quick Start
 
+### What You Need
+
+```mermaid
+flowchart LR
+    subgraph inputs["📄 Input Formats"]
+        MD["Markdown/TXT/HTML"]
+        RICH["PDF/DOCX/PPTX/XLSX"]
+        MEDIA["Images/AsciiDoc"]
+    end
+    
+    subgraph deps["🔧 Dependencies"]
+        ONNX["ONNX Models<br/><i>auto-downloads</i>"]
+        Ollama["Ollama + LLM"]
+        Docling["Docling<br/><i>Docker</i>"]
+    end
+    
+    subgraph modes["⚡ Modes"]
+        Bert["<b>Bert</b><br/>~3s, extractive"]
+        BertRag["<b>BertRag</b><br/>~10s, synthesized"]
+    end
+    
+    MD --> ONNX --> Bert
+    MD --> ONNX & Ollama --> BertRag
+    RICH --> Docling --> ONNX --> Bert
+    RICH --> Docling --> ONNX & Ollama --> BertRag
+    MEDIA --> Docling --> ONNX --> Bert
+    
+    style Bert stroke:#90EE90,stroke-width:2px
+    style BertRag stroke:#87CEEB,stroke-width:2px
+    style ONNX stroke:#DDA0DD,stroke-width:2px
+    style Ollama stroke:#FFB347,stroke-width:2px
+    style Docling stroke:#F0E68C,stroke-width:2px
+```
+
+| Format | No Dependencies | With Docling |
+|--------|:---------------:|:------------:|
+| Markdown, TXT, HTML | ✅ | ✅ |
+| PDF, DOCX | ❌ | ✅ |
+| PPTX, XLSX | ❌ | ✅ |
+| Images (PNG, JPG, TIFF) | ❌ | ✅ (OCR) |
+| AsciiDoc, VTT | ❌ | ✅ |
+
+> **Note**: For tabular data analysis (CSV, Excel with data), use [CsvLlm](../Mostlylucid.CsvLlm/) which provides SQL-based statistical summarization via DuckDB.
+
 ### Fastest: Pure Extractive (No LLM, ~1-3 seconds)
 
 ```bash
 # Zero setup - just run! ONNX models auto-download on first use.
-docsummarizer -f document.pdf -m Bert
+docsummarizer -f document.md -m Bert
 ```
 
 **Bert mode** uses local ONNX embeddings only. No LLM, no network (after first model download). This is mechanical extraction — it finds and ranks the most important sentences using semantic similarity, not AI generation.
@@ -24,10 +68,10 @@ docsummarizer -f document.pdf -m Bert
 ollama pull llama3.2:3b && ollama serve
 
 # 2. Run with LLM-powered synthesis
-docsummarizer -f document.pdf
+docsummarizer -f document.md
 ```
 
-ONNX embeddings auto-download. No Docker for Markdown files.
+ONNX embeddings auto-download. For PDF/DOCX files, you'll also need Docling (see Prerequisites).
 
 ---
 
@@ -382,6 +426,96 @@ docsummarizer -f doc.pdf -t detailed --words 300
 | `bookreport` | ~800 | Book report style |
 | `meeting` | ~200 | Meeting notes with actions |
 | `strict` | ~60 | Ultra-concise, no fluff |
+
+### Custom Templates
+
+You can create custom templates by extending the configuration file. Templates control how summaries are generated, including prompts, word counts, and output style.
+
+#### Template Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Name` | string | Template identifier |
+| `Description` | string | Human-readable description |
+| `TargetWords` | int | Target word count (0 = no limit) |
+| `MaxBullets` | int | Maximum bullet points for bullet-style output |
+| `Paragraphs` | int | Number of paragraphs (0 = auto) |
+| `OutputStyle` | enum | `Prose`, `Bullets`, `Mixed`, or `CitationsOnly` |
+| `Tone` | enum | `Professional`, `Casual`, `Academic`, or `Technical` |
+| `Audience` | enum | `General`, `Executive`, or `Technical` |
+| `IncludeTopics` | bool | Include topic breakdowns |
+| `IncludeCitations` | bool | Include source citations [chunk-N] |
+| `IncludeQuestions` | bool | Include open questions |
+| `IncludeCoverageMetadata` | bool | Include coverage disclaimer/footer |
+| `ExecutivePrompt` | string | Custom prompt for executive summary |
+| `TopicPrompt` | string | Custom prompt for topic synthesis |
+| `ChunkPrompt` | string | Custom prompt for chunk summarization |
+
+#### Custom Prompts with Placeholders
+
+Custom prompts support these placeholders:
+
+| Placeholder | Used In | Description |
+|-------------|---------|-------------|
+| `{topics}` | ExecutivePrompt | The topic summaries extracted from chunks |
+| `{focus}` | ExecutivePrompt, TopicPrompt | The focus query (if provided) |
+| `{topic}` | TopicPrompt | The current topic name |
+| `{context}` | TopicPrompt | Source content for the topic |
+| `{heading}` | ChunkPrompt | The section heading |
+| `{content}` | ChunkPrompt | The chunk content |
+
+#### Example: Custom Template in Config
+
+```json
+{
+  "customTemplates": [
+    {
+      "name": "legal",
+      "description": "Legal document summary with obligations and risks",
+      "targetWords": 400,
+      "outputStyle": "Mixed",
+      "tone": "Professional",
+      "audience": "Executive",
+      "includeTopics": true,
+      "includeCitations": true,
+      "executivePrompt": "{topics}\n\nSummarize this legal document:\n\n**Key Obligations**:\n- List binding obligations\n\n**Risks & Liabilities**:\n- List potential risks\n\n**Important Dates**:\n- List deadlines and milestones\n\nCite [chunk-N] for each point."
+    }
+  ]
+}
+```
+
+#### Programmatic Custom Templates
+
+```csharp
+var myTemplate = new SummaryTemplate
+{
+    Name = "security-review",
+    Description = "Security-focused summary for code review",
+    TargetWords = 300,
+    OutputStyle = OutputStyle.Bullets,
+    Tone = SummaryTone.Technical,
+    Audience = AudienceLevel.Technical,
+    IncludeCitations = true,
+    ExecutivePrompt = """
+        {topics}
+        
+        Security Analysis:
+        
+        **Vulnerabilities**:
+        - List any security issues found
+        
+        **Authentication/Authorization**:
+        - Describe auth mechanisms
+        
+        **Data Handling**:
+        - How is sensitive data processed?
+        
+        Cite [chunk-N] for each finding.
+        """
+};
+
+summarizer.SetTemplate(myTemplate);
+```
 
 ### Benchmarking
 
