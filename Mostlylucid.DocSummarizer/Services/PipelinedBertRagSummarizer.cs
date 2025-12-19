@@ -94,8 +94,17 @@ public class PipelinedBertRagSummarizer : IDisposable
     {
         _chunksReceived++;
 
-        // Sanitize chunk text to strip gibberish encodings before parsing
+        // Sanitize chunk text to strip control chars and collapse whitespace.
         var cleanMarkdown = SanitizeText(markdown);
+        // If sanitization blanked it out, fall back to original text.
+        if (string.IsNullOrWhiteSpace(cleanMarkdown) && !string.IsNullOrWhiteSpace(markdown))
+            cleanMarkdown = markdown;
+        if (string.IsNullOrWhiteSpace(cleanMarkdown))
+        {
+            if (_verbose && !ProgressService.IsInInteractiveContext)
+                AnsiConsole.MarkupLine($"[yellow]Chunk {chunkIndex}: empty text returned from converter, skipping[/]");
+            return;
+        }
         
         // Parse this chunk into segments
         var segments = ParseChunkToSegments(docId, cleanMarkdown, chunkIndex);
@@ -103,6 +112,19 @@ public class PipelinedBertRagSummarizer : IDisposable
         if (_verbose && segments.Count > 0)
             if (!ProgressService.IsInInteractiveContext)
                 AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: parsed {segments.Count} segments[/]");
+        
+        if (segments.Count == 0)
+        {
+            if (_verbose && !ProgressService.IsInInteractiveContext)
+                AnsiConsole.MarkupLine($"[yellow]Chunk {chunkIndex}: no segments parsed after sanitization, retrying with original text[/]");
+            segments = ParseChunkToSegments(docId, markdown, chunkIndex);
+            if (segments.Count == 0)
+            {
+                if (_verbose && !ProgressService.IsInInteractiveContext)
+                    AnsiConsole.MarkupLine($"[yellow]Chunk {chunkIndex}: still no segments parsed, skipping chunk[/]");
+                return;
+            }
+        }
         
         // Guaranteed coverage: headings + first/last 2 sentences per chunk
         var guaranteed = new HashSet<Segment>();
@@ -1057,35 +1079,23 @@ public class PipelinedBertRagSummarizer : IDisposable
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
 
-        // Normalize and strip combining marks
-        var normalized = input.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(normalized.Length);
-
-        foreach (var c in normalized)
+        // Keep it lenient: strip control chars, collapse whitespace; keep letters/symbols.
+        var sb = new StringBuilder(input.Length);
+        foreach (var c in input)
         {
-            var cat = CharUnicodeInfo.GetUnicodeCategory(c);
-            if (cat == UnicodeCategory.NonSpacingMark)
-                continue;
-
-            // Replace control/non-printable with space
             if (char.IsControl(c) && !char.IsWhiteSpace(c))
             {
                 sb.Append(' ');
                 continue;
             }
-
-            // Replace obviously garbled high-code-point symbols (non letter/digit) with space
-            if (c > 0xFF && !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c))
-            {
-                sb.Append(' ');
-                continue;
-            }
-
             sb.Append(c);
         }
 
         var cleaned = MultiSpace.Replace(sb.ToString(), " ").Trim();
+        // If sanitization blanked it but original had letters, return original.
+        if (string.IsNullOrWhiteSpace(cleaned) && input.Any(char.IsLetterOrDigit))
+            return input;
         return cleaned;
-}
+    }
 
 }

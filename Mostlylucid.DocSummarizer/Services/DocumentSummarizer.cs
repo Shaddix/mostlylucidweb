@@ -635,6 +635,15 @@ public class DocumentSummarizer
             _docling.OnChunkComplete = null;
         }
 
+        // If nothing was parsed/embedded, fall back to single-pass conversion
+        if (bertRag.SegmentCount == 0)
+        {
+            _progress.Warning("No segments produced from streaming conversion; falling back to full convert");
+            var fullMarkdown = await _docling.ConvertAsync(filePath, CancellationToken.None);
+            var fallback = await SummarizeBertRagAsync(fullMarkdown, docId, focusQuery);
+            return (fallback, docId);
+        }
+
         var result = await bertRag.FinalizeAsync(docId, focusQuery);
         _progress.Success("BERT→RAG pipelined pipeline complete");
         return (result, docId);
