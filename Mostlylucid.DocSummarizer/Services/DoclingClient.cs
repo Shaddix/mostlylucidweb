@@ -93,15 +93,33 @@ public class DoclingClient : IDisposable
 
     private async Task<string> ConvertStandardAsync(string filePath, CancellationToken cancellationToken)
     {
+        return await ConvertStandardAsyncCore(filePath, _config.PdfBackend, cancellationToken, allowFallback: true);
+    }
+
+    private async Task<string> ConvertStandardAsyncCore(string filePath, string? backend, CancellationToken cancellationToken, bool allowFallback)
+    {
         Report(0, 1, 1, 1, "Starting conversion...");
         
-        var taskId = await StartConversionAsync(filePath, null, null, cancellationToken);
+        var taskId = await StartConversionAsync(filePath, null, null, backend, cancellationToken);
         var result = await WaitForCompletionAsync(taskId, cancellationToken);
 
         Report(1, 1, 1, 1, "Conversion complete");
 
-        if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && IsGarbageText(result))
+        if (allowFallback && filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && IsGarbageText(result))
         {
+            // Try OCR/docling backend if enabled
+            if (_config.EnableOcrFallback && !string.IsNullOrWhiteSpace(_config.OcrPdfBackend) && !string.Equals(_config.OcrPdfBackend, backend, StringComparison.OrdinalIgnoreCase))
+            {
+                Report(1, 1, 1, 1, "Garbled text detected - retrying with OCR backend...");
+                try
+                {
+                    var ocrResult = await ConvertStandardAsyncCore(filePath, _config.OcrPdfBackend, cancellationToken, allowFallback: false);
+                    if (!string.IsNullOrWhiteSpace(ocrResult) && !IsGarbageText(ocrResult))
+                        return ocrResult;
+                }
+                catch { }
+            }
+
             Report(1, 1, 1, 1, "Trying PdfPig fallback...");
             try
             {
@@ -171,7 +189,7 @@ public class DoclingClient : IDisposable
             {
                 try
                 {
-                    chunk.TaskId = await StartConversionAsync(filePath, chunk.StartPage, chunk.EndPage, cancellationToken);
+                    chunk.TaskId = await StartConversionAsync(filePath, chunk.StartPage, chunk.EndPage, _config.PdfBackend, cancellationToken);
                 }
                 catch
                 {
@@ -323,7 +341,7 @@ public class DoclingClient : IDisposable
                 {
                     try
                     {
-                        chunk.TaskId = await StartConversionAsync(chunk.TempPath, null, null, cancellationToken);
+                        chunk.TaskId = await StartConversionAsync(chunk.TempPath, null, null, null, cancellationToken);
                     }
                     catch
                     {
@@ -591,15 +609,16 @@ public class DoclingClient : IDisposable
         catch { return null; }
     }
 
-    private async Task<string> StartConversionAsync(string filePath, int? startPage, int? endPage, CancellationToken cancellationToken)
+    private async Task<string> StartConversionAsync(string filePath, int? startPage, int? endPage, string? backend, CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         await using var stream = File.OpenRead(filePath);
         var streamContent = new StreamContent(stream);
         content.Add(streamContent, "files", Path.GetFileName(filePath));
 
-        if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(_config.PdfBackend))
-            content.Add(new StringContent(_config.PdfBackend), "pdf_backend");
+        var chosenBackend = backend ?? _config.PdfBackend;
+        if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(chosenBackend))
+            content.Add(new StringContent(chosenBackend), "pdf_backend");
 
         if (startPage.HasValue && endPage.HasValue)
         {

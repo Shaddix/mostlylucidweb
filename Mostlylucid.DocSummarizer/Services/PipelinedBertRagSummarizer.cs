@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
@@ -59,6 +62,8 @@ public class PipelinedBertRagSummarizer : IDisposable
     private int _embeddedBudgetUsed = 0;
     private bool _tailReleased = false;
     
+    private static readonly Regex MultiSpace = new("\\s+", RegexOptions.Compiled);
+    
     public SummaryTemplate Template { get; private set; }
     public int ChunksReceived => _chunksReceived;
     public int SegmentCount => _accumulatedSegments.Count;
@@ -88,9 +93,12 @@ public class PipelinedBertRagSummarizer : IDisposable
     public void OnChunkReady(string docId, int chunkIndex, string markdown)
     {
         _chunksReceived++;
+
+        // Sanitize chunk text to strip gibberish encodings before parsing
+        var cleanMarkdown = SanitizeText(markdown);
         
         // Parse this chunk into segments
-        var segments = ParseChunkToSegments(docId, markdown, chunkIndex);
+        var segments = ParseChunkToSegments(docId, cleanMarkdown, chunkIndex);
         
         if (_verbose && segments.Count > 0)
             if (!ProgressService.IsInInteractiveContext)
@@ -1039,9 +1047,45 @@ public class PipelinedBertRagSummarizer : IDisposable
     public void Dispose()
     {
         _embeddingCts?.Cancel();
-        _embeddingCts?.Dispose();
+        _backgroundEmbeddingTask?.Dispose();
+        _embeddingLock.Dispose();
         _embeddingService.Dispose();
         _queryEmbedder.Dispose();
-        _embeddingLock.Dispose();
     }
+
+    private static string SanitizeText(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+        // Normalize and strip combining marks
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+
+        foreach (var c in normalized)
+        {
+            var cat = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (cat == UnicodeCategory.NonSpacingMark)
+                continue;
+
+            // Replace control/non-printable with space
+            if (char.IsControl(c) && !char.IsWhiteSpace(c))
+            {
+                sb.Append(' ');
+                continue;
+            }
+
+            // Replace obviously garbled high-code-point symbols (non letter/digit) with space
+            if (c > 0xFF && !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c))
+            {
+                sb.Append(' ');
+                continue;
+            }
+
+            sb.Append(c);
+        }
+
+        var cleaned = MultiSpace.Replace(sb.ToString(), " ").Trim();
+        return cleaned;
+}
+
 }

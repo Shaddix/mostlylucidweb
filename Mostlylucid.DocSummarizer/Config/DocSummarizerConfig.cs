@@ -225,6 +225,17 @@ public class DoclingConfig
     public string PdfBackend { get; set; } = "pypdfium2";
     
     /// <summary>
+    ///     Fallback PDF backend for OCR when text layer is garbled.
+    ///     Set to "docling" to force OCR-based extraction.
+    /// </summary>
+    public string OcrPdfBackend { get; set; } = "docling";
+    
+    /// <summary>
+    ///     Enable OCR fallback when extracted text looks corrupt/garbled.
+    /// </summary>
+    public bool EnableOcrFallback { get; set; } = true;
+    
+    /// <summary>
     ///     Minimum pages before enabling split processing.
     ///     Documents smaller than this are processed as a single chunk.
     ///     Default: 60 pages.
