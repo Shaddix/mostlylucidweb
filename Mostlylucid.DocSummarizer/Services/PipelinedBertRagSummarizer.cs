@@ -45,17 +45,17 @@ public class PipelinedBertRagSummarizer : IDisposable
     private List<string> _lastChunkSignatures = new();
     private readonly Random _rand = new(1234); // stable but non-cryptographic
     
-    // Embedding budget controls
-    private readonly int _globalEmbedBudget = 800;
+    // Embedding budget controls (tuned for higher coverage on small-chunk docs)
+    private readonly int _globalEmbedBudget = 1200;
     private readonly int _bootstrapChunks = 4;
-    private readonly double _bootstrapRate = 0.20;
-    private readonly int _bootstrapCap = 100;
-    private readonly int _chunkCap = 20;
+    private readonly double _bootstrapRate = 0.25;
+    private readonly int _bootstrapCap = 180;
+    private readonly int _chunkCap = 100;
     private readonly int _trickleEveryChunks = 3;
     private readonly int _trickleCount = 5;
-    private readonly int _expectedChunks = 40;
-    private readonly double _tailStartFraction = 0.75;
-    private readonly int _tailReserve = 100;
+    private readonly int _expectedChunks = 12;
+    private readonly double _tailStartFraction = 0.6;
+    private readonly int _tailReserve = 0;
     private int _embeddedBudgetUsed = 0;
     private bool _tailReleased = false;
     
@@ -172,7 +172,7 @@ public class PipelinedBertRagSummarizer : IDisposable
         {
             var pct = segments.Count == 0 ? 0 : (double)toEmbed.Count / segments.Count;
             if (!ProgressService.IsInInteractiveContext)
-                AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: embedding {toEmbed.Count}/{segments.Count} ({pct:P0}), budget used={_embeddedBudgetUsed}/{_globalEmbedBudget}[/]");
+                AnsiConsole.MarkupLine($"[dim]Chunk {chunkIndex}: queued {toEmbed.Count}/{segments.Count} ({pct:P0}) for embedding, pending={_pendingEmbedding.Count}, embedded={_embeddedBudgetUsed}/{_globalEmbedBudget}[/]");
         }
         
         // Detect content type from first chunk

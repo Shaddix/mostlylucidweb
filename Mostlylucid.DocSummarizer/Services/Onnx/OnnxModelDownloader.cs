@@ -78,34 +78,9 @@ public class OnnxModelDownloader
             await using (var contentStream = await response.Content.ReadAsStreamAsync(ct))
             await using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
             {
-                // Skip Spectre progress if in batch mode or not verbose
-                if (_verbose && totalBytes > 1_000_000 && !ProgressService.IsInInteractiveContext)
-                {
-                    await AnsiConsole.Progress()
-                        .AutoClear(true)
-                        .Columns(
-                            new TaskDescriptionColumn(),
-                            new ProgressBarColumn(),
-                            new PercentageColumn(),
-                            new TransferSpeedColumn(),
-                            new RemainingTimeColumn())
-                        .StartAsync(async ctx =>
-                        {
-                            var task = ctx.AddTask(description, maxValue: totalBytes);
-                            var buffer = new byte[81920];
-                            int bytesRead;
-                            
-                            while ((bytesRead = await contentStream.ReadAsync(buffer, ct)) > 0)
-                            {
-                                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-                                task.Increment(bytesRead);
-                            }
-                        });
-                }
-                else
-                {
-                    await contentStream.CopyToAsync(fileStream, ct);
-                }
+                // Avoid Spectre progress here to prevent concurrent interactive displays.
+                // Simply stream the download to disk; verbose info is handled above.
+                await contentStream.CopyToAsync(fileStream, ct);
             }
             
             // Move after streams are closed
