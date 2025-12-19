@@ -108,13 +108,15 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore ${{ env.PROJECT_PATH }}
 
-    - name: Build and Publish (self-contained)
+    - name: Build and Publish (self-contained single file)
       run: |
         dotnet publish ${{ env.PROJECT_PATH }} \
           -c Release \
           -r ${{ matrix.rid }} \
           --self-contained \
           -p:Version=${{ steps.get_version.outputs.VERSION }} \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
           -o ./publish/${{ matrix.rid }}
       shell: bash
 
@@ -134,9 +136,9 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         cd ./publish/${{ matrix.rid }}
-        # Remove debug symbols to reduce size
-        rm -f *.pdb 2>/dev/null || true
-        7z a -tzip ../../${{ matrix.artifact_name }}.zip *
+        # Include exe, native dlls (duckdb, onnx), config, and readme
+        # Exclude .lib, .pdb, and managed dlls (bundled in single file)
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} duckdb.dll onnxruntime*.dll appsettings.json README.md
       shell: bash
 
     - name: Create archive (Unix)
@@ -144,19 +146,31 @@ jobs:
       run: |
         cd ./publish/${{ matrix.rid }}
         chmod +x ${{ matrix.executable }}
-        # Remove debug symbols to reduce size
-        rm -f *.pdb 2>/dev/null || true
-        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz *
+        # Include executable, native libs (.so/.dylib), config, and readme
+        if ls *.so 1> /dev/null 2>&1; then
+          tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} *.so appsettings.json README.md
+        elif ls *.dylib 1> /dev/null 2>&1; then
+          tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} *.dylib appsettings.json README.md
+        else
+          tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+        fi
       shell: bash
 
-    - name: Upload artifact
+    - name: Upload artifact (Windows)
+      if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
-        path: |
-          ${{ matrix.artifact_name }}.zip
-          ${{ matrix.artifact_name }}.tar.gz
-        if-no-files-found: ignore
+        path: ${{ matrix.artifact_name }}.zip
+        if-no-files-found: error
+
+    - name: Upload artifact (Unix)
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: ${{ matrix.artifact_name }}.tar.gz
+        if-no-files-found: error
 
   release:
     needs: build
@@ -187,9 +201,12 @@ jobs:
     - name: List artifacts
       run: |
         echo "=== Artifacts directory structure ==="
-        find ./artifacts -type f -name "*.zip" -o -name "*.tar.gz" | head -20
+        find ./artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" \)
         echo "=== All files ==="
         ls -laR ./artifacts/
+        echo "=== Files to upload ==="
+        find ./artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" \) | wc -l
+        echo "archive files found"
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
