@@ -272,3 +272,13 @@ Mostlylucid.AltText.Demo/models/
 mlmodels/
 /Mostlylucid.DocSummarizer/sampledata/
 /Mostlylucid.DataSummarizer/sampledata/
+/Mostlylucid/Mostlylucid/SampleData/sales.csv
+/.datasummarizer.vss.duckdb
+/mostlylucid-mermaid/nul
+/nul
+/sales.profile.json
+/sales-registry.duckdb
+/sales-synthetic.csv
+/synth-output.csv
+/test-registry.duckdb
+/test-synthetic.csv
