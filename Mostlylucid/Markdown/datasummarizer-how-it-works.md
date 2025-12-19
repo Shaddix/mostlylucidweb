@@ -184,9 +184,23 @@ datasummarizer -f sales.csv --model qwen2.5-coder:7b \
 # Specific question (generates SQL, runs locally, summarizes)
 datasummarizer -f sales.csv --model qwen2.5-coder:7b \
   --query "top selling product categories"
+
+# Interactive mode (profiles once, then reuses for all questions)
+datasummarizer -f sales.csv --model qwen2.5-coder:7b --interactive
 ```
 
-**Important:** SQL-backed answers share the query result (up to 20 rows) with the local LLM for summarization. If you want to avoid that, stick to `--no-llm` or profile-only questions.
+**How it works:**
+
+- **First run**: Profiles the file (computes stats, alerts, patterns)
+- **Query execution**: For SQL-backed questions, the LLM generates SQL based on the profile schema, DuckDB executes it, and the LLM summarizes up to 20 rows of results
+- **What you see**: Progress indicators show "Thinking..." while the LLM generates SQL and summarizes results
+- **Data exposure**: Profile stats are always shared with the LLM. SQL query results (up to 20 rows) are shared only for specific questions. If you want zero row-level exposure, use `--no-llm`.
+
+**Interactive mode efficiency:**
+- Use `--interactive` to profile once and ask multiple questions
+- The profile is cached in memory for the session
+- Each question either answers from the cached profile or generates new SQL
+- Session context is maintained across questions
 
 **Session-aware Q&A:** Add `--session-id <id>` to keep conversational context across runs. Turns are stored in the Registry and retrieved by similarity.
 
