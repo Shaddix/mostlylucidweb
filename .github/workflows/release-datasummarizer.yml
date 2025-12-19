@@ -68,8 +68,8 @@ jobs:
             rid: linux-arm64
             artifact_name: datasummarizer-linux-arm64
             executable: datasummarizer
-          # macOS x64 (Intel)
-          - os: macos-13
+          # macOS x64 (Intel) - use macos-15-intel
+          - os: macos-15-intel
             rid: osx-x64
             artifact_name: datasummarizer-osx-x64
             executable: datasummarizer
@@ -115,8 +115,6 @@ jobs:
           -r ${{ matrix.rid }} \
           --self-contained \
           -p:Version=${{ steps.get_version.outputs.VERSION }} \
-          -p:PublishSingleFile=true \
-          -p:PublishTrimmed=false \
           -o ./publish/${{ matrix.rid }}
       shell: bash
 
@@ -124,11 +122,21 @@ jobs:
       run: ls -la ./publish/${{ matrix.rid }}/
       shell: bash
 
+    - name: Verify required files exist
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        echo "Checking for required files..."
+        ls -la appsettings.json README.md ${{ matrix.executable }}
+        echo "All required files present!"
+      shell: bash
+
     - name: Create archive (Windows)
       if: runner.os == 'Windows'
       run: |
         cd ./publish/${{ matrix.rid }}
-        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json
+        # Remove debug symbols to reduce size
+        rm -f *.pdb 2>/dev/null || true
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip *
       shell: bash
 
     - name: Create archive (Unix)
@@ -136,7 +144,9 @@ jobs:
       run: |
         cd ./publish/${{ matrix.rid }}
         chmod +x ${{ matrix.executable }}
-        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json
+        # Remove debug symbols to reduce size
+        rm -f *.pdb 2>/dev/null || true
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz *
       shell: bash
 
     - name: Upload artifact

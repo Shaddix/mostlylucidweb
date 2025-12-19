@@ -7,6 +7,20 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Mostlylucid.DataSummarizer</RootNamespace>
     <AssemblyName>datasummarizer</AssemblyName>
+    <!-- Reduce release size -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  
+  <!-- Only include debug symbols in Debug builds -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  
+  <!-- Reduce publish size - exclude satellite assemblies (localization) -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <!-- Exclude nested test project folder -->
@@ -17,9 +31,12 @@
     <EmbeddedResource Remove="Mostlylucid.DataSummarizer.Tests\**" />
   </ItemGroup>
 
-  <!-- Copy appsettings.json to output -->
+  <!-- Copy config and docs to output -->
   <ItemGroup>
     <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="README.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
