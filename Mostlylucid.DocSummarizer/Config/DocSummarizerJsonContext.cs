@@ -66,12 +66,14 @@ namespace Mostlylucid.DocSummarizer.Config;
 [JsonSerializable(typeof(QdrantSearchResponse))]
 [JsonSerializable(typeof(QdrantCreateCollectionRequest))]
 [JsonSerializable(typeof(QdrantVectorConfig))]
+[JsonSerializable(typeof(QdrantCollectionDetailsResponse))]
+[JsonSerializable(typeof(QdrantCollectionDetails))]
 // Template types
 [JsonSerializable(typeof(SummaryTemplate))]
 [JsonSerializable(typeof(OutputStyle))]
 [JsonSerializable(typeof(SummaryTone))]
 [JsonSerializable(typeof(AudienceLevel))]
-[JsonSerializable(typeof(ChunkCacheEntry))]
+[JsonSerializable(typeof(ChunkCacheMetadata))]
 // Web fetch types
 [JsonSerializable(typeof(WebFetchConfig))]
 [JsonSerializable(typeof(WebFetchMode))]

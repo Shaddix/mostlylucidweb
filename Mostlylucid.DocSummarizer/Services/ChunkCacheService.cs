@@ -40,17 +40,9 @@ public class ChunkCacheService
         var metadataPath = basePath + ".json";
         var contentDir = basePath + "_content";
 
-        // Try v2 format first (metadata + separate content files)
         if (File.Exists(metadataPath) && Directory.Exists(contentDir))
         {
             return await TryLoadV2StoreAsync(metadataPath, contentDir, fileHash, ct);
-        }
-
-        // Fall back to v1 format (all-in-one JSON) for backward compatibility
-        var v1Path = GetCachePath(docId, fileHash);
-        if (File.Exists(v1Path))
-        {
-            return await TryLoadV1StoreAsync(v1Path, fileHash, ct);
         }
 
         return null;
@@ -68,7 +60,7 @@ public class ChunkCacheService
     }
 
     /// <summary>
-    /// Load v2 format: metadata JSON + separate content files
+    /// Load cache: metadata JSON + separate content files
     /// </summary>
     private async Task<CachedChunkStore?> TryLoadV2StoreAsync(string metadataPath, string contentDir, string fileHash, CancellationToken ct)
     {
@@ -111,60 +103,14 @@ public class ChunkCacheService
         {
             if (_verbose)
             {
-                Console.WriteLine($"[Cache] Failed to load v2 cache: {ex.Message}");
+                Console.WriteLine($"[Cache] Failed to load cache: {ex.Message}");
             }
             return null;
         }
     }
 
     /// <summary>
-    /// Load v1 format: all-in-one JSON (backward compatibility)
-    /// </summary>
-    private async Task<CachedChunkStore?> TryLoadV1StoreAsync(string path, string fileHash, CancellationToken ct)
-    {
-        try
-        {
-            var json = await File.ReadAllTextAsync(path, ct);
-            var entry = JsonSerializer.Deserialize<ChunkCacheEntry>(json, _jsonOptions);
-            if (entry == null) return null;
-
-            // v1 files have version "v1" - skip if current version is different
-            if (!entry.Version.StartsWith("v1", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(entry.Version, _config.VersionToken, StringComparison.Ordinal))
-                return null;
-
-            if (!string.Equals(entry.FileHash, fileHash, StringComparison.Ordinal))
-                return null;
-
-            if (IsExpired(entry.CreatedUtc))
-            {
-                TryDelete(path);
-                return null;
-            }
-
-            // Touch last access
-            entry.LastAccessUtc = DateTimeOffset.UtcNow;
-            await SaveEntryAsync(path, entry, ct);
-
-            var total = entry.Chunks?.Count ?? 0;
-            
-            if (_verbose) Console.WriteLine($"[Cache] Loading {total} chunks from v1 format (will upgrade on next save)");
-            
-            // v1 format always has content in memory
-            return new CachedChunkStore(entry.Chunks ?? [], total);
-        }
-        catch (Exception ex)
-        {
-            if (_verbose)
-            {
-                Console.WriteLine($"[Cache] Failed to load v1 cache: {ex.Message}");
-            }
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Persist chunks for future runs. Uses v2 format with separate content files.
+    /// Persist chunks for future runs.
     /// </summary>
     public async Task SaveAsync(string docId, string fileHash, List<DocumentChunk> chunks, CancellationToken ct = default)
     {
@@ -211,15 +157,7 @@ public class ChunkCacheService
         if (_verbose)
         {
             var totalContentBytes = chunks.Sum(c => c.Content.Length);
-            Console.WriteLine($"[Cache] Saved {chunks.Count} chunks ({totalContentBytes / 1024:N0} KB) to v2 format");
-        }
-
-        // Clean up old v1 format if it exists
-        var v1Path = GetCachePath(docId, fileHash);
-        if (File.Exists(v1Path))
-        {
-            TryDelete(v1Path);
-            if (_verbose) Console.WriteLine("[Cache] Removed old v1 cache file");
+            Console.WriteLine($"[Cache] Saved {chunks.Count} chunks ({totalContentBytes / 1024:N0} KB)");
         }
     }
 
@@ -234,7 +172,7 @@ public class ChunkCacheService
 
         var cutoff = DateTimeOffset.UtcNow.AddDays(-_config.RetentionDays);
         
-        // Clean up v2 format (metadata files + content directories)
+        // Clean up expired cache entries
         foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
         {
             try
@@ -242,16 +180,8 @@ public class ChunkCacheService
                 var info = new FileInfo(file);
                 if (info.LastWriteTimeUtc < cutoff)
                 {
-                    // Check if this is a v2 metadata file
                     var contentDir = Path.ChangeExtension(file, null) + "_content";
-                    if (Directory.Exists(contentDir))
-                    {
-                        TryDeleteCacheEntry(file, contentDir);
-                    }
-                    else
-                    {
-                        TryDelete(file);
-                    }
+                    TryDeleteCacheEntry(file, contentDir);
                     if (_verbose) Console.WriteLine($"[Cache] Removed expired cache: {info.Name}");
                 }
             }
@@ -335,22 +265,12 @@ public class ChunkCacheService
     }
 
     /// <summary>
-    /// Get base path for v2 cache format (without extension)
+    /// Get base path for cache (without extension)
     /// </summary>
     private string GetCacheBasePath(string docId, string fileHash)
     {
         var safeId = string.Join("", docId.Select(c => char.IsLetterOrDigit(c) ? c : '_'));
         var name = $"{safeId}_{fileHash}";
-        return Path.Combine(GetCacheDirectory(), name);
-    }
-
-    /// <summary>
-    /// Get path for v1 cache format (single JSON file)
-    /// </summary>
-    private string GetCachePath(string docId, string fileHash)
-    {
-        var safeId = string.Join("", docId.Select(c => char.IsLetterOrDigit(c) ? c : '_'));
-        var name = $"{safeId}_{fileHash}.json";
         return Path.Combine(GetCacheDirectory(), name);
     }
 
@@ -380,31 +300,12 @@ public class ChunkCacheService
         await using var stream = File.Create(path);
         await JsonSerializer.SerializeAsync(stream, metadata, _jsonOptions, ct);
     }
-
-    private async Task SaveEntryAsync(string path, ChunkCacheEntry entry, CancellationToken ct)
-    {
-        await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, entry, _jsonOptions, ct);
-    }
 }
 
 #region Cache Entry Models
 
 /// <summary>
-/// v1 format: Complete cache entry with chunk content inline
-/// </summary>
-public class ChunkCacheEntry
-{
-    public string DocId { get; set; } = string.Empty;
-    public string FileHash { get; set; } = string.Empty;
-    public string Version { get; set; } = string.Empty;
-    public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset LastAccessUtc { get; set; } = DateTimeOffset.UtcNow;
-    public List<DocumentChunk> Chunks { get; set; } = [];
-}
-
-/// <summary>
-/// v2 format: Metadata-only cache entry (content stored in separate files)
+/// Cache metadata entry (content stored in separate files)
 /// </summary>
 public class ChunkCacheMetadata
 {
@@ -440,23 +341,21 @@ public class ChunkCacheMetadataEntry
 /// </summary>
 public class CachedChunkStore : IDisposable
 {
-    private readonly List<ChunkCacheMetadataEntry>? _metadata;
-    private readonly string? _contentDir;
+    private readonly List<ChunkCacheMetadataEntry> _metadata;
+    private readonly string _contentDir;
     private readonly bool _lazyLoad;
-    private readonly List<DocumentChunk>? _eagerChunks;
     private readonly Dictionary<int, string> _contentCache = new();
     private readonly object _lock = new();
     private bool _disposed;
 
     /// <summary>
-    /// Create a lazy-loading store from v2 metadata
+    /// Create a store from cache metadata
     /// </summary>
     public CachedChunkStore(List<ChunkCacheMetadataEntry> metadata, string contentDir, bool lazyLoad)
     {
         _metadata = metadata;
         _contentDir = contentDir;
         _lazyLoad = lazyLoad;
-        _eagerChunks = null;
         Count = metadata.Count;
         
         // If not lazy loading, pre-load all content
@@ -464,18 +363,6 @@ public class CachedChunkStore : IDisposable
         {
             PreloadAllContent();
         }
-    }
-
-    /// <summary>
-    /// Create an eager store from v1 format (content already in memory)
-    /// </summary>
-    public CachedChunkStore(List<DocumentChunk> chunks, int totalChunks)
-    {
-        _metadata = null;
-        _contentDir = null;
-        _lazyLoad = false;
-        _eagerChunks = chunks.Select(c => c.WithTotalChunks(totalChunks)).ToList();
-        Count = chunks.Count;
     }
 
     /// <summary>
@@ -509,12 +396,7 @@ public class CachedChunkStore : IDisposable
     {
         ThrowIfDisposed();
 
-        if (_eagerChunks != null)
-        {
-            return _eagerChunks[index];
-        }
-
-        if (_metadata == null || index < 0 || index >= _metadata.Count)
+        if (index < 0 || index >= _metadata.Count)
             throw new ArgumentOutOfRangeException(nameof(index));
 
         var meta = _metadata[index];
@@ -546,9 +428,6 @@ public class CachedChunkStore : IDisposable
         }
 
         // Load from disk
-        if (_contentDir == null)
-            throw new InvalidOperationException("Content directory not available");
-
         var contentPath = Path.Combine(_contentDir, $"{order:D6}.txt");
         if (!File.Exists(contentPath))
             return string.Empty;
@@ -573,7 +452,6 @@ public class CachedChunkStore : IDisposable
     public void PreloadContent(IEnumerable<int> orders)
     {
         ThrowIfDisposed();
-        if (_contentDir == null) return;
 
         foreach (var order in orders)
         {
@@ -626,15 +504,6 @@ public class CachedChunkStore : IDisposable
     {
         ThrowIfDisposed();
 
-        if (_eagerChunks != null)
-        {
-            foreach (var chunk in _eagerChunks)
-                yield return chunk;
-            yield break;
-        }
-
-        if (_metadata == null) yield break;
-
         for (var i = 0; i < _metadata.Count; i++)
         {
             yield return Get(i);
@@ -647,10 +516,6 @@ public class CachedChunkStore : IDisposable
     public List<DocumentChunk> ToList()
     {
         ThrowIfDisposed();
-
-        if (_eagerChunks != null)
-            return _eagerChunks.ToList();
-
         return Enumerate().ToList();
     }
 
@@ -673,8 +538,7 @@ public class CachedChunkStore : IDisposable
             for (var j = i; j < Math.Min(i + batchSize, Count); j++)
             {
                 batch.Add(Get(j));
-                if (_metadata != null)
-                    orders.Add(_metadata[j].Order);
+                orders.Add(_metadata[j].Order);
             }
 
             var result = await processor(batch);
@@ -690,8 +554,6 @@ public class CachedChunkStore : IDisposable
 
     private void PreloadAllContent()
     {
-        if (_metadata == null || _contentDir == null) return;
-
         foreach (var meta in _metadata)
         {
             var contentPath = Path.Combine(_contentDir, $"{meta.Order:D6}.txt");

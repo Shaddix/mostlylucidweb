@@ -78,6 +78,25 @@ public class OnnxConfig
     /// </summary>
     public int GpuDeviceId { get; set; } = 0;
     
+    /// <summary>
+    ///     Batch size for embedding inference. Higher = more throughput but more memory.
+    ///     Default: 32. Set to 1 for sequential processing.
+    /// </summary>
+    public int EmbeddingBatchSize { get; set; } = 32;
+    
+    /// <summary>
+    ///     Enable parallel execution mode in ONNX Runtime.
+    ///     True = better throughput for batched inference on multi-core CPUs.
+    ///     False = sequential (lower latency for single embeddings).
+    /// </summary>
+    public bool UseParallelExecution { get; set; } = true;
+    
+    /// <summary>
+    ///     Number of threads for inter-op parallelism (between graph nodes).
+    ///     0 = auto (uses ProcessorCount). Only applies when UseParallelExecution = true.
+    /// </summary>
+    public int InterOpThreads { get; set; } = 0;
+    
     private static string GetDefaultModelDirectory()
     {
         // Use app directory/models so models travel with the tool

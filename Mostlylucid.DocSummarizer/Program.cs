@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services;
+using Mostlylucid.DocSummarizer.Services.Onnx;
 using Spectre.Console;
 
 // Create UI service for consistent output
@@ -957,6 +958,505 @@ toolCommand.SetAction(async (parseResult, cancellationToken) =>
 });
 rootCommand.Subcommands.Add(toolCommand);
 
+// Search command - RAG debugger showing top segments with scores (no LLM)
+var searchCommand = new Command("search", "Search document(s) for relevant segments (no LLM, shows RAG debug info)");
+var searchFileOption = new Option<FileInfo?>("--file", "-f") { Description = "Document to search" };
+var searchDirOption = new Option<DirectoryInfo?>("--directory", "-d") { Description = "Directory of documents to search" };
+var searchQueryOption = new Option<string?>("--query", "-q") { Description = "Search query (required)" };
+var searchTopKOption = new Option<int>("--top", "-k") { Description = "Number of results to return", DefaultValueFactory = _ => 10 };
+var searchConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+var searchShowContentOption = new Option<bool>("--content") { Description = "Show full segment content", DefaultValueFactory = _ => false };
+var searchJsonOption = new Option<bool>("--json") { Description = "Output as JSON", DefaultValueFactory = _ => false };
+var searchExtOption = new Option<string?>("--ext") { Description = "File extensions to include (e.g., '.md,.txt')", DefaultValueFactory = _ => ".md" };
+
+searchCommand.Options.Add(searchFileOption);
+searchCommand.Options.Add(searchDirOption);
+searchCommand.Options.Add(searchQueryOption);
+searchCommand.Options.Add(searchTopKOption);
+searchCommand.Options.Add(searchConfigOption);
+searchCommand.Options.Add(searchShowContentOption);
+searchCommand.Options.Add(searchJsonOption);
+searchCommand.Options.Add(searchExtOption);
+
+searchCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var file = parseResult.GetValue(searchFileOption);
+    var directory = parseResult.GetValue(searchDirOption);
+    var query = parseResult.GetValue(searchQueryOption);
+    var topK = parseResult.GetValue(searchTopKOption);
+    var configPath = parseResult.GetValue(searchConfigOption);
+    var showContent = parseResult.GetValue(searchShowContentOption);
+    var outputJson = parseResult.GetValue(searchJsonOption);
+    var extFilter = parseResult.GetValue(searchExtOption) ?? ".md";
+    
+    if (file == null && directory == null)
+    {
+        AnsiConsole.MarkupLine("[red]Error: --file or --directory is required[/]");
+        return 1;
+    }
+    
+    if (string.IsNullOrEmpty(query))
+    {
+        AnsiConsole.MarkupLine("[red]Error: --query is required[/]");
+        return 1;
+    }
+    
+    var config = ConfigurationLoader.Load(configPath);
+    
+    // Build list of files to search
+    var filesToSearch = new List<FileInfo>();
+    
+    if (file != null)
+    {
+        if (!file.Exists)
+        {
+            AnsiConsole.MarkupLine($"[red]Error: File not found: {file.FullName}[/]");
+            return 1;
+        }
+        filesToSearch.Add(file);
+    }
+    
+    if (directory != null)
+    {
+        if (!directory.Exists)
+        {
+            AnsiConsole.MarkupLine($"[red]Error: Directory not found: {directory.FullName}[/]");
+            return 1;
+        }
+        
+        var extensions = extFilter.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var ext in extensions)
+        {
+            var pattern = ext.StartsWith(".") ? $"*{ext}" : $"*.{ext}";
+            filesToSearch.AddRange(directory.GetFiles(pattern, SearchOption.AllDirectories)
+                .Where(f => !f.Name.Contains("_summary") && !f.Name.Contains(".summary")));
+        }
+    }
+    
+    if (filesToSearch.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[yellow]No matching files found[/]");
+        return 0;
+    }
+    
+    // Check if Qdrant is available for fast search
+    var detected = await ServiceDetector.DetectSilentAsync(config);
+    // Use Qdrant if available, regardless of config (search benefits from persistence)
+    var useQdrant = detected.QdrantAvailable;
+    
+    if (!outputJson)
+    {
+        SpectreProgressService.WriteHeader("DocSummarizer", "Semantic Search");
+        AnsiConsole.MarkupLine($"[cyan]Query:[/] {Markup.Escape(query)}");
+        AnsiConsole.MarkupLine($"[cyan]Documents:[/] {filesToSearch.Count} file(s)");
+        AnsiConsole.MarkupLine($"[cyan]Backend:[/] {(useQdrant ? "Qdrant (persistent)" : "In-memory (extract on demand)")}");
+        AnsiConsole.WriteLine();
+    }
+    
+    // Create extraction and retrieval configs
+    var extractionConfig = config.Extraction.ToExtractionConfig();
+    var retrievalConfig = config.Retrieval.ToRetrievalConfig();
+    retrievalConfig.TopK = topK;
+    
+    // Create the embedding service for query embedding
+    using var embeddingService = new OnnxEmbeddingService(config.Onnx, verbose: false);
+    
+    // Embed query once
+    if (!outputJson)
+    {
+        AnsiConsole.MarkupLine("[dim]Embedding query...[/]");
+    }
+    var queryEmbedding = await embeddingService.EmbedAsync(query, cancellationToken);
+    
+    // Collect all segments from all documents with source tracking
+    var allScoredSegments = new List<(string FileName, Segment Segment, double QueryScore, double SalienceScore)>();
+    
+    var qdrantSucceeded = false;
+    if (useQdrant)
+    {
+        try
+        {
+            // Use Qdrant for fast vector search across indexed documents
+            var collectionName = config.BertRag.CollectionName;
+            await using var vectorStore = new QdrantVectorStore(config.Qdrant, verbose: false, deleteOnDispose: false);
+            await vectorStore.InitializeAsync(collectionName, 384, cancellationToken);
+            
+            if (!outputJson)
+            {
+                AnsiConsole.MarkupLine($"[dim]Searching Qdrant collection '{collectionName}'...[/]");
+            }
+            
+            // Search across ALL indexed documents (docId: null = no filter)
+            var results = await vectorStore.SearchAsync(collectionName, queryEmbedding, topK * 2, docId: null, cancellationToken);
+            
+            foreach (var segment in results)
+            {
+                // Extract filename from docId (format: filename_contenthash)
+                var fileName = segment.Id.Contains('_') 
+                    ? segment.Id.Substring(0, segment.Id.LastIndexOf('_')) + ".md"
+                    : segment.Id;
+                allScoredSegments.Add((fileName, segment, segment.QuerySimilarity, segment.SalienceScore));
+            }
+            
+            if (!outputJson && results.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No indexed documents found in Qdrant. Falling back to on-demand extraction...[/]");
+            }
+            else
+            {
+                qdrantSucceeded = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!outputJson)
+            {
+                AnsiConsole.MarkupLine($"[yellow]Qdrant search failed ({ex.GetType().Name}). Falling back to on-demand extraction...[/]");
+            }
+        }
+    }
+    
+    if (!qdrantSucceeded)
+    {
+        // Fall back to on-demand extraction (slower but works without Qdrant)
+        using var extractor = new SegmentExtractor(config.Onnx, extractionConfig, verbose: false);
+        
+        var processedFiles = 0;
+        foreach (var searchFile in filesToSearch)
+        {
+            processedFiles++;
+            if (!outputJson && filesToSearch.Count > 1)
+            {
+                AnsiConsole.MarkupLine($"[dim]Processing ({processedFiles}/{filesToSearch.Count}): {searchFile.Name}[/]");
+            }
+            
+            try
+            {
+                // Read document content
+                var extension = searchFile.Extension.ToLowerInvariant();
+                string markdown;
+                
+                if (extension is ".md" or ".txt" or ".text")
+                {
+                    markdown = await File.ReadAllTextAsync(searchFile.FullName, cancellationToken);
+                }
+                else
+                {
+                    // Use Docling for PDF/DOCX
+                    var docling = new DoclingClient(config.Docling);
+                    markdown = await docling.ConvertAsync(searchFile.FullName);
+                }
+                
+                var docId = Path.GetFileNameWithoutExtension(searchFile.Name);
+                
+                // Extract segments
+                var extractionResult = await extractor.ExtractAsync(docId, markdown, ct: cancellationToken);
+                var segments = extractionResult.AllSegments;
+                
+                // Score segments against query
+                foreach (var segment in segments.Where(s => s.Embedding != null))
+                {
+                    var queryScore = ComputeCosineSimilarity(queryEmbedding, segment.Embedding!);
+                    allScoredSegments.Add((searchFile.Name, segment, queryScore, segment.SalienceScore));
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!outputJson)
+                {
+                    AnsiConsole.MarkupLine($"[yellow]Warning: Failed to process {searchFile.Name}: {ex.Message}[/]");
+                }
+            }
+        }
+    }
+    
+    // Rank all segments across all documents
+    var scoredSegments = allScoredSegments
+        .OrderByDescending(x => x.QueryScore * retrievalConfig.Alpha + x.SalienceScore * (1 - retrievalConfig.Alpha))
+        .Take(topK)
+        .ToList();
+    
+    if (outputJson)
+    {
+        // Output as JSON for programmatic use
+        var results = scoredSegments.Select(x => new {
+            file = x.FileName,
+            index = x.Segment.Index,
+            section = x.Segment.SectionTitle,
+            queryScore = Math.Round(x.QueryScore, 4),
+            salienceScore = Math.Round(x.SalienceScore, 4),
+            combinedScore = Math.Round(x.QueryScore * retrievalConfig.Alpha + x.SalienceScore * (1 - retrievalConfig.Alpha), 4),
+            wordCount = x.Segment.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length,
+            preview = x.Segment.Text.Length > 200 ? x.Segment.Text[..200] + "..." : x.Segment.Text,
+            content = showContent ? x.Segment.Text : null
+        });
+        var json = System.Text.Json.JsonSerializer.Serialize(new { 
+            query, 
+            documentsSearched = filesToSearch.Count,
+            totalSegments = allScoredSegments.Count,
+            results 
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        Console.WriteLine(json);
+    }
+    else
+    {
+        // Display results table
+        AnsiConsole.MarkupLine($"[dim]Found {allScoredSegments.Count} segments across {filesToSearch.Count} file(s), showing top {scoredSegments.Count}[/]");
+        AnsiConsole.WriteLine();
+        
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .BorderColor(Color.Cyan1)
+            .Title("[cyan]Search Results[/]");
+        
+        table.AddColumn(new TableColumn("[cyan]#[/]").RightAligned());
+        if (filesToSearch.Count > 1)
+            table.AddColumn(new TableColumn("[cyan]File[/]").LeftAligned());
+        table.AddColumn(new TableColumn("[cyan]Section[/]").LeftAligned());
+        table.AddColumn(new TableColumn("[cyan]Query[/]").RightAligned());
+        table.AddColumn(new TableColumn("[cyan]Salience[/]").RightAligned());
+        table.AddColumn(new TableColumn("[cyan]Combined[/]").RightAligned());
+        table.AddColumn(new TableColumn("[cyan]Preview[/]").LeftAligned());
+        
+        var rank = 1;
+        foreach (var result in scoredSegments)
+        {
+            var combined = result.QueryScore * retrievalConfig.Alpha + result.SalienceScore * (1 - retrievalConfig.Alpha);
+            var queryColor = result.QueryScore > 0.7 ? "green" : result.QueryScore > 0.5 ? "yellow" : "white";
+            var preview = result.Segment.Text.Length > 60 
+                ? result.Segment.Text[..60].Replace("\n", " ") + "..." 
+                : result.Segment.Text.Replace("\n", " ");
+            
+            if (filesToSearch.Count > 1)
+            {
+                table.AddRow(
+                    $"{rank}",
+                    $"[dim]{Markup.Escape(result.FileName)}[/]",
+                    Markup.Escape(string.IsNullOrEmpty(result.Segment.SectionTitle) ? "[no section]" : result.Segment.SectionTitle),
+                    $"[{queryColor}]{result.QueryScore:F3}[/]",
+                    $"{result.SalienceScore:F3}",
+                    $"[cyan]{combined:F3}[/]",
+                    $"[dim]{Markup.Escape(preview)}[/]");
+            }
+            else
+            {
+                table.AddRow(
+                    $"{rank}",
+                    Markup.Escape(string.IsNullOrEmpty(result.Segment.SectionTitle) ? "[no section]" : result.Segment.SectionTitle),
+                    $"[{queryColor}]{result.QueryScore:F3}[/]",
+                    $"{result.SalienceScore:F3}",
+                    $"[cyan]{combined:F3}[/]",
+                    $"[dim]{Markup.Escape(preview)}[/]");
+            }
+            rank++;
+        }
+        
+        AnsiConsole.Write(table);
+        
+        // Show full content if requested
+        if (showContent)
+        {
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine("[cyan]Full Content:[/]");
+            foreach (var result in scoredSegments)
+            {
+                var headerText = filesToSearch.Count > 1 
+                    ? $" [{result.FileName}] {(string.IsNullOrEmpty(result.Segment.SectionTitle) ? $"Segment {result.Segment.Index}" : result.Segment.SectionTitle)} "
+                    : $" {(string.IsNullOrEmpty(result.Segment.SectionTitle) ? $"Segment {result.Segment.Index}" : result.Segment.SectionTitle)} ";
+                var panel = new Panel(Markup.Escape(result.Segment.Text))
+                {
+                    Header = new PanelHeader(headerText, Justify.Left),
+                    Border = BoxBorder.Rounded,
+                    BorderStyle = new Style(Color.Grey),
+                    Padding = new Padding(1, 0)
+                };
+                AnsiConsole.Write(panel);
+            }
+        }
+    }
+    
+    return 0;
+});
+rootCommand.Subcommands.Add(searchCommand);
+
+// Cache command - manage the vector cache
+var cacheCommand = new Command("cache", "Manage the document vector cache");
+
+// Cache stats subcommand
+var cacheStatsCommand = new Command("stats", "Show cache statistics");
+var cacheStatsConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+cacheStatsCommand.Options.Add(cacheStatsConfigOption);
+cacheStatsCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var configPath = parseResult.GetValue(cacheStatsConfigOption);
+    var config = ConfigurationLoader.Load(configPath);
+    
+    SpectreProgressService.WriteHeader("DocSummarizer", "Cache Statistics");
+    
+    // Check if Qdrant is available
+    var detected = await ServiceDetector.DetectSilentAsync(config);
+    if (!detected.QdrantAvailable)
+    {
+        AnsiConsole.MarkupLine("[yellow]Qdrant not available[/] - no persistent cache");
+        return 0;
+    }
+    
+    var qdrant = new QdrantHttpClient(config.Qdrant.Host, config.Qdrant.Port, config.Qdrant.ApiKey);
+    var collections = (await qdrant.ListCollectionsAsync()).ToList();
+    
+    if (collections.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[dim]No cached documents found[/]");
+        return 0;
+    }
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .BorderColor(Color.Cyan1)
+        .Title("[cyan]Cached Documents[/]");
+    
+    table.AddColumn(new TableColumn("[cyan]Collection[/]").LeftAligned());
+    table.AddColumn(new TableColumn("[cyan]Vectors[/]").RightAligned());
+    table.AddColumn(new TableColumn("[cyan]Size[/]").RightAligned());
+    
+    long totalVectors = 0;
+    foreach (var collection in collections.OrderBy(c => c))
+    {
+        try
+        {
+            var info = await qdrant.GetCollectionInfoAsync(collection);
+            var vectors = info?.VectorsCount ?? 0;
+            totalVectors += vectors;
+            
+            table.AddRow(
+                Markup.Escape(collection),
+                $"{vectors:N0}",
+                "[dim]-[/]");
+        }
+        catch
+        {
+            table.AddRow(Markup.Escape(collection), "[red]error[/]", "-");
+        }
+    }
+    
+    AnsiConsole.Write(table);
+    AnsiConsole.WriteLine();
+    AnsiConsole.MarkupLine($"[cyan]Total:[/] {collections.Count} documents, {totalVectors:N0} vectors");
+    
+    return 0;
+});
+cacheCommand.Subcommands.Add(cacheStatsCommand);
+
+// Cache list subcommand
+var cacheListCommand = new Command("list", "List cached documents");
+var cacheListConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+cacheListCommand.Options.Add(cacheListConfigOption);
+cacheListCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var configPath = parseResult.GetValue(cacheListConfigOption);
+    var config = ConfigurationLoader.Load(configPath);
+    
+    var detected = await ServiceDetector.DetectSilentAsync(config);
+    if (!detected.QdrantAvailable)
+    {
+        AnsiConsole.MarkupLine("[yellow]Qdrant not available[/]");
+        return 0;
+    }
+    
+    var qdrant = new QdrantHttpClient(config.Qdrant.Host, config.Qdrant.Port, config.Qdrant.ApiKey);
+    var collections = await qdrant.ListCollectionsAsync();
+    
+    foreach (var collection in collections.OrderBy(c => c))
+    {
+        Console.WriteLine(collection);
+    }
+    
+    return 0;
+});
+cacheCommand.Subcommands.Add(cacheListCommand);
+
+// Cache rm subcommand
+var cacheRmCommand = new Command("rm", "Remove cached document(s)");
+var cacheRmDocOption = new Option<string?>("--doc", "-d") { Description = "Document name/pattern to remove (supports wildcards)" };
+var cacheRmAllOption = new Option<bool>("--all") { Description = "Remove all cached documents", DefaultValueFactory = _ => false };
+var cacheRmConfigOption = new Option<string?>("--config", "-c") { Description = "Configuration file path" };
+cacheRmCommand.Options.Add(cacheRmDocOption);
+cacheRmCommand.Options.Add(cacheRmAllOption);
+cacheRmCommand.Options.Add(cacheRmConfigOption);
+cacheRmCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var doc = parseResult.GetValue(cacheRmDocOption);
+    var removeAll = parseResult.GetValue(cacheRmAllOption);
+    var configPath = parseResult.GetValue(cacheRmConfigOption);
+    
+    if (string.IsNullOrEmpty(doc) && !removeAll)
+    {
+        AnsiConsole.MarkupLine("[red]Error: Specify --doc or --all[/]");
+        return 1;
+    }
+    
+    var config = ConfigurationLoader.Load(configPath);
+    
+    var detected = await ServiceDetector.DetectSilentAsync(config);
+    if (!detected.QdrantAvailable)
+    {
+        AnsiConsole.MarkupLine("[yellow]Qdrant not available[/]");
+        return 0;
+    }
+    
+    var qdrant = new QdrantHttpClient(config.Qdrant.Host, config.Qdrant.Port, config.Qdrant.ApiKey);
+    var collections = await qdrant.ListCollectionsAsync();
+    
+    var toRemove = new List<string>();
+    
+    if (removeAll)
+    {
+        toRemove.AddRange(collections);
+    }
+    else if (!string.IsNullOrEmpty(doc))
+    {
+        // Simple wildcard matching
+        var pattern = doc.Replace("*", ".*").Replace("?", ".");
+        var regex = new System.Text.RegularExpressions.Regex($"^{pattern}$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        toRemove.AddRange(collections.Where(c => regex.IsMatch(c)));
+    }
+    
+    if (toRemove.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[dim]No matching documents found[/]");
+        return 0;
+    }
+    
+    AnsiConsole.MarkupLine($"[yellow]Removing {toRemove.Count} document(s):[/]");
+    foreach (var collection in toRemove)
+    {
+        AnsiConsole.MarkupLine($"  [dim]{Markup.Escape(collection)}[/]");
+    }
+    
+    if (!AnsiConsole.Confirm("Continue?", false))
+    {
+        return 0;
+    }
+    
+    foreach (var collection in toRemove)
+    {
+        try
+        {
+            await qdrant.DeleteCollectionAsync(collection);
+            AnsiConsole.MarkupLine($"[green]Removed:[/] {Markup.Escape(collection)}");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine($"[red]Failed:[/] {Markup.Escape(collection)} - {ex.Message}");
+        }
+    }
+    
+    return 0;
+});
+cacheCommand.Subcommands.Add(cacheRmCommand);
+
+rootCommand.Subcommands.Add(cacheCommand);
+
 return rootCommand.Parse(args).Invoke();
 
 // Helper methods
@@ -1436,4 +1936,21 @@ static SummaryTemplate ParseTemplate(string templateSpec, int? wordCountOverride
     }
     
     return template;
+}
+
+// Helper: Compute cosine similarity between two vectors
+static double ComputeCosineSimilarity(float[] a, float[] b)
+{
+    if (a.Length != b.Length) return 0;
+    
+    double dotProduct = 0, normA = 0, normB = 0;
+    for (var i = 0; i < a.Length; i++)
+    {
+        dotProduct += a[i] * b[i];
+        normA += a[i] * a[i];
+        normB += b[i] * b[i];
+    }
+    
+    var denominator = Math.Sqrt(normA) * Math.Sqrt(normB);
+    return denominator > 0 ? dotProduct / denominator : 0;
 }

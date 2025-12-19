@@ -40,6 +40,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     // Vector store support
     private readonly IVectorStore? _vectorStore;
     private readonly BertRagConfig _bertRagConfig;
+    private readonly OnnxConfig _onnxConfig;
     
     public SummaryTemplate Template { get; private set; }
 
@@ -61,6 +62,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         _verbose = verbose;
         _vectorStore = vectorStore;
         _bertRagConfig = bertRagConfig ?? new BertRagConfig();
+        _onnxConfig = onnxConfig;
     }
 
     public void SetTemplate(SummaryTemplate template) => Template = template;
@@ -230,6 +232,15 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
     /// <summary>
     /// Generate a versioned cache key that includes all factors affecting output.
     /// Called BEFORE retrieval - uses config-based factors only.
+    /// 
+    /// Includes:
+    /// - Pipeline version (invalidates on algorithm changes)
+    /// - Document content hash
+    /// - Query hash (or "noquery")
+    /// - Template settings hash
+    /// - Retrieval config hash (TopK, Alpha, RRF, HybridSearch, AdaptiveTopK, MaxTopK)
+    /// - LLM model name hash
+    /// - Embedding model hash (model name + quantization)
     /// </summary>
     private string GeneratePreRetrievalCacheKey(string contentHash, string? focusQuery, string modelName)
     {
@@ -241,29 +252,41 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         var templateConfig = $"{Template.Name}_{Template.TargetWords}_{Template.OutputStyle}_{Template.MaxBullets}";
         var templateHash = ComputeContentHash(templateConfig);
         
-        // Include retrieval config 
-        var retrievalConfig = $"{_retrievalConfig.TopK}_{_retrievalConfig.Alpha}_{_retrievalConfig.UseRRF}_{_retrievalConfig.UseHybridSearch}";
+        // Include retrieval config (all parameters that affect which segments are retrieved)
+        var retrievalConfig = $"{_retrievalConfig.TopK}_{_retrievalConfig.Alpha}_{_retrievalConfig.UseRRF}_{_retrievalConfig.UseHybridSearch}_{_retrievalConfig.AdaptiveTopK}_{_retrievalConfig.MaxTopK}";
         var retrievalHash = ComputeContentHash(retrievalConfig);
+        
+        // Include embedding model (different embeddings = different retrieval results)
+        var embeddingConfig = $"{_onnxConfig.EmbeddingModel}_{_onnxConfig.UseQuantized}";
+        var embeddingHash = ComputeContentHash(embeddingConfig);
         
         var modelHash = ComputeContentHash(modelName);
         
-        return $"{PipelineVersion}_{contentHash}_{queryHash}_{templateHash}_{retrievalHash}_{modelHash}";
+        return $"{PipelineVersion}_{contentHash}_{queryHash}_{templateHash}_{retrievalHash}_{embeddingHash}_{modelHash}";
     }
     
     /// <summary>
-    /// Generate the final cache key using actual retrieved segment IDs.
+    /// Generate the final cache key using actual retrieved segment content hashes.
     /// This ensures the cache is invalidated if retrieval returns different segments
     /// (due to embedding drift, config changes, or document updates).
+    /// 
+    /// Key design:
+    /// - Order-insensitive: sorted by hash to ensure stability regardless of retrieval order
+    /// - Content-based: uses ContentHash to detect actual content changes
+    /// - Includes segment count: different TopK values produce different keys
     /// </summary>
     private string GenerateSynthesisCacheKey(string preRetrievalKey, List<Segment> retrievedSegments)
     {
-        // Hash the ordered list of retrieved segment content hashes
-        // This captures exactly which content will be synthesized
-        var segmentHashes = string.Join("_", retrievedSegments
-            .OrderBy(s => s.Index)
-            .Select(s => s.ContentHash));
+        // Sort by content hash (order-insensitive) - ensures same evidence set = same key
+        // regardless of retrieval order or score tie-breaking
+        var sortedHashes = retrievedSegments
+            .Select(s => s.ContentHash)
+            .OrderBy(h => h, StringComparer.Ordinal)
+            .ToList();
         
-        var retrievedHash = ComputeContentHash(segmentHashes);
+        // Include count to differentiate e.g. TopK=5 vs TopK=10 that happen to overlap
+        var segmentSignature = $"n={sortedHashes.Count}:{string.Join("_", sortedHashes)}";
+        var retrievedHash = ComputeContentHash(segmentSignature);
         
         return $"{preRetrievalKey}_{retrievedHash}";
     }

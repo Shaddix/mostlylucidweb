@@ -78,11 +78,30 @@ public class QdrantHttpClient
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task DeleteCollectionAsync(string name)
+public async Task DeleteCollectionAsync(string name)
     {
         var response = await _http.DeleteAsync($"{_baseUrl}/collections/{name}");
         // Don't throw if collection doesn't exist
         if (response.StatusCode != HttpStatusCode.NotFound) response.EnsureSuccessStatusCode();
+    }
+    
+    public async Task<QdrantCollectionDetails?> GetCollectionInfoAsync(string name)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"{_baseUrl}/collections/{name}");
+            if (response.StatusCode == HttpStatusCode.NotFound)
+                return null;
+            response.EnsureSuccessStatusCode();
+            
+            var json = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize(json, DocSummarizerJsonContext.Default.QdrantCollectionDetailsResponse);
+            return result?.Result;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task UpsertAsync(string collectionName, List<QdrantPoint> points)
@@ -196,4 +215,16 @@ public class QdrantVectorConfig
     [JsonPropertyName("size")] public int Size { get; set; }
 
     [JsonPropertyName("distance")] public string Distance { get; set; } = "Cosine";
+}
+
+public class QdrantCollectionDetailsResponse
+{
+    [JsonPropertyName("result")] public QdrantCollectionDetails? Result { get; set; }
+}
+
+public class QdrantCollectionDetails
+{
+    [JsonPropertyName("status")] public string? Status { get; set; }
+    [JsonPropertyName("vectors_count")] public long VectorsCount { get; set; }
+    [JsonPropertyName("points_count")] public long PointsCount { get; set; }
 }
