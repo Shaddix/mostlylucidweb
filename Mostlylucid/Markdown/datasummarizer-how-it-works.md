@@ -1,6 +1,10 @@
 # DataSummarizer: Statistics-First Data Profiling
 <!--category-- Data Analysis, DuckDB, C#, LLM, ONNX -->
-<datetime class="hidden">2024-12-22T18:30</datetime>
+<datetime class="hidden">2025-12-22T18:30</datetime>
+
+[![GitHub](https://img.shields.io/github/stars/scottgal/mostlylucidweb?style=social)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
+[![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
 
 If you've ever opened a dataset and immediately asked "which columns are junk?", "where are the nulls?", or "what's leaking?" - you've felt the need for data profiling.
 

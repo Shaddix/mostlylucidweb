@@ -17,6 +17,13 @@
     <EmbeddedResource Remove="Mostlylucid.DataSummarizer.Tests\**" />
   </ItemGroup>
 
+  <!-- Copy appsettings.json to output -->
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <!-- DuckDB for streaming CSV/Excel/Parquet - no in-memory loading -->
     <PackageReference Include="DuckDB.NET.Data.Full" Version="1.4.3" />
