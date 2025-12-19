@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using DuckDB.NET.Data;
+using Mostlylucid.DataSummarizer.Configuration;
 using Mostlylucid.DataSummarizer.Models;
 
 namespace Mostlylucid.DataSummarizer.Services;
@@ -13,23 +14,41 @@ public class VectorStoreService : IDisposable
 {
     private readonly string _dbPath;
     private readonly bool _verbose;
+    private readonly OnnxConfig? _onnxConfig;
     private DuckDBConnection? _conn;
+    private IEmbeddingService? _embeddingService;
     private bool _available;
     private bool _useVss;
+    private int _embeddingDimension = 128; // Default for hash-based
 
     public bool IsAvailable => _available;
     internal DuckDBConnection? Connection => _conn;
+    
+    /// <summary>
+    /// Embedding dimension (384 for ONNX, 128 for hash-based fallback)
+    /// </summary>
+    public int EmbeddingDimension => _embeddingDimension;
 
-    public VectorStoreService(string dbPath, bool verbose = false)
+    public VectorStoreService(string dbPath, bool verbose = false, OnnxConfig? onnxConfig = null)
     {
         _dbPath = dbPath;
         _verbose = verbose;
+        _onnxConfig = onnxConfig;
     }
 
     public async Task InitializeAsync()
     {
         try
         {
+            // Initialize embedding service first
+            _embeddingService = await EmbeddingServiceFactory.GetOrCreateAsync(_onnxConfig, _verbose);
+            _embeddingDimension = _embeddingService.EmbeddingDimension;
+            
+            if (_verbose)
+            {
+                Console.WriteLine($"[VectorStore] Using embeddings with dimension {_embeddingDimension}");
+            }
+            
             _conn = new DuckDBConnection($"Data Source={_dbPath}");
             await _conn.OpenAsync();
 
@@ -83,12 +102,38 @@ public class VectorStoreService : IDisposable
 
         await ExecAsync(@"CREATE SEQUENCE IF NOT EXISTS registry_embeddings_seq;");
         await ExecAsync(@"CREATE SEQUENCE IF NOT EXISTS registry_conversations_seq;");
+        await ExecAsync(@"CREATE SEQUENCE IF NOT EXISTS registry_patterns_seq;");
+        
+        // Novel patterns table - stores detected patterns with their regex and examples
+        await ExecAsync(@"
+            CREATE TABLE IF NOT EXISTS registry_patterns (
+                id BIGINT PRIMARY KEY,
+                pattern_name TEXT,
+                column_name TEXT,
+                file_path TEXT,
+                pattern_type TEXT,
+                detected_regex TEXT,
+                improved_regex TEXT,
+                description TEXT,
+                examples_json TEXT,
+                match_percent DOUBLE,
+                is_identifier BOOLEAN DEFAULT FALSE,
+                is_sensitive BOOLEAN DEFAULT FALSE,
+                validation_rules_json TEXT,
+                embedding FLOAT[128],
+                embedding_json TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            );
+        ");
+        
         if (_useVss)
         {
             try
             {
                 await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_embeddings_vss ON registry_embeddings USING vss(embedding);");
                 await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_conversations_vss ON registry_conversations USING vss(embedding);");
+                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_patterns_vss ON registry_patterns USING vss(embedding);");
             }
             catch (Exception ex)
             {
@@ -123,7 +168,7 @@ public class VectorStoreService : IDisposable
 
         // Dataset-level summary
         var summaryText = BuildDatasetSummary(profile);
-        await InsertEmbeddingAsync(profile.SourcePath, "dataset_summary", "summary", "{}", MakeVector(summaryText));
+        await InsertEmbeddingAsync(profile.SourcePath, "dataset_summary", "summary", "{}", await MakeVectorAsync(summaryText));
 
         // Columns
         foreach (var col in profile.Columns)
@@ -142,7 +187,7 @@ public class VectorStoreService : IDisposable
                 col.TimeSeries
             });
             var text = BuildColumnSummary(col);
-            await InsertEmbeddingAsync(profile.SourcePath, col.Name, "column", meta, MakeVector(text));
+            await InsertEmbeddingAsync(profile.SourcePath, col.Name, "column", meta, await MakeVectorAsync(text));
         }
 
         // Insights
@@ -150,7 +195,7 @@ public class VectorStoreService : IDisposable
         {
             var meta = JsonSerializer.Serialize(new { insight.Title, insight.Source, insight.RelatedColumns });
             var text = $"{insight.Title}: {insight.Description}";
-            await InsertEmbeddingAsync(profile.SourcePath, insight.Title, "insight", meta, MakeVector(text));
+            await InsertEmbeddingAsync(profile.SourcePath, insight.Title, "insight", meta, await MakeVectorAsync(text));
         }
     }
 
@@ -158,7 +203,7 @@ public class VectorStoreService : IDisposable
     {
         if (!_available) return [];
         Ensure();
-        var queryVec = EmbeddingHelper.EmbedText(query);
+        var queryVec = await MakeVectorAsync(query);
 
         // If VSS available, use index
         if (_useVss)
@@ -265,7 +310,20 @@ public class VectorStoreService : IDisposable
         return string.Join(", ", parts);
     }
 
-    private static float[] MakeVector(string text) => EmbeddingHelper.EmbedText(text);
+    private async Task<float[]> MakeVectorAsync(string text)
+    {
+        if (_embeddingService == null)
+            throw new InvalidOperationException("Embedding service not initialized");
+        return await _embeddingService.EmbedAsync(text);
+    }
+    
+    // Synchronous fallback for backward compatibility (uses blocking)
+    private float[] MakeVector(string text)
+    {
+        if (_embeddingService == null)
+            return EmbeddingHelper.EmbedText(text); // Fallback to static
+        return _embeddingService.EmbedAsync(text).GetAwaiter().GetResult();
+    }
 
     private static string VectorLiteral(float[] vector)
     {
@@ -286,7 +344,7 @@ public class VectorStoreService : IDisposable
     {
         if (!_available) return;
         Ensure();
-        var embedding = MakeVector(content);
+        var embedding = await MakeVectorAsync(content);
         var vecLiteral = VectorLiteral(embedding);
         var json = JsonSerializer.Serialize(embedding);
         var sql = $@"INSERT INTO registry_conversations (session_id, turn_id, role, content, embedding, embedding_json)
@@ -294,12 +352,258 @@ public class VectorStoreService : IDisposable
         await ExecAsync(sql, sessionId, role, content, json);
     }
 
+    /// <summary>
+    /// Save a novel pattern to the registry for future reference and vector search
+    /// </summary>
+    public async Task UpsertNovelPatternAsync(NovelPatternRecord pattern)
+    {
+        if (!_available) return;
+        Ensure();
+        
+        // Build searchable text for embedding
+        var searchText = BuildPatternSearchText(pattern);
+        var embedding = await MakeVectorAsync(searchText);
+        var vecLiteral = VectorLiteral(embedding);
+        var embeddingJson = JsonSerializer.Serialize(embedding);
+        var examplesJson = JsonSerializer.Serialize(pattern.Examples ?? new List<string>());
+        var rulesJson = JsonSerializer.Serialize(pattern.ValidationRules ?? new List<string>());
+        
+        // Check if pattern already exists for this column/file
+        var existsSql = "SELECT id FROM registry_patterns WHERE column_name = ? AND file_path = ? LIMIT 1";
+        await using var checkCmd = _conn!.CreateCommand();
+        checkCmd.CommandText = existsSql;
+        checkCmd.Parameters.Add(new DuckDBParameter { Value = pattern.ColumnName });
+        checkCmd.Parameters.Add(new DuckDBParameter { Value = pattern.FilePath });
+        var existingId = await checkCmd.ExecuteScalarAsync();
+        
+        if (existingId != null && existingId != DBNull.Value)
+        {
+            // Update existing
+            var updateSql = $@"
+                UPDATE registry_patterns SET
+                    pattern_name = ?,
+                    pattern_type = ?,
+                    detected_regex = ?,
+                    improved_regex = ?,
+                    description = ?,
+                    examples_json = ?,
+                    match_percent = ?,
+                    is_identifier = ?,
+                    is_sensitive = ?,
+                    validation_rules_json = ?,
+                    embedding = {vecLiteral},
+                    embedding_json = ?,
+                    updated_at = NOW()
+                WHERE id = ?";
+            await ExecAsync(updateSql, 
+                pattern.PatternName, pattern.PatternType, pattern.DetectedRegex, pattern.ImprovedRegex,
+                pattern.Description, examplesJson, pattern.MatchPercent, pattern.IsIdentifier, pattern.IsSensitive,
+                rulesJson, embeddingJson, existingId);
+        }
+        else
+        {
+            // Insert new
+            var insertSql = $@"
+                INSERT INTO registry_patterns (
+                    id, pattern_name, column_name, file_path, pattern_type, detected_regex, improved_regex,
+                    description, examples_json, match_percent, is_identifier, is_sensitive, validation_rules_json,
+                    embedding, embedding_json
+                ) VALUES (
+                    nextval('registry_patterns_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {vecLiteral}, ?
+                )";
+            await ExecAsync(insertSql,
+                pattern.PatternName, pattern.ColumnName, pattern.FilePath, pattern.PatternType,
+                pattern.DetectedRegex, pattern.ImprovedRegex, pattern.Description, examplesJson,
+                pattern.MatchPercent, pattern.IsIdentifier, pattern.IsSensitive, rulesJson, embeddingJson);
+        }
+        
+        if (_verbose) Console.WriteLine($"[VectorStore] Saved pattern '{pattern.PatternName}' for column {pattern.ColumnName}");
+    }
+
+    /// <summary>
+    /// Search for similar patterns across all stored patterns
+    /// </summary>
+    public async Task<List<PatternSearchHit>> SearchPatternsAsync(string query, int topK = 5)
+    {
+        if (!_available) return [];
+        Ensure();
+        var queryVec = await MakeVectorAsync(query);
+        var hits = new List<PatternSearchHit>();
+
+        if (_useVss)
+        {
+            var vecLiteral = VectorLiteral(queryVec);
+            var sql = $@"
+                SELECT id, pattern_name, column_name, file_path, pattern_type, detected_regex, improved_regex,
+                       description, examples_json, match_percent, is_identifier, is_sensitive, validation_rules_json,
+                       vss_distance(embedding, {vecLiteral}) AS distance
+                FROM registry_patterns
+                ORDER BY distance ASC
+                LIMIT {topK};";
+
+            await using var cmd = _conn!.CreateCommand();
+            cmd.CommandText = sql;
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                hits.Add(ReadPatternHit(reader));
+            }
+            return hits;
+        }
+
+        // Fallback: brute-force cosine similarity
+        var sqlAll = @"SELECT id, pattern_name, column_name, file_path, pattern_type, detected_regex, improved_regex,
+                              description, examples_json, match_percent, is_identifier, is_sensitive, validation_rules_json,
+                              embedding_json FROM registry_patterns";
+        await using var cmdAll = _conn!.CreateCommand();
+        cmdAll.CommandText = sqlAll;
+        await using var readerAll = await cmdAll.ExecuteReaderAsync();
+        var temp = new List<(PatternSearchHit hit, float[] emb)>();
+        
+        while (await readerAll.ReadAsync())
+        {
+            var json = readerAll.IsDBNull(13) ? null : readerAll.GetString(13);
+            if (json is null) continue;
+            
+            try
+            {
+                var emb = JsonSerializer.Deserialize<float[]>(json);
+                if (emb == null || emb.Length == 0) continue;
+                var hit = ReadPatternHitWithoutDistance(readerAll);
+                temp.Add((hit, emb));
+            }
+            catch { /* ignore bad rows */ }
+        }
+
+        return temp
+            .Select(t => t.hit with { Score = CosineDistance(queryVec, t.emb) })
+            .OrderBy(h => h.Score)
+            .Take(topK)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Get all patterns for a specific file
+    /// </summary>
+    public async Task<List<PatternSearchHit>> GetPatternsForFileAsync(string filePath)
+    {
+        if (!_available) return [];
+        Ensure();
+        
+        var sql = @"SELECT id, pattern_name, column_name, file_path, pattern_type, detected_regex, improved_regex,
+                           description, examples_json, match_percent, is_identifier, is_sensitive, validation_rules_json, 0.0 as distance
+                    FROM registry_patterns WHERE file_path = ?";
+        
+        var hits = new List<PatternSearchHit>();
+        await using var cmd = _conn!.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new DuckDBParameter { Value = filePath });
+        await using var reader = await cmd.ExecuteReaderAsync();
+        
+        while (await reader.ReadAsync())
+        {
+            hits.Add(ReadPatternHit(reader));
+        }
+        
+        return hits;
+    }
+
+    /// <summary>
+    /// Find patterns similar to given examples (useful for matching new data to known patterns)
+    /// </summary>
+    public async Task<PatternSearchHit?> FindMatchingPatternAsync(List<string> examples, double maxDistance = 0.3)
+    {
+        if (!_available || examples.Count == 0) return null;
+        
+        // Create a search query from the examples
+        var searchQuery = $"text pattern examples: {string.Join(", ", examples.Take(5))}";
+        var hits = await SearchPatternsAsync(searchQuery, topK: 1);
+        
+        if (hits.Count > 0 && hits[0].Score <= maxDistance)
+        {
+            return hits[0];
+        }
+        
+        return null;
+    }
+
+    private static string BuildPatternSearchText(NovelPatternRecord pattern)
+    {
+        var parts = new List<string>
+        {
+            $"Pattern: {pattern.PatternName}",
+            $"Column: {pattern.ColumnName}",
+            $"Type: {pattern.PatternType}",
+            $"Description: {pattern.Description}"
+        };
+        
+        if (pattern.Examples?.Count > 0)
+        {
+            parts.Add($"Examples: {string.Join(", ", pattern.Examples.Take(5))}");
+        }
+        
+        if (!string.IsNullOrEmpty(pattern.DetectedRegex))
+        {
+            parts.Add($"Regex: {pattern.DetectedRegex}");
+        }
+        
+        return string.Join(". ", parts);
+    }
+
+    private static PatternSearchHit ReadPatternHit(System.Data.Common.DbDataReader reader)
+    {
+        var examplesJson = reader.IsDBNull(8) ? "[]" : reader.GetString(8);
+        var rulesJson = reader.IsDBNull(12) ? "[]" : reader.GetString(12);
+        
+        return new PatternSearchHit
+        {
+            Id = reader.GetInt64(0),
+            PatternName = reader.IsDBNull(1) ? "" : reader.GetString(1),
+            ColumnName = reader.IsDBNull(2) ? "" : reader.GetString(2),
+            FilePath = reader.IsDBNull(3) ? "" : reader.GetString(3),
+            PatternType = reader.IsDBNull(4) ? "" : reader.GetString(4),
+            DetectedRegex = reader.IsDBNull(5) ? null : reader.GetString(5),
+            ImprovedRegex = reader.IsDBNull(6) ? null : reader.GetString(6),
+            Description = reader.IsDBNull(7) ? "" : reader.GetString(7),
+            Examples = JsonSerializer.Deserialize<List<string>>(examplesJson) ?? [],
+            MatchPercent = reader.IsDBNull(9) ? 0 : Convert.ToDouble(reader.GetValue(9)),
+            IsIdentifier = !reader.IsDBNull(10) && reader.GetBoolean(10),
+            IsSensitive = !reader.IsDBNull(11) && reader.GetBoolean(11),
+            ValidationRules = JsonSerializer.Deserialize<List<string>>(rulesJson) ?? [],
+            Score = reader.IsDBNull(13) ? 0 : Convert.ToDouble(reader.GetValue(13))
+        };
+    }
+
+    private static PatternSearchHit ReadPatternHitWithoutDistance(System.Data.Common.DbDataReader reader)
+    {
+        var examplesJson = reader.IsDBNull(8) ? "[]" : reader.GetString(8);
+        var rulesJson = reader.IsDBNull(12) ? "[]" : reader.GetString(12);
+        
+        return new PatternSearchHit
+        {
+            Id = reader.GetInt64(0),
+            PatternName = reader.IsDBNull(1) ? "" : reader.GetString(1),
+            ColumnName = reader.IsDBNull(2) ? "" : reader.GetString(2),
+            FilePath = reader.IsDBNull(3) ? "" : reader.GetString(3),
+            PatternType = reader.IsDBNull(4) ? "" : reader.GetString(4),
+            DetectedRegex = reader.IsDBNull(5) ? null : reader.GetString(5),
+            ImprovedRegex = reader.IsDBNull(6) ? null : reader.GetString(6),
+            Description = reader.IsDBNull(7) ? "" : reader.GetString(7),
+            Examples = JsonSerializer.Deserialize<List<string>>(examplesJson) ?? [],
+            MatchPercent = reader.IsDBNull(9) ? 0 : reader.GetDouble(9),
+            IsIdentifier = !reader.IsDBNull(10) && reader.GetBoolean(10),
+            IsSensitive = !reader.IsDBNull(11) && reader.GetBoolean(11),
+            ValidationRules = JsonSerializer.Deserialize<List<string>>(rulesJson) ?? [],
+            Score = 0
+        };
+    }
+
     public async Task<List<ConversationTurn>> GetConversationContextAsync(string sessionId, string query, int topK = 5)
     {
         var result = new List<ConversationTurn>();
         if (!_available) return result;
         Ensure();
-        var queryVec = MakeVector(query);
+        var queryVec = await MakeVectorAsync(query);
 
         if (_useVss)
         {
@@ -389,4 +693,44 @@ public record ConversationTurn
 {
     public string Role { get; init; } = "";
     public string Content { get; init; } = "";
+}
+
+/// <summary>
+/// Record for storing a novel pattern in the registry
+/// </summary>
+public record NovelPatternRecord
+{
+    public string PatternName { get; init; } = "";
+    public string ColumnName { get; init; } = "";
+    public string FilePath { get; init; } = "";
+    public string PatternType { get; init; } = "Novel";
+    public string? DetectedRegex { get; init; }
+    public string? ImprovedRegex { get; init; }
+    public string Description { get; init; } = "";
+    public List<string>? Examples { get; init; }
+    public double MatchPercent { get; init; }
+    public bool IsIdentifier { get; init; }
+    public bool IsSensitive { get; init; }
+    public List<string>? ValidationRules { get; init; }
+}
+
+/// <summary>
+/// Search result for pattern queries
+/// </summary>
+public record PatternSearchHit
+{
+    public long Id { get; init; }
+    public string PatternName { get; init; } = "";
+    public string ColumnName { get; init; } = "";
+    public string FilePath { get; init; } = "";
+    public string PatternType { get; init; } = "";
+    public string? DetectedRegex { get; init; }
+    public string? ImprovedRegex { get; init; }
+    public string Description { get; init; } = "";
+    public List<string> Examples { get; init; } = [];
+    public double MatchPercent { get; init; }
+    public bool IsIdentifier { get; init; }
+    public bool IsSensitive { get; init; }
+    public List<string> ValidationRules { get; init; } = [];
+    public double Score { get; init; }
 }

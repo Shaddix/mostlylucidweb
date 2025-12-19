@@ -69,6 +69,7 @@
 
     <ItemGroup>
       <Folder Include="Blog\Models\" />
+      <Folder Include="Blog\posts\" />
       <Folder Include="EmailSubscription\Services\" />
       <Folder Include="wwwroot\css\dist\highlight\" />
       <Folder Include="wwwroot\css\highlight\" />

@@ -753,9 +753,108 @@ public class LlmInsightGenerator : IDisposable
         };
     }
 
+    /// <summary>
+    /// Use LLM to analyze a novel pattern and generate a better regex and description
+    /// </summary>
+    public async Task<NovelPatternAnalysis?> AnalyzeNovelPatternAsync(string columnName, List<string> examples, string? basicRegex)
+    {
+        if (examples.Count == 0) return null;
+
+        var examplesText = string.Join("\n", examples.Take(10).Select(e => $"- {e}"));
+        var jsonSchema = """{"pattern_name": "short name", "description": "description", "regex": "regex pattern", "is_identifier": true/false, "is_sensitive": true/false, "validation_rules": ["rule1"]}""";
+        var prompt = $"""
+            Analyze these example values from a data column named "{columnName}":
+            
+            Examples:
+            {examplesText}
+            
+            Basic detected pattern: {basicRegex ?? "unknown"}
+            
+            Analyze the pattern and respond with valid JSON matching this schema:
+            {jsonSchema}
+            
+            Respond ONLY with the JSON, no markdown or explanation:
+            """;
+
+        try
+        {
+            var request = new GenerateRequest { Model = _model, Prompt = prompt };
+            var response = await _ollama.GenerateAsync(request).StreamToEndAsync();
+            var text = (response?.Response ?? "").Trim();
+
+            var json = ExtractJsonBlock(text);
+            if (json == null) return null;
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            return new NovelPatternAnalysis
+            {
+                PatternName = root.TryGetProperty("pattern_name", out var pn) ? pn.GetString() ?? "Unknown" : "Unknown",
+                Description = root.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
+                ImprovedRegex = root.TryGetProperty("regex", out var rx) ? rx.GetString() : basicRegex,
+                IsIdentifier = root.TryGetProperty("is_identifier", out var isId) && isId.GetBoolean(),
+                IsSensitive = root.TryGetProperty("is_sensitive", out var isSens) && isSens.GetBoolean(),
+                ValidationRules = root.TryGetProperty("validation_rules", out var rules) && rules.ValueKind == JsonValueKind.Array
+                    ? rules.EnumerateArray().Select(r => r.GetString() ?? "").Where(r => !string.IsNullOrEmpty(r)).ToList()
+                    : new List<string>()
+            };
+        }
+        catch (Exception ex)
+        {
+            if (_verbose) Console.WriteLine($"[LLM] Novel pattern analysis failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Generate synthetic examples for a novel pattern using LLM
+    /// </summary>
+    public async Task<List<string>> GeneratePatternExamplesAsync(string patternDescription, string? regex, int count = 10)
+    {
+        var prompt = $"""
+            Generate {count} realistic example values that match this pattern:
+            
+            Pattern: {patternDescription}
+            {(regex != null ? $"Regex: {regex}" : "")}
+            
+            Return ONLY the examples, one per line, no numbering or explanations:
+            """;
+
+        try
+        {
+            var request = new GenerateRequest { Model = _model, Prompt = prompt };
+            var response = await _ollama.GenerateAsync(request).StreamToEndAsync();
+            var text = (response?.Response ?? "").Trim();
+
+            return text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim().TrimStart('-', '*', ' '))
+                .Where(l => !string.IsNullOrWhiteSpace(l) && l.Length < 200)
+                .Take(count)
+                .ToList();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
     public void Dispose()
     {
         _connection?.Dispose();
         _connection = null;
     }
+}
+
+/// <summary>
+/// Result of LLM analysis of a novel pattern
+/// </summary>
+public class NovelPatternAnalysis
+{
+    public string PatternName { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string? ImprovedRegex { get; set; }
+    public bool IsIdentifier { get; set; }
+    public bool IsSensitive { get; set; }
+    public List<string> ValidationRules { get; set; } = new();
 }

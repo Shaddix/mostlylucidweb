@@ -1,0 +1,317 @@
+name: Release DataSummarizer
+
+on:
+  push:
+    tags:
+      - 'datasummarizer-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  
+env:
+  PROJECT_PATH: Mostlylucid.DataSummarizer/Mostlylucid.DataSummarizer.csproj
+  PROJECT_NAME: Mostlylucid.DataSummarizer
+  TEST_PROJECT_PATH: Mostlylucid.DataSummarizer/Mostlylucid.DataSummarizer.Tests/Mostlylucid.DataSummarizer.Tests.csproj
+
+jobs:
+  # Run tests first (only once, not for each platform)
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.TEST_PROJECT_PATH }}
+
+    - name: Run unit tests
+      run: |
+        dotnet test ${{ env.TEST_PROJECT_PATH }} \
+          --configuration Release \
+          --logger "console;verbosity=normal"
+
+  build:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            rid: win-x64
+            artifact_name: datasummarizer-win-x64
+            executable: datasummarizer.exe
+          # Windows ARM64 - cross-compile from x64
+          - os: windows-latest
+            rid: win-arm64
+            artifact_name: datasummarizer-win-arm64
+            executable: datasummarizer.exe
+          # Linux x64
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact_name: datasummarizer-linux-x64
+            executable: datasummarizer
+          # Linux ARM64 - use ARM64 runner
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            artifact_name: datasummarizer-linux-arm64
+            executable: datasummarizer
+          # macOS x64 (Intel)
+          - os: macos-13
+            rid: osx-x64
+            artifact_name: datasummarizer-osx-x64
+            executable: datasummarizer
+          # macOS ARM64 (Apple Silicon) - macos-latest is ARM64
+          - os: macos-latest
+            rid: osx-arm64
+            artifact_name: datasummarizer-osx-arm64
+            executable: datasummarizer
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
+
+    - name: Extract version from tag
+      id: get_version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/datasummarizer-v}
+        fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }}
+
+    - name: Build and Publish (self-contained)
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} \
+          -c Release \
+          -r ${{ matrix.rid }} \
+          --self-contained \
+          -p:Version=${{ steps.get_version.outputs.VERSION }} \
+          -p:PublishSingleFile=true \
+          -p:PublishTrimmed=false \
+          -o ./publish/${{ matrix.rid }}
+      shell: bash
+
+    - name: List published files
+      run: ls -la ./publish/${{ matrix.rid }}/
+      shell: bash
+
+    - name: Create archive (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json
+      shell: bash
+
+    - name: Create archive (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        chmod +x ${{ matrix.executable }}
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.zip
+          ${{ matrix.artifact_name }}.tar.gz
+        if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/datasummarizer-v}
+        fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+        merge-multiple: true
+
+    - name: List artifacts
+      run: |
+        echo "=== Artifacts directory structure ==="
+        find ./artifacts -type f -name "*.zip" -o -name "*.tar.gz" | head -20
+        echo "=== All files ==="
+        ls -laR ./artifacts/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        name: DataSummarizer v${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ github.event_name == 'workflow_dispatch' && format('datasummarizer-v{0}', github.event.inputs.version) || github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## DataSummarizer v${{ steps.get_version.outputs.VERSION }}
+          
+          > **DuckDB-powered data profiling CLI - analyze CSV, Excel, Parquet, and JSON files without loading them into memory.**
+          
+          **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DataSummarizer/README.md)**
+          
+          ### Key Features
+          
+          - **DuckDB-First** - Stream data directly from files, handles datasets larger than RAM
+          - **Statistical Profiling** - Row/column counts, nulls, uniques, quantiles, distributions
+          - **Smart Alerts** - Target imbalance, potential leakage, outliers, zero-inflation
+          - **Target Analysis** - Feature effects with Cohen's d and rate deltas
+          - **Pattern Detection** - Email, UUID, phone patterns + novel pattern discovery
+          - **Correlation Analysis** - Pearson correlations with strength classification
+          - **Time Series Detection** - Granularity, gaps, seasonality detection
+          - **LLM Integration** - Optional Ollama-powered insights (works offline without LLM)
+          - **JSON Tool Mode** - Structured output for MCP tools and AI agents
+          - **Synthetic Data** - Generate realistic test data from profiles
+          - **Dataset Validation** - Compare datasets and detect drift
+          
+          ### Downloads
+          
+          | Platform | Architecture | Download |
+          |----------|--------------|----------|
+          | Windows | x64 | `datasummarizer-win-x64.zip` |
+          | Windows | ARM64 | `datasummarizer-win-arm64.zip` |
+          | Linux | x64 | `datasummarizer-linux-x64.tar.gz` |
+          | Linux | ARM64 | `datasummarizer-linux-arm64.tar.gz` |
+          | macOS | x64 (Intel) | `datasummarizer-osx-x64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon) | `datasummarizer-osx-arm64.tar.gz` |
+          
+          ### Quick Start
+          
+          **Profile a CSV file (no LLM needed):**
+          ```bash
+          ./datasummarizer -f data.csv --no-llm
+          ```
+          
+          **Target-aware analysis (e.g., churn prediction):**
+          ```bash
+          ./datasummarizer -f customers.csv --target Churned --no-llm
+          ```
+          
+          **JSON output for AI agents:**
+          ```bash
+          ./datasummarizer tool -f data.csv --target Revenue
+          ```
+          
+          **Ask questions about your data (no LLM needed for common questions):**
+          ```bash
+          ./datasummarizer -f data.csv --no-llm -q "What columns have missing values?"
+          ./datasummarizer -f data.csv --no-llm -q "What are the outliers?"
+          ./datasummarizer -f data.csv --target Exited --no-llm -q "What drives churn?"
+          ```
+          
+          **Generate synthetic data:**
+          ```bash
+          ./datasummarizer profile -f original.csv --output profile.json
+          ./datasummarizer synth --profile profile.json --synthesize-to synthetic.csv --synthesize-rows 10000
+          ```
+          
+          **Compare datasets (drift detection):**
+          ```bash
+          ./datasummarizer validate --source original.csv --target new_data.csv
+          ```
+          
+          ### With LLM (Enhanced Insights)
+          
+          ```bash
+          # Install Ollama from https://ollama.ai, then:
+          ollama pull qwen2.5-coder:7b && ollama serve
+          
+          ./datasummarizer -f data.csv --model qwen2.5-coder:7b
+          ```
+          
+          ### Supported Formats
+          
+          | Format | Extension | Notes |
+          |--------|-----------|-------|
+          | CSV | .csv | Auto-detects delimiter |
+          | Excel | .xlsx, .xls | Specify sheet with `-s` |
+          | Parquet | .parquet | Full support |
+          | JSON | .json | Auto-infers schema |
+          
+          ### Statistics Calculated
+          
+          **Numeric Columns:**
+          - Mean, Median, StdDev, MAD (robust)
+          - Quartiles (Q25, Q50, Q75), IQR
+          - Skewness, Kurtosis
+          - Coefficient of Variation
+          - Outlier count (IQR method)
+          - Zero count (for sparse data)
+          - Distribution type (Normal, Uniform, Skewed, Bimodal)
+          - Trend detection (with R²)
+          
+          **Categorical Columns:**
+          - Unique count, Top values
+          - Mode, Imbalance ratio
+          - Shannon Entropy (information content)
+          - Ordinal detection
+          
+          **Text Columns:**
+          - Length stats (min, max, avg)
+          - Empty string count
+          - Pattern detection (Email, URL, Phone, UUID, etc.)
+          - Novel pattern discovery with regex generation
+          
+          **DateTime Columns:**
+          - Date range and span
+          - Time series granularity
+          - Gap detection
+          - Seasonality detection
+          
+          ### Prerequisites
+          
+          **For basic profiling:** None - works completely standalone!
+          
+          **For LLM-enhanced insights:** [Ollama](https://ollama.ai/) with any model
+          
+        files: |
+          ./artifacts/**/*.zip
+          ./artifacts/**/*.tar.gz

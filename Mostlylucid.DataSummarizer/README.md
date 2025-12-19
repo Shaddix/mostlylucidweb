@@ -214,6 +214,59 @@ Average Age is 44.8 for 1 vs 37.4 for 0 (Δ 7.4)
 ℹ Good candidate for logistic regression or gradient boosting | ⚠ Exclude ID columns from features: CustomerId
 ```
 
+### Sample output (sales.csv, 100k rows)
+```
+── Summary ─────────────────────────────────────────────────────────────────────
+
+This dataset contains **100,000 rows** and **14 columns**. Column breakdown: 4 
+numeric, 4 categorical, 1 date/time. Found **1 strong correlation(s)**. Found 4 
+warning(s) to review.
+
+╭───────────────┬─────────────┬───────┬─────────┬──────────────────────────────╮
+│ Column        │ Type        │ Nulls │ Unique  │ Stats                        │
+├───────────────┼─────────────┼───────┼─────────┼──────────────────────────────┤
+│ OrderId       │ Id          │ 0.0%  │ 97,592  │ -                            │
+│ OrderDate     │ DateTime    │ 0.0%  │ 1,264   │ 2022-01-01 → 2024-12-30      │
+│ CustomerId    │ Id          │ 0.0%  │ 64,502  │ -                            │
+│ CustomerName  │ Text        │ 0.0%  │ 89,958  │ -                            │
+│ Email         │ Text        │ 0.0%  │ 100,000 │ -                            │
+│ Region        │ Categorical │ 0.0%  │ 5       │ top: South                   │
+│ Category      │ Categorical │ 0.0%  │ 6       │ top: Home & Garden           │
+│ ProductName   │ Categorical │ 0.0%  │ 53      │ top: Mechanical Keyboard     │
+│ Quantity      │ Numeric     │ 0.0%  │ 21      │ μ=10.5, σ=5.8, range=1-20    │
+│ UnitPrice     │ Numeric     │ 0.0%  │ 19,586  │ μ=73.4, σ=61.5, range=5-300  │
+│ Discount      │ Numeric     │ 0.0%  │ 24      │ μ=0.0, σ=0.1, range=0.0-0.2  │
+│ TotalAmount   │ Numeric     │ 0.0%  │ 69,420  │ μ=737.0, σ=813.9, range=4-6k │
+│ PaymentMethod │ Categorical │ 0.0%  │ 5       │ top: Cash                    │
+│ IsReturned    │ Boolean     │ 0.0%  │ 2       │ -                            │
+╰───────────────┴─────────────┴───────┴─────────┴──────────────────────────────╯
+
+── Alerts ──────────────────────────────────────────────────────────────────────
+- Email: 100.0% unique - possibly an ID column
+- Email: ⚠ Potential leakage: 100.0% unique (100,000 values) - exclude from modeling
+- UnitPrice: 5,670 outliers (5.7%) outside IQR bounds [-69.8, 197.0]
+- Discount: 5,271 outliers (5.3%) outside IQR bounds [-0.1, 0.2]
+- TotalAmount: Skewness: 2.27 - distribution is highly skewed
+- TotalAmount: 7,445 outliers (7.4%) outside IQR bounds [-908.4, 2060.8]
+
+── Insights ────────────────────────────────────────────────────────────────────
+Text Pattern in 'Email' (score 0.94)
+100% of values match Email pattern (100,000 matches).
+
+Text Pattern in 'CustomerName' (score 0.94)
+100% of values match Novel pattern (99,500 matches).
+
+💡 Modeling Recommendations (score 0.70)
+ℹ High-cardinality categoricals (ProductName) - consider target encoding
+⚠ Exclude ID columns from features: OrderId, CustomerId
+
+'Quantity' Distribution (score 0.59)
+Column is uniformly distributed across its range.
+
+'UnitPrice' Distribution (score 0.59)
+Column is right-skewed (tail extends right).
+```
+
 ### Sample validation output (source vs synthetic)
 ```json
 {
@@ -241,6 +294,103 @@ Average Age is 44.8 for 1 vs 37.4 for 0 (Δ 7.4)
   "DriftScore": 1
 }
 ```
+
+## Plain English Queries (with LLM)
+
+Ask questions in natural language and get profile-grounded answers:
+
+```bash
+# "Tell me about this data" - get an overview
+datasummarizer -f sales.csv --model qwen2.5-coder:7b --query "tell me about this data"
+```
+```
+Question: tell me about this data
+
+Answer: **Dataset**: sales.csv
+**Size**: 100,000 rows × 14 columns
+**Profile time**: 16.5s
+
+**Column types:**
+- Numeric: 4
+- Categorical: 4
+- DateTime: 1
+- Text: 2
+
+**Data quality:**
+- Columns with nulls: 0
+- Columns with outliers: 3
+- Alerts: 6
+- Strong correlations (|r|≥0.7): 1
+```
+
+```bash
+# Ask about specific columns
+datasummarizer -f sales.csv --model qwen2.5-coder:7b --query "what are the top selling product categories?"
+```
+```
+Question: what are the top selling product categories?
+
+Answer: Found **4 categorical column(s)**:
+
+**Category** (6 unique values):
+  - Home & Garden: 14.4% (14,406)
+  - Clothing: 14.4% (14,378)
+  - Electronics: 14.3% (14,325)
+  - Food & Beverage: 14.3% (14,310)
+  - Toys: 14.2% (14,246)
+  - ... and 1 more values
+
+**ProductName** (53 unique values):
+  - Mechanical Keyboard: 1.9% (1,884)
+  - Picture Frame: 1.9% (1,870)
+  - Tennis Racket: 1.9% (1,850)
+```
+
+```bash
+# Ask about data quality issues
+datasummarizer -f sales.csv --model qwen2.5-coder:7b --query "what issues should I fix before modeling?"
+```
+```
+Question: what issues should I fix before modeling?
+
+Answer: Found **6 data quality issue(s)**:
+
+**PotentialLeakage** (1):
+  🟡 Email: ⚠ Potential leakage: 100.0% unique (100,000 values) - exclude from 
+modeling or verify
+
+**Outliers** (3):
+  🟡 UnitPrice: 5,670 outliers (5.7%) outside IQR bounds [-69.8, 197.0]
+  🟡 Discount: 5,271 outliers (5.3%) outside IQR bounds [-0.1, 0.2]
+  🟡 TotalAmount: 7,445 outliers (7.4%) outside IQR bounds [-908.4, 2060.8]
+
+**HighCardinality** (1):
+  🔵 Email: 100.0% unique - possibly an ID column
+
+**HighSkewness** (1):
+  🔵 TotalAmount: Skewness: 2.27 - distribution is highly skewed
+```
+
+```bash
+# Ask about patterns
+datasummarizer -f sales.csv --model qwen2.5-coder:7b --query "are there any patterns in the data?"
+```
+```
+Question: are there any patterns in the data?
+
+Answer: **Text patterns detected:**
+
+**CustomerName**:
+  - **Novel Pattern**: 99.0% (99,000 matches)
+    Description: Consistent format detected: letters + space + letters
+    Regex: `^[a-zA-Z]+\s+[a-zA-Z]+$`
+    Examples: Bianka Hyatt, Noelia Kub, Sally Thiel
+
+**Email**:
+  - Email: 100.0% (100,000 matches)
+```
+
+The LLM answers are grounded in the computed profile - it can only report facts that DuckDB computed, not hallucinate columns or statistics.
 
 ### Session-aware Q&A
 You can supply `--session-id <id>` to keep conversational context across runs. Conversations are stored in the vector registry (or cosine fallback) and reused in `--query` / `--registry-query` prompts without inventing new columns or facts.

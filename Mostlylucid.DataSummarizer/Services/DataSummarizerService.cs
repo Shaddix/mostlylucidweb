@@ -763,7 +763,27 @@ public class DataSummarizerService : IDisposable
             sb.AppendLine($"**{col.Name}**:");
             foreach (var pattern in col.TextPatterns)
             {
-                sb.AppendLine($"  - {pattern.PatternType}: {pattern.MatchPercent:F1}% ({pattern.MatchCount:N0} matches)");
+                if (pattern.PatternType == TextPatternType.Novel)
+                {
+                    // Include novel pattern details
+                    sb.AppendLine($"  - **Novel Pattern**: {pattern.MatchPercent:F1}% ({pattern.MatchCount:N0} matches)");
+                    if (!string.IsNullOrEmpty(pattern.Description))
+                    {
+                        sb.AppendLine($"    Description: {pattern.Description}");
+                    }
+                    if (!string.IsNullOrEmpty(pattern.DetectedRegex))
+                    {
+                        sb.AppendLine($"    Regex: `{pattern.DetectedRegex}`");
+                    }
+                    if (pattern.Examples?.Count > 0)
+                    {
+                        sb.AppendLine($"    Examples: {string.Join(", ", pattern.Examples.Take(3))}");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine($"  - {pattern.PatternType}: {pattern.MatchPercent:F1}% ({pattern.MatchCount:N0} matches)");
+                }
             }
             sb.AppendLine();
         }
@@ -931,6 +951,9 @@ PRIOR CONVERSATION (reuse if relevant):
                 profile.Insights.AddRange(llmInsights);
                 
                 if (_verbose) Console.WriteLine($"[DataSummarizer] Generated {llmInsights.Count} LLM insights");
+                
+                // Enhance novel patterns with LLM analysis
+                await EnhanceNovelPatternsWithLlmAsync(profile, llm);
             }
             catch (Exception ex)
             {
@@ -945,8 +968,139 @@ PRIOR CONVERSATION (reuse if relevant):
 
         // Persist to vector store for reuse
         await PersistToVectorStoreAsync(profile);
+        
+        // Save novel patterns to vector store
+        await SaveNovelPatternsAsync(profile);
 
         return profile;
+    }
+
+    /// <summary>
+    /// Enhance novel patterns with LLM analysis to get better regex and descriptions
+    /// </summary>
+    private async Task EnhanceNovelPatternsWithLlmAsync(DataProfile profile, LlmInsightGenerator llm)
+    {
+        var columnsWithNovelPatterns = profile.Columns
+            .Where(c => c.TextPatterns.Any(p => p.PatternType == TextPatternType.Novel))
+            .ToList();
+
+        if (columnsWithNovelPatterns.Count == 0) return;
+
+        if (_verbose) Console.WriteLine($"[DataSummarizer] Enhancing {columnsWithNovelPatterns.Count} novel pattern(s) with LLM...");
+
+        foreach (var col in columnsWithNovelPatterns)
+        {
+            var novelPattern = col.TextPatterns.First(p => p.PatternType == TextPatternType.Novel);
+            
+            try
+            {
+                // First, check if we already have a similar pattern in the registry
+                await EnsureVectorStoreAsync();
+                if (_vectorStore?.IsAvailable == true && novelPattern.Examples?.Count > 0)
+                {
+                    var existingPattern = await _vectorStore.FindMatchingPatternAsync(novelPattern.Examples, maxDistance: 0.25);
+                    if (existingPattern != null)
+                    {
+                        // Reuse existing pattern analysis
+                        novelPattern.Description = existingPattern.Description;
+                        novelPattern.DetectedRegex = existingPattern.ImprovedRegex ?? existingPattern.DetectedRegex;
+                        
+                        if (_verbose) Console.WriteLine($"[DataSummarizer] Reusing existing pattern '{existingPattern.PatternName}' for column {col.Name}");
+                        continue;
+                    }
+                }
+
+                // Use LLM to analyze the novel pattern
+                var analysis = await llm.AnalyzeNovelPatternAsync(
+                    col.Name,
+                    novelPattern.Examples ?? new List<string>(),
+                    novelPattern.DetectedRegex
+                );
+
+                if (analysis != null)
+                {
+                    novelPattern.Description = $"{analysis.PatternName}: {analysis.Description}";
+                    if (!string.IsNullOrEmpty(analysis.ImprovedRegex))
+                    {
+                        novelPattern.DetectedRegex = analysis.ImprovedRegex;
+                    }
+                    
+                    // Add insight about the novel pattern
+                    profile.Insights.Add(new DataInsight
+                    {
+                        Title = $"Novel Pattern: {analysis.PatternName}",
+                        Description = $"Column **{col.Name}** contains a consistent pattern ({novelPattern.MatchPercent:F0}% of values).\n\n" +
+                                     $"{analysis.Description}\n\n" +
+                                     (analysis.IsIdentifier ? "⚠️ This appears to be an identifier - consider excluding from ML features.\n" : "") +
+                                     (analysis.IsSensitive ? "🔒 This may contain sensitive data - review before sharing.\n" : "") +
+                                     (analysis.ValidationRules.Count > 0 ? $"Validation: {string.Join(", ", analysis.ValidationRules)}" : ""),
+                        Source = InsightSource.LlmGenerated,
+                        RelatedColumns = new List<string> { col.Name },
+                        Score = 0.75
+                    });
+
+                    if (_verbose) Console.WriteLine($"[DataSummarizer] Enhanced pattern for {col.Name}: {analysis.PatternName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_verbose) Console.WriteLine($"[DataSummarizer] Failed to enhance pattern for {col.Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Save detected novel patterns to the vector store for future reuse
+    /// </summary>
+    private async Task SaveNovelPatternsAsync(DataProfile profile)
+    {
+        await EnsureVectorStoreAsync();
+        if (_vectorStore is null || !_vectorStore.IsAvailable) return;
+
+        var columnsWithNovelPatterns = profile.Columns
+            .Where(c => c.TextPatterns.Any(p => p.PatternType == TextPatternType.Novel))
+            .ToList();
+
+        foreach (var col in columnsWithNovelPatterns)
+        {
+            var novelPattern = col.TextPatterns.First(p => p.PatternType == TextPatternType.Novel);
+            
+            try
+            {
+                // Parse the description to extract pattern name if LLM-enhanced
+                var patternName = "Novel Pattern";
+                var description = novelPattern.Description ?? $"Consistent format in column {col.Name}";
+                
+                if (novelPattern.Description?.Contains(':') == true)
+                {
+                    var parts = novelPattern.Description.Split(':', 2);
+                    patternName = parts[0].Trim();
+                    description = parts.Length > 1 ? parts[1].Trim() : description;
+                }
+
+                var record = new NovelPatternRecord
+                {
+                    PatternName = patternName,
+                    ColumnName = col.Name,
+                    FilePath = profile.SourcePath,
+                    PatternType = "Novel",
+                    DetectedRegex = novelPattern.DetectedRegex,
+                    ImprovedRegex = novelPattern.DetectedRegex, // Same for now, LLM may have improved it
+                    Description = description,
+                    Examples = novelPattern.Examples,
+                    MatchPercent = novelPattern.MatchPercent,
+                    IsIdentifier = col.SemanticRole == SemanticRole.Identifier,
+                    IsSensitive = false, // Default, LLM analysis may override
+                    ValidationRules = null
+                };
+
+                await _vectorStore.UpsertNovelPatternAsync(record);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose) Console.WriteLine($"[DataSummarizer] Failed to save pattern for {col.Name}: {ex.Message}");
+            }
+        }
     }
 
     private async Task<DataSummaryReport> GenerateReportAsync(DataProfile profile, bool allowLlm, CancellationToken cancellationToken = default)

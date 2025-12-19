@@ -367,17 +367,25 @@ public class DuckDbProfiler : IDisposable
             
             if (col.TopValues.Count > 0)
             {
+                // Set mode (most frequent value)
+                col.Mode = col.TopValues[0].Value;
+                
                 var topPct = col.TopValues[0].Percent;
                 var expectedPct = 100.0 / col.UniqueCount;
                 col.ImbalanceRatio = topPct / expectedPct;
+                
+                // Calculate entropy for categorical columns
+                col.Entropy = CalculateEntropy(col.TopValues, totalRows);
             }
         }
 
-        // Calculate skewness for numeric columns
+        // Calculate stats for numeric columns
         if (col.InferredType == ColumnType.Numeric && col.StdDev > 0)
         {
             col.Skewness = await CalculateSkewnessAsync(readExpr, col.Name);
+            col.Kurtosis = await CalculateKurtosisAsync(readExpr, col.Name);
             col.OutlierCount = await CountOutliersAsync(readExpr, col.Name, col.Q25, col.Q75);
+            col.ZeroCount = await CountZerosAsync(readExpr, col.Name);
 
             // MathNet robust stats on a sample
             var sample = await GetNumericSampleAsync(readExpr, col.Name, 5000);
@@ -388,6 +396,9 @@ public class DuckDbProfiler : IDisposable
                 // If DuckDB skewness failed, fill from MathNet
                 if (!col.Skewness.HasValue && sample.Count >= 10)
                     col.Skewness = Statistics.Skewness(sample);
+                // If DuckDB kurtosis failed, fill from MathNet
+                if (!col.Kurtosis.HasValue && sample.Count >= 10)
+                    col.Kurtosis = Statistics.Kurtosis(sample);
             }
         }
 
@@ -400,8 +411,32 @@ public class DuckDbProfiler : IDisposable
         // Text stats
         if (col.InferredType == ColumnType.Text)
         {
-            (col.AvgLength, col.MaxLength) = await GetTextStatsAsync(readExpr, col.Name);
+            var textStats = await GetTextStatsExtendedAsync(readExpr, col.Name);
+            col.AvgLength = textStats.AvgLength;
+            col.MaxLength = textStats.MaxLength;
+            col.MinLength = textStats.MinLength;
+            col.EmptyStringCount = textStats.EmptyCount;
         }
+    }
+    
+    /// <summary>
+    /// Calculate Shannon entropy for categorical distribution
+    /// </summary>
+    private static double? CalculateEntropy(List<ValueCount> topValues, long totalRows)
+    {
+        if (topValues == null || topValues.Count == 0 || totalRows <= 0) return null;
+        
+        double entropy = 0;
+        foreach (var val in topValues)
+        {
+            if (val.Percent > 0)
+            {
+                var p = val.Percent / 100.0; // Convert to probability
+                entropy -= p * Math.Log2(p);
+            }
+        }
+        
+        return Math.Round(entropy, 4);
     }
 
     private ColumnType InferColumnType(ColumnProfile col)
@@ -576,6 +611,78 @@ public class DuckDbProfiler : IDisposable
             return (avg, max);
         }
         return (null, null);
+    }
+    
+    private async Task<(double? AvgLength, int? MaxLength, int? MinLength, int EmptyCount)> GetTextStatsExtendedAsync(string readExpr, string column)
+    {
+        var sql = $@"
+            SELECT 
+                AVG(LENGTH(""{column}"")),
+                MAX(LENGTH(""{column}"")),
+                MIN(LENGTH(""{column}"")),
+                SUM(CASE WHEN TRIM(""{column}"") = '' THEN 1 ELSE 0 END)
+            FROM {readExpr}
+            WHERE ""{column}"" IS NOT NULL";
+        
+        try
+        {
+            await using var cmd = Connection.CreateCommand();
+            cmd.CommandText = sql;
+            await using var reader = await cmd.ExecuteReaderAsync();
+            
+            if (await reader.ReadAsync())
+            {
+                double? avg = reader.IsDBNull(0) ? null : TryGetDouble(reader, 0);
+                int? max = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                int? min = reader.IsDBNull(2) ? null : reader.GetInt32(2);
+                int empty = reader.IsDBNull(3) ? 0 : (int)reader.GetInt64(3);
+                return (avg, max, min, empty);
+            }
+        }
+        catch
+        {
+            // Fall back to basic stats
+            var basic = await GetTextStatsAsync(readExpr, column);
+            return (basic.Item1, basic.Item2, null, 0);
+        }
+        return (null, null, null, 0);
+    }
+    
+    private async Task<double?> CalculateKurtosisAsync(string readExpr, string column)
+    {
+        // Kurtosis = E[(X - μ)^4] / σ^4
+        // Note: This is the raw kurtosis (not excess kurtosis). Normal distribution = 3.
+        var sql = $@"
+            SELECT 
+                AVG(POW((""{column}"" - sub.mean) / sub.std, 4)) as kurtosis
+            FROM {readExpr},
+            (SELECT AVG(""{column}"") as mean, STDDEV(""{column}"") as std FROM {readExpr}) sub
+            WHERE ""{column}"" IS NOT NULL AND sub.std > 0";
+        
+        try
+        {
+            return await ExecuteScalarAsync<double?>(sql);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    private async Task<int> CountZerosAsync(string readExpr, string column)
+    {
+        var sql = $@"
+            SELECT COUNT(*) FROM {readExpr}
+            WHERE ""{column}"" = 0";
+        
+        try
+        {
+            return (int)await ExecuteScalarAsync<long>(sql);
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private async Task<List<ColumnCorrelation>> GetCorrelationsAsync(string readExpr, List<ColumnProfile> columns)
@@ -834,8 +941,9 @@ public class DuckDbProfiler : IDisposable
         {
             FeatureEffect? effect = col.InferredType switch
             {
-                ColumnType.Numeric or ColumnType.DateTime => await AnalyzeNumericEffectAsync(readExpr, col, targetColumn, encoding, totalRows),
+                ColumnType.Numeric => await AnalyzeNumericEffectAsync(readExpr, col, targetColumn, encoding, totalRows),
                 ColumnType.Categorical or ColumnType.Text or ColumnType.Boolean => await AnalyzeCategoricalEffectAsync(readExpr, col, targetColumn, encoding, totalRows, baseRate),
+                ColumnType.DateTime => null, // Skip DateTime columns for target analysis (can't compute STDDEV on dates)
                 _ => null
             };
 

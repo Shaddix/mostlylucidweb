@@ -116,6 +116,7 @@ public class PatternDetector
 
         if (totalNonNull == 0) return patterns;
 
+        bool foundKnownPattern = false;
         foreach (var (patternType, regex) in regexPatterns)
         {
             try
@@ -140,6 +141,7 @@ public class PatternDetector
                             MatchCount = (int)matchCount,
                             MatchPercent = Math.Round(matchPercent, 1)
                         });
+                        foundKnownPattern = true;
                     }
                 }
             }
@@ -148,8 +150,181 @@ public class PatternDetector
                 // Skip patterns that fail (regex might not be compatible)
             }
         }
+        
+        // If no known pattern found and column has consistent structure, try to detect novel patterns
+        if (!foundKnownPattern && totalNonNull >= 10)
+        {
+            var novelPattern = await DetectNovelPatternAsync(column, totalNonNull);
+            if (novelPattern != null)
+            {
+                patterns.Add(novelPattern);
+            }
+        }
 
         return patterns.OrderByDescending(p => p.MatchPercent).ToList();
+    }
+
+    /// <summary>
+    /// Detect novel patterns by analyzing character class structure of column values.
+    /// Returns a pattern if >70% of values share a similar structure.
+    /// </summary>
+    private async Task<TextPatternMatch?> DetectNovelPatternAsync(string column, long totalNonNull)
+    {
+        try
+        {
+            // Get sample values and their character class patterns
+            // Character class pattern: A=alpha, N=number, S=special, W=whitespace
+            var sampleSql = $@"
+                WITH samples AS (
+                    SELECT DISTINCT ""{column}""::VARCHAR as val
+                    FROM {_readExpr}
+                    WHERE ""{column}"" IS NOT NULL 
+                      AND LENGTH(""{column}""::VARCHAR) BETWEEN 2 AND 100
+                    LIMIT 200
+                ),
+                char_patterns AS (
+                    SELECT val,
+                           regexp_replace(
+                               regexp_replace(
+                                   regexp_replace(
+                                       regexp_replace(val, '[a-zA-Z]+', 'A', 'g'),
+                                       '[0-9]+', 'N', 'g'),
+                                   '[\s]+', 'W', 'g'),
+                               '[^ANW]+', 'S', 'g') as pattern
+                    FROM samples
+                )
+                SELECT pattern, COUNT(*) as cnt, MIN(val) as example
+                FROM char_patterns
+                GROUP BY pattern
+                ORDER BY cnt DESC
+                LIMIT 5";
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sampleSql;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            var patternGroups = new List<(string Pattern, long Count, string Example)>();
+            while (await reader.ReadAsync())
+            {
+                var pattern = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                var count = reader.GetInt64(1);
+                var example = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                patternGroups.Add((pattern, count, example));
+            }
+
+            if (patternGroups.Count == 0) return null;
+
+            // Check if dominant pattern covers >70% of samples
+            var topPattern = patternGroups[0];
+            var totalSampled = patternGroups.Sum(p => p.Count);
+            var dominance = (double)topPattern.Count / totalSampled;
+
+            if (dominance < 0.7) return null;
+
+            // Get more examples for this pattern
+            var examples = await GetPatternExamplesAsync(column, 5);
+            
+            // Generate a regex from the character class pattern
+            var inferredRegex = CharPatternToRegex(topPattern.Pattern);
+
+            return new TextPatternMatch
+            {
+                PatternType = TextPatternType.Novel,
+                MatchCount = (int)(totalNonNull * dominance),
+                MatchPercent = Math.Round(dominance * 100, 1),
+                DetectedRegex = inferredRegex,
+                Examples = examples,
+                Description = $"Consistent format detected: {DescribeCharPattern(topPattern.Pattern)}"
+            };
+        }
+        catch (Exception ex)
+        {
+            if (_verbose) Console.WriteLine($"[Pattern] Novel detection failed for {column}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get example values from a column
+    /// </summary>
+    private async Task<List<string>> GetPatternExamplesAsync(string column, int count)
+    {
+        var examples = new List<string>();
+        try
+        {
+            var sql = $@"
+                SELECT DISTINCT ""{column}""::VARCHAR as val
+                FROM {_readExpr}
+                WHERE ""{column}"" IS NOT NULL
+                LIMIT {count}";
+
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                if (!reader.IsDBNull(0))
+                {
+                    examples.Add(reader.GetString(0));
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+        return examples;
+    }
+
+    /// <summary>
+    /// Convert character class pattern (ANSW) to a basic regex
+    /// </summary>
+    private static string CharPatternToRegex(string charPattern)
+    {
+        var regex = new System.Text.StringBuilder("^");
+        
+        foreach (var c in charPattern)
+        {
+            regex.Append(c switch
+            {
+                'A' => "[a-zA-Z]+",
+                'N' => "[0-9]+",
+                'S' => "[^a-zA-Z0-9\\s]+",
+                'W' => "\\s+",
+                _ => "."
+            });
+        }
+        
+        regex.Append('$');
+        return regex.ToString();
+    }
+
+    /// <summary>
+    /// Generate human-readable description of character class pattern
+    /// </summary>
+    private static string DescribeCharPattern(string charPattern)
+    {
+        var parts = new List<string>();
+        
+        foreach (var c in charPattern)
+        {
+            var desc = c switch
+            {
+                'A' => "letters",
+                'N' => "numbers",
+                'S' => "symbols",
+                'W' => "space",
+                _ => "?"
+            };
+            
+            if (parts.Count == 0 || parts[^1] != desc)
+            {
+                parts.Add(desc);
+            }
+        }
+        
+        return string.Join(" + ", parts);
     }
 
     #endregion

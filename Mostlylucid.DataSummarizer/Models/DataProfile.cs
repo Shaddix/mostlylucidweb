@@ -124,20 +124,57 @@ public class ColumnProfile
     public double? Q25 { get; set; }
     public double? Q75 { get; set; }
     public double? Skewness { get; set; }
+    public double? Kurtosis { get; set; } // Tail heaviness (3 = normal)
     public int OutlierCount { get; set; }
+    public int ZeroCount { get; set; } // Count of zero values (useful for sparse data)
+    
+    /// <summary>
+    /// Interquartile range (Q75 - Q25)
+    /// </summary>
+    public double? Iqr => Q25.HasValue && Q75.HasValue ? Q75 - Q25 : null;
+    
+    /// <summary>
+    /// Total range (Max - Min)
+    /// </summary>
+    public double? Range => Min.HasValue && Max.HasValue ? Max - Min : null;
+    
+    /// <summary>
+    /// Coefficient of variation (StdDev / Mean) - relative dispersion
+    /// </summary>
+    public double? CoefficientOfVariation => Mean.HasValue && Mean != 0 && StdDev.HasValue 
+        ? Math.Abs(StdDev.Value / Mean.Value) : null;
     
     // Categorical stats
     public List<ValueCount>? TopValues { get; set; }
     public double? ImbalanceRatio { get; set; }
+    
+    /// <summary>
+    /// Shannon entropy (bits) - information content for categorical columns
+    /// Higher = more uniform, Lower = more concentrated
+    /// </summary>
+    public double? Entropy { get; set; }
+    
+    /// <summary>
+    /// Mode - most frequent value
+    /// </summary>
+    public string? Mode { get; set; }
     
     // Date stats
     public DateTime? MinDate { get; set; }
     public DateTime? MaxDate { get; set; }
     public int? DateGapDays { get; set; }
     
+    /// <summary>
+    /// Date span in days
+    /// </summary>
+    public int? DateSpanDays => MinDate.HasValue && MaxDate.HasValue 
+        ? (int)(MaxDate.Value - MinDate.Value).TotalDays : null;
+    
     // Text stats
     public double? AvgLength { get; set; }
     public int? MaxLength { get; set; }
+    public int? MinLength { get; set; }
+    public int EmptyStringCount { get; set; } // Count of empty/whitespace strings
     
     // Additional robust stats
     public double? Mad { get; set; } // Median absolute deviation
@@ -537,21 +574,29 @@ public record ToolColumnStats
     public double? Median { get; init; }
     public double? StdDev { get; init; }
     public double? Skewness { get; init; }
+    public double? Kurtosis { get; init; }
     public int? OutlierCount { get; init; }
+    public int? ZeroCount { get; init; }
+    public double? CoefficientOfVariation { get; init; }
+    public double? Iqr { get; init; }
     
     // Categorical
     public string? TopValue { get; init; }
     public double? TopValuePercent { get; init; }
     public double? ImbalanceRatio { get; init; }
+    public double? Entropy { get; init; }
     
     // DateTime
     public string? MinDate { get; init; }
     public string? MaxDate { get; init; }
     public int? DateGapDays { get; init; }
+    public int? DateSpanDays { get; init; }
     
     // Text
     public double? AvgLength { get; init; }
     public int? MaxLength { get; init; }
+    public int? MinLength { get; init; }
+    public int? EmptyStringCount { get; init; }
 }
 
 /// <summary>

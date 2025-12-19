@@ -1,4 +1,5 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using Microsoft.Extensions.Configuration;
 using Mostlylucid.DataSummarizer.Configuration;
 using Mostlylucid.DataSummarizer.Models;
@@ -13,141 +14,121 @@ var configuration = new ConfigurationBuilder()
 var settings = new DataSummarizerSettings();
 configuration.GetSection("DataSummarizer").Bind(settings);
 
-// Options
-var fileOption = new Option<string?>("-f", "Path to data file (CSV, Excel, Parquet, JSON)") { IsRequired = false };
-fileOption.AddAlias("--file");
+// Options - using new System.CommandLine 2.0.1 API
+var fileOption = new Option<string?>("--file", "-f") { Description = "Path to data file (CSV, Excel, Parquet, JSON)" };
+var sheetOption = new Option<string?>("--sheet", "-s") { Description = "Sheet name for Excel files" };
+var modelOption = new Option<string?>("--model", "-m") { Description = "Ollama model for LLM insights", DefaultValueFactory = _ => "qwen2.5-coder:7b" };
+var noLlmOption = new Option<bool>("--no-llm") { Description = "Skip LLM insights (stats only)" };
+var verboseOption = new Option<bool>("--verbose", "-v") { Description = "Verbose output" };
+var outputOption = new Option<string?>("--output", "-o") { Description = "Output file path (default: console)" };
+var queryOption = new Option<string?>("--query", "-q") { Description = "Ask a specific question about the data" };
+var onnxOption = new Option<string?>("--onnx", "--onnx-sentinel") { Description = "Optional ONNX sentinel model path for column scoring" };
+var ingestDirOption = new Option<string?>("--ingest-dir") { Description = "Ingest all supported files in a directory into the registry" };
+var ingestFilesOption = new Option<string[]?>("--ingest-files") { Description = "Ingest a comma-separated list of files into the registry", AllowMultipleArgumentsPerToken = true };
+var registryQueryOption = new Option<string?>("--registry-query") { Description = "Ask a question across all ingested data (vector search)" };
+var vectorDbOption = new Option<string?>("--vector-db") { Description = "Path to persistent DuckDB vector store", DefaultValueFactory = _ => ".datasummarizer.vss.duckdb" };
+var sessionIdOption = new Option<string?>("--session-id") { Description = "Conversation/session id for context memory (auto-generates if omitted)" };
+var synthPathOption = new Option<string?>("--synthesize-to") { Description = "Write a synthetic CSV that matches the profiled shape" };
+var synthRowsOption = new Option<int>("--synthesize-rows") { Description = "Rows to generate when synthesizing", DefaultValueFactory = _ => 1000 };
+var columnsOption = new Option<string[]?>("--columns") { Description = "Specific columns to analyze (comma-separated)", AllowMultipleArgumentsPerToken = true };
+var excludeColumnsOption = new Option<string[]?>("--exclude-columns") { Description = "Columns to exclude from analysis", AllowMultipleArgumentsPerToken = true };
+var maxColumnsOption = new Option<int?>("--max-columns") { Description = "Maximum columns to analyze (0=unlimited). Selects most interesting for wide tables." };
+var fastModeOption = new Option<bool>("--fast") { Description = "Fast mode: skip expensive pattern detection" };
+var skipCorrelationsOption = new Option<bool>("--skip-correlations") { Description = "Skip correlation analysis (faster for wide tables)" };
+var ignoreErrorsOption = new Option<bool>("--ignore-errors") { Description = "Ignore CSV parsing errors (malformed rows)" };
+var targetOption = new Option<string?>("--target") { Description = "Target column for supervised analysis (e.g. churn flag)" };
+var markdownOutputOption = new Option<string?>("--markdown-output") { Description = "Write markdown report to this path (overrides defaults)" };
+var noReportOption = new Option<bool>("--no-report") { Description = "Skip markdown report generation" };
+var focusQuestionOption = new Option<string[]?>("--focus-question") { Description = "Focus question(s) for the LLM-grounded report", AllowMultipleArgumentsPerToken = true };
 
-var sheetOption = new Option<string?>("-s", "Sheet name for Excel files");
-sheetOption.AddAlias("--sheet");
-
-var modelOption = new Option<string?>("--model", () => "qwen2.5-coder:7b", "Ollama model for LLM insights");
-modelOption.AddAlias("-m");
-
-var noLlmOption = new Option<bool>("--no-llm", "Skip LLM insights (stats only)");
-
-var verboseOption = new Option<bool>("-v", "Verbose output");
-verboseOption.AddAlias("--verbose");
-
-var outputOption = new Option<string?>("-o", "Output file path (default: console)");
-outputOption.AddAlias("--output");
-
-var queryOption = new Option<string?>("-q", "Ask a specific question about the data");
-queryOption.AddAlias("--query");
-
-var onnxOption = new Option<string?>("--onnx", "Optional ONNX sentinel model path for column scoring");
-onnxOption.AddAlias("--onnx-sentinel");
-
-var ingestDirOption = new Option<string?>("--ingest-dir", "Ingest all supported files in a directory into the registry");
-var ingestFilesOption = new Option<string[]>("--ingest-files", "Ingest a comma-separated list of files into the registry")
-{
-    AllowMultipleArgumentsPerToken = true
-};
-var registryQueryOption = new Option<string?>("--registry-query", "Ask a question across all ingested data (vector search)");
-var vectorDbOption = new Option<string?>("--vector-db", () => ".datasummarizer.vss.duckdb", "Path to persistent DuckDB vector store");
-var sessionIdOption = new Option<string?>("--session-id", "Conversation/session id for context memory (auto-generates if omitted)");
-var synthPathOption = new Option<string?>("--synthesize-to", "Write a synthetic CSV that matches the profiled shape");
-var synthRowsOption = new Option<int>("--synthesize-rows", () => 1000, "Rows to generate when synthesizing");
-
-// Profile options for wide tables
-var columnsOption = new Option<string[]>("--columns", "Specific columns to analyze (comma-separated)")
-{
-    AllowMultipleArgumentsPerToken = true
-};
-var excludeColumnsOption = new Option<string[]>("--exclude-columns", "Columns to exclude from analysis")
-{
-    AllowMultipleArgumentsPerToken = true
-};
-var maxColumnsOption = new Option<int?>("--max-columns", "Maximum columns to analyze (0=unlimited). Selects most interesting for wide tables.");
-var fastModeOption = new Option<bool>("--fast", "Fast mode: skip expensive pattern detection");
-var skipCorrelationsOption = new Option<bool>("--skip-correlations", "Skip correlation analysis (faster for wide tables)");
-var ignoreErrorsOption = new Option<bool>("--ignore-errors", "Ignore CSV parsing errors (malformed rows)");
-var targetOption = new Option<string?>("--target", "Target column for supervised analysis (e.g. churn flag)");
-var markdownOutputOption = new Option<string?>("--markdown-output", "Write markdown report to this path (overrides defaults)");
-var noReportOption = new Option<bool>("--no-report", "Skip markdown report generation");
-var focusQuestionOption = new Option<string[]>("--focus-question", "Focus question(s) for the LLM-grounded report")
-{
-    AllowMultipleArgumentsPerToken = true
-};
+// Synth command options
+var synthProfileOption = new Option<string>("--profile") { Description = "Profile JSON produced by 'profile' command", Required = true };
+var synthSourceOption = new Option<string>("--source") { Description = "Source file or glob", Required = true };
+var synthTargetOption = new Option<string>("--target") { Description = "Target file or glob", Required = true };
 
 // Subcommands
-var profileCmd = new Command("profile", "Profile one or more files and write profile JSON")
-{
-    fileOption,
-    ingestFilesOption,
-    ingestDirOption,
-    outputOption,
-    verboseOption,
-    noLlmOption,
-    modelOption,
-    onnxOption,
-    vectorDbOption,
-    sessionIdOption
-};
+var profileCmd = new Command("profile", "Profile one or more files and write profile JSON");
+profileCmd.Options.Add(fileOption);
+profileCmd.Options.Add(ingestFilesOption);
+profileCmd.Options.Add(ingestDirOption);
+profileCmd.Options.Add(outputOption);
+profileCmd.Options.Add(verboseOption);
+profileCmd.Options.Add(noLlmOption);
+profileCmd.Options.Add(modelOption);
+profileCmd.Options.Add(onnxOption);
+profileCmd.Options.Add(vectorDbOption);
+profileCmd.Options.Add(sessionIdOption);
 
-var synthCmd = new Command("synth", "Synthesize data from a saved profile (JSON)")
-{
-    new Option<string>("--profile", "Profile JSON produced by 'profile' command") { IsRequired = true },
-    synthPathOption,
-    synthRowsOption,
-    verboseOption
-};
+var synthCmd = new Command("synth", "Synthesize data from a saved profile (JSON)");
+synthCmd.Options.Add(synthProfileOption);
+synthCmd.Options.Add(synthPathOption);
+synthCmd.Options.Add(synthRowsOption);
+synthCmd.Options.Add(verboseOption);
 
-var validateCmd = new Command("validate", "Compare two datasets (or dataset vs synth) and report deltas")
-{
-    new Option<string>("--source", "Source file or glob") { IsRequired = true },
-    new Option<string>("--target", "Target file or glob") { IsRequired = true },
-    outputOption,
-    verboseOption,
-    modelOption,
-    noLlmOption,
-    vectorDbOption,
-    sessionIdOption
-};
+var validateCmd = new Command("validate", "Compare two datasets (or dataset vs synth) and report deltas");
+validateCmd.Options.Add(synthSourceOption);
+validateCmd.Options.Add(synthTargetOption);
+validateCmd.Options.Add(outputOption);
+validateCmd.Options.Add(verboseOption);
+validateCmd.Options.Add(modelOption);
+validateCmd.Options.Add(noLlmOption);
+validateCmd.Options.Add(vectorDbOption);
+validateCmd.Options.Add(sessionIdOption);
 
-var rootCommand = new RootCommand("Data summarization tool - profile CSV, Excel, Parquet files")
-{
-    fileOption,
-    sheetOption,
-    modelOption,
-    noLlmOption,
-    verboseOption,
-    outputOption,
-    queryOption,
-    onnxOption,
-    ingestDirOption,
-    ingestFilesOption,
-    registryQueryOption,
-    vectorDbOption,
-    sessionIdOption,
-    synthPathOption,
-    synthRowsOption,
-    columnsOption,
-    excludeColumnsOption,
-    maxColumnsOption,
-    fastModeOption,
-    skipCorrelationsOption,
-    ignoreErrorsOption,
-    targetOption,
-    markdownOutputOption,
-    noReportOption,
-    focusQuestionOption,
-    profileCmd,
-    synthCmd,
-    validateCmd
-};
+var toolCmd = new Command("tool", "Profile data and output JSON for LLM tool integration");
+toolCmd.Options.Add(fileOption);
+toolCmd.Options.Add(sheetOption);
+toolCmd.Options.Add(targetOption);
+toolCmd.Options.Add(columnsOption);
+toolCmd.Options.Add(excludeColumnsOption);
+toolCmd.Options.Add(maxColumnsOption);
+toolCmd.Options.Add(fastModeOption);
+toolCmd.Options.Add(skipCorrelationsOption);
+toolCmd.Options.Add(ignoreErrorsOption);
 
-profileCmd.SetHandler(async ctx =>
+var rootCommand = new RootCommand("Data summarization tool - profile CSV, Excel, Parquet files");
+rootCommand.Options.Add(fileOption);
+rootCommand.Options.Add(sheetOption);
+rootCommand.Options.Add(modelOption);
+rootCommand.Options.Add(noLlmOption);
+rootCommand.Options.Add(verboseOption);
+rootCommand.Options.Add(outputOption);
+rootCommand.Options.Add(queryOption);
+rootCommand.Options.Add(onnxOption);
+rootCommand.Options.Add(ingestDirOption);
+rootCommand.Options.Add(ingestFilesOption);
+rootCommand.Options.Add(registryQueryOption);
+rootCommand.Options.Add(vectorDbOption);
+rootCommand.Options.Add(sessionIdOption);
+rootCommand.Options.Add(synthPathOption);
+rootCommand.Options.Add(synthRowsOption);
+rootCommand.Options.Add(columnsOption);
+rootCommand.Options.Add(excludeColumnsOption);
+rootCommand.Options.Add(maxColumnsOption);
+rootCommand.Options.Add(fastModeOption);
+rootCommand.Options.Add(skipCorrelationsOption);
+rootCommand.Options.Add(ignoreErrorsOption);
+rootCommand.Options.Add(targetOption);
+rootCommand.Options.Add(markdownOutputOption);
+rootCommand.Options.Add(noReportOption);
+rootCommand.Options.Add(focusQuestionOption);
+rootCommand.Subcommands.Add(profileCmd);
+rootCommand.Subcommands.Add(synthCmd);
+rootCommand.Subcommands.Add(validateCmd);
+rootCommand.Subcommands.Add(toolCmd);
+
+profileCmd.SetAction(async (parseResult, cancellationToken) =>
 {
-    var file = ctx.ParseResult.GetValueForOption(fileOption);
-    var ingestFiles = ctx.ParseResult.GetValueForOption(ingestFilesOption) ?? Array.Empty<string>();
-    var ingestDir = ctx.ParseResult.GetValueForOption(ingestDirOption);
-    var output = ctx.ParseResult.GetValueForOption(outputOption);
-    var verbose = ctx.ParseResult.GetValueForOption(verboseOption);
-    var noLlm = ctx.ParseResult.GetValueForOption(noLlmOption);
-    var model = ctx.ParseResult.GetValueForOption(modelOption);
-    var onnx = ctx.ParseResult.GetValueForOption(onnxOption);
-    var vectorDb = ctx.ParseResult.GetValueForOption(vectorDbOption);
-    var sessionId = ctx.ParseResult.GetValueForOption(sessionIdOption);
+    var file = parseResult.GetValue(fileOption);
+    var ingestFiles = parseResult.GetValue(ingestFilesOption) ?? Array.Empty<string>();
+    var ingestDir = parseResult.GetValue(ingestDirOption);
+    var output = parseResult.GetValue(outputOption);
+    var verbose = parseResult.GetValue(verboseOption);
+    var noLlm = parseResult.GetValue(noLlmOption);
+    var model = parseResult.GetValue(modelOption);
+    var onnx = parseResult.GetValue(onnxOption);
+    var vectorDb = parseResult.GetValue(vectorDbOption);
+    var sessionId = parseResult.GetValue(sessionIdOption);
 
     var sources = CliHelpers.ExpandPatternsHelper(new[] { file }.Concat(ingestFiles), ingestDir);
     if (!sources.Any()) { Console.WriteLine("No sources found."); return; }
@@ -164,27 +145,31 @@ profileCmd.SetHandler(async ctx =>
     Console.WriteLine($"Profile saved to {outPath}");
 });
 
-var synthProfileOpt = synthCmd.Options.OfType<Option<string>>().First(o => o.Name == "profile");
-
-synthCmd.SetHandler((string profilePath, string? synthOut, int rows, bool verbose) =>
+synthCmd.SetAction(async (parseResult, cancellationToken) =>
 {
-    var profiles = ProfileIo.LoadProfiles(profilePath);
+    var profilePath = parseResult.GetValue(synthProfileOption);
+    var synthOut = parseResult.GetValue(synthPathOption);
+    var rows = parseResult.GetValue(synthRowsOption);
+    var verbose = parseResult.GetValue(verboseOption);
+    
+    var profiles = ProfileIo.LoadProfiles(profilePath ?? "profile.json");
     if (profiles.Count == 0) { Console.WriteLine("No profiles found in JSON"); return; }
     var outPath = synthOut ?? "synthetic.csv";
     DataSynthesizer.GenerateCsv(profiles[0], rows, outPath);
     Console.WriteLine($"Synthetic data written to {outPath}");
-}, synthProfileOpt, synthPathOption, synthRowsOption, verboseOption);
+    await Task.CompletedTask;
+});
 
-validateCmd.SetHandler(async ctx =>
+validateCmd.SetAction(async (parseResult, cancellationToken) =>
 {
-    var source = ctx.ParseResult.GetValueForOption(validateCmd.Options.OfType<Option<string>>().First(o => o.Name == "source"))!;
-    var target = ctx.ParseResult.GetValueForOption(validateCmd.Options.OfType<Option<string>>().First(o => o.Name == "target"))!;
-    var output = ctx.ParseResult.GetValueForOption(outputOption);
-    var verbose = ctx.ParseResult.GetValueForOption(verboseOption);
-    var model = ctx.ParseResult.GetValueForOption(modelOption);
-    var noLlm = ctx.ParseResult.GetValueForOption(noLlmOption);
-    var vectorDb = ctx.ParseResult.GetValueForOption(vectorDbOption);
-    var sessionId = ctx.ParseResult.GetValueForOption(sessionIdOption);
+    var source = parseResult.GetValue(synthSourceOption)!;
+    var target = parseResult.GetValue(synthTargetOption)!;
+    var output = parseResult.GetValue(outputOption);
+    var verbose = parseResult.GetValue(verboseOption);
+    var model = parseResult.GetValue(modelOption);
+    var noLlm = parseResult.GetValue(noLlmOption);
+    var vectorDb = parseResult.GetValue(vectorDbOption);
+    var sessionId = parseResult.GetValue(sessionIdOption);
 
     var sid = sessionId ?? Guid.NewGuid().ToString("N");
     var srcFiles = CliHelpers.ExpandPatternsHelper(new[] { source }, null).ToList();
@@ -205,31 +190,17 @@ validateCmd.SetHandler(async ctx =>
     Console.WriteLine(json);
 });
 
-// Tool command - for LLM tool integration, outputs JSON
-var toolCmd = new Command("tool", "Profile data and output JSON for LLM tool integration")
+toolCmd.SetAction(async (parseResult, cancellationToken) =>
 {
-    fileOption,
-    sheetOption,
-    targetOption,
-    columnsOption,
-    excludeColumnsOption,
-    maxColumnsOption,
-    fastModeOption,
-    skipCorrelationsOption,
-    ignoreErrorsOption
-};
-
-toolCmd.SetHandler(async ctx =>
-{
-    var file = ctx.ParseResult.GetValueForOption(fileOption);
-    var sheet = ctx.ParseResult.GetValueForOption(sheetOption);
-    var targetColumn = ctx.ParseResult.GetValueForOption(targetOption);
-    var columns = ctx.ParseResult.GetValueForOption(columnsOption);
-    var excludeColumns = ctx.ParseResult.GetValueForOption(excludeColumnsOption);
-    var maxColumns = ctx.ParseResult.GetValueForOption(maxColumnsOption);
-    var fastMode = ctx.ParseResult.GetValueForOption(fastModeOption);
-    var skipCorrelations = ctx.ParseResult.GetValueForOption(skipCorrelationsOption);
-    var ignoreErrors = ctx.ParseResult.GetValueForOption(ignoreErrorsOption);
+    var file = parseResult.GetValue(fileOption);
+    var sheet = parseResult.GetValue(sheetOption);
+    var targetColumn = parseResult.GetValue(targetOption);
+    var columns = parseResult.GetValue(columnsOption);
+    var excludeColumns = parseResult.GetValue(excludeColumnsOption);
+    var maxColumns = parseResult.GetValue(maxColumnsOption);
+    var fastMode = parseResult.GetValue(fastModeOption);
+    var skipCorrelations = parseResult.GetValue(skipCorrelationsOption);
+    var ignoreErrors = parseResult.GetValue(ignoreErrorsOption);
 
     var startTime = DateTime.UtcNow;
     
@@ -261,7 +232,7 @@ toolCmd.SetHandler(async ctx =>
         using var svc = new DataSummarizerService(
             verbose: false,
             ollamaModel: null,
-            ollamaUrl: null,
+            ollamaUrl: "http://localhost:11434",
             onnxSentinelPath: null,
             vectorStorePath: null,
             sessionId: null,
@@ -296,15 +267,23 @@ toolCmd.SetHandler(async ctx =>
                     Median = c.Median,
                     StdDev = c.StdDev,
                     Skewness = c.Skewness,
+                    Kurtosis = c.Kurtosis,
                     OutlierCount = c.OutlierCount > 0 ? c.OutlierCount : null,
+                    ZeroCount = c.ZeroCount > 0 ? c.ZeroCount : null,
+                    CoefficientOfVariation = c.CoefficientOfVariation,
+                    Iqr = c.Iqr,
                     TopValue = c.TopValues?.FirstOrDefault()?.Value,
                     TopValuePercent = c.TopValues?.FirstOrDefault()?.Percent,
                     ImbalanceRatio = c.ImbalanceRatio,
+                    Entropy = c.Entropy,
                     MinDate = c.MinDate?.ToString("yyyy-MM-dd"),
                     MaxDate = c.MaxDate?.ToString("yyyy-MM-dd"),
                     DateGapDays = c.DateGapDays,
+                    DateSpanDays = c.DateSpanDays,
                     AvgLength = c.AvgLength,
-                    MaxLength = c.MaxLength
+                    MaxLength = c.MaxLength,
+                    MinLength = c.MinLength,
+                    EmptyStringCount = c.EmptyStringCount > 0 ? c.EmptyStringCount : null
                 }
             }).ToList(),
             Alerts = report.Profile.Alerts.Select(a => new ToolAlert
@@ -378,37 +357,35 @@ toolCmd.SetHandler(async ctx =>
     }
 });
 
-rootCommand.Add(toolCmd);
-
-rootCommand.SetHandler(async ctx =>
+rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var file = ctx.ParseResult.GetValueForOption(fileOption);
-    var sheet = ctx.ParseResult.GetValueForOption(sheetOption);
-    var model = ctx.ParseResult.GetValueForOption(modelOption);
-    var noLlm = ctx.ParseResult.GetValueForOption(noLlmOption);
-    var verbose = ctx.ParseResult.GetValueForOption(verboseOption);
-    var output = ctx.ParseResult.GetValueForOption(outputOption);
-    var query = ctx.ParseResult.GetValueForOption(queryOption);
-    var onnx = ctx.ParseResult.GetValueForOption(onnxOption);
-    var ingestDir = ctx.ParseResult.GetValueForOption(ingestDirOption);
-    var ingestFiles = ctx.ParseResult.GetValueForOption(ingestFilesOption);
-    var registryQuery = ctx.ParseResult.GetValueForOption(registryQueryOption);
-    var vectorDb = ctx.ParseResult.GetValueForOption(vectorDbOption);
-    var sessionId = ctx.ParseResult.GetValueForOption(sessionIdOption);
-    var synthPath = ctx.ParseResult.GetValueForOption(synthPathOption);
-    var synthRows = ctx.ParseResult.GetValueForOption(synthRowsOption);
+    var file = parseResult.GetValue(fileOption);
+    var sheet = parseResult.GetValue(sheetOption);
+    var model = parseResult.GetValue(modelOption);
+    var noLlm = parseResult.GetValue(noLlmOption);
+    var verbose = parseResult.GetValue(verboseOption);
+    var output = parseResult.GetValue(outputOption);
+    var query = parseResult.GetValue(queryOption);
+    var onnx = parseResult.GetValue(onnxOption);
+    var ingestDir = parseResult.GetValue(ingestDirOption);
+    var ingestFiles = parseResult.GetValue(ingestFilesOption);
+    var registryQuery = parseResult.GetValue(registryQueryOption);
+    var vectorDb = parseResult.GetValue(vectorDbOption);
+    var sessionId = parseResult.GetValue(sessionIdOption);
+    var synthPath = parseResult.GetValue(synthPathOption);
+    var synthRows = parseResult.GetValue(synthRowsOption);
     
     // Profile options
-    var columns = ctx.ParseResult.GetValueForOption(columnsOption);
-    var excludeColumns = ctx.ParseResult.GetValueForOption(excludeColumnsOption);
-    var maxColumns = ctx.ParseResult.GetValueForOption(maxColumnsOption);
-    var fastMode = ctx.ParseResult.GetValueForOption(fastModeOption);
-    var skipCorrelations = ctx.ParseResult.GetValueForOption(skipCorrelationsOption);
-    var ignoreErrors = ctx.ParseResult.GetValueForOption(ignoreErrorsOption);
-    var targetColumn = ctx.ParseResult.GetValueForOption(targetOption);
-    var markdownOutput = ctx.ParseResult.GetValueForOption(markdownOutputOption);
-    var skipReport = ctx.ParseResult.GetValueForOption(noReportOption);
-    var focusQuestions = ctx.ParseResult.GetValueForOption(focusQuestionOption);
+    var columns = parseResult.GetValue(columnsOption);
+    var excludeColumns = parseResult.GetValue(excludeColumnsOption);
+    var maxColumns = parseResult.GetValue(maxColumnsOption);
+    var fastMode = parseResult.GetValue(fastModeOption);
+    var skipCorrelations = parseResult.GetValue(skipCorrelationsOption);
+    var ignoreErrors = parseResult.GetValue(ignoreErrorsOption);
+    var targetColumn = parseResult.GetValue(targetOption);
+    var markdownOutput = parseResult.GetValue(markdownOutputOption);
+    var skipReport = parseResult.GetValue(noReportOption);
+    var focusQuestions = parseResult.GetValue(focusQuestionOption);
     
     sessionId ??= Guid.NewGuid().ToString("N");
     
@@ -577,7 +554,7 @@ rootCommand.SetHandler(async ctx =>
             
             if (insight != null)
             {
-                AnsiConsole.MarkupLine($"[green]Answer:[/] {insight.Description}");
+                AnsiConsole.MarkupLine($"[green]Answer:[/] {Markup.Escape(insight.Description)}");
                 if (!string.IsNullOrEmpty(insight.Sql))
                 {
                     AnsiConsole.WriteLine();
@@ -696,5 +673,5 @@ rootCommand.SetHandler(async ctx =>
     }
 });
  
- return await rootCommand.InvokeAsync(args);
-
+var parseResult = rootCommand.Parse(args);
+return await parseResult.InvokeAsync();
