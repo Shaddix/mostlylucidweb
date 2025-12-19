@@ -1,0 +1,8 @@
+# Day names (excluded from entity extraction)
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+Sunday

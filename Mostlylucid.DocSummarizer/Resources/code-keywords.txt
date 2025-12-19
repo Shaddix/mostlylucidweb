@@ -1,0 +1,83 @@
+# Code and technical keywords that should not be treated as character names
+# One word per line, lines starting with # are comments
+
+# Assembly/low-level
+MOV
+MOVX
+CALL
+RET
+JMP
+JNZ
+JZ
+PUSH
+POP
+ADD
+SUB
+MUL
+DIV
+
+# VB/Basic keywords
+Dim
+Sub
+Function
+End
+If
+Then
+Else
+For
+Next
+Do
+Loop
+While
+
+# C-style keywords
+Int
+Void
+Char
+Float
+Double
+Bool
+String
+Null
+True
+False
+
+# Web/API keywords
+API
+HTTP
+JSON
+XML
+HTML
+CSS
+URL
+URI
+SQL
+REST
+GET
+POST
+PUT
+DELETE
+
+# Hardware acronyms
+CPU
+GPU
+RAM
+ROM
+BIOS
+FPGA
+ASIC
+VHDL
+HDL
+RTL
+
+# General technical acronyms
+ID
+IO
+UI
+UX
+OS
+VM
+SDK
+IDE
+CLI
+GUI

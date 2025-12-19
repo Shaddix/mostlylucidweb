@@ -2,6 +2,7 @@ using Mostlylucid.DocSummarizer.Config;
 using System.Security.Cryptography;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
+using Spectre.Console;
 
 namespace Mostlylucid.DocSummarizer.Services;
 
@@ -75,10 +76,17 @@ public class DocumentSummarizer
             ? TimeSpan.FromSeconds(ollamaConfig.TimeoutSeconds)
             : OllamaService.DefaultTimeout;
         
-        // Get classifier model from config (defaults to tinyllama for fast classification)
+        // Get all Ollama settings from config
         var classifierModel = ollamaConfig?.ClassifierModel;
+        var baseUrl = ollamaConfig?.BaseUrl ?? "http://localhost:11434";
+        var embedModel = ollamaConfig?.EmbedModel ?? "nomic-embed-text";
         
-        _ollama = new OllamaService(ollamaModel, timeout: ollamaTimeout, classifierModel: classifierModel);
+        _ollama = new OllamaService(
+            model: ollamaModel, 
+            embedModel: embedModel,
+            baseUrl: baseUrl,
+            timeout: ollamaTimeout, 
+            classifierModel: classifierModel);
         
         // Store ONNX and BERT config for lazy initialization
         _onnxConfig = onnxConfig ?? new OnnxConfig();
@@ -134,7 +142,7 @@ public class DocumentSummarizer
         {
             _tempDir = Path.Combine(Path.GetTempPath(), $"docsummarizer_{Guid.NewGuid():N}");
             Directory.CreateDirectory(_tempDir);
-            if (_verbose) Console.WriteLine($"[Temp] Using temp directory: {_tempDir}");
+            if (_verbose) AnsiConsole.MarkupLine($"[dim][Temp] Using temp directory: {_tempDir}[/]");
         }
 
         return _tempDir;

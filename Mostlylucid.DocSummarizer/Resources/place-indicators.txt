@@ -1,0 +1,19 @@
+# Place indicator suffixes (words that follow place names)
+# One word per line, lines starting with # are comments
+Street
+St
+Wharf
+Yard
+Road
+Lane
+Court
+Avenue
+Place
+Square
+Boulevard
+Drive
+Way
+Circle
+Terrace
+Alley
+Path

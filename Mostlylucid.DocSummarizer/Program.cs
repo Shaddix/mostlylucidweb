@@ -282,7 +282,12 @@ checkCommand.SetAction(async (parseResult, cancellationToken) =>
     ModelInfo? modelInfo = null;
     if (detected.OllamaAvailable && verbose)
     {
-        var ollama = new OllamaService();
+        var ollama = new OllamaService(
+            model: config.Ollama.Model,
+            embedModel: config.Ollama.EmbedModel,
+            baseUrl: config.Ollama.BaseUrl,
+            timeout: TimeSpan.FromSeconds(config.Ollama.TimeoutSeconds),
+            classifierModel: config.Ollama.ClassifierModel);
         modelInfo = await ollama.GetModelInfoAsync();
     }
 
@@ -788,7 +793,10 @@ benchmarkTemplatesCommand.SetAction(async (parseResult, cancellationToken) =>
     // Create benchmark service with config-loaded settings
     await using var benchmarkService = new TemplateBenchmarkService(
         config.Onnx,
-        new OllamaService(config.Ollama.Model, 
+        new OllamaService(
+            model: config.Ollama.Model,
+            embedModel: config.Ollama.EmbedModel,
+            baseUrl: config.Ollama.BaseUrl,
             timeout: TimeSpan.FromSeconds(config.Ollama.TimeoutSeconds),
             classifierModel: config.Ollama.ClassifierModel),
         config.BertRag,

@@ -140,7 +140,14 @@ public enum VectorStoreBackend
     InMemory,
     
     /// <summary>
-    /// Qdrant vector database - persistent storage, requires Qdrant server
+    /// Qdrant vector database - persistent storage, requires Qdrant server.
+    /// Best for: Enterprise deployments, distributed systems, multi-node setups.
     /// </summary>
-    Qdrant
+    Qdrant,
+    
+    /// <summary>
+    /// DuckDB embedded database - persistent storage in a single file, no external services.
+    /// Best for: Local development, CLI tools, single-machine deployments, offline use.
+    /// </summary>
+    DuckDB
 }

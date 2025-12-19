@@ -1,0 +1,26 @@
+# Honorific titles that precede names
+# One word per line, lines starting with # are comments
+Mr.
+Mr
+Mrs.
+Mrs
+Miss
+Ms.
+Ms
+Dr.
+Dr
+Captain
+Inspector
+Professor
+Sir
+Lady
+Lord
+Colonel
+Major
+General
+Admiral
+Sergeant
+Officer
+Detective
+Reverend
+Rev

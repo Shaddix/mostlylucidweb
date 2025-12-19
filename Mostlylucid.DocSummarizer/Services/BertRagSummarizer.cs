@@ -760,6 +760,12 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             .Select(s => s.Text.TrimStart('#', ' '))
             .FirstOrDefault();
         
+        // If no H1 heading found, try to extract title from text content
+        if (string.IsNullOrEmpty(documentTitle))
+        {
+            documentTitle = ExtractTitleFromContent(synthesisSegments, docId);
+        }
+        
         if (_verbose)
         {
             AnsiConsole.MarkupLine($"[dim]Document title: {documentTitle ?? "(not found)"}[/]");
@@ -776,6 +782,13 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         
         var rawSummary = await _ollama.GenerateAsync(synthesisPrompt, temperature: 0.3);
         var executiveSummary = CleanSynthesisResponse(rawSummary);
+        
+        // === FACT SANITY PASS: Verify key claims against evidence ===
+        // For narrative content, run a quick fact-check to catch "Captain Morstan's father" type drift
+        if (extraction.ContentType == ContentType.Narrative && synthesisSegments.Count >= 5)
+        {
+            executiveSummary = await FactCheckSummaryAsync(executiveSummary, synthesisSegments, ct);
+        }
         
         // Only add coverage metadata if template wants it
         if (Template.IncludeCoverageMetadata)
@@ -820,9 +833,214 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         var code = segments.Where(s => s.Type == SegmentType.CodeBlock).Take(needed).ToList();
         return prose.Concat(code).ToList();
     }
+    
+    /// <summary>
+    /// Fact-check the executive summary against retrieved evidence.
+    /// Extracts key facts from early segments (setup/premise) and patches the summary if it contradicts them.
+    /// This catches "Captain Morstan's father" type drift where the LLM confuses character relationships.
+    /// </summary>
+    private async Task<string> FactCheckSummaryAsync(
+        string summary, 
+        List<Segment> segments, 
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(summary) || segments.Count < 3)
+            return summary;
+        
+        // Focus on early segments (setup/premise) where key facts are established
+        var earlySegments = segments
+            .OrderBy(s => s.Index)
+            .Take(Math.Min(8, segments.Count))
+            .ToList();
+        
+        var evidenceText = string.Join("\n", earlySegments.Select(s => s.Text));
+        
+        // Prompt for fact extraction - keep it small and focused
+        var factPrompt = $"""
+            From this text excerpt, extract ONLY factual claims about:
+            1. Main character's name and their central problem/goal
+            2. Key relationships (who is related to whom, how)
+            3. Central mystery or conflict (what is missing/sought/at stake)
+            
+            Text:
+            {evidenceText}
+            
+            Output 3-5 short factual statements, one per line. Be precise about names and relationships.
+            Example format:
+            - Mary Morstan's father disappeared ten years ago
+            - Major Sholto was Captain Morstan's colleague
+            - The treasure is connected to the Agra fort
+            
+            Facts:
+            """;
+        
+        string facts;
+        try
+        {
+            facts = await _ollama.GenerateAsync(factPrompt, temperature: 0.1);
+        }
+        catch
+        {
+            // If fact extraction fails, return original summary
+            return summary;
+        }
+        
+        if (string.IsNullOrWhiteSpace(facts))
+            return summary;
+        
+        // Check for contradictions between summary and facts
+        var checkPrompt = $"""
+            Compare this summary against the verified facts below.
+            If the summary contradicts any fact (wrong names, wrong relationships, wrong events), 
+            output a corrected version of the summary.
+            If there are no contradictions, output the summary unchanged.
+            
+            VERIFIED FACTS:
+            {facts}
+            
+            SUMMARY TO CHECK:
+            {summary}
+            
+            RULES:
+            - Only fix factual errors (wrong names, relationships, events)
+            - Keep the same style, length, and structure
+            - Do NOT add new information not in the original summary
+            - Do NOT change opinions or interpretations, only facts
+            - Do NOT explain what you changed - just output the corrected summary
+            - Do NOT add preamble like "Here is the corrected summary" - just output it
+            - Do NOT add a list of corrections at the end
+            
+            Output ONLY the corrected summary text (nothing else):
+            """;
+        
+        try
+        {
+            var corrected = await _ollama.GenerateAsync(checkPrompt, temperature: 0.1);
+            
+            // Clean the response - remove meta-commentary
+            corrected = CleanFactCheckResponse(corrected);
+            
+            // Basic sanity check - corrected should be similar length to original
+            if (!string.IsNullOrWhiteSpace(corrected) && 
+                corrected.Length >= summary.Length * 0.5 &&
+                corrected.Length <= summary.Length * 1.5)
+            {
+                var cleaned = CleanSynthesisResponse(corrected);
+                if (_verbose && cleaned != summary)
+                {
+                    AnsiConsole.MarkupLine("[dim yellow]Fact-check pass made corrections[/]");
+                }
+                return cleaned;
+            }
+        }
+        catch
+        {
+            // If correction fails, return original summary
+        }
+        
+        return summary;
+    }
+    
+    /// <summary>
+    /// Clean fact-check response to remove meta-commentary that LLMs tend to add.
+    /// </summary>
+    private static string CleanFactCheckResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return response;
+        
+        var lines = response.Split('\n').ToList();
+        var cleaned = new List<string>();
+        var inContent = false;
+        var skipRest = false;
+        
+        // Preamble patterns to skip (LLM meta-commentary before the actual content)
+        var preamblePatterns = new[]
+        {
+            "after comparing",
+            "here is the corrected",
+            "here's the corrected",
+            "the corrected summary",
+            "i found",
+            "i corrected",
+            "comparing the summary",
+            "here is the revised",
+            "here's the revised",
+            "below is the corrected",
+            "the following is the corrected",
+            "i have corrected",
+            "i've corrected",
+            "a few contradictions",
+            "few contradictions",
+            "some contradictions",
+            "no contradictions",
+            "corrected version",
+            "revised version",
+            "updated summary",
+            "the summary with corrections"
+        };
+        
+        // Trailing patterns to stop at
+        var trailingPatterns = new[]
+        {
+            "i corrected the following",
+            "corrections made:",
+            "changes made:",
+            "* removed",
+            "* changed",
+            "* corrected",
+            "- removed",
+            "- changed",
+            "- corrected",
+            "note:",
+            "notes:",
+            "key corrections:",
+            "the changes i made",
+            "changes include:"
+        };
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            var lower = trimmed.ToLowerInvariant();
+            
+            // Skip preamble lines - keep scanning until we hit real content
+            if (!inContent)
+            {
+                // Skip blank lines in preamble
+                if (string.IsNullOrWhiteSpace(trimmed))
+                    continue;
+                
+                // Check if this line contains any preamble pattern
+                var isPreamble = preamblePatterns.Any(p => lower.Contains(p));
+                if (isPreamble)
+                    continue;
+                
+                // We've hit real content - this line and following are content
+                inContent = true;
+            }
+            
+            // Skip trailing meta-commentary
+            if (inContent && !skipRest)
+            {
+                var isTrailing = trailingPatterns.Any(p => lower.StartsWith(p));
+                if (isTrailing)
+                {
+                    skipRest = true;
+                    continue;
+                }
+            }
+            
+            if (!skipRest)
+                cleaned.Add(line);
+        }
+        
+        return string.Join("\n", cleaned).Trim();
+    }
 
     /// <summary>
-    /// Simple entity extraction from retrieved segments
+    /// Entity extraction from retrieved segments with aggressive filtering to reduce noise.
+    /// Filters: stopwords, pronouns, determiners, sentence adverbs, requires frequency ≥2, titlecase validation.
     /// </summary>
     private static ExtractedEntities ExtractEntities(List<Segment> segments, ContentType contentType)
     {
@@ -841,11 +1059,72 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .ToList();
         
-        var honorifics = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Mr.", "Mrs.", "Miss", "Ms.", "Dr.", "Captain", "Inspector", "Professor" };
-        var placeStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Street", "St", "Wharf", "Yard", "Road", "Lane", "Court" };
-        var dayStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-        var monthStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
-        var miscStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Baker", "Street", "Wharf" };
+        var honorifics = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "Mr.", "Mr", "Mrs.", "Mrs", "Miss", "Ms.", "Ms", "Dr.", "Dr", 
+            "Captain", "Inspector", "Professor", "Sir", "Lady", "Lord", "Colonel", "Major"
+        };
+        
+        var placeStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "Street", "St", "Wharf", "Yard", "Road", "Lane", "Court", "Avenue", "Place", "Square"
+        };
+        
+        var dayStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        };
+        
+        var monthStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "January", "February", "March", "April", "May", "June", 
+            "July", "August", "September", "October", "November", "December"
+        };
+        
+        // Stopwords: pronouns, determiners, sentence adverbs, conjunctions, prepositions
+        var stopwords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Pronouns
+            "I", "Me", "My", "Mine", "Myself",
+            "You", "Your", "Yours", "Yourself", "Yourselves",
+            "He", "Him", "His", "Himself",
+            "She", "Her", "Hers", "Herself",
+            "It", "Its", "Itself",
+            "We", "Us", "Our", "Ours", "Ourselves",
+            "They", "Them", "Their", "Theirs", "Themselves",
+            "Who", "Whom", "Whose", "Which", "What", "That", "This", "These", "Those",
+            "One", "Ones", "Someone", "Anyone", "Everyone", "No one", "Nobody",
+            
+            // Determiners and articles
+            "The", "A", "An", "Some", "Any", "No", "Every", "Each", "Either", "Neither",
+            "All", "Both", "Half", "Several", "Many", "Much", "Few", "Little", "Other", "Another",
+            
+            // Sentence adverbs and conjunctions (often start sentences)
+            "However", "Therefore", "Moreover", "Furthermore", "Nevertheless", "Nonetheless",
+            "Meanwhile", "Otherwise", "Instead", "Indeed", "Thus", "Hence", "Accordingly",
+            "Yet", "Still", "Also", "Too", "Even", "Just", "Only", "Perhaps", "Maybe",
+            "Although", "Though", "While", "When", "Where", "Because", "Since", "Unless",
+            "But", "And", "Or", "Nor", "So", "For", "After", "Before", "Until", "During",
+            
+            // Common non-name capitalized words
+            "Chapter", "Part", "Book", "Section", "Volume", "Page", "Note", "Notes",
+            "Introduction", "Conclusion", "Summary", "Appendix", "Index", "Contents",
+            "Here", "There", "Now", "Then", "Today", "Tomorrow", "Yesterday",
+            "Yes", "No", "Well", "Oh", "Ah", "Alas",
+            
+            // Misc place/time words
+            "Baker", "Street", "Wharf", "East", "West", "North", "South",
+            "Morning", "Afternoon", "Evening", "Night", "Day", "Week", "Month", "Year",
+            
+            // Project Gutenberg boilerplate (common in public domain texts)
+            "Project", "Gutenberg", "Foundation", "Archive", "Literary", "License", "Ebook",
+            "Copyright", "Trademark", "Donations", "Volunteers", "How", "Why", "Whether",
+            "Let", "Could", "Would", "Should", "Must", "Shall", "Will", "May", "Might",
+            
+            // Generic words that look like names but aren't
+            "Island", "River", "Lake", "Mountain", "Valley", "Forest", "Garden", "Park",
+            "Castle", "Palace", "House", "Hall", "Tower", "Bridge", "Gate", "Door"
+        };
         
         // Code/technical keywords that should not be treated as character names
         var codeStop = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
@@ -868,7 +1147,7 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         while (i < tokens.Count)
         {
             var tok = tokens[i];
-            if (IsProper(tok, honorifics, codeStop))
+            if (IsProper(tok))
             {
                 var span = new List<string> { tok };
                 var j = i + 1;
@@ -887,43 +1166,57 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             }
         }
         
-        var merged = candidates
+        // Group by normalized form and count occurrences
+        var grouped = candidates
             .Select(c => c.Trim())
             .Where(c => c.Length > 2)
             .GroupBy(c => c, StringComparer.OrdinalIgnoreCase)
-            .OrderByDescending(g => g.Count())
-            .Select(g => g.Key)
+            .Select(g => (Name: g.Key, Count: g.Count()))
             .ToList();
         
         var final = new List<string>();
-        foreach (var name in merged)
+        foreach (var (name, count) in grouped.OrderByDescending(g => g.Count))
         {
+            // Skip single-word stopwords, pronouns, determiners
+            var words = name.Split(' ');
+            if (words.Length == 1 && stopwords.Contains(name)) continue;
+            
+            // Skip if first word is a stopword and there's no honorific
+            if (words.Length > 0 && stopwords.Contains(words[0]) && !honorifics.Contains(words[0])) continue;
+            
             if (dayStop.Contains(name) || monthStop.Contains(name)) continue;
             if (placeStop.Contains(name)) continue;
-            if (honorifics.Contains(name)) continue;
-            if (miscStop.Contains(name)) continue;
+            if (honorifics.Contains(name)) continue; // Just honorific alone (e.g., "Mr.")
             if (codeStop.Contains(name)) continue;
-            if (name.Equals("Street", StringComparison.OrdinalIgnoreCase) || name.Equals("Wharf", StringComparison.OrdinalIgnoreCase))
-                continue;
+            
             // Skip all-uppercase words (likely acronyms/code)
-            if (name.Length <= 5 && name.All(char.IsUpper))
-                continue;
+            if (name.Length <= 5 && name.All(char.IsUpper)) continue;
+            
+            // FREQUENCY FILTER: Require at least 2 occurrences for single words
+            // (multi-word names with honorifics can appear once)
+            bool hasHonorific = words.Length > 1 && honorifics.Contains(words[0]);
+            if (words.Length == 1 && count < 2 && !hasHonorific) continue;
+            
+            // TITLECASE VALIDATION: Must be titlecase and alphabetic (allow spaces, apostrophes, hyphens)
+            if (!IsValidEntityName(name)) continue;
+            
             final.Add(name);
             if (final.Count >= 12) break;
         }
         
-        var characters = contentType == ContentType.Narrative ? final : final;
-        return new ExtractedEntities(characters, new List<string>(), new List<string>(), new List<string>(), new List<string>());
+        return new ExtractedEntities(final, new List<string>(), new List<string>(), new List<string>(), new List<string>());
         
-        bool IsProper(string token, HashSet<string> honors, HashSet<string> codeWords)
+        bool IsProper(string token)
         {
+            // Reject stopwords immediately
+            if (stopwords.Contains(token)) return false;
             // Reject code keywords
-            if (codeWords.Contains(token)) return false;
+            if (codeStop.Contains(token)) return false;
             // Reject all-caps short words (likely acronyms/code)
             if (token.Length <= 5 && token.All(char.IsUpper)) return false;
             // Accept honorifics or proper nouns (capital start, rest lowercase letters)
-            return honors.Contains(token) || 
-                   (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c)));
+            return honorifics.Contains(token) || 
+                   (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c) || c == '\''));
         }
         
         bool IsContinuation(string token)
@@ -932,8 +1225,30 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             if (placeStop.Contains(token)) return true;
             if (honorifics.Contains(token)) return true;
             // Only continue with proper nouns (capital start, rest lowercase)
-            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c))) return true;
+            if (token.Length > 1 && char.IsUpper(token[0]) && token.Skip(1).All(c => char.IsLower(c) || c == '\'')) return true;
             return false;
+        }
+        
+        bool IsValidEntityName(string name)
+        {
+            // Must have at least one letter
+            if (!name.Any(char.IsLetter)) return false;
+            
+            var words = name.Split(' ');
+            foreach (var word in words)
+            {
+                if (string.IsNullOrWhiteSpace(word)) continue;
+                // Allow honorifics as-is
+                if (honorifics.Contains(word)) continue;
+                // Allow place suffixes in multi-word names
+                if (placeStop.Contains(word) && words.Length > 1) continue;
+                
+                // Must be titlecase: first char upper, rest lower (allow apostrophes, hyphens)
+                if (word.Length < 1) continue;
+                if (!char.IsUpper(word[0])) return false;
+                if (word.Length > 1 && !word.Skip(1).All(c => char.IsLower(c) || c == '\'' || c == '-')) return false;
+            }
+            return true;
         }
     }
     
@@ -947,6 +1262,107 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             "0x", "mov ", "call ", "push ", "pop ", "fpga", "vhdl", "register", "memory address" };
         var codeCount = codeIndicators.Count(ind => lower.Contains(ind));
         return codeCount >= 3;
+    }
+    
+    /// <summary>
+    /// Extract document title from content when no H1 heading is found.
+    /// Looks for Project Gutenberg format, "Title:" lines, or falls back to filename.
+    /// </summary>
+    private static string? ExtractTitleFromContent(List<Segment> segments, string docId)
+    {
+        if (segments.Count == 0) return FallbackToFilename(docId);
+        
+        // Get first few segments to search for title
+        var earlyText = string.Join("\n", segments.Take(5).Select(s => s.Text));
+        var lines = earlyText.Split('\n').Take(50).ToList();
+        
+        string? title = null;
+        string? author = null;
+        
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            
+            // Skip empty or very short lines
+            if (trimmed.Length < 3) continue;
+            
+            // Project Gutenberg format: "Title: X"
+            if (trimmed.StartsWith("Title:", StringComparison.OrdinalIgnoreCase))
+            {
+                title = trimmed[6..].Trim();
+                continue;
+            }
+            
+            // Author line
+            if (trimmed.StartsWith("Author:", StringComparison.OrdinalIgnoreCase))
+            {
+                author = trimmed[7..].Trim();
+                continue;
+            }
+            
+            // "by Author Name" pattern
+            if (trimmed.StartsWith("by ", StringComparison.OrdinalIgnoreCase) && trimmed.Length < 50)
+            {
+                author = trimmed[3..].Trim();
+                continue;
+            }
+            
+            // Look for book title patterns (all caps, or titlecase line by itself)
+            if (title == null && trimmed.Length > 5 && trimmed.Length < 100)
+            {
+                // Skip Project Gutenberg boilerplate
+                if (trimmed.Contains("Project Gutenberg", StringComparison.OrdinalIgnoreCase)) continue;
+                if (trimmed.Contains("EBook", StringComparison.OrdinalIgnoreCase)) continue;
+                if (trimmed.Contains("www.", StringComparison.OrdinalIgnoreCase)) continue;
+                
+                // Check if it looks like a title (titlecase, no sentence-ending punctuation mid-line)
+                var words = trimmed.Split(' ');
+                var titlecaseCount = words.Count(w => w.Length > 0 && char.IsUpper(w[0]));
+                if (titlecaseCount >= words.Length * 0.6 && !trimmed.Contains(". "))
+                {
+                    // Likely a title - check it's not a sentence
+                    if (!trimmed.EndsWith(",") && !trimmed.Contains(" is ") && !trimmed.Contains(" are "))
+                    {
+                        title = trimmed;
+                    }
+                }
+            }
+        }
+        
+        // Fall back to filename
+        if (string.IsNullOrEmpty(title))
+        {
+            return FallbackToFilename(docId);
+        }
+        
+        if (title != null && author != null)
+            return $"{title} by {author}";
+        return title;
+    }
+    
+    /// <summary>
+    /// Convert docId/filename to a readable title
+    /// </summary>
+    private static string? FallbackToFilename(string docId)
+    {
+        var fileName = Path.GetFileNameWithoutExtension(docId);
+        if (string.IsNullOrEmpty(fileName) || fileName.Length <= 3) return null;
+        
+        // Clean up filename: replace separators with spaces, titlecase
+        var cleaned = fileName
+            .Replace('-', ' ')
+            .Replace('_', ' ')
+            .Replace(".", " ");
+        
+        // Remove common suffixes like _summary, _final, etc.
+        var suffixes = new[] { " summary", " final", " draft", " v1", " v2" };
+        foreach (var suffix in suffixes)
+        {
+            if (cleaned.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                cleaned = cleaned[..^suffix.Length];
+        }
+        
+        return cleaned.Trim();
     }
 
     /// <summary>
