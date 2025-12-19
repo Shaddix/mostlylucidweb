@@ -85,9 +85,8 @@ public class DoclingClient : IDisposable
         if (filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && _config.EnableSplitProcessing)
             return await ConvertPdfWithSplitProcessingAsync(filePath, cancellationToken);
 
-        if (filePath.EndsWith(".docx", StringComparison.OrdinalIgnoreCase) && _config.EnableSplitProcessing)
-            return await ConvertDocxWithSplitProcessingAsync(filePath, cancellationToken);
-
+        // DOCX: Always use standard (single-pass) conversion.
+        // Docling doesn't handle split/chunked DOCX well - returns empty text for chunks.
         return await ConvertStandardAsync(filePath, cancellationToken);
     }
 
