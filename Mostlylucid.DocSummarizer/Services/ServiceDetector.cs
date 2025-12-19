@@ -154,6 +154,47 @@ public class ServiceFeatures
             return "Extractive mode (Bert) - fast, no LLM required";
         }
     }
+    
+    /// <summary>
+    /// Get a detailed explanation of why the current configuration was chosen
+    /// </summary>
+    public string GetConfigurationReasoning()
+    {
+        var reasons = new List<string>();
+        
+        // Embedding backend reasoning
+        reasons.Add("Embeddings: ONNX (built-in, zero-config, always available)");
+        
+        // Summarization backend reasoning
+        if (LlmSummarization)
+        {
+            if (VectorPersistence)
+            {
+                reasons.Add($"Summarization: BertRag - Ollama detected at {_services.OllamaModel ?? "default"}, Qdrant available for caching");
+            }
+            else
+            {
+                reasons.Add($"Summarization: BertHybrid - Ollama detected ({_services.OllamaModel ?? "default"}), no Qdrant (in-memory vectors)");
+            }
+        }
+        else
+        {
+            reasons.Add("Summarization: BERT only - No LLM server detected, using extractive summarization");
+        }
+        
+        // PDF conversion reasoning
+        if (PdfConversion)
+        {
+            var gpuInfo = FastPdfConversion ? $"GPU ({_services.DoclingAccelerator ?? "CUDA"})" : "CPU";
+            reasons.Add($"PDF/DOCX: Docling ({gpuInfo})");
+        }
+        else
+        {
+            reasons.Add("PDF/DOCX: Not available - Markdown/text only");
+        }
+        
+        return string.Join("\n", reasons);
+    }
 }
 
 /// <summary>
@@ -220,17 +261,20 @@ public static class ServiceDetector
         // Display compact status line
         AnsiConsole.MarkupLine($"[dim]Services:[/] {result!.GetSummary()}");
         
+        // Always show the configuration reasoning (why this setup was chosen)
+        DisplayConfigurationReasoning(result);
+        
         // Show what's available and what's missing
         var tips = new List<string>();
         
         if (!result.OllamaAvailable)
         {
-            tips.Add("[red]Ollama not available[/] - LLM summarization disabled. Run: [yellow]ollama serve[/]");
+            tips.Add("[yellow]Tip:[/] Start Ollama for LLM-enhanced summaries: [dim]ollama serve[/]");
         }
         
         if (!result.DoclingAvailable)
         {
-            tips.Add("[yellow]Docling not available[/] - PDF/DOCX conversion disabled. Run: [dim]docker run -p 5001:5001 quay.io/docling-project/docling-serve[/]");
+            tips.Add("[yellow]Tip:[/] Start Docling for PDF/DOCX support: [dim]docker run -p 5001:5001 quay.io/docling-project/docling-serve[/]");
         }
         else if (!result.DoclingHasGpu && !forceGpu.HasValue)
         {
@@ -243,14 +287,18 @@ public static class ServiceDetector
         {
             if (config.BertRag.PersistVectors || config.BertRag.VectorStore == VectorStoreBackend.Qdrant)
             {
-                tips.Add("[yellow]Qdrant not available[/] - Vector persistence disabled (embeddings won't be cached). Run: [dim]docker run -p 6333:6333 qdrant/qdrant[/]");
+                tips.Add("[yellow]Tip:[/] Start Qdrant for vector caching: [dim]docker run -p 6333:6333 qdrant/qdrant[/]");
             }
         }
         
         // Show tips
-        foreach (var tip in tips)
+        if (tips.Count > 0)
         {
-            AnsiConsole.MarkupLine($"  {tip}");
+            AnsiConsole.WriteLine();
+            foreach (var tip in tips)
+            {
+                AnsiConsole.MarkupLine($"  {tip}");
+            }
         }
         
         // Show verbose details
@@ -267,15 +315,62 @@ public static class ServiceDetector
                     modelList += $", +{result.AvailableModels.Count - 5} more";
                 AnsiConsole.MarkupLine($"[dim]  Models: {modelList}[/]");
             }
-            
-            // Show feature summary
-            AnsiConsole.MarkupLine($"[dim]  Mode: {result.Features.BestModeDescription}[/]");
         }
         
-        if (tips.Count > 0 || verbose)
-            AnsiConsole.WriteLine();
+        AnsiConsole.WriteLine();
         
         return result;
+    }
+    
+    /// <summary>
+    /// Display clear reasoning for why the current configuration was chosen
+    /// </summary>
+    private static void DisplayConfigurationReasoning(DetectedServices services)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[cyan]Configuration selected based on available services:[/]");
+        
+        // Embedding backend - always ONNX
+        AnsiConsole.MarkupLine($"  [green]Embeddings:[/] ONNX [dim](built-in, always available)[/]");
+        
+        // Summarization mode reasoning
+        if (services.OllamaAvailable)
+        {
+            if (services.QdrantAvailable)
+            {
+                AnsiConsole.MarkupLine($"  [green]Summarization:[/] BertRag [dim](Ollama + Qdrant detected = full pipeline with caching)[/]");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"  [green]Summarization:[/] BertHybrid [dim](Ollama detected, no Qdrant = BERT extraction + LLM polish)[/]");
+            }
+            AnsiConsole.MarkupLine($"  [green]LLM Model:[/] {Markup.Escape(services.OllamaModel ?? "default")}");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"  [yellow]Summarization:[/] BERT only [dim](no LLM detected = extractive summarization, still works!)[/]");
+        }
+        
+        // PDF conversion reasoning
+        if (services.DoclingAvailable)
+        {
+            var gpuInfo = services.DoclingHasGpu ? $"GPU ({services.DoclingAccelerator ?? "CUDA"})" : "CPU";
+            AnsiConsole.MarkupLine($"  [green]PDF/DOCX:[/] Docling [dim]({gpuInfo})[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"  [yellow]PDF/DOCX:[/] Not available [dim](Markdown and text files only)[/]");
+        }
+        
+        // Vector storage reasoning
+        if (services.QdrantAvailable)
+        {
+            AnsiConsole.MarkupLine($"  [green]Vectors:[/] Qdrant [dim](persistent, cross-session caching)[/]");
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"  [dim]Vectors:[/] In-memory [dim](no persistence between runs)[/]");
+        }
     }
     
     /// <summary>

@@ -179,15 +179,11 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             AnsiConsole.MarkupLine($"[dim]Template: {Markup.Escape(template.Name)} ({Markup.Escape(template.Description)}){Markup.Escape(wordInfo)}[/]");
         }
         
-        // Auto-select best mode based on available services
-        var effectiveMode = detectedServices.GetRecommendedMode(mode);
-        if (effectiveMode != mode && mode == SummarizationMode.Auto)
+        // Show what mode will be used (but don't override Auto - let summarizer decide based on document size)
+        // Note: The detailed configuration reasoning is now shown in DetectAndDisplayAsync
+        if (mode != SummarizationMode.Auto)
         {
-            if (verbose)
-            {
-                AnsiConsole.MarkupLine($"[dim]Auto-selected mode: {effectiveMode} ({detectedServices.Features.BestModeDescription})[/]");
-            }
-            mode = effectiveMode;
+            AnsiConsole.MarkupLine($"[cyan]Mode override:[/] {mode} [dim](user specified)[/]");
         }
 
         // Create summarizer with ONNX embedding by default (fast, no external deps)
