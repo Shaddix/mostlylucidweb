@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using MathNet.Numerics.Statistics;
 using Mostlylucid.DataSummarizer.Models;
+using Spectre.Console;
 
 namespace Mostlylucid.DataSummarizer.Services;
 
@@ -40,6 +41,52 @@ public class DuckDbProfiler : IDisposable
         
         var readExpr = source.GetReadExpression();
         
+        // Try to profile, and if CSV parsing fails, retry with ignore_errors
+        try
+        {
+            return await ProfileInternalAsync(source, readExpr, stopwatch);
+        }
+        catch (Exception ex) when (source.Type == DataSourceType.Csv && 
+                                   !source.IgnoreErrors && 
+                                   (ex.Message.Contains("Conversion Error") || 
+                                    ex.Message.Contains("CSV Error")))
+        {
+            // Always show this warning - it's important for user to know data is being skipped
+            AnsiConsole.MarkupLine("[yellow]Warning:[/] CSV contains malformed data. Retrying with error tolerance (some rows may be skipped).");
+            if (_verbose)
+            {
+                // Extract the specific error for verbose mode
+                var errorLine = ex.Message.Split('\n').FirstOrDefault(l => l.Contains("Original Line:") || l.Contains("Error when converting"));
+                if (!string.IsNullOrEmpty(errorLine))
+                    AnsiConsole.MarkupLine($"[dim]{Markup.Escape(errorLine.Trim())}[/]");
+            }
+            
+            // Retry with ignore_errors
+            source.IgnoreErrors = true;
+            readExpr = source.GetReadExpression();
+            var profile = await ProfileInternalAsync(source, readExpr, stopwatch);
+            
+            // Add an alert about the data quality issue
+            profile.Alerts.Insert(0, new DataAlert
+            {
+                Severity = AlertSeverity.Warning,
+                Type = AlertType.DataQuality,
+                Message = "CSV contained malformed rows that were skipped during analysis. Use --ignore-errors to suppress this warning."
+            });
+            
+            return profile;
+        }
+    }
+    
+    private void UpdateStatus(string status)
+    {
+        _options.OnStatusUpdate?.Invoke(status);
+        if (_verbose) Console.WriteLine($"[Profile] {status}");
+    }
+    
+    private async Task<DataProfile> ProfileInternalAsync(DataSource source, string readExpr, Stopwatch stopwatch)
+    {
+        
         var profile = new DataProfile
         {
             SourcePath = source.Source,
@@ -48,9 +95,10 @@ public class DuckDbProfiler : IDisposable
         };
 
         // Get row count
+        UpdateStatus("Counting rows...");
         profile.RowCount = await GetRowCountAsync(readExpr);
         
-        if (_verbose) Console.WriteLine($"[Profile] {profile.RowCount:N0} rows");
+        UpdateStatus($"Analyzing {profile.RowCount:N0} rows...");
 
         // Get column profiles using SUMMARIZE
         var allColumns = await GetColumnProfilesAsync(readExpr, profile.RowCount);
@@ -62,23 +110,40 @@ public class DuckDbProfiler : IDisposable
             Console.WriteLine($"[Profile] Analyzing {profile.Columns.Count} of {allColumns.Count} columns (use --columns to specify)");
 
         // Infer column types and get additional stats
+        UpdateStatus($"Enriching {profile.Columns.Count} columns...");
         foreach (var col in profile.Columns)
         {
             await EnrichColumnProfileAsync(readExpr, col, profile.RowCount);
         }
 
         // Detect alerts
+        UpdateStatus("Detecting data quality issues...");
         profile.Alerts = DetectAlerts(profile);
+        
+        // PII detection (skip in fast mode)
+        if (!_options.FastMode)
+        {
+            UpdateStatus("Scanning for PII/sensitive data...");
+            var piiDetector = new PiiDetector(_verbose);
+            var piiResults = piiDetector.ScanProfile(profile);
+            if (piiResults.Count > 0)
+            {
+                var piiAlerts = piiDetector.GeneratePiiAlerts(piiResults);
+                profile.Alerts.AddRange(piiAlerts);
+            }
+        }
         
         // Calculate correlations for numeric columns (with limit)
         if (!_options.SkipCorrelations)
         {
+            UpdateStatus("Computing correlations...");
             profile.Correlations = await GetCorrelationsAsync(readExpr, profile.Columns);
         }
 
         // Pattern detection (skip in fast mode)
         if (!_options.FastMode)
         {
+            UpdateStatus("Detecting patterns...");
             var patternDetector = new PatternDetector(Connection, readExpr, _verbose);
             
             // Enrich each column with patterns
@@ -93,6 +158,7 @@ public class DuckDbProfiler : IDisposable
 
         if (!string.IsNullOrWhiteSpace(_options.TargetColumn))
         {
+            UpdateStatus($"Analyzing target '{_options.TargetColumn}'...");
             var targetProfile = await AnalyzeTargetAsync(readExpr, profile, _options.TargetColumn!);
             if (targetProfile != null)
             {

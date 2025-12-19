@@ -55,6 +55,11 @@ public class ProfileOptions
     /// Target column for supervised analysis (e.g., "Exited" for churn)
     /// </summary>
     public string? TargetColumn { get; set; }
+    
+    /// <summary>
+    /// Callback to update status during profiling (for UI feedback)
+    /// </summary>
+    public Action<string>? OnStatusUpdate { get; set; }
 }
 
 /// <summary>
@@ -184,6 +189,11 @@ public class ColumnProfile
     public DistributionType? Distribution { get; set; }
     public TrendInfo? Trend { get; set; }
     public TimeSeriesInfo? TimeSeries { get; set; }
+    
+    /// <summary>
+    /// Periodicity detection result (for numeric time series columns)
+    /// </summary>
+    public PeriodicityInfo? Periodicity { get; set; }
 }
 
 public enum ColumnType
@@ -244,7 +254,12 @@ public enum AlertType
     PotentialLeakage,
     OrdinalAsCategory,
     ZeroInflated,
-    ModelingHint
+    ModelingHint,
+    DataQuality,
+    // PII/Sensitive data
+    PiiDetected,
+    // Constraints
+    ConstraintViolation
 }
 
 /// <summary>
@@ -446,6 +461,24 @@ public enum TimeGranularity
     Yearly
 }
 
+/// <summary>
+/// Periodicity detection result from autocorrelation analysis
+/// </summary>
+public class PeriodicityInfo
+{
+    /// <summary>Whether a significant periodic pattern was detected</summary>
+    public bool HasPeriodicity { get; set; }
+    
+    /// <summary>The dominant period (number of time units between cycles)</summary>
+    public int DominantPeriod { get; set; }
+    
+    /// <summary>Confidence in the detection (0-1, based on ACF peak strength)</summary>
+    public double Confidence { get; set; }
+    
+    /// <summary>Human-readable interpretation (e.g., "Weekly cycle (7 periods)")</summary>
+    public string SuggestedInterpretation { get; set; } = "";
+}
+
 #endregion
 
 #region Tool Mode Output Models
@@ -560,6 +593,24 @@ public record ToolColumnProfile
     
     /// <summary>Trend if detected</summary>
     public string? Trend { get; init; }
+    
+    /// <summary>Periodicity info if detected (for numeric time series)</summary>
+    public ToolPeriodicityInfo? Periodicity { get; init; }
+}
+
+/// <summary>
+/// Periodicity info for tool output
+/// </summary>
+public record ToolPeriodicityInfo
+{
+    /// <summary>Dominant period in time units</summary>
+    public required int Period { get; init; }
+    
+    /// <summary>Confidence (0-1)</summary>
+    public required double Confidence { get; init; }
+    
+    /// <summary>Human-readable interpretation</summary>
+    public required string Interpretation { get; init; }
 }
 
 /// <summary>
@@ -720,6 +771,54 @@ public record ToolMetadata
     
     /// <summary>Profile timestamp (ISO 8601)</summary>
     public required string ProfiledAt { get; init; }
+    
+    /// <summary>Stored profile ID (for drift comparison). Use with --compare-to flag.</summary>
+    public string? ProfileId { get; init; }
+    
+    /// <summary>Schema hash (profiles with same hash have identical schema)</summary>
+    public string? SchemaHash { get; init; }
+    
+    /// <summary>Content hash (same hash = exact same file content, skip re-profiling)</summary>
+    public string? ContentHash { get; init; }
+    
+    /// <summary>Drift detection result if a baseline was found</summary>
+    public ToolDriftSummary? Drift { get; init; }
+}
+
+/// <summary>
+/// Summary of drift detection for tool output
+/// </summary>
+public record ToolDriftSummary
+{
+    /// <summary>ID of the baseline profile used for comparison</summary>
+    public required string BaselineProfileId { get; init; }
+    
+    /// <summary>When the baseline was profiled</summary>
+    public required string BaselineDate { get; init; }
+    
+    /// <summary>Overall drift score (0-1, higher = more drift)</summary>
+    public required double DriftScore { get; init; }
+    
+    /// <summary>Whether drift exceeds significance threshold</summary>
+    public required bool HasSignificantDrift { get; init; }
+    
+    /// <summary>Row count change percentage</summary>
+    public double RowCountChangePercent { get; init; }
+    
+    /// <summary>Number of columns with significant drift</summary>
+    public int DriftedColumnCount { get; init; }
+    
+    /// <summary>Columns removed since baseline</summary>
+    public List<string>? RemovedColumns { get; init; }
+    
+    /// <summary>Columns added since baseline</summary>
+    public List<string>? AddedColumns { get; init; }
+    
+    /// <summary>Summary message</summary>
+    public required string Summary { get; init; }
+    
+    /// <summary>Recommendations based on drift</summary>
+    public List<string>? Recommendations { get; init; }
 }
 
 #endregion

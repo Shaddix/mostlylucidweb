@@ -36,6 +36,14 @@ public class PatternDetector
                 case ColumnType.Numeric:
                     column.Distribution = await ClassifyDistributionAsync(column);
                     column.Trend = await DetectTrendAsync(column, profile);
+                    
+                    // Detect periodicity if there's a date column for ordering
+                    var dateColumn = profile.Columns
+                        .FirstOrDefault(c => c.InferredType == ColumnType.DateTime);
+                    if (dateColumn != null)
+                    {
+                        column.Periodicity = await AnalyzePeriodicityAsync(column.Name, dateColumn.Name);
+                    }
                     break;
 
                 case ColumnType.DateTime:
@@ -760,6 +768,163 @@ public class PatternDetector
             return false;
         }
     }
+
+    /// <summary>
+    /// Detect dominant period in a numeric column using autocorrelation.
+    /// Uses DuckDB window functions for efficient lag computation.
+    /// Returns (hasPeriodicity, dominantPeriod, confidence)
+    /// </summary>
+    public async Task<(bool HasPeriodicity, int? DominantPeriod, double Confidence)> DetectPeriodicityAsync(
+        string numericColumn, 
+        string? orderByColumn = null,
+        int maxLag = 50,
+        int sampleSize = 1000)
+    {
+        try
+        {
+            // Compute autocorrelation at various lags using DuckDB
+            // ACF(k) = Σ((x_t - μ)(x_{t-k} - μ)) / Σ(x_t - μ)²
+            var orderClause = string.IsNullOrEmpty(orderByColumn) 
+                ? $"\"{numericColumn}\"" 
+                : $"\"{orderByColumn}\"";
+            
+            var sql = $@"
+                WITH sampled AS (
+                    SELECT 
+                        ""{numericColumn}"" as val,
+                        ROW_NUMBER() OVER (ORDER BY {orderClause}) as rn
+                    FROM {_readExpr}
+                    WHERE ""{numericColumn}"" IS NOT NULL
+                    ORDER BY {orderClause}
+                    LIMIT {sampleSize}
+                ),
+                stats AS (
+                    SELECT AVG(val) as mean, STDDEV(val) as std FROM sampled
+                ),
+                normalized AS (
+                    SELECT rn, (val - stats.mean) as centered
+                    FROM sampled, stats
+                ),
+                variance AS (
+                    SELECT SUM(centered * centered) as total_var FROM normalized
+                ),
+                -- Compute autocorrelation for lags 1 to {maxLag}
+                acf AS (
+                    SELECT 
+                        lag_val,
+                        SUM(n1.centered * n2.centered) / variance.total_var as acf
+                    FROM (SELECT UNNEST(RANGE(1, {maxLag + 1})) as lag_val) lags
+                    CROSS JOIN variance
+                    JOIN normalized n1 ON true
+                    JOIN normalized n2 ON n2.rn = n1.rn + lags.lag_val
+                    GROUP BY lag_val, variance.total_var
+                    ORDER BY lag_val
+                )
+                SELECT lag_val, acf
+                FROM acf
+                WHERE acf IS NOT NULL
+                ORDER BY lag_val";
+
+            var acfValues = new List<(int Lag, double Acf)>();
+            
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
+            
+            while (await reader.ReadAsync())
+            {
+                var lag = reader.GetInt32(0);
+                var acf = reader.GetDouble(1);
+                acfValues.Add((lag, acf));
+            }
+
+            if (acfValues.Count < 3)
+                return (false, null, 0);
+
+            // Find peaks in ACF (local maxima that are significant)
+            var peaks = FindAcfPeaks(acfValues);
+            
+            if (peaks.Count == 0)
+                return (false, null, 0);
+
+            // The first significant peak indicates the dominant period
+            var dominantPeak = peaks.First();
+            
+            // Confidence is the ACF value at the peak (0-1 range, higher = stronger periodicity)
+            var confidence = Math.Max(0, Math.Min(1, dominantPeak.Acf));
+            
+            // Only report if confidence is reasonable
+            if (confidence < 0.2)
+                return (false, null, 0);
+
+            return (true, dominantPeak.Lag, confidence);
+        }
+        catch (Exception ex)
+        {
+            if (_verbose) Console.WriteLine($"[Pattern] Periodicity detection failed: {ex.Message}");
+            return (false, null, 0);
+        }
+    }
+
+    /// <summary>
+    /// Find peaks in autocorrelation function (local maxima above threshold)
+    /// </summary>
+    private List<(int Lag, double Acf)> FindAcfPeaks(List<(int Lag, double Acf)> acfValues, double threshold = 0.2)
+    {
+        var peaks = new List<(int Lag, double Acf)>();
+        
+        for (int i = 1; i < acfValues.Count - 1; i++)
+        {
+            var prev = acfValues[i - 1].Acf;
+            var curr = acfValues[i].Acf;
+            var next = acfValues[i + 1].Acf;
+            
+            // Local maximum above threshold
+            if (curr > prev && curr > next && curr > threshold)
+            {
+                peaks.Add(acfValues[i]);
+            }
+        }
+        
+        return peaks.OrderByDescending(p => p.Acf).ToList();
+    }
+
+    /// <summary>
+    /// Quick periodicity check for numeric time series - uses sampled autocorrelation
+    /// </summary>
+    public async Task<PeriodicityInfo?> AnalyzePeriodicityAsync(string numericColumn, string? dateColumn = null)
+    {
+        var (hasPeriodicity, period, confidence) = await DetectPeriodicityAsync(
+            numericColumn, 
+            dateColumn,
+            maxLag: 60,  // Check up to 60 lags (e.g., 60 days, weeks, etc.)
+            sampleSize: 500);
+
+        if (!hasPeriodicity || !period.HasValue)
+            return null;
+
+        return new PeriodicityInfo
+        {
+            HasPeriodicity = true,
+            DominantPeriod = period.Value,
+            Confidence = confidence,
+            SuggestedInterpretation = InterpretPeriod(period.Value)
+        };
+    }
+
+    private string InterpretPeriod(int period) => period switch
+    {
+        7 => "Weekly cycle (7 periods)",
+        12 => "Monthly cycle (12 periods) - possibly yearly pattern in monthly data",
+        14 => "Bi-weekly cycle (14 periods)",
+        24 => "Daily cycle (24 periods) - possibly hourly data",
+        30 or 31 => "Monthly cycle (~30 periods)",
+        52 => "Yearly cycle (52 periods) - possibly weekly data",
+        365 or 366 => "Yearly cycle (365 periods) - possibly daily data",
+        _ when period <= 3 => $"Short cycle ({period} periods)",
+        _ when period <= 10 => $"Short-term cycle ({period} periods)",
+        _ => $"Cycle detected ({period} periods)"
+    };
 
     #endregion
 

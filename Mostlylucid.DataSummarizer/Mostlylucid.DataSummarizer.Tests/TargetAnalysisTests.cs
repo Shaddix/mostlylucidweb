@@ -23,12 +23,19 @@ public class TargetAnalysisTests
 705.7,0
 ";
         var path = WriteTempCsv(csv);
-        var svc = new DataSummarizerService(verbose: false, ollamaModel: null, vectorStorePath: null, profileOptions: new ProfileOptions { TargetColumn = "Exited" });
+        try
+        {
+            var svc = new DataSummarizerService(verbose: false, ollamaModel: null, vectorStorePath: null, profileOptions: new ProfileOptions { TargetColumn = "Exited" });
 
-        var report = await svc.SummarizeAsync(path, useLlm: false);
+            var report = await svc.SummarizeAsync(path, useLlm: false);
 
-        Assert.NotNull(report.Profile.Target);
-        Assert.True(report.Profile.Target!.FeatureEffects.Count > 0, $"Expected feature effects but got {report.Profile.Target?.FeatureEffects?.Count ?? 0}");
+            Assert.NotNull(report.Profile.Target);
+            Assert.True(report.Profile.Target!.FeatureEffects.Count > 0, $"Expected feature effects but got {report.Profile.Target?.FeatureEffects?.Count ?? 0}");
+        }
+        finally
+        {
+            CleanupTempFile(path);
+        }
     }
 
     private static string WriteTempCsv(string content)
@@ -36,5 +43,10 @@ public class TargetAnalysisTests
         var file = Path.Combine(Path.GetTempPath(), $"target_test_{Guid.NewGuid():N}.csv");
         File.WriteAllText(file, content);
         return file;
+    }
+
+    private static void CleanupTempFile(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* ignore */ }
     }
 }

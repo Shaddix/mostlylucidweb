@@ -221,23 +221,23 @@ jobs:
         body: |
           ## DataSummarizer v${{ steps.get_version.outputs.VERSION }}
           
-          > **DuckDB-powered data profiling CLI - analyze CSV, Excel, Parquet, and JSON files without loading them into memory.**
+          > **Statistics-first data profiling with DuckDB - compute facts first, then optionally narrate with a local LLM.**
           
-          **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DataSummarizer/README.md)**
+          **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.DataSummarizer/README.md)** | **[Introduction Article](https://mostlylucid.net/blog/datasummarizer-how-it-works)**
           
           ### Key Features
           
           - **DuckDB-First** - Stream data directly from files, handles datasets larger than RAM
-          - **Statistical Profiling** - Row/column counts, nulls, uniques, quantiles, distributions
-          - **Smart Alerts** - Target imbalance, potential leakage, outliers, zero-inflation
-          - **Target Analysis** - Feature effects with Cohen's d and rate deltas
-          - **Pattern Detection** - Email, UUID, phone patterns + novel pattern discovery
-          - **Correlation Analysis** - Pearson correlations with strength classification
-          - **Time Series Detection** - Granularity, gaps, seasonality detection
-          - **LLM Integration** - Optional Ollama-powered insights (works offline without LLM)
+          - **Statistical Profiling** - Row/column counts, nulls, uniques, quantiles, distributions, correlations
+          - **Smart Alerts** - Target imbalance, potential leakage, outliers, zero-inflation, data quality issues
+          - **Target Analysis** - Feature effects with Cohen's d and rate deltas (supervised analysis without modeling)
+          - **Pattern Detection** - Email, UUID, phone, novel patterns + distribution shape labeling
+          - **Constraint Validation** - Auto-generate data contracts and validate against them (drift detection)
+          - **Segment Comparison** - Compare datasets, cohorts, or time periods (A/B profiling)
+          - **LLM Integration** - Optional Ollama-powered insights + SQL generation (works offline without LLM)
           - **JSON Tool Mode** - Structured output for MCP tools and AI agents
           - **Synthetic Data** - Generate realistic test data from profiles
-          - **Dataset Validation** - Compare datasets and detect drift
+          - **Multi-Dataset Registry** - Ingest and search across many datasets
           
           ### Downloads
           
@@ -252,26 +252,35 @@ jobs:
           
           ### Quick Start
           
-          **Profile a CSV file (no LLM needed):**
+          **Default (full profile with LLM narrative - most detailed):**
           ```bash
-          ./datasummarizer -f data.csv --no-llm
+          ./datasummarizer -f data.csv --model qwen2.5-coder:7b
           ```
           
-          **Target-aware analysis (e.g., churn prediction):**
+          **Super fast mode (stats only, no LLM - fastest):**
+          ```bash
+          ./datasummarizer -f data.csv --no-llm --fast
+          ```
+          
+          **Target-aware analysis (analyze feature effects on label):**
           ```bash
           ./datasummarizer -f customers.csv --target Churned --no-llm
           ```
           
-          **JSON output for AI agents:**
+          **Generate and validate constraints (data contracts):**
           ```bash
-          ./datasummarizer tool -f data.csv --target Revenue
+          # Generate constraints from production data
+          ./datasummarizer validate --source production.csv --target test.csv \
+            --generate-constraints --output constraints.json --no-llm
+          
+          # Validate new data against constraints
+          ./datasummarizer validate --source production.csv --target new_batch.csv \
+            --constraints constraints.json --format markdown --strict
           ```
           
-          **Ask questions about your data (no LLM needed for common questions):**
+          **Compare datasets (segment comparison):**
           ```bash
-          ./datasummarizer -f data.csv --no-llm -q "What columns have missing values?"
-          ./datasummarizer -f data.csv --no-llm -q "What are the outliers?"
-          ./datasummarizer -f data.csv --target Exited --no-llm -q "What drives churn?"
+          ./datasummarizer segment --segment-a production.csv --segment-b synthetic.csv --format markdown
           ```
           
           **Generate synthetic data:**
@@ -280,9 +289,9 @@ jobs:
           ./datasummarizer synth --profile profile.json --synthesize-to synthetic.csv --synthesize-rows 10000
           ```
           
-          **Compare datasets (drift detection):**
+          **JSON output for AI agents/pipelines:**
           ```bash
-          ./datasummarizer validate --source original.csv --target new_data.csv
+          ./datasummarizer tool -f data.csv --target Revenue
           ```
           
           ### With LLM (Enhanced Insights)
