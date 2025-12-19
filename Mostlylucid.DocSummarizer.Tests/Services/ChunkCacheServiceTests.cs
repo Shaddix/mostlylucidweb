@@ -8,8 +8,7 @@ namespace Mostlylucid.DocSummarizer.Tests.Services;
 
 public class ChunkCacheServiceTests
 {
-    [Fact(Skip = "Flaky on CI - file system timing issues with v2 cache format")]
-    [Trait("Category", "IntegrationTest")]
+    [Fact(Skip = "Flaky on CI - file system timing issues with v2 cache format. Run manually.")]
     public async Task SaveAndLoad_ReturnsChunks_WhenHashesMatch()
     {
         var tempDir = CreateTempDir();
@@ -71,8 +70,7 @@ public class ChunkCacheServiceTests
         }
     }
 
-    [Fact(Skip = "Flaky on CI - file system timing issues with v2 cache format")]
-    [Trait("Category", "IntegrationTest")]
+    [Fact(Skip = "Flaky on CI - file system timing issues with v2 cache format. Run manually.")]
     public async Task TryLoad_PrunesExpiredEntries()
     {
         var tempDir = CreateTempDir();

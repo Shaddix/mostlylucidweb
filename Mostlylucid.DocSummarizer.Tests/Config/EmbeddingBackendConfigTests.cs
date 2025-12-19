@@ -63,15 +63,14 @@ public class EmbeddingBackendConfigTests
     }
 
     [Fact]
-    public void OnnxConfig_ModelDirectory_IsInUserProfile()
+    public void OnnxConfig_ModelDirectory_IsInAppDirectory()
     {
         // Arrange & Act
         var config = new OnnxConfig();
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var appDir = AppContext.BaseDirectory;
 
-        // Assert
-        Assert.StartsWith(userProfile, config.ModelDirectory);
-        Assert.Contains(".docsummarizer", config.ModelDirectory);
+        // Assert - model directory should be [app dir]/models so models travel with the tool
+        Assert.StartsWith(appDir, config.ModelDirectory);
         Assert.Contains("models", config.ModelDirectory);
     }
 
