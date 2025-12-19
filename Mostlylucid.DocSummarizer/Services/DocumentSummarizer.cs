@@ -345,6 +345,10 @@ public class DocumentSummarizer
 
                     // Filter front matter for directly-read files too
                     markdown = await FilterFrontMatterAsync(markdown);
+                    
+                    // For BERT modes, preserve the original markdown with correct heading levels
+                    // (chunk reconstruction wrongly converts all headings to ##)
+                    markdownForBert = markdown;
                 }
                 else
                 {
@@ -423,16 +427,17 @@ public class DocumentSummarizer
  
              // For BERT modes, we need the markdown content
              // Re-read from temp file if we cached it, or reconstruct from chunks
-             if (mode is SummarizationMode.Bert or SummarizationMode.BertHybrid or SummarizationMode.BertRag or SummarizationMode.Auto)
+             // Skip if already set (e.g., from direct markdown read which preserves heading levels)
+             if (markdownForBert == null && 
+                 mode is SummarizationMode.Bert or SummarizationMode.BertHybrid or SummarizationMode.BertRag or SummarizationMode.Auto)
              {
-
                 if (tempMarkdownPath != null && File.Exists(tempMarkdownPath))
                 {
                     markdownForBert = await File.ReadAllTextAsync(tempMarkdownPath);
                 }
                 else
                 {
-                    // Reconstruct from chunks (less ideal but works)
+                    // Reconstruct from chunks (loses precise heading levels - all become ##)
                     markdownForBert = string.Join("\n\n", chunks.Select(c => 
                         string.IsNullOrEmpty(c.Heading) ? c.Content : $"## {c.Heading}\n\n{c.Content}"));
                 }
