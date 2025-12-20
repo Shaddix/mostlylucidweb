@@ -14,6 +14,8 @@ See [Part 1](/blog/analysing-large-csv-files-with-local-llms) for the schema+sam
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 
+> README See the [tool's readme here for](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid.DataSummarizer/README.md) ALL the functionality it has. It's deceptively simple, but powerful. The tool is designed to be used by data analysts, engineers, and scientists who need to quickly understand and validate their data without compromising privacy or security. Well That's the PLAN...I'm neither of those things so 🤷‍♂️
+
 This is a follow-up to **[How to Analyse Large CSV Files with Local LLMs in C#](/blog/analysing-large-csv-files-with-local-llms)**.
 
 That article’s core point was simple:

@@ -1,8 +1,10 @@
 # DataSummarizer Release Notes
 
-## 🚀 Version 2.0.0 - Privacy-First Data Profiling
+## 🚀 Version 0.3.0 - Privacy-First Data Profiling
 
 **Release Date:** December 20, 2024
+
+**Status:** Early preview release. Core features stable and tested (305 tests passing).
 
 ### ✨ Major Features
 
@@ -120,7 +122,7 @@ datasummarizer -f data.csv --onnx-enabled false
 
 ### 🎯 Migration Guide
 
-**From v1.x:**
+**From v0.2.x:**
 
 **1. PII Output Change (Breaking)**
 

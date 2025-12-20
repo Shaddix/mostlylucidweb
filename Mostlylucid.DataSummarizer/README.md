@@ -2,11 +2,13 @@
 
 **Fast, local, deterministic data profiling with DuckDB + optional LLM narration.**
 
+**LLM reasons over profiles; DuckDB computes.**
+
 A .NET 10 CLI that turns any CSV/Excel/Parquet/JSON into a reproducible statistical profile. Built for **speed** (out-of-core analytics), **determinism** (computed facts, not guessed), and **privacy** (everything runs locally).
 
 [![GitHub](https://img.shields.io/github/stars/scottgal/mostlylucidweb?style=social)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
-[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
+[![Tests](https://img.shields.io/badge/tests-305-brightgreen)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
 [![Privacy](https://img.shields.io/badge/PII-hidden%20by%20default-blue)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer#privacy-safe-pii-handling)
 [![ONNX](https://img.shields.io/badge/ONNX-enabled-orange)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer#onnx-integration)
 
@@ -37,31 +39,17 @@ A .NET 10 CLI that turns any CSV/Excel/Parquet/JSON into a reproducible statisti
 ## Quick Start
 
 ```bash
-# Build from source (requires .NET 10 SDK)
-cd Mostlylucid.DataSummarizer
-dotnet build -c Release
-
-# Run the compiled binary
-./bin/Release/net10.0/datasummarizer -f ../pii-test.csv --no-llm --fast
-
-# Or on Windows
-bin\Release\net10.0\datasummarizer.exe -f ..\pii-test.csv --no-llm --fast
-
-# Basic profiling (no LLM, pure stats, fastest)
+# 1. Fastest deterministic profile (no LLM, pure stats)
 datasummarizer -f data.csv --no-llm --fast
 
-# Full profiling with LLM insights (requires Ollama)
-datasummarizer -f data.csv --model qwen2.5-coder:7b
+# 2. Q&A mode (LLM-powered insights)
+datasummarizer -f data.csv --query "what drives churn?" --model qwen2.5-coder:7b
 
-# Ask questions about your data
-datasummarizer -f data.csv --query "what are the top 5 products?" --model qwen2.5-coder:7b
-
-# Validate data contracts
-datasummarizer validate --source prod.csv --target new_batch.csv --constraints rules.json --strict
-
-# Track drift automatically (production monitoring)
+# 3. Production drift tracking (cron/pipeline)
 datasummarizer tool -f /data/daily_export.csv --auto-drift --store
 ```
+
+**305 tests passing** | See [Commands Reference](#commands-reference) for full options
 
 **Sample output** (10,000 rows × 13 columns in ~1 second):
 
@@ -87,7 +75,25 @@ datasummarizer tool -f /data/daily_export.csv --auto-drift --store
 
 ## Installation
 
-### Build from Source
+### Download Release (Recommended)
+
+1. Go to [GitHub Releases](https://github.com/scottgal/mostlylucidweb/releases)
+2. Download the latest `datasummarizer` release for your platform:
+   - **Windows**: `datasummarizer-win-x64.zip`
+   - **Linux**: `datasummarizer-linux-x64.tar.gz`
+   - **macOS**: `datasummarizer-osx-x64.tar.gz`
+3. Extract the archive
+4. Run the tool:
+
+```bash
+# Windows
+datasummarizer.exe -f data.csv --no-llm --fast
+
+# Linux/macOS
+./datasummarizer -f data.csv --no-llm --fast
+```
+
+### Build from Source (Alternative)
 
 ```bash
 # Clone the repository
@@ -97,12 +103,8 @@ cd mostlylucidweb/Mostlylucid.DataSummarizer
 # Build Release
 dotnet build -c Release
 
-# The compiled binary is at:
-# Windows: bin\Release\net10.0\datasummarizer.exe
-# Linux/macOS: bin/Release/net10.0/datasummarizer
-
 # Run it
-./bin/Release/net10.0/datasummarizer -f ../pii-test.csv --no-llm --fast
+./bin/Release/net10.0/datasummarizer -f data.csv --no-llm --fast
 ```
 
 ### Add to PATH (Optional)
@@ -144,6 +146,32 @@ A **profile** is a deterministic statistical snapshot of your data:
 
 **Why it matters**: A profile is *computed facts*, not LLM guesses. You can version it, diff it, and use it for data contracts.
 
+**Profile schema (minimal):**
+```json
+{
+  "RowCount": 10000,
+  "ColumnCount": 13,
+  "Columns": [
+    {
+      "Name": "Age",
+      "InferredType": "Numeric",
+      "NullPercent": 0.0,
+      "UniquePercent": 8.2,
+      "Mean": 38.9,
+      "StdDev": 10.5
+    }
+  ],
+  "Alerts": [
+    {
+      "Severity": "Warning",
+      "Type": "Leakage",
+      "Column": "CustomerId",
+      "Message": "100% unique - possible identifier"
+    }
+  ]
+}
+```
+
 ### Fingerprint vs Signature (Drift Detection)
 
 - **Fingerprint** (stable): Schema hash - column names + types. Survives new batches.
@@ -156,10 +184,16 @@ When you profile data:
 
 ### Registry vs Store
 
-- **Registry** (`--vector-db`): Optimized for cross-dataset search and Q&A (profiles + embeddings + conversation history)
-- **Store** (`--store-path`): Optimized for profile persistence and drift tracking (profiles + metadata + baseline pins)
+**When to use which:**
 
-Both are DuckDB files. The Registry includes a similarity index for semantic search across many datasets.
+- **Store** = drift + baselines + governance (production monitoring, CI/CD, data contracts)
+- **Registry** = discovery + search + conversations (exploring many datasets, Q&A across data catalog)
+
+**Storage:**
+- **Registry** (`--vector-db`): Profiles + embeddings + conversation history (similarity index for semantic search)
+- **Store** (`--store-path`): Profiles + metadata + baseline pins (optimized for drift tracking)
+
+Both are DuckDB files. The Registry includes a vector similarity index for cross-dataset search.
 
 ---
 
@@ -230,7 +264,12 @@ Control PII display via `appsettings.json`:
 }
 ```
 
-### Privacy Benefits
+### Privacy Guarantees
+
+| Concern | Default Policy |
+|---------|---------------|
+| **Console output** | PII redacted (hidden by default) |
+| **LLM context** | Profile-only (no row values) unless SQL-mode enabled |
 
 ✅ **Screenshot-safe** - Share profiling results without exposing PII  
 ✅ **CI/CD-safe** - Run in build pipelines without leaking sensitive data  
@@ -304,6 +343,8 @@ datasummarizer profile -f Bank_Churn.csv --model qwen2.5-coder:7b
 ### `synth` - Generate Synthetic Data
 
 Generate synthetic data that matches a profile's statistical properties.
+
+**What "statistically identical" means:** Matches per-column marginals (quantiles/top-k) and null/uniqueness rates. Does not preserve joint correlations unless explicitly enabled via conditional tables.
 
 ```bash
 datasummarizer synth --profile <profile.json> --synthesize-to <output.csv> [--synthesize-rows N]
@@ -1384,14 +1425,7 @@ Intentionally simple, documented thresholds (not formal statistical tests):
 - Arbitrary file system access
 - Network access
 
-### SQL Safety
-
-Generated SQL is executed in a **read-only, constrained context**:
-
-- **Allowed**: SELECT, WITH, FROM, WHERE, GROUP BY, ORDER BY, LIMIT, JOIN, UNION
-- **Forbidden**: COPY, ATTACH, INSTALL, EXPORT, CREATE, DROP, INSERT, UPDATE, DELETE, PRAGMA (unsafe pragmas)
-- **Result limit**: Max 20 rows
-- **Timeout**: 30 seconds per query
+See [SQL Safety](#sql-safety) section for execution constraints.
 
 ---
 
