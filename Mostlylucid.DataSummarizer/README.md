@@ -1328,11 +1328,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       
-      - name: Install DataSummarizer
-        run: dotnet tool install -g datasummarizer
+      - name: Build DataSummarizer
+        run: dotnet build Mostlylucid.DataSummarizer/Mostlylucid.DataSummarizer.csproj -c Release
       
       - name: Profile new data
-        run: datasummarizer tool -f data/latest.csv --auto-drift --store --no-llm > drift.json
+        run: Mostlylucid.DataSummarizer/bin/Release/net10.0/datasummarizer tool -f data/latest.csv --auto-drift --store > drift.json
       
       - name: Check drift score
         run: |
@@ -1345,7 +1345,7 @@ jobs:
       
       - name: Validate constraints
         run: |
-          datasummarizer validate \
+          Mostlylucid.DataSummarizer/bin/Release/net10.0/datasummarizer validate \
             --source data/reference.csv \
             --target data/latest.csv \
             --constraints data/production.constraints.json \
