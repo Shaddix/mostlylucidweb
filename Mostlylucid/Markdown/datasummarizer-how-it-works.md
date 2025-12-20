@@ -13,19 +13,44 @@ You open a new CSV. 10,000 rows, 50 columns. What's in here? Which columns are j
 
 ---
 
-## The Problem
+## The Simplest Start: Just Run It
 
-Opening an unfamiliar dataset usually means:
-- Manually scrolling through rows (tedious)
-- Writing pandas/SQL aggregations (repetitive)
-- Pasting data into ChatGPT (privacy nightmare + hallucinations)
-- Using heavy tools like pandas-profiling (slow for large files)
+No flags, no options. Just run the executable:
 
-What if you could just run one command and get a statistical profile instantly?
+```bash
+datasummarizer
+```
+
+**What happens:**
+
+```
+  ____            _             ____                                          
+ |  _ \    __ _  | |_    __ _  / ___|   _   _   _ __ ___    _ __ ___     __ _ 
+ | | | |  / _` | | __|  / _` | \___ \  | | | | | '_ ` _ \  | '_ ` _ \   / _` |
+ | |_| | | (_| | | |_  | (_| |  ___) | | |_| | | | | | | | | | | | | | | (_| |
+ |____/   \__,_|  \__|  \__,_| |____/   \__,_| |_| |_| |_| |_| |_| |_|  \__,_|
+                                                                              
+         _                     
+  _ __  (_)  ____   ___   _ __ 
+ | '__| | | |_  /  / _ \ | '__|
+ | |    | |  / /  |  __/ | |   
+ |_|    |_| /___|  \___| |_|   
+                               
+Welcome to DataSummarizer!
+DuckDB-powered data profiling - analyze CSV, Excel, Parquet, JSON files
+
+Enter path to data file: _
+```
+
+Type your file path (or drag-and-drop), and it profiles instantly.
+
+**Why this is great:** Zero friction. No remembering flags, no reading docs first. Just run it and follow the prompts.
 
 ---
 
-## Your First Profile
+## Or Use Command-Line Flags
+
+If you prefer commands:
 
 ```bash
 datasummarizer -f pii-test.csv --no-llm --fast
