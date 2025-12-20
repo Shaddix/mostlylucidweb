@@ -42,7 +42,7 @@ DuckDB-powered data profiling - analyze CSV, Excel, Parquet, JSON files
 Enter path to data file: _
 ```
 
-Type your file path (or drag-and-drop), and it profiles instantly.
+Type your file path and it profiles instantly.
 
 **Why this is great:** Zero friction. No remembering flags, no reading docs first. Just run it and follow the prompts.
 
