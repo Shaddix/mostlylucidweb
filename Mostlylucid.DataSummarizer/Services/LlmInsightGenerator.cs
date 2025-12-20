@@ -409,7 +409,87 @@ public class LlmInsightGenerator : IDisposable
     private static bool IsBroadSummaryQuestion(string question)
     {
         var q = question.ToLowerInvariant();
-        return q.Contains("tell me about") || q.Contains("overview") || q.Contains("summarize") || q.Contains("summary") || q.Contains("what is in this data");
+        
+        // Check if this is a follow-up question referencing previous context
+        // These should NOT be treated as broad summary questions
+        if (IsFollowUpQuestion(q))
+        {
+            return false;
+        }
+        
+        // Only treat as broad summary if asking about the dataset in general
+        return (q.Contains("tell me about the data") || 
+                q.Contains("tell me about this data") || 
+                q.Contains("tell me about the dataset") ||
+                q.Contains("overview of the data") ||
+                q.Contains("summarize the data") || 
+                q.Contains("data summary") ||
+                q.Contains("dataset summary") ||
+                q.Contains("what is in this data") ||
+                q.Contains("what's in this data") ||
+                q.Contains("describe the data") ||
+                q.Contains("describe this data"));
+    }
+    
+    /// <summary>
+    /// Detect if a question is a follow-up referencing previous context.
+    /// These questions should NOT trigger the profile summary path.
+    /// </summary>
+    private static bool IsFollowUpQuestion(string question)
+    {
+        var q = question.ToLowerInvariant().Trim();
+        
+        // Short questions with pronouns typically reference previous context
+        var pronounPatterns = new[]
+        {
+            "tell me about it",
+            "tell me more about it",
+            "what about it",
+            "describe it",
+            "show me it",
+            "more about it",
+            "details about it",
+            "what is it",
+            "what's it",
+            "its details",
+            "its name",
+            "its price",
+            // "that" references
+            "tell me about that",
+            "what is that",
+            "what's that",
+            "describe that",
+            "more about that",
+            // "this" references  
+            "tell me about this",
+            "what is this",
+            "what's this",
+            "describe this",
+            "more about this",
+            // "the" + noun (referencing previous result)
+            "the wine",
+            "the product",
+            "the item",
+            "the result",
+            "the record",
+            "the row"
+        };
+        
+        foreach (var pattern in pronounPatterns)
+        {
+            if (q.Contains(pattern))
+                return true;
+        }
+        
+        // Very short questions starting with pronouns are likely follow-ups
+        if (q.StartsWith("it ") || q.StartsWith("its ") || q.StartsWith("that ") || q.StartsWith("this "))
+            return true;
+            
+        // Questions that are just asking for more info
+        if (q == "tell me more" || q == "more details" || q == "more info" || q == "continue" || q == "go on")
+            return true;
+            
+        return false;
     }
 
     private async Task<DataInsight> GenerateProfileSummaryAsync(DataProfile profile, string question, string conversationContext)

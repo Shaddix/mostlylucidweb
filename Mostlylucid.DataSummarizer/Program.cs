@@ -1364,6 +1364,21 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             return CliHelpers.ExpandPatternsHelper(patterns, null, supported);
         }
 
+        // Check if --file points to a directory (directory session mode)
+        var isDirectorySession = !string.IsNullOrWhiteSpace(file) && Directory.Exists(file);
+        List<string>? directoryFiles = null;
+        
+        if (isDirectorySession)
+        {
+            directoryFiles = ExpandPatterns([file!]).ToList();
+            if (directoryFiles.Count == 0)
+            {
+                AnsiConsole.MarkupLine($"[yellow]No supported files found in directory: {file}[/]");
+                AnsiConsole.MarkupLine($"[dim]Supported: {string.Join(", ", supported)}[/]");
+                return;
+            }
+        }
+
         // Determine mode: ingestion, registry query, or single-file summarize/ask
         var ingestList = new List<string>();
         if (!string.IsNullOrWhiteSpace(ingestDir) && Directory.Exists(ingestDir))
@@ -1375,8 +1390,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             ingestList.AddRange(ExpandPatterns(ingestFiles));
         }
 
-        // If no ingest and no registry query, require a file
-        if (!ingestList.Any() && string.IsNullOrEmpty(registryQuery))
+        // If no ingest, no registry query, and not a directory session, require a file
+        if (!ingestList.Any() && string.IsNullOrEmpty(registryQuery) && !isDirectorySession)
         {
             if (!ValidateFile(file))
             {
@@ -1431,6 +1446,232 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             {
                 AnsiConsole.MarkupLine("[red]No answer produced (registry empty or LLM unavailable).[/]");
             }
+            return;
+        }
+
+        // Directory session mode: profile all files in directory with cross-file summary
+        if (isDirectorySession && directoryFiles != null && directoryFiles.Count > 0)
+        {
+            AnsiConsole.MarkupLine($"[cyan]Directory Session:[/] {Path.GetFullPath(file!)}");
+            AnsiConsole.MarkupLine($"[cyan]Files found:[/] {directoryFiles.Count}");
+            AnsiConsole.WriteLine();
+            
+            // Group files by extension for display
+            var byExt = directoryFiles.GroupBy(f => Path.GetExtension(f).ToLowerInvariant())
+                .OrderByDescending(g => g.Count());
+            foreach (var group in byExt)
+            {
+                AnsiConsole.MarkupLine($"  [dim]{group.Key}:[/] {group.Count()} file(s)");
+            }
+            AnsiConsole.WriteLine();
+            
+            // Track all profiles for cross-file summary
+            var allProfiles = new List<(string FilePath, DataProfile Profile, List<string> Tables)>();
+            var totalRows = 0L;
+            var totalColumns = 0;
+            var allAlerts = new List<(string File, DataAlert Alert)>();
+            var startTime = DateTime.UtcNow;
+            
+            // Process each file
+            var fileIndex = 0;
+            foreach (var filePath in directoryFiles.OrderBy(f => f))
+            {
+                fileIndex++;
+                var fileName = Path.GetFileName(filePath);
+                var fileExt = Path.GetExtension(filePath).ToLowerInvariant();
+                var isFileSqlite = fileExt is ".sqlite" or ".db" or ".sqlite3";
+                
+                AnsiConsole.Write(new Rule($"[cyan][[{fileIndex}/{directoryFiles.Count}]] {Markup.Escape(fileName)}[/]").LeftJustified());
+                
+                try
+                {
+                    if (isFileSqlite)
+                    {
+                        // SQLite: discover and profile all tables
+                        var tables = await DiscoverSqliteTablesAsync(filePath);
+                        if (tables.Count == 0)
+                        {
+                            AnsiConsole.MarkupLine($"  [yellow]No tables found[/]");
+                            continue;
+                        }
+                        
+                        AnsiConsole.MarkupLine($"  [dim]Tables:[/] {string.Join(", ", tables)}");
+                        
+                        foreach (var tableName in tables)
+                        {
+                            var tableReport = await AnsiConsole.Status()
+                                .Spinner(Spinner.Known.Dots)
+                                .StartAsync($"Profiling {tableName}...", async ctx =>
+                                {
+                                    profileOptions.OnStatusUpdate = status => ctx.Status(status);
+                                    return await summarizer.SummarizeAsync(filePath, tableName, useLlm: !noLlm, maxLlmInsights: 3);
+                                });
+                            
+                            allProfiles.Add((filePath, tableReport.Profile, [tableName]));
+                            totalRows += tableReport.Profile.RowCount;
+                            totalColumns += tableReport.Profile.ColumnCount;
+                            foreach (var alert in tableReport.Profile.Alerts)
+                            {
+                                allAlerts.Add(($"{fileName}:{tableName}", alert));
+                            }
+                            
+                            AnsiConsole.MarkupLine($"    [dim]{tableName}:[/] {tableReport.Profile.RowCount:N0} rows, {tableReport.Profile.ColumnCount} cols");
+                        }
+                    }
+                    else
+                    {
+                        // Regular file (CSV, Excel, Parquet, JSON)
+                        var fileReport = await AnsiConsole.Status()
+                            .Spinner(Spinner.Known.Dots)
+                            .StartAsync($"Profiling...", async ctx =>
+                            {
+                                profileOptions.OnStatusUpdate = status => ctx.Status(status);
+                                return await summarizer.SummarizeAsync(filePath, null, useLlm: !noLlm, maxLlmInsights: 3);
+                            });
+                        
+                        allProfiles.Add((filePath, fileReport.Profile, []));
+                        totalRows += fileReport.Profile.RowCount;
+                        totalColumns += fileReport.Profile.ColumnCount;
+                        foreach (var alert in fileReport.Profile.Alerts)
+                        {
+                            allAlerts.Add((fileName, alert));
+                        }
+                        
+                        AnsiConsole.MarkupLine($"  [dim]Rows:[/] {fileReport.Profile.RowCount:N0}  [dim]Cols:[/] {fileReport.Profile.ColumnCount}");
+                        if (fileReport.Profile.Alerts.Count > 0)
+                        {
+                            AnsiConsole.MarkupLine($"  [dim]Alerts:[/] {fileReport.Profile.Alerts.Count}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnsiConsole.MarkupLine($"  [red]Error:[/] {ex.Message}");
+                }
+                
+                AnsiConsole.WriteLine();
+            }
+            
+            // Cross-file summary
+            var duration = DateTime.UtcNow - startTime;
+            AnsiConsole.Write(new Rule("[green]Cross-File Summary[/]").DoubleBorder());
+            AnsiConsole.WriteLine();
+            
+            AnsiConsole.MarkupLine($"[cyan]Directory:[/] {Path.GetFullPath(file!)}");
+            AnsiConsole.MarkupLine($"[cyan]Files Processed:[/] {allProfiles.Count}");
+            AnsiConsole.MarkupLine($"[cyan]Total Rows:[/] {totalRows:N0}");
+            AnsiConsole.MarkupLine($"[cyan]Total Columns:[/] {totalColumns}");
+            AnsiConsole.MarkupLine($"[cyan]Processing Time:[/] {duration.TotalSeconds:F1}s");
+            AnsiConsole.WriteLine();
+            
+            // Summary table
+            var summaryTable = new Table();
+            summaryTable.Border(TableBorder.Rounded);
+            summaryTable.AddColumn("File");
+            summaryTable.AddColumn("Rows", c => c.RightAligned());
+            summaryTable.AddColumn("Cols", c => c.RightAligned());
+            summaryTable.AddColumn("Alerts", c => c.RightAligned());
+            summaryTable.AddColumn("Type");
+            
+            foreach (var (path, profile, tables) in allProfiles)
+            {
+                var name = Path.GetFileName(path);
+                if (tables.Count > 0) name += $" ({string.Join(", ", tables)})";
+                var alertCount = profile.Alerts.Count;
+                var alertColor = alertCount > 0 ? "yellow" : "dim";
+                
+                // Detect dominant column types
+                var numericCount = profile.Columns.Count(c => c.InferredType == ColumnType.Numeric);
+                var textCount = profile.Columns.Count(c => c.InferredType == ColumnType.Text || c.InferredType == ColumnType.Categorical);
+                var typeHint = numericCount > textCount ? "numeric-heavy" : "text-heavy";
+                
+                summaryTable.AddRow(
+                    Markup.Escape(name.Length > 40 ? name[..37] + "..." : name),
+                    profile.RowCount.ToString("N0"),
+                    profile.ColumnCount.ToString(),
+                    $"[{alertColor}]{alertCount}[/]",
+                    $"[dim]{typeHint}[/]"
+                );
+            }
+            
+            AnsiConsole.Write(summaryTable);
+            AnsiConsole.WriteLine();
+            
+            // Aggregate alerts by type
+            if (allAlerts.Count > 0)
+            {
+                AnsiConsole.Write(new Rule("[yellow]Alerts Summary[/]").LeftJustified());
+                
+                var alertsByType = allAlerts.GroupBy(a => a.Alert.Type)
+                    .OrderByDescending(g => g.Count());
+                
+                foreach (var group in alertsByType.Take(10))
+                {
+                    AnsiConsole.MarkupLine($"  [yellow]{group.Key}:[/] {group.Count()} occurrence(s)");
+                    foreach (var (fileName, alert) in group.Take(3))
+                    {
+                        AnsiConsole.MarkupLine($"    [dim]- {fileName}: {alert.Column}[/]");
+                    }
+                    if (group.Count() > 3)
+                    {
+                        AnsiConsole.MarkupLine($"    [dim]  ... and {group.Count() - 3} more[/]");
+                    }
+                }
+                AnsiConsole.WriteLine();
+            }
+            
+            // Cross-file column comparison (find common columns)
+            var allColumnNames = allProfiles
+                .SelectMany(p => p.Profile.Columns.Select(c => c.Name.ToLowerInvariant()))
+                .GroupBy(n => n)
+                .Where(g => g.Count() > 1)
+                .OrderByDescending(g => g.Count())
+                .Take(10)
+                .ToList();
+            
+            if (allColumnNames.Count > 0)
+            {
+                AnsiConsole.Write(new Rule("[cyan]Common Columns Across Files[/]").LeftJustified());
+                foreach (var col in allColumnNames)
+                {
+                    AnsiConsole.MarkupLine($"  [cyan]{col.Key}[/]: appears in {col.Count()} file(s)");
+                }
+                AnsiConsole.WriteLine();
+            }
+            
+            // Output JSON if requested
+            if (!string.IsNullOrEmpty(output))
+            {
+                var sessionResult = new
+                {
+                    Directory = Path.GetFullPath(file!),
+                    FilesProcessed = allProfiles.Count,
+                    TotalRows = totalRows,
+                    TotalColumns = totalColumns,
+                    ProcessingSeconds = duration.TotalSeconds,
+                    Files = allProfiles.Select(p => new
+                    {
+                        Path = p.FilePath,
+                        Tables = p.Tables,
+                        p.Profile.RowCount,
+                        p.Profile.ColumnCount,
+                        AlertCount = p.Profile.Alerts.Count,
+                        Columns = p.Profile.Columns.Select(c => new { c.Name, Type = c.InferredType.ToString() })
+                    }),
+                    CommonColumns = allColumnNames.Select(c => new { Column = c.Key, AppearanceCount = c.Count() }),
+                    AlertsSummary = allAlerts.GroupBy(a => a.Alert.Type).Select(g => new { Type = g.Key.ToString(), Count = g.Count() })
+                };
+                
+                var json = System.Text.Json.JsonSerializer.Serialize(sessionResult, new System.Text.Json.JsonSerializerOptions 
+                { 
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+                
+                await File.WriteAllTextAsync(output, json);
+                AnsiConsole.MarkupLine($"[green]Session summary written to:[/] {output}");
+            }
+            
             return;
         }
 
@@ -1728,6 +1969,24 @@ static async Task RunInteractiveMode(
         ["Markdown"] = (OutputProfileConfig.MarkdownFocus, "Focus on markdown report generation")
     };
     
+    // Define available commands for autocomplete
+    var slashCommands = new Dictionary<string, string>
+    {
+        ["/exit"] = "Exit interactive mode",
+        ["/quit"] = "Exit interactive mode (alias)",
+        ["/help"] = "Show available commands",
+        ["/tools"] = "Show available analysis tools",
+        ["/profiles"] = "List output profiles",
+        ["/profile"] = "Switch output profile (e.g., /profile Tool)",
+        ["/status"] = "Show session status",
+        ["/columns"] = "List all columns with types",
+        ["/column"] = "Show details for a column (e.g., /column Age)",
+        ["/alerts"] = "Show data quality alerts",
+        ["/insights"] = "Show generated insights",
+        ["/summary"] = "Show data summary",
+        ["/verbose"] = "Toggle verbose mode"
+    };
+    
     while (true)
     {
         var question = AnsiConsole.Ask<string>("[cyan]>[/] ");
@@ -1742,11 +2001,86 @@ static async Task RunInteractiveMode(
         {
             var cmd = trimmed[1..].ToLowerInvariant();
             
-            // Just "/" lists all commands
+            // Just "/" - show interactive command selector
             if (string.IsNullOrEmpty(cmd))
             {
-                ShowCommands();
-                continue;
+                var selectedCmd = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("[cyan]Select a command:[/]")
+                        .PageSize(12)
+                        .HighlightStyle(new Style(foreground: Color.Cyan1))
+                        .AddChoices(slashCommands.Select(kv => $"{kv.Key,-12} [dim]{kv.Value}[/]"))
+                );
+                
+                // Extract just the command part
+                var selectedParts = selectedCmd.Split(' ', 2);
+                trimmed = selectedParts[0];
+                cmd = trimmed[1..].ToLowerInvariant();
+                
+                // If it's a command that needs an argument, prompt for it
+                if (cmd is "column" or "col" or "profile" or "mode")
+                {
+                    if (cmd is "column" or "col")
+                    {
+                        var colNames = report.Profile.Columns.Select(c => c.Name).ToList();
+                        if (colNames.Count > 0)
+                        {
+                            var selectedCol = AnsiConsole.Prompt(
+                                new SelectionPrompt<string>()
+                                    .Title("[cyan]Select a column:[/]")
+                                    .PageSize(15)
+                                    .HighlightStyle(new Style(foreground: Color.Cyan1))
+                                    .AddChoices(colNames)
+                            );
+                            ShowColumnDetails(report, selectedCol);
+                            continue;
+                        }
+                    }
+                    else if (cmd is "profile" or "mode")
+                    {
+                        var profileNames = availableProfiles.Keys.ToList();
+                        var selectedProfile = AnsiConsole.Prompt(
+                            new SelectionPrompt<string>()
+                                .Title("[cyan]Select a profile:[/]")
+                                .HighlightStyle(new Style(foreground: Color.Cyan1))
+                                .AddChoices(profileNames.Select(p => $"{p,-12} [dim]{availableProfiles[p].Description}[/]"))
+                        );
+                        var profileName = selectedProfile.Split(' ')[0];
+                        if (availableProfiles.TryGetValue(profileName, out var profileInfo))
+                        {
+                            currentProfile = profileName;
+                            AnsiConsole.MarkupLine($"[green]Switched to '{profileName}' profile[/]");
+                            AnsiConsole.MarkupLine($"[dim]{profileInfo.Description}[/]\n");
+                        }
+                        continue;
+                    }
+                }
+            }
+            
+            // Partial command - try to autocomplete
+            if (cmd.Length > 0 && !cmd.Contains(' '))
+            {
+                var matches = slashCommands.Keys
+                    .Where(k => k.StartsWith("/" + cmd, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                if (matches.Count == 1)
+                {
+                    // Single match - use it
+                    cmd = matches[0][1..]; // Remove the leading /
+                }
+                else if (matches.Count > 1 && matches.Count <= 5)
+                {
+                    // Multiple matches - show selector
+                    var selectedCmd = AnsiConsole.Prompt(
+                        new SelectionPrompt<string>()
+                            .Title($"[cyan]Commands matching '/{Markup.Escape(cmd)}':[/]")
+                            .HighlightStyle(new Style(foreground: Color.Cyan1))
+                            .AddChoices(matches.Select(m => $"{m,-12} [dim]{slashCommands[m]}[/]"))
+                    );
+                    var selectedParts = selectedCmd.Split(' ', 2);
+                    cmd = selectedParts[0][1..];
+                }
             }
             
             var parts = cmd.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
