@@ -1036,7 +1036,11 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         // If no ingest and no registry query, require a file
         if (!ingestList.Any() && string.IsNullOrEmpty(registryQuery))
         {
-            if (!ValidateFile(file)) return;
+            if (!ValidateFile(file))
+            {
+                Environment.ExitCode = 1;
+                return;
+            }
         }
 
         using var summarizer = new DataSummarizerService(
@@ -1278,7 +1282,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 });
  
 var parseResult = rootCommand.Parse(args);
-return await parseResult.InvokeAsync();
+var result = await parseResult.InvokeAsync();
+return Environment.ExitCode != 0 ? Environment.ExitCode : result;
 
 // Helper function to show the ASCII banner
 static void ShowBanner()

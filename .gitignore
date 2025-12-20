@@ -286,3 +286,4 @@ mlmodels/
 /Mostlylucid.DataSummarizer/test-outputs/
 *.vss.duckdb
 *.duckdb
+*.constraints.json

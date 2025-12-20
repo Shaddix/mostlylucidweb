@@ -81,14 +81,20 @@ run_test_expect_fail() {
     echo -e "${YELLOW}[TEST $TESTS_RUN] $test_name${NC}"
     echo "Command: $command"
     
-    if eval "$command" > test_output.tmp 2>&1; then
+    # Disable set -e for this block to properly catch expected failures
+    set +e
+    eval "$command" > test_output.tmp 2>&1
+    local exit_code=$?
+    set -e
+    
+    if [ $exit_code -eq 0 ]; then
         echo -e "${RED}✗ FAILED - Command should have failed but succeeded${NC}"
         cat test_output.tmp
         echo -e "\n"
         TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
     else
-        echo -e "${GREEN}✓ PASSED (expected failure)${NC}\n"
+        echo -e "${GREEN}✓ PASSED (expected failure, exit code: $exit_code)${NC}\n"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     fi

@@ -6,9 +6,11 @@
 
 **Series: Local LLMs for Data — Part 2 of 2**
 
+DataSummarizer packages a proven pattern into a CLI: compute deterministic profiles with DuckDB, persist them, and optionally layer a local LLM for narration, safe SQL suggestions, and conversational follow-ups. 
 
+The tool keeps the heavy numeric work local and auditable (profiles, drift detection, fidelity reports), while the LLM is limited to interpreting those facts or drafting read-only SQL that DuckDB executes in a sandbox. This yields fast, private profiling, trustworthy automation (`tool` JSON), drift monitoring, and the ability to create PII-free synthetic clones that match statistical shape — all without sending raw rows to a model.
 
-DataSummarizer packages a proven pattern into a CLI: compute deterministic profiles with DuckDB, persist them, and optionally layer a local LLM for narration, safe SQL suggestions, and conversational follow-ups. The tool keeps the heavy numeric work local and auditable (profiles, drift detection, fidelity reports), while the LLM is limited to interpreting those facts or drafting read-only SQL that DuckDB executes in a sandbox. This yields fast, private profiling, trustworthy automation (`tool` JSON), drift monitoring, and the ability to create PII-free synthetic clones that match statistical shape — all without sending raw rows to a model. See [Part 1](/blog/analysing-large-csv-files-with-local-llms) for the schema+sample → LLM SQL pattern that inspired this design.
+See [Part 1](/blog/analysing-large-csv-files-with-local-llms) for the schema+sample → LLM SQL pattern that inspired this design.
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 

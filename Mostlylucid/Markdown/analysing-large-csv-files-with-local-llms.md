@@ -3,20 +3,7 @@
 <!--category-- AI, LLM, Data Analysis, DuckDB, C#, Ollama -->
 <datetime class="hidden">2025-12-18T10:00</datetime>
 
-<!--series:
-  name: "Local LLMs for Data"
-  part: 1
-  slug: local-llms-for-data
-  previous: null
-  next: /blog/datasummarizer-how-it-works
--->
-
 **Series: Local LLMs for Data — Part 1 of 2**
-
-TL;DR
-
-This article shows a practical, secure pattern for using local LLMs with large CSVs: don’t feed rows to the model — use DuckDB to compute schema and tiny samples, let the LLM generate SQL, validate the SQL, and execute it locally. The approach keeps data private, avoids memory issues, and gives you sub-100ms analytical queries without imports. It also includes pragmatic guidance: use coding-focused models (e.g., `qwen2.5-coder:7b`), build strict prompt rules, validate with `EXPLAIN`, retry on errors, and keep the LLM’s role limited to reasoning and formatting. For a companion, CLI-focused article that emphasizes profile-first narration, safe SQL-backed Q&A, synthetic cloning, and drift detection, see Part 2: DataSummarizer: Fast Local Data Profiling (/blog/datasummarizer-how-it-works).
-
 
 Here's the mistake everyone makes: they try to feed their CSV into an LLM. Don't. **LLMs should generate queries, not consume data.**
 
