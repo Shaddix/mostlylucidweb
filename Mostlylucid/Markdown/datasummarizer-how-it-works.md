@@ -1,4 +1,4 @@
-# DataSummarizer: Statistics-First Data Profiling with DuckDB
+# DataSummarizer: Fast Local Data Profiling with DuckDB
 <!--category-- Data Analysis, DuckDB, C#, LLM, ONNX -->
 <datetime class="hidden">2025-12-22T18:30</datetime>
 
@@ -6,534 +6,284 @@
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
 
-If you've ever opened a new dataset and immediately asked:
+You open a new CSV. 10,000 rows, 50 columns. What's in here? Which columns are junk? Where are the nulls? What's skewed?
 
-- Which columns are junk?
-- Where are the missing values?
-- What looks like an ID?
-- What's skewed / leaky / suspicious?
+**DataSummarizer** answers those questions in under a second — no cloud upload, no manual EDA, just **deterministic stats + optional AI narration**.
 
-…you already know what *data profiling* is for.
+```bash
+# Profile 10,000 rows in ~1 second (no LLM, pure stats)
+datasummarizer -f Bank_Churn.csv --no-llm --fast
 
-**DataSummarizer** is a CLI tool I built to make that first pass fast, local, and repeatable. Built on **.NET 10** for high-performance local analytics, it combines deterministic profiling with optional LLM narration to give you both **facts** and **insights** about your data.
+# Same, but with AI insights (requires Ollama)
+datasummarizer -f Bank_Churn.csv --model qwen2.5-coder:7b
 
-- **DuckDB** computes a deterministic statistical profile (no in-memory loading).
-- An **LLM** (optional) either narrates that profile *or* generates SQL that DuckDB runs locally.
-- An **ONNX model** (optional) can score columns using profile features ("sentinel scoring").
-- **Constraint validation** lets you define data contracts and catch drift early.
-- **Segment comparison** helps you compare datasets, cohorts, or time periods.
+# Ask questions about your data
+datasummarizer -f sales.csv --query "top selling products" --model qwen2.5-coder:7b
 
-This builds on the same philosophy as my [CSV analysis with local LLMs](/blog/analysing-large-csv-files-with-local-llms): **LLMs reason, databases compute.**
+# Validate data contracts
+datasummarizer validate --source prod.csv --target new_batch.csv --constraints rules.json --strict
+
+# Track drift automatically (cron-friendly)
+datasummarizer tool -f daily_export.csv --auto-drift --store
+```
 
 [TOC]
 
 ---
 
-## Who this is for (and who it isn't)
+## What it is (and isn't)
 
-**✔ This tool is for you if:**
-- You want a fast, local, repeatable first-pass on a dataset
-- You care about determinism and reproducibility
-- You want LLM help without handing it your raw data
-- You need to profile datasets larger than RAM
-- You want data contracts and drift detection
+**✔ DataSummarizer is:**
+- **Fast**: Profiles 100k rows in seconds using DuckDB (out-of-core, no memory limits)
+- **Local**: Everything runs on your machine (DuckDB embedded, optional Ollama for LLM)
+- **Deterministic**: Stats are computed, not guessed (LLM only narrates or generates SQL)
+- **Production-ready**: Constraint validation, drift detection, CI/CD integration
 
-**✘ This is NOT:**
-- A replacement for full exploratory data analysis (EDA)
-- AutoML or automatic model building
-- A system that guesses answers without computed evidence
-- A cloud service (everything runs locally)
+**✘ It's NOT:**
+- A replacement for full exploratory data analysis
+- AutoML or model training
+- A cloud service (zero telemetry, zero data upload)
 
 ---
 
-## Trust model (in plain English)
-
-- **Deterministic**: profiling, alerts, target analysis, constraint validation, segment comparison, registry ingestion.
-- **Heuristic** (fast, approximate): distribution labels, trends/seasonality, FK/monotonic hints.
-- **LLM-generated** (optional): narrative summaries, SQL generation, result summarization.
-- **Data stays local**: DuckDB is embedded; LLM calls go to your local Ollama endpoint.
-
-If you want *zero* row-level exposure to the LLM, run with `--no-llm`.
-
----
-
-## Heuristics (what the pattern labels actually mean)
-
-These are intentionally simple and fast (good enough for a first pass):
-
-| Pattern | Detection Logic |
-|---------|----------------|
-| **Text formats** | Regex match rate ≥10% of non-null values (email/URL/UUID/phone/etc.) |
-| **Novel text patterns** | Dominant character-class structure covers ≥70% of sampled distinct values |
-| **Distribution labels** | Based on skewness + kurtosis; bimodal uses 10-bin histogram with ≥2 peaks |
-| **FK overlap hint** | Value overlap >90% between candidate columns |
-| **Monotonic hint** | >95% of transitions increase/decrease (first 10k rows) |
-| **Seasonality** | Day-of-week count variation (CV >0.3) |
-| **Trends** | Linear fit vs date (R² threshold) or row order |
-
-These are **not** formal statistical tests - they're fast heuristics to flag "check this" candidates.
-
-**Why this matters:** The Trust Model says "heuristic" - these thresholds document what that means. This is approximation with stated intent (flag, not prove), not magic.
-
----
-
-## Why statistics-first
-
-Pasting data into a prompt and asking "tell me about this" fails because:
-
-1. **Scale**: millions of rows won't fit in a context window.
-2. **Correctness**: LLMs can't reliably compute aggregates from raw rows.
-3. **Reproducibility**: prompts drift; computed stats don't.
-
-DataSummarizer flips the order: **compute facts first**, then optionally narrate.
+## How it works
 
 ```mermaid
 flowchart LR
-    F[CSV / Excel / Parquet / JSON] --> D[DuckDB]
-    D --> P["Profile<br/>(stats + schema)"]
-    P --> A[Alerts + Patterns]
-    A --> R[Report]
-
-    P -.-> L["Optional LLM<br/>(narrate or generate SQL)"]
+    F[CSV / Excel / Parquet / JSON] --> D[DuckDB<br/>computes stats]
+    D --> P[Profile<br/>schema + alerts + patterns]
+    P --> R[Report]
+    P -.-> L["Optional LLM<br/>narrate or generate SQL"]
     L -.-> R
 
     style D stroke:#333,stroke-width:4px
-    style P stroke:#333,stroke-width:2px
-    style L stroke:#333,stroke-width:3px,stroke-dasharray: 5 5
+    style L stroke:#333,stroke-dasharray: 5 5
 ```
+
+1. **DuckDB** profiles the data (row/column stats, outliers, patterns)
+2. **Profile** is a deterministic JSON blob (facts, not guesses)
+3. **LLM** (optional) either narrates the profile *or* generates SQL that DuckDB executes locally
+
+**Why this order matters:** LLMs can't reliably compute aggregates from raw rows. So we compute facts first, then optionally narrate.
 
 ---
 
 ## 30-second quick start
 
 ```bash
-# Default: Full profile with local LLM narrative (most detailed, recommended)
-datasummarizer -f "Bank_Churn.csv" --model qwen2.5-coder:7b
+# Install (requires .NET 10 SDK)
+dotnet tool install -g datasummarizer
 
-# Super fast mode: Stats only, skip expensive patterns (fastest, deterministic)
-datasummarizer -f "Bank_Churn.csv" --no-llm --fast
+# Profile a file (full analysis, no LLM)
+datasummarizer -f Bank_Churn.csv --no-llm
 
-# Stats with all patterns (no LLM but thorough profiling)
-datasummarizer -f "Bank_Churn.csv" --no-llm
+# With AI insights (requires Ollama running locally)
+datasummarizer -f Bank_Churn.csv --model qwen2.5-coder:7b
 
-# Target-aware profiling (analyze feature effects on your label)
-datasummarizer -f "Bank_Churn.csv" --target Exited --no-llm
+# Target-aware profiling (what drives churn?)
+datasummarizer -f Bank_Churn.csv --target Exited --no-llm
 ```
 
-**Sample output** from the fast mode (10,000 rows, 13 columns, ~1 second):
+**Sample output** (10,000 rows, 13 columns, ~1 second):
 
 ```
 ── Summary ─────────────────────────────────────────────────────────
+10,000 rows × 13 columns (5 numeric, 6 categorical, 2 ID)
 
-This dataset contains **10,000 rows** and **13 columns**. Column breakdown: 
-5 numeric, 6 categorical. Found 1 warning(s) to review.
-
-╭─────────────────┬─────────────┬───────┬────────┬──────────────────────╮
-│ Column          │ Type        │ Nulls │ Unique │ Stats                │
-├─────────────────┼─────────────┼───────┼────────┼──────────────────────┤
-│ CustomerId      │ Id          │ 0.0%  │ 9,438  │ -                    │
-│ CreditScore     │ Numeric     │ 0.0%  │ 509    │ μ=650.5, σ=96.7      │
-│ Geography       │ Categorical │ 0.0%  │ 3      │ top: France          │
-│ Age             │ Numeric     │ 0.0%  │ 67     │ μ=38.9, σ=10.5       │
-│ Balance         │ Numeric     │ 0.0%  │ 6,938  │ μ=76485.9, σ=62397.4 │
-│ NumOfProducts   │ Categorical │ 0.0%  │ 4      │ top: 1               │
-│ EstimatedSalary │ Numeric     │ 0.0%  │ 10,000 │ μ=100090.2, σ=57510  │
-│ Exited          │ Categorical │ 0.0%  │ 2      │ top: 0               │
-╰─────────────────┴─────────────┴───────┴────────┴──────────────────────╯
-
-── Alerts ──────────────────────────────────────────────────────────
-- Age: 359 outliers (3.6%) outside IQR bounds [14.0, 62.0]
-- NumOfProducts: ℹ Ordinal detected: 4 integer levels
-- EstimatedSalary: ⚠ Potential leakage: 100.0% unique (10,000 values)
+── Top Alerts ──────────────────────────────────────────────────────
+⚠ EstimatedSalary: 100% unique (10,000 values) - possible leakage
+ℹ Age: 359 outliers (3.6%) outside IQR bounds [14.0, 62.0]
+ℹ NumOfProducts: Ordinal detected (4 integer levels)
 
 ── Insights ────────────────────────────────────────────────────────
+🎯 Exited Analysis Summary (score 0.95)
+   Target rate: 20.4%. Top drivers: NumOfProducts, Age, Balance
+
 💡 Modeling Recommendations (score 0.70)
-⚠ Exclude ID columns from features: CustomerId
+   ⚠ Exclude ID columns: CustomerId, Surname
+   ℹ Good candidate for logistic regression or gradient boosting
 ```
 
 ---
 
 ## What gets profiled
 
-A `DataProfile` (the main output type) contains:
-
 | Category | Metrics |
 |----------|---------|
-| **Schema** | Row count, column count, inferred types |
-| **Data Quality** | Null %, unique %, constants, outliers (IQR) |
-| **Numeric Stats** | Min/max, mean/median, stddev, quantiles, skewness, MAD |
+| **Schema** | Row count, column count, inferred types (Numeric/Categorical/DateTime/Text/Id) |
+| **Data Quality** | Null %, unique %, constants, outliers (IQR), high cardinality flags |
+| **Numeric Stats** | Min/max, mean/median/stddev, quantiles, skewness, MAD, outlier count |
 | **Categorical Stats** | Unique count, top values, mode, imbalance ratio, entropy |
 | **Relationships** | Pearson correlations (limited pairs), FK overlap hints |
-| **Patterns** | Text formats (email/URL/UUID), distribution labels, trends, time gaps |
-| **Alerts** | Leakage warnings, high nulls, extreme skew, ordinal hints |
-
-The goal is **not** to replace proper EDA. It's to quickly surface the "fix this before you model anything" problems.
+| **Patterns** | Text formats (email/URL/UUID/phone), distribution labels (normal/skewed/bimodal), trends, seasonality |
+| **Alerts** | Leakage warnings, high nulls, extreme skew, ordinal hints, ID column detection |
 
 ---
 
-## Target-aware profiling (feature effects)
+## Key features
 
-With `--target <column>`, you get supervised-style analysis **without training a model**:
+### 1. **Target-aware profiling** (feature effects without training models)
 
 ```bash
-datasummarizer -f "Bank_Churn.csv" --target Exited --no-llm
+datasummarizer -f Bank_Churn.csv --target Exited --no-llm
 ```
 
-**Output includes:**
-
-```
-── Insights ────────────────────────────────────────────────────────
-🎯 Exited Analysis Summary (score 0.95)
-Target rate: 20.4%. Top drivers: NumOfProducts (Δ0.8%), Age (Δ0.7%), 
-Balance (Δ0.3%). See feature effects below for actionable segments.
-
-Target driver: NumOfProducts (score 0.86)
-NumOfProducts = 4 has 1 rate 100.0% vs baseline 20.4% (Δ 79.6%)
-
-Target driver: Age (score 0.82)
-Average Age is 44.8 for 1 vs 37.4 for 0 (Δ 7.4)
-
-💡 Modeling Recommendations (score 0.70)
-ℹ Good candidate for logistic regression or gradient boosting
-⚠ Exclude ID columns from features: CustomerId
-```
-
-This surfaces:
-- **Class imbalance** (20.4% churn rate)
+Outputs:
+- **Class distribution** (79.6% retained, 20.4% churned)
 - **Top drivers** using Cohen's d and rate deltas
 - **Segment effects** (e.g., NumOfProducts=4 → 100% churn)
 - **Modeling recommendations** (algorithm suggestions, warnings)
 
----
-
-## Plain English Q&A (two modes)
-
-When you run `--query`, DataSummarizer takes one of two paths:
-
-1. **Profile-only answers** (no SQL): for broad questions like "tell me about this data", the LLM sees the profile and writes a short narrative.
-2. **SQL-backed answers**: for specific questions, the LLM generates DuckDB SQL using the profiled schema, DuckDB executes it locally, and the LLM summarizes the result.
-
-**SQL safety:** Generated SQL is executed in a **read-only, constrained context** (no COPY/ATTACH/INSTALL/EXPORT; results limited to 20 rows). The LLM sees the profile schema but does not have arbitrary database access.
+### 2. **Plain English Q&A** (two modes)
 
 ```bash
-# Profile-grounded overview (no SQL, profile only)
-datasummarizer -f sales.csv --model qwen2.5-coder:7b \
-  --query "tell me about this data"
+# Profile-only answer (no SQL)
+datasummarizer -f sales.csv --query "tell me about this data" --model qwen2.5-coder:7b
 
-# Specific question (generates SQL, runs locally, summarizes)
-datasummarizer -f sales.csv --model qwen2.5-coder:7b \
-  --query "top selling product categories"
+# SQL-backed answer (LLM generates SQL, DuckDB executes, LLM summarizes)
+datasummarizer -f sales.csv --query "top 5 selling products" --model qwen2.5-coder:7b
 
-# Interactive mode (profiles once, then reuses for all questions)
-datasummarizer -f sales.csv --model qwen2.5-coder:7b --interactive
+# Interactive mode (profile once, ask many questions)
+datasummarizer -f sales.csv --interactive --model qwen2.5-coder:7b
 ```
 
-**How it works:**
+**What the LLM sees:**
+- Always: The computed profile (schema + stats + alerts)
+- SQL mode: Query results (up to 20 rows for summarization)
+- Never: Your raw data (unless you enable SQL mode)
 
-- **First run**: Profiles the file (computes stats, alerts, patterns)
-- **Query execution**: For SQL-backed questions, the LLM generates SQL based on the profile schema, DuckDB executes it, and the LLM summarizes up to 20 rows of results
-- **What you see**: Progress indicators show "Thinking..." while the LLM generates SQL and summarizes results
-- **Data exposure**: Profile stats are always shared with the LLM. SQL query results (up to 20 rows) are shared only for specific questions. If you want zero row-level exposure, use `--no-llm`.
-
-**Interactive mode efficiency:**
-- Use `--interactive` to profile once and ask multiple questions
-- The profile is cached in memory for the session
-- Each question either answers from the cached profile or generates new SQL
-- Session context is maintained across questions
-
-**Session-aware Q&A:** Add `--session-id <id>` to keep conversational context across runs. Turns are stored in the Registry and retrieved by similarity.
-
----
-
-## The registry: profiling many datasets
-
-If you have a folder full of files and want cross-dataset questions ("which dataset contains churn?"), DataSummarizer can ingest profiles into a local **Registry** (profile store + similarity index).
-
-**Registry vs Store:**
-- The **Registry** (`--vector-db`) is optimized for cross-dataset search and Q&A (profiles + embeddings)
-- The **Store** (`--store-path`) is optimized for profile persistence and drift tracking
-- Both are DuckDB files; the Registry includes a similarity index for semantic search
-
-**What's stored:**
-- Computed profile JSON + derived text embeddings for similarity search
-- Conversation turns for session-aware Q&A
-- It does **not** copy full tables; profiling reads original files in place
+### 3. **Constraint validation** (data contracts)
 
 ```bash
-# Ingest a directory (recursive, supports globs)
-datasummarizer --ingest-dir "sampledata/" --no-llm \
-  --vector-db sampledata/registry.duckdb
+# Generate constraints from reference data
+datasummarizer validate --source prod.csv --target prod.csv --generate-constraints
 
-# Ingest specific files/patterns
-datasummarizer --ingest-files \
-  "sampledata/Bank*.csv" \
-  "sampledata/CO2*.csv" \
-  --no-llm --vector-db sampledata/registry.duckdb
-
-# Ask across the ingested registry
-datasummarizer --registry-query "Which datasets have a churn-like target?" \
-  --vector-db sampledata/registry.duckdb --no-llm
+# Validate new data against constraints
+datasummarizer validate --source prod.csv --target new_batch.csv \
+  --constraints prod-constraints.json --strict
 ```
 
-```mermaid
-flowchart TB
-    subgraph Files[Many source files]
-        F1[dataset-a.csv]
-        F2[dataset-b.parquet]
-        F3[dataset-c.xlsx]
-    end
+**Exit code 1** if constraints fail in `--strict` mode (CI/CD friendly).
 
-    Files --> Prof["Profile each file<br/>DuckDB"]
-    Prof --> Reg["Registry<br/>(DuckDB file)"]
-    Reg --> Q[Registry query]
-
-    style Prof stroke:#333,stroke-width:4px
-    style Reg stroke:#333,stroke-width:3px
-```
-
-**Implementation note:** If DuckDB `vss` extension is available, registry search uses it. Otherwise it falls back to in-process cosine distance over hash-based embeddings (good for lightweight retrieval, not deep semantic search).
-
----
-
-## Constraint validation (data contracts)
-
-DataSummarizer can auto-generate and validate **constraint suites** - essentially data contracts that capture expected schema and statistical properties.
-
-### Generate constraints from your reference data
+### 4. **Automatic drift detection** (cron-friendly)
 
 ```bash
-# Profile source data and auto-generate constraints
-datasummarizer validate \
-  --source "Bank_Churn.csv" \
-  --target "bank_synthetic.csv" \
-  --generate-constraints \
-  --output bank-constraints.json \
-  --no-llm
+# Daily cron job (no manual baseline management)
+datasummarizer tool -f /data/daily_export.csv --auto-drift --store
 ```
 
-This generates **41 constraints** from the source data including:
+**What happens:**
+1. Profile computed
+2. Baseline auto-selected (oldest profile with same schema)
+3. Drift calculated using Kolmogorov-Smirnov (numeric) and Jensen-Shannon divergence (categorical)
+4. Report emitted with drift score + recommendations
 
-- Row count should be between 5,000 and 20,000
-- Column count should be 13
-- All expected columns should exist
-- `CreditScore` should be Numeric, range [350, 850] ±10%
-- `Geography` values should be in {France, Germany, Spain}
-- `Gender` values should be in {Male, Female}
-- `EstimatedSalary` should have unique values (100% cardinality)
+**If drift > 0.3**, auto-generates suggested constraints for review.
 
-**Important:** Auto-generated constraints are **advisory by default** — review before enforcing in CI. Constraints like "100% uniqueness" may be overly strict for production data.
-
-### Validate new data against constraints
-
-```bash
-# Validate target dataset against constraint suite
-datasummarizer validate \
-  --source "Bank_Churn.csv" \
-  --target "new_batch.csv" \
-  --constraints bank-constraints.json \
-  --format markdown \
-  --no-llm
-```
-
-**Output (Markdown format):**
-
-```
-── Constraint Validation: Auto-generated from Bank_Churn.csv ───────
-Pass Rate: 87.8% (36/41)
-
-## Failed Constraints
-
-- Row count should be between 5,000 and 20,000
-  Actual: 100 rows
-
-- Column 'NumOfProducts' should be of type Categorical
-  Actual: Numeric
-
-- Column 'HasCrCard' should be of type Categorical
-  Actual: Numeric
-```
-
-### What gets validated
-
-| Constraint Type | Example |
-|----------------|---------|
-| **Row Count** | Between 5,000 and 20,000 rows |
-| **Column Count** | Exactly 13 columns |
-| **Columns Exist** | All expected columns present |
-| **Column Type** | `CreditScore` must be Numeric |
-| **Not Null** | `Age` must not have null values |
-| **Value Range** | `Age` between 18 and 92 (±10%) |
-| **Values In Set** | `Geography` ∈ {France, Germany, Spain} |
-| **Uniqueness** | `EstimatedSalary` should be 100% unique |
-
-### Use cases
-
-- **Data pipeline testing**: Ensure synthetic/transformed data matches expected schema
-- **Drift monitoring**: Track when new data violates expected bounds
-- **CI/CD integration**: Use `--strict` mode to fail builds on violations
-
-```bash
-# Strict mode: exit with error code if constraints fail
-datasummarizer validate \
-  --source production.csv \
-  --target new_batch.csv \
-  --constraints prod-constraints.json \
-  --strict
-```
-
-**Output formats:** `--format json` (default, machine-readable), `--format markdown` (reports), `--format html` (shareable docs).
-
----
-
-## Segment comparison (A/B profiling)
-
-Compare two datasets or cohorts to understand distributional differences:
+### 5. **Segment comparison** (A/B profiling)
 
 ```bash
 # Compare production vs synthetic data
-datasummarizer segment \
-  --segment-a "Bank_Churn.csv" \
-  --segment-b "bank_synthetic.csv" \
-  --format markdown
+datasummarizer segment --segment-a prod.csv --segment-b synthetic.csv --format markdown
+
+# Compare time periods
+datasummarizer segment --segment-a q1.csv --segment-b q2.csv \
+  --name-a "Q1 2024" --name-b "Q2 2024"
 ```
 
-**Sample output:**
+Outputs: similarity score, anomaly scores, column-by-column deltas.
 
-```
-── Segment Comparison ──────────────────────────────────────────────
-Segment A: Bank_Churn.csv (10,000 rows)
-Segment B: bank_synthetic.csv (100 rows)
-
-Similarity: 94.6%
-Anomaly Scores: A=0.086 (Excellent), B=0.250 (Fair)
-
-Insights:
-  - Segments are highly similar (>90% match)
-  - Segment sizes differ by -99.0% (10,000 vs 100 rows)
-
-Top Differences:
-╭─────────────┬─────────┬──────────┬──────────┬──────────┬──────────╮
-│ Column      │ Type    │ Distance │ A        │ B        │ Delta    │
-├─────────────┼─────────┼──────────┼──────────┼──────────┼──────────┤
-│ Age         │ Numeric │ 0.166    │ 38.92    │ 38.61    │ -0.3     │
-│ Surname     │ Text    │ 0.154    │ -        │ -        │ -        │
-│ CreditScore │ Numeric │ 0.115    │ 650.53   │ 641.84   │ -8.7     │
-│ Tenure      │ Numeric │ 0.096    │ 5.01     │ 5.03     │ +0.0     │
-│ Balance     │ Numeric │ 0.084    │ 76485.89 │ 86920.91 │ +10435.0 │
-╰─────────────┴─────────┴──────────┴──────────┴──────────┴──────────╯
-```
-
-### What you get
-
-- **Similarity score** (0-1): overall distributional similarity
-- **Anomaly scores** for each segment (detects data quality issues)
-- **Column-by-column comparison**: mean deltas, mode shifts, distribution distances
-- **Auto-generated insights**: e.g., "highly similar", "Age increased by 7.4 years"
-
-### Use cases
-
-| Use Case | Example |
-|----------|---------|
-| **Synthetic data validation** | Compare generated data vs source distribution |
-| **Cohort analysis** | Compare customer segments, treatment vs control groups |
-| **Temporal drift** | Track how data evolves over time (Q1 vs Q2) |
-| **A/B testing** | Compare metrics across test variants |
-| **Data migration** | Verify old system vs new system data |
+### 6. **Multi-file registry** (cross-dataset search)
 
 ```bash
-# Compare two time periods or cohorts
-datasummarizer segment \
-  --segment-a "sales_q1_2024.csv" --segment-name-a "Q1 2024" \
-  --segment-b "sales_q2_2024.csv" --segment-name-b "Q2 2024" \
-  --output comparison-report.md \
-  --format markdown
-```
+# Ingest a directory
+datasummarizer --ingest-dir sampledata/ --no-llm --vector-db registry.duckdb
 
-**Segment comparison can also work with stored profiles:**
-
-```bash
-# Store profiles first
-datasummarizer profile -f production.csv --output prod.profile.json --store-path profiles.duckdb
-datasummarizer profile -f staging.csv --output staging.profile.json --store-path profiles.duckdb
-
-# Compare stored profiles by ID
-datasummarizer segment \
-  --segment-a <profile-id-1> \
-  --segment-b <profile-id-2> \
-  --store-path profiles.duckdb
+# Ask across ingested data
+datasummarizer --registry-query "Which datasets have churn?" \
+  --vector-db registry.duckdb --model qwen2.5-coder:7b
 ```
 
 ---
 
-## Optional ONNX sentinel scoring
+## Trust model (what's deterministic vs heuristic vs LLM)
 
-If you pass `--onnx path/to/model.onnx`, DataSummarizer can score each column using an ONNX model.
+| Component | Type | Example |
+|-----------|------|---------|
+| **Profiling** | Deterministic | Row count, nulls, mean/stddev, quantiles |
+| **Alerts** | Deterministic | Outliers (IQR), leakage flags, high nulls |
+| **Target analysis** | Deterministic | Cohen's d, rate deltas, segment effects |
+| **Constraint validation** | Deterministic | Schema checks, range validation |
+| **Drift detection** | Deterministic | KS/JS distance metrics |
+| **Pattern detection** | Heuristic | Distribution labels (normal/skewed), FK hints, trends |
+| **LLM insights** | LLM-generated | Narrative summaries, SQL generation |
 
-It's deliberately narrow:
+**Heuristic thresholds** (fast approximations, not formal tests):
+- Text format match ≥10% → flag as email/URL/UUID
+- Skewness + kurtosis → label distribution shape
+- Value overlap >90% → FK hint
+- Transitions >95% monotonic → monotonic hint
 
-- **Input**: a fixed feature vector built from the column's computed stats (null %, unique %, stddev, skewness, outlier ratio, imbalance ratio, text length, type flags).
-- **Output**: a score clamped to 0–1 (higher = "more interesting/risky").
-
-If the model is missing or incompatible, it safely no-ops.
-
-This is useful for flagging columns that might need extra attention (e.g., high-risk PII, leakage candidates, data quality issues).
-
----
-
-## Performance options (wide/large tables)
-
-For wide tables (hundreds of columns) or very large files:
-
-```bash
-# Limit columns analyzed (auto-selects "most interesting")
-datasummarizer -f wide.csv --max-columns 50 --no-llm
-
-# Only analyze specific columns
-datasummarizer -f wide.csv --columns Age,Balance,Exited --no-llm
-
-# Exclude specific columns
-datasummarizer -f wide.csv --exclude-columns Id,Timestamp --no-llm
-
-# Skip expensive operations
-datasummarizer -f wide.csv --fast --skip-correlations --no-llm
-
-# Ignore CSV parsing errors (malformed rows)
-datasummarizer -f messy.csv --ignore-errors --no-llm
-```
-
-| Option | Effect |
-|--------|--------|
-| `--fast` | Skip expensive pattern detection (trends/time-series) |
-| `--skip-correlations` | Skip correlation matrix (faster for many numeric columns) |
-| `--max-columns N` | Limit to N most interesting columns (default 50, 0=unlimited) |
-| `--columns a,b,c` | Only analyze specific columns |
-| `--exclude-columns x,y,z` | Exclude columns from analysis |
-| `--ignore-errors` | Ignore CSV parsing errors |
+**SQL safety:** Generated SQL is read-only, results limited to 20 rows, no COPY/ATTACH/INSTALL/EXPORT.
 
 ---
 
-## Command reference
+## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `profile` | Save profile as JSON (machine-readable) |
-| `synth` | Generate synthetic data from a profile |
-| `validate` | Compare datasets, report drift, or validate constraints |
-| `segment` | Compare two datasets or stored profiles |
-| `tool` | JSON output for pipelines/agents (compact format) |
-| `store` | Manage the profile store (list, clear, prune) |
+| `datasummarizer -f <file>` | Human-friendly report (pretty tables, alerts, insights) |
+| `profile` | Save profile as JSON |
+| `synth` | Generate synthetic data from profile |
+| `validate` | Compare datasets, validate constraints |
+| `segment` | A/B comparison (similarity, anomaly scores, deltas) |
+| `tool` | Compact JSON for LLM tools/agents |
+| `store` | Manage profile store (list, clear, prune, interactive menu) |
 
-Full CLI reference and examples: [Mostlylucid.DataSummarizer/README.md](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
+---
+
+## Performance
+
+**Benchmarks** (.NET 10, M1 Mac, DuckDB embedded):
+
+| Dataset | Rows | Columns | Time (--fast --no-llm) |
+|---------|------|---------|------------------------|
+| Bank churn | 10,000 | 13 | ~1 second |
+| Sales synthetic | 100,000 | 14 | ~2 seconds |
+| Wide table | 50,000 | 200 | ~8 seconds (--max-columns 50) |
+
+**Performance options:**
+- `--fast`: Skip expensive patterns (trends/time-series)
+- `--skip-correlations`: Skip correlation matrix
+- `--max-columns N`: Auto-select N most interesting columns
+- `--columns a,b,c`: Only analyze specific columns
+
+---
+
+## Installation & requirements
+
+```bash
+# Install as .NET global tool
+dotnet tool install -g datasummarizer
+
+# Or download standalone binaries (no .NET required)
+# https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer
+```
+
+**Requirements:**
+- .NET 10 SDK (or use standalone binaries)
+- DuckDB (embedded via `DuckDB.NET.Data.Full`)
+- Optional: Ollama for LLM features (default model: `qwen2.5-coder:7b`)
 
 ---
 
 ## Next steps
 
-- **Full command reference**: `Mostlylucid.DataSummarizer/README.md`
-- **Code paths**: Start with `Services/DuckDbProfiler.cs` and `Services/DataSummarizerService.cs`
-- **MCP integration**: Use the `tool` command for LLM agent integration
-- **CI/CD**: Use `validate --strict` in your test pipeline
+- **Full command reference**: [Mostlylucid.DataSummarizer/README.md](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
+- **Code**: Start with `Services/DuckDbProfiler.cs` and `Services/DataSummarizerService.cs`
+- **MCP integration**: Use `tool` command for LLM agents
+- **CI/CD**: Use `validate --strict` in test pipelines
 
-**Related articles:**
-- [CSV analysis with local LLMs](/blog/analysing-large-csv-files-with-local-llms) - The foundational pattern
+**Related:**
+- [CSV analysis with local LLMs](/blog/analysing-large-csv-files-with-local-llms) - Foundational pattern
 - [DocSummarizer](/blog/building-a-document-summarizer-with-rag) - Same philosophy for documents
