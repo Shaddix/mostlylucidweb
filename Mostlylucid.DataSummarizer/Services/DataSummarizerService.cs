@@ -48,6 +48,14 @@ public class DataSummarizerService : IDisposable
         _reportOptions = reportOptions ?? new ReportOptions();
     }
 
+    /// <summary>
+    /// Report status via callback (compatible with Spectre.Console spinners)
+    /// </summary>
+    private void Status(string message)
+    {
+        _profileOptions.OnStatusUpdate?.Invoke(message);
+    }
+
 
     /// <summary>
     /// Summarize a data file (CSV, Excel, Parquet, JSON)
@@ -82,9 +90,9 @@ public class DataSummarizerService : IDisposable
             {
                 await ProfileWithExtrasAsync(path, sheetName: null, useLlm: maxLlmInsights > 0 && !string.IsNullOrEmpty(_ollamaModel), maxLlmInsights: maxLlmInsights);
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] Ingest failed for {path}: {ex.Message}");
+                Status($"Ingest failed: {path}");
             }
         }
     }
@@ -877,7 +885,7 @@ PRIOR CONVERSATION (reuse if relevant):
         }
         catch (Exception ex)
         {
-            if (_verbose) Console.WriteLine($"[DataSummarizer] Registry LLM failed: {ex.Message}");
+            // LLM failures are graceful
             var desc = context + (convoText.Length > 0 ? "\nPrior conversation:\n" + convoText : "");
             await AppendTurnAsync("user", question);
             await AppendTurnAsync("assistant", desc);
@@ -898,9 +906,30 @@ PRIOR CONVERSATION (reuse if relevant):
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"File not found: {filePath}");
 
-        if (_verbose)
+        // Check cache first (VSS store with content hash)
+        await EnsureVectorStoreAsync();
+        string? contentHash = null;
+        long? fileSize = null;
+        
+        if (_vectorStore?.IsAvailable == true)
         {
-            Console.WriteLine($"[DataSummarizer] Profiling: {Path.GetFileName(filePath)}");
+            var (hash, size) = ProfileStore.ComputeFileHashWithSize(filePath);
+            contentHash = hash;
+            fileSize = size;
+            
+            var cached = await _vectorStore.GetCachedProfileAsync(filePath, hash);
+            if (cached != null)
+            {
+                _profileOptions.OnStatusUpdate?.Invoke($"Cache hit: {Path.GetFileName(filePath)}");
+                cached.ProfileTime = stopwatch.Elapsed; // minimal time for cache hit
+                return cached;
+            }
+            
+            _profileOptions.OnStatusUpdate?.Invoke($"Profiling: {Path.GetFileName(filePath)}");
+        }
+        else
+        {
+            _profileOptions.OnStatusUpdate?.Invoke($"Profiling: {Path.GetFileName(filePath)}");
         }
 
         DataProfile profile;
@@ -910,11 +939,7 @@ PRIOR CONVERSATION (reuse if relevant):
         }
 
 
-        if (_verbose)
-        {
-            Console.WriteLine($"[DataSummarizer] Profile complete: {profile.RowCount:N0} rows, {profile.ColumnCount} cols");
-            Console.WriteLine($"[DataSummarizer] Found {profile.Alerts.Count} alerts, {profile.Correlations.Count} correlations");
-        }
+        Status($"Profiled: {profile.RowCount:N0} rows, {profile.ColumnCount} cols");
 
         // ONNX sentinel
         if (!string.IsNullOrWhiteSpace(_onnxSentinelPath))
@@ -926,16 +951,12 @@ PRIOR CONVERSATION (reuse if relevant):
                 {
                     var sentinelInsights = sentinel.ScoreColumns(profile);
                     profile.Insights.AddRange(sentinelInsights);
-                    if (_verbose) Console.WriteLine($"[DataSummarizer] ONNX sentinel added {sentinelInsights.Count} insight(s)");
-                }
-                else if (_verbose)
-                {
-                    Console.WriteLine("[DataSummarizer] ONNX sentinel unavailable (model missing or incompatible)");
+                    Status($"ONNX sentinel: {sentinelInsights.Count} insight(s)");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] ONNX sentinel failed: {ex.Message}");
+                // ONNX sentinel errors are not user-facing
             }
         }
 
@@ -944,20 +965,20 @@ PRIOR CONVERSATION (reuse if relevant):
         {
             try
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] Generating LLM insights with {_ollamaModel}...");
+                Status($"Generating insights with {_ollamaModel}...");
                 
                 using var llm = new LlmInsightGenerator(_ollamaModel, _ollamaUrl, _verbose);
                 var llmInsights = await llm.GenerateInsightsAsync(filePath, profile, maxLlmInsights);
                 profile.Insights.AddRange(llmInsights);
                 
-                if (_verbose) Console.WriteLine($"[DataSummarizer] Generated {llmInsights.Count} LLM insights");
+                Status($"Generated {llmInsights.Count} LLM insights");
                 
                 // Enhance novel patterns with LLM analysis
                 await EnhanceNovelPatternsWithLlmAsync(profile, llm);
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] LLM insights failed: {ex.Message}");
+                // LLM failures are graceful - continue without insights
             }
         }
 
@@ -966,8 +987,8 @@ PRIOR CONVERSATION (reuse if relevant):
 
         profile.ProfileTime = stopwatch.Elapsed;
 
-        // Persist to vector store for reuse
-        await PersistToVectorStoreAsync(profile);
+        // Persist to vector store for reuse (with content hash for caching)
+        await PersistToVectorStoreAsync(profile, contentHash, fileSize);
         
         // Save novel patterns to vector store
         await SaveNovelPatternsAsync(profile);
@@ -986,7 +1007,7 @@ PRIOR CONVERSATION (reuse if relevant):
 
         if (columnsWithNovelPatterns.Count == 0) return;
 
-        if (_verbose) Console.WriteLine($"[DataSummarizer] Enhancing {columnsWithNovelPatterns.Count} novel pattern(s) with LLM...");
+        Status($"Enhancing {columnsWithNovelPatterns.Count} novel pattern(s)...");
 
         foreach (var col in columnsWithNovelPatterns)
         {
@@ -1004,8 +1025,6 @@ PRIOR CONVERSATION (reuse if relevant):
                         // Reuse existing pattern analysis
                         novelPattern.Description = existingPattern.Description;
                         novelPattern.DetectedRegex = existingPattern.ImprovedRegex ?? existingPattern.DetectedRegex;
-                        
-                        if (_verbose) Console.WriteLine($"[DataSummarizer] Reusing existing pattern '{existingPattern.PatternName}' for column {col.Name}");
                         continue;
                     }
                 }
@@ -1038,13 +1057,11 @@ PRIOR CONVERSATION (reuse if relevant):
                         RelatedColumns = new List<string> { col.Name },
                         Score = 0.75
                     });
-
-                    if (_verbose) Console.WriteLine($"[DataSummarizer] Enhanced pattern for {col.Name}: {analysis.PatternName}");
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] Failed to enhance pattern for {col.Name}: {ex.Message}");
+                // Pattern enhancement failures are graceful
             }
         }
     }
@@ -1096,9 +1113,9 @@ PRIOR CONVERSATION (reuse if relevant):
 
                 await _vectorStore.UpsertNovelPatternAsync(record);
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] Failed to save pattern for {col.Name}: {ex.Message}");
+                // Pattern save failures are graceful
             }
         }
     }
@@ -1265,9 +1282,9 @@ PRIOR CONVERSATION (reuse if relevant):
                 }
                 focusFindings = narrative.FocusAnswers;
             }
-            catch (Exception ex)
+            catch
             {
-                if (_verbose) Console.WriteLine($"[DataSummarizer] LLM report narrative failed: {ex.Message}");
+                // LLM narrative failures are graceful
             }
         }
 
@@ -1304,21 +1321,20 @@ PRIOR CONVERSATION (reuse if relevant):
         };
     }
 
-    private async Task PersistToVectorStoreAsync(DataProfile profile)
-
+    private async Task PersistToVectorStoreAsync(DataProfile profile, string? contentHash = null, long? fileSize = null)
     {
         await EnsureVectorStoreAsync();
         if (_vectorStore is null || !_vectorStore.IsAvailable) return;
 
         try
         {
-            await _vectorStore.UpsertProfileAsync(profile);
+            await _vectorStore.UpsertProfileAsync(profile, contentHash, fileSize);
             await _vectorStore.UpsertEmbeddingsAsync(profile);
-            if (_verbose) Console.WriteLine($"[VectorStore] Cached profile for {Path.GetFileName(profile.SourcePath)}");
+            Status($"Cached: {Path.GetFileName(profile.SourcePath)}");
         }
-        catch (Exception ex)
+        catch
         {
-            if (_verbose) Console.WriteLine($"[VectorStore] Persist failed: {ex.Message}");
+            // Cache persist failures are graceful
         }
     }
 
@@ -1373,9 +1389,9 @@ PRIOR CONVERSATION (reuse if relevant):
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            if (_verbose) Console.WriteLine($"[VectorStore] Load profiles failed: {ex.Message}");
+            // Load failures are graceful
         }
 
         return profiles;

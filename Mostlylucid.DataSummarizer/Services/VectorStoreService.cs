@@ -71,9 +71,15 @@ public class VectorStoreService : IDisposable
                 row_count BIGINT,
                 column_count INTEGER,
                 profile_json TEXT,
+                content_hash TEXT,
+                file_size BIGINT,
                 updated_at TIMESTAMP DEFAULT NOW()
             );
         ");
+        
+        // Migration: add content_hash and file_size columns if they don't exist
+        try { await ExecAsync("ALTER TABLE registry_files ADD COLUMN content_hash TEXT"); } catch { }
+        try { await ExecAsync("ALTER TABLE registry_files ADD COLUMN file_size BIGINT"); } catch { }
 
         await ExecAsync(@"
             CREATE TABLE IF NOT EXISTS registry_embeddings (
@@ -151,12 +157,39 @@ public class VectorStoreService : IDisposable
     }
     }
 
-    public async Task UpsertProfileAsync(DataProfile profile)
+    public async Task UpsertProfileAsync(DataProfile profile, string? contentHash = null, long? fileSize = null)
     {
         Ensure();
         var json = JsonSerializer.Serialize(profile);
-        var sql = "INSERT OR REPLACE INTO registry_files (file_path, row_count, column_count, profile_json, updated_at) VALUES (?, ?, ?, ?, NOW())";
-        await ExecAsync(sql, profile.SourcePath, profile.RowCount, profile.ColumnCount, json);
+        var sql = "INSERT OR REPLACE INTO registry_files (file_path, row_count, column_count, profile_json, content_hash, file_size, updated_at) VALUES (?, ?, ?, ?, ?, ?, NOW())";
+        await ExecAsync(sql, profile.SourcePath, profile.RowCount, profile.ColumnCount, json, contentHash, fileSize);
+    }
+
+    /// <summary>
+    /// Get cached profile if file unchanged (based on content hash)
+    /// </summary>
+    public async Task<DataProfile?> GetCachedProfileAsync(string filePath, string currentContentHash)
+    {
+        if (!_available) return null;
+        Ensure();
+        
+        var sql = "SELECT profile_json, content_hash FROM registry_files WHERE file_path = ?";
+        await using var cmd = Connection!.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.Add(new DuckDB.NET.Data.DuckDBParameter { Value = filePath });
+        
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            var cachedHash = reader.IsDBNull(1) ? null : reader.GetString(1);
+            if (cachedHash == currentContentHash)
+            {
+                var profileJson = reader.GetString(0);
+                return JsonSerializer.Deserialize<DataProfile>(profileJson);
+            }
+        }
+        
+        return null;
     }
 
     public async Task UpsertEmbeddingsAsync(DataProfile profile)
