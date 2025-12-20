@@ -177,41 +177,73 @@ These defaults make local use straightforward and secure by design.
 ## Example: Deterministic Profiling Output
 
 ```bash
-datasummarizer -f pii-test.csv --no-llm --fast
+datasummarizer -f "Hospital+Patient+Records/patients.csv" --no-llm --fast
 ```
 
-You get schema + stats + alerts immediately:
+Real output (974 patient records with PII):
 
-* null rates
-* uniqueness/cardinality
-* PII warnings
-* distribution shape flags
+```
+── Summary ────────────────────────────────────────────────
 
-**All computed by DuckDB**. No guessing.
+This dataset contains **974 rows** and **20 columns**. Column breakdown: 2
+numeric, 9 categorical, 2 date/time. **4 column(s)** have >10% null values.
+Found 8 warning(s) to review.
+
+Column      Type        Nulls  Unique  Stats
+Id          Id          0.0%   974     -
+BIRTHDATE   DateTime    0.0%   974     1922-03-24 → 1991-11-27
+DEATHDATE   DateTime    84.2%  161     2011-02-03 → 2022-01-27
+FIRST       Text        0.0%   974     -
+ADDRESS     Text        0.0%   974     -
+CITY        Categorical 0.0%   33      top: Boston
+STATE       Categorical 0.0%   1       top: Massachusetts
+LAT         Numeric     0.0%   974     μ=42.3, σ=0.0, range=42.2-42.5
+
+── Alerts ─────────────────────────────────────────────────
+- DEATHDATE: 84.2% null values
+- FIRST: 100.0% unique - possibly an ID column
+- FIRST: ⚠ Potential data leakage: 100.0% unique (974 values)
+- ADDRESS: 100.0% unique - possibly an ID column
+- STATE: Column has only one unique value
+```
+
+You get schema + stats + alerts immediately — **all computed by DuckDB**. No guessing.
 
 ---
 
-## Example: Compact `tool` JSON (short)
+## Example: Compact `tool` JSON (for Agents/CI)
 
-When you run `tool` mode the top-level JSON includes provenance and LLM metadata. Example (abridged):
+When you run `tool` mode the output is structured JSON optimized for automation:
+
+```bash
+datasummarizer tool -f patients.csv --store > profile.json
+```
+
+Real output (abridged):
 
 ```json
 {
   "Success": true,
-  "Source": "data.csv",
-  "ProfileId": "a3f9e2c1b8d4",
-  "Profile": { "RowCount": 10000, "ColumnCount": 13 },
-  "Metadata": {
-    "ProcessingSeconds": 1.23,
-    "Model": "qwen2.5-coder:7b",
-    "UsedLlm": true,
-    "SessionId": "sales-analysis"
+  "Profile": {
+    "SourcePath": "patients.csv",
+    "RowCount": 974,
+    "ColumnCount": 20,
+    "ExecutiveSummary": "974 rows, 20 columns. 4 columns have nulls. 18 alerts.",
+    "Columns": [
+      { "Name": "Id", "Type": "Id", "UniquePercent": 100 },
+      { "Name": "BIRTHDATE", "Type": "DateTime", "NullPercent": 0 },
+      { "Name": "DEATHDATE", "Type": "DateTime", "NullPercent": 84.2 }
+    ]
   },
-  "Drift": { "DriftScore": 0.12 }
+  "Metadata": {
+    "ProfiledAt": "2025-12-20T16:07:27Z",
+    "ProfileId": "0ae8dcc4d79b",
+    "SchemaHash": "44d9ad8af68c1c62"
+  }
 }
 ```
 
-Use these fields in automation to track provenance, model usage, and drift scores.
+Use these fields in automation to track provenance, schema changes, and data quality over time.
 
 ---
 
@@ -261,37 +293,101 @@ Once you have a statistical profile, you can generate a synthetic dataset that:
 
 This is exactly what I want for demos, CI tests, support repros, and shareable sample data.
 
-Conceptually:
+### Real Example: Hospital Patients
 
-```mermaid
-flowchart LR
-    A[Real dataset] --> B[Profile]
-    B --> C[Cloner]
-    C --> D[Synthetic clone]
-    D --> E[Fidelity report]
+```bash
+# 1. Profile the real data (974 patients with PII)
+datasummarizer profile -f patients.csv --output patients-profile.json --no-llm
+
+# 2. Generate 100 synthetic patients
+datasummarizer synth --profile patients-profile.json --synthesize-to synthetic.csv --synthesize-rows 100
+
+# 3. Validate fidelity
+datasummarizer validate --source patients.csv --target synthetic.csv --format markdown
 ```
 
-The fidelity report quantifies deltas in null %, quantiles, categorical frequency tables, and drift distances.
+Output shows the match quality:
+
+```
+── Data Drift Validation ──────────────────────────────────
+Source: patients.csv (974 rows)
+Target: synthetic.csv (100 rows)
+Drift Score: 1.000
+Anomaly Score: 0.300 (Fair)
+
+Top Differences:
+Column      Type        Distance  A         B           Delta
+SUFFIX      Categorical 0.408     PhD       Health,     +1.3pp nulls
+                                            Shoes &
+                                            Toys
+BIRTHPLACE  Text        0.173     -         -           -
+CITY        Categorical 0.107     Boston    Boston      -
+```
+
+The fidelity report quantifies deltas in null %, quantiles, categorical frequency tables, and drift distances. The synthetic data is PII-free and safe to share.
 
 ---
 
-## Session & Registry notes (where conversation is stored)
+## Cross-File Analysis: Segment Comparison
 
-- Use `--session-id <id>` to tie questions together.
-- Conversation turns are stored in the Registry only when you provide `--vector-db` (the default path is `.datasummarizer.vss.duckdb`).
-- This keeps follow-ups usable across separate CLI invocations while remaining local.
+Compare two datasets to understand differences:
+
+```bash
+datasummarizer segment \
+  --segment-a patients.csv \
+  --segment-b synthetic.csv \
+  --name-a "Real Patients" \
+  --name-b "Synthetic" \
+  --format markdown
+```
+
+Real output:
+
+```
+── Segment Comparison ─────────────────────────────────────
+Segment A: Real Patients (974 rows)
+Segment B: Synthetic (100 rows)
+
+Similarity: 92.5%
+Anomaly Scores: A=0.240 (Fair), B=0.300 (Fair)
+
+Insights:
+  - Segments are highly similar (>90% match)
+  - Segment sizes differ by -89.7% (974 vs 100 rows)
+  - 'SUFFIX' mode changed from 'PhD' to 'Health, Shoes & Toys'
+
+Top Differences:
+Column      Type        Distance  A       B              Delta
+SUFFIX      Categorical 0.408     PhD     Health, Shoes  +1.3pp nulls
+                                          & Toys
+BIRTHPLACE  Text        0.173     -       -              -
+CITY        Categorical 0.107     Boston  Boston         -
+```
+
+This is useful for A/B testing, cohort analysis, or verifying synthetic data quality.
+
+---
+
+## Session & Registry (Cross-Dataset Queries)
+
+- Use `--session-id <id>` to tie questions together across CLI invocations
+- Use `--ingest-dir` to profile an entire directory into a registry
+- Query across multiple datasets with `--registry-query`
 
 Example:
 
 ```bash
-# ingest once (creates registry)
-datasummarizer --ingest-dir sampledata/ --vector-db registry.duckdb
+# ingest hospital data directory (6 CSV files)
+datasummarizer --ingest-dir "Hospital+Patient+Records/" --vector-db hospital.duckdb
 
-# then run sessioned queries
-datasummarizer -f sales.csv --query "top products" --session-id sales-analysis --model qwen2.5-coder:7b
-# later
-datasummarizer -f sales.csv --query "show their revenue" --session-id sales-analysis --model qwen2.5-coder:7b
+# Result: encounters.csv, patients.csv, procedures.csv, etc. all profiled and stored
+
+# then run cross-file queries
+datasummarizer -f patients.csv --query "which files have patient IDs?" \
+  --session-id hospital-analysis --vector-db hospital.duckdb
 ```
+
+The registry enables semantic search across datasets using vector embeddings of column names and statistics.
 
 ---
 
