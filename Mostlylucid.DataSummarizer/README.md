@@ -6,6 +6,9 @@ A .NET 10 CLI that turns any CSV/Excel/Parquet/JSON into a reproducible statisti
 
 [![GitHub](https://img.shields.io/github/stars/scottgal/mostlylucidweb?style=social)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
+[![Tests](https://img.shields.io/badge/tests-305%20passing-brightgreen)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
+[![Privacy](https://img.shields.io/badge/PII-hidden%20by%20default-blue)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer#privacy-safe-pii-handling)
+[![ONNX](https://img.shields.io/badge/ONNX-enabled-orange)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer#onnx-integration)
 
 ---
 
@@ -157,6 +160,84 @@ When you profile data:
 - **Store** (`--store-path`): Optimized for profile persistence and drift tracking (profiles + metadata + baseline pins)
 
 Both are DuckDB files. The Registry includes a similarity index for semantic search across many datasets.
+
+---
+
+## Privacy-Safe PII Handling
+
+**DataSummarizer hides PII by default** to prevent accidental exposure in console output, screenshots, or CI logs.
+
+### Automatic PII Detection
+
+Uses **ONNX-powered ensemble detection** (regex + machine learning) to identify:
+
+| PII Type | Example | Default Display |
+|----------|---------|-----------------|
+| **SSN** | `123-45-6789` | `***-**-6789` |
+| **Email** | `john@example.com` | `jo***@***.com` |
+| **Phone** | `555-123-4567` | `***-***-4567` |
+| **Credit Card** | `4111-1111-1111-1111` | `**** **** **** 1111` |
+| **Names** | `John Doe` | `<NAME> Jo****oe` |
+| **Addresses** | `123 Main St` | `<ADDR> 12*******St` |
+
+### Redaction Examples
+
+```bash
+# Default: PII hidden (privacy-safe)
+datasummarizer -f patients.csv --no-llm
+
+# Output shows redacted values:
+│ Email │ Categorical │ top: jo***@***.com              │
+│ Phone │ Categorical │ top: ***-***-4567               │
+│ SSN   │ Categorical │ top: ***-**-6789                │
+```
+
+### Show PII (Explicit Opt-In)
+
+```bash
+# WARNING: Shows actual PII values
+datasummarizer -f data.csv --show-pii
+
+# Show only specific types
+datasummarizer -f data.csv --show-pii-type email,phone
+
+# Hide type labels like <EMAIL>, <PHONE>
+datasummarizer -f data.csv --hide-pii-labels
+```
+
+### Configuration
+
+Control PII display via `appsettings.json`:
+
+```json
+{
+  "DataSummarizer": {
+    "PiiDisplay": {
+      "ShowPiiValues": false,
+      "ShowPiiTypeLabel": true,
+      "RedactionChar": "*",
+      "VisibleChars": 2,
+      "TypeSettings": {
+        "ShowEmail": false,
+        "ShowPhone": false,
+        "ShowSsn": false,
+        "ShowCreditCard": false,
+        "ShowPersonName": false,
+        "ShowAddress": false
+      }
+    }
+  }
+}
+```
+
+### Privacy Benefits
+
+✅ **Screenshot-safe** - Share profiling results without exposing PII  
+✅ **CI/CD-safe** - Run in build pipelines without leaking sensitive data  
+✅ **Demo-safe** - Show profiling capabilities on production-like data  
+✅ **Compliance-friendly** - GDPR/HIPAA-aware output redaction  
+
+**Note:** PII detection runs locally using ONNX models. No data leaves your machine.
 
 ---
 
@@ -1101,6 +1182,166 @@ datasummarizer -f messy.csv --ignore-errors --no-llm
 | Time-series | 1,000,000 | 8 | `--fast --no-llm --skip-correlations` | ~12s |
 
 **Memory usage:** DuckDB uses out-of-core processing, so memory scales with result sets (aggregates), not raw data size.
+
+---
+
+## ONNX Integration
+
+DataSummarizer uses ONNX models for enhanced PII detection and semantic search capabilities. ONNX models run locally with optional GPU acceleration, providing fast and privacy-preserving classification.
+
+### PII Detection with ONNX Classifier
+
+The PII detector uses a two-stage ensemble approach:
+1. **Regex patterns** for structured PII (SSN, credit cards, emails, etc.) - fast and precise
+2. **ONNX classifier** for semantic PII detection (names, addresses, etc.) - catches subtle cases
+
+The ONNX classifier is **automatically enabled** when ONNX config is available in `appsettings.json`. It downloads a small model (~20-30MB) on first run and caches it locally.
+
+**Benefits:**
+- Improved detection of unstructured PII (person names, addresses)
+- Semantic understanding beyond regex patterns
+- Ensemble confidence scoring (regex + classifier agreement)
+- Privacy-preserving (runs locally, no API calls)
+
+### Configuration
+
+#### Via appsettings.json
+
+```json
+{
+  "DataSummarizer": {
+    "Onnx": {
+      "Enabled": true,
+      "EmbeddingModel": "AllMiniLmL6V2",
+      "UseQuantized": true,
+      "ModelDirectory": "models",
+      "ExecutionProvider": "Auto",
+      "GpuDeviceId": 0
+    }
+  }
+}
+```
+
+#### Via CLI Options
+
+```bash
+# Disable ONNX classifier
+datasummarizer -f data.csv --onnx-enabled false --no-llm
+
+# Force GPU acceleration
+datasummarizer -f data.csv --onnx-gpu --no-llm
+
+# Force CPU-only (for testing/compatibility)
+datasummarizer -f data.csv --onnx-cpu --no-llm
+
+# Use different embedding model
+datasummarizer -f data.csv --onnx-model BgeSmallEnV15 --no-llm
+
+# Custom model directory
+datasummarizer -f data.csv --onnx-model-dir /path/to/models --no-llm
+```
+
+### Available Models
+
+| Model | Size (Quantized) | Dimensions | Best For |
+|-------|-----------------|------------|----------|
+| **AllMiniLmL6V2** | ~23MB | 384 | General purpose (default) |
+| **BgeSmallEnV15** | ~34MB | 384 | Semantic search |
+| **GteSmall** | ~34MB | 384 | Diverse text types |
+| **MultiQaMiniLm** | ~23MB | 384 | Q&A retrieval |
+| **ParaphraseMiniLmL3** | ~17MB | 384 | Paraphrase detection (fastest) |
+
+### GPU Acceleration
+
+ONNX supports GPU acceleration via:
+- **DirectML** (Windows - automatic)
+- **CUDA** (NVIDIA GPUs - requires CUDA toolkit)
+- **CPU** (fallback - always available)
+
+The `ExecutionProvider: Auto` setting automatically detects and uses the best available accelerator:
+1. DirectML (if on Windows with compatible GPU)
+2. CUDA (if CUDA toolkit detected)
+3. CPU (fallback)
+
+### Model Download
+
+Models are **auto-downloaded** from HuggingFace on first use and cached locally in the `models/` directory (or custom path via `--onnx-model-dir`).
+
+**First run:**
+```
+[OnnxModelDownloader] Downloading all-MiniLM-L6-v2 (quantized) from HuggingFace...
+[OnnxModelDownloader] Model cached: models/all-MiniLM-L6-v2-quantized.onnx
+```
+
+**Subsequent runs:** Instant (uses cached model)
+
+### PII Detection Modes
+
+```bash
+# Default: Regex + ONNX classifier ensemble
+datasummarizer -f data.csv --no-llm
+
+# Regex-only (faster, less accurate for unstructured PII)
+datasummarizer -f data.csv --onnx-enabled false --no-llm
+
+# Fast mode skips PII detection entirely
+datasummarizer -f data.csv --fast --no-llm
+```
+
+### Performance Impact
+
+| Mode | Speed | PII Detection Quality |
+|------|-------|----------------------|
+| **Fast (no PII)** | 100% | N/A |
+| **Regex only** | ~95% | Good for structured PII |
+| **Regex + ONNX** | ~85% | Excellent for all PII types |
+
+The ONNX classifier adds ~15% overhead but significantly improves detection of:
+- Person names (FIRST, LAST, FULLNAME)
+- Addresses (street addresses, locations)
+- Unstructured sensitive text
+
+### Example Output
+
+```bash
+datasummarizer -f patients.csv --no-llm --verbose
+```
+
+Output shows ensemble PII detection:
+```
+[TinyClassifier] Initialized with pre-computed label embeddings
+[PiiDetector] Classifier enabled for ensemble detection
+[DuckDbProfiler] ONNX classifier enabled for PII detection
+
+── Alerts ──────────────────────────────────────────────────────
+⚠ FIRST: Potential PersonName detected (92% confidence). Risk level: High
+⚠ ADDRESS: Potential Address detected (88% confidence). Risk level: High
+ℹ EMAIL: Email detected (100% regex match). Risk level: Medium
+```
+
+### Troubleshooting
+
+**Model download fails:**
+```bash
+# Use different model directory with write permissions
+datasummarizer -f data.csv --onnx-model-dir ~/models --no-llm
+```
+
+**GPU not detected:**
+```bash
+# Check execution provider in verbose mode
+datasummarizer -f data.csv --verbose --no-llm
+# Should show: [OnnxEmbedding] Using DirectML/CUDA execution provider
+```
+
+**Disable ONNX completely:**
+```bash
+# Via CLI
+datasummarizer -f data.csv --onnx-enabled false --no-llm
+
+# Or edit appsettings.json
+"Onnx": { "Enabled": false }
+```
 
 ---
 

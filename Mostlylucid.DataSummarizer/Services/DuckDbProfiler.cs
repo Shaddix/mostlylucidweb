@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using MathNet.Numerics.Statistics;
+using Mostlylucid.DataSummarizer.Configuration;
 using Mostlylucid.DataSummarizer.Models;
 using Spectre.Console;
 
@@ -16,11 +17,13 @@ public class DuckDbProfiler : IDisposable
     private DuckDbConnectionManager? _db;
     private readonly bool _verbose;
     private readonly ProfileOptions _options;
+    private readonly OnnxConfig? _onnxConfig;
 
-    public DuckDbProfiler(bool verbose = false, ProfileOptions? options = null)
+    public DuckDbProfiler(bool verbose = false, ProfileOptions? options = null, OnnxConfig? onnxConfig = null)
     {
         _verbose = verbose;
         _options = options ?? new ProfileOptions();
+        _onnxConfig = onnxConfig;
     }
 
     /// <summary>
@@ -141,14 +144,30 @@ public class DuckDbProfiler : IDisposable
         parallelTasks.Add(alertsTask);
         
         // Task 2: PII detection (skip in fast mode, include in Background)
-        Task<List<DataAlert>>? piiTask = null;
+        Task<(List<DataAlert> Alerts, List<PiiScanResult> Results)>? piiTask = null;
         if (!_options.FastMode || _options.Depth == ProfileDepth.Background)
         {
-            piiTask = Task.Run(() =>
+            piiTask = Task.Run(async () =>
             {
                 var piiDetector = new PiiDetector(_verbose);
+                
+                // Enable ONNX classifier if config is available and enabled
+                if (_onnxConfig?.Enabled == true)
+                {
+                    try
+                    {
+                        await piiDetector.EnableClassifierAsync(_onnxConfig);
+                        if (_verbose) Console.WriteLine("[DuckDbProfiler] ONNX classifier enabled for PII detection");
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_verbose) Console.WriteLine($"[DuckDbProfiler] Failed to enable ONNX classifier: {ex.Message}");
+                    }
+                }
+                
                 var piiResults = piiDetector.ScanProfile(profile);
-                return piiResults.Count > 0 ? piiDetector.GeneratePiiAlerts(piiResults) : new List<DataAlert>();
+                var alerts = piiResults.Count > 0 ? piiDetector.GeneratePiiAlerts(piiResults) : new List<DataAlert>();
+                return (alerts, piiResults);
             });
             parallelTasks.Add(piiTask);
         }
@@ -184,7 +203,9 @@ public class DuckDbProfiler : IDisposable
         profile.Alerts = alertsTask.Result;
         if (piiTask != null)
         {
-            profile.Alerts.AddRange(piiTask.Result);
+            var (piiAlerts, piiResults) = piiTask.Result;
+            profile.Alerts.AddRange(piiAlerts);
+            profile.PiiResults = piiResults;
         }
         if (correlationsTask != null)
         {

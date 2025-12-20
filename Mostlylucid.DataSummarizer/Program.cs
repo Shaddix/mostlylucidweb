@@ -29,6 +29,17 @@ var verboseOption = new Option<bool>("--verbose", "-v") { Description = "Verbose
 var outputOption = new Option<string?>("--output", "-o") { Description = "Output file path (default: console)" };
 var queryOption = new Option<string?>("--query", "-q") { Description = "Ask a specific question about the data" };
 var onnxOption = new Option<string?>("--onnx", "--onnx-sentinel") { Description = "Optional ONNX sentinel model path for column scoring" };
+var onnxEnabledOption = new Option<bool?>("--onnx-enabled") { Description = "Enable/disable ONNX classifier for PII detection (default: from appsettings.json)" };
+var onnxModelOption = new Option<string?>("--onnx-model") { Description = "ONNX embedding model: AllMiniLmL6V2, BgeSmallEnV15, GteSmall, MultiQaMiniLm, ParaphraseMiniLmL3" };
+var onnxGpuOption = new Option<bool>("--onnx-gpu") { Description = "Force GPU acceleration for ONNX (DirectML/CUDA)" };
+var onnxCpuOption = new Option<bool>("--onnx-cpu") { Description = "Force CPU-only execution for ONNX" };
+var onnxModelDirOption = new Option<string?>("--onnx-model-dir") { Description = "Directory for ONNX models (default: ./models)" };
+
+// PII display options (privacy-safe by default)
+var showPiiOption = new Option<bool>("--show-pii") { Description = "Show actual PII values in output (WARNING: disables privacy protection)" };
+var showPiiTypeOption = new Option<string[]?>("--show-pii-type") { Description = "Show specific PII types: email, phone, ssn, name, address, etc.", AllowMultipleArgumentsPerToken = true };
+var hidePiiLabelsOption = new Option<bool>("--hide-pii-labels") { Description = "Hide PII type labels like [EMAIL] when redacting" };
+
 var ingestDirOption = new Option<string?>("--ingest-dir") { Description = "Ingest all supported files in a directory into the registry" };
 var ingestFilesOption = new Option<string[]?>("--ingest-files") { Description = "Ingest a comma-separated list of files into the registry", AllowMultipleArgumentsPerToken = true };
 var registryQueryOption = new Option<string?>("--registry-query") { Description = "Ask a question across all ingested data (vector search)" };
@@ -172,6 +183,14 @@ rootCommand.Options.Add(verboseOption);
 rootCommand.Options.Add(outputOption);
 rootCommand.Options.Add(queryOption);
 rootCommand.Options.Add(onnxOption);
+rootCommand.Options.Add(onnxEnabledOption);
+rootCommand.Options.Add(onnxModelOption);
+rootCommand.Options.Add(onnxGpuOption);
+rootCommand.Options.Add(onnxCpuOption);
+rootCommand.Options.Add(onnxModelDirOption);
+rootCommand.Options.Add(showPiiOption);
+rootCommand.Options.Add(showPiiTypeOption);
+rootCommand.Options.Add(hidePiiLabelsOption);
 rootCommand.Options.Add(ingestDirOption);
 rootCommand.Options.Add(ingestFilesOption);
 rootCommand.Options.Add(registryQueryOption);
@@ -215,7 +234,14 @@ profileCmd.SetAction(async (parseResult, cancellationToken) =>
     if (!sources.Any()) { Console.WriteLine("No sources found."); return; }
     var sid = sessionId ?? Guid.NewGuid().ToString("N");
     var profiles = new List<DataProfile>();
-    using var svc = new DataSummarizerService(verbose, noLlm ? null : model, "http://localhost:11434", onnx, vectorDb, sid);
+    using var svc = new DataSummarizerService(
+        verbose: verbose, 
+        ollamaModel: noLlm ? null : model, 
+        ollamaUrl: "http://localhost:11434", 
+        onnxSentinelPath: onnx, 
+        onnxConfig: settings.Onnx,
+        vectorStorePath: vectorDb, 
+        sessionId: sid);
     foreach (var src in sources)
     {
         var report = await svc.SummarizeAsync(src, useLlm: false);
@@ -261,7 +287,14 @@ validateCmd.SetAction(async (parseResult, cancellationToken) =>
     var tgtFiles = CliHelpers.ExpandPatternsHelper(new[] { target }, null).ToList();
     if (srcFiles.Count == 0 || tgtFiles.Count == 0) { Console.WriteLine("Missing source/target files"); return; }
 
-    using var svc = new DataSummarizerService(verbose, noLlm ? null : model, "http://localhost:11434", null, vectorDb, sid);
+    using var svc = new DataSummarizerService(
+        verbose: verbose, 
+        ollamaModel: noLlm ? null : model, 
+        ollamaUrl: "http://localhost:11434", 
+        onnxSentinelPath: null,
+        onnxConfig: settings.Onnx,
+        vectorStorePath: vectorDb, 
+        sessionId: sid);
     var srcReport = await svc.SummarizeAsync(srcFiles[0], useLlm: false);
     var tgtReport = await svc.SummarizeAsync(tgtFiles[0], useLlm: false);
 
@@ -516,6 +549,7 @@ toolCmd.SetAction(async (parseResult, cancellationToken) =>
                 ollamaModel: null,
                 ollamaUrl: "http://localhost:11434",
                 onnxSentinelPath: null,
+                onnxConfig: quickMode ? null : settings.Onnx,
                 vectorStorePath: null,
                 sessionId: null,
                 profileOptions: profileOptions
@@ -733,7 +767,7 @@ segmentCmd.SetAction(async (parseResult, cancellationToken) =>
     // Try to load segment A
     if (File.Exists(segmentA))
     {
-        using var svc = new DataSummarizerService(verbose: false, ollamaModel: null);
+        using var svc = new DataSummarizerService(verbose: false, ollamaModel: null, onnxConfig: settings.Onnx);
         var report = await svc.SummarizeAsync(segmentA, useLlm: false);
         profileA = report.Profile;
         nameA ??= Path.GetFileName(segmentA);
@@ -748,7 +782,7 @@ segmentCmd.SetAction(async (parseResult, cancellationToken) =>
     // Try to load segment B
     if (File.Exists(segmentB))
     {
-        using var svc = new DataSummarizerService(verbose: false, ollamaModel: null);
+        using var svc = new DataSummarizerService(verbose: false, ollamaModel: null, onnxConfig: settings.Onnx);
         var report = await svc.SummarizeAsync(segmentB, useLlm: false);
         profileB = report.Profile;
         nameB ??= Path.GetFileName(segmentB);
@@ -873,6 +907,14 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
     var output = parseResult.GetValue(outputOption);
     var query = parseResult.GetValue(queryOption);
     var onnx = parseResult.GetValue(onnxOption);
+    var onnxEnabled = parseResult.GetValue(onnxEnabledOption);
+    var onnxModel = parseResult.GetValue(onnxModelOption);
+    var onnxGpu = parseResult.GetValue(onnxGpuOption);
+    var onnxCpu = parseResult.GetValue(onnxCpuOption);
+    var onnxModelDir = parseResult.GetValue(onnxModelDirOption);
+    var showPii = parseResult.GetValue(showPiiOption);
+    var showPiiTypes = parseResult.GetValue(showPiiTypeOption);
+    var hidePiiLabels = parseResult.GetValue(hidePiiLabelsOption);
     var ingestDir = parseResult.GetValue(ingestDirOption);
     var ingestFiles = parseResult.GetValue(ingestFilesOption);
     var registryQuery = parseResult.GetValue(registryQueryOption);
@@ -881,6 +923,61 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
     var synthPath = parseResult.GetValue(synthPathOption);
     var synthRows = parseResult.GetValue(synthRowsOption);
     var interactive = parseResult.GetValue(interactiveOption);
+    
+    // ONNX config - CLI options override appsettings.json
+    var onnxConfig = settings.Onnx != null ? new OnnxConfig
+    {
+        Enabled = onnxEnabled ?? settings.Onnx.Enabled,
+        EmbeddingModel = onnxModel != null ? Enum.Parse<OnnxEmbeddingModel>(onnxModel) : settings.Onnx.EmbeddingModel,
+        UseQuantized = settings.Onnx.UseQuantized,
+        ModelDirectory = onnxModelDir ?? settings.Onnx.ModelDirectory,
+        MaxEmbeddingSequenceLength = settings.Onnx.MaxEmbeddingSequenceLength,
+        InferenceThreads = settings.Onnx.InferenceThreads,
+        UseParallelExecution = settings.Onnx.UseParallelExecution,
+        InterOpThreads = settings.Onnx.InterOpThreads,
+        ExecutionProvider = onnxGpu ? OnnxExecutionProvider.Auto : 
+                           onnxCpu ? OnnxExecutionProvider.Cpu : 
+                           settings.Onnx.ExecutionProvider,
+        GpuDeviceId = settings.Onnx.GpuDeviceId,
+        EmbeddingBatchSize = settings.Onnx.EmbeddingBatchSize
+    } : null;
+    
+    // PII Display config - CLI options override appsettings.json
+    var piiDisplayConfig = new PiiDisplayConfig
+    {
+        ShowPiiValues = showPii || settings.PiiDisplay.ShowPiiValues,
+        ShowPiiTypeLabel = !hidePiiLabels && settings.PiiDisplay.ShowPiiTypeLabel,
+        RedactionChar = settings.PiiDisplay.RedactionChar,
+        VisibleChars = settings.PiiDisplay.VisibleChars,
+        TypeSettings = new PiiTypeDisplaySettings
+        {
+            // If --show-pii is used, show everything
+            // If --show-pii-type is used, enable only those types
+            ShowSsn = showPii || (showPiiTypes?.Contains("ssn", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowSsn),
+            ShowCreditCard = showPii || (showPiiTypes?.Contains("creditcard", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowCreditCard),
+            ShowEmail = showPii || (showPiiTypes?.Contains("email", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowEmail),
+            ShowPhone = showPii || (showPiiTypes?.Contains("phone", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowPhone),
+            ShowPersonName = showPii || (showPiiTypes?.Contains("name", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowPersonName),
+            ShowAddress = showPii || (showPiiTypes?.Contains("address", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowAddress),
+            ShowDateOfBirth = showPii || (showPiiTypes?.Contains("dob", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowDateOfBirth),
+            ShowIpAddress = showPii || (showPiiTypes?.Contains("ip", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowIpAddress),
+            ShowBankAccount = showPii || (showPiiTypes?.Contains("bank", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowBankAccount),
+            ShowPassport = showPii || (showPiiTypes?.Contains("passport", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowPassport),
+            ShowDriversLicense = showPii || (showPiiTypes?.Contains("license", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowDriversLicense),
+            ShowMacAddress = settings.PiiDisplay.TypeSettings.ShowMacAddress,
+            ShowUrl = settings.PiiDisplay.TypeSettings.ShowUrl,
+            ShowUuid = settings.PiiDisplay.TypeSettings.ShowUuid,
+            ShowUsState = settings.PiiDisplay.TypeSettings.ShowUsState,
+            ShowZipCode = settings.PiiDisplay.TypeSettings.ShowZipCode,
+            ShowVin = showPii || (showPiiTypes?.Contains("vin", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowVin),
+            ShowIban = showPii || (showPiiTypes?.Contains("iban", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowIban),
+            ShowRoutingNumber = showPii || (showPiiTypes?.Contains("routing", StringComparer.OrdinalIgnoreCase) ?? settings.PiiDisplay.TypeSettings.ShowRoutingNumber),
+            ShowOther = showPii || settings.PiiDisplay.TypeSettings.ShowOther
+        }
+    };
+    
+    // Update settings with CLI-modified config
+    settings.PiiDisplay = piiDisplayConfig;
     
     // Profile options
     var columns = parseResult.GetValue(columnsOption);
@@ -1048,6 +1145,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             ollamaModel: noLlm ? null : model,
             ollamaUrl: "http://localhost:11434",
             onnxSentinelPath: onnx,
+            onnxConfig: onnxConfig,
             vectorStorePath: vectorDb,
             sessionId: sessionId,
             profileOptions: profileOptions,
@@ -1154,6 +1252,20 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         // Console output - all sections configurable
         var consoleSettings = settings.ConsoleOutput;
         
+        // Create PII redaction service for privacy-safe output
+        var piiRedactor = new PiiRedactionService(settings.PiiDisplay);
+        
+        // Helper: Get redacted value for display
+        string GetSafeValue(string value, string columnName)
+        {
+            var piiResult = report.Profile.PiiResults.FirstOrDefault(p => p.ColumnName == columnName);
+            if (piiResult?.IsPii == true && piiResult.PrimaryType.HasValue)
+            {
+                return piiRedactor.RedactValue(value, piiResult.PrimaryType.Value);
+            }
+            return value;
+        }
+        
         // Summary section
         if (consoleSettings.ShowSummary)
         {
@@ -1192,7 +1304,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
                 var stats = col.InferredType switch
                 {
                     ColumnType.Numeric => $"μ={col.Mean:F1}, σ={col.StdDev:F1}, range={col.Min:F1}-{col.Max:F1}",
-                    ColumnType.Categorical when col.TopValues?.Count > 0 => $"top: {col.TopValues[0].Value}",
+                    ColumnType.Categorical when col.TopValues?.Count > 0 => $"top: {GetSafeValue(col.TopValues[0].Value ?? "", col.Name)}",
                     ColumnType.DateTime => $"{col.MinDate:yyyy-MM-dd} → {col.MaxDate:yyyy-MM-dd}",
                     _ => "-"
                 };
@@ -1225,7 +1337,8 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
                     
                     foreach (var tv in col.TopValues!.Take(5))
                     {
-                        var label = tv.Value?.Length > 20 ? tv.Value[..17] + "..." : tv.Value ?? "(null)";
+                        var safeValue = GetSafeValue(tv.Value ?? "(null)", col.Name);
+                        var label = safeValue.Length > 20 ? safeValue[..17] + "..." : safeValue;
                         chart.AddItem(Markup.Escape(label), (int)tv.Count, Color.Yellow);
                     }
                     

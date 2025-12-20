@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using DuckDB.NET.Data;
 using Markdig;
+using Mostlylucid.DataSummarizer.Configuration;
 using Mostlylucid.DataSummarizer.Models;
 using OllamaSharp;
 using OllamaSharp.Models;
@@ -20,6 +21,7 @@ public class DataSummarizerService : IDisposable
     private readonly string? _ollamaModel;
     private readonly string _ollamaUrl;
     private readonly string? _onnxSentinelPath;
+    private readonly OnnxConfig? _onnxConfig;
     private readonly string? _vectorStorePath;
     private readonly string _sessionId;
     private readonly ProfileOptions _profileOptions;
@@ -33,6 +35,7 @@ public class DataSummarizerService : IDisposable
         string? ollamaModel = null,
         string ollamaUrl = "http://localhost:11434",
         string? onnxSentinelPath = null,
+        OnnxConfig? onnxConfig = null,
         string? vectorStorePath = null,
         string? sessionId = null,
         ProfileOptions? profileOptions = null,
@@ -42,6 +45,7 @@ public class DataSummarizerService : IDisposable
         _ollamaModel = ollamaModel;
         _ollamaUrl = ollamaUrl;
         _onnxSentinelPath = onnxSentinelPath;
+        _onnxConfig = onnxConfig;
         _vectorStorePath = vectorStorePath;
         _sessionId = sessionId ?? Guid.NewGuid().ToString("N");
         _profileOptions = profileOptions ?? new ProfileOptions();
@@ -1065,7 +1069,7 @@ PRIOR CONVERSATION (reuse if relevant):
         }
 
         DataProfile profile;
-        using (var profiler = new DuckDbProfiler(_verbose, _profileOptions))
+        using (var profiler = new DuckDbProfiler(_verbose, _profileOptions, _onnxConfig))
         {
             profile = await profiler.ProfileAsync(filePath, sheetName);
         }

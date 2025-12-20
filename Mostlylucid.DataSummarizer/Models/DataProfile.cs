@@ -1,3 +1,5 @@
+using Mostlylucid.DataSummarizer.Services;
+
 namespace Mostlylucid.DataSummarizer.Models;
 
 /// <summary>
@@ -129,6 +131,11 @@ public class DataProfile
     /// These are computed in parallel during profiling and enriched by LLM queries.
     /// </summary>
     public List<AggregateStatistic> AggregateStats { get; set; } = [];
+    
+    /// <summary>
+    /// PII detection results for privacy-safe output
+    /// </summary>
+    public List<PiiScanResult> PiiResults { get; set; } = [];
     
     /// <summary>
     /// Cached query results from LLM interactions that enrich the profile signature.

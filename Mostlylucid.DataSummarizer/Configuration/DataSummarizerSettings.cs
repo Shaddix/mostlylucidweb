@@ -15,6 +15,11 @@ public class DataSummarizerSettings
     public OnnxConfig Onnx { get; set; } = new();
     
     /// <summary>
+    /// PII display configuration (controls privacy-safe output)
+    /// </summary>
+    public PiiDisplayConfig PiiDisplay { get; set; } = new();
+    
+    /// <summary>
     /// Ollama LLM configuration
     /// </summary>
     public OllamaSettings Ollama { get; set; } = new();

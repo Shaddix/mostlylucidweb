@@ -287,3 +287,4 @@ mlmodels/
 *.vss.duckdb
 *.duckdb
 *.constraints.json
+/*.csv
