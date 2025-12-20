@@ -152,6 +152,10 @@ var storeDeleteOption = new Option<string?>("--id") { Description = "Profile ID 
 var pruneKeepOption = new Option<int>("--keep", "-k") { Description = "Number of profiles to keep per schema", DefaultValueFactory = _ => 5 };
 
 storePruneCmd.Options.Add(pruneKeepOption);
+storeListCmd.Options.Add(storePathOption);
+storeClearCmd.Options.Add(storePathOption);
+storePruneCmd.Options.Add(storePathOption);
+storeStatsCmd.Options.Add(storePathOption);
 storeCmd.Subcommands.Add(storeListCmd);
 storeCmd.Subcommands.Add(storeClearCmd);
 storeCmd.Subcommands.Add(storePruneCmd);
@@ -335,7 +339,7 @@ validateCmd.SetAction(async (parseResult, cancellationToken) =>
         // Exit with error code if strict mode and failures exist
         if (strict && validationResult.FailedConstraints > 0)
         {
-            Environment.ExitCode = 1;
+            Environment.Exit(1);
         }
         return;
     }
@@ -902,6 +906,14 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         (ingestFiles == null || ingestFiles.Length == 0) &&
         string.IsNullOrWhiteSpace(registryQuery))
     {
+        // Check if running in non-interactive mode (CI, piped, etc.)
+        if (Console.IsInputRedirected || Console.IsOutputRedirected || !Environment.UserInteractive)
+        {
+            Console.WriteLine("Usage: datasummarizer [options] <file>");
+            Console.WriteLine("Try 'datasummarizer --help' for more information.");
+            return;
+        }
+        
         ShowBanner();
         AnsiConsole.MarkupLine("[cyan]Welcome to DataSummarizer![/]");
         AnsiConsole.MarkupLine("[dim]DuckDB-powered data profiling - analyze CSV, Excel, Parquet, JSON files[/]\n");
