@@ -11,7 +11,7 @@
         "DuckDbType": "VARCHAR",
         "InferredType": 2,
         "SemanticRole": 0,
-        "Description": "Categorical with 4 unique values; top values: \u0027Charlie Davis\u0027, \u0027Bob Wilson\u0027, \u0027John Doe\u0027.",
+        "Description": "Categorical with 4 unique values; top values: \u0027John Doe\u0027, \u0027Jane Smith\u0027, \u0027Alice Brown\u0027.",
         "InterestScore": 0,
         "Count": 5,
         "NullCount": 0,
@@ -34,16 +34,6 @@
         "CoefficientOfVariation": null,
         "TopValues": [
           {
-            "Value": "Charlie Davis",
-            "Count": 1,
-            "Percent": 20
-          },
-          {
-            "Value": "Bob Wilson",
-            "Count": 1,
-            "Percent": 20
-          },
-          {
             "Value": "John Doe",
             "Count": 1,
             "Percent": 20
@@ -57,11 +47,21 @@
             "Value": "Alice Brown",
             "Count": 1,
             "Percent": 20
+          },
+          {
+            "Value": "Bob Wilson",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "Charlie Davis",
+            "Count": 1,
+            "Percent": 20
           }
         ],
         "ImbalanceRatio": 0.8,
         "Entropy": 2.3219,
-        "Mode": "Charlie Davis",
+        "Mode": "John Doe",
         "MinDate": null,
         "MaxDate": null,
         "DateGapDays": null,
@@ -82,7 +82,7 @@
         "DuckDbType": "VARCHAR",
         "InferredType": 2,
         "SemanticRole": 0,
-        "Description": "Categorical with 4 unique values; top values: \u0027jane@company.org\u0027, \u0027charlie.davis@mail.com\u0027, \u0027bob.wilson@test.co.uk\u0027.",
+        "Description": "Categorical with 4 unique values; top values: \u0027alice@domain.net\u0027, \u0027charlie.davis@mail.com\u0027, \u0027jane@company.org\u0027.",
         "InterestScore": 0,
         "Count": 5,
         "NullCount": 0,
@@ -105,7 +105,7 @@
         "CoefficientOfVariation": null,
         "TopValues": [
           {
-            "Value": "jane@company.org",
+            "Value": "alice@domain.net",
             "Count": 1,
             "Percent": 20
           },
@@ -115,12 +115,12 @@
             "Percent": 20
           },
           {
-            "Value": "bob.wilson@test.co.uk",
+            "Value": "jane@company.org",
             "Count": 1,
             "Percent": 20
           },
           {
-            "Value": "alice@domain.net",
+            "Value": "bob.wilson@test.co.uk",
             "Count": 1,
             "Percent": 20
           },
@@ -132,7 +132,7 @@
         ],
         "ImbalanceRatio": 0.8,
         "Entropy": 2.3219,
-        "Mode": "jane@company.org",
+        "Mode": "alice@domain.net",
         "MinDate": null,
         "MaxDate": null,
         "DateGapDays": null,
@@ -153,7 +153,7 @@
         "DuckDbType": "VARCHAR",
         "InferredType": 2,
         "SemanticRole": 0,
-        "Description": "Categorical with 5 unique values; top values: \u0027555-234-5678\u0027, \u0027555-456-7890\u0027, \u0027555-987-6543\u0027.",
+        "Description": "Categorical with 5 unique values; top values: \u0027555-123-4567\u0027, \u0027555-987-6543\u0027, \u0027555-456-7890\u0027.",
         "InterestScore": 0,
         "Count": 5,
         "NullCount": 0,
@@ -176,12 +176,7 @@
         "CoefficientOfVariation": null,
         "TopValues": [
           {
-            "Value": "555-234-5678",
-            "Count": 1,
-            "Percent": 20
-          },
-          {
-            "Value": "555-456-7890",
+            "Value": "555-123-4567",
             "Count": 1,
             "Percent": 20
           },
@@ -191,19 +186,24 @@
             "Percent": 20
           },
           {
+            "Value": "555-456-7890",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
             "Value": "555-789-0123",
             "Count": 1,
             "Percent": 20
           },
           {
-            "Value": "555-123-4567",
+            "Value": "555-234-5678",
             "Count": 1,
             "Percent": 20
           }
         ],
         "ImbalanceRatio": 1,
         "Entropy": 2.3219,
-        "Mode": "555-234-5678",
+        "Mode": "555-123-4567",
         "MinDate": null,
         "MaxDate": null,
         "DateGapDays": null,
@@ -224,7 +224,7 @@
         "DuckDbType": "VARCHAR",
         "InferredType": 2,
         "SemanticRole": 0,
-        "Description": "Categorical with 5 unique values; top values: \u0027123-45-6789\u0027, \u0027987-65-4321\u0027, \u0027444-55-6666\u0027.",
+        "Description": "Categorical with 5 unique values; top values: \u0027123-45-6789\u0027, \u0027444-55-6666\u0027, \u0027987-65-4321\u0027.",
         "InterestScore": 0,
         "Count": 5,
         "NullCount": 0,
@@ -252,12 +252,12 @@
             "Percent": 20
           },
           {
-            "Value": "987-65-4321",
+            "Value": "444-55-6666",
             "Count": 1,
             "Percent": 20
           },
           {
-            "Value": "444-55-6666",
+            "Value": "987-65-4321",
             "Count": 1,
             "Percent": 20
           },
@@ -362,6 +362,6 @@
     ],
     "Patterns": [],
     "Target": null,
-    "ProfileTime": "00:00:00.2351984"
+    "ProfileTime": "00:00:00.2273202"
   }
 ]

@@ -20,8 +20,8 @@
 |--------|------|-------|--------|-------|
 | `Name` | Categorical | 0.0% | 4 | top: Bob Wilson (20%) |
 | `Email` | Categorical | 0.0% | 4 | top: alice@domain.net (20%) |
-| `Phone` | Categorical | 0.0% | 5 | top: 555-123-4567 (20%) |
-| `SSN` | Categorical | 0.0% | 5 | top: 123-45-6789 (20%) |
+| `Phone` | Categorical | 0.0% | 5 | top: 555-789-0123 (20%) |
+| `SSN` | Categorical | 0.0% | 5 | top: 111-22-3333 (20%) |
 
 ## Data Quality Alerts
 
@@ -51,28 +51,28 @@ Dataset contains 5 rows and 4 columns. 0 numeric, 4 categorical, 0 date/time col
 | Value | Count | % |
 |-------|-------|---|
 | alice@domain.net | 1 | 20.0% |
-| jane@company.org | 1 | 20.0% |
 | john.doe@example.com | 1 | 20.0% |
-| bob.wilson@test.co.uk | 1 | 20.0% |
 | charlie.davis@mail.com | 1 | 20.0% |
+| bob.wilson@test.co.uk | 1 | 20.0% |
+| jane@company.org | 1 | 20.0% |
 
 ### Phone
 
 | Value | Count | % |
 |-------|-------|---|
-| 555-123-4567 | 1 | 20.0% |
-| 555-234-5678 | 1 | 20.0% |
-| 555-987-6543 | 1 | 20.0% |
-| 555-456-7890 | 1 | 20.0% |
 | 555-789-0123 | 1 | 20.0% |
+| 555-987-6543 | 1 | 20.0% |
+| 555-234-5678 | 1 | 20.0% |
+| 555-456-7890 | 1 | 20.0% |
+| 555-123-4567 | 1 | 20.0% |
 
 ### SSN
 
 | Value | Count | % |
 |-------|-------|---|
-| 123-45-6789 | 1 | 20.0% |
+| 111-22-3333 | 1 | 20.0% |
 | 987-65-4321 | 1 | 20.0% |
 | 777-88-9999 | 1 | 20.0% |
 | 444-55-6666 | 1 | 20.0% |
-| 111-22-3333 | 1 | 20.0% |
+| 123-45-6789 | 1 | 20.0% |
 

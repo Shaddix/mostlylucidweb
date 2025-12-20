@@ -4,7 +4,7 @@
   "DriftScore": 0,
   "AnomalyScore": {
     "ProfileSource": "synthetic-100.csv",
-    "ComputedAt": "2025-12-20T01:45:41.4552233Z",
+    "ComputedAt": "2025-12-20T12:34:02.7045109Z",
     "OverallScore": 0.1875,
     "Interpretation": "Good",
     "Components": [
@@ -60,7 +60,7 @@
   "DetailedDrift": {
     "Summary": "Row count increased by 1900.0% (5 \u2192 100).",
     "HasSignificantDrift": false,
-    "OverallDriftScore": 0.11421849295586899,
+    "OverallDriftScore": 0.09342186276336721,
     "RowCountChange": {
       "Baseline": 5,
       "Current": 100,
