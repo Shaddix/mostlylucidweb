@@ -152,6 +152,13 @@ public class DataSummarizerService : IDisposable
     {
         var q = question.ToLowerInvariant();
         
+        // EARLY EXIT: Questions asking about specific entities/records should use SQL, not profile stats
+        // These are questions that want to find specific rows, not understand the data structure
+        if (IsEntityQuery(q))
+        {
+            return null; // Let LLM handle with SQL
+        }
+        
         // Missing values / nulls
         if (ContainsAny(q, "missing", "null", "nulls", "empty", "na ", "n/a"))
         {
@@ -200,14 +207,27 @@ public class DataSummarizerService : IDisposable
             return AnswerDataQuality(profile);
         }
         
-        // Categorical / categories / values
-        if (ContainsAny(q, "categor", "unique values", "distinct", "top values", "most common"))
+        // EARLY FILTER CHECK: If question has filter indicators (for X, in Y, where Z),
+        // it needs SQL, not pre-computed stats - let it fall through to LLM
+        if (HasFilterIndicator(q, profile))
         {
-            return AnswerCategorical(profile);
+            return null; // Need SQL to filter
         }
         
-        // Numeric stats
-        if (ContainsAny(q, "average", "mean", "median", "std", "standard deviation", "min", "max", "range"))
+        // Categorical / categories / values (only if NOT filtering by a category value)
+        if (ContainsAny(q, "categor", "unique values", "distinct", "top values", "most common"))
+        {
+            // But "what categories" is different from "average for Electronics category"
+            // Check if we're asking ABOUT categories vs asking FOR a specific category
+            if (!ContainsAny(q, "average", "mean", "sum", "total", "count of", "how many"))
+            {
+                return AnswerCategorical(profile);
+            }
+        }
+        
+        // Numeric stats (only for pure statistical questions about the dataset, not specific entities)
+        if (ContainsAny(q, "mean", "median", "std", "standard deviation", "min", "max", "range") ||
+            (ContainsAny(q, "average") && ContainsAny(q, "what is the average", "show me the average", "calculate average")))
         {
             return AnswerNumericStats(profile);
         }
@@ -226,10 +246,122 @@ public class DataSummarizerService : IDisposable
 
         return null;
     }
+    
+    /// <summary>
+    /// Detects if a question is asking about specific entities/records rather than dataset metadata.
+    /// These questions need SQL to answer, not just profile statistics.
+    /// </summary>
+    private static bool IsEntityQuery(string q)
+    {
+        // Questions asking for specific records by superlative
+        var superlatives = new[] { 
+            "best", "worst", "most", "least", "top", "bottom", "highest", "lowest", 
+            "oldest", "newest", "largest", "smallest", "longest", "shortest",
+            "cheapest", "expensive", "popular", "unpopular", "rated"
+        };
+        
+        // Entity nouns that indicate we're looking for specific records (not metadata)
+        var entities = new[] {
+            "movie", "film", "director", "actor", "product", "customer", "user", "person",
+            "book", "author", "song", "artist", "album", "game", "company", "employee",
+            "item", "record", "entry", "row", "one", "ones"
+        };
+        
+        // Question words that ask for specific items
+        var questionWords = new[] { "which", "who", "what is the", "what are the", "what's the" };
+        
+        // Check for superlative + entity pattern (e.g., "best movie", "oldest director")
+        if (superlatives.Any(s => q.Contains(s)) && entities.Any(e => q.Contains(e)))
+        {
+            return true;
+        }
+        
+        // Check for question word + entity (e.g., "which movie", "who is the director")
+        if (questionWords.Any(w => q.Contains(w)) && entities.Any(e => q.Contains(e)))
+        {
+            return true;
+        }
+        
+        // Questions that explicitly ask for specific items WITH entity nouns
+        var listCommands = new[] { "show me the", "list the", "find the", "give me the", "tell me the", "name the", "identify the" };
+        if (listCommands.Any(c => q.Contains(c)) && entities.Any(e => q.Contains(e)))
+        {
+            return true;
+        }
+        
+        // "most average" is asking for a specific entity, not stats
+        if (q.Contains("most average"))
+        {
+            return true;
+        }
+        
+        // Questions with "based on" + entity typically need SQL to filter/aggregate
+        if (q.Contains("based on") && entities.Any(e => q.Contains(e)))
+        {
+            return true;
+        }
+        
+        // Superlative at start often means looking for specific records
+        // e.g., "oldest?", "best rated?", "top 5?"
+        if (superlatives.Any(s => q.StartsWith(s)) || q.StartsWith("top "))
+        {
+            return true;
+        }
+        
+        return false;
+    }
 
     private static bool ContainsAny(string text, params string[] keywords)
     {
         return keywords.Any(k => text.Contains(k, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Check if the question contains filter indicators that require SQL.
+    /// E.g., "for Electronics", "in North region", "where price > 100"
+    /// </summary>
+    private static bool HasFilterIndicator(string q, DataProfile profile)
+    {
+        // Common filter phrases
+        var filterPhrases = new[] { 
+            " for ", " in ", " where ", " when ", " by ", " per ", " among ", " within ",
+            " only ", " just ", " specific", " particular", " certain"
+        };
+        
+        if (filterPhrases.Any(f => q.Contains(f)))
+        {
+            // Check if any categorical values are mentioned (indicates filtering)
+            foreach (var col in profile.Columns.Where(c => c.TopValues?.Count > 0))
+            {
+                foreach (var val in col.TopValues!.Take(15))
+                {
+                    if (q.Contains(val.Value.ToLowerInvariant()))
+                    {
+                        return true; // Filtering by a specific category value
+                    }
+                }
+            }
+            
+            // Also check column names themselves for "by Region", "per Category" patterns
+            foreach (var col in profile.Columns.Where(c => c.InferredType == ColumnType.Categorical))
+            {
+                var colLower = col.Name.ToLowerInvariant();
+                if (q.Contains($"by {colLower}") || q.Contains($"per {colLower}") || 
+                    q.Contains($"each {colLower}") || q.Contains($"in {colLower}"))
+                {
+                    return true;
+                }
+            }
+            
+            // Check for comparison operators suggesting WHERE clause
+            if (q.Contains(">") || q.Contains("<") || q.Contains("greater") || q.Contains("less") || 
+                q.Contains("more than") || q.Contains("less than") || q.Contains("above") || q.Contains("below"))
+            {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     private DataInsight AnswerMissingValues(DataProfile profile)

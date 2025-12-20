@@ -489,6 +489,48 @@ public class DataSummarizerServiceTests
 
     #endregion
 
+    #region Entity Query Detection Tests
+
+    [Theory]
+    [InlineData("What's the best movie?", true)]
+    [InlineData("What's the most average movie based on critics?", true)]
+    [InlineData("Which director has the most films?", true)]
+    [InlineData("Show me the top 5 products", true)]
+    [InlineData("Who is the oldest actor?", true)]
+    [InlineData("Find the cheapest item", true)]
+    [InlineData("What are the top rated films?", true)]
+    [InlineData("Give me a summary", false)]  // Not asking for specific entities
+    [InlineData("What is the average salary?", false)]  // Asking for aggregate stat
+    [InlineData("Tell me about the data", false)]  // Overview question
+    [InlineData("What columns are in this dataset?", false)]  // Schema question
+    [InlineData("Are there any missing values?", false)]  // Data quality question
+    [InlineData("What's the distribution of age?", false)]  // Stats question
+    public async Task EntityQueryDetection_CorrectlyIdentifiesQueries(string question, bool shouldRequireLlm)
+    {
+        // This tests that entity queries fall through to LLM (return "Cannot answer without LLM")
+        // while metadata queries get answered from profile
+        var csv = "Name,Age,Score\nAlice,30,85\nBob,25,90\nCharlie,35,78\n";
+        var path = WriteTempCsv(csv);
+        var svc = new DataSummarizerService(verbose: false, ollamaModel: null, vectorStorePath: null);
+
+        var insight = await svc.AskAsync(path, question);
+
+        Assert.NotNull(insight);
+        
+        if (shouldRequireLlm)
+        {
+            // Entity queries without LLM should return "Cannot answer without LLM"
+            Assert.Contains("LLM", insight.Title, StringComparison.OrdinalIgnoreCase);
+        }
+        else
+        {
+            // Metadata queries should be answered from profile
+            Assert.DoesNotContain("Cannot answer without LLM", insight.Title, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static string WriteTempCsv(string content, string? dir = null, string? filename = null)

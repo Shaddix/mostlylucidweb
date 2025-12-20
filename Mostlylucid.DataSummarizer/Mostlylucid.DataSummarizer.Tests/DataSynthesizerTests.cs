@@ -141,10 +141,15 @@ public class DataSynthesizerTests
         Assert.Equal(51, lines.Length);
 
         // Check each row has 4 columns
-        foreach (var line in lines)
+        // Use proper CSV parsing to handle quoted values with commas
+        var header = lines[0];
+        var headerParts = ParseCsvLine(header);
+        Assert.Equal(4, headerParts.Length);
+        
+        foreach (var line in lines.Skip(1))
         {
-            var parts = line.Split(',');
-            Assert.Equal(4, parts.Length);
+            var parts = ParseCsvLine(line);
+            Assert.True(parts.Length == 4, $"Expected 4 columns but got {parts.Length} in: {line}");
         }
     }
 
@@ -205,5 +210,46 @@ public class DataSynthesizerTests
         var path = Path.Combine(Path.GetTempPath(), $"ds-synth-{Guid.NewGuid():N}.csv");
         File.WriteAllText(path, content);
         return path;
+    }
+    
+    /// <summary>
+    /// Parse a CSV line properly handling quoted values that may contain commas.
+    /// </summary>
+    private static string[] ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var inQuotes = false;
+        var current = new StringBuilder();
+        
+        for (int i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            
+            if (c == '"')
+            {
+                // Check for escaped quote
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    current.Append('"');
+                    i++; // Skip next quote
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(current.ToString());
+                current.Clear();
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        
+        result.Add(current.ToString());
+        return result.ToArray();
     }
 }

@@ -11,6 +11,7 @@ namespace Mostlylucid.DataSummarizer.Services;
 /// <summary>
 /// Uses LLM to generate analytical queries based on statistical profile.
 /// The profile grounds the LLM - preventing hallucination about column names/types.
+/// Supports tool invocation for capabilities beyond SQL (segmentation, anomaly detection, etc.)
 /// </summary>
 public class LlmInsightGenerator : IDisposable
 {
@@ -18,6 +19,12 @@ public class LlmInsightGenerator : IDisposable
     private readonly string _model;
     private readonly bool _verbose;
     private DuckDBConnection? _connection;
+    private readonly AnalyticsToolRegistry _toolRegistry = new();
+    
+    /// <summary>
+    /// Callback to update the profile with new cached queries/aggregate stats
+    /// </summary>
+    public Action<DataProfile, CachedQueryResult>? OnQueryCached { get; set; }
 
     public LlmInsightGenerator(
         string model = "qwen2.5-coder:7b",
@@ -50,6 +57,10 @@ public class LlmInsightGenerator : IDisposable
         }
 
         var readExpr = GetReadExpression(filePath, profile.SheetName);
+        
+        // Create a view 't' so the LLM can use simple table reference
+        await CreateTableViewAsync(readExpr);
+        
         var insights = new List<DataInsight>();
 
         // Step 1: Ask LLM to generate analytical questions based on the profile
@@ -85,10 +96,25 @@ public class LlmInsightGenerator : IDisposable
     /// </summary>
     public async Task<DataInsight?> AskAsync(string filePath, DataProfile profile, string question, string conversationContext = "")
     {
+        // GUARDRAIL: Check question for malicious intent FIRST
+        var questionGuardrail = CheckQuestionGuardrails(question);
+        if (questionGuardrail != null)
+        {
+            if (_verbose) Console.WriteLine($"[Guardrail] Question blocked: {questionGuardrail}");
+            return CreateGuardrailResponse(questionGuardrail);
+        }
+        
         // For broad descriptive questions, return an LLM summary without SQL
         if (IsBroadSummaryQuestion(question))
         {
             return await GenerateProfileSummaryAsync(profile, question, conversationContext);
+        }
+        
+        // Try to answer from pre-computed stats first (faster, no SQL needed)
+        var statsAnswer = TryAnswerFromStats(profile, question);
+        if (statsAnswer != null)
+        {
+            return statsAnswer;
         }
 
         _connection = new DuckDBConnection("DataSource=:memory:");
@@ -103,7 +129,281 @@ public class LlmInsightGenerator : IDisposable
         }
 
         var readExpr = GetReadExpression(filePath, profile.SheetName);
+        
+        // Create a view 't' so the LLM can use simple table reference
+        await CreateTableViewAsync(readExpr);
+        
         return await GenerateAndExecuteInsightAsync(readExpr, profile, question);
+    }
+    
+    /// <summary>
+    /// Check question for malicious intent before processing.
+    /// Returns violation message or null if OK.
+    /// </summary>
+    private static string? CheckQuestionGuardrails(string question)
+    {
+        var lower = question.ToLowerInvariant();
+        
+        // Destructive intent patterns
+        var destructivePatterns = new[]
+        {
+            ("delete", "delete data"),
+            ("drop", "drop tables"),
+            ("truncate", "truncate data"),
+            ("destroy", "destroy data"),
+            ("remove all", "remove data"),
+            ("wipe", "wipe data"),
+            ("erase", "erase data"),
+            ("clear the database", "clear database"),
+            ("reset the data", "reset data")
+        };
+        
+        foreach (var (pattern, description) in destructivePatterns)
+        {
+            if (lower.Contains(pattern))
+            {
+                return $"I can't help with requests to {description}. I only support read-only data analysis.";
+            }
+        }
+        
+        // Injection attempt patterns
+        if (lower.Contains("';") || lower.Contains("\";") || lower.Contains("--") || 
+            lower.Contains("/*") || lower.Contains("union select") || lower.Contains("1=1"))
+        {
+            return "This looks like an SQL injection attempt. I only answer natural language questions about data.";
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Create a helpful response when guardrails are triggered
+    /// </summary>
+    private static DataInsight CreateGuardrailResponse(string message)
+    {
+        return new DataInsight
+        {
+            Title = "Request Not Allowed",
+            Description = $"⚠️ {message}\n\n" +
+                         "**What I can help with:**\n" +
+                         "- Analyzing data patterns and statistics\n" +
+                         "- Finding averages, totals, and distributions\n" +
+                         "- Comparing groups and segments\n" +
+                         "- Identifying outliers and anomalies\n" +
+                         "- Answering questions about the data structure",
+            Source = InsightSource.Statistical,
+            RelatedColumns = []
+        };
+    }
+    
+    /// <summary>
+    /// Try to answer questions directly from pre-computed profile statistics.
+    /// Returns null if SQL is needed.
+    /// IMPORTANT: Only use pre-computed stats for GLOBAL questions (entire dataset).
+    /// If the question has filters (e.g., "for red cars", "in 2023"), SQL is needed.
+    /// </summary>
+    private DataInsight? TryAnswerFromStats(DataProfile profile, string question)
+    {
+        var q = question.ToLowerInvariant();
+        
+        // Check for filter indicators - if present, we need SQL, not pre-computed stats
+        // "average price for Electronics" != global average price
+        if (HasFilterIndicators(q, profile))
+        {
+            return null; // Need SQL to filter first
+        }
+        
+        // Questions about overall/global averages/means we already have
+        if ((q.Contains("average") || q.Contains("mean")) && !q.Contains("most average") && !q.Contains("closest"))
+        {
+            // Check if asking about a specific column (global stat)
+            var matchedCol = profile.Columns
+                .Where(c => c.InferredType == ColumnType.Numeric && c.Mean.HasValue)
+                .FirstOrDefault(c => q.Contains(c.Name.ToLowerInvariant()));
+            
+            if (matchedCol != null)
+            {
+                return new DataInsight
+                {
+                    Title = $"Overall Average {matchedCol.Name}",
+                    Description = $"The overall average {matchedCol.Name} across all {profile.RowCount:N0} rows is **{matchedCol.Mean:F2}** (median: {matchedCol.Median:F2}, std dev: {matchedCol.StdDev:F2})",
+                    Source = InsightSource.Statistical,
+                    RelatedColumns = new List<string> { matchedCol.Name }
+                };
+            }
+            
+            // General "what are the averages" question (global)
+            if ((q.Contains("what") || q.Contains("show")) && (q.Contains("average") || q.Contains("mean")) && q.Contains("overall") || !HasAnyEntityMention(q, profile))
+            {
+                var numericCols = profile.Columns.Where(c => c.Mean.HasValue).ToList();
+                if (numericCols.Count > 0)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"**Overall averages (across all {profile.RowCount:N0} rows):**");
+                    foreach (var col in numericCols)
+                    {
+                        sb.AppendLine($"- **{col.Name}**: mean={col.Mean:F2}, median={col.Median:F2}, range=[{col.Min:F2}, {col.Max:F2}]");
+                    }
+                    return new DataInsight
+                    {
+                        Title = "Numeric Column Statistics",
+                        Description = sb.ToString().Trim(),
+                        Source = InsightSource.Statistical,
+                        RelatedColumns = numericCols.Select(c => c.Name).ToList()
+                    };
+                }
+            }
+        }
+        
+        // Questions about overall distribution (no filtering)
+        if ((q.Contains("distribution") || q.Contains("distributed") || q.Contains("skewed") || q.Contains("normal")) 
+            && (q.Contains("overall") || !HasFilterIndicators(q, profile)))
+        {
+            var distCols = profile.Columns
+                .Where(c => c.Distribution.HasValue && c.Distribution != DistributionType.Unknown)
+                .ToList();
+            
+            if (distCols.Count > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("**Overall distribution analysis:**");
+                foreach (var col in distCols)
+                {
+                    var skewDesc = col.Skewness switch
+                    {
+                        > 1 => "right-skewed",
+                        < -1 => "left-skewed",
+                        _ => "approximately symmetric"
+                    };
+                    sb.AppendLine($"- **{col.Name}**: {col.Distribution} ({skewDesc}, skewness={col.Skewness:F2}, kurtosis={col.Kurtosis:F2})");
+                }
+                return new DataInsight
+                {
+                    Title = "Distribution Analysis",
+                    Description = sb.ToString().Trim(),
+                    Source = InsightSource.Statistical,
+                    RelatedColumns = distCols.Select(c => c.Name).ToList()
+                };
+            }
+        }
+        
+        // Questions about outliers (global detection)
+        if (q.Contains("outlier") && !HasFilterIndicators(q, profile))
+        {
+            var outlierCols = profile.Columns.Where(c => c.OutlierCount > 0).ToList();
+            if (outlierCols.Count > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine("**Outlier detection (IQR method, all data):**");
+                foreach (var col in outlierCols)
+                {
+                    var pct = col.Count > 0 ? col.OutlierCount * 100.0 / col.Count : 0;
+                    var iqr = (col.Q75 ?? 0) - (col.Q25 ?? 0);
+                    sb.AppendLine($"- **{col.Name}**: {col.OutlierCount} outliers ({pct:F1}%) outside [{(col.Q25 ?? 0) - 1.5*iqr:F2}, {(col.Q75 ?? 0) + 1.5*iqr:F2}]");
+                }
+                return new DataInsight
+                {
+                    Title = "Outlier Analysis",
+                    Description = sb.ToString().Trim(),
+                    Source = InsightSource.Statistical,
+                    RelatedColumns = outlierCols.Select(c => c.Name).ToList()
+                };
+            }
+            else
+            {
+                return new DataInsight
+                {
+                    Title = "Outlier Analysis",
+                    Description = "No significant outliers detected in numeric columns using the IQR method.",
+                    Source = InsightSource.Statistical
+                };
+            }
+        }
+        
+        // Questions about correlation (always global)
+        if (q.Contains("correlat") && profile.Correlations.Count > 0)
+        {
+            var strongCorrs = profile.Correlations.Where(c => Math.Abs(c.Correlation) >= 0.5).ToList();
+            var sb = new StringBuilder();
+            sb.AppendLine("**Correlations (computed across all data):**");
+            if (strongCorrs.Count > 0)
+            {
+                foreach (var corr in strongCorrs.OrderByDescending(c => Math.Abs(c.Correlation)).Take(10))
+                {
+                    var direction = corr.Correlation > 0 ? "positive" : "negative";
+                    sb.AppendLine($"- **{corr.Column1}** ↔ **{corr.Column2}**: r={corr.Correlation:F3} ({corr.Strength} {direction})");
+                }
+            }
+            else
+            {
+                sb.AppendLine("No strong correlations (|r| ≥ 0.5) found between numeric columns.");
+            }
+            return new DataInsight
+            {
+                Title = "Correlation Analysis",
+                Description = sb.ToString().Trim(),
+                Source = InsightSource.Statistical,
+                RelatedColumns = strongCorrs.SelectMany(c => new[] { c.Column1, c.Column2 }).Distinct().ToList()
+            };
+        }
+        
+        return null; // Need SQL for this question
+    }
+    
+    /// <summary>
+    /// Check if the question contains filter indicators that require SQL.
+    /// E.g., "for Electronics", "in North region", "where price > 100"
+    /// </summary>
+    private static bool HasFilterIndicators(string q, DataProfile profile)
+    {
+        // Common filter phrases
+        var filterPhrases = new[] { 
+            " for ", " in ", " where ", " when ", " by ", " per ", " among ", " within ",
+            " only ", " just ", " specific", " particular", " certain"
+        };
+        
+        if (filterPhrases.Any(f => q.Contains(f)))
+        {
+            // Check if any categorical values are mentioned (indicates filtering)
+            foreach (var col in profile.Columns.Where(c => c.TopValues?.Count > 0))
+            {
+                foreach (var val in col.TopValues!.Take(10))
+                {
+                    if (q.Contains(val.Value.ToLowerInvariant()))
+                    {
+                        return true; // Filtering by a specific category value
+                    }
+                }
+            }
+            
+            // Check for comparison operators suggesting WHERE clause
+            if (q.Contains(">") || q.Contains("<") || q.Contains("greater") || q.Contains("less") || 
+                q.Contains("more than") || q.Contains("less than") || q.Contains("above") || q.Contains("below"))
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if the question mentions specific entities (products, regions, etc.)
+    /// that would require grouping/filtering.
+    /// </summary>
+    private static bool HasAnyEntityMention(string q, DataProfile profile)
+    {
+        // Check if categorical column names are mentioned in a "by X" or "per X" context
+        foreach (var col in profile.Columns.Where(c => c.InferredType == ColumnType.Categorical))
+        {
+            var colLower = col.Name.ToLowerInvariant();
+            if (q.Contains($"by {colLower}") || q.Contains($"per {colLower}") || 
+                q.Contains($"each {colLower}") || q.Contains($"for each"))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool IsBroadSummaryQuestion(string question)
@@ -523,6 +823,287 @@ public class LlmInsightGenerator : IDisposable
         }
     }
 
+    /// <summary>
+    /// Appends information about pre-computed advanced analytics to help LLM
+    /// understand what tools are available beyond SQL.
+    /// </summary>
+    private static void AppendAdvancedAnalyticsContext(StringBuilder sb, DataProfile profile)
+    {
+        var hasTools = false;
+        
+        // Correlation analysis
+        var strongCorrelations = profile.Correlations
+            .Where(c => Math.Abs(c.Correlation) >= 0.5)
+            .OrderByDescending(c => Math.Abs(c.Correlation))
+            .Take(5)
+            .ToList();
+        
+        if (strongCorrelations.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  CORRELATIONS:");
+            foreach (var corr in strongCorrelations)
+            {
+                var direction = corr.Correlation > 0 ? "positive" : "negative";
+                sb.AppendLine($"    - \"{corr.Column1}\" ↔ \"{corr.Column2}\": {corr.Correlation:F2} ({corr.Strength} {direction})");
+            }
+        }
+        
+        // Trend analysis
+        var trendedCols = profile.Columns
+            .Where(c => c.Trend != null && c.Trend.Direction != TrendDirection.None && c.Trend.RSquared >= 0.5)
+            .Take(3)
+            .ToList();
+        
+        if (trendedCols.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  TRENDS:");
+            foreach (var col in trendedCols)
+            {
+                var t = col.Trend!;
+                var slopeDir = t.Slope > 0 ? "+" : "";
+                sb.AppendLine($"    - \"{col.Name}\": {t.Direction} trend (slope={slopeDir}{t.Slope:F4}, R²={t.RSquared:F2})");
+            }
+        }
+        
+        // Periodicity / Seasonality
+        var periodicCols = profile.Columns
+            .Where(c => c.Periodicity != null && c.Periodicity.HasPeriodicity && c.Periodicity.Confidence >= 0.5)
+            .Take(3)
+            .ToList();
+        
+        if (periodicCols.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  PERIODICITY/SEASONALITY:");
+            foreach (var col in periodicCols)
+            {
+                var p = col.Periodicity!;
+                sb.AppendLine($"    - \"{col.Name}\": {p.SuggestedInterpretation} (confidence={p.Confidence:F2})");
+            }
+        }
+        
+        // Time series info
+        var tsCol = profile.Columns.FirstOrDefault(c => c.TimeSeries != null);
+        if (tsCol?.TimeSeries != null)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            var ts = tsCol.TimeSeries;
+            sb.AppendLine("  TIME SERIES:");
+            sb.Append($"    - Indexed by \"{tsCol.Name}\": {ts.Granularity} granularity");
+            if (!ts.IsContiguous)
+                sb.Append($", {ts.GapCount} gaps detected");
+            if (ts.HasSeasonality)
+                sb.Append($", seasonal period={ts.SeasonalPeriod}");
+            sb.AppendLine();
+        }
+        
+        // Distribution types (useful for knowing data shape)
+        var distributedCols = profile.Columns
+            .Where(c => c.Distribution.HasValue && c.Distribution != DistributionType.Unknown)
+            .Take(5)
+            .ToList();
+        
+        if (distributedCols.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  DISTRIBUTIONS:");
+            foreach (var col in distributedCols)
+            {
+                sb.AppendLine($"    - \"{col.Name}\": {col.Distribution}");
+            }
+        }
+        
+        // Outlier counts (pre-computed via IQR)
+        var outlierCols = profile.Columns
+            .Where(c => c.OutlierCount > 0)
+            .OrderByDescending(c => c.OutlierCount)
+            .Take(3)
+            .ToList();
+        
+        if (outlierCols.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  OUTLIERS (IQR method):");
+            foreach (var col in outlierCols)
+            {
+                var pct = col.Count > 0 ? (col.OutlierCount * 100.0 / col.Count) : 0;
+                sb.AppendLine($"    - \"{col.Name}\": {col.OutlierCount} outliers ({pct:F1}%)");
+            }
+        }
+        
+        // Target analysis (if available)
+        if (profile.Target != null)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine($"  TARGET ANALYSIS (column=\"{profile.Target.ColumnName}\"):");
+            sb.AppendLine($"    - Type: {(profile.Target.IsBinary ? "Binary" : "Multiclass")}");
+            
+            var distStr = string.Join(", ", profile.Target.ClassDistribution
+                .OrderByDescending(kv => kv.Value)
+                .Take(5)
+                .Select(kv => $"{kv.Key}={kv.Value:F1}%"));
+            sb.AppendLine($"    - Distribution: {distStr}");
+            
+            if (profile.Target.FeatureEffects.Count > 0)
+            {
+                sb.AppendLine("    - Top feature drivers:");
+                foreach (var effect in profile.Target.FeatureEffects.Take(5))
+                {
+                    sb.AppendLine($"      * \"{effect.Feature}\": {effect.Summary}");
+                }
+            }
+        }
+        
+        // Detected patterns (clustering, etc.)
+        var clusterPatterns = profile.Patterns
+            .Where(p => p.Type == PatternType.Clustering)
+            .Take(2)
+            .ToList();
+        
+        if (clusterPatterns.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  CLUSTERING:");
+            foreach (var pattern in clusterPatterns)
+            {
+                sb.AppendLine($"    - {pattern.Description} (confidence={pattern.Confidence:F2})");
+            }
+        }
+        
+        // PII detection alerts
+        var piiAlerts = profile.Alerts
+            .Where(a => a.Type == AlertType.PiiDetected)
+            .Take(3)
+            .ToList();
+        
+        if (piiAlerts.Count > 0)
+        {
+            if (!hasTools)
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRE-COMPUTED ANALYSIS (reference these instead of computing via SQL):");
+                hasTools = true;
+            }
+            
+            sb.AppendLine("  PII/SENSITIVE DATA DETECTED:");
+            foreach (var alert in piiAlerts)
+            {
+                sb.AppendLine($"    - \"{alert.Column}\": {alert.Message}");
+            }
+        }
+        
+        if (hasTools)
+        {
+            sb.AppendLine();
+            sb.AppendLine("NOTE: For questions about correlations, trends, seasonality, outliers, or clustering,");
+            sb.AppendLine("reference the pre-computed analysis above. SQL cannot easily compute these.");
+            sb.AppendLine();
+        }
+    }
+
+    /// <summary>
+    /// Appends pre-computed aggregate statistics (per-category breakdowns) to the prompt.
+    /// This allows the LLM to answer filtered aggregate questions without SQL.
+    /// </summary>
+    private static void AppendAggregateStatsContext(StringBuilder sb, DataProfile profile)
+    {
+        if (profile.AggregateStats.Count == 0) return;
+        
+        sb.AppendLine();
+        sb.AppendLine("PRE-COMPUTED AGGREGATES (use these for per-category questions):");
+        
+        // Group by measure column for cleaner output
+        var byMeasure = profile.AggregateStats
+            .Where(a => a.AggregateFunction == "AVG") // Focus on averages first
+            .GroupBy(a => a.MeasureColumn)
+            .Take(5);
+        
+        foreach (var measureGroup in byMeasure)
+        {
+            var measure = measureGroup.Key;
+            sb.AppendLine($"  {measure}:");
+            
+            foreach (var stat in measureGroup.Take(3)) // Top 3 groupings per measure
+            {
+                var topResults = stat.Results
+                    .OrderByDescending(r => r.Value)
+                    .Take(5)
+                    .Select(r => $"{r.Key}={r.Value:F2}");
+                sb.AppendLine($"    by {stat.GroupByColumn}: {string.Join(", ", topResults)}");
+            }
+        }
+        
+        // Also show counts if available
+        var countStats = profile.AggregateStats
+            .Where(a => a.AggregateFunction == "COUNT" && a.MeasureColumn == "*")
+            .Take(3);
+        
+        if (countStats.Any())
+        {
+            sb.AppendLine("  ROW COUNTS:");
+            foreach (var stat in countStats)
+            {
+                var topResults = stat.Results
+                    .OrderByDescending(r => r.Value)
+                    .Take(5)
+                    .Select(r => $"{r.Key}={r.Value:N0}");
+                sb.AppendLine($"    by {stat.GroupByColumn}: {string.Join(", ", topResults)}");
+            }
+        }
+        
+        sb.AppendLine();
+    }
+
     private async Task<DataInsight?> GenerateAndExecuteInsightAsync(
         string readExpr, 
         DataProfile profile, 
@@ -557,6 +1138,30 @@ public class LlmInsightGenerator : IDisposable
 
         // Generate natural language summary of result
         var summary = await SummarizeResultAsync(question, result);
+        
+        var relatedColumns = ExtractColumnNames(sql, profile);
+
+        // ENRICHMENT: Profile the result and cache for future queries
+        var resultProfiler = new QueryResultProfiler(_verbose);
+        var cachedResult = resultProfiler.ProfileQueryResult(
+            question, sql, summary, result, relatedColumns);
+        
+        // Notify callback to enrich the profile
+        if (cachedResult.DerivedStats != null)
+        {
+            OnQueryCached?.Invoke(profile, cachedResult);
+            
+            if (_verbose)
+            {
+                var numericCount = cachedResult.DerivedStats.NumericStats.Count;
+                var catCount = cachedResult.DerivedStats.CategoryDistributions.Count;
+                Console.WriteLine($"[Enrichment] Cached stats: {numericCount} numeric, {catCount} categorical columns");
+                if (cachedResult.DerivedStats.DetectedPatterns?.Count > 0)
+                {
+                    Console.WriteLine($"[Enrichment] Patterns: {string.Join("; ", cachedResult.DerivedStats.DetectedPatterns)}");
+                }
+            }
+        }
 
         return new DataInsight
         {
@@ -565,26 +1170,114 @@ public class LlmInsightGenerator : IDisposable
             Sql = sql,
             Result = result,
             Source = InsightSource.LlmGenerated,
-            RelatedColumns = ExtractColumnNames(sql, profile)
+            RelatedColumns = relatedColumns
         };
     }
 
+    // Use "__DATA__" - less likely to be mangled by LLM than brackets
+    private const string TablePlaceholder = "__DATA__";
+    
+    // Guardrails: SQL operations that are NOT allowed
+    private static readonly string[] ForbiddenSqlPatterns = new[]
+    {
+        "DELETE", "DROP", "TRUNCATE", "UPDATE", "INSERT", "ALTER", "CREATE TABLE",
+        "EXEC", "EXECUTE", "GRANT", "REVOKE", "--", "/*", "*/", ";"
+    };
+    
     private async Task<string> GenerateSqlAsync(
         string readExpr, 
         DataProfile profile, 
         string question,
         string? errorHint = null)
     {
-        var prompt = BuildSqlGenerationPrompt(readExpr, profile, question, errorHint);
+        var prompt = BuildSqlGenerationPrompt(profile, question, errorHint);
         
         var request = new GenerateRequest { Model = _model, Prompt = prompt };
         var response = await _ollama.GenerateAsync(request).StreamToEndAsync();
         
-        return CleanSqlResponse(response?.Response ?? "");
+        var sql = CleanSqlResponse(response?.Response ?? "");
+        
+        // GUARDRAIL: Check for forbidden operations
+        var guardrailViolation = CheckSqlGuardrails(sql);
+        if (guardrailViolation != null)
+        {
+            if (_verbose) Console.WriteLine($"[Guardrail] Blocked: {guardrailViolation}");
+            return ""; // Return empty to trigger "could not answer" flow
+        }
+        
+        // Post-process: Replace placeholder with actual table expression
+        // Handle both with and without quotes/brackets since LLM might mangle it
+        sql = sql.Replace(TablePlaceholder, readExpr, StringComparison.OrdinalIgnoreCase);
+        sql = sql.Replace("__data__", readExpr, StringComparison.OrdinalIgnoreCase);
+        sql = sql.Replace("[__DATA__]", readExpr, StringComparison.OrdinalIgnoreCase);
+        sql = sql.Replace("\"__DATA__\"", readExpr, StringComparison.OrdinalIgnoreCase);
+        // Also catch if LLM uses TABLE literally
+        sql = System.Text.RegularExpressions.Regex.Replace(
+            sql, 
+            @"\bFROM\s+TABLE\b", 
+            $"FROM {readExpr}", 
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        
+        // Post-process: Ensure column names are properly quoted
+        sql = EnsureColumnQuoting(sql, profile);
+        
+        return sql;
+    }
+    
+    /// <summary>
+    /// Check SQL against guardrails. Returns violation message or null if OK.
+    /// </summary>
+    private static string? CheckSqlGuardrails(string sql)
+    {
+        var upper = sql.ToUpperInvariant();
+        
+        foreach (var forbidden in ForbiddenSqlPatterns)
+        {
+            // Check for forbidden keywords at word boundaries
+            var pattern = $@"\b{System.Text.RegularExpressions.Regex.Escape(forbidden)}\b";
+            if (System.Text.RegularExpressions.Regex.IsMatch(upper, pattern))
+            {
+                return $"Forbidden operation: {forbidden}";
+            }
+        }
+        
+        // Must start with SELECT (read-only)
+        if (!upper.TrimStart().StartsWith("SELECT"))
+        {
+            return "Only SELECT queries are allowed";
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Ensure column names are properly quoted with double quotes.
+    /// This is deterministic - we know the column names from the profile.
+    /// </summary>
+    private static string EnsureColumnQuoting(string sql, DataProfile profile)
+    {
+        foreach (var col in profile.Columns)
+        {
+            var name = col.Name;
+            
+            // Skip if already quoted
+            if (sql.Contains($"\"{name}\"", StringComparison.OrdinalIgnoreCase))
+                continue;
+            
+            // Replace unquoted column references with quoted ones
+            // Match word boundaries to avoid partial matches
+            var pattern = $@"\b{System.Text.RegularExpressions.Regex.Escape(name)}\b";
+            sql = System.Text.RegularExpressions.Regex.Replace(
+                sql, 
+                pattern, 
+                $"\"{name}\"",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+        
+        return sql;
     }
 
     private string BuildSqlGenerationPrompt(
-        string readExpr, 
         DataProfile profile, 
         string question,
         string? errorHint)
@@ -594,27 +1287,83 @@ public class LlmInsightGenerator : IDisposable
         sb.AppendLine("Generate a DuckDB SQL query to answer the question below.");
         sb.AppendLine();
         sb.AppendLine("RULES:");
-        sb.AppendLine("1. Use the exact table expression provided (don't modify the FROM clause)");
-        sb.AppendLine("2. Use double quotes around column names");
+        sb.AppendLine($"1. Use {TablePlaceholder} as the table name (we replace it automatically)");
+        sb.AppendLine("2. Use SINGLE quotes for string values: WHERE \"Category\" = 'Electronics'");
         sb.AppendLine("3. DuckDB syntax: LIMIT not TOP, || for concat, ILIKE for case-insensitive");
-        sb.AppendLine("4. Return ONLY the SQL - no markdown, no explanation");
-        sb.AppendLine("5. Limit results to 20 rows max");
+        sb.AppendLine("4. Return ONLY the SQL query - no markdown, no explanation");
+        sb.AppendLine("5. ALWAYS include aggregates in SELECT with GROUP BY");
+        sb.AppendLine();
+        sb.AppendLine("PRE-COMPUTED STATS (use these values directly):");
+        
+        // Provide pre-computed stats that can be used directly in SQL
+        foreach (var col in profile.Columns.Where(c => c.InferredType == ColumnType.Numeric && c.Mean.HasValue))
+        {
+            sb.AppendLine($"  \"{col.Name}\": mean={col.Mean:F4}, median={col.Median:F4}, min={col.Min:F4}, max={col.Max:F4}");
+        }
+        
+        sb.AppendLine();
+        sb.AppendLine("TIPS FOR COMMON QUESTIONS:");
+        sb.AppendLine("- 'most average' or 'closest to median': ORDER BY ABS(\"Col\" - <median_value>) ASC LIMIT 1");
+        sb.AppendLine("- 'above/below average': WHERE \"Col\" > <mean_value> or WHERE \"Col\" < <mean_value>");
+        sb.AppendLine("- 'outliers': WHERE \"Col\" < <Q1 - 1.5*IQR> OR \"Col\" > <Q3 + 1.5*IQR>");
         sb.AppendLine();
         
-        sb.AppendLine($"TABLE: {readExpr}");
+        // Add pre-computed advanced analysis tools section
+        AppendAdvancedAnalyticsContext(sb, profile);
+        
+        // Add pre-computed aggregate statistics (per-category breakdowns)
+        AppendAggregateStatsContext(sb, profile);
+        
+        // Add available analytics tools
+        sb.Append(_toolRegistry.FormatToolsForPrompt(profile));
+        
+        sb.AppendLine($"TABLE: {TablePlaceholder}");
+        sb.AppendLine($"ROWS: {profile.RowCount:N0}");
         sb.AppendLine();
         
-        sb.AppendLine("SCHEMA (use these exact column names):");
+        // Build rich schema with data context
+        sb.AppendLine("COLUMNS:");
         foreach (var col in profile.Columns)
         {
-            sb.AppendLine($"  \"{col.Name}\" {col.DuckDbType} -- {col.InferredType}");
+            sb.Append($"  \"{col.Name}\" ({col.InferredType})");
+            
+            // Add rich context based on column type
+            switch (col.InferredType)
+            {
+                case ColumnType.Categorical:
+                    if (col.TopValues?.Count > 0)
+                    {
+                        var topVals = col.TopValues.Take(5)
+                            .Select(v => $"'{v.Value}'")
+                            .ToList();
+                        sb.Append($" [values: {string.Join(", ", topVals)}]");
+                    }
+                    break;
+                    
+                case ColumnType.DateTime:
+                    if (col.MinDate.HasValue && col.MaxDate.HasValue)
+                    {
+                        sb.Append($" [range: {col.MinDate:yyyy-MM-dd} to {col.MaxDate:yyyy-MM-dd}]");
+                    }
+                    break;
+                    
+                case ColumnType.Boolean:
+                    if (col.TopValues?.Count > 0)
+                    {
+                        var dist = string.Join(", ", col.TopValues.Select(v => $"{v.Value}={v.Percent:F0}%"));
+                        sb.Append($" [{dist}]");
+                    }
+                    break;
+            }
+            
+            sb.AppendLine();
         }
 
         if (errorHint != null)
         {
             sb.AppendLine();
             sb.AppendLine($"ERROR FROM PREVIOUS ATTEMPT: {errorHint}");
-            sb.AppendLine("Please fix the query.");
+            sb.AppendLine("Fix the SQL based on this error.");
         }
 
         sb.AppendLine();
@@ -634,8 +1383,9 @@ public class LlmInsightGenerator : IDisposable
             await cmd.ExecuteNonQueryAsync();
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            if (_verbose) Console.WriteLine($"[SQL Validation Error] {ex.Message}");
             return false;
         }
     }
@@ -667,8 +1417,9 @@ public class LlmInsightGenerator : IDisposable
 
             return new { columns, rows, rowCount = rows.Count };
         }
-        catch
+        catch (Exception ex)
         {
+            if (_verbose) Console.WriteLine($"[SQL Error] {ex.Message}");
             return null;
         }
     }
@@ -751,6 +1502,33 @@ public class LlmInsightGenerator : IDisposable
             _ => 
                 $"read_csv_auto('{escaped}')"
         };
+    }
+
+    /// <summary>
+    /// Create a view 't' that wraps the read expression.
+    /// This allows the LLM to use simple 'FROM t' syntax in generated SQL.
+    /// </summary>
+    private async Task CreateTableViewAsync(string readExpr)
+    {
+        try
+        {
+            using var cmd = _connection!.CreateCommand();
+            cmd.CommandText = $"CREATE OR REPLACE VIEW t AS SELECT * FROM {readExpr}";
+            await cmd.ExecuteNonQueryAsync();
+            
+            if (_verbose)
+            {
+                Console.WriteLine($"[SQL] Created view 't' from {readExpr}");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_verbose)
+            {
+                Console.WriteLine($"[SQL] Failed to create view: {ex.Message}");
+            }
+            throw;
+        }
     }
 
     /// <summary>

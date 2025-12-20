@@ -3,13 +3,30 @@
 <!--category-- AI, LLM, Data Analysis, DuckDB, C#, Ollama -->
 <datetime class="hidden">2025-12-18T10:00</datetime>
 
+<!--series:
+  name: "Local LLMs for Data"
+  part: 1
+  slug: local-llms-for-data
+  previous: null
+  next: /blog/datasummarizer-how-it-works
+-->
+
+**Series: Local LLMs for Data — Part 1 of 2**
+
+TL;DR
+
+This article shows a practical, secure pattern for using local LLMs with large CSVs: don’t feed rows to the model — use DuckDB to compute schema and tiny samples, let the LLM generate SQL, validate the SQL, and execute it locally. The approach keeps data private, avoids memory issues, and gives you sub-100ms analytical queries without imports. It also includes pragmatic guidance: use coding-focused models (e.g., `qwen2.5-coder:7b`), build strict prompt rules, validate with `EXPLAIN`, retry on errors, and keep the LLM’s role limited to reasoning and formatting. For a companion, CLI-focused article that emphasizes profile-first narration, safe SQL-backed Q&A, synthetic cloning, and drift detection, see Part 2: DataSummarizer: Fast Local Data Profiling (/blog/datasummarizer-how-it-works).
+
+
 Here's the mistake everyone makes: they try to feed their CSV into an LLM. Don't. **LLMs should generate queries, not consume data.**
 
 You've got a 500MB CSV file and want to ask "What's the average order value by region?" Tools like [Copilot in Excel](https://support.microsoft.com/en-gb/copilot-excel) can do this, but what if your data is too sensitive for cloud services? What if you need to build it yourself?
 
 This article shows you how - locally, privately, in C#.
 
-> **TL;DR**: Use DuckDB to query CSV files directly. Use a local LLM to generate the SQL. The LLM never sees your data - just the schema. Result: sub-100ms queries on million-row files, completely offline.
+> Use DuckDB to query CSV files directly. Use a local LLM to generate the SQL. The LLM never sees your data - just the schema. Result: sub-100ms queries on million-row files, completely offline.
+
+For a complementary, more CLI-focused treatment that expands on using statistical profiles as the LLM interface (and shows a full tool implementing these ideas — profiling, safe SQL mode, synthetic cloning and drift detection), see the companion article: **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works)** — especially the section "The Key Upgrade: Statistics as the Interface". These two articles form a short series on practical local LLM + query patterns.
 
 [TOC]
 
@@ -31,6 +48,8 @@ flowchart LR
 ```
 
 Notice what's happening: the LLM generates a SQL query based on your question and the schema. DuckDB executes it against the actual data. The LLM never touches your data - it only sees column names and types. This is why it's fast, private, and accurate.
+
+For more on treating profiles as the LLM interface (and a concrete CLI that implements profile-first narration, safe SQL-backed Q&A, registry-backed sessions and synthetic cloning), see **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works#the-key-upgrade-statistics-as-the-interface)**.
 
 ## Why Not Just Load It Into Memory?
 
@@ -76,7 +95,7 @@ DuckDB is what data engineers use in Python for exactly this use case. The [.NET
 | [Bogus](https://github.com/bchavez/Bogus) | Realistic test data at any scale |
 | [`qwen2.5-coder:7b`](https://ollama.ai/library/qwen2.5-coder) | Best SQL accuracy at 7B size |
 
-> **Note on security**: We're executing LLM-generated SQL. This is safer than arbitrary code, but still requires validation. See the [Security section](#security-considerations) for safeguards.
+> **Note on security**: We're executing LLM-generated SQL. This is safer than arbitrary code, but still requires validation. See the [Security section](#security-considerations) for safeguards. For a broader discussion on turning profiles into the LLM interface and a CLI that implements these patterns, see the companion piece **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works)**.
 
 ## Project Setup
 
@@ -136,7 +155,7 @@ flowchart TB
 
 The key insight: we give the LLM **schema and sample data**, not the actual data. This keeps context small and responses fast.
 
-**Why this matters**: The LLM generates intent (SQL). DuckDB executes it. The validation step catches syntax errors before execution. The retry loop handles the occasional mistake. This separation is what makes the system both safe and accurate.
+**Why this matters**: The LLM generates intent (SQL). DuckDB executes it. The validation step catches syntax errors before execution. The retry loop handles the occasional mistake. This separation is what makes the system both safe and accurate. For a more detailed, CLI-centered reference (including profile-first narration and safe SQL execution limits) see **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works#the-key-upgrade-statistics-as-the-interface)**.
 
 ## Step 1: Generate Test Data with Bogus
 
@@ -353,7 +372,7 @@ The rules section is crucial - it tells the LLM exactly how to format the query 
         foreach (var row in context.SampleRows)
         {
             var values = row.Select(kv => $"{kv.Key}='{kv.Value}'");
-            sb.AppendLine($"  {{ {string.Join(", ", values)} }}");
+            sb.AppendLine($"  {{{string.Join(", ", values)}}}");
         }
     }
 ```
@@ -651,3 +670,6 @@ The full sample project is available at [Mostlylucid.CsvLlm](https://github.com/
 - [CsvHelper](https://joshclose.github.io/CsvHelper/) - CSV parsing library
 - [Microsoft.Data.Analysis](https://www.nuget.org/packages/Microsoft.Data.Analysis) - DataFrame for .NET
 - [PandasAI](https://github.com/Sinaptik-AI/pandas-ai) - Python LLM + pandas integration
+
+### Related Articles
+- [DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works) - Companion article covering CLI-based data profiling

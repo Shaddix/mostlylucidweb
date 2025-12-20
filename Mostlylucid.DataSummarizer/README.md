@@ -1,4 +1,4 @@
-# DataSummarizer
+ # DataSummarizer
 
 **Fast, local, deterministic data profiling with DuckDB + optional LLM narration.**
 
@@ -24,6 +24,7 @@ A .NET 10 CLI that turns any CSV/Excel/Parquet/JSON into a reproducible statisti
 - [Target-Aware Profiling](#target-aware-profiling)
 - [Performance Options](#performance-options)
 - [Trust Model](#trust-model)
+- [LLM Integration (Latest)](#llm-integration-latest)
 - [Output Formats](#output-formats)
 - [CI/CD Integration](#cicd-integration)
 - [Examples](#examples)
@@ -316,7 +317,7 @@ datasummarizer segment --segment-a <path-or-id> --segment-b <path-or-id> [option
 
 **Example:**
 ```bash
-# Compare two CSV files
+# Compare two files
 datasummarizer segment --segment-a prod.csv --segment-b synthetic.csv --format markdown
 
 # Compare with custom names
@@ -641,66 +642,6 @@ Every profile gets a **statistical signature**:
 - Auto-generates `constraints.suggested.json`
 - User reviews before enforcement (not automatic)
 
-### Output Example
-
-```json
-{
-  "Success": true,
-  "Profile": { "RowCount": 50000, "ColumnCount": 12 },
-  "Drift": {
-    "BaselineProfileId": "7c2e5f8a1b3d",
-    "BaselineDate": "2025-12-19T02:00:00Z",
-    "DriftScore": 0.1823,
-    "HasSignificantDrift": false,
-    "RowCountChangePercent": 2.5,
-    "DriftedColumnCount": 2,
-    "RemovedColumns": null,
-    "AddedColumns": null,
-    "Summary": "Minor drift detected in Age, Balance. Schema unchanged.",
-    "Recommendations": [
-      "Review Age distribution - KS distance 0.12",
-      "Balance mean shifted by +5.2%"
-    ]
-  },
-  "Metadata": {
-    "ProfileId": "a3f9e2c1b8d4",
-    "ProcessingSeconds": 2.1
-  }
-}
-```
-
-### Managing Baselines
-
-```bash
-# Pin a profile as baseline (interactive menu)
-datasummarizer store
-# Select "Pin as baseline" and choose profile
-
-# Exclude a profile from baseline selection (bad data batch)
-datasummarizer store
-# Select "Exclude from baseline" and choose profile
-
-# Tag profiles for organization
-datasummarizer store
-# Select "Add tags/notes"
-# Tags: "production,validated,pre-migration"
-# Notes: "Known data quality issue in Age column"
-```
-
-### CI/CD Integration
-
-```bash
-# In your CI pipeline
-datasummarizer tool -f /data/staging_export.csv --auto-drift --store > drift-report.json
-
-# Parse JSON and fail if drift too high
-drift_score=$(jq '.Drift.DriftScore // 0' drift-report.json)
-if (( $(echo "$drift_score > 0.3" | bc -l) )); then
-  echo "❌ Significant drift detected: $drift_score"
-  exit 1
-fi
-```
-
 ---
 
 ## Constraint Validation
@@ -1000,6 +941,8 @@ datasummarizer -f sales.csv --query "top selling products" --model qwen2.5-coder
 datasummarizer -f sales.csv --query "average order value by region" --model qwen2.5-coder:7b
 ```
 
+---
+
 ### Interactive Mode
 
 ```bash
@@ -1069,7 +1012,7 @@ Class balance: 79.6% vs 20.4% (moderate imbalance)
 **2. Top drivers** (ranked by effect size):
 ```
 Target driver: NumOfProducts (score 0.86)
-NumOfProducts = 4 has 1 rate 100.0% vs baseline 20.4% (Δ 79.6%)
+NumOfProducts = 4 has 100% churn rate (Δ 79.6%)
 
 Target driver: Age (score 0.82)
 Average Age is 44.8 for 1 vs 37.4 for 0 (Δ 7.4 years)
@@ -1211,6 +1154,44 @@ Generated SQL is executed in a **read-only, constrained context**:
 
 ---
 
+## LLM Integration (Latest)
+
+This section collects the newest LLM-related features and recommended usage patterns added recently. DataSummarizer aims to keep LLM usage powerful, local, and auditable.
+
+- Backends: DataSummarizer integrates with a local Ollama server (default: `http://localhost:11434`). The CLI exposes `--model` to select any Ollama-compatible model (default `qwen2.5-coder:7b`). Use `--no-llm` to disable all LLM features.
+
+- Two interaction modes:
+  - **Profile-only narration** (default when asking broad questions): LLM is given the computed profile and writes a human-friendly narrative. No rows are shared.
+  - **SQL-backed Q&A**: LLM generates DuckDB SQL grounded in the profiled schema. SQL is executed locally in a read-only sandbox and returns at most 20 rows which the LLM can then summarize.
+
+- Session & Memory:
+  - Use `--session-id <id>` to tie multiple questions together into a single conversational context. Conversation turns are stored in the Registry (when `--vector-db` is used) and retrieved by semantic similarity for follow-ups.
+  - Registry conversation storage is optional and local; it enables session-aware answers across separate CLI invocations.
+
+- Registry & Vector DB:
+  - `--vector-db <path>` (default `.datasummarizer.vss.duckdb`) creates a local similarity index for cross-dataset search and conversation memory.
+  - Use `--ingest-dir` or `--ingest-files` to populate a registry with profiles and embeddings. Small, local embeddings are used by default; if DuckDB `vss` is available it will be preferred for performance.
+  - `--registry-query <text>` lets you ask across ingested datasets, e.g. `datasummarizer --registry-query "Which datasets have a churn target?" --vector-db registry.duckdb --model qwen2.5-coder:7b`.
+
+- Tool mode for automation:
+  - The `tool` command produces a compact JSON schema optimized for LLM tool integration. Metadata includes `Model`, `UsedLlm`, `SessionId`, `ProfileId`, and `Drift` info to help automation pipelines track provenance.
+
+- Security & Trust:
+  - LLMs never get raw table dumps. Profile-only mode passes only computed facts. SQL-backed mode returns a tiny, local, read-only result set (≤20 rows).
+  - Execution is local (no outbound network) and forbidden SQL commands are blocked.
+  - Use `--no-llm` in CI or sensitive contexts to enforce deterministic-only runs.
+
+- Recommended setup (local development):
+  1. Install Ollama (https://ollama.ai) and run the local service.
+  2. Pull a model you trust locally, for example `qwen2.5-coder:7b`.
+  3. Run `datasummarizer -f data.csv --model qwen2.5-coder:7b` or add your default model to appsettings.json.
+
+- Troubleshooting:
+  - If the CLI prints "LLM unavailable" or times out, check that the Ollama service is running at `http://localhost:11434` and that the chosen model is installed locally.
+  - Use `--no-llm` to continue profiling without LLM features while debugging model availability.
+
+---
+
 ## Output Formats
 
 DataSummarizer supports three output formats for machine and human consumption.
@@ -1269,7 +1250,7 @@ datasummarizer segment --segment-a a.csv --segment-b b.csv --format html > compa
 # In your CI pipeline
 datasummarizer tool -f /data/daily_export.csv --auto-drift --store > drift-report.json
 
-# Parse JSON and fail if drift > 0.3
+# Parse JSON and fail if drift too high
 drift_score=$(jq '.Drift.DriftScore // 0' drift-report.json)
 if (( $(echo "$drift_score > 0.3" | bc -l) )); then
   echo "❌ Significant drift detected: $drift_score"

@@ -109,39 +109,102 @@ public class DuckDbProfiler : IDisposable
         if (_verbose && profile.Columns.Count < allColumns.Count)
             Console.WriteLine($"[Profile] Analyzing {profile.Columns.Count} of {allColumns.Count} columns (use --columns to specify)");
 
-        // Infer column types and get additional stats
-        UpdateStatus($"Enriching {profile.Columns.Count} columns...");
-        foreach (var col in profile.Columns)
+        // For Initial depth, return early with minimal stats
+        if (_options.Depth == ProfileDepth.Initial)
         {
-            await EnrichColumnProfileAsync(readExpr, col, profile.RowCount);
+            profile.ProfileTime = stopwatch.Elapsed;
+            return profile;
         }
 
-        // Detect alerts
-        UpdateStatus("Detecting data quality issues...");
-        profile.Alerts = DetectAlerts(profile);
+        // PARALLEL PHASE 1: Basic column enrichment in parallel
+        UpdateStatus($"Enriching {profile.Columns.Count} columns (parallel)...");
+        var enrichmentTasks = profile.Columns.Select(col => 
+            EnrichColumnProfileAsync(readExpr, col, profile.RowCount)).ToList();
+        await Task.WhenAll(enrichmentTasks);
+
+        // Identify categorical and numeric columns for aggregate stats
+        var categoricalCols = profile.Columns
+            .Where(c => c.InferredType == ColumnType.Categorical && c.UniqueCount <= _options.MaxCategoryValues)
+            .Take(_options.MaxAggregateCategories)
+            .ToList();
+        var numericCols = profile.Columns
+            .Where(c => c.InferredType == ColumnType.Numeric && c.Mean.HasValue)
+            .Take(_options.MaxAggregateMeasures)
+            .ToList();
+
+        // PARALLEL PHASE 2: Run expensive operations in parallel
+        UpdateStatus("Computing advanced statistics (parallel)...");
+        var parallelTasks = new List<Task>();
         
-        // PII detection (skip in fast mode)
-        if (!_options.FastMode)
+        // Task 1: Alerts detection (CPU-bound, fast)
+        var alertsTask = Task.Run(() => DetectAlerts(profile));
+        parallelTasks.Add(alertsTask);
+        
+        // Task 2: PII detection (skip in fast mode, include in Background)
+        Task<List<DataAlert>>? piiTask = null;
+        if (!_options.FastMode || _options.Depth == ProfileDepth.Background)
         {
-            UpdateStatus("Scanning for PII/sensitive data...");
-            var piiDetector = new PiiDetector(_verbose);
-            var piiResults = piiDetector.ScanProfile(profile);
-            if (piiResults.Count > 0)
+            piiTask = Task.Run(() =>
             {
-                var piiAlerts = piiDetector.GeneratePiiAlerts(piiResults);
-                profile.Alerts.AddRange(piiAlerts);
-            }
+                var piiDetector = new PiiDetector(_verbose);
+                var piiResults = piiDetector.ScanProfile(profile);
+                return piiResults.Count > 0 ? piiDetector.GeneratePiiAlerts(piiResults) : new List<DataAlert>();
+            });
+            parallelTasks.Add(piiTask);
         }
         
-        // Calculate correlations for numeric columns (with limit)
+        // Task 3: Correlations
+        Task<List<ColumnCorrelation>>? correlationsTask = null;
         if (!_options.SkipCorrelations)
         {
-            UpdateStatus("Computing correlations...");
-            profile.Correlations = await GetCorrelationsAsync(readExpr, profile.Columns);
+            correlationsTask = GetCorrelationsAsync(readExpr, profile.Columns);
+            parallelTasks.Add(correlationsTask);
+        }
+        
+        // Task 4: Aggregate stats (per-category breakdowns) - only for Background depth
+        Task<List<AggregateStatistic>>? aggregateTask = null;
+        if (_options.Depth == ProfileDepth.Background && categoricalCols.Count > 0 && numericCols.Count > 0)
+        {
+            aggregateTask = ComputeAggregateStatsAsync(readExpr, categoricalCols, numericCols);
+            parallelTasks.Add(aggregateTask);
+        }
+        
+        // Task 5: Conditional tables for categorical relationships (synthesis quality)
+        Task<List<ConditionalTable>>? conditionalTask = null;
+        if (!_options.FastMode && categoricalCols.Count >= 2)
+        {
+            conditionalTask = ComputeConditionalTablesAsync(readExpr, profile.Columns);
+            parallelTasks.Add(conditionalTask);
+        }
+        
+        // Wait for all parallel tasks
+        await Task.WhenAll(parallelTasks);
+        
+        // Collect results
+        profile.Alerts = alertsTask.Result;
+        if (piiTask != null)
+        {
+            profile.Alerts.AddRange(piiTask.Result);
+        }
+        if (correlationsTask != null)
+        {
+            profile.Correlations = correlationsTask.Result;
+        }
+        if (aggregateTask != null)
+        {
+            profile.AggregateStats = aggregateTask.Result;
+            if (_verbose && profile.AggregateStats.Count > 0)
+                Console.WriteLine($"[Profile] Computed {profile.AggregateStats.Count} aggregate statistics");
+        }
+        if (conditionalTask != null)
+        {
+            profile.ConditionalTables = conditionalTask.Result;
+            if (_verbose && profile.ConditionalTables.Count > 0)
+                Console.WriteLine($"[Profile] Found {profile.ConditionalTables.Count} categorical relationships for synthesis");
         }
 
-        // Pattern detection (skip in fast mode)
-        if (!_options.FastMode)
+        // Pattern detection (skip in fast mode, include in Background) - sequential due to state
+        if (!_options.FastMode || _options.Depth == ProfileDepth.Background)
         {
             UpdateStatus("Detecting patterns...");
             var patternDetector = new PatternDetector(Connection, readExpr, _verbose);
@@ -173,7 +236,6 @@ public class DuckDbProfiler : IDisposable
         }
         
         // Generate descriptions for each column
-
         if (_options.IncludeDescriptions)
         {
             foreach (var col in profile.Columns)
@@ -427,9 +489,11 @@ public class DuckDbProfiler : IDisposable
         col.InferredType = InferColumnType(col);
 
         // Get top values for categorical columns
+        const int topK = 10;
         if (col.InferredType == ColumnType.Categorical || col.UniqueCount <= 20)
         {
-            col.TopValues = await GetTopValuesAsync(readExpr, col.Name, 10);
+            col.TopValues = await GetTopValuesAsync(readExpr, col.Name, topK);
+            col.TopK = topK;
             
             if (col.TopValues.Count > 0)
             {
@@ -442,7 +506,15 @@ public class DuckDbProfiler : IDisposable
                 
                 // Calculate entropy for categorical columns
                 col.Entropy = CalculateEntropy(col.TopValues, totalRows);
+                
+                // Calculate "Other" bucket stats
+                var topValuesCount = col.TopValues.Sum(v => v.Count);
+                col.OtherCount = totalRows - topValuesCount;
+                col.OtherPercent = totalRows > 0 ? (col.OtherCount * 100.0 / totalRows) : 0;
             }
+            
+            // Set generation policy based on column characteristics
+            col.SynthesisPolicy = DetermineGenerationPolicy(col);
         }
 
         // Calculate stats for numeric columns
@@ -452,6 +524,9 @@ public class DuckDbProfiler : IDisposable
             col.Kurtosis = await CalculateKurtosisAsync(readExpr, col.Name);
             col.OutlierCount = await CountOutliersAsync(readExpr, col.Name, col.Q25, col.Q75);
             col.ZeroCount = await CountZerosAsync(readExpr, col.Name);
+            
+            // Build histogram for synthesis
+            col.Histogram = await BuildHistogramAsync(readExpr, col.Name, col.Min, col.Max, 20);
 
             // MathNet robust stats on a sample
             var sample = await GetNumericSampleAsync(readExpr, col.Name, 5000);
@@ -466,6 +541,18 @@ public class DuckDbProfiler : IDisposable
                 if (!col.Kurtosis.HasValue && sample.Count >= 10)
                     col.Kurtosis = Statistics.Kurtosis(sample);
             }
+            
+            // Set generation policy for numeric columns
+            col.SynthesisPolicy = DetermineGenerationPolicy(col);
+        }
+        else if (col.InferredType == ColumnType.Id)
+        {
+            col.SynthesisPolicy = new GenerationPolicy 
+            { 
+                Mode = GenerationMode.SequentialId, 
+                Reason = "Identifier column",
+                AutoClassified = true 
+            };
         }
 
         // Date range for date columns
@@ -503,6 +590,131 @@ public class DuckDbProfiler : IDisposable
         }
         
         return Math.Round(entropy, 4);
+    }
+    
+    /// <summary>
+    /// Build a histogram for numeric columns to enable accurate synthesis.
+    /// </summary>
+    private async Task<NumericHistogram?> BuildHistogramAsync(string readExpr, string colName, double? min, double? max, int numBins)
+    {
+        if (!min.HasValue || !max.HasValue || min >= max) return null;
+        
+        var binWidth = (max.Value - min.Value) / numBins;
+        var histogram = new NumericHistogram { Type = HistogramType.EqualWidth };
+        
+        // Generate bin edges
+        for (int i = 0; i <= numBins; i++)
+        {
+            histogram.BinEdges.Add(min.Value + i * binWidth);
+        }
+        
+        // Count values in each bin using DuckDB
+        try
+        {
+            // Use CASE expression to count values in each bin
+            var caseClauses = new List<string>();
+            for (int i = 0; i < numBins; i++)
+            {
+                var lower = histogram.BinEdges[i];
+                var upper = histogram.BinEdges[i + 1];
+                var condition = i == numBins - 1 
+                    ? $"\"{colName}\" >= {lower} AND \"{colName}\" <= {upper}"  // Last bin is inclusive
+                    : $"\"{colName}\" >= {lower} AND \"{colName}\" < {upper}";
+                caseClauses.Add($"SUM(CASE WHEN {condition} THEN 1 ELSE 0 END) AS bin_{i}");
+            }
+            
+            var sql = $"SELECT {string.Join(", ", caseClauses)} FROM {readExpr} WHERE \"{colName}\" IS NOT NULL";
+            
+            await using var cmd = Connection.CreateCommand();
+            cmd.CommandText = sql;
+            using var reader = await cmd.ExecuteReaderAsync();
+            
+            if (await reader.ReadAsync())
+            {
+                for (int i = 0; i < numBins; i++)
+                {
+                    histogram.BinCounts.Add(reader.IsDBNull(i) ? 0 : reader.GetInt64(i));
+                }
+            }
+            
+            return histogram;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Determine the generation policy for a column based on its characteristics.
+    /// </summary>
+    private static GenerationPolicy DetermineGenerationPolicy(ColumnProfile col)
+    {
+        var policy = new GenerationPolicy { AutoClassified = true };
+        
+        // Check for PII patterns in text patterns
+        var hasPii = col.TextPatterns.Any(p => 
+            p.PatternType == TextPatternType.Email ||
+            p.PatternType == TextPatternType.Phone ||
+            p.PatternType == TextPatternType.CreditCard ||
+            p.PatternType == TextPatternType.IpAddress);
+        
+        // High uniqueness suggests identifier or PII
+        var highUniqueness = col.CardinalityRatio > 0.9;
+        
+        // Column name heuristics for PII
+        var nameLower = col.Name.ToLowerInvariant();
+        var piiNamePatterns = new[] { "email", "phone", "ssn", "social", "credit", "card", "password", "secret", "token", "address", "ip" };
+        var nameIsPii = piiNamePatterns.Any(p => nameLower.Contains(p));
+        
+        // Name columns (but not product names, file names, etc.)
+        var isNameColumn = (nameLower.Contains("name") && !nameLower.Contains("product") && 
+                           !nameLower.Contains("file") && !nameLower.Contains("column")) ||
+                          nameLower == "firstname" || nameLower == "lastname" || nameLower == "fullname";
+        
+        if (hasPii || nameIsPii)
+        {
+            policy.Mode = GenerationMode.Mask;
+            policy.Reason = "PII pattern detected";
+            policy.SuppressTopValues = true;
+            return policy;
+        }
+        
+        if (isNameColumn && highUniqueness)
+        {
+            policy.Mode = GenerationMode.FakerPattern;
+            policy.Reason = "Name column with high uniqueness";
+            policy.SuppressTopValues = true;
+            return policy;
+        }
+        
+        if (col.InferredType == ColumnType.Id)
+        {
+            policy.Mode = GenerationMode.SequentialId;
+            policy.Reason = "Identifier column";
+            return policy;
+        }
+        
+        if (highUniqueness && col.InferredType == ColumnType.Text)
+        {
+            policy.Mode = GenerationMode.Exclude;
+            policy.Reason = "High cardinality text - likely unique identifier";
+            policy.SuppressTopValues = true;
+            return policy;
+        }
+        
+        if (col.InferredType == ColumnType.Categorical && col.UniqueCount <= 50)
+        {
+            policy.Mode = GenerationMode.CopySafe;
+            policy.Reason = "Low cardinality categorical - safe to copy distribution";
+            policy.KAnonymityThreshold = 5; // Roll up categories with <5 occurrences
+            return policy;
+        }
+        
+        // Default: synthetic generation from stats
+        policy.Mode = GenerationMode.Synthetic;
+        policy.Reason = "Standard synthetic generation from profile statistics";
+        return policy;
     }
 
     private ColumnType InferColumnType(ColumnProfile col)
@@ -808,6 +1020,197 @@ public class DuckDbProfiler : IDisposable
 
         return correlations.OrderByDescending(c => Math.Abs(c.Correlation)).ToList();
     }
+    
+    /// <summary>
+    /// Compute conditional probability tables for categorical column pairs.
+    /// Identifies strong parent-child relationships using Cramer's V and mutual information.
+    /// </summary>
+    private async Task<List<ConditionalTable>> ComputeConditionalTablesAsync(
+        string readExpr, 
+        List<ColumnProfile> columns)
+    {
+        var categoricalCols = columns
+            .Where(c => c.InferredType == ColumnType.Categorical && 
+                        c.UniqueCount >= 2 && 
+                        c.UniqueCount <= 50) // Reasonable cardinality for conditionals
+            .Select(c => c.Name)
+            .ToList();
+        
+        if (categoricalCols.Count < 2) return [];
+        
+        var tables = new List<ConditionalTable>();
+        var maxPairs = Math.Min(categoricalCols.Count * (categoricalCols.Count - 1), 20);
+        var pairsComputed = 0;
+        
+        if (_verbose)
+            Console.WriteLine($"[Profile] Computing conditional tables for {categoricalCols.Count} categorical columns");
+        
+        // Evaluate all pairs and find strong relationships
+        for (int i = 0; i < categoricalCols.Count && pairsComputed < maxPairs; i++)
+        {
+            for (int j = 0; j < categoricalCols.Count && pairsComputed < maxPairs; j++)
+            {
+                if (i == j) continue;
+                
+                var parent = categoricalCols[i];
+                var child = categoricalCols[j];
+                
+                try
+                {
+                    // Compute contingency table and Cramer's V
+                    var cramersV = await ComputeCramersVAsync(readExpr, parent, child);
+                    pairsComputed++;
+                    
+                    // Only keep strong relationships (Cramer's V > 0.2)
+                    if (cramersV >= 0.2)
+                    {
+                        var conditionalDist = await ComputeConditionalDistributionAsync(readExpr, parent, child);
+                        
+                        if (conditionalDist.Count > 0)
+                        {
+                            tables.Add(new ConditionalTable
+                            {
+                                ParentColumn = parent,
+                                ChildColumn = child,
+                                CramersV = Math.Round(cramersV, 3),
+                                Distributions = conditionalDist,
+                                AutoDetected = true
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (_verbose) Console.WriteLine($"[Profile] Failed to compute conditional for {parent}->{child}: {ex.Message}");
+                }
+            }
+        }
+        
+        // Return sorted by strength of relationship
+        return tables.OrderByDescending(t => t.CramersV).ToList();
+    }
+    
+    /// <summary>
+    /// Compute Cramer's V statistic for two categorical columns.
+    /// V = sqrt(chi2 / (n * min(r-1, c-1))) where r,c are row/col counts
+    /// </summary>
+    private async Task<double> ComputeCramersVAsync(string readExpr, string col1, string col2)
+    {
+        // Get contingency table counts - cast to VARCHAR to handle mixed types
+        var sql = $@"
+            WITH contingency AS (
+                SELECT 
+                    CAST(""{col1}"" AS VARCHAR) as parent_val,
+                    CAST(""{col2}"" AS VARCHAR) as child_val,
+                    COUNT(*) as observed
+                FROM {readExpr}
+                WHERE ""{col1}"" IS NOT NULL AND ""{col2}"" IS NOT NULL
+                GROUP BY CAST(""{col1}"" AS VARCHAR), CAST(""{col2}"" AS VARCHAR)
+            ),
+            marginals AS (
+                SELECT 
+                    (SELECT COUNT(*) FROM {readExpr} WHERE ""{col1}"" IS NOT NULL AND ""{col2}"" IS NOT NULL) as n,
+                    (SELECT COUNT(DISTINCT CAST(""{col1}"" AS VARCHAR)) FROM {readExpr} WHERE ""{col1}"" IS NOT NULL) as r,
+                    (SELECT COUNT(DISTINCT CAST(""{col2}"" AS VARCHAR)) FROM {readExpr} WHERE ""{col2}"" IS NOT NULL) as c
+            ),
+            parent_marginal AS (
+                SELECT CAST(""{col1}"" AS VARCHAR) as val, COUNT(*) as cnt
+                FROM {readExpr}
+                WHERE ""{col1}"" IS NOT NULL AND ""{col2}"" IS NOT NULL
+                GROUP BY CAST(""{col1}"" AS VARCHAR)
+            ),
+            child_marginal AS (
+                SELECT CAST(""{col2}"" AS VARCHAR) as val, COUNT(*) as cnt
+                FROM {readExpr}
+                WHERE ""{col1}"" IS NOT NULL AND ""{col2}"" IS NOT NULL
+                GROUP BY CAST(""{col2}"" AS VARCHAR)
+            )
+            SELECT 
+                m.n, m.r, m.c,
+                SUM(
+                    POWER(c.observed - (pm.cnt * cm.cnt / m.n::DOUBLE), 2) / 
+                    (pm.cnt * cm.cnt / m.n::DOUBLE)
+                ) as chi2
+            FROM contingency c
+            JOIN parent_marginal pm ON c.parent_val = pm.val
+            JOIN child_marginal cm ON c.child_val = cm.val
+            CROSS JOIN marginals m
+            GROUP BY m.n, m.r, m.c";
+        
+        await using var cmd = Connection.CreateCommand();
+        cmd.CommandText = sql;
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            var n = reader.GetDouble(0);
+            var r = reader.GetDouble(1);
+            var c = reader.GetDouble(2);
+            var chi2 = reader.IsDBNull(3) ? 0 : reader.GetDouble(3);
+            
+            if (n > 0 && r > 1 && c > 1)
+            {
+                var minDim = Math.Min(r - 1, c - 1);
+                var cramersV = Math.Sqrt(chi2 / (n * minDim));
+                return Math.Min(cramersV, 1.0); // Cap at 1.0
+            }
+        }
+        
+        return 0;
+    }
+    
+    /// <summary>
+    /// Compute P(Child | Parent) conditional distribution.
+    /// Returns: {parent_value: {child_value: probability}}
+    /// </summary>
+    private async Task<Dictionary<string, Dictionary<string, double>>> ComputeConditionalDistributionAsync(
+        string readExpr, 
+        string parent, 
+        string child)
+    {
+        var sql = $@"
+            WITH counts AS (
+                SELECT 
+                    CAST(""{parent}"" AS VARCHAR) as parent_val,
+                    CAST(""{child}"" AS VARCHAR) as child_val,
+                    COUNT(*) as cnt
+                FROM {readExpr}
+                WHERE ""{parent}"" IS NOT NULL AND ""{child}"" IS NOT NULL
+                GROUP BY CAST(""{parent}"" AS VARCHAR), CAST(""{child}"" AS VARCHAR)
+            ),
+            parent_totals AS (
+                SELECT parent_val, SUM(cnt) as total
+                FROM counts
+                GROUP BY parent_val
+            )
+            SELECT 
+                c.parent_val,
+                c.child_val,
+                c.cnt::DOUBLE / pt.total as probability
+            FROM counts c
+            JOIN parent_totals pt ON c.parent_val = pt.parent_val
+            ORDER BY c.parent_val, probability DESC";
+        
+        var result = new Dictionary<string, Dictionary<string, double>>();
+        
+        await using var cmd2 = Connection.CreateCommand();
+        cmd2.CommandText = sql;
+        await using var reader = await cmd2.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var parentVal = reader.IsDBNull(0) ? "(null)" : reader.GetString(0);
+            var childVal = reader.IsDBNull(1) ? "(null)" : reader.GetString(1);
+            var prob = reader.GetDouble(2);
+            
+            if (!result.ContainsKey(parentVal))
+                result[parentVal] = new Dictionary<string, double>();
+            
+            // Only keep probabilities > 1% to avoid noise
+            if (prob >= 0.01)
+                result[parentVal][childVal] = Math.Round(prob, 4);
+        }
+        
+        return result;
+    }
 
     private List<DataAlert> DetectAlerts(DataProfile profile)
     {
@@ -910,12 +1313,20 @@ public class DuckDbProfiler : IDisposable
                 !isProbablyFreeText &&
                 col.UniquePercent > 90 && col.UniqueCount > 100)
             {
+                // Provide context-aware explanation
+                var explanation = col.InferredType == ColumnType.Numeric
+                    ? "High-precision numeric columns with unique values may act as hidden identifiers or contain information derived from the target variable."
+                    : "Near-unique text columns often indicate identifiers, timestamps, or data that wouldn't be available at prediction time.";
+                
                 alerts.Add(new DataAlert
                 {
                     Severity = AlertSeverity.Warning,
                     Column = col.Name,
                     Type = AlertType.PotentialLeakage,
-                    Message = $"⚠ Potential leakage: {col.UniquePercent:F1}% unique ({col.UniqueCount:N0} values) - exclude from modeling or verify"
+                    Message = $"⚠ Potential data leakage: {col.UniquePercent:F1}% unique ({col.UniqueCount:N0} values). " +
+                              $"{explanation} " +
+                              $"Data leakage occurs when a feature contains information that wouldn't be available during real predictions, " +
+                              $"leading to overly optimistic model performance. Verify this column is a legitimate feature, or exclude it from modeling."
                 });
             }
             
@@ -1554,6 +1965,149 @@ public class DuckDbProfiler : IDisposable
         }
     }
 
+    #endregion
+
+    #region Aggregate Statistics
+    
+    /// <summary>
+    /// Compute per-category aggregate statistics in parallel.
+    /// E.g., average price per category, sum of sales per region, etc.
+    /// </summary>
+    private async Task<List<AggregateStatistic>> ComputeAggregateStatsAsync(
+        string readExpr, 
+        List<ColumnProfile> categoricalCols, 
+        List<ColumnProfile> numericCols)
+    {
+        var results = new List<AggregateStatistic>();
+        var tasks = new List<Task<AggregateStatistic?>>();
+        
+        // For each categorical column, compute aggregates for each numeric column
+        foreach (var catCol in categoricalCols)
+        {
+            foreach (var numCol in numericCols)
+            {
+                // Compute AVG, SUM, COUNT for each combination
+                tasks.Add(ComputeSingleAggregateAsync(readExpr, catCol.Name, numCol.Name, "AVG"));
+                
+                // Also compute SUM for amount/total/price columns
+                var nameLower = numCol.Name.ToLowerInvariant();
+                if (nameLower.Contains("amount") || nameLower.Contains("total") || 
+                    nameLower.Contains("price") || nameLower.Contains("sales") ||
+                    nameLower.Contains("revenue") || nameLower.Contains("cost"))
+                {
+                    tasks.Add(ComputeSingleAggregateAsync(readExpr, catCol.Name, numCol.Name, "SUM"));
+                }
+            }
+            
+            // Also compute COUNT per category
+            tasks.Add(ComputeCountAggregateAsync(readExpr, catCol.Name));
+        }
+        
+        // Wait for all tasks
+        var completedTasks = await Task.WhenAll(tasks);
+        
+        // Collect non-null results
+        foreach (var result in completedTasks)
+        {
+            if (result != null)
+            {
+                results.Add(result);
+            }
+        }
+        
+        return results;
+    }
+    
+    private async Task<AggregateStatistic?> ComputeSingleAggregateAsync(
+        string readExpr, 
+        string groupByCol, 
+        string measureCol, 
+        string aggFunc)
+    {
+        try
+        {
+            var sql = $@"
+                SELECT ""{groupByCol}"" AS grp, {aggFunc}(""{measureCol}"") AS val
+                FROM {readExpr}
+                WHERE ""{groupByCol}"" IS NOT NULL AND ""{measureCol}"" IS NOT NULL
+                GROUP BY ""{groupByCol}""
+                ORDER BY val DESC
+                LIMIT 50";
+            
+            var results = new Dictionary<string, double>();
+            await using var cmd = Connection.CreateCommand();
+            cmd.CommandText = sql;
+            await using var reader = await cmd.ExecuteReaderAsync();
+            
+            while (await reader.ReadAsync())
+            {
+                var group = reader.IsDBNull(0) ? "(null)" : reader.GetValue(0)?.ToString() ?? "";
+                var value = reader.IsDBNull(1) ? 0.0 : Convert.ToDouble(reader.GetValue(1));
+                results[group] = Math.Round(value, 4);
+            }
+            
+            if (results.Count == 0)
+                return null;
+            
+            return new AggregateStatistic
+            {
+                GroupByColumn = groupByCol,
+                MeasureColumn = measureCol,
+                AggregateFunction = aggFunc,
+                Results = results,
+                ComputedAt = DateTime.UtcNow,
+                Source = "Profiler"
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
+    private async Task<AggregateStatistic?> ComputeCountAggregateAsync(string readExpr, string groupByCol)
+    {
+        try
+        {
+            var sql = $@"
+                SELECT ""{groupByCol}"" AS grp, COUNT(*) AS cnt
+                FROM {readExpr}
+                WHERE ""{groupByCol}"" IS NOT NULL
+                GROUP BY ""{groupByCol}""
+                ORDER BY cnt DESC
+                LIMIT 50";
+            
+            var results = new Dictionary<string, double>();
+            await using var cmd = Connection.CreateCommand();
+            cmd.CommandText = sql;
+            await using var reader = await cmd.ExecuteReaderAsync();
+            
+            while (await reader.ReadAsync())
+            {
+                var group = reader.IsDBNull(0) ? "(null)" : reader.GetValue(0)?.ToString() ?? "";
+                var count = reader.GetInt64(1);
+                results[group] = count;
+            }
+            
+            if (results.Count == 0)
+                return null;
+            
+            return new AggregateStatistic
+            {
+                GroupByColumn = groupByCol,
+                MeasureColumn = "*",
+                AggregateFunction = "COUNT",
+                Results = results,
+                ComputedAt = DateTime.UtcNow,
+                Source = "Profiler"
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
     #endregion
 
     public void Dispose()

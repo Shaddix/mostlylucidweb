@@ -1,19 +1,42 @@
 using System.Text.RegularExpressions;
+using Mostlylucid.DataSummarizer.Configuration;
 using Mostlylucid.DataSummarizer.Models;
+using Mostlylucid.DataSummarizer.Services.Onnx;
 
 namespace Mostlylucid.DataSummarizer.Services;
 
 /// <summary>
 /// Detects Personally Identifiable Information (PII) and sensitive data in columns.
-/// Uses source-generated regex patterns for common PII types.
+/// Uses source-generated regex patterns for common PII types, optionally enhanced
+/// with ONNX-based semantic classification for subtle cases.
 /// </summary>
-public partial class PiiDetector
+public partial class PiiDetector : IAsyncDisposable
 {
     private readonly bool _verbose;
+    private TinyClassifier? _classifier;
+    private bool _classifierEnabled;
 
     public PiiDetector(bool verbose = false)
     {
         _verbose = verbose;
+    }
+    
+    /// <summary>
+    /// Enable ONNX-based classification for enhanced PII detection.
+    /// This adds semantic understanding to complement regex patterns.
+    /// </summary>
+    public async Task EnableClassifierAsync(OnnxConfig? config = null, CancellationToken ct = default)
+    {
+        _classifier = new TinyClassifier(_verbose, config);
+        await _classifier.InitializeAsync(ct);
+        _classifierEnabled = true;
+        if (_verbose) Console.WriteLine("[PiiDetector] Classifier enabled for ensemble detection");
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        _classifier?.Dispose();
+        await Task.CompletedTask;
     }
 
     #region Source-Generated Regex Patterns
@@ -224,6 +247,192 @@ public partial class PiiDetector
 
         return result;
     }
+    
+    /// <summary>
+    /// Scan a column using ensemble detection (regex + classifier + uniqueness).
+    /// Returns a comprehensive PII risk assessment.
+    /// </summary>
+    public async Task<ColumnPiiRisk> ScanColumnEnsembleAsync(
+        ColumnProfile column,
+        CancellationToken ct = default)
+    {
+        var risk = new ColumnPiiRisk();
+        
+        // 1. Regex-based detection (fast, reliable for structured patterns)
+        var regexResult = ScanColumn(column.Name, 
+            column.TopValues?.Select(tv => (object?)tv.Value) ?? [], 
+            (int)column.Count);
+        
+        if (regexResult.DetectedTypes.Count > 0)
+        {
+            risk.Regex = new RegexDetection
+            {
+                HitRate = regexResult.Confidence,
+                HitCount = regexResult.DetectedTypes.Sum(d => d.MatchCount),
+                Types = regexResult.DetectedTypes.Select(d => d.Type).ToList(),
+                TypeCounts = regexResult.DetectedTypes.ToDictionary(d => d.Type, d => d.MatchCount)
+            };
+            risk.DetectedTypes = regexResult.DetectedTypes.Select(d => d.Type).ToList();
+            risk.Reasons.Add($"Regex matched {regexResult.PrimaryType} with {regexResult.Confidence:P0} confidence");
+        }
+        
+        // 2. Classifier-based detection (semantic understanding for subtle cases)
+        if (_classifierEnabled && _classifier != null)
+        {
+            var sampleValues = column.TopValues?
+                .Take(5)
+                .Select(tv => tv.Value)
+                .ToList();
+                
+            var (label, confidence) = await _classifier.ClassifyPiiAsync(
+                column.Name, sampleValues, ct);
+            
+            if (label != "not_pii" && confidence > 0.5)
+            {
+                var classifierType = MapLabelToPiiType(label);
+                risk.Classifier = new ClassifierDetection
+                {
+                    HitRate = confidence,
+                    Types = classifierType != PiiType.None ? [classifierType] : [],
+                    AverageConfidence = confidence,
+                    HighConfidenceRate = confidence > 0.8 ? 1.0 : 0.0,
+                    AgreementRate = risk.Regex != null && 
+                        risk.Regex.Types.Contains(classifierType) ? 1.0 : 0.0
+                };
+                
+                if (!risk.DetectedTypes.Contains(classifierType) && classifierType != PiiType.None)
+                {
+                    risk.DetectedTypes.Add(classifierType);
+                }
+                risk.Reasons.Add($"Classifier detected {label} with {confidence:P0} confidence");
+            }
+        }
+        
+        // 3. Identifier/uniqueness risk (quasi-identifiers)
+        var cardinalityRatio = column.Count > 0 ? (double)column.UniqueCount / column.Count : 0;
+        if (cardinalityRatio > 0.9 && column.InferredType == ColumnType.Text)
+        {
+            // High uniqueness text column - potential identifier
+            risk.UniqueIdentifierRisk = new IdentifierRisk
+            {
+                Level = cardinalityRatio > 0.99 ? PiiRiskLevel.High : PiiRiskLevel.Medium,
+                CardinalityRatio = cardinalityRatio,
+                HasFixedLength = HasFixedLength(column),
+                AppearsSequential = AppearsSequential(column),
+                Reason = $"High uniqueness ({cardinalityRatio:P0}) in text column"
+            };
+            risk.Reasons.Add($"High uniqueness ratio ({cardinalityRatio:P1}) suggests identifier");
+        }
+        
+        // Determine overall risk level
+        risk.RiskLevel = DetermineOverallRisk(risk);
+        risk.RecommendedAction = GetRecommendedAction(risk);
+        
+        return risk;
+    }
+    
+    private static PiiType MapLabelToPiiType(string label) => label switch
+    {
+        "email" => PiiType.Email,
+        "phone" => PiiType.PhoneNumber,
+        "name" => PiiType.PersonName,
+        "address" => PiiType.Address,
+        "ssn" => PiiType.SSN,
+        "credit_card" => PiiType.CreditCard,
+        "ip_address" => PiiType.IPAddress,
+        "password" => PiiType.Other,
+        "dob" => PiiType.DateOfBirth,
+        _ => PiiType.None
+    };
+    
+    private static bool HasFixedLength(ColumnProfile column)
+    {
+        // Check if all top values have the same length (suggests structured ID)
+        var lengths = column.TopValues?
+            .Select(tv => tv.Value?.Length ?? 0)
+            .Distinct()
+            .Take(2)
+            .ToList();
+        return lengths?.Count == 1;
+    }
+    
+    private static bool AppearsSequential(ColumnProfile column)
+    {
+        // Simple heuristic: if values contain sequential numeric patterns
+        var values = column.TopValues?.Select(tv => tv.Value).Take(5).ToList();
+        if (values == null || values.Count < 2) return false;
+        
+        // Extract numeric portions and check if they're sequential
+        var numbers = values
+            .Select(v => v?.All(c => char.IsDigit(c) || c == '-') == true)
+            .ToList();
+        return numbers.Count(n => n) >= values.Count / 2;
+    }
+    
+    private static PiiRiskLevel DetermineOverallRisk(ColumnPiiRisk risk)
+    {
+        // Ensemble decision: combine signals
+        var signals = new List<(PiiRiskLevel Level, double Weight)>();
+        
+        if (risk.Regex != null)
+        {
+            var regexRisk = risk.Regex.Types.Any(t => 
+                t is PiiType.SSN or PiiType.CreditCard or PiiType.BankAccount) 
+                ? PiiRiskLevel.Critical 
+                : risk.Regex.HitRate > 0.7 ? PiiRiskLevel.High : PiiRiskLevel.Medium;
+            signals.Add((regexRisk, 0.5));
+        }
+        
+        if (risk.Classifier != null)
+        {
+            var classifierRisk = risk.Classifier.AverageConfidence > 0.8 
+                ? PiiRiskLevel.High 
+                : PiiRiskLevel.Medium;
+            signals.Add((classifierRisk, 0.3));
+        }
+        
+        if (risk.UniqueIdentifierRisk != null)
+        {
+            signals.Add((risk.UniqueIdentifierRisk.Level, 0.2));
+        }
+        
+        if (signals.Count == 0) return PiiRiskLevel.None;
+        
+        // Weighted max (bias towards highest risk)
+        var maxRisk = signals.Max(s => s.Level);
+        return maxRisk;
+    }
+    
+    private static string GetRecommendedAction(ColumnPiiRisk risk) => risk.RiskLevel switch
+    {
+        PiiRiskLevel.Critical => "EXCLUDE from output or use heavy masking (e.g., hash)",
+        PiiRiskLevel.High => "Mask or redact values in synthetic output",
+        PiiRiskLevel.Medium => "Consider using Faker patterns for realistic pseudonymization",
+        PiiRiskLevel.Low => "Safe for synthetic generation with distribution matching",
+        _ => "No action needed"
+    };
+    
+    /// <summary>
+    /// Scan all columns in a profile for PII using ensemble detection.
+    /// </summary>
+    public async Task<List<(ColumnProfile Column, ColumnPiiRisk Risk)>> ScanProfileEnsembleAsync(
+        DataProfile profile,
+        CancellationToken ct = default)
+    {
+        var results = new List<(ColumnProfile, ColumnPiiRisk)>();
+        
+        foreach (var col in profile.Columns)
+        {
+            ct.ThrowIfCancellationRequested();
+            var risk = await ScanColumnEnsembleAsync(col, ct);
+            if (risk.RiskLevel != PiiRiskLevel.None)
+            {
+                results.Add((col, risk));
+            }
+        }
+        
+        return results;
+    }
 
     /// <summary>
     /// Scan all columns in a profile for PII
@@ -384,40 +593,4 @@ public class PiiDetection
     public bool DetectedFromName { get; set; }
 }
 
-/// <summary>
-/// Types of PII that can be detected
-/// </summary>
-public enum PiiType
-{
-    SSN,
-    CreditCard,
-    Email,
-    PhoneNumber,
-    Address,
-    PersonName,
-    DateOfBirth,
-    IPAddress,
-    MACAddress,
-    ZipCode,
-    USState,
-    DriversLicense,
-    PassportNumber,
-    BankAccount,
-    RoutingNumber,
-    UUID,
-    URL,
-    VIN,
-    IBAN,
-    Other
-}
-
-/// <summary>
-/// Risk level of detected PII
-/// </summary>
-public enum PiiRiskLevel
-{
-    Low,
-    Medium,
-    High,
-    Critical
-}
+// PiiType and PiiRiskLevel enums are defined in Models/DataProfile.cs

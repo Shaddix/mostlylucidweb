@@ -284,4 +284,5 @@ mlmodels/
 /test-synthetic.csv
 /Mostlylucid.DataSummarizer/test-output/
 /Mostlylucid.DataSummarizer/test-outputs/
-/*.vss.duckdb*
+*.vss.duckdb
+*.duckdb

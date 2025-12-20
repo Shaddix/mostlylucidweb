@@ -60,6 +60,50 @@ public class ProfileOptions
     /// Callback to update status during profiling (for UI feedback)
     /// </summary>
     public Action<string>? OnStatusUpdate { get; set; }
+    
+    /// <summary>
+    /// Profiling depth level
+    /// </summary>
+    public ProfileDepth Depth { get; set; } = ProfileDepth.Standard;
+    
+    /// <summary>
+    /// Maximum categorical columns to use for aggregate breakdowns
+    /// </summary>
+    public int MaxAggregateCategories { get; set; } = 5;
+    
+    /// <summary>
+    /// Maximum unique values per category for aggregate stats (avoid explosion)
+    /// </summary>
+    public int MaxCategoryValues { get; set; } = 50;
+    
+    /// <summary>
+    /// Maximum numeric columns to aggregate per category
+    /// </summary>
+    public int MaxAggregateMeasures { get; set; } = 10;
+}
+
+/// <summary>
+/// Controls how deep the profiling goes
+/// </summary>
+public enum ProfileDepth
+{
+    /// <summary>
+    /// Minimal stats only - row count, column types, basic counts.
+    /// Use for initial fast response.
+    /// </summary>
+    Initial,
+    
+    /// <summary>
+    /// Standard profiling - full column stats, correlations, alerts.
+    /// Default for most use cases.
+    /// </summary>
+    Standard,
+    
+    /// <summary>
+    /// Deep profiling - includes per-category aggregates, patterns, PII detection.
+    /// Run in background to enrich the profile signature.
+    /// </summary>
+    Background
 }
 
 /// <summary>
@@ -79,6 +123,186 @@ public class DataProfile
     public List<DetectedPattern> Patterns { get; set; } = [];
     public TargetProfile? Target { get; set; }
     public TimeSpan ProfileTime { get; set; }
+    
+    /// <summary>
+    /// Pre-computed aggregate statistics (per-category breakdowns, etc.)
+    /// These are computed in parallel during profiling and enriched by LLM queries.
+    /// </summary>
+    public List<AggregateStatistic> AggregateStats { get; set; } = [];
+    
+    /// <summary>
+    /// Cached query results from LLM interactions that enrich the profile signature.
+    /// These can be reused to answer similar questions without re-querying.
+    /// </summary>
+    public List<CachedQueryResult> CachedQueries { get; set; } = [];
+    
+    /// <summary>
+    /// Conditional probability tables for categorical column pairs.
+    /// Captures P(Child | Parent) for key relationships like P(Browser | DeviceType).
+    /// Essential for generating realistic joint distributions.
+    /// </summary>
+    public List<ConditionalTable> ConditionalTables { get; set; } = [];
+    
+    /// <summary>
+    /// Synthesis metadata: privacy settings, suppression thresholds, etc.
+    /// </summary>
+    public SynthesisMetadata? SynthesisInfo { get; set; }
+}
+
+/// <summary>
+/// Conditional probability table: P(ChildColumn | ParentColumn).
+/// Used to preserve categorical relationships during synthesis.
+/// </summary>
+public class ConditionalTable
+{
+    /// <summary>The parent/conditioning column (e.g., "DeviceType")</summary>
+    public string ParentColumn { get; set; } = "";
+    
+    /// <summary>The child/dependent column (e.g., "Browser")</summary>
+    public string ChildColumn { get; set; } = "";
+    
+    /// <summary>
+    /// Conditional distributions: Parent value -> (Child value -> probability).
+    /// E.g., {"Mobile": {"Safari": 0.6, "Chrome": 0.3, "Other": 0.1}}
+    /// </summary>
+    public Dictionary<string, Dictionary<string, double>> Distributions { get; set; } = new();
+    
+    /// <summary>Mutual information score (higher = stronger relationship)</summary>
+    public double MutualInformation { get; set; }
+    
+    /// <summary>Cramer's V correlation (0-1, higher = stronger)</summary>
+    public double CramersV { get; set; }
+    
+    /// <summary>Whether this relationship was auto-detected or manually specified</summary>
+    public bool AutoDetected { get; set; } = true;
+}
+
+/// <summary>
+/// Metadata for synthesis: privacy settings, k-anonymity thresholds, etc.
+/// </summary>
+public class SynthesisMetadata
+{
+    /// <summary>Minimum count threshold for k-anonymity. Categories below this are suppressed.</summary>
+    public int KAnonymityThreshold { get; set; } = 5;
+    
+    /// <summary>Columns identified as PII-sensitive (suppress in synthesis)</summary>
+    public List<string> PiiColumns { get; set; } = [];
+    
+    /// <summary>Columns to completely redact (replace with fake data)</summary>
+    public List<string> RedactColumns { get; set; } = [];
+    
+    /// <summary>Whether rare tail values should be clipped to preserve privacy</summary>
+    public bool ClipTails { get; set; } = true;
+    
+    /// <summary>Percentile at which to clip tails (e.g., 0.01 = clip below 1st and above 99th)</summary>
+    public double TailClipPercentile { get; set; } = 0.01;
+}
+
+/// <summary>
+/// Pre-computed aggregate statistic (e.g., average price per category)
+/// </summary>
+public class AggregateStatistic
+{
+    /// <summary>The measure column being aggregated (e.g., "UnitPrice")</summary>
+    public string MeasureColumn { get; set; } = "";
+    
+    /// <summary>The grouping column (e.g., "Category")</summary>
+    public string GroupByColumn { get; set; } = "";
+    
+    /// <summary>The aggregation function (e.g., "AVG", "SUM", "COUNT")</summary>
+    public string AggregateFunction { get; set; } = "AVG";
+    
+    /// <summary>Results: group value -> aggregated value</summary>
+    public Dictionary<string, double> Results { get; set; } = new();
+    
+    /// <summary>When this was computed</summary>
+    public DateTime ComputedAt { get; set; } = DateTime.UtcNow;
+    
+    /// <summary>Source: "Profiler" or "LLM"</summary>
+    public string Source { get; set; } = "Profiler";
+}
+
+/// <summary>
+/// Cached query result from LLM interaction.
+/// Includes derived statistics computed from the result set.
+/// </summary>
+public class CachedQueryResult
+{
+    /// <summary>The original question</summary>
+    public string Question { get; set; } = "";
+    
+    /// <summary>Normalized/canonical form of the question for matching</summary>
+    public string NormalizedQuestion { get; set; } = "";
+    
+    /// <summary>The SQL that was generated</summary>
+    public string Sql { get; set; } = "";
+    
+    /// <summary>The result summary</summary>
+    public string Summary { get; set; } = "";
+    
+    /// <summary>Structured result data (for reuse)</summary>
+    public Dictionary<string, object>? ResultData { get; set; }
+    
+    /// <summary>Columns involved in the query</summary>
+    public List<string> RelatedColumns { get; set; } = [];
+    
+    /// <summary>When this was cached</summary>
+    public DateTime CachedAt { get; set; } = DateTime.UtcNow;
+    
+    /// <summary>How many times this cache entry was reused</summary>
+    public int ReuseCount { get; set; }
+    
+    /// <summary>
+    /// Filter context - what subset of data this query represents.
+    /// E.g., "Category='Electronics'" or "Region='North' AND Year=2024"
+    /// </summary>
+    public string? FilterContext { get; set; }
+    
+    /// <summary>
+    /// Derived statistics computed from the query result set.
+    /// These enrich the profile for future queries on the same subset.
+    /// </summary>
+    public QueryResultStats? DerivedStats { get; set; }
+}
+
+/// <summary>
+/// Statistics derived from a query result set.
+/// Enables building up knowledge about data subsets.
+/// </summary>
+public class QueryResultStats
+{
+    /// <summary>Number of rows in the result</summary>
+    public int RowCount { get; set; }
+    
+    /// <summary>Statistics for numeric columns in the result</summary>
+    public Dictionary<string, NumericResultStats> NumericStats { get; set; } = new();
+    
+    /// <summary>Value distributions for categorical columns</summary>
+    public Dictionary<string, Dictionary<string, int>> CategoryDistributions { get; set; } = new();
+    
+    /// <summary>Detected outlier indices (row numbers with anomalies)</summary>
+    public List<int>? OutlierIndices { get; set; }
+    
+    /// <summary>Distribution type if detected</summary>
+    public DistributionType? Distribution { get; set; }
+    
+    /// <summary>Any patterns detected in the subset</summary>
+    public List<string>? DetectedPatterns { get; set; }
+}
+
+/// <summary>
+/// Numeric statistics for a column in a query result
+/// </summary>
+public class NumericResultStats
+{
+    public double Min { get; set; }
+    public double Max { get; set; }
+    public double Mean { get; set; }
+    public double Median { get; set; }
+    public double StdDev { get; set; }
+    public double? Q25 { get; set; }
+    public double? Q75 { get; set; }
+    public int OutlierCount { get; set; }
 }
 
 /// <summary>
@@ -149,8 +373,23 @@ public class ColumnProfile
     public double? CoefficientOfVariation => Mean.HasValue && Mean != 0 && StdDev.HasValue 
         ? Math.Abs(StdDev.Value / Mean.Value) : null;
     
+    /// <summary>
+    /// Histogram bins for numeric columns. Enables accurate synthesis via bucket sampling.
+    /// </summary>
+    public NumericHistogram? Histogram { get; set; }
+    
     // Categorical stats
     public List<ValueCount>? TopValues { get; set; }
+    
+    /// <summary>How many top values are stored (the K in top-K)</summary>
+    public int TopK { get; set; }
+    
+    /// <summary>Count of values not in TopValues (the "Other" bucket)</summary>
+    public long OtherCount { get; set; }
+    
+    /// <summary>Percentage of values not in TopValues</summary>
+    public double OtherPercent { get; set; }
+    
     public double? ImbalanceRatio { get; set; }
     
     /// <summary>
@@ -163,6 +402,12 @@ public class ColumnProfile
     /// Mode - most frequent value
     /// </summary>
     public string? Mode { get; set; }
+    
+    /// <summary>
+    /// Cardinality ratio: UniqueCount / Count (0..1).
+    /// 1.0 = every value unique, 0.001 = very few unique values.
+    /// </summary>
+    public double CardinalityRatio => Count > 0 ? (double)UniqueCount / Count : 0;
     
     // Date stats
     public DateTime? MinDate { get; set; }
@@ -194,6 +439,217 @@ public class ColumnProfile
     /// Periodicity detection result (for numeric time series columns)
     /// </summary>
     public PeriodicityInfo? Periodicity { get; set; }
+    
+    /// <summary>
+    /// How this column should be handled during synthesis.
+    /// Determines privacy handling and generation strategy.
+    /// </summary>
+    public GenerationPolicy? SynthesisPolicy { get; set; }
+    
+    /// <summary>
+    /// PII detection result - combines regex, classifier, and uniqueness signals.
+    /// Never stores actual values, only counts and risk assessment.
+    /// </summary>
+    public ColumnPiiRisk? PiiRisk { get; set; }
+}
+
+/// <summary>
+/// Histogram bins for numeric columns. Enables accurate synthesis via bucket sampling.
+/// </summary>
+public class NumericHistogram
+{
+    /// <summary>Bin edges (N+1 values for N bins)</summary>
+    public List<double> BinEdges { get; set; } = [];
+    
+    /// <summary>Count per bin (N values)</summary>
+    public List<long> BinCounts { get; set; } = [];
+    
+    /// <summary>Number of bins</summary>
+    public int BinCount => BinCounts.Count;
+    
+    /// <summary>Whether bins are equal-width or equal-count (quantile)</summary>
+    public HistogramType Type { get; set; } = HistogramType.EqualWidth;
+}
+
+public enum HistogramType
+{
+    /// <summary>Equal-width bins (fixed intervals)</summary>
+    EqualWidth,
+    /// <summary>Equal-count bins (quantile-based)</summary>
+    Quantile
+}
+
+/// <summary>
+/// Policy for how a column should be handled during synthesis.
+/// </summary>
+public class GenerationPolicy
+{
+    /// <summary>Generation mode for this column</summary>
+    public GenerationMode Mode { get; set; } = GenerationMode.Synthetic;
+    
+    /// <summary>Why this policy was chosen</summary>
+    public string? Reason { get; set; }
+    
+    /// <summary>Whether TopValues should be suppressed (PII risk)</summary>
+    public bool SuppressTopValues { get; set; }
+    
+    /// <summary>Minimum count for k-anonymity (categories below this get rolled into OTHER)</summary>
+    public int? KAnonymityThreshold { get; set; }
+    
+    /// <summary>Whether this column was auto-classified or manually set</summary>
+    public bool AutoClassified { get; set; } = true;
+}
+
+/// <summary>
+/// How a column should be generated during synthesis
+/// </summary>
+public enum GenerationMode
+{
+    /// <summary>Generate synthetic values matching the distribution</summary>
+    Synthetic,
+    
+    /// <summary>Generate sequential IDs (for identifier columns)</summary>
+    SequentialId,
+    
+    /// <summary>Exclude from output entirely</summary>
+    Exclude,
+    
+    /// <summary>Mask/redact values (e.g., "***@***.com" for emails)</summary>
+    Mask,
+    
+    /// <summary>Safe to copy distribution exactly (low cardinality, no PII)</summary>
+    CopySafe,
+    
+    /// <summary>Generate using Faker patterns (names, addresses, etc.)</summary>
+    FakerPattern
+}
+
+/// <summary>
+/// PII detection result for a column - combines regex, classifier, and uniqueness signals.
+/// Never stores actual values, only counts and statistics.
+/// </summary>
+public class ColumnPiiRisk
+{
+    /// <summary>Overall risk level based on ensemble of signals</summary>
+    public PiiRiskLevel RiskLevel { get; set; } = PiiRiskLevel.None;
+    
+    /// <summary>Detected PII types (may have multiple)</summary>
+    public List<PiiType> DetectedTypes { get; set; } = [];
+    
+    /// <summary>Regex-based detection results (counts only, never values)</summary>
+    public RegexDetection? Regex { get; set; }
+    
+    /// <summary>Classifier-based detection results</summary>
+    public ClassifierDetection? Classifier { get; set; }
+    
+    /// <summary>Identifier/uniqueness risk (separate from PII type risk)</summary>
+    public IdentifierRisk? UniqueIdentifierRisk { get; set; }
+    
+    /// <summary>Reasons for the risk assessment</summary>
+    public List<string> Reasons { get; set; } = [];
+    
+    /// <summary>Recommended action based on risk</summary>
+    public string? RecommendedAction { get; set; }
+}
+
+/// <summary>
+/// Regex-based PII detection (pattern matching). Stores counts only.
+/// </summary>
+public class RegexDetection
+{
+    /// <summary>Percentage of values matching known PII patterns</summary>
+    public double HitRate { get; set; }
+    
+    /// <summary>Count of values matching patterns</summary>
+    public int HitCount { get; set; }
+    
+    /// <summary>Types detected by regex</summary>
+    public List<PiiType> Types { get; set; } = [];
+    
+    /// <summary>Breakdown by type: type -> hit count</summary>
+    public Dictionary<PiiType, int> TypeCounts { get; set; } = new();
+}
+
+/// <summary>
+/// Classifier-based PII detection (ONNX embedding similarity).
+/// </summary>
+public class ClassifierDetection
+{
+    /// <summary>Percentage of samples classified as PII</summary>
+    public double HitRate { get; set; }
+    
+    /// <summary>Types detected by classifier</summary>
+    public List<PiiType> Types { get; set; } = [];
+    
+    /// <summary>Average confidence across detections</summary>
+    public double AverageConfidence { get; set; }
+    
+    /// <summary>Percentage of detections with high confidence (>0.8)</summary>
+    public double HighConfidenceRate { get; set; }
+    
+    /// <summary>Whether regex and classifier agree on detection</summary>
+    public double AgreementRate { get; set; }
+}
+
+/// <summary>
+/// Identifier/uniqueness risk - high uniqueness strings even if not classic PII.
+/// </summary>
+public class IdentifierRisk
+{
+    /// <summary>Risk level based on uniqueness characteristics</summary>
+    public PiiRiskLevel Level { get; set; } = PiiRiskLevel.None;
+    
+    /// <summary>Cardinality ratio (UniqueCount/Count)</summary>
+    public double CardinalityRatio { get; set; }
+    
+    /// <summary>Whether length is fixed (suggests structured ID)</summary>
+    public bool HasFixedLength { get; set; }
+    
+    /// <summary>Whether values appear sequential or patterned</summary>
+    public bool AppearsSequential { get; set; }
+    
+    /// <summary>Reason for risk assessment</summary>
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Types of PII that can be detected
+/// </summary>
+public enum PiiType
+{
+    None,
+    SSN,
+    CreditCard,
+    Email,
+    PhoneNumber,
+    Address,
+    PersonName,
+    DateOfBirth,
+    IPAddress,
+    MACAddress,
+    ZipCode,
+    USState,
+    DriversLicense,
+    PassportNumber,
+    BankAccount,
+    RoutingNumber,
+    UUID,
+    URL,
+    VIN,
+    IBAN,
+    Other
+}
+
+/// <summary>
+/// Risk level of detected PII
+/// </summary>
+public enum PiiRiskLevel
+{
+    None,
+    Low,
+    Medium,
+    High,
+    Critical
 }
 
 public enum ColumnType

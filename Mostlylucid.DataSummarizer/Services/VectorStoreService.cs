@@ -52,19 +52,25 @@ public class VectorStoreService : IDisposable
             _conn = new DuckDBConnection($"Data Source={_dbPath}");
             await _conn.OpenAsync();
 
-            // Try VSS; if fails, fall back to manual similarity
+            // Try to install and load the VSS extension for HNSW indexes
             try
             {
                 await ExecAsync("INSTALL vss; LOAD vss;");
+                // Enable experimental persistence for HNSW indexes on disk-backed databases
+                // This allows indexes to persist across restarts (with known WAL recovery limitations)
+                await ExecAsync("SET hnsw_enable_experimental_persistence = true;");
                 _useVss = true;
+                if (_verbose) Console.WriteLine($"[VectorStore] VSS extension loaded with HNSW persistence enabled");
             }
             catch (Exception ex)
             {
                 _useVss = false;
-                if (_verbose) Console.WriteLine($"[VectorStore] VSS unavailable, falling back to in-process similarity: {ex.Message}");
+                if (_verbose) Console.WriteLine($"[VectorStore] VSS extension unavailable ({ex.Message}), using in-memory similarity");
             }
 
-            // Tables
+            // Tables - use dynamic embedding dimension based on the model
+            var dim = _embeddingDimension;
+            
         await ExecAsync(@"
             CREATE TABLE IF NOT EXISTS registry_files (
                 file_path TEXT PRIMARY KEY,
@@ -81,25 +87,36 @@ public class VectorStoreService : IDisposable
         try { await ExecAsync("ALTER TABLE registry_files ADD COLUMN content_hash TEXT"); } catch { }
         try { await ExecAsync("ALTER TABLE registry_files ADD COLUMN file_size BIGINT"); } catch { }
 
-        await ExecAsync(@"
+        // Drop and recreate embedding tables if dimension changed (schema migration)
+        // Check current dimension by querying table info
+        var needsMigration = await CheckEmbeddingDimensionMismatchAsync(dim);
+        if (needsMigration)
+        {
+            if (_verbose) Console.WriteLine($"[VectorStore] Migrating embedding tables to dimension {dim}");
+            try { await ExecAsync("DROP TABLE IF EXISTS registry_embeddings"); } catch { }
+            try { await ExecAsync("DROP TABLE IF EXISTS registry_conversations"); } catch { }
+            try { await ExecAsync("DROP TABLE IF EXISTS registry_patterns"); } catch { }
+        }
+
+        await ExecAsync($@"
             CREATE TABLE IF NOT EXISTS registry_embeddings (
                 id BIGINT PRIMARY KEY,
                 file_path TEXT,
                 label TEXT,
                 kind TEXT,
                 metadata TEXT,
-                embedding FLOAT[128],
+                embedding FLOAT[{dim}],
                 embedding_json TEXT
             );
         ");
 
-        await ExecAsync(@"
+        await ExecAsync($@"
             CREATE TABLE IF NOT EXISTS registry_conversations (
                 session_id TEXT,
                 turn_id BIGINT,
                 role TEXT,
                 content TEXT,
-                embedding FLOAT[128],
+                embedding FLOAT[{dim}],
                 embedding_json TEXT,
                 created_at TIMESTAMP DEFAULT NOW(),
                 PRIMARY KEY (session_id, turn_id)
@@ -111,7 +128,7 @@ public class VectorStoreService : IDisposable
         await ExecAsync(@"CREATE SEQUENCE IF NOT EXISTS registry_patterns_seq;");
         
         // Novel patterns table - stores detected patterns with their regex and examples
-        await ExecAsync(@"
+        await ExecAsync($@"
             CREATE TABLE IF NOT EXISTS registry_patterns (
                 id BIGINT PRIMARY KEY,
                 pattern_name TEXT,
@@ -126,7 +143,7 @@ public class VectorStoreService : IDisposable
                 is_identifier BOOLEAN DEFAULT FALSE,
                 is_sensitive BOOLEAN DEFAULT FALSE,
                 validation_rules_json TEXT,
-                embedding FLOAT[128],
+                embedding FLOAT[{dim}],
                 embedding_json TEXT,
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
@@ -137,14 +154,17 @@ public class VectorStoreService : IDisposable
         {
             try
             {
-                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_embeddings_vss ON registry_embeddings USING vss(embedding);");
-                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_conversations_vss ON registry_conversations USING vss(embedding);");
-                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_patterns_vss ON registry_patterns USING vss(embedding);");
+                // Try to create HNSW indexes for vector similarity search
+                // Note: DuckDB VSS uses "USING HNSW" syntax (not "USING vss")
+                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_embeddings_hnsw ON registry_embeddings USING HNSW(embedding);");
+                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_conversations_hnsw ON registry_conversations USING HNSW(embedding);");
+                await ExecAsync(@"CREATE INDEX IF NOT EXISTS idx_registry_patterns_hnsw ON registry_patterns USING HNSW(embedding);");
+                if (_verbose) Console.WriteLine($"[VectorStore] HNSW indexes created for vector similarity search");
             }
             catch (Exception ex)
             {
                 _useVss = false;
-                if (_verbose) Console.WriteLine($"[VectorStore] VSS index unavailable, using fallback: {ex.Message}");
+                if (_verbose) Console.WriteLine($"[VectorStore] HNSW index unavailable, using in-memory fallback: {ex.Message}");
             }
         }
 
@@ -155,6 +175,44 @@ public class VectorStoreService : IDisposable
         _available = false;
         if (_verbose) Console.WriteLine($"[VectorStore] Disabled: {ex.Message}");
     }
+    }
+    
+    /// <summary>
+    /// Check if existing embedding tables have a different dimension than expected.
+    /// Returns true if migration is needed.
+    /// </summary>
+    private async Task<bool> CheckEmbeddingDimensionMismatchAsync(int expectedDim)
+    {
+        try
+        {
+            // Check if table exists and has data
+            await using var cmd = _conn!.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM registry_embeddings LIMIT 1";
+            var count = await cmd.ExecuteScalarAsync();
+            if (count == null || Convert.ToInt64(count) == 0)
+                return false; // No data, no migration needed
+            
+            // Try to get the column type info
+            await using var cmd2 = _conn.CreateCommand();
+            cmd2.CommandText = "DESCRIBE registry_embeddings";
+            await using var reader = await cmd2.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var colName = reader.GetString(0);
+                if (colName == "embedding")
+                {
+                    var colType = reader.GetString(1); // e.g., "FLOAT[128]"
+                    if (colType.Contains($"[{expectedDim}]"))
+                        return false; // Dimension matches
+                    return true; // Dimension mismatch, need migration
+                }
+            }
+        }
+        catch
+        {
+            // Table doesn't exist yet, no migration needed
+        }
+        return false;
     }
 
     public async Task UpsertProfileAsync(DataProfile profile, string? contentHash = null, long? fileSize = null)
@@ -243,7 +301,7 @@ public class VectorStoreService : IDisposable
         {
             var vecLiteral = VectorLiteral(queryVec);
             var sql = $@"
-                SELECT file_path, label, kind, metadata, vss_distance(embedding, {vecLiteral}) AS distance
+                SELECT file_path, label, kind, metadata, array_distance(embedding, {vecLiteral}) AS distance
                 FROM registry_embeddings
                 ORDER BY distance ASC
                 LIMIT {topK};";
@@ -260,7 +318,7 @@ public class VectorStoreService : IDisposable
                     Label = reader.GetString(1),
                     Kind = reader.GetString(2),
                     Metadata = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                    Score = reader.IsDBNull(4) ? 1.0 : reader.GetDouble(4)
+                    Score = reader.IsDBNull(4) ? 1.0 : Convert.ToDouble(reader.GetValue(4))
                 });
             }
             return hits;
@@ -360,8 +418,9 @@ public class VectorStoreService : IDisposable
 
     private static string VectorLiteral(float[] vector)
     {
+        // Use array_value() to create a proper fixed-size FLOAT array for DuckDB
         var parts = vector.Select(v => v.ToString("G", CultureInfo.InvariantCulture));
-        return $"[{string.Join(",", parts)}]";
+        return $"[{string.Join(",", parts)}]::FLOAT[{vector.Length}]";
     }
 
     private async Task InsertEmbeddingAsync(string filePath, string label, string kind, string metadata, float[] embedding)
@@ -469,7 +528,7 @@ public class VectorStoreService : IDisposable
             var sql = $@"
                 SELECT id, pattern_name, column_name, file_path, pattern_type, detected_regex, improved_regex,
                        description, examples_json, match_percent, is_identifier, is_sensitive, validation_rules_json,
-                       vss_distance(embedding, {vecLiteral}) AS distance
+                       array_distance(embedding, {vecLiteral}) AS distance
                 FROM registry_patterns
                 ORDER BY distance ASC
                 LIMIT {topK};";
@@ -623,7 +682,7 @@ public class VectorStoreService : IDisposable
             ImprovedRegex = reader.IsDBNull(6) ? null : reader.GetString(6),
             Description = reader.IsDBNull(7) ? "" : reader.GetString(7),
             Examples = JsonSerializer.Deserialize<List<string>>(examplesJson) ?? [],
-            MatchPercent = reader.IsDBNull(9) ? 0 : reader.GetDouble(9),
+            MatchPercent = reader.IsDBNull(9) ? 0 : Convert.ToDouble(reader.GetValue(9)),
             IsIdentifier = !reader.IsDBNull(10) && reader.GetBoolean(10),
             IsSensitive = !reader.IsDBNull(11) && reader.GetBoolean(11),
             ValidationRules = JsonSerializer.Deserialize<List<string>>(rulesJson) ?? [],
@@ -641,7 +700,7 @@ public class VectorStoreService : IDisposable
         if (_useVss)
         {
             var vecLiteral = VectorLiteral(queryVec);
-            var sql = $@"SELECT role, content, vss_distance(embedding, {vecLiteral}) as distance
+            var sql = $@"SELECT role, content, array_distance(embedding, {vecLiteral}) as distance
                          FROM registry_conversations
                          WHERE session_id = ?
                          ORDER BY distance ASC, created_at DESC

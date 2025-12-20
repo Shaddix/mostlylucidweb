@@ -1266,13 +1266,9 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         }
         
         // Interactive mode - continue asking questions
-        if (interactive && !noLlm)
+        if (interactive)
         {
-            await RunInteractiveMode(summarizer, report, file!, sheet, verbose, sessionId);
-        }
-        else if (interactive && noLlm)
-        {
-            AnsiConsole.MarkupLine("[yellow]Interactive mode requires LLM. Run without --no-llm flag.[/]");
+            await RunInteractiveMode(summarizer, report, file!, sheet, verbose, sessionId, noLlm);
         }
     }
     catch (Exception ex)
@@ -1298,12 +1294,31 @@ static async Task RunInteractiveMode(
     string file,
     string? sheet,
     bool verbose,
-    string sessionId)
+    string sessionId,
+    bool noLlm = false)
 {
     AnsiConsole.WriteLine();
     AnsiConsole.Write(new Rule("[green]Interactive Mode[/]").LeftJustified());
-    AnsiConsole.MarkupLine("[dim]Ask questions about your data. Type 'exit' or 'quit' to leave.[/]");
+    if (noLlm)
+    {
+        AnsiConsole.MarkupLine("[dim]LLM disabled. Use '/' commands to explore data. Type '/' for command list.[/]");
+    }
+    else
+    {
+        AnsiConsole.MarkupLine("[dim]Ask questions about your data. Type '/' for commands.[/]");
+    }
     AnsiConsole.MarkupLine($"[dim]Session: {sessionId}[/]\n");
+    
+    // Track current output profile
+    var currentProfile = "Default";
+    var availableProfiles = new Dictionary<string, (OutputProfileConfig Config, string Description)>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Default"] = (OutputProfileConfig.Default, "Balanced output for interactive use"),
+        ["Tool"] = (OutputProfileConfig.Tool, "Minimal JSON output for MCP/agent consumption"),
+        ["Brief"] = (OutputProfileConfig.Brief, "Quick overview - summary and alerts only"),
+        ["Detailed"] = (OutputProfileConfig.Detailed, "Full analysis with all sections"),
+        ["Markdown"] = (OutputProfileConfig.MarkdownFocus, "Focus on markdown report generation")
+    };
     
     while (true)
     {
@@ -1311,22 +1326,107 @@ static async Task RunInteractiveMode(
         
         if (string.IsNullOrWhiteSpace(question))
             continue;
-            
-        var lower = question.ToLowerInvariant().Trim();
-        if (lower is "exit" or "quit" or "q" or "bye")
+        
+        var trimmed = question.Trim();
+        
+        // System commands start with /
+        if (trimmed.StartsWith('/'))
         {
-            AnsiConsole.MarkupLine("[dim]Goodbye![/]");
-            break;
+            var cmd = trimmed[1..].ToLowerInvariant();
+            
+            // Just "/" lists all commands
+            if (string.IsNullOrEmpty(cmd))
+            {
+                ShowCommands();
+                continue;
+            }
+            
+            var parts = cmd.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            var command = parts[0];
+            var arg = parts.Length > 1 ? parts[1] : "";
+            
+            switch (command)
+            {
+                case "exit" or "quit" or "q":
+                    AnsiConsole.MarkupLine("[dim]Goodbye![/]");
+                    return;
+                    
+                case "help":
+                    ShowCommands();
+                    break;
+                    
+                case "tools":
+                    ShowAvailableTools();
+                    break;
+                    
+                case "profiles" or "modes":
+                    ShowOutputProfiles(availableProfiles, currentProfile);
+                    break;
+                    
+                case "profile" or "mode":
+                    if (string.IsNullOrEmpty(arg))
+                    {
+                        AnsiConsole.MarkupLine($"[dim]Current profile:[/] [green]{currentProfile}[/]");
+                        AnsiConsole.MarkupLine("[dim]Use '/profiles' to list, '/profile <name>' to switch[/]\n");
+                    }
+                    else if (availableProfiles.TryGetValue(arg, out var profileInfo))
+                    {
+                        currentProfile = arg;
+                        AnsiConsole.MarkupLine($"[green]Switched to '{arg}' profile[/]");
+                        AnsiConsole.MarkupLine($"[dim]{profileInfo.Description}[/]\n");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine($"[red]Unknown profile: {Markup.Escape(arg)}[/]");
+                        AnsiConsole.MarkupLine("[dim]Use '/profiles' to see available options[/]\n");
+                    }
+                    break;
+                    
+                case "status" or "info":
+                    ShowSessionStatus(report, file, sessionId, currentProfile, verbose);
+                    break;
+                    
+                case "columns" or "cols":
+                    ShowColumnsSummary(report);
+                    break;
+                    
+                case "column" or "col":
+                    if (string.IsNullOrEmpty(arg))
+                        AnsiConsole.MarkupLine("[yellow]Usage: /column <name>[/]\n");
+                    else
+                        ShowColumnDetails(report, arg);
+                    break;
+                    
+                case "alerts" or "warnings":
+                    ShowAlerts(report);
+                    break;
+                    
+                case "insights":
+                    ShowInsights(report);
+                    break;
+                    
+                case "summary":
+                    ShowDataSummary(report, file);
+                    break;
+                    
+                case "verbose":
+                    verbose = !verbose;
+                    AnsiConsole.MarkupLine($"[dim]Verbose mode:[/] {(verbose ? "[green]on[/]" : "[dim]off[/]")}\n");
+                    break;
+                    
+                default:
+                    AnsiConsole.MarkupLine($"[yellow]Unknown command: /{Markup.Escape(command)}[/]");
+                    AnsiConsole.MarkupLine("[dim]Type '/' for available commands[/]\n");
+                    break;
+            }
+            continue;
         }
         
-        if (lower is "help" or "?")
+        // Data questions require LLM
+        if (noLlm)
         {
-            AnsiConsole.MarkupLine("[dim]Example questions:[/]");
-            AnsiConsole.MarkupLine("  [cyan]tell me about this data[/]");
-            AnsiConsole.MarkupLine("  [cyan]what columns have missing values?[/]");
-            AnsiConsole.MarkupLine("  [cyan]are there any outliers?[/]");
-            AnsiConsole.MarkupLine("  [cyan]what patterns do you see?[/]");
-            AnsiConsole.MarkupLine("  [cyan]what should I fix before modeling?[/]");
+            AnsiConsole.MarkupLine("[yellow]LLM is disabled. Use '/' commands to explore data.[/]");
+            AnsiConsole.MarkupLine("[dim]Type '/' to see available commands[/]\n");
             continue;
         }
         
@@ -2150,4 +2250,325 @@ static async Task ShowStoreStatistics(ProfileStore store)
     
     AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
     Console.ReadKey(true);
+}
+
+// ============================================================================
+// Interactive Mode Helper Functions
+// ============================================================================
+
+static void ShowCommands()
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Commands[/]").LeftJustified());
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .AddColumn("[yellow]Command[/]")
+        .AddColumn("Description");
+    
+    table.AddRow("/", "Show this command list");
+    table.AddRow("/help", "Show this command list");
+    table.AddRow("/tools", "List available analytics tools");
+    table.AddRow("/profiles", "List output profiles");
+    table.AddRow("/profile <name>", "Switch output profile (Default, Brief, Detailed, Tool, Markdown)");
+    table.AddRow("/status", "Show current session info");
+    table.AddRow("/summary", "Show data summary");
+    table.AddRow("/columns", "List all columns with types");
+    table.AddRow("/column <name>", "Show details for a specific column");
+    table.AddRow("/alerts", "Show all alerts/warnings");
+    table.AddRow("/insights", "Show detected insights");
+    table.AddRow("/verbose", "Toggle verbose mode");
+    table.AddRow("/exit", "Exit interactive mode");
+    
+    AnsiConsole.Write(table);
+    AnsiConsole.MarkupLine("\n[dim]Or just type a question about your data![/]\n");
+}
+
+static void ShowAvailableTools()
+{
+    var registry = new AnalyticsToolRegistry();
+    var tools = registry.GetAllTools();
+    var byCategory = tools.GroupBy(t => t.Category).OrderBy(g => g.Key.ToString());
+    
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Analytics Tools[/]").LeftJustified());
+    AnsiConsole.MarkupLine("[dim]These tools are automatically invoked by the LLM based on your questions.[/]\n");
+    
+    foreach (var category in byCategory)
+    {
+        AnsiConsole.MarkupLine($"[yellow]{category.Key}[/]");
+        foreach (var tool in category)
+        {
+            AnsiConsole.MarkupLine($"  [green]{tool.Name}[/] - {Markup.Escape(tool.Description)}");
+            if (tool.ExampleQuestions.Count > 0)
+            {
+                AnsiConsole.MarkupLine($"    [dim]Try: \"{Markup.Escape(tool.ExampleQuestions[0])}\"[/]");
+            }
+        }
+        AnsiConsole.WriteLine();
+    }
+}
+
+static void ShowOutputProfiles(
+    Dictionary<string, (OutputProfileConfig Config, string Description)> profiles, 
+    string currentProfile)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Output Profiles[/]").LeftJustified());
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .AddColumn("[yellow]Profile[/]")
+        .AddColumn("Description")
+        .AddColumn("Status");
+    
+    foreach (var (name, info) in profiles)
+    {
+        var status = name.Equals(currentProfile, StringComparison.OrdinalIgnoreCase) 
+            ? "[green]active[/]" 
+            : "[dim]-[/]";
+        table.AddRow(name, info.Description, status);
+    }
+    
+    AnsiConsole.Write(table);
+    AnsiConsole.MarkupLine("\n[dim]Use '/profile <name>' to switch[/]\n");
+}
+
+static void ShowSessionStatus(
+    DataSummaryReport report, 
+    string file, 
+    string sessionId, 
+    string currentProfile,
+    bool verbose)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Session Status[/]").LeftJustified());
+    
+    var grid = new Grid()
+        .AddColumn(new GridColumn().Width(20))
+        .AddColumn();
+    
+    grid.AddRow("[bold]File:[/]", Path.GetFileName(file));
+    grid.AddRow("[bold]Path:[/]", file);
+    grid.AddRow("[bold]Rows:[/]", report.Profile.RowCount.ToString("N0"));
+    grid.AddRow("[bold]Columns:[/]", report.Profile.ColumnCount.ToString());
+    grid.AddRow("[bold]Session:[/]", sessionId);
+    grid.AddRow("[bold]Profile:[/]", currentProfile);
+    grid.AddRow("[bold]Verbose:[/]", verbose ? "on" : "off");
+    grid.AddRow("[bold]Alerts:[/]", report.Profile.Alerts.Count.ToString());
+    grid.AddRow("[bold]Insights:[/]", report.Profile.Insights.Count.ToString());
+    
+    AnsiConsole.Write(grid);
+    AnsiConsole.WriteLine();
+}
+
+static void ShowColumnsSummary(DataSummaryReport report)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Columns[/]").LeftJustified());
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .AddColumn("[yellow]Column[/]")
+        .AddColumn("Type")
+        .AddColumn("Nulls")
+        .AddColumn("Unique")
+        .AddColumn("Role");
+    
+    foreach (var col in report.Profile.Columns)
+    {
+        var role = col.SemanticRole != SemanticRole.Unknown 
+            ? col.SemanticRole.ToString() 
+            : "-";
+        
+        table.AddRow(
+            Markup.Escape(col.Name),
+            col.InferredType.ToString(),
+            $"{col.NullPercent:F1}%",
+            col.UniqueCount.ToString("N0"),
+            role
+        );
+    }
+    
+    AnsiConsole.Write(table);
+    AnsiConsole.MarkupLine("\n[dim]Use '/column <name>' for details[/]\n");
+}
+
+static void ShowColumnDetails(DataSummaryReport report, string columnName)
+{
+    var col = report.Profile.Columns
+        .FirstOrDefault(c => c.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+    
+    if (col == null)
+    {
+        AnsiConsole.MarkupLine($"[red]Column not found: {Markup.Escape(columnName)}[/]");
+        AnsiConsole.MarkupLine("[dim]Use '/columns' to list available columns[/]\n");
+        return;
+    }
+    
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule($"[cyan]Column: {Markup.Escape(col.Name)}[/]").LeftJustified());
+    
+    var grid = new Grid()
+        .AddColumn(new GridColumn().Width(20))
+        .AddColumn();
+    
+    grid.AddRow("[bold]Type:[/]", col.InferredType.ToString());
+    grid.AddRow("[bold]Role:[/]", col.SemanticRole != SemanticRole.Unknown ? col.SemanticRole.ToString() : "-");
+    grid.AddRow("[bold]Null %:[/]", $"{col.NullPercent:F2}%");
+    grid.AddRow("[bold]Unique:[/]", $"{col.UniqueCount:N0} ({col.UniquePercent:F1}%)");
+    
+    if (col.InferredType == ColumnType.Numeric)
+    {
+        if (col.Mean.HasValue) grid.AddRow("[bold]Mean:[/]", $"{col.Mean:F4}");
+        if (col.Median.HasValue) grid.AddRow("[bold]Median:[/]", $"{col.Median:F4}");
+        if (col.StdDev.HasValue) grid.AddRow("[bold]Std Dev:[/]", $"{col.StdDev:F4}");
+        if (col.Min.HasValue && col.Max.HasValue) 
+            grid.AddRow("[bold]Range:[/]", $"{col.Min:F2} - {col.Max:F2}");
+        if (col.OutlierCount > 0)
+        {
+            var outlierPct = col.Count > 0 ? col.OutlierCount * 100.0 / col.Count : 0;
+            grid.AddRow("[bold]Outliers:[/]", $"{col.OutlierCount} ({outlierPct:F1}%)");
+        }
+    }
+    
+    if (col.Distribution.HasValue && col.Distribution != DistributionType.Unknown)
+        grid.AddRow("[bold]Distribution:[/]", col.Distribution.ToString()!);
+    
+    if (col.TopValues?.Count > 0)
+    {
+        var topVals = string.Join(", ", col.TopValues.Take(3).Select(v => $"{v.Value} ({v.Percent:F1}%)"));
+        grid.AddRow("[bold]Top Values:[/]", topVals);
+    }
+    
+    AnsiConsole.Write(grid);
+    
+    // Show alerts for this column
+    var colAlerts = report.Profile.Alerts.Where(a => a.Column == col.Name).ToList();
+    if (colAlerts.Count > 0)
+    {
+        AnsiConsole.MarkupLine("\n[yellow]Alerts:[/]");
+        foreach (var alert in colAlerts)
+        {
+            var color = alert.Severity switch
+            {
+                AlertSeverity.Error => "red",
+                AlertSeverity.Warning => "yellow",
+                _ => "dim"
+            };
+            AnsiConsole.MarkupLine($"  [{color}]• {Markup.Escape(alert.Message)}[/]");
+        }
+    }
+    
+    AnsiConsole.WriteLine();
+}
+
+static void ShowAlerts(DataSummaryReport report)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Alerts[/]").LeftJustified());
+    
+    if (report.Profile.Alerts.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[green]No alerts detected![/]\n");
+        return;
+    }
+    
+    var grouped = report.Profile.Alerts
+        .GroupBy(a => a.Severity)
+        .OrderByDescending(g => g.Key);
+    
+    foreach (var group in grouped)
+    {
+        var color = group.Key switch
+        {
+            AlertSeverity.Error => "red",
+            AlertSeverity.Warning => "yellow",
+            _ => "blue"
+        };
+        
+        AnsiConsole.MarkupLine($"\n[{color}]{group.Key}[/] ({group.Count()})");
+        
+        foreach (var alert in group.Take(10))
+        {
+            var col = string.IsNullOrEmpty(alert.Column) ? "" : $"[dim]{alert.Column}:[/] ";
+            AnsiConsole.MarkupLine($"  • {col}{Markup.Escape(alert.Message)}");
+        }
+        
+        if (group.Count() > 10)
+        {
+            AnsiConsole.MarkupLine($"  [dim]... and {group.Count() - 10} more[/]");
+        }
+    }
+    
+    AnsiConsole.WriteLine();
+}
+
+static void ShowInsights(DataSummaryReport report)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Insights[/]").LeftJustified());
+    
+    if (report.Profile.Insights.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[dim]No insights generated yet.[/]\n");
+        return;
+    }
+    
+    foreach (var insight in report.Profile.Insights.Take(15))
+    {
+        AnsiConsole.MarkupLine($"\n[green]{Markup.Escape(insight.Title)}[/] [dim](score: {insight.Score:F2})[/]");
+        AnsiConsole.MarkupLine($"  {Markup.Escape(insight.Description)}");
+        
+        if (insight.RelatedColumns.Count > 0)
+        {
+            AnsiConsole.MarkupLine($"  [dim]Columns: {string.Join(", ", insight.RelatedColumns)}[/]");
+        }
+    }
+    
+    if (report.Profile.Insights.Count > 15)
+    {
+        AnsiConsole.MarkupLine($"\n[dim]... and {report.Profile.Insights.Count - 15} more insights[/]");
+    }
+    
+    AnsiConsole.WriteLine();
+}
+
+static void ShowDataSummary(DataSummaryReport report, string file)
+{
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(new Rule("[cyan]Data Summary[/]").LeftJustified());
+    
+    var profile = report.Profile;
+    
+    var grid = new Grid()
+        .AddColumn(new GridColumn().Width(20))
+        .AddColumn();
+    
+    grid.AddRow("[bold]File:[/]", Path.GetFileName(file));
+    grid.AddRow("[bold]Rows:[/]", profile.RowCount.ToString("N0"));
+    grid.AddRow("[bold]Columns:[/]", profile.ColumnCount.ToString());
+    
+    var numericCount = profile.Columns.Count(c => c.InferredType == ColumnType.Numeric);
+    var categoricalCount = profile.Columns.Count(c => c.InferredType == ColumnType.Categorical);
+    var dateCount = profile.Columns.Count(c => c.InferredType == ColumnType.DateTime);
+    var textCount = profile.Columns.Count(c => c.InferredType == ColumnType.Text);
+    var idCount = profile.Columns.Count(c => c.InferredType == ColumnType.Id);
+    
+    grid.AddRow("[bold]Types:[/]", 
+        $"{numericCount} numeric, {categoricalCount} categorical, {dateCount} date, {textCount} text, {idCount} id");
+    
+    var nullCols = profile.Columns.Count(c => c.NullPercent > 0);
+    if (nullCols > 0)
+        grid.AddRow("[bold]With Nulls:[/]", $"{nullCols} columns");
+    
+    var criticalAlerts = profile.Alerts.Count(a => a.Severity == AlertSeverity.Error);
+    var warningAlerts = profile.Alerts.Count(a => a.Severity == AlertSeverity.Warning);
+    grid.AddRow("[bold]Alerts:[/]", $"{criticalAlerts} critical, {warningAlerts} warnings");
+    
+    if (profile.Target != null)
+        grid.AddRow("[bold]Target:[/]", profile.Target.ColumnName);
+    
+    AnsiConsole.Write(grid);
+    AnsiConsole.WriteLine();
 }
