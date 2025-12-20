@@ -57,6 +57,8 @@
 
         <!-- Stats utilities -->
         <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+        <!-- SQLite for index creation after export -->
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.6" />
         <!-- Data synthesis -->
         <PackageReference Include="Bogus" Version="35.6.5" />
         <!-- Markdown + configuration -->

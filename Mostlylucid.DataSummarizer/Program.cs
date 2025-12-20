@@ -21,8 +21,9 @@ if (args.Length > 0 && !args[0].StartsWith("-") && File.Exists(args[0]))
 }
 
 // Options - using new System.CommandLine 2.0.1 API
-var fileOption = new Option<string?>("--file", "-f") { Description = "Path to data file (CSV, Excel, Parquet, JSON)" };
+var fileOption = new Option<string?>("--file", "-f") { Description = "Path to data file (CSV, Excel, Parquet, JSON, SQLite)" };
 var sheetOption = new Option<string?>("--sheet", "-s") { Description = "Sheet name for Excel files" };
+var tableOption = new Option<string?>("--table", "-t") { Description = "Table name for SQLite databases (required for .sqlite/.db files)" };
 var modelOption = new Option<string?>("--model", "-m") { Description = "Ollama model for LLM insights", DefaultValueFactory = _ => "qwen2.5-coder:7b" };
 var noLlmOption = new Option<bool>("--no-llm") { Description = "Skip LLM insights (stats only)" };
 var verboseOption = new Option<bool>("--verbose", "-v") { Description = "Verbose output" };
@@ -129,6 +130,33 @@ segmentCmd.Options.Add(outputOption);
 segmentCmd.Options.Add(formatOption);
 segmentCmd.Options.Add(storePathOption);
 
+// SQLite export command
+var toSqliteCmd = new Command("to-sqlite", "Export data to SQLite database with smart schema and indexes");
+var sqliteOutputOption = new Option<string>("--output", "-o") { Description = "Output SQLite file path", Required = true };
+var sqliteTableOption = new Option<string?>("--table", "-t") { Description = "Table name (default: derived from filename)" };
+var sqliteNoIndexOption = new Option<bool>("--no-indexes") { Description = "Skip index creation" };
+var sqliteOverwriteOption = new Option<bool>("--overwrite") { Description = "Overwrite existing SQLite file" };
+toSqliteCmd.Options.Add(fileOption);
+toSqliteCmd.Options.Add(sqliteOutputOption);
+toSqliteCmd.Options.Add(sqliteTableOption);
+toSqliteCmd.Options.Add(sqliteNoIndexOption);
+toSqliteCmd.Options.Add(sqliteOverwriteOption);
+toSqliteCmd.Options.Add(verboseOption);
+
+// Intelligent search command
+var searchCmd = new Command("search", "Search data with intelligent strategy detection or natural language queries");
+var searchTermArg = new Argument<string>("query") { Description = "Search term or natural language query (e.g., 'dave' or 'show me ages of people named dave')" };
+var searchColumnOption = new Option<string?>("--column", "-c") { Description = "Specific column to search (optional)" };
+var searchLimitOption = new Option<int>("--limit", "-n") { Description = "Maximum results to return", DefaultValueFactory = _ => 100 };
+var searchJsonOption = new Option<bool>("--json") { Description = "Output results as JSON" };
+searchCmd.Arguments.Add(searchTermArg);
+searchCmd.Options.Add(fileOption);
+searchCmd.Options.Add(tableOption);
+searchCmd.Options.Add(searchColumnOption);
+searchCmd.Options.Add(searchLimitOption);
+searchCmd.Options.Add(searchJsonOption);
+searchCmd.Options.Add(verboseOption);
+
 var toolCmd = new Command("tool", "Profile data and output JSON for LLM tool integration");
 toolCmd.Options.Add(fileOption);
 toolCmd.Options.Add(sheetOption);
@@ -174,9 +202,10 @@ storeCmd.Subcommands.Add(storeStatsCmd);
 storeCmd.Options.Add(storePathOption);
 storeCmd.Options.Add(storeDeleteOption);
 
-var rootCommand = new RootCommand("Data summarization tool - profile CSV, Excel, Parquet files");
+var rootCommand = new RootCommand("Data summarization tool - profile CSV, Excel, Parquet, SQLite files");
 rootCommand.Options.Add(fileOption);
 rootCommand.Options.Add(sheetOption);
+rootCommand.Options.Add(tableOption);
 rootCommand.Options.Add(modelOption);
 rootCommand.Options.Add(noLlmOption);
 rootCommand.Options.Add(verboseOption);
@@ -216,6 +245,8 @@ rootCommand.Subcommands.Add(validateCmd);
 rootCommand.Subcommands.Add(toolCmd);
 rootCommand.Subcommands.Add(storeCmd);
 rootCommand.Subcommands.Add(segmentCmd);
+rootCommand.Subcommands.Add(toSqliteCmd);
+rootCommand.Subcommands.Add(searchCmd);
 
 profileCmd.SetAction(async (parseResult, cancellationToken) =>
 {
@@ -489,9 +520,7 @@ toolCmd.SetAction(async (parseResult, cancellationToken) =>
     var jsonOptions = new System.Text.Json.JsonSerializerOptions 
     { 
         WriteIndented = !compact,
-        DefaultIgnoreCondition = compact 
-            ? System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull 
-            : System.Text.Json.Serialization.JsonIgnoreCondition.Never
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
     
     try
@@ -897,10 +926,226 @@ segmentCmd.SetAction(async (parseResult, cancellationToken) =>
     }
 });
 
+// to-sqlite command handler
+toSqliteCmd.SetAction(async (parseResult, cancellationToken) =>
+{
+    var file = parseResult.GetValue(fileOption);
+    var sqliteOutput = parseResult.GetValue(sqliteOutputOption);
+    var tableName = parseResult.GetValue(sqliteTableOption);
+    var noIndexes = parseResult.GetValue(sqliteNoIndexOption);
+    var overwrite = parseResult.GetValue(sqliteOverwriteOption);
+    var verbose = parseResult.GetValue(verboseOption);
+
+    if (string.IsNullOrEmpty(file) || !File.Exists(file))
+    {
+        AnsiConsole.MarkupLine("[red]Error:[/] Source file is required and must exist.");
+        return;
+    }
+
+    if (string.IsNullOrEmpty(sqliteOutput))
+    {
+        AnsiConsole.MarkupLine("[red]Error:[/] Output SQLite path is required (--output).");
+        return;
+    }
+
+    // Ensure .sqlite extension
+    if (!sqliteOutput.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) &&
+        !sqliteOutput.EndsWith(".db", StringComparison.OrdinalIgnoreCase) &&
+        !sqliteOutput.EndsWith(".sqlite3", StringComparison.OrdinalIgnoreCase))
+    {
+        sqliteOutput += ".sqlite";
+    }
+
+    var exporter = new SqliteExporter(verbose);
+    
+    await AnsiConsole.Status()
+        .Spinner(Spinner.Known.Dots)
+        .StartAsync($"Exporting to SQLite...", async ctx =>
+        {
+            ctx.Status("Profiling source data...");
+            
+            var result = await exporter.ExportAsync(
+                file,
+                sqliteOutput,
+                tableName,
+                profile: null,
+                createIndexes: !noIndexes,
+                overwrite: overwrite
+            );
+
+            if (result.Success)
+            {
+                AnsiConsole.MarkupLine($"[green]✓ Export complete![/]");
+                AnsiConsole.MarkupLine($"  [dim]Source:[/] {result.SourcePath}");
+                AnsiConsole.MarkupLine($"  [dim]Output:[/] {result.SqlitePath}");
+                AnsiConsole.MarkupLine($"  [dim]Table:[/]  {result.TableName}");
+                AnsiConsole.MarkupLine($"  [dim]Rows:[/]   {result.RowCount:N0}");
+                AnsiConsole.MarkupLine($"  [dim]Cols:[/]   {result.ColumnCount}");
+                if (result.IndexesCreated?.Count > 0)
+                {
+                    AnsiConsole.MarkupLine($"  [dim]Indexes:[/] {result.IndexesCreated.Count} created");
+                    if (verbose)
+                    {
+                        foreach (var idx in result.IndexesCreated)
+                        {
+                            AnsiConsole.MarkupLine($"    - {idx}");
+                        }
+                    }
+                }
+                AnsiConsole.MarkupLine($"  [dim]Time:[/]   {result.Duration.TotalSeconds:F2}s");
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[red]✗ Export failed:[/] {result.Error}");
+            }
+        });
+});
+
+// Intelligent search command handler
+searchCmd.SetAction(async (parseResult, cancellationToken) =>
+{
+    var searchQuery = parseResult.GetValue(searchTermArg);
+    var file = parseResult.GetValue(fileOption);
+    var table = parseResult.GetValue(tableOption);
+    var column = parseResult.GetValue(searchColumnOption);
+    var limit = parseResult.GetValue(searchLimitOption);
+    var jsonOutput = parseResult.GetValue(searchJsonOption);
+    var verbose = parseResult.GetValue(verboseOption);
+
+    // Validate file
+    if (string.IsNullOrEmpty(file) || !File.Exists(file))
+    {
+        AnsiConsole.MarkupLine("[red]Error:[/] Source file is required and must exist (--file or -f).");
+        return;
+    }
+
+    if (string.IsNullOrEmpty(searchQuery))
+    {
+        AnsiConsole.MarkupLine("[red]Error:[/] Search query is required.");
+        return;
+    }
+
+    using var searcher = new DataSearcher(verbose);
+
+    // Detect if natural language query (multiple words with action verbs or complex patterns)
+    var words = searchQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    var hasComparisonPattern = System.Text.RegularExpressions.Regex.IsMatch(
+        searchQuery, @"\w+\s+(over|above|under|below|greater|less|more|than)\s+\d+", 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    var isNaturalLanguage = (words.Length > 2 &&
+        (searchQuery.Contains("show", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("find", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("where", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("named", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("with", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("older", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("younger", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("greater", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("less", StringComparison.OrdinalIgnoreCase) ||
+         searchQuery.Contains("containing", StringComparison.OrdinalIgnoreCase))) ||
+        hasComparisonPattern;
+
+    SearchResult result;
+
+    await AnsiConsole.Status()
+        .Spinner(Spinner.Known.Dots)
+        .StartAsync($"Searching...", async ctx =>
+        {
+            if (isNaturalLanguage)
+            {
+                ctx.Status("Parsing natural language query...");
+                result = await searcher.NaturalSearchAsync(file, searchQuery, table, limit);
+            }
+            else
+            {
+                ctx.Status($"Searching for '{searchQuery}'...");
+                result = await searcher.SearchAsync(file, searchQuery, table, column, limit);
+            }
+
+            if (!result.Success)
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/] {result.Error}");
+                return;
+            }
+
+            // Output results
+            if (jsonOutput)
+            {
+                var jsonOptions = new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                };
+                Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(result, jsonOptions));
+            }
+            else
+            {
+                // Console output with Spectre.Console
+                AnsiConsole.MarkupLine($"[green]Search Results[/] ({result.MatchCount} matches in {result.Duration.TotalSeconds:F2}s)");
+                AnsiConsole.MarkupLine($"[dim]Source:[/] {result.SourcePath}");
+                if (result.IsNaturalLanguage && result.ParsedQuery != null)
+                {
+                    AnsiConsole.MarkupLine($"[dim]Interpreted as:[/] {string.Join(", ", result.ParsedQuery.Conditions.Select(c => c.Description))}");
+                }
+                if (result.Strategies.Count > 0)
+                {
+                    AnsiConsole.MarkupLine($"[dim]Strategies:[/] {string.Join(", ", result.Strategies)}");
+                }
+                if (verbose && !string.IsNullOrEmpty(result.Sql))
+                {
+                    AnsiConsole.MarkupLine($"[dim]SQL:[/] {result.Sql}");
+                }
+                AnsiConsole.WriteLine();
+
+                if (result.Rows.Count == 0)
+                {
+                    AnsiConsole.MarkupLine("[yellow]No matches found.[/]");
+                }
+                else
+                {
+                    // Build table for display
+                    var consoleTable = new Table();
+                    consoleTable.Border(TableBorder.Rounded);
+
+                    // Add columns from first row
+                    var firstRow = result.Rows[0];
+                    foreach (var key in firstRow.Keys)
+                    {
+                        consoleTable.AddColumn(new TableColumn(key).Centered());
+                    }
+
+                    // Add rows (limit display to reasonable number)
+                    var displayRows = result.Rows.Take(50);
+                    foreach (var row in displayRows)
+                    {
+                        var cells = row.Values.Select(v =>
+                        {
+                            if (v == null) return "[dim]null[/]";
+                            var str = v.ToString() ?? "";
+                            if (str.Length > 50) str = str[..47] + "...";
+                            return Markup.Escape(str);
+                        }).ToArray();
+                        consoleTable.AddRow(cells);
+                    }
+
+                    AnsiConsole.Write(consoleTable);
+
+                    if (result.Rows.Count > 50)
+                    {
+                        AnsiConsole.MarkupLine($"[dim]... and {result.Rows.Count - 50} more rows (use --json for full output)[/]");
+                    }
+                }
+            }
+        });
+});
+
 rootCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var file = parseResult.GetValue(fileOption);
     var sheet = parseResult.GetValue(sheetOption);
+    var sqliteTable = parseResult.GetValue(tableOption);
+    // Use --table for SQLite, --sheet for Excel (but either works for both)
+    var tableOrSheet = sqliteTable ?? sheet;
     var model = parseResult.GetValue(modelOption);
     var noLlm = parseResult.GetValue(noLlmOption);
     var verbose = parseResult.GetValue(verboseOption);
@@ -1093,7 +1338,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         // Header
         AnsiConsole.Write(new FigletText("DataSummarizer").Color(Color.Cyan1));
         
-        var supported = new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json" };
+        var supported = new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json", ".sqlite", ".db", ".sqlite3" };
 
         // Helper to validate a single file
         bool ValidateFile(string? path)
@@ -1191,8 +1436,53 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 
         // Normal single-file modes below
         var ext = Path.GetExtension(file!).ToLowerInvariant();
+        
+        // SQLite multi-table handling: if no table specified, discover and profile all tables
+        var isSqlite = ext is ".sqlite" or ".db" or ".sqlite3";
+        if (isSqlite && string.IsNullOrEmpty(tableOrSheet))
+        {
+            AnsiConsole.MarkupLine($"[cyan]SQLite Database:[/] {Path.GetFileName(file)}");
+            AnsiConsole.WriteLine();
+            
+            // Discover tables
+            var tables = await DiscoverSqliteTablesAsync(file!);
+            if (tables.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[yellow]No tables found in SQLite database.[/]");
+                return;
+            }
+            
+            AnsiConsole.MarkupLine($"[cyan]Found {tables.Count} table(s):[/] {string.Join(", ", tables)}");
+            AnsiConsole.WriteLine();
+            
+            // Profile each table
+            foreach (var tableName in tables)
+            {
+                AnsiConsole.Write(new Rule($"[cyan]{tableName}[/]").LeftJustified());
+                
+                var tableReport = await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .StartAsync($"Profiling {tableName}...", async ctx =>
+                    {
+                        profileOptions.OnStatusUpdate = status => ctx.Status(status);
+                        return await summarizer.SummarizeAsync(file!, tableName, useLlm: !noLlm, maxLlmInsights: 5);
+                    });
+                
+                // Display summary for this table
+                AnsiConsole.MarkupLine($"  [dim]Rows:[/] {tableReport.Profile.RowCount:N0}");
+                AnsiConsole.MarkupLine($"  [dim]Columns:[/] {tableReport.Profile.ColumnCount}");
+                if (tableReport.Profile.Alerts.Count > 0)
+                    AnsiConsole.MarkupLine($"  [dim]Alerts:[/] {tableReport.Profile.Alerts.Count}");
+                AnsiConsole.WriteLine();
+            }
+            
+            return;
+        }
+        
         AnsiConsole.MarkupLine($"[cyan]File:[/] {Path.GetFileName(file)}");
         AnsiConsole.MarkupLine($"[cyan]Type:[/] {ext.TrimStart('.')}");
+        if (isSqlite && !string.IsNullOrEmpty(tableOrSheet))
+            AnsiConsole.MarkupLine($"[cyan]Table:[/] {tableOrSheet}");
         if (!noLlm && !string.IsNullOrEmpty(model))
             AnsiConsole.MarkupLine($"[cyan]Model:[/] {model}");
         if (!string.IsNullOrWhiteSpace(onnx))
@@ -2689,4 +2979,49 @@ static void ShowDataSummary(DataSummaryReport report, string file)
     
     AnsiConsole.Write(grid);
     AnsiConsole.WriteLine();
+}
+
+/// <summary>
+/// Discover all tables in a SQLite database using DuckDB's SQLite extension
+/// </summary>
+static async Task<List<string>> DiscoverSqliteTablesAsync(string sqlitePath)
+{
+    var tables = new List<string>();
+    
+    try
+    {
+        await using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
+        await conn.OpenAsync();
+        
+        // Install and load SQLite extension
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "INSTALL sqlite; LOAD sqlite;";
+            await cmd.ExecuteNonQueryAsync();
+        }
+        
+        // Attach the SQLite database
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = $"ATTACH '{sqlitePath.Replace("'", "''")}' AS sqlite_db (TYPE sqlite)";
+            await cmd.ExecuteNonQueryAsync();
+        }
+        
+        // Query information_schema for tables (DuckDB's way to see attached database tables)
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_catalog = 'sqlite_db' AND table_schema = 'main' ORDER BY table_name";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                tables.Add(reader.GetString(0));
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        AnsiConsole.MarkupLine($"[red]Error discovering tables: {ex.Message}[/]");
+    }
+    
+    return tables;
 }

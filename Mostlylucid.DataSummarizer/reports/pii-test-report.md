@@ -1,6 +1,6 @@
 # Data Summary: pii-test.csv
 
-> Generated in 0.1s
+> Generated in 0.2s
 
 ## Dataset Overview
 
@@ -18,10 +18,10 @@
 
 | Column | Type | Nulls | Unique | Stats |
 |--------|------|-------|--------|-------|
-| `Name` | Categorical | 0.0% | 4 | top: Jane Smith (20%) |
+| `Name` | Categorical | 0.0% | 4 | top: Alice Brown (20%) |
 | `Email` | Categorical | 0.0% | 4 | top: bob.wilson@test.co.uk (20%) |
-| `Phone` | Categorical | 0.0% | 5 | top: 555-789-0123 (20%) |
-| `SSN` | Categorical | 0.0% | 5 | top: 777-88-9999 (20%) |
+| `Phone` | Categorical | 0.0% | 5 | top: 555-456-7890 (20%) |
+| `SSN` | Categorical | 0.0% | 5 | top: 987-65-4321 (20%) |
 
 ## Data Quality Alerts
 
@@ -48,11 +48,11 @@ Dataset contains 5 rows and 4 columns. 0 numeric, 4 categorical, 0 date/time col
 
 | Value | Count | % |
 |-------|-------|---|
-| Jane Smith | 1 | 20.0% |
-| Charlie Davis | 1 | 20.0% |
-| Bob Wilson | 1 | 20.0% |
 | Alice Brown | 1 | 20.0% |
+| Charlie Davis | 1 | 20.0% |
 | John Doe | 1 | 20.0% |
+| Bob Wilson | 1 | 20.0% |
+| Jane Smith | 1 | 20.0% |
 
 ### Email
 
@@ -60,27 +60,27 @@ Dataset contains 5 rows and 4 columns. 0 numeric, 4 categorical, 0 date/time col
 |-------|-------|---|
 | bob.wilson@test.co.uk | 1 | 20.0% |
 | jane@company.org | 1 | 20.0% |
-| john.doe@example.com | 1 | 20.0% |
 | charlie.davis@mail.com | 1 | 20.0% |
+| john.doe@example.com | 1 | 20.0% |
 | alice@domain.net | 1 | 20.0% |
 
 ### Phone
 
 | Value | Count | % |
 |-------|-------|---|
-| 555-789-0123 | 1 | 20.0% |
-| 555-987-6543 | 1 | 20.0% |
 | 555-456-7890 | 1 | 20.0% |
 | 555-234-5678 | 1 | 20.0% |
+| 555-789-0123 | 1 | 20.0% |
 | 555-123-4567 | 1 | 20.0% |
+| 555-987-6543 | 1 | 20.0% |
 
 ### SSN
 
 | Value | Count | % |
 |-------|-------|---|
+| 987-65-4321 | 1 | 20.0% |
 | 777-88-9999 | 1 | 20.0% |
 | 111-22-3333 | 1 | 20.0% |
-| 123-45-6789 | 1 | 20.0% |
 | 444-55-6666 | 1 | 20.0% |
-| 987-65-4321 | 1 | 20.0% |
+| 123-45-6789 | 1 | 20.0% |
 

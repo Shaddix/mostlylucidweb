@@ -260,6 +260,24 @@ public class CachedQueryResult
     public int ReuseCount { get; set; }
     
     /// <summary>
+    /// Profile ID/hash at time of query execution.
+    /// Used to detect if query should be rerun due to data drift.
+    /// </summary>
+    public string? ProfileIdWhenCached { get; set; }
+    
+    /// <summary>
+    /// Drift score at time of answer (0.0-1.0).
+    /// High drift suggests answer may be stale even if schema matches.
+    /// </summary>
+    public double? DriftScoreWhenCached { get; set; }
+    
+    /// <summary>
+    /// Whether results were sampled/limited (true if LIMIT was applied).
+    /// Important for answer reliability - "top 20" may not be complete.
+    /// </summary>
+    public bool ResultsWereLimited { get; set; }
+    
+    /// <summary>
     /// Filter context - what subset of data this query represents.
     /// E.g., "Category='Electronics'" or "Region='North' AND Year=2024"
     /// </summary>
@@ -270,6 +288,12 @@ public class CachedQueryResult
     /// These enrich the profile for future queries on the same subset.
     /// </summary>
     public QueryResultStats? DerivedStats { get; set; }
+    
+    /// <summary>
+    /// Semantic drift warnings captured at query time.
+    /// Examples: "New category values detected", "Unit change: was GBP, now pence"
+    /// </summary>
+    public List<string> SemanticWarnings { get; set; } = [];
 }
 
 /// <summary>

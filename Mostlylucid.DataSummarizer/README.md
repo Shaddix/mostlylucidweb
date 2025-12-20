@@ -195,6 +195,36 @@ When you profile data:
 
 Both are DuckDB files. The Registry includes a vector similarity index for cross-dataset search.
 
+### Two Layers of Memory
+
+DataSummarizer remembers datasets and questions separately:
+
+**1) Dataset Memory (Profile + Signature)**
+- **Schema fingerprint** (stable): Column names + types hash → identifies the dataset family
+- **Statistical signature** (changes): Per-column distributions → detects drift
+- **Use cases**: Drift detection, baselines, cohort comparison, "what changed since last run"
+
+**2) Question Memory (Question → SQL → Results)**
+- **SQL is the durable artifact**: Stored query templates bound to schema fingerprint
+- **Result summary** (optional): Cached for UX, but SQL is rerunnable
+- **Binding key**: Schema fingerprint + query template + parameters
+
+**Smart reuse:**
+- **Exact match** (content hash) → reuse cached answer safely
+- **Same schema, new data** → rerun SQL, detect answer drift
+  - "Top product changed from X to Y"
+  - "Conversion rate dropped 3.2pp"
+  - "Null% doubled in column Z, KPI Q now unreliable"
+
+**Cached queries include:**
+- Profile ID/hash used at time of query
+- Drift score at time of answer
+- Whether results were sampled/limited
+
+This enables: "Recomputed answer on 2025-12-20; drift vs baseline: 0.31 (significant)"
+
+See [Plain English Q&A](#plain-english-qa) for query memory in action.
+
 ---
 
 ## Privacy-Safe PII Handling

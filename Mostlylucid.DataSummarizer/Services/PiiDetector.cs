@@ -109,8 +109,8 @@ public partial class PiiDetector : IAsyncDisposable
     [GeneratedRegex(@"^[0-9]{9}$", RegexOptions.Compiled)]
     private static partial Regex RoutingNumberRegex();
 
-    // Passport (generic alphanumeric 6-9 chars)
-    [GeneratedRegex(@"^[A-Z0-9]{6,9}$", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
+    // Passport (alphanumeric 6-9 chars, must contain at least one digit to avoid matching plain words)
+    [GeneratedRegex(@"^(?=.*[0-9])[A-Z0-9]{6,9}$", RegexOptions.Compiled | RegexOptions.IgnoreCase)]
     private static partial Regex PassportRegex();
 
     // VIN (Vehicle Identification Number)
