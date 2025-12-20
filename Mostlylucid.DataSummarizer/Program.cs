@@ -39,7 +39,7 @@ var synthRowsOption = new Option<int>("--synthesize-rows") { Description = "Rows
 var columnsOption = new Option<string[]?>("--columns") { Description = "Specific columns to analyze (comma-separated)", AllowMultipleArgumentsPerToken = true };
 var excludeColumnsOption = new Option<string[]?>("--exclude-columns") { Description = "Columns to exclude from analysis", AllowMultipleArgumentsPerToken = true };
 var maxColumnsOption = new Option<int?>("--max-columns") { Description = "Maximum columns to analyze (0=unlimited). Selects most interesting for wide tables." };
-var fastModeOption = new Option<bool>("--fast") { Description = "Fast mode: skip expensive pattern detection" };
+var fastModeOption = new Option<bool>("--fast") { Description = "Quick stats only - no LLM, no correlations, no expensive analysis" };
 var skipCorrelationsOption = new Option<bool>("--skip-correlations") { Description = "Skip correlation analysis (faster for wide tables)" };
 var ignoreErrorsOption = new Option<bool>("--ignore-errors") { Description = "Ignore CSV parsing errors (malformed rows)" };
 var targetOption = new Option<string?>("--target") { Description = "Target column for supervised analysis (e.g. churn flag)" };
@@ -895,7 +895,18 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
     var focusQuestions = parseResult.GetValue(focusQuestionOption);
     var outputProfileName = parseResult.GetValue(outputProfileOption);
     
-    // Resolve output profile
+    // Resolve analysis profile: --fast is shortcut for "Fast" profile
+    var analysisProfile = fastMode 
+        ? AnalysisProfileConfig.Fast 
+        : settings.GetActiveAnalysisProfile();
+    
+    // Apply analysis profile settings (CLI flags can still override)
+    if (!analysisProfile.UseLlm) noLlm = true;
+    if (!analysisProfile.ComputeCorrelations) skipCorrelations = true;
+    if (!analysisProfile.DetectPatterns) fastMode = true;
+    if (!analysisProfile.GenerateReport) skipReport = true;
+    
+    // Resolve output profile (separate from analysis - controls display)
     var activeProfile = ResolveOutputProfile(settings, outputProfileName);
     
     sessionId ??= Guid.NewGuid().ToString("N");
@@ -1192,6 +1203,32 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
 
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
+            
+            // Mini bar charts for categorical top values (if interesting and enabled)
+            if (consoleSettings.ShowCharts)
+            {
+                var categoricalCols = report.Profile.Columns
+                    .Where(c => c.InferredType == ColumnType.Categorical && c.TopValues?.Count >= 3 && c.UniqueCount <= 15)
+                    .OrderByDescending(c => c.InterestScore)
+                    .Take(2);
+                
+                foreach (var col in categoricalCols)
+                {
+                    var chart = new BarChart()
+                        .Width(60)
+                        .Label($"[yellow]{Markup.Escape(col.Name)}[/]")
+                        .LeftAlignLabel();
+                    
+                    foreach (var tv in col.TopValues!.Take(5))
+                    {
+                        var label = tv.Value?.Length > 20 ? tv.Value[..17] + "..." : tv.Value ?? "(null)";
+                        chart.AddItem(Markup.Escape(label), (int)tv.Count, Color.Yellow);
+                    }
+                    
+                    AnsiConsole.Write(chart);
+                    AnsiConsole.WriteLine();
+                }
+            }
         }
 
         // Alerts section

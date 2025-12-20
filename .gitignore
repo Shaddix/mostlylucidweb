@@ -282,3 +282,6 @@ mlmodels/
 /synth-output.csv
 /test-registry.duckdb
 /test-synthetic.csv
+/Mostlylucid.DataSummarizer/test-output/
+/Mostlylucid.DataSummarizer/test-outputs/
+/*.vss.duckdb*

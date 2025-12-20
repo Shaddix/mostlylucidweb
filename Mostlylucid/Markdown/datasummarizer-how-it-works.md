@@ -2,15 +2,14 @@
 <!--category-- Data Analysis, DuckDB, C#, LLM -->
 <datetime class="hidden">2025-12-22T18:30</datetime>
 
-[![GitHub](https://img.shields.io/github/stars/scottgal/mostlylucidweb?style=social)](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)
-[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
+[![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 
 You open a new CSV. 10,000 rows, 50 columns. What's in here? Which columns are junk? Where are the nulls? What's skewed?
 
 **DataSummarizer** answers those questions in under a second — no cloud upload, no manual exploration, just **deterministic stats + optional AI insights**.
 
 [TOC]
-
+ 
 ---
 
 ## The Simplest Start: Drag and Drop

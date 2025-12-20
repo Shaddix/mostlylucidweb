@@ -184,15 +184,15 @@ run_test "Validate - basic drift comparison" \
     ""
 
 run_test "Validate - generate constraints from source" \
-    "../$DS validate --source ../$TEST_CSV --target ../$TEST_CSV --generate-constraints --output pii-constraints.json --no-llm" \
+    "../$DS validate --source ../$TEST_CSV --target ../$TEST_CSV --generate-constraints --no-llm" \
     "Generated"
 
 run_test "Verify constraints JSON exists" \
-    "test -f pii-constraints.json && grep -q '\"TotalConstraints\"' pii-constraints.json" \
+    "test -f ../../pii-test.constraints.json && grep -q '\"Constraints\"' ../../pii-test.constraints.json" \
     ""
 
 run_test "Validate - check constraints (should pass)" \
-    "../$DS validate --source ../$TEST_CSV --target ../$TEST_CSV --constraints pii-constraints.json --format markdown --no-llm > constraint-validation.md" \
+    "../$DS validate --source ../$TEST_CSV --target ../$TEST_CSV --constraints ../../pii-test.constraints.json --format markdown --no-llm > constraint-validation.md" \
     ""
 
 run_test "Validate - markdown format" \
@@ -203,9 +203,9 @@ run_test "Validate - HTML format" \
     "../$DS validate --source ../$TEST_CSV --target synthetic-100.csv --format html --no-llm > validation.html" \
     ""
 
-# This should fail because row counts won't match
+# Test strict mode - should FAIL because different schemas
 run_test_expect_fail "Validate - strict mode with different data (should fail)" \
-    "../$DS validate --source ../$TEST_CSV --target ../$TEST_TIMESERIES --constraints pii-constraints.json --strict --no-llm"
+    "../$DS validate --source ../$TEST_CSV --target ../$TEST_TIMESERIES --constraints ../../pii-test.constraints.json --strict --no-llm"
 
 # ============================================================================
 # SEGMENT COMPARISON

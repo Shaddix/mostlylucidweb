@@ -25,12 +25,27 @@ public class DataSummarizerSettings
     public VectorStoreSettings VectorStore { get; set; } = new();
     
     /// <summary>
+    /// Active analysis profile name (controls what analysis is performed)
+    /// </summary>
+    public string AnalysisProfile { get; set; } = "Default";
+    
+    /// <summary>
+    /// Named analysis profiles - control WHAT gets analyzed
+    /// </summary>
+    public Dictionary<string, AnalysisProfileConfig> AnalysisProfiles { get; set; } = new()
+    {
+        ["Default"] = AnalysisProfileConfig.Default,
+        ["Fast"] = AnalysisProfileConfig.Fast,
+        ["Full"] = AnalysisProfileConfig.Full
+    };
+    
+    /// <summary>
     /// Active output profile name (Default, Tool, Brief, Detailed, Markdown)
     /// </summary>
     public string OutputProfile { get; set; } = "Default";
     
     /// <summary>
-    /// Named output profiles for different use cases
+    /// Named output profiles - control HOW results are displayed
     /// </summary>
     public Dictionary<string, OutputProfileConfig> OutputProfiles { get; set; } = new()
     {
@@ -40,6 +55,16 @@ public class DataSummarizerSettings
         ["Detailed"] = OutputProfileConfig.Detailed,
         ["Markdown"] = OutputProfileConfig.MarkdownFocus
     };
+    
+    /// <summary>
+    /// Get the active analysis profile configuration
+    /// </summary>
+    public AnalysisProfileConfig GetActiveAnalysisProfile()
+    {
+        if (AnalysisProfiles.TryGetValue(AnalysisProfile, out var profile))
+            return profile;
+        return AnalysisProfileConfig.Default;
+    }
     
     /// <summary>
     /// Get the active output profile configuration
@@ -100,6 +125,62 @@ public class VectorStoreSettings
 }
 
 /// <summary>
+/// Analysis profile - controls WHAT analysis is performed
+/// </summary>
+public class AnalysisProfileConfig
+{
+    public string Description { get; set; } = "";
+    
+    /// <summary>Use LLM for insights (requires Ollama)</summary>
+    public bool UseLlm { get; set; } = true;
+    
+    /// <summary>Compute column correlations</summary>
+    public bool ComputeCorrelations { get; set; } = true;
+    
+    /// <summary>Detect text patterns (can be slow on large datasets)</summary>
+    public bool DetectPatterns { get; set; } = true;
+    
+    /// <summary>Generate markdown report</summary>
+    public bool GenerateReport { get; set; } = true;
+    
+    /// <summary>Use ONNX embeddings for semantic analysis</summary>
+    public bool UseOnnx { get; set; } = true;
+    
+    /// <summary>Default - balanced analysis with LLM if available</summary>
+    public static AnalysisProfileConfig Default => new()
+    {
+        Description = "Balanced analysis - LLM if available, all features enabled",
+        UseLlm = true,
+        ComputeCorrelations = true,
+        DetectPatterns = true,
+        GenerateReport = true,
+        UseOnnx = true
+    };
+    
+    /// <summary>Fast - quick stats only, no expensive operations</summary>
+    public static AnalysisProfileConfig Fast => new()
+    {
+        Description = "Quick stats only - no LLM, no correlations, no patterns",
+        UseLlm = false,
+        ComputeCorrelations = false,
+        DetectPatterns = false,
+        GenerateReport = false,
+        UseOnnx = false
+    };
+    
+    /// <summary>Full - everything enabled, comprehensive analysis</summary>
+    public static AnalysisProfileConfig Full => new()
+    {
+        Description = "Comprehensive analysis - all features enabled",
+        UseLlm = true,
+        ComputeCorrelations = true,
+        DetectPatterns = true,
+        GenerateReport = true,
+        UseOnnx = true
+    };
+}
+
+/// <summary>
 /// Configuration for console output sections
 /// </summary>
 public class ConsoleOutputSettings
@@ -109,6 +190,9 @@ public class ConsoleOutputSettings
     
     /// <summary>Show the column details table</summary>
     public bool ShowColumnTable { get; set; } = true;
+    
+    /// <summary>Show mini bar charts for categorical distributions</summary>
+    public bool ShowCharts { get; set; } = true;
     
     /// <summary>Show data quality alerts</summary>
     public bool ShowAlerts { get; set; } = true;
