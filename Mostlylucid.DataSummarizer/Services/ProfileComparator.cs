@@ -156,6 +156,10 @@ public class ProfileComparator
             {
                 diff.Psi = CalculateApproximatePsi(baseline, current);
             }
+            
+            // Also compute KS distance (quantile-based approximation)
+            var ksDistance = DistanceMetrics.ApproximateKolmogorovSmirnov(baseline, current);
+            diff.KsDistance = ksDistance;
         }
 
         // Categorical distribution comparison
@@ -164,6 +168,11 @@ public class ProfileComparator
         {
             diff.CategoricalChanges = CompareCategoricalDistribution(baseline.TopValues, current.TopValues);
             diff.Psi = CalculateCategoricalPsi(baseline.TopValues, current.TopValues);
+            
+            // Also compute JS divergence
+            var pDist = baseline.TopValues.ToDictionary(v => v.Value, v => v.Percent / 100.0);
+            var qDist = current.TopValues.ToDictionary(v => v.Value, v => v.Percent / 100.0);
+            diff.JsDivergence = DistanceMetrics.JensenShannonDivergence(pDist, qDist);
         }
 
         // Date range changes
@@ -551,6 +560,17 @@ public class ColumnDiff
     /// </summary>
     public double? Psi { get; set; }
     
+    /// <summary>
+    /// Kolmogorov-Smirnov distance (quantile-based approximation, 0-1)
+    /// For numeric columns, measures distributional shift
+    /// </summary>
+    public double? KsDistance { get; set; }
+    
+    /// <summary>
+    /// Jensen-Shannon divergence (0-1, symmetric measure for categorical distributions)
+    /// </summary>
+    public double? JsDivergence { get; set; }
+    
     public MetricChange? NullPercentChange { get; set; }
     public MetricChange? UniquePercentChange { get; set; }
     public NumericChanges? NumericChanges { get; set; }
@@ -637,6 +657,155 @@ public class DateRangeChanges
     public int MaxDateShiftDays { get; set; }
     public int BaselineSpanDays { get; set; }
     public int CurrentSpanDays { get; set; }
+}
+
+#endregion
+
+#region Advanced Distance Metrics
+
+public static class DistanceMetrics
+{
+    /// <summary>
+    /// Approximate KS statistic using quantiles (cheap Wasserstein-ish)
+    /// This is much faster than full KS test and works with profile data (no raw samples needed)
+    /// </summary>
+    public static double ApproximateKolmogorovSmirnov(ColumnProfile baseline, ColumnProfile current)
+    {
+        if (!baseline.Q25.HasValue || !baseline.Median.HasValue || !baseline.Q75.HasValue ||
+            !current.Q25.HasValue || !current.Median.HasValue || !current.Q75.HasValue)
+        {
+            return 0;
+        }
+
+        // Compare CDF at quartile points (cheap approximation)
+        var q25Diff = Math.Abs(current.Q25.Value - baseline.Q25.Value);
+        var medDiff = Math.Abs(current.Median.Value - baseline.Median.Value);
+        var q75Diff = Math.Abs(current.Q75.Value - baseline.Q75.Value);
+
+        // Normalize by IQR to make scale-independent
+        var baselineIQR = baseline.Q75.Value - baseline.Q25.Value;
+        var currentIQR = current.Q75.Value - current.Q25.Value;
+        var avgIQR = (baselineIQR + currentIQR) / 2.0;
+
+        if (avgIQR <= 0) return 0;
+
+        // Max difference across quantiles (KS-like)
+        var maxDiff = Math.Max(Math.Max(q25Diff, medDiff), q75Diff) / avgIQR;
+
+        // Also check IQR shift itself
+        var iqrShift = Math.Abs(currentIQR - baselineIQR) / Math.Max(0.001, baselineIQR);
+
+        return Math.Min(1.0, (maxDiff + iqrShift) / 2.0);
+    }
+
+    /// <summary>
+    /// Jensen-Shannon divergence for categorical distributions
+    /// Symmetric, bounded [0,1], and handles missing categories gracefully
+    /// </summary>
+    public static double JensenShannonDivergence(Dictionary<string, double> p, Dictionary<string, double> q)
+    {
+        if (p.Count == 0 && q.Count == 0) return 0;
+
+        var allKeys = p.Keys.Union(q.Keys).ToHashSet();
+        const double epsilon = 1e-10; // Avoid log(0)
+
+        // Normalize to ensure they sum to 1
+        var pSum = p.Values.Sum();
+        var qSum = q.Values.Sum();
+        if (pSum <= 0 || qSum <= 0) return 0;
+
+        var pNorm = p.ToDictionary(kv => kv.Key, kv => kv.Value / pSum);
+        var qNorm = q.ToDictionary(kv => kv.Key, kv => kv.Value / qSum);
+
+        // Compute M = (P + Q) / 2
+        var m = new Dictionary<string, double>();
+        foreach (var key in allKeys)
+        {
+            var pVal = pNorm.GetValueOrDefault(key, epsilon);
+            var qVal = qNorm.GetValueOrDefault(key, epsilon);
+            m[key] = (pVal + qVal) / 2.0;
+        }
+
+        // JS = (KL(P||M) + KL(Q||M)) / 2
+        double klPM = 0;
+        double klQM = 0;
+
+        foreach (var key in allKeys)
+        {
+            var pVal = pNorm.GetValueOrDefault(key, epsilon);
+            var qVal = qNorm.GetValueOrDefault(key, epsilon);
+            var mVal = m[key];
+
+            klPM += pVal * Math.Log(pVal / mVal);
+            klQM += qVal * Math.Log(qVal / mVal);
+        }
+
+        var js = (klPM + klQM) / 2.0;
+
+        // Normalize to [0,1] (JS divergence max is ln(2))
+        return Math.Min(1.0, js / Math.Log(2));
+    }
+
+    /// <summary>
+    /// Compute weighted drift score across all columns
+    /// Uses KS for numeric, JS for categorical, simple deltas for others
+    /// </summary>
+    public static double ComputeWeightedDrift(
+        Dictionary<string, ColumnProfile> baseline,
+        Dictionary<string, ColumnProfile> current,
+        HashSet<string>? excludeColumns = null)
+    {
+        excludeColumns ??= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var scores = new List<(double distance, double weight)>();
+
+        foreach (var (colName, baseCol) in baseline)
+        {
+            if (excludeColumns.Contains(colName)) continue;
+            if (!current.TryGetValue(colName, out var currCol)) continue;
+
+            double distance = 0;
+            double weight = 1.0;
+
+            // Higher weight for non-ID columns
+            if (baseCol.InferredType == ColumnType.Id)
+            {
+                weight = 0.1;
+            }
+
+            switch (baseCol.InferredType)
+            {
+                case ColumnType.Numeric:
+                    distance = ApproximateKolmogorovSmirnov(baseCol, currCol);
+                    break;
+
+                case ColumnType.Categorical:
+                    if (baseCol.TopValues?.Count > 0 && currCol.TopValues?.Count > 0)
+                    {
+                        var pDist = baseCol.TopValues.ToDictionary(v => v.Value, v => v.Percent / 100.0);
+                        var qDist = currCol.TopValues.ToDictionary(v => v.Value, v => v.Percent / 100.0);
+                        distance = JensenShannonDivergence(pDist, qDist);
+                    }
+                    break;
+
+                default:
+                    // For other types, use null% and unique% deltas
+                    var nullDelta = Math.Abs(currCol.NullPercent - baseCol.NullPercent) / 100.0;
+                    var uniqueDelta = Math.Abs(currCol.UniquePercent - baseCol.UniquePercent) / 100.0;
+                    distance = (nullDelta + uniqueDelta) / 2.0;
+                    break;
+            }
+
+            scores.Add((distance, weight));
+        }
+
+        if (scores.Count == 0) return 0;
+
+        var weightedSum = scores.Sum(s => s.distance * s.weight);
+        var totalWeight = scores.Sum(s => s.weight);
+
+        return totalWeight > 0 ? weightedSum / totalWeight : 0;
+    }
 }
 
 #endregion

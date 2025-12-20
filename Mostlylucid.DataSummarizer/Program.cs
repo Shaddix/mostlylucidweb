@@ -344,6 +344,25 @@ validateCmd.SetAction(async (parseResult, cancellationToken) =>
     // Compute anomaly score
     var anomalyScore = AnomalyScorer.ComputeAnomalyScore(tgtReport.Profile);
     
+    // If significant drift detected, suggest updated constraints
+    if (detailedDrift.HasSignificantDrift && detailedDrift.OverallDriftScore > 0.3)
+    {
+        var validator = new ConstraintValidator(verbose);
+        var suggestedConstraints = validator.GenerateFromProfile(tgtReport.Profile);
+        
+        var suggestedPath = output != null
+            ? Path.Combine(Path.GetDirectoryName(output) ?? ".", "constraints.suggested.json")
+            : "constraints.suggested.json";
+            
+        var suggestedJson = System.Text.Json.JsonSerializer.Serialize(suggestedConstraints, 
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(suggestedPath, suggestedJson);
+        
+        AnsiConsole.MarkupLine($"[yellow]⚠ Significant drift detected (score: {detailedDrift.OverallDriftScore:F2})[/]");
+        AnsiConsole.MarkupLine($"[dim]Suggested constraints saved to: {suggestedPath}[/]");
+        AnsiConsole.MarkupLine($"[dim]Review before applying in CI/CD pipeline.[/]");
+    }
+    
     var combinedResult = new
     {
         validation.Source,
@@ -654,7 +673,7 @@ storeStatsCmd.SetAction((parseResult, cancellationToken) =>
     return Task.CompletedTask;
 });
 
-storeCmd.SetAction((parseResult, cancellationToken) =>
+storeCmd.SetAction(async (parseResult, cancellationToken) =>
 {
     var storePath = parseResult.GetValue(storePathOption);
     var deleteId = parseResult.GetValue(storeDeleteOption);
@@ -670,17 +689,11 @@ storeCmd.SetAction((parseResult, cancellationToken) =>
         {
             AnsiConsole.MarkupLine($"[red]Profile {deleteId} not found[/]");
         }
-        return Task.CompletedTask;
+        return;
     }
     
-    // Show help if no action specified
-    AnsiConsole.MarkupLine("[yellow]Usage:[/] datasummarizer store <command>");
-    AnsiConsole.MarkupLine("  [cyan]list[/]   - List all stored profiles");
-    AnsiConsole.MarkupLine("  [cyan]stats[/]  - Show store statistics");
-    AnsiConsole.MarkupLine("  [cyan]clear[/]  - Clear all stored profiles");
-    AnsiConsole.MarkupLine("  [cyan]prune[/]  - Remove old profiles");
-    AnsiConsole.MarkupLine("  [cyan]--id[/]   - Delete specific profile by ID");
-    return Task.CompletedTask;
+    // Interactive menu mode
+    await ShowProfileManagementMenu(storePath);
 });
 
 // Segment comparison command handler
@@ -1663,4 +1676,423 @@ static string FormatSegmentComparisonHtml(SegmentComparison comparison, AnomalyS
     
     sb.AppendLine("</body></html>");
     return sb.ToString();
+}
+
+// Interactive profile management menu
+static async Task ShowProfileManagementMenu(string? storePath)
+{
+    var store = new ProfileStore(storePath);
+    
+    while (true)
+    {
+        AnsiConsole.Clear();
+        AnsiConsole.Write(new Rule("[cyan]Profile Store Management[/]").LeftJustified());
+        AnsiConsole.WriteLine();
+        
+        var profiles = store.ListAll(100);
+        if (profiles.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No stored profiles found.[/]");
+            AnsiConsole.MarkupLine("\n[dim]Press any key to exit...[/]");
+            Console.ReadKey(true);
+            return;
+        }
+        
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[yellow]What would you like to do?[/]")
+                .PageSize(10)
+                .AddChoices(new[] {
+                    "📋 List all profiles",
+                    "🔍 View profile details",
+                    "📊 Compare two profiles", 
+                    "🗑️  Delete profile",
+                    "🚫 Exclude from baseline",
+                    "📌 Pin as baseline",
+                    "🏷️  Add tags/notes",
+                    "🧹 Prune old profiles",
+                    "📈 Show statistics",
+                    "❌ Exit"
+                }));
+        
+        try
+        {
+            switch (choice)
+            {
+                case "📋 List all profiles":
+                    await ListProfiles(store);
+                    break;
+                    
+                case "🔍 View profile details":
+                    await ViewProfileDetails(store, profiles);
+                    break;
+                    
+                case "📊 Compare two profiles":
+                    await CompareProfiles(store, profiles);
+                    break;
+                    
+                case "🗑️  Delete profile":
+                    await DeleteProfile(store, profiles);
+                    break;
+                    
+                case "🚫 Exclude from baseline":
+                    await ExcludeFromBaseline(store, profiles);
+                    break;
+                    
+                case "📌 Pin as baseline":
+                    await PinAsBaseline(store, profiles);
+                    break;
+                    
+                case "🏷️  Add tags/notes":
+                    await AddTagsNotes(store, profiles);
+                    break;
+                    
+                case "🧹 Prune old profiles":
+                    await PruneProfiles(store);
+                    break;
+                    
+                case "📈 Show statistics":
+                    await ShowStoreStatistics(store);
+                    break;
+                    
+                case "❌ Exit":
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.WriteException(ex);
+            AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+            Console.ReadKey(true);
+        }
+    }
+}
+
+static async Task ListProfiles(ProfileStore store)
+{
+    var profiles = store.ListAll(100);
+    
+    var table = new Table()
+        .Border(TableBorder.Rounded)
+        .AddColumn("ID")
+        .AddColumn("File")
+        .AddColumn("Rows")
+        .AddColumn("Cols")
+        .AddColumn("Schema")
+        .AddColumn("Stored")
+        .AddColumn("Flags");
+    
+    foreach (var p in profiles)
+    {
+        var flags = new List<string>();
+        if (p.IsPinnedBaseline) flags.Add("📌");
+        if (p.ExcludeFromBaseline) flags.Add("🚫");
+        if (!string.IsNullOrEmpty(p.Tags)) flags.Add("🏷️");
+        
+        table.AddRow(
+            p.Id,
+            Markup.Escape(Path.GetFileName(p.FileName)),
+            p.RowCount.ToString("N0"),
+            p.ColumnCount.ToString(),
+            p.SchemaHash[..8],
+            p.StoredAt.ToString("yyyy-MM-dd"),
+            string.Join(" ", flags));
+    }
+    
+    AnsiConsole.WriteLine();
+    AnsiConsole.Write(table);
+    AnsiConsole.MarkupLine($"\n[dim]Total: {profiles.Count} profile(s)  |  📌 = pinned baseline  |  🚫 = excluded  |  🏷️ = has tags[/]");
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task ViewProfileDetails(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    var selected = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .Title("[yellow]Select profile to view:[/]")
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.RowCount:N0} rows)")
+            .AddChoices(profiles));
+    
+    var profile = store.LoadProfile(selected.Id);
+    if (profile == null)
+    {
+        AnsiConsole.MarkupLine("[red]Profile not found[/]");
+        return;
+    }
+    
+    AnsiConsole.Clear();
+    AnsiConsole.Write(new Rule($"[cyan]Profile: {selected.FileName}[/]").LeftJustified());
+    AnsiConsole.WriteLine();
+    
+    var grid = new Grid()
+        .AddColumn()
+        .AddColumn()
+        .AddRow("[bold]ID:[/]", selected.Id)
+        .AddRow("[bold]File:[/]", Markup.Escape(selected.SourcePath))
+        .AddRow("[bold]Rows:[/]", selected.RowCount.ToString("N0"))
+        .AddRow("[bold]Columns:[/]", selected.ColumnCount.ToString())
+        .AddRow("[bold]Schema Hash:[/]", selected.SchemaHash)
+        .AddRow("[bold]Stored:[/]", selected.StoredAt.ToString("yyyy-MM-dd HH:mm:ss"))
+        .AddRow("[bold]Tags:[/]", selected.Tags ?? "[dim]none[/]")
+        .AddRow("[bold]Notes:[/]", selected.Notes ?? "[dim]none[/]");
+    
+    if (selected.IsPinnedBaseline)
+    {
+        grid.AddRow("[bold]Baseline:[/]", "[green]📌 Pinned as baseline[/]");
+    }
+    if (selected.ExcludeFromBaseline)
+    {
+        grid.AddRow("[bold]Excluded:[/]", "[red]🚫 Excluded from baseline[/]");
+    }
+    
+    AnsiConsole.Write(grid);
+    AnsiConsole.WriteLine();
+    
+    AnsiConsole.MarkupLine($"\n[bold]Columns ({profile.ColumnCount}):[/]");
+    foreach (var col in profile.Columns.Take(10))
+    {
+        AnsiConsole.MarkupLine($"  [cyan]{col.Name}[/]: {col.InferredType} ({col.NullPercent:F1}% null, {col.UniquePercent:F1}% unique)");
+    }
+    if (profile.ColumnCount > 10)
+    {
+        AnsiConsole.MarkupLine($"  [dim]... and {profile.ColumnCount - 10} more[/]");
+    }
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task CompareProfiles(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    AnsiConsole.MarkupLine("[yellow]Select baseline profile:[/]");
+    var baseline = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles));
+    
+    AnsiConsole.MarkupLine("\n[yellow]Select current profile to compare:[/]");
+    var current = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles.Where(p => p.Id != baseline.Id)));
+    
+    var baselineProfile = store.LoadProfile(baseline.Id);
+    var currentProfile = store.LoadProfile(current.Id);
+    
+    if (baselineProfile == null || currentProfile == null)
+    {
+        AnsiConsole.MarkupLine("[red]Failed to load profiles[/]");
+        AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+        Console.ReadKey(true);
+        return;
+    }
+    
+    AnsiConsole.Status()
+        .Start("Comparing profiles...", ctx =>
+        {
+            var comparator = new ProfileComparator();
+            var diff = comparator.Compare(baselineProfile, currentProfile);
+            
+            AnsiConsole.Clear();
+            AnsiConsole.Write(new Rule("[cyan]Profile Comparison[/]").LeftJustified());
+            AnsiConsole.WriteLine();
+            
+            AnsiConsole.MarkupLine($"[bold]Baseline:[/] {baseline.FileName} ({baseline.StoredAt:yyyy-MM-dd})");
+            AnsiConsole.MarkupLine($"[bold]Current:[/] {current.FileName} ({current.StoredAt:yyyy-MM-dd})");
+            AnsiConsole.WriteLine();
+            
+            var driftColor = diff.OverallDriftScore > 0.3 ? "red" : (diff.OverallDriftScore > 0.1 ? "yellow" : "green");
+            AnsiConsole.MarkupLine($"[bold]Drift Score:[/] [{driftColor}]{diff.OverallDriftScore:F3}[/]");
+            AnsiConsole.MarkupLine($"[bold]Row Count Change:[/] {diff.RowCountChange.PercentChange:+0.0;-0.0}%");
+            AnsiConsole.WriteLine();
+            
+            if (diff.SchemaChanges.HasChanges)
+            {
+                AnsiConsole.MarkupLine("[red]⚠ Schema Changes Detected[/]");
+                if (diff.SchemaChanges.AddedColumns.Count > 0)
+                    AnsiConsole.MarkupLine($"  [green]+[/] Added: {string.Join(", ", diff.SchemaChanges.AddedColumns)}");
+                if (diff.SchemaChanges.RemovedColumns.Count > 0)
+                    AnsiConsole.MarkupLine($"  [red]-[/] Removed: {string.Join(", ", diff.SchemaChanges.RemovedColumns)}");
+                AnsiConsole.WriteLine();
+            }
+            
+            if (diff.ColumnDiffs.Count > 0)
+            {
+                var table = new Table()
+                    .Border(TableBorder.Rounded)
+                    .AddColumn("Column")
+                    .AddColumn("Type")
+                    .AddColumn("PSI")
+                    .AddColumn("KS/JS")
+                    .AddColumn("Null Δ");
+                
+                foreach (var col in diff.ColumnDiffs.OrderByDescending(c => c.Psi ?? c.KsDistance ?? c.JsDivergence ?? 0).Take(10))
+                {
+                    var metric = col.KsDistance?.ToString("F3") ?? col.JsDivergence?.ToString("F3") ?? "-";
+                    var psi = col.Psi?.ToString("F3") ?? "-";
+                    var nullDelta = col.NullPercentChange?.AbsoluteChange.ToString("+0.0;-0.0") ?? "-";
+                    
+                    table.AddRow(
+                        col.ColumnName,
+                        col.ColumnType.ToString(),
+                        psi,
+                        metric,
+                        nullDelta);
+                }
+                
+                AnsiConsole.MarkupLine("[bold]Top Drifted Columns:[/]");
+                AnsiConsole.Write(table);
+            }
+            
+            if (diff.Summary != null)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"[dim]{Markup.Escape(diff.Summary)}[/]");
+            }
+        });
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task DeleteProfile(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    var selected = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .Title("[yellow]Select profile to delete:[/]")
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles));
+    
+    if (!AnsiConsole.Confirm($"[red]Delete profile {selected.Id}?[/]", defaultValue: false))
+    {
+        return;
+    }
+    
+    if (store.Delete(selected.Id))
+    {
+        AnsiConsole.MarkupLine($"[green]✓ Deleted profile {selected.Id}[/]");
+    }
+    else
+    {
+        AnsiConsole.MarkupLine($"[red]✗ Failed to delete profile {selected.Id}[/]");
+    }
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task ExcludeFromBaseline(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    var selected = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .Title("[yellow]Select profile to exclude from baseline:[/]")
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles));
+    
+    selected.ExcludeFromBaseline = !selected.ExcludeFromBaseline;
+    store.UpdateMetadata(selected);
+    
+    var status = selected.ExcludeFromBaseline ? "[red]excluded from[/]" : "[green]included in[/]";
+    AnsiConsole.MarkupLine($"[green]✓[/] Profile {selected.Id} is now {status} baseline selection");
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task PinAsBaseline(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    var selected = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .Title("[yellow]Select profile to pin as baseline:[/]")
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles));
+    
+    // Unpin others with same schema
+    var schemaHash = selected.SchemaHash;
+    foreach (var p in profiles.Where(p => p.SchemaHash == schemaHash && p.Id != selected.Id))
+    {
+        if (p.IsPinnedBaseline)
+        {
+            p.IsPinnedBaseline = false;
+            store.UpdateMetadata(p);
+        }
+    }
+    
+    selected.IsPinnedBaseline = !selected.IsPinnedBaseline;
+    store.UpdateMetadata(selected);
+    
+    var status = selected.IsPinnedBaseline ? "[green]📌 pinned as baseline[/]" : "[yellow]unpinned[/]";
+    AnsiConsole.MarkupLine($"[green]✓[/] Profile {selected.Id} is now {status}");
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task AddTagsNotes(ProfileStore store, List<StoredProfileInfo> profiles)
+{
+    var selected = AnsiConsole.Prompt(
+        new SelectionPrompt<StoredProfileInfo>()
+            .Title("[yellow]Select profile to edit:[/]")
+            .PageSize(15)
+            .UseConverter(p => $"{p.Id} - {Path.GetFileName(p.FileName)} ({p.StoredAt:yyyy-MM-dd})")
+            .AddChoices(profiles));
+    
+    var tags = AnsiConsole.Ask("[yellow]Tags (comma-separated):[/]", selected.Tags ?? "");
+    var notes = AnsiConsole.Ask("[yellow]Notes:[/]", selected.Notes ?? "");
+    
+    selected.Tags = string.IsNullOrWhiteSpace(tags) ? null : tags;
+    selected.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes;
+    
+    store.UpdateMetadata(selected);
+    
+    AnsiConsole.MarkupLine($"[green]✓ Updated metadata for profile {selected.Id}[/]");
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task PruneProfiles(ProfileStore store)
+{
+    var keep = AnsiConsole.Ask("[yellow]How many profiles to keep per schema?[/]", 3);
+    
+    if (!AnsiConsole.Confirm($"[yellow]Keep {keep} most recent profiles per schema and delete the rest?[/]", defaultValue: false))
+    {
+        return;
+    }
+    
+    var pruned = store.PruneOldProfiles(keep);
+    AnsiConsole.MarkupLine($"[green]✓ Pruned {pruned} old profile(s)[/]");
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
+}
+
+static async Task ShowStoreStatistics(ProfileStore store)
+{
+    var stats = store.GetStatistics();
+    
+    AnsiConsole.Clear();
+    AnsiConsole.Write(new Rule("[cyan]Store Statistics[/]").LeftJustified());
+    AnsiConsole.WriteLine();
+    
+    var grid = new Grid()
+        .AddColumn()
+        .AddColumn()
+        .AddRow("[bold]Total Profiles:[/]", stats.TotalProfiles.ToString())
+        .AddRow("[bold]Unique Schemas:[/]", stats.UniqueSchemas.ToString())
+        .AddRow("[bold]Total Rows Profiled:[/]", stats.TotalRowsProfiled.ToString("N0"))
+        .AddRow("[bold]Disk Usage:[/]", $"{stats.TotalDiskUsageMB:F2} MB")
+        .AddRow("[bold]Oldest Profile:[/]", stats.OldestProfile?.ToString("yyyy-MM-dd HH:mm") ?? "-")
+        .AddRow("[bold]Newest Profile:[/]", stats.NewestProfile?.ToString("yyyy-MM-dd HH:mm") ?? "-");
+    
+    AnsiConsole.Write(grid);
+    
+    AnsiConsole.MarkupLine("\n[dim]Press any key to continue...[/]");
+    Console.ReadKey(true);
 }

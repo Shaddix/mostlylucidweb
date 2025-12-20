@@ -370,7 +370,8 @@ public class ProfileStore
 
     /// <summary>
     /// Load the baseline profile for drift comparison
-    /// Returns the first profile stored with matching schema
+    /// Returns the pinned baseline if one exists, otherwise the oldest profile with matching schema
+    /// Profiles marked as ExcludeFromBaseline are skipped
     /// </summary>
     public DataProfile? LoadBaseline(DataProfile current)
     {
@@ -378,9 +379,21 @@ public class ProfileStore
         if (!_index.BySchemaHash.TryGetValue(schemaHash, out var ids) || ids.Count == 0)
             return null;
 
-        // Get the oldest profile with this schema (the baseline)
-        var baselineId = ids
+        var candidates = ids
             .Select(id => _index.Profiles[id])
+            .Where(p => !p.ExcludeFromBaseline)
+            .ToList();
+
+        if (candidates.Count == 0)
+            return null;
+
+        // Check for pinned baseline first
+        var pinned = candidates.FirstOrDefault(p => p.IsPinnedBaseline);
+        if (pinned != null)
+            return LoadProfile(pinned.Id);
+
+        // Fall back to oldest profile with this schema
+        var baselineId = candidates
             .OrderBy(p => p.StoredAt)
             .First().Id;
 
@@ -437,6 +450,7 @@ public class ProfileStore
 
             var toDelete = ids
                 .Select(id => _index.Profiles[id])
+                .Where(p => !p.IsPinnedBaseline) // Never prune pinned baselines
                 .OrderByDescending(p => p.StoredAt)
                 .Skip(keepPerSchema)
                 .Select(p => p.Id)
@@ -451,6 +465,11 @@ public class ProfileStore
 
         return pruned;
     }
+    
+    /// <summary>
+    /// Alias for Prune() for backward compatibility
+    /// </summary>
+    public int PruneOldProfiles(int keepPerSchema = 5) => Prune(keepPerSchema);
     
     /// <summary>
     /// Clear all stored profiles (for testing or fresh start)
@@ -493,6 +512,59 @@ public class ProfileStore
             OldestProfile = profiles.MinBy(p => p.StoredAt)?.StoredAt,
             NewestProfile = profiles.MaxBy(p => p.StoredAt)?.StoredAt,
             StorePath = _storePath
+        };
+    }
+    
+    /// <summary>
+    /// Update metadata for a stored profile (tags, notes, flags)
+    /// </summary>
+    public void UpdateMetadata(StoredProfileInfo info)
+    {
+        if (!_index.Profiles.ContainsKey(info.Id))
+            throw new ArgumentException($"Profile {info.Id} not found");
+            
+        // Update the profile in the index
+        _index.Profiles[info.Id] = info;
+        
+        // If pinning this as baseline, unpin any other baselines with same schema
+        if (info.IsPinnedBaseline && _index.BySchemaHash.TryGetValue(info.SchemaHash, out var ids))
+        {
+            foreach (var id in ids.Where(id => id != info.Id))
+            {
+                if (_index.Profiles.TryGetValue(id, out var other) && other.IsPinnedBaseline)
+                {
+                    other.IsPinnedBaseline = false;
+                }
+            }
+        }
+        
+        SaveIndex();
+    }
+    
+    /// <summary>
+    /// Get detailed store statistics for interactive menu
+    /// </summary>
+    public StoreStatistics GetStatistics()
+    {
+        var profiles = _index.Profiles.Values.ToList();
+        var totalDiskUsage = 0.0;
+        
+        foreach (var profile in profiles)
+        {
+            if (File.Exists(profile.ProfilePath))
+            {
+                totalDiskUsage += new FileInfo(profile.ProfilePath).Length;
+            }
+        }
+        
+        return new StoreStatistics
+        {
+            TotalProfiles = profiles.Count,
+            UniqueSchemas = _index.BySchemaHash.Count,
+            TotalRowsProfiled = profiles.Sum(p => p.RowCount),
+            TotalDiskUsageMB = totalDiskUsage / (1024.0 * 1024.0),
+            OldestProfile = profiles.MinBy(p => p.StoredAt)?.StoredAt,
+            NewestProfile = profiles.MaxBy(p => p.StoredAt)?.StoredAt
         };
     }
 
@@ -703,6 +775,47 @@ public class ProfileStore
             sig.CategoricalCardinalities = catCols.Select(c => (int)c.UniqueCount).ToList();
         }
 
+        // Per-column signatures for drift detection
+        foreach (var col in profile.Columns)
+        {
+            var colSig = new ColumnSignature
+            {
+                NormalizedName = col.Name.ToLowerInvariant().Trim(),
+                Type = col.InferredType,
+                NullPercent = col.NullPercent,
+                UniquePercent = col.UniquePercent
+            };
+
+            if (col.InferredType == ColumnType.Numeric)
+            {
+                colSig.Mean = col.Mean;
+                colSig.Median = col.Median;
+                colSig.StdDev = col.StdDev;
+                // MAD will be computed separately if needed
+                colSig.Skewness = col.Skewness;
+                colSig.Quantiles = new[] { col.Q25 ?? 0, col.Median ?? 0, col.Q75 ?? 0 };
+                colSig.OutlierRatio = col.OutlierCount > 0 ? (double)col.OutlierCount / profile.RowCount : 0;
+            }
+            else if (col.InferredType == ColumnType.Categorical)
+            {
+                colSig.Cardinality = (int)col.UniqueCount;
+                colSig.Entropy = col.Entropy;
+                colSig.ImbalanceRatio = col.ImbalanceRatio;
+                
+                // Store top-K distribution for JS divergence calculation
+                if (col.TopValues?.Count > 0)
+                {
+                    colSig.TopKDistribution = col.TopValues
+                        .ToDictionary(
+                            vc => vc.Value,
+                            vc => vc.Percent / 100.0 // Already a percentage, convert to fraction
+                        );
+                }
+            }
+
+            sig.PerColumnStats[colSig.NormalizedName] = colSig;
+        }
+
         return sig;
     }
 
@@ -881,13 +994,43 @@ public class StoredProfileInfo
     /// Centroid vector for distance calculations (computed from profile stats)
     /// </summary>
     public double[]? CentroidVector { get; set; }
+    
+    /// <summary>
+    /// If true, this profile is pinned as the baseline for drift comparison
+    /// Only one profile per schema can be pinned
+    /// </summary>
+    public bool IsPinnedBaseline { get; set; }
+    
+    /// <summary>
+    /// If true, exclude this profile from automatic baseline selection
+    /// Useful for known-bad batches or outlier data
+    /// </summary>
+    public bool ExcludeFromBaseline { get; set; }
+    
+    /// <summary>
+    /// Comma-separated tags for categorization (e.g., "production,validated,Q4-2024")
+    /// </summary>
+    public string? Tags { get; set; }
+    
+    /// <summary>
+    /// User notes about this profile (e.g., "Known data quality issue", "Pre-migration baseline")
+    /// </summary>
+    public string? Notes { get; set; }
 }
 
 /// <summary>
-/// Statistical fingerprint of a profile for similarity matching
+/// Statistical signature for similarity matching and drift detection.
+/// This is intentionally separate from the fingerprint (schema hash).
+/// 
+/// - Fingerprint (stable): column names + types - survives new batches
+/// - Signature (changes): statistical properties - detects drift
+/// 
+/// Use fingerprint for "same dataset family" matching.
+/// Use signature for drift detection within that family.
 /// </summary>
 public class StatisticalSignature
 {
+    // Dataset-level stats (for coarse matching)
     public string RowCountBucket { get; set; } = "";
     public int ColumnCount { get; set; }
     public int NumericColumnCount { get; set; }
@@ -896,10 +1039,45 @@ public class StatisticalSignature
     public int TextColumnCount { get; set; }
     public double AvgNullPercent { get; set; }
     public double AvgUniquePercent { get; set; }
+    
+    // Normalized column names (for fuzzy schema matching)
     public List<string> ColumnNames { get; set; } = [];
+    
+    // Per-column signatures for drift detection
+    public Dictionary<string, ColumnSignature> PerColumnStats { get; set; } = new();
+    
+    // Legacy aggregate stats (keep for compatibility)
     public List<double> NumericMeans { get; set; } = [];
     public List<double> NumericStdDevs { get; set; } = [];
     public List<int> CategoricalCardinalities { get; set; } = [];
+}
+
+/// <summary>
+/// Per-column statistical signature for drift detection
+/// </summary>
+public class ColumnSignature
+{
+    public string NormalizedName { get; set; } = ""; // lowercase, trimmed
+    public ColumnType Type { get; set; }
+    
+    // Data quality metrics
+    public double NullPercent { get; set; }
+    public double UniquePercent { get; set; }
+    
+    // Numeric-specific (for KS/Wasserstein approximation)
+    public double? Mean { get; set; }
+    public double? Median { get; set; }
+    public double? StdDev { get; set; }
+    public double? MAD { get; set; } // Median Absolute Deviation
+    public double? Skewness { get; set; }
+    public double[]? Quantiles { get; set; } // [Q25, Q50, Q75] for distribution comparison
+    public double? OutlierRatio { get; set; }
+    
+    // Categorical-specific (for JS divergence)
+    public int? Cardinality { get; set; }
+    public Dictionary<string, double>? TopKDistribution { get; set; } // top-K value frequencies
+    public double? Entropy { get; set; }
+    public double? ImbalanceRatio { get; set; }
 }
 
 /// <summary>
@@ -968,6 +1146,19 @@ public class StoreStats
         < 1024 * 1024 * 1024 => $"{TotalSizeBytes / (1024.0 * 1024):F1} MB",
         _ => $"{TotalSizeBytes / (1024.0 * 1024 * 1024):F2} GB"
     };
+}
+
+/// <summary>
+/// Detailed statistics for interactive profile management menu
+/// </summary>
+public class StoreStatistics
+{
+    public int TotalProfiles { get; set; }
+    public int UniqueSchemas { get; set; }
+    public long TotalRowsProfiled { get; set; }
+    public double TotalDiskUsageMB { get; set; }
+    public DateTime? OldestProfile { get; set; }
+    public DateTime? NewestProfile { get; set; }
 }
 
 #endregion

@@ -469,6 +469,105 @@ Supply `--session-id <id>` to keep conversational context across runs.
 
 ---
 
+## Automatic Drift Detection (Cron-Friendly)
+
+**The killer feature:** DataSummarizer can automatically detect drift without manual baseline management.
+
+### How It Works
+
+Every dataset gets a **statistical signature** (fingerprint + per-column stats):
+
+- **Fingerprint** (stable): Schema hash - column names + types. Survives new batches.
+- **Signature** (changes): Per-column statistical properties. Detects drift.
+
+When you profile a file, DataSummarizer:
+
+1. Computes the current signature
+2. Finds the best baseline automatically (nearest prior profile with same schema)
+3. Computes drift using proper distance metrics (KS, JS divergence)
+4. Emits drift report with explainable column-level deltas
+
+### Cron Job Pattern
+
+```bash
+# Daily cron job (no human baseline management needed)
+0 2 * * * datasummarizer tool -f /data/daily_export.csv --auto-drift --store > /logs/drift-$(date +\%Y\%m\%d).json
+```
+
+**What happens:**
+
+1. **Profile computed**: Row/column stats, alerts, patterns
+2. **Baseline auto-selected**: Finds oldest profile with same schema (or most similar by fingerprint)
+3. **Drift calculated**: Uses Kolmogorov-Smirnov (numeric) and Jensen-Shannon divergence (categorical)
+4. **Report emitted**: JSON output includes drift score, per-column distances, recommendations
+
+### Output Example
+
+```json
+{
+  "Success": true,
+  "Profile": { "RowCount": 50000, "ColumnCount": 12 },
+  "Metadata": {
+    "ProfileId": "a3f9e2c1b8d4",
+    "Drift": {
+      "BaselineProfileId": "7c2e5f8a1b3d",
+      "BaselineDate": "2025-12-19T02:00:00Z",
+      "DriftScore": 0.1823,
+      "HasSignificantDrift": false,
+      "DriftedColumnCount": 2,
+      "Summary": "Minor drift detected in Age, Balance. Schema unchanged."
+    }
+  }
+}
+```
+
+### Drift Detection Details
+
+**Distance Metrics:**
+
+- **Numeric columns**: Approximate Kolmogorov-Smirnov using quantiles [Q25, Q50, Q75], IQR-normalized
+- **Categorical columns**: Jensen-Shannon divergence (symmetric, handles missing categories)
+- **Overall**: Weighted rollup excluding ID columns
+
+**Thresholds (tuneable):**
+
+- Drift score > 0.2 = moderate drift
+- Drift score > 0.3 = significant drift (triggers constraint suggestions)
+- Per-column KS/JS > 0.1 = flagged for review
+
+### Constraint Suggestions
+
+When drift crosses 0.3, DataSummarizer auto-generates suggested constraints:
+
+```bash
+datasummarizer validate --source baseline.csv --target new_data.csv --no-llm
+```
+
+**Output if drift detected:**
+
+```
+⚠ Significant drift detected (score: 0.34)
+Suggested constraints saved to: constraints.suggested.json
+Review before applying in CI/CD pipeline.
+```
+
+This gives you a **proposed data contract** based on the new distribution - you review and approve, not blindly accept.
+
+### CI/CD Integration
+
+```bash
+# In your CI pipeline
+datasummarizer validate \
+  --source production_schema.csv \
+  --target new_batch.csv \
+  --constraints production.constraints.json \
+  --strict
+
+# Exit code 1 if constraints violated
+```
+
+---
+
 ## ONNX sentinel scoring (optional)
 
 If you pass `--onnx path/to/model.onnx`, DataSummarizer can score each column using an ONNX model.
