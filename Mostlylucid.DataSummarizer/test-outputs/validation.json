@@ -1,0 +1,123 @@
+{
+  "Source": "../../pii-test.csv",
+  "Target": "synthetic-100.csv",
+  "DriftScore": 0,
+  "AnomalyScore": {
+    "ProfileSource": "synthetic-100.csv",
+    "ComputedAt": "2025-12-20T01:45:41.4552233Z",
+    "OverallScore": 0.1875,
+    "Interpretation": "Good",
+    "Components": [
+      {
+        "Name": "DataQuality",
+        "Score": 0.75,
+        "Weight": 0.25,
+        "WeightedScore": 0.1875
+      },
+      {
+        "Name": "NullRate",
+        "Score": 0,
+        "Weight": 0.15,
+        "WeightedScore": 0
+      },
+      {
+        "Name": "Outliers",
+        "Score": 0,
+        "Weight": 0.2,
+        "WeightedScore": 0
+      },
+      {
+        "Name": "Distribution",
+        "Score": 0,
+        "Weight": 0.15,
+        "WeightedScore": 0
+      },
+      {
+        "Name": "Cardinality",
+        "Score": 0,
+        "Weight": 0.1,
+        "WeightedScore": 0
+      },
+      {
+        "Name": "Schema",
+        "Score": 0,
+        "Weight": 0.15,
+        "WeightedScore": 0
+      }
+    ],
+    "Issues": [
+      {
+        "Category": "DataQuality",
+        "Description": "3 errors, 1 warnings, 0 info alerts",
+        "Severity": "High",
+        "AffectedColumns": []
+      }
+    ],
+    "Recommendations": [
+      "Data quality is acceptable for analysis"
+    ]
+  },
+  "DetailedDrift": {
+    "Summary": "Row count increased by 1900.0% (5 \u2192 100).",
+    "HasSignificantDrift": false,
+    "OverallDriftScore": 0.11421849295586899,
+    "RowCountChange": {
+      "Baseline": 5,
+      "Current": 100,
+      "AbsoluteChange": 95,
+      "PercentChange": 1900,
+      "IsSignificant": true
+    },
+    "SchemaChanges": {
+      "AddedColumns": [],
+      "RemovedColumns": [],
+      "TypeChanges": [],
+      "HasChanges": false
+    },
+    "Recommendations": [
+      "Large row count change (1900.0%) - investigate data source"
+    ]
+  },
+  "ColumnDeltas": [
+    {
+      "Name": "Name",
+      "Type": 2,
+      "NullDelta": 0,
+      "MeanDelta": null,
+      "StdDelta": null,
+      "MadDelta": null,
+      "TopOverlap": 1,
+      "Note": ""
+    },
+    {
+      "Name": "Email",
+      "Type": 2,
+      "NullDelta": 0,
+      "MeanDelta": null,
+      "StdDelta": null,
+      "MadDelta": null,
+      "TopOverlap": 1,
+      "Note": ""
+    },
+    {
+      "Name": "Phone",
+      "Type": 2,
+      "NullDelta": 0,
+      "MeanDelta": null,
+      "StdDelta": null,
+      "MadDelta": null,
+      "TopOverlap": 1,
+      "Note": ""
+    },
+    {
+      "Name": "SSN",
+      "Type": 2,
+      "NullDelta": 0,
+      "MeanDelta": null,
+      "StdDelta": null,
+      "MadDelta": null,
+      "TopOverlap": 1,
+      "Note": ""
+    }
+  ]
+}

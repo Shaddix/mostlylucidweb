@@ -1,0 +1,367 @@
+[
+  {
+    "SourcePath": "../../pii-test.csv",
+    "SourceType": 0,
+    "SheetName": null,
+    "RowCount": 5,
+    "ColumnCount": 4,
+    "Columns": [
+      {
+        "Name": "Name",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "SemanticRole": 0,
+        "Description": "Categorical with 4 unique values; top values: \u0027Charlie Davis\u0027, \u0027Bob Wilson\u0027, \u0027John Doe\u0027.",
+        "InterestScore": 0,
+        "Count": 5,
+        "NullCount": 0,
+        "UniqueCount": 4,
+        "NullPercent": 0,
+        "UniquePercent": 80,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "Kurtosis": null,
+        "OutlierCount": 0,
+        "ZeroCount": 0,
+        "Iqr": null,
+        "Range": null,
+        "CoefficientOfVariation": null,
+        "TopValues": [
+          {
+            "Value": "Charlie Davis",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "Bob Wilson",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "John Doe",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "Jane Smith",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "Alice Brown",
+            "Count": 1,
+            "Percent": 20
+          }
+        ],
+        "ImbalanceRatio": 0.8,
+        "Entropy": 2.3219,
+        "Mode": "Charlie Davis",
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "DateSpanDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "MinLength": null,
+        "EmptyStringCount": 0,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null,
+        "Periodicity": null
+      },
+      {
+        "Name": "Email",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "SemanticRole": 0,
+        "Description": "Categorical with 4 unique values; top values: \u0027jane@company.org\u0027, \u0027charlie.davis@mail.com\u0027, \u0027bob.wilson@test.co.uk\u0027.",
+        "InterestScore": 0,
+        "Count": 5,
+        "NullCount": 0,
+        "UniqueCount": 4,
+        "NullPercent": 0,
+        "UniquePercent": 80,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "Kurtosis": null,
+        "OutlierCount": 0,
+        "ZeroCount": 0,
+        "Iqr": null,
+        "Range": null,
+        "CoefficientOfVariation": null,
+        "TopValues": [
+          {
+            "Value": "jane@company.org",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "charlie.davis@mail.com",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "bob.wilson@test.co.uk",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "alice@domain.net",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "john.doe@example.com",
+            "Count": 1,
+            "Percent": 20
+          }
+        ],
+        "ImbalanceRatio": 0.8,
+        "Entropy": 2.3219,
+        "Mode": "jane@company.org",
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "DateSpanDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "MinLength": null,
+        "EmptyStringCount": 0,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null,
+        "Periodicity": null
+      },
+      {
+        "Name": "Phone",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "SemanticRole": 0,
+        "Description": "Categorical with 5 unique values; top values: \u0027555-234-5678\u0027, \u0027555-456-7890\u0027, \u0027555-987-6543\u0027.",
+        "InterestScore": 0,
+        "Count": 5,
+        "NullCount": 0,
+        "UniqueCount": 5,
+        "NullPercent": 0,
+        "UniquePercent": 100,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "Kurtosis": null,
+        "OutlierCount": 0,
+        "ZeroCount": 0,
+        "Iqr": null,
+        "Range": null,
+        "CoefficientOfVariation": null,
+        "TopValues": [
+          {
+            "Value": "555-234-5678",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "555-456-7890",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "555-987-6543",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "555-789-0123",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "555-123-4567",
+            "Count": 1,
+            "Percent": 20
+          }
+        ],
+        "ImbalanceRatio": 1,
+        "Entropy": 2.3219,
+        "Mode": "555-234-5678",
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "DateSpanDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "MinLength": null,
+        "EmptyStringCount": 0,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null,
+        "Periodicity": null
+      },
+      {
+        "Name": "SSN",
+        "DuckDbType": "VARCHAR",
+        "InferredType": 2,
+        "SemanticRole": 0,
+        "Description": "Categorical with 5 unique values; top values: \u0027123-45-6789\u0027, \u0027987-65-4321\u0027, \u0027444-55-6666\u0027.",
+        "InterestScore": 0,
+        "Count": 5,
+        "NullCount": 0,
+        "UniqueCount": 5,
+        "NullPercent": 0,
+        "UniquePercent": 100,
+        "Min": null,
+        "Max": null,
+        "Mean": null,
+        "Median": null,
+        "StdDev": null,
+        "Q25": null,
+        "Q75": null,
+        "Skewness": null,
+        "Kurtosis": null,
+        "OutlierCount": 0,
+        "ZeroCount": 0,
+        "Iqr": null,
+        "Range": null,
+        "CoefficientOfVariation": null,
+        "TopValues": [
+          {
+            "Value": "123-45-6789",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "987-65-4321",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "444-55-6666",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "777-88-9999",
+            "Count": 1,
+            "Percent": 20
+          },
+          {
+            "Value": "111-22-3333",
+            "Count": 1,
+            "Percent": 20
+          }
+        ],
+        "ImbalanceRatio": 1,
+        "Entropy": 2.3219,
+        "Mode": "123-45-6789",
+        "MinDate": null,
+        "MaxDate": null,
+        "DateGapDays": null,
+        "DateSpanDays": null,
+        "AvgLength": null,
+        "MaxLength": null,
+        "MinLength": null,
+        "EmptyStringCount": 0,
+        "Mad": null,
+        "TextPatterns": [],
+        "Distribution": null,
+        "Trend": null,
+        "TimeSeries": null,
+        "Periodicity": null
+      }
+    ],
+    "Alerts": [
+      {
+        "Severity": 0,
+        "Column": "Phone",
+        "Type": 1,
+        "Message": "100.0% unique - possibly an ID column"
+      },
+      {
+        "Severity": 0,
+        "Column": "SSN",
+        "Type": 1,
+        "Message": "100.0% unique - possibly an ID column"
+      },
+      {
+        "Severity": 1,
+        "Column": "Name",
+        "Type": 15,
+        "Message": "Potential PersonName detected (30% confidence). Risk level: Medium. Consider masking or excluding this column."
+      },
+      {
+        "Severity": 2,
+        "Column": "Email",
+        "Type": 15,
+        "Message": "Potential Email detected (100% confidence). Risk level: High. Consider masking or excluding this column."
+      },
+      {
+        "Severity": 2,
+        "Column": "Phone",
+        "Type": 15,
+        "Message": "Potential PhoneNumber detected (100% confidence). Risk level: High. Consider masking or excluding this column."
+      },
+      {
+        "Severity": 2,
+        "Column": "SSN",
+        "Type": 15,
+        "Message": "Potential SSN detected (100% confidence). Risk level: Critical. Consider masking or excluding this column."
+      }
+    ],
+    "Correlations": [],
+    "Insights": [
+      {
+        "Title": "Data Quality Issues",
+        "Description": "Found 3 critical and 1 warning-level data quality issues. Review alerts for details.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "Score": 0.885,
+        "ScoreBreakdown": {
+          "magnitude": 0.875,
+          "support": 1,
+          "novelty": 0.6
+        },
+        "RelatedColumns": []
+      },
+      {
+        "Title": "Dataset Overview",
+        "Description": "Dataset contains 5 rows and 4 columns. 0 numeric, 4 categorical, 0 date/time columns.",
+        "Sql": null,
+        "Result": null,
+        "Source": 0,
+        "Score": 0.44,
+        "ScoreBreakdown": {
+          "magnitude": 0.2,
+          "support": 1,
+          "novelty": 0.2
+        },
+        "RelatedColumns": []
+      }
+    ],
+    "Patterns": [],
+    "Target": null,
+    "ProfileTime": "00:00:00.2351984"
+  }
+]

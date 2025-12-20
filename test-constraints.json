@@ -1,0 +1,703 @@
+{
+  "SuiteName": "Auto-generated from Bank_Churn.csv",
+  "ProfileSource": "Mostlylucid.DataSummarizer/sampledata/bank_synthetic.csv",
+  "ValidatedAt": "2025-12-19T23:24:23.6709299Z",
+  "AllPassed": false,
+  "TotalConstraints": 41,
+  "PassedConstraints": 36,
+  "FailedConstraints": 5,
+  "PassRate": 0.8780487804878049,
+  "Results": [
+    {
+      "Constraint": {
+        "Type": 0,
+        "ColumnName": null,
+        "Description": "Row count should be between 5,000 and 20,000",
+        "MinValue": 5000,
+        "MaxValue": 20000,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": false,
+      "ActualValue": 100,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 2,
+        "ColumnName": null,
+        "Description": "Column count should be 13",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": 13,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 13,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 3,
+        "ColumnName": null,
+        "Description": "All expected columns should exist",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": [
+          "CustomerId",
+          "Surname",
+          "CreditScore",
+          "Geography",
+          "Gender",
+          "Age",
+          "Tenure",
+          "Balance",
+          "NumOfProducts",
+          "HasCrCard",
+          "IsActiveMember",
+          "EstimatedSalary",
+          "Exited"
+        ]
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "CustomerId",
+        "Description": "Column \u0027CustomerId\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "CustomerId",
+        "Description": "Column \u0027CustomerId\u0027 should be of type Id",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 6,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Id",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Surname",
+        "Description": "Column \u0027Surname\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Surname",
+        "Description": "Column \u0027Surname\u0027 should be of type Text",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 4,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Text",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "CreditScore",
+        "Description": "Column \u0027CreditScore\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "CreditScore",
+        "Description": "Column \u0027CreditScore\u0027 should be of type Numeric",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 1,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 7,
+        "ColumnName": "CreditScore",
+        "Description": "Column \u0027CreditScore\u0027 values should be between 350.00 and 850.00 (with 10% tolerance)",
+        "MinValue": 300,
+        "MaxValue": 900,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "[404.68, 850.00]",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Geography",
+        "Description": "Column \u0027Geography\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Geography",
+        "Description": "Column \u0027Geography\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Categorical",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "Geography",
+        "Description": "Column \u0027Geography\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "France",
+          "Germany",
+          "Spain"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Gender",
+        "Description": "Column \u0027Gender\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Gender",
+        "Description": "Column \u0027Gender\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Categorical",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "Gender",
+        "Description": "Column \u0027Gender\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "Male",
+          "Female"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Age",
+        "Description": "Column \u0027Age\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Age",
+        "Description": "Column \u0027Age\u0027 should be of type Numeric",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 1,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 7,
+        "ColumnName": "Age",
+        "Description": "Column \u0027Age\u0027 values should be between 18.00 and 92.00 (with 10% tolerance)",
+        "MinValue": 10.6,
+        "MaxValue": 99.4,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "[18.00, 64.76]",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Tenure",
+        "Description": "Column \u0027Tenure\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Tenure",
+        "Description": "Column \u0027Tenure\u0027 should be of type Numeric",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 1,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 7,
+        "ColumnName": "Tenure",
+        "Description": "Column \u0027Tenure\u0027 values should be between 0.00 and 10.00 (with 10% tolerance)",
+        "MinValue": -1,
+        "MaxValue": 11,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "[0.00, 10.00]",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Balance",
+        "Description": "Column \u0027Balance\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Balance",
+        "Description": "Column \u0027Balance\u0027 should be of type Numeric",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 1,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 7,
+        "ColumnName": "Balance",
+        "Description": "Column \u0027Balance\u0027 values should be between 0.00 and 250898.09 (with 10% tolerance)",
+        "MinValue": -25089.809,
+        "MaxValue": 275987.899,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "[0.00, 250898.09]",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "NumOfProducts",
+        "Description": "Column \u0027NumOfProducts\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "NumOfProducts",
+        "Description": "Column \u0027NumOfProducts\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": false,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "NumOfProducts",
+        "Description": "Column \u0027NumOfProducts\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "HasCrCard",
+        "Description": "Column \u0027HasCrCard\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "HasCrCard",
+        "Description": "Column \u0027HasCrCard\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": false,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "HasCrCard",
+        "Description": "Column \u0027HasCrCard\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "1",
+          "0"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "IsActiveMember",
+        "Description": "Column \u0027IsActiveMember\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "IsActiveMember",
+        "Description": "Column \u0027IsActiveMember\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": false,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "IsActiveMember",
+        "Description": "Column \u0027IsActiveMember\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "1",
+          "0"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "EstimatedSalary",
+        "Description": "Column \u0027EstimatedSalary\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "EstimatedSalary",
+        "Description": "Column \u0027EstimatedSalary\u0027 should be of type Numeric",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 1,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 7,
+        "ColumnName": "EstimatedSalary",
+        "Description": "Column \u0027EstimatedSalary\u0027 values should be between 11.58 and 199992.48 (with 10% tolerance)",
+        "MinValue": -19986.510000000002,
+        "MaxValue": 219990.57,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": "[11.58, 199992.48]",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 9,
+        "ColumnName": "EstimatedSalary",
+        "Description": "Column \u0027EstimatedSalary\u0027 should have unique values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 100,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 4,
+        "ColumnName": "Exited",
+        "Description": "Column \u0027Exited\u0027 should not have null values",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": 0,
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 6,
+        "ColumnName": "Exited",
+        "Description": "Column \u0027Exited\u0027 should be of type Categorical",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": 2,
+        "AllowedValues": null,
+        "ExpectedColumns": null
+      },
+      "Passed": false,
+      "ActualValue": "Numeric",
+      "Details": null
+    },
+    {
+      "Constraint": {
+        "Type": 8,
+        "ColumnName": "Exited",
+        "Description": "Column \u0027Exited\u0027 values should be in the known set",
+        "MinValue": null,
+        "MaxValue": null,
+        "ExpectedValue": null,
+        "ExpectedType": null,
+        "AllowedValues": [
+          "0",
+          "1"
+        ],
+        "ExpectedColumns": null
+      },
+      "Passed": true,
+      "ActualValue": null,
+      "Details": null
+    }
+  ]
+}

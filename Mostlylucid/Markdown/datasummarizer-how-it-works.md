@@ -13,38 +13,34 @@ You open a new CSV. 10,000 rows, 50 columns. What's in here? Which columns are j
 
 ---
 
-## The Simplest Start: Just Run It
+## The Simplest Start: Drag and Drop
 
-No flags, no options. Just run the executable:
+**On Windows:** Drag a CSV/Excel/Parquet file onto `datasummarizer.exe` and it analyzes instantly.
+
+**On Linux/macOS or command-line:**
+
+```bash
+datasummarizer mydata.csv
+```
+
+It detects the file and profiles it automatically (no `-f` flag needed).
+
+**Or run with no args for interactive mode:**
 
 ```bash
 datasummarizer
 ```
 
-**What happens:**
+Prompts you for a file path:
 
 ```
-  ____            _             ____                                          
- |  _ \    __ _  | |_    __ _  / ___|   _   _   _ __ ___    _ __ ___     __ _ 
- | | | |  / _` | | __|  / _` | \___ \  | | | | | '_ ` _ \  | '_ ` _ \   / _` |
- | |_| | | (_| | | |_  | (_| |  ___) | | |_| | | | | | | | | | | | | | | (_| |
- |____/   \__,_|  \__|  \__,_| |____/   \__,_| |_| |_| |_| |_| |_| |_|  \__,_|
-                                                                              
-         _                     
-  _ __  (_)  ____   ___   _ __ 
- | '__| | | |_  /  / _ \ | '__|
- | |    | |  / /  |  __/ | |   
- |_|    |_| /___|  \___| |_|   
-                               
 Welcome to DataSummarizer!
 DuckDB-powered data profiling - analyze CSV, Excel, Parquet, JSON files
 
 Enter path to data file: _
 ```
 
-Type your file path and it profiles instantly.
-
-**Why this is great:** Zero friction. No remembering flags, no reading docs first. Just run it and follow the prompts.
+**Why this is great:** Zero friction. Drag-and-drop, or just pass the filename. No flags to remember, no docs to read first.
 
 ---
 

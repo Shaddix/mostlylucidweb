@@ -14,6 +14,12 @@ var configuration = new ConfigurationBuilder()
 var settings = new DataSummarizerSettings();
 configuration.GetSection("DataSummarizer").Bind(settings);
 
+// Drag-and-drop support: if first arg is a file path (not a flag), inject -f
+if (args.Length > 0 && !args[0].StartsWith("-") && File.Exists(args[0]))
+{
+    args = new[] { "-f", args[0] }.Concat(args.Skip(1)).ToArray();
+}
+
 // Options - using new System.CommandLine 2.0.1 API
 var fileOption = new Option<string?>("--file", "-f") { Description = "Path to data file (CSV, Excel, Parquet, JSON)" };
 var sheetOption = new Option<string?>("--sheet", "-s") { Description = "Sheet name for Excel files" };
