@@ -1409,7 +1409,9 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
             vectorStorePath: vectorDb,
             sessionId: sessionId,
             profileOptions: profileOptions,
-            reportOptions: reportOptions
+            reportOptions: reportOptions,
+            enableClarifierSentinel: settings.EnableClarifierSentinel,
+            clarifierSentinelModel: settings.ClarifierSentinelModel
         );
 
         // Ingest mode

@@ -18,6 +18,8 @@ public class LlmInsightGenerator : IDisposable
     private readonly OllamaApiClient _ollama;
     private readonly string _model;
     private readonly bool _verbose;
+    private readonly bool _enableClarifierSentinel;
+    private readonly bool _ollamaAvailable;
     private DuckDBConnection? _connection;
     private readonly AnalyticsToolRegistry _toolRegistry = new();
     
@@ -29,12 +31,26 @@ public class LlmInsightGenerator : IDisposable
     public LlmInsightGenerator(
         string model = "qwen2.5-coder:7b",
         string ollamaUrl = "http://localhost:11434",
-        bool verbose = false)
+        bool verbose = false,
+        bool enableClarifierSentinel = true)
     {
-        _ollama = new OllamaApiClient(new Uri(ollamaUrl));
         _model = model;
         _verbose = verbose;
+        _enableClarifierSentinel = enableClarifierSentinel;
+
+        // Try to create client; if fails, mark unavailable
+        try
+        {
+            _ollama = new OllamaApiClient(new Uri(ollamaUrl));
+            _ollamaAvailable = true;
+        }
+        catch
+        {
+            _ollamaAvailable = false;
+            _ollama = new OllamaApiClient(new Uri("http://localhost:11434")); // placeholder; guarded by _ollamaAvailable
+        }
     }
+
 
     /// <summary>
     /// Generate LLM-powered insights using the statistical profile as grounding context
@@ -616,16 +632,17 @@ public class LlmInsightGenerator : IDisposable
     private async Task<DataInsight> RefineClarifierWithSentinelAsync(DataInsight clarifier, string question, DataProfile profile)
     {
         // Use a tiny model if available; otherwise return as-is
+        if (!_enableClarifierSentinel || !_ollamaAvailable)
+            return clarifier;
+
         var options = clarifier.Result as IEnumerable<string> ?? Array.Empty<string>();
         var optList = options.Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToList();
         if (optList.Count <= 2) return clarifier; // nothing to refine
 
-        // Heuristic: prefer configured model if it hints 1b/mini; else try a known small model name
-        var modelToUse = _model;
-        if (string.IsNullOrEmpty(modelToUse) || (!modelToUse.Contains("1b", StringComparison.OrdinalIgnoreCase) && !modelToUse.Contains("mini", StringComparison.OrdinalIgnoreCase)))
-        {
-            modelToUse = "llama3.2:1b"; // best-effort; may not exist, catch errors
-        }
+        // Force a very small sentinel model; prefer explicit tiny/mini, otherwise use qwen2.5:1.5b as best-effort
+        var modelToUse = (!string.IsNullOrEmpty(_model) && (_model.Contains("1b", StringComparison.OrdinalIgnoreCase) || _model.Contains("mini", StringComparison.OrdinalIgnoreCase)))
+            ? _model
+            : "qwen2.5:1.5b"; // best-effort; may not exist, caught below
 
         try
         {

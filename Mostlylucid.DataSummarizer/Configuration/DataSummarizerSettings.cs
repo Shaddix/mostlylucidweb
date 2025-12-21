@@ -23,6 +23,8 @@ public class DataSummarizerSettings
     /// Ollama LLM configuration
     /// </summary>
     public OllamaSettings Ollama { get; set; } = new();
+    public bool EnableClarifierSentinel { get; set; } = true;
+    public string ClarifierSentinelModel { get; set; } = "qwen2.5:1.5b";
     
     /// <summary>
     /// Vector store configuration for conversation memory and semantic search

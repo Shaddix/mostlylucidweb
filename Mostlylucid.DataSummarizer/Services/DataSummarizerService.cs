@@ -21,6 +21,9 @@ public class DataSummarizerService : IDisposable
     private readonly string? _ollamaModel;
     private readonly string _ollamaUrl;
     private readonly string? _onnxSentinelPath;
+    private readonly bool _enableClarifierSentinel;
+    private readonly string _clarifierSentinelModel;
+
     private readonly OnnxConfig? _onnxConfig;
     private readonly string? _vectorStorePath;
     private readonly string _sessionId;
@@ -39,7 +42,9 @@ public class DataSummarizerService : IDisposable
         string? vectorStorePath = null,
         string? sessionId = null,
         ProfileOptions? profileOptions = null,
-        ReportOptions? reportOptions = null)
+        ReportOptions? reportOptions = null,
+        bool enableClarifierSentinel = true,
+        string clarifierSentinelModel = "qwen2.5:1.5b")
     {
         _verbose = verbose;
         _ollamaModel = ollamaModel;
@@ -50,6 +55,8 @@ public class DataSummarizerService : IDisposable
         _sessionId = sessionId ?? Guid.NewGuid().ToString("N");
         _profileOptions = profileOptions ?? new ProfileOptions();
         _reportOptions = reportOptions ?? new ReportOptions();
+        _enableClarifierSentinel = enableClarifierSentinel;
+        _clarifierSentinelModel = clarifierSentinelModel;
     }
 
     /// <summary>
@@ -141,7 +148,7 @@ public class DataSummarizerService : IDisposable
             };
         }
 
-        using var llm = new LlmInsightGenerator(_ollamaModel, _ollamaUrl, _verbose);
+        using var llm = new LlmInsightGenerator(_ollamaModel, _ollamaUrl, _verbose, _enableClarifierSentinel);
         var insight = await llm.AskAsync(filePath, profile, question, contextText, skipPrecomputed);
 
 

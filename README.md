@@ -54,9 +54,34 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 
 ---
 
+## Live DataSummarizer Session (Rotten Tomatoes sample)
+
+```
+File: Rotten Tomatoes Movies.csv
+Session: 21380e65cf9d4db18305d7950aee1b2f
+
+> What is the average?
+Average over which dimension? Pick one:
+- overall (no grouping)
+- by rating
+- by tomatometer_status
+- by runtime_in_minutes quartiles
+SQL: /* clarification required: average dimension not specified (no SQL executed) */
+
+> overall
+The average runtime of the movies is 102.39 minutes, with an average
+Tomatometer score of 60.47 and an average audience rating of 60.47.
+SQL:
+SELECT AVG("runtime_in_minutes") AS avg_runtime,
+       AVG("tomatometer_rating") AS avg_tomatometer,
+       AVG("audience_rating") AS avg_audience
+FROM read_csv_auto('sampledata/Rotten+Tomatoes+Movies.csv/Rotten Tomatoes Movies.csv');
+```
+
 ## Featured Articles
 
 Dive into some of the technical deep-dives and experiments from the blog:
+
 
 ### 📦 Package Development
 - **[Building a Remote Markdown Fetcher for Markdig](https://www.mostlylucid.net/blog/markdigfetchextension)** - A complete guide to building a Markdig extension with caching, remote content fetching, and TOC generation
