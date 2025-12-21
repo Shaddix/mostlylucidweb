@@ -12,6 +12,16 @@ public class DataSource
     public Dictionary<string, string> Options { get; set; } = new();
     
     /// <summary>
+    /// For log files: the path to the converted Parquet file (temporary)
+    /// </summary>
+    public string? ConvertedParquetPath { get; set; }
+    
+    /// <summary>
+    /// For log files: the detected format (apache-error, apache-access, iis-w3c)
+    /// </summary>
+    public string? DetectedLogFormat { get; set; }
+    
+    /// <summary>
     /// Get the DuckDB read expression for this source
     /// </summary>
     /// <summary>
@@ -34,6 +44,11 @@ public class DataSource
                 $"st_read('{escaped}', layer = '{Table}')",
             DataSourceType.Excel => $"st_read('{escaped}')",
             DataSourceType.Avro => $"read_avro('{escaped}')",
+            // Log files are pre-converted to Parquet
+            DataSourceType.Log when !string.IsNullOrEmpty(ConvertedParquetPath) => 
+                $"read_parquet('{ConvertedParquetPath.Replace("'", "''").Replace("\\", "/")}')",
+            DataSourceType.Log => throw new InvalidOperationException(
+                "Log file must be converted to Parquet first. Call EnsureLogConverted() before GetReadExpression()."),
             
             // Databases (after ATTACH)
             DataSourceType.Sqlite when Table != null => 
@@ -104,6 +119,27 @@ public class DataSource
     private static string Quote(string identifier) => $"\"{identifier}\"";
 
     /// <summary>
+    /// For log files, ensures the file is converted to Parquet.
+    /// Call this before GetReadExpression() for Log type sources.
+    /// </summary>
+    /// <returns>True if conversion succeeded or was not needed</returns>
+    public bool EnsureLogConverted()
+    {
+        if (Type != DataSourceType.Log) return true;
+        if (!string.IsNullOrEmpty(ConvertedParquetPath) && File.Exists(ConvertedParquetPath)) return true;
+        
+        // Use LogNormalizer to convert
+        if (Services.LogNormalizer.TryNormalizeToParquet(Source, out var parquetPath, out var format))
+        {
+            ConvertedParquetPath = parquetPath;
+            DetectedLogFormat = format;
+            return true;
+        }
+        
+        return false;
+    }
+
+    /// <summary>
     /// Parse a source string and detect the type
     /// </summary>
     public static DataSource Parse(string source, string? table = null)
@@ -162,6 +198,7 @@ public class DataSource
             ".json" or ".ndjson" or ".jsonl" => DataSourceType.Json,
             ".xlsx" or ".xls" => DataSourceType.Excel,
             ".avro" => DataSourceType.Avro,
+            ".log" => DataSourceType.Log, // Apache/IIS log files
             ".sqlite" or ".db" or ".sqlite3" => DataSourceType.Sqlite,
             _ when Directory.Exists(source) && File.Exists(Path.Combine(source, "_delta_log")) 
                 => DataSourceType.Delta,
@@ -192,6 +229,7 @@ public enum DataSourceType
     Json,
     Excel,
     Avro,
+    Log, // Apache/IIS log files (converted to Parquet on-the-fly)
     
     // Databases
     Sqlite,

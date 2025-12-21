@@ -126,6 +126,59 @@ Then you can run `datasummarizer` from anywhere.
 - **Optional**: Ollama for LLM features (default model: `qwen2.5-coder:7b`)
 - **Optional**: DuckDB `vss` extension (auto-fallback if missing)
 
+### Supported Formats
+
+| Format | Extensions | Notes |
+|--------|------------|-------|
+| **CSV/TSV** | `.csv`, `.tsv` | Auto-detected delimiter, header inference |
+| **Excel** | `.xlsx`, `.xls` | Multi-sheet support (`--sheet` option) |
+| **Parquet** | `.parquet` | Column-oriented, best for large files |
+| **JSON** | `.json`, `.ndjson`, `.jsonl` | Line-delimited and nested |
+| **SQLite** | `.sqlite`, `.db`, `.sqlite3` | All tables profiled |
+| **Log Files** | `.log` | Apache/IIS logs (see below) |
+
+#### Log File Support
+
+DataSummarizer can profile web server logs by converting them to structured Parquet on-the-fly:
+
+```bash
+# Apache error log
+datasummarizer -f /var/log/apache2/error.log --no-llm --fast
+
+# Apache access/combined log
+datasummarizer -f /var/log/apache2/access.log --no-llm --fast
+
+# IIS W3C log
+datasummarizer -f C:\inetpub\logs\LogFiles\W3SVC1\u_ex240101.log --no-llm --fast
+```
+
+**Supported log formats:**
+
+| Format | Detection | Extracted Columns |
+|--------|-----------|-------------------|
+| **Apache Error** | `[date] [level]` pattern | `timestamp`, `level`, `client_ip`, `message` |
+| **Apache Access/Combined** | IP + quoted request + status | `client_ip`, `timestamp`, `method`, `url`, `status`, `bytes`, `referer`, `user_agent` |
+| **IIS W3C** | `#Fields:` directive | All fields from header (date, time, cs-uri-stem, sc-status, etc.) |
+
+**Example output (Apache error log):**
+
+```
+── Summary ─────────────────────────────────────────────────────────
+52,004 rows × 5 columns
+
+│ Column        │ Type        │ Nulls │ Unique │ Stats                   │
+├───────────────┼─────────────┼───────┼────────┼─────────────────────────┤
+│ timestamp     │ DateTime    │ 0.0%  │ 17,514 │ 2005-06-09 → 2006-02-28 │
+│ level         │ Categorical │ 0.0%  │ 3      │ top: error              │
+│ client_ip     │ Text        │ 0.0%  │ 4,134  │ -                       │
+│ message       │ Text        │ 0.0%  │ 9,663  │ -                       │
+
+        level                                               
+ error  ██████████████████████████████████████████████ 38081
+notice  ████████████ 13755
+  warn  168
+```
+
 ---
 
 ## Core Concepts

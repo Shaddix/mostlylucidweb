@@ -6,7 +6,7 @@ public static class CliHelpers
 {
     public static IEnumerable<string> ExpandPatternsHelper(IEnumerable<string?> patterns, string? directory, string[]? supported = null)
     {
-        supported ??= new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json" };
+        supported ??= new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json", ".log" };
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var list = patterns.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!).ToList();
         if (!string.IsNullOrWhiteSpace(directory)) list.Add(directory!);

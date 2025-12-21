@@ -33,6 +33,22 @@ public class DuckDbProfiler : IDisposable
     {
         var stopwatch = Stopwatch.StartNew();
         
+        // For log files, convert to Parquet first
+        if (source.Type == DataSourceType.Log)
+        {
+            if (!source.EnsureLogConverted())
+            {
+                throw new InvalidOperationException(
+                    $"Could not parse log file: {source.Source}. Ensure it's a valid Apache or IIS W3C log format.");
+            }
+            
+            if (_verbose)
+            {
+                AnsiConsole.MarkupLine($"[dim]Detected log format: {source.DetectedLogFormat}[/]");
+                AnsiConsole.MarkupLine($"[dim]Converted to: {source.ConvertedParquetPath}[/]");
+            }
+        }
+        
         _db = new DuckDbConnectionManager(_verbose);
         await _db.ConnectAsync(source);
 

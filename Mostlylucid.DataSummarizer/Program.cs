@@ -1338,7 +1338,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         // Header
         AnsiConsole.Write(new FigletText("DataSummarizer").Color(Color.Cyan1));
         
-        var supported = new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json", ".sqlite", ".db", ".sqlite3" };
+        var supported = new[] { ".csv", ".xlsx", ".xls", ".parquet", ".json", ".sqlite", ".db", ".sqlite3", ".log" };
 
         // Helper to validate a single file
         bool ValidateFile(string? path)
