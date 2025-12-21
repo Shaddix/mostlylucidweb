@@ -109,13 +109,22 @@ public class DataSummarizerService : IDisposable
     {
         var profile = await ProfileWithExtrasAsync(filePath, sheetName, useLlm: false, maxLlmInsights: 0);
 
-        // Try to answer from profile first (no LLM needed)
-        var profileAnswer = TryAnswerFromProfile(profile, question);
-        if (profileAnswer != null)
+        // Decide if we should skip precomputed/profile shortcuts (follow-ups / most-average, etc.)
+        // Build context early so the intent probe can use it
+        var context = await GetConversationContextInternalAsync(question);
+        var contextText = context.Count > 0 ? string.Join('\n', context.Select(t => $"[{t.Role}] {t.Content}")) : "";
+        bool skipPrecomputed = await ShouldSkipPrecomputedStatsAsync(question, contextText, profile);
+
+        // Try to answer from profile first (no LLM needed) unless we must skip
+        if (!skipPrecomputed)
         {
-            await AppendTurnAsync("user", question);
-            await AppendTurnAsync("assistant", profileAnswer.Description);
-            return profileAnswer;
+            var profileAnswer = TryAnswerFromProfile(profile, question);
+            if (profileAnswer != null)
+            {
+                await AppendTurnAsync("user", question);
+                await AppendTurnAsync("assistant", profileAnswer.Description);
+                return profileAnswer;
+            }
         }
 
         // Fall back to LLM if available
@@ -132,12 +141,10 @@ public class DataSummarizerService : IDisposable
             };
         }
 
-        // Context from previous turns
-        var context = await GetConversationContextInternalAsync(question);
-        var contextText = context.Count > 0 ? string.Join('\n', context.Select(t => $"[{t.Role}] {t.Content}")) : "";
-
         using var llm = new LlmInsightGenerator(_ollamaModel, _ollamaUrl, _verbose);
-        var insight = await llm.AskAsync(filePath, profile, question, contextText);
+        var insight = await llm.AskAsync(filePath, profile, question, contextText, skipPrecomputed);
+
+
 
         if (insight != null)
         {
@@ -148,11 +155,121 @@ public class DataSummarizerService : IDisposable
         return insight;
     }
 
+    private async Task<bool> ShouldSkipPrecomputedStatsAsync(string question, string conversationContext, DataProfile profile)
+    {
+        var q = question.ToLowerInvariant();
+        
+        // Heuristic: follow-up pronouns or "most average" style require SQL/LLM
+        var followUpTriggers = new[]
+        {
+            "tell me about it","tell me more about it","what about it","describe it","show me it","more about it","details about it","info about it","information about it","what information do we have about it","what do we know about it","what is it","what's it","its details","its name","its price","its info",
+            "tell me about that","what is that","what's that","describe that","more about that","info about that","information about that",
+            "tell me about this","what is this","what's this","describe this","more about this","info about this","information about this"
+        };
+        if (followUpTriggers.Any(t => q.Contains(t)))
+            return true;
+
+        // Generic pronoun + about it/that/this catch-all
+        if (q.Contains("about it") || q.Contains("about that") || q.Contains("about this"))
+            return true;
+        
+        // Most-average / typical questions need SQL
+        if (q.Contains("most average") || q.Contains("closest to average") || q.Contains("closest to mean") || q.Contains("closest to median") || q.Contains("nearest to average") || q.Contains("typical") || q.Contains("mose average"))
+            return true;
+        
+        // If LLM available, run a tiny intent probe using prior context
+        if (!string.IsNullOrEmpty(_ollamaModel) && !string.IsNullOrWhiteSpace(conversationContext))
+        {
+            try
+            {
+                var probePrompt = $"""
+Return only one token: follow_up or not_follow_up.
+Question: {question}
+Prior conversation:
+{conversationContext}
+""";
+                var client = new OllamaSharp.OllamaApiClient(new Uri(_ollamaUrl));
+                var resp = await client.GenerateAsync(new OllamaSharp.Models.GenerateRequest
+                {
+                    Model = _ollamaModel,
+                    Prompt = probePrompt
+                }).StreamToEndAsync();
+                var text = (resp?.Response ?? "").ToLowerInvariant();
+                if (text.Contains("follow_up")) return true;
+            }
+            catch
+            {
+                // fall back to heuristics on failure
+            }
+        }
+        
+        return false;
+    }
+
+    private DataInsight? TryBuildAverageClarifier(DataProfile profile, string q)
+    {
+        if (!(q.Contains("average") || q.Contains("mean"))) return null;
+        if (q.Contains("most average") || q.Contains("closest")) return null;
+
+        var mentionsColumn = profile.Columns.Any(c => q.Contains(c.Name.ToLowerInvariant()));
+        if (mentionsColumn) return null;
+
+        var options = BuildAverageClarificationOptions(profile);
+        if (options.Count == 0) return null;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Average over which dimension? Pick one:");
+        foreach (var opt in options)
+        {
+            sb.AppendLine($"- {opt}");
+        }
+
+        return new DataInsight
+        {
+            Title = "Clarify Average Dimension",
+            Description = sb.ToString().Trim(),
+            Source = InsightSource.Statistical,
+            RelatedColumns = profile.Columns.Select(c => c.Name).Take(8).ToList(),
+            Sql = "/* clarification required: average dimension not specified (no SQL executed) */",
+            Result = options
+        };
+    }
+
+    private static List<string> BuildAverageClarificationOptions(DataProfile profile)
+    {
+        var options = new List<string>();
+        options.Add("overall (no grouping)");
+
+        // Pick top categorical columns by distinct count (reasonable size) and coverage
+        var candidates = profile.Columns
+            .Where(c => c.InferredType == ColumnType.Categorical && c.UniqueCount > 1 && c.UniqueCount <= 2000 && c.NullPercent < 80)
+            .OrderByDescending(c => c.UniqueCount)
+            .ThenBy(c => c.NullPercent)
+            .Take(6)
+            .Select(c => c.Name)
+            .ToList();
+
+        foreach (var c in candidates)
+        {
+            options.Add($"by {c}");
+        }
+
+        // Offer a numeric binning option if there are numeric columns
+        var numeric = profile.Columns.FirstOrDefault(c => c.InferredType == ColumnType.Numeric);
+        if (numeric != null)
+        {
+            options.Add($"by {numeric.Name} quartiles");
+        }
+
+        return options;
+    }
+
     /// <summary>
     /// Attempts to answer common data questions directly from the profile without requiring LLM.
     /// Returns null if the question cannot be answered from the profile alone.
     /// </summary>
     public DataInsight? TryAnswerFromProfile(DataProfile profile, string question)
+
     {
         var q = question.ToLowerInvariant();
         
@@ -161,6 +278,13 @@ public class DataSummarizerService : IDisposable
         if (IsEntityQuery(q))
         {
             return null; // Let LLM handle with SQL
+        }
+
+        // Ambiguous average: prompt for dimension instead of dumping global stats
+        var clarifier = TryBuildAverageClarifier(profile, q);
+        if (clarifier != null)
+        {
+            return clarifier;
         }
         
         // Missing values / nulls
@@ -1547,11 +1671,14 @@ PRIOR CONVERSATION (reuse if relevant):
         {
             var p = profiles[i];
             var hit = hits.First(h => h.FilePath == p.SourcePath);
-            sb.AppendLine($"- Dataset: {Path.GetFileName(p.SourcePath)} (score {hit.Score:F3})");
+            var tableName = SanitizeTableName(Path.GetFileNameWithoutExtension(p.SourcePath));
+            sb.AppendLine($"- Dataset: {Path.GetFileName(p.SourcePath)} (table `{tableName}`, score {hit.Score:F3})");
             sb.AppendLine($"  Rows: {p.RowCount:N0}, Columns: {p.ColumnCount}");
             sb.AppendLine($"  Types: numeric {p.Columns.Count(c => c.InferredType == ColumnType.Numeric)}, categorical {p.Columns.Count(c => c.InferredType == ColumnType.Categorical)}, date/time {p.Columns.Count(c => c.InferredType == ColumnType.DateTime)}");
-            var interestingCols = p.Columns.Take(5).Select(c => c.Name);
+            var interestingCols = p.Columns.Take(8)
+                .Select(c => $"{c.Name} ({c.InferredType})");
             sb.AppendLine($"  Columns: {string.Join(", ", interestingCols)}");
+            sb.AppendLine($"  SQL hint: SELECT * FROM {tableName} LIMIT 5");
             if (p.Insights.Count > 0)
             {
                 var insight = p.Insights.First();
@@ -1561,6 +1688,20 @@ PRIOR CONVERSATION (reuse if relevant):
         }
         return sb.ToString();
     }
+
+    private static string SanitizeTableName(string name)
+    {
+        // Lowercase, replace non-alphanumerics with underscore, collapse repeats
+        var cleaned = new string(name.ToLowerInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_')
+            .ToArray());
+        while (cleaned.Contains("__")) cleaned = cleaned.Replace("__", "_");
+        cleaned = cleaned.Trim('_');
+        if (string.IsNullOrEmpty(cleaned)) cleaned = "table";
+        if (char.IsDigit(cleaned[0])) cleaned = "t_" + cleaned;
+        return cleaned;
+    }
+
 
 
     private string GenerateExecutiveSummary(DataProfile profile)

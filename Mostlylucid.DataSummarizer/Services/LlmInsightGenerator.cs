@@ -94,7 +94,7 @@ public class LlmInsightGenerator : IDisposable
     /// <summary>
     /// Ask a specific question about the data
     /// </summary>
-    public async Task<DataInsight?> AskAsync(string filePath, DataProfile profile, string question, string conversationContext = "")
+    public async Task<DataInsight?> AskAsync(string filePath, DataProfile profile, string question, string conversationContext = "", bool skipPrecomputedStats = false)
     {
         // GUARDRAIL: Check question for malicious intent FIRST
         var questionGuardrail = CheckQuestionGuardrails(question);
@@ -104,17 +104,48 @@ public class LlmInsightGenerator : IDisposable
             return CreateGuardrailResponse(questionGuardrail);
         }
         
+        // If the user is replying with a clarifier selection (e.g., "overall" or "by rating"), rewrite the question to drive SQL
+        var selection = ParseAverageSelection(question);
+        if (selection == null)
+        {
+            // Auto-select if only one option exists
+            var autoOpt = TryAutoSelectAverageOption(profile, question);
+            if (autoOpt != null)
+            {
+                selection = autoOpt;
+            }
+        }
+
+        if (selection != null)
+        {
+            skipPrecomputedStats = true; // force SQL/LLM path
+            question = $"average {selection}";
+        }
+        else
+        {
+            // Early disambiguation: ambiguous average without column/group -> ask for dimension
+            var avgClarify = TryBuildAverageClarifier(profile, question);
+            if (avgClarify != null)
+            {
+                var refined = await RefineClarifierWithSentinelAsync(avgClarify, question, profile);
+                return refined;
+            }
+        }
+
         // For broad descriptive questions, return an LLM summary without SQL
-        if (IsBroadSummaryQuestion(question))
+        if (!skipPrecomputedStats && IsBroadSummaryQuestion(question))
         {
             return await GenerateProfileSummaryAsync(profile, question, conversationContext);
         }
         
         // Try to answer from pre-computed stats first (faster, no SQL needed)
-        var statsAnswer = TryAnswerFromStats(profile, question);
-        if (statsAnswer != null)
+        if (!skipPrecomputedStats)
         {
-            return statsAnswer;
+            var statsAnswer = TryAnswerFromStats(profile, question);
+            if (statsAnswer != null)
+            {
+                return statsAnswer;
+            }
         }
 
         _connection = new DuckDBConnection("DataSource=:memory:");
@@ -206,6 +237,41 @@ public class LlmInsightGenerator : IDisposable
     {
         var q = question.ToLowerInvariant();
         
+        // Follow-up questions (it/that/this) should NOT use precomputed stats; force SQL/LLM
+        if (IsFollowUpQuestion(q))
+        {
+            return null;
+        }
+        
+        // Early: ambiguous average -> clarify dimension (before filter checks)
+        if ((q.Contains("average") || q.Contains("mean")) && !q.Contains("most average") && !q.Contains("closest"))
+        {
+            var mentionsColumn = profile.Columns.Any(c => q.Contains(c.Name.ToLowerInvariant()));
+            var hasEntity = HasAnyEntityMention(q, profile);
+            if (!mentionsColumn && !hasEntity && !q.Contains("overall"))
+            {
+                var options = BuildAverageClarificationOptions(profile);
+                if (options.Count > 0)
+                {
+                    var sbClarify = new StringBuilder();
+                    sbClarify.AppendLine("Average over which dimension? Pick one:");
+                    foreach (var opt in options)
+                    {
+                        sbClarify.AppendLine($"- {opt}");
+                    }
+                    return new DataInsight
+                    {
+                        Title = "Clarify Average Dimension",
+                        Description = sbClarify.ToString().Trim(),
+                        Source = InsightSource.Statistical,
+                        RelatedColumns = profile.Columns.Select(c => c.Name).Take(8).ToList(),
+                        Sql = "/* clarification required: average dimension not specified (no SQL executed) */",
+                        Result = options
+                    };
+                }
+            }
+        }
+
         // Check for filter indicators - if present, we need SQL, not pre-computed stats
         // "average price for Electronics" != global average price
         if (HasFilterIndicators(q, profile))
@@ -213,9 +279,41 @@ public class LlmInsightGenerator : IDisposable
             return null; // Need SQL to filter first
         }
         
+        // "Most average" / closest-to-mean/median questions require SQL to rank by distance
+        if (q.Contains("most average") || q.Contains("closest to average") || q.Contains("closest to mean") || q.Contains("closest to median") || q.Contains("nearest to average") || q.Contains("typical") || q.Contains("mose average"))
+        {
+            return null;
+        }
+        
         // Questions about overall/global averages/means we already have
         if ((q.Contains("average") || q.Contains("mean")) && !q.Contains("most average") && !q.Contains("closest"))
         {
+            // If no specific column mentioned and no entity mention, ask for clarification of dimension
+            var mentionsColumn = profile.Columns.Any(c => q.Contains(c.Name.ToLowerInvariant()));
+            var hasEntity = HasAnyEntityMention(q, profile);
+            if (!mentionsColumn && !hasEntity && !q.Contains("overall"))
+            {
+                var options = BuildAverageClarificationOptions(profile);
+                if (options.Count > 0)
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("Average over which dimension? Pick one:");
+                    foreach (var opt in options)
+                    {
+                        sb.AppendLine($"- {opt}");
+                    }
+                    return new DataInsight
+                    {
+                        Title = "Clarify Average Dimension",
+                        Description = sb.ToString().Trim(),
+                        Source = InsightSource.Statistical,
+                        RelatedColumns = profile.Columns.Select(c => c.Name).Take(8).ToList(),
+                        Sql = "/* clarification required: average dimension not specified (no SQL executed) */",
+                        Result = options
+                    };
+                }
+            }
+
             // Check if asking about a specific column (global stat)
             var matchedCol = profile.Columns
                 .Where(c => c.InferredType == ColumnType.Numeric && c.Mean.HasValue)
@@ -228,7 +326,8 @@ public class LlmInsightGenerator : IDisposable
                     Title = $"Overall Average {matchedCol.Name}",
                     Description = $"The overall average {matchedCol.Name} across all {profile.RowCount:N0} rows is **{matchedCol.Mean:F2}** (median: {matchedCol.Median:F2}, std dev: {matchedCol.StdDev:F2})",
                     Source = InsightSource.Statistical,
-                    RelatedColumns = new List<string> { matchedCol.Name }
+                    RelatedColumns = new List<string> { matchedCol.Name },
+                    Sql = "/* precomputed stats: global mean/median/stddev (no SQL executed) */"
                 };
             }
             
@@ -249,7 +348,8 @@ public class LlmInsightGenerator : IDisposable
                         Title = "Numeric Column Statistics",
                         Description = sb.ToString().Trim(),
                         Source = InsightSource.Statistical,
-                        RelatedColumns = numericCols.Select(c => c.Name).ToList()
+                        RelatedColumns = numericCols.Select(c => c.Name).ToList(),
+                        Sql = "/* precomputed stats: global numeric summaries (no SQL executed) */"
                     };
                 }
             }
@@ -282,7 +382,8 @@ public class LlmInsightGenerator : IDisposable
                     Title = "Distribution Analysis",
                     Description = sb.ToString().Trim(),
                     Source = InsightSource.Statistical,
-                    RelatedColumns = distCols.Select(c => c.Name).ToList()
+                    RelatedColumns = distCols.Select(c => c.Name).ToList(),
+                    Sql = "/* precomputed stats: distribution/skewness/kurtosis (no SQL executed) */"
                 };
             }
         }
@@ -406,6 +507,172 @@ public class LlmInsightGenerator : IDisposable
         return false;
     }
 
+    private DataInsight? TryBuildAverageClarifier(DataProfile profile, string question)
+    {
+        var q = question.ToLowerInvariant();
+        if (!(q.Contains("average") || q.Contains("mean"))) return null;
+        if (q.Contains("most average") || q.Contains("closest")) return null;
+
+        var mentionsColumn = profile.Columns.Any(c => q.Contains(c.Name.ToLowerInvariant()));
+        var hasEntity = HasAnyEntityMention(q, profile);
+        if (mentionsColumn || hasEntity || q.Contains("overall")) return null;
+
+        var options = BuildAverageClarificationOptions(profile);
+        if (options.Count == 0) return null;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Average over which dimension? Pick one:");
+        foreach (var opt in options)
+        {
+            sb.AppendLine($"- {opt}");
+        }
+
+        return new DataInsight
+        {
+            Title = "Clarify Average Dimension",
+            Description = sb.ToString().Trim(),
+            Source = InsightSource.Statistical,
+            RelatedColumns = profile.Columns.Select(c => c.Name).Take(8).ToList(),
+            Sql = "/* clarification required: average dimension not specified (no SQL executed) */",
+            Result = options
+        };
+    }
+
+    private static List<string> BuildAverageClarificationOptions(DataProfile profile)
+    {
+        var options = new List<string>();
+        options.Add("overall");
+
+        // Prefer obvious groupings by name (year/genre) if present (case-insensitive, substring match)
+        var preferred = profile.Columns
+            .Where(c => c.InferredType == ColumnType.Categorical && c.UniqueCount > 1 && c.UniqueCount <= 5000 && c.NullPercent < 90)
+            .OrderBy(c => c.Name.Length)
+            .ToList();
+
+        bool NameLike(ColumnProfile c, string token)
+            => c.Name.Contains(token, StringComparison.OrdinalIgnoreCase);
+
+        void AddIfPresent(Func<ColumnProfile, bool> predicate)
+        {
+            var col = preferred.FirstOrDefault(predicate);
+            if (col != null) options.Add($"by {col.Name}");
+        }
+        AddIfPresent(c => NameLike(c, "year") || NameLike(c, "yr"));
+        AddIfPresent(c => NameLike(c, "genre"));
+
+        // Fill remaining slots with top categorical columns by distinct count and coverage
+        var candidates = preferred
+            .Where(c => !options.Any(o => o.EndsWith(c.Name, StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(c => c.UniqueCount)
+            .ThenBy(c => c.NullPercent)
+            .Take(6)
+            .Select(c => c.Name)
+            .ToList();
+
+        foreach (var c in candidates)
+        {
+            options.Add($"by {c}");
+        }
+
+        // Offer a numeric binning option if there are numeric columns
+        var numeric = profile.Columns.FirstOrDefault(c => c.InferredType == ColumnType.Numeric);
+        if (numeric != null)
+        {
+            options.Add($"by {numeric.Name} quartiles");
+        }
+
+        return options.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static string? ParseAverageSelection(string question)
+    {
+        var q = question.Trim().ToLowerInvariant();
+        if (q == "overall" || q == "overall (no grouping)") return "overall";
+        if (q.StartsWith("by ")) return q;
+        if (q.EndsWith(" quartiles") && q.StartsWith("by ")) return q;
+        return null;
+    }
+
+    private static string? TryAutoSelectAverageOption(DataProfile profile, string question)
+    {
+        var q = question.ToLowerInvariant();
+        if (!(q.Contains("average") || q.Contains("mean"))) return null;
+        if (q.Contains("most average") || q.Contains("closest")) return null;
+
+        var mentionsColumn = profile.Columns.Any(c => q.Contains(c.Name.ToLowerInvariant()));
+        var hasEntity = HasAnyEntityMention(q, profile);
+        if (mentionsColumn || hasEntity || q.Contains("overall")) return null;
+
+        var options = BuildAverageClarificationOptions(profile);
+        // Always at least overall; auto-select only when exactly 1 option (rare) or exactly 2 with overall + one grouping
+        var distinctOpts = options.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (distinctOpts.Count == 1)
+            return distinctOpts[0];
+        if (distinctOpts.Count == 2 && distinctOpts.Contains("overall", StringComparer.OrdinalIgnoreCase))
+            return distinctOpts.First(o => !o.Equals("overall", StringComparison.OrdinalIgnoreCase));
+        return null;
+    }
+
+    private async Task<DataInsight> RefineClarifierWithSentinelAsync(DataInsight clarifier, string question, DataProfile profile)
+    {
+        // Use a tiny model if available; otherwise return as-is
+        var options = clarifier.Result as IEnumerable<string> ?? Array.Empty<string>();
+        var optList = options.Distinct(StringComparer.OrdinalIgnoreCase).Take(12).ToList();
+        if (optList.Count <= 2) return clarifier; // nothing to refine
+
+        // Heuristic: prefer configured model if it hints 1b/mini; else try a known small model name
+        var modelToUse = _model;
+        if (string.IsNullOrEmpty(modelToUse) || (!modelToUse.Contains("1b", StringComparison.OrdinalIgnoreCase) && !modelToUse.Contains("mini", StringComparison.OrdinalIgnoreCase)))
+        {
+            modelToUse = "llama3.2:1b"; // best-effort; may not exist, catch errors
+        }
+
+        try
+        {
+            var prompt = $"""
+You are selecting the best grouping options for an average/mean question.
+Given the options below, pick up to 4 that are most relevant for grouping:
+{string.Join("\n", optList.Select(o => "- " + o))}
+
+Return them as a comma-separated list, no prose.
+""";
+            var resp = await _ollama.GenerateAsync(new OllamaSharp.Models.GenerateRequest
+            {
+                Model = modelToUse,
+                Prompt = prompt
+            }).StreamToEndAsync();
+            var text = (resp?.Response ?? "").ToLowerInvariant();
+            var refined = text.Split(new[] { ',', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => optList.Any(o => o.Equals(s, StringComparison.OrdinalIgnoreCase)))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(4)
+                .ToList();
+            if (refined.Count == 0) return clarifier;
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Average over which dimension? Pick one:");
+            foreach (var opt in refined)
+            {
+                sb.AppendLine($"- {opt}");
+            }
+
+            return new DataInsight
+            {
+                Title = clarifier.Title,
+                Description = sb.ToString().Trim(),
+                Source = clarifier.Source,
+                RelatedColumns = clarifier.RelatedColumns,
+                Sql = clarifier.Sql,
+                Result = refined
+            };
+        }
+        catch
+        {
+            return clarifier; // graceful fallback if small model unavailable
+        }
+    }
+
     private static bool IsBroadSummaryQuestion(string question)
     {
         var q = question.ToLowerInvariant();
@@ -449,23 +716,32 @@ public class LlmInsightGenerator : IDisposable
             "show me it",
             "more about it",
             "details about it",
+            "info about it",
+            "information about it",
+            "what information do we have about it",
+            "what do we know about it",
             "what is it",
             "what's it",
             "its details",
             "its name",
             "its price",
+            "its info",
             // "that" references
             "tell me about that",
             "what is that",
             "what's that",
             "describe that",
             "more about that",
+            "info about that",
+            "information about that",
             // "this" references  
             "tell me about this",
             "what is this",
             "what's this",
             "describe this",
             "more about this",
+            "info about this",
+            "information about this",
             // "the" + noun (referencing previous result)
             "the wine",
             "the product",

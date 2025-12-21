@@ -1370,7 +1370,7 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
         
         if (isDirectorySession)
         {
-            directoryFiles = ExpandPatterns([file!]).ToList();
+            directoryFiles = ExpandPatterns([file!]).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             if (directoryFiles.Count == 0)
             {
                 AnsiConsole.MarkupLine($"[yellow]No supported files found in directory: {file}[/]");
