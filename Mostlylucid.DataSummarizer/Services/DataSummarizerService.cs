@@ -148,7 +148,7 @@ public class DataSummarizerService : IDisposable
             };
         }
 
-        using var llm = new LlmInsightGenerator(_ollamaModel, _ollamaUrl, _verbose, _enableClarifierSentinel);
+        using var llm = new LlmInsightGenerator(_ollamaModel ?? "qwen2.5-coder:7b", _ollamaUrl, _verbose, _enableClarifierSentinel, _clarifierSentinelModel);
         var insight = await llm.AskAsync(filePath, profile, question, contextText, skipPrecomputed);
 
 

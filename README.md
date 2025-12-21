@@ -56,6 +56,10 @@ A lightweight ASP.NET Core middleware for generating realistic mock API response
 
 ## Live DataSummarizer Session (Rotten Tomatoes sample)
 
+> Clarifier sentinel (tiny LLM) is enabled by default. Configure via `DataSummarizerSettings`:
+> - `EnableClarifierSentinel` (default: true)
+> - `ClarifierSentinelModel` (default: `qwen2.5:1.5b`; falls back to heuristics if unavailable)
+
 ```
 File: Rotten Tomatoes Movies.csv
 Session: 21380e65cf9d4db18305d7950aee1b2f

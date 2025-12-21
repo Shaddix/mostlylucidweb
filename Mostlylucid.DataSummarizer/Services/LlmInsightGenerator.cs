@@ -17,8 +17,10 @@ public class LlmInsightGenerator : IDisposable
 {
     private readonly OllamaApiClient _ollama;
     private readonly string _model;
+    private readonly string _clarifierSentinelModel;
     private readonly bool _verbose;
     private readonly bool _enableClarifierSentinel;
+
     private readonly bool _ollamaAvailable;
     private DuckDBConnection? _connection;
     private readonly AnalyticsToolRegistry _toolRegistry = new();
@@ -32,9 +34,11 @@ public class LlmInsightGenerator : IDisposable
         string model = "qwen2.5-coder:7b",
         string ollamaUrl = "http://localhost:11434",
         bool verbose = false,
-        bool enableClarifierSentinel = true)
+        bool enableClarifierSentinel = true,
+        string clarifierSentinelModel = "qwen2.5:1.5b")
     {
         _model = model;
+        _clarifierSentinelModel = clarifierSentinelModel;
         _verbose = verbose;
         _enableClarifierSentinel = enableClarifierSentinel;
 
@@ -642,7 +646,7 @@ public class LlmInsightGenerator : IDisposable
         // Force a very small sentinel model; prefer explicit tiny/mini, otherwise use qwen2.5:1.5b as best-effort
         var modelToUse = (!string.IsNullOrEmpty(_model) && (_model.Contains("1b", StringComparison.OrdinalIgnoreCase) || _model.Contains("mini", StringComparison.OrdinalIgnoreCase)))
             ? _model
-            : "qwen2.5:1.5b"; // best-effort; may not exist, caught below
+            : _clarifierSentinelModel; // best-effort; may not exist, caught below
 
         try
         {
