@@ -7,54 +7,183 @@ This repository contains the source code for [mostlylucid.net](https://mostlyluc
 
 **🌐 Visit the live site:** [mostlylucid.net](https://mostlylucid.net)
 
+---
+
+## CLI Tools
+
+Self-contained, portable executables — no runtime install required.
+
+### DataSummarizer
+
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
+
+Fast, local, privacy-first data profiling with DuckDB + optional LLM narration. Profile any CSV, Excel, Parquet, JSON, SQLite, or log file in seconds.
+
+```bash
+# Quick profile (pure stats, no LLM)
+datasummarizer -f data.csv --no-llm --fast
+
+# Q&A mode with LLM insights
+datasummarizer -f data.csv --query "what drives churn?" --model qwen2.5-coder:7b
+
+# Profile Apache/IIS log files
+datasummarizer -f /var/log/apache2/error.log --no-llm --fast
+```
+
+**Features:**
+- 52K+ rows profiled in ~1 second
+- Privacy-safe PII detection (hidden by default)
+- Drift detection and constraint validation
+- Natural language Q&A with SQL generation
+- Log file support (Apache error/access, IIS W3C)
+- ONNX embeddings for semantic caching
+
+📖 [Full Documentation](./Mostlylucid.DataSummarizer/README.md)
+
+---
+
+### DocSummarizer
+
+[![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/)
+
+Turn documents or URLs into evidence-grounded summaries — every claim cites its source. Runs entirely on your machine.
+
+```bash
+# Fast extractive summary (no LLM, ~3s)
+docsummarizer -f document.pdf -m Bert
+
+# With LLM synthesis (~10s)
+docsummarizer -f report.pdf -m BertRag
+
+# Summarize a URL
+docsummarizer -u https://example.com/article
+```
+
+**Features:**
+- PDF, DOCX, PPTX, XLSX, Markdown, HTML support
+- Bert mode: pure ONNX, no LLM, ~1-3 seconds
+- BertRag mode: LLM synthesis with citations
+- Multiple output formats (executive, bullets, bookreport)
+- MCP server for AI agent integration
+
+📖 [Full Documentation](./Mostlylucid.DocSummarizer/README.md)
+
+---
+
 ## NPM Packages
 
 [![npm version](https://img.shields.io/npm/v/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
 [![npm downloads](https://img.shields.io/npm/dm/@mostlylucid/mermaid-enhancements.svg)](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
 
-- [@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
+### @mostlylucid/mermaid-enhancements
 
-An npm package which enhances the display of mermaid diagrams. Addin export, panning, zoom, an expanding lightbox and theme switching. 
+Enhances Mermaid diagrams with export, panning, zoom, expanding lightbox, and theme switching.
 
-##  NuGet Packages
+```bash
+npm install @mostlylucid/mermaid-enhancements
+```
+
+📖 [npm package](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)
+
+---
+
+## NuGet Packages
+
+### Mostlylucid.MinimalBlog
+
+[![NuGet](https://img.shields.io/nuget/v/Mostlylucid.MinimalBlog.svg)](https://www.nuget.org/packages/Mostlylucid.MinimalBlog)
+
+A minimal, file-based markdown blog for ASP.NET Core. Just point to a folder of markdown files and go.
+
+```csharp
+builder.Services.AddMinimalBlog(options =>
+{
+    options.MarkdownPath = "Markdown";
+});
+app.UseMinimalBlog();
+```
+
+**Features:**
+- ~500 lines of code total
+- Memory and output caching built-in
+- MetaWeblog API support for external editors
+- GitHub-inspired dark theme
+
+📖 [Full Documentation](./Mostlylucid.MinimalBlog/README.md)
+
+---
+
+### Mostlylucid.Markdig.FetchExtension
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.Markdig.FetchExtension.svg)](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.Markdig.FetchExtension.svg)](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension)
 
-- [mostlylucid.Markdig.FetchExtension](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension/) 
+A complete solution for fetching and caching remote markdown content with multiple storage backends, automatic polling, and stale-while-revalidate caching.
 
-A complete solution for fetching and caching remote markdown content with support for multiple storage backends, automatic polling, and a stale-while-revalidate caching pattern.
+📖 [NuGet Package](https://www.nuget.org/packages/mostlylucid.Markdig.FetchExtension/)
 
+---
+
+### Mostlylucid.MockLlmApi
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.mockllmapi.svg)](https://www.nuget.org/packages/mostlylucid.mockllmapi)
 
-- [mostlylucid.mockllmapi](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+Lightweight ASP.NET Core middleware for generating realistic mock API responses using local LLMs (via Ollama). Add intelligent mock endpoints with 2 lines of code.
 
-A lightweight ASP.NET Core middleware for generating realistic mock API responses using local LLMs (via Ollama). Add intelligent mock endpoints to any project with just 2 lines of code!
+📖 [NuGet Package](https://www.nuget.org/packages/mostlylucid.mockllmapi)
+
+---
+
+### Mostlylucid.PagingTagHelper
 
 [![NuGet](https://img.shields.io/nuget/v/mostlylucid.pagingtaghelper.svg)](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)
 [![NuGet](https://img.shields.io/nuget/dt/mostlylucid.pagingtaghelper.svg)](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)
 
-- [mostlylucid.pagingtaghelper](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)  
-  HTMX-enabled ASP.NET Core Tag Helpers to help with paging tasks.
+HTMX-enabled ASP.NET Core Tag Helpers for paging tasks.
+
+📖 [NuGet Package](https://www.nuget.org/packages/mostlylucid.pagingtaghelper)
+
+---
+
+### Umami.Net
 
 [![NuGet](https://img.shields.io/nuget/v/Umami.Net.svg)](https://www.nuget.org/packages/Umami.Net)
 [![NuGet](https://img.shields.io/nuget/dt/Umami.Net.svg)](https://www.nuget.org/packages/Umami.Net)
 
-- [Umami.Net](https://www.nuget.org/packages/Umami.Net)  
-  A package helping with the use of the Umami Web Analytics software.
-  
-[![NuGet](https://img.shields.io/nuget/v/MostlyLucid.EufySecurity.svg)](https://www.nuget.org/packages/MostlyLucid.EufySecurity)
-[![NuGet](https://img.shields.io/nuget/dt/MostlyLucid.EufySecurity.svg)](https://www.nuget.org/packages/MostlyLucid.EufySecurity)
+A .NET client for Umami Web Analytics — privacy-focused analytics integration.
 
-- [MostlyLucid.EufySecurity](https://www.nuget.org/packages/MostlyLucid.EufySecurity)  
-  A **HIGHLY EXPERIMENTAL** .NET client library for controlling Eufy Security devices by connecting to Eufy cloud servers and local/remote stations over P2P. Supports cameras, doorbells, locks, sensors, and more.
-
+📖 [NuGet Package](https://www.nuget.org/packages/Umami.Net)
 
 ---
 
-## Live DataSummarizer Session (Rotten Tomatoes sample)
+### MostlyLucid.EufySecurity
+
+[![NuGet](https://img.shields.io/nuget/v/MostlyLucid.EufySecurity.svg)](https://www.nuget.org/packages/MostlyLucid.EufySecurity)
+[![NuGet](https://img.shields.io/nuget/dt/MostlyLucid.EufySecurity.svg)](https://www.nuget.org/packages/MostlyLucid.EufySecurity)
+
+**HIGHLY EXPERIMENTAL** .NET client library for controlling Eufy Security devices via cloud and P2P connections.
+
+📖 [NuGet Package](https://www.nuget.org/packages/MostlyLucid.EufySecurity)
+
+---
+
+## Additional Projects
+
+| Project | Description |
+|---------|-------------|
+| **[TinyLLM](./TinyLLM/)** | Windows WPF app for local AI chat with RAG memory. Supports Ollama and direct GGUF loading. |
+| **[Chat.Server](./Mostlylucid.Chat.Server/)** | SignalR hub for real-time chat between website visitors and administrators. |
+| **[Chat.Widget](./Mostlylucid.Chat.Widget/)** | Embeddable JavaScript chat widget for any website. |
+| **[SemanticSearch](./Mostlylucid.SemanticSearch/)** | CPU-friendly semantic search using ONNX embeddings and Qdrant. |
+| **[BlogLLM](./mostlylucid.blogllm/)** | RAG knowledge base builder for markdown documents. |
+| **[SemanticGallery.Demo](./Mostlylucid.SemanticGallery.Demo/)** | Image gallery with semantic search capabilities. |
+| **[SentimentAnalysis](./Mostlylucid.SentimentAnalysis/)** | Local sentiment analysis using ONNX models. |
+| **[Workflow.Engine](./Mostlylucid.Workflow.Engine/)** | Simple workflow execution engine. |
+
+---
+
+## Live DataSummarizer Session Example
 
 > Clarifier sentinel (tiny LLM) is enabled by default. Configure via `DataSummarizerSettings`:
 > - `EnableClarifierSentinel` (default: true)
@@ -82,15 +211,16 @@ SELECT AVG("runtime_in_minutes") AS avg_runtime,
 FROM read_csv_auto('sampledata/Rotten+Tomatoes+Movies.csv/Rotten Tomatoes Movies.csv');
 ```
 
+---
+
 ## Featured Articles
 
 Dive into some of the technical deep-dives and experiments from the blog:
 
-
 ### 📦 Package Development
 - **[Building a Remote Markdown Fetcher for Markdig](https://www.mostlylucid.net/blog/markdigfetchextension)** - A complete guide to building a Markdig extension with caching, remote content fetching, and TOC generation
 - **[Creating an LLM Mock API with Ollama](https://www.mostlylucid.net/blog/llmapi)** - Add intelligent mock endpoints to any project with just 2 lines of code
-- **[Umami.Net: Analytics Made Simple](https://www.mostlylucid.net/blog/category/Umami** - Building a .NET client for privacy-focused web analytics
+- **[Umami.Net: Analytics Made Simple](https://www.mostlylucid.net/blog/category/Umami)** - Building a .NET client for privacy-focused web analytics
 
 ### 🎨 Frontend & HTMX
 - **[HTMX & Alpine.js Integration Patterns](https://www.mostlylucid.net/blog/htmxandaspnetcore)** - Building dynamic UIs without heavy JavaScript frameworks
@@ -130,10 +260,11 @@ The site is intentionally a work in progress — things may break, evolve, or ge
 ## Tech Stack
 
 ### Backend
-- **.NET 9.0** - ASP.NET Core MVC for server-side rendering
+- **.NET 10** - ASP.NET Core MVC for server-side rendering
 - **PostgreSQL 16** - Primary database with full-text search
 - **Entity Framework Core** - ORM with code-first migrations
 - **Hangfire** - Background job processing for newsletters
+- **DuckDB** - In-process analytics for data profiling
 
 ### Frontend
 - **HTMX 2.0** - Server-driven interactions without heavy JavaScript
@@ -142,6 +273,12 @@ The site is intentionally a work in progress — things may break, evolve, or ge
 - **Highlight.js** - Syntax highlighting with custom Razor support
 - **Mermaid** - Interactive diagram rendering
 - **EasyMDE** - Markdown editor
+
+### AI/ML
+- **Ollama** - Local LLM inference
+- **ONNX Runtime** - CPU-optimized embeddings and inference
+- **Qdrant** - Vector database for semantic search
+- **DuckDB VSS** - Vector similarity search extension
 
 ### Infrastructure
 - **Docker** - Containerized deployment with Docker Compose
@@ -154,7 +291,7 @@ The site is intentionally a work in progress — things may break, evolve, or ge
 ## Getting Started
 
 ### Prerequisites
-- .NET 9.0 SDK
+- .NET 10 SDK (for building from source)
 - Node.js (for frontend builds)
 - Docker (optional, for full stack)
 
@@ -238,9 +375,3 @@ This repo is primarily Scott's personal playground, but feedback, issues, and su
 ## License
 
 **Unlicense** — This is free and unencumbered software released into the public domain. See [LICENSE](./LICENSE) for details.
-
-
-
-
-
-
