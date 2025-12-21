@@ -121,7 +121,8 @@ Then you can run `datasummarizer` from anywhere.
 
 ### Requirements
 
-- **Required**: .NET 10 SDK to build, .NET 10 Runtime to run
+- **Release binaries**: Self-contained/portable, no runtime install needed
+- **Build from source**: .NET 10 SDK (current)
 - **Embedded**: DuckDB (via `DuckDB.NET.Data.Full` - no separate install needed)
 - **Optional**: Ollama for LLM features (default model: `qwen2.5-coder:7b`)
 - **Optional**: DuckDB `vss` extension (auto-fallback if missing)
