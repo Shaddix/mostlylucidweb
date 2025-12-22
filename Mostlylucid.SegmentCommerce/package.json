@@ -1,0 +1,32 @@
+{
+  "name": "mostlylucid-segmentcommerce",
+  "version": "1.0.0",
+  "description": "Segment Commerce - Zero PII Customer Intelligence Demo",
+  "scripts": {
+    "clean": "rimraf ./wwwroot/css/dist ./wwwroot/js/dist",
+    "tw:dev": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css",
+    "tw:prod": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --no-map --verbose",
+    "tw:watch": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --watch",
+    "dev": "npm run clean && npm run tw:dev",
+    "watch": "npm run clean && npm run tw:watch",
+    "build": "npm run clean && npm run tw:prod"
+  },
+  "devDependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.12",
+    "autoprefixer": "10.4.21",
+    "cssnano": "7.0.6",
+    "daisyui": "^4.12.10",
+    "npm-run-all": "4.1.5",
+    "postcss": "8.5.3",
+    "postcss-cli": "11.0.1",
+    "postcss-import": "^16.1.0",
+    "rimraf": "6.0.1",
+    "tailwindcss": "3.4.17"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.1",
+    "htmx.org": "^2.0.8"
+  }
+}

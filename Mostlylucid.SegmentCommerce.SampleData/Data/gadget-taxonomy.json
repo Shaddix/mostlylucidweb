@@ -1,0 +1,606 @@
+{
+  "$schema": "gadget-taxonomy-schema.json",
+  "version": "1.0.0",
+  "description": "Taxonomy for generating realistic gadget and consumer product data",
+  "categories": {
+    "tech": {
+      "slug": "tech",
+      "displayName": "Technology",
+      "description": "Consumer electronics, gadgets, and smart devices",
+      "icon": "cpu",
+      "priceRange": { "min": 29.99, "max": 999.99 },
+      "subcategories": {
+        "audio": {
+          "displayName": "Audio",
+          "products": [
+            {
+              "type": "headphones",
+              "variants": ["over-ear", "on-ear", "in-ear", "earbuds", "bone-conduction"],
+              "features": ["noise-cancelling", "wireless", "wired", "gaming", "studio", "sport"],
+              "priceRange": { "min": 29.99, "max": 549.99 },
+              "brands": ["SoundCore", "AudioTech", "BassWave", "ClearSound", "EchoBeats"],
+              "materials": ["memory foam", "leather", "mesh", "silicone", "aluminium"],
+              "colours": ["Midnight Black", "Arctic White", "Space Grey", "Rose Gold", "Navy Blue", "Forest Green"],
+              "imagePrompt": "Professional product photography of {variant} {type}, {features}, studio lighting, white background, high detail, commercial product shot, 8k quality"
+            },
+            {
+              "type": "speakers",
+              "variants": ["portable", "bookshelf", "soundbar", "smart speaker", "party speaker"],
+              "features": ["bluetooth", "wifi", "voice-assistant", "waterproof", "stereo-pairing"],
+              "priceRange": { "min": 39.99, "max": 399.99 },
+              "brands": ["SonicBoom", "BassDrop", "ClearWave", "RoomFill", "PortaSound"],
+              "materials": ["fabric mesh", "aluminium", "plastic", "wood veneer", "rubberised"],
+              "colours": ["Charcoal", "Sand", "Teal", "Crimson", "Graphite", "Cream"]
+            },
+            {
+              "type": "microphones",
+              "variants": ["USB condenser", "dynamic", "lavalier", "shotgun", "wireless system"],
+              "features": ["cardioid", "omnidirectional", "noise-reduction", "plug-and-play", "studio-grade"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["VoxPro", "StudioClear", "PodCast Pro", "StreamMic", "AudioCapture"],
+              "materials": ["metal body", "shock mount", "pop filter included", "desk stand"],
+              "colours": ["Matte Black", "Silver", "White", "Copper", "Gunmetal"]
+            }
+          ]
+        },
+        "computing": {
+          "displayName": "Computing",
+          "products": [
+            {
+              "type": "keyboards",
+              "variants": ["mechanical", "membrane", "ergonomic", "compact 60%", "TKL", "split"],
+              "features": ["RGB backlit", "hot-swappable", "wireless", "programmable", "low-profile"],
+              "priceRange": { "min": 49.99, "max": 249.99 },
+              "brands": ["KeyForge", "TypeMaster", "ClickCraft", "SwitchWorks", "ErgoType"],
+              "materials": ["aluminium frame", "PBT keycaps", "ABS keycaps", "wooden wrist rest"],
+              "colours": ["Black", "White", "Navy", "Olive", "Lavender", "Coral"],
+              "switchTypes": ["Cherry MX Red", "Cherry MX Blue", "Cherry MX Brown", "Gateron Yellow", "Kailh Box White"]
+            },
+            {
+              "type": "mice",
+              "variants": ["gaming", "ergonomic", "travel", "vertical", "trackball"],
+              "features": ["wireless", "lightweight", "programmable buttons", "high DPI", "ambidextrous"],
+              "priceRange": { "min": 29.99, "max": 179.99 },
+              "brands": ["GlidePro", "ClickMaster", "ErgoGrip", "SwiftPoint", "PrecisionX"],
+              "materials": ["honeycomb shell", "rubberised grip", "aluminium scroll wheel"],
+              "colours": ["Black", "White", "Pink", "Mercury", "Magenta"]
+            },
+            {
+              "type": "webcams",
+              "variants": ["1080p", "4K", "wide-angle", "PTZ", "streaming"],
+              "features": ["autofocus", "low-light correction", "built-in mic", "privacy shutter", "HDR"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["ClearView", "StreamPro", "FaceTime HD", "WebEye", "CamCaster"],
+              "materials": ["metal mount", "glass lens", "flexible clip"],
+              "colours": ["Black", "White", "Graphite"]
+            },
+            {
+              "type": "monitors",
+              "variants": ["24-inch", "27-inch", "32-inch", "ultrawide", "portable"],
+              "features": ["4K", "144Hz", "IPS", "curved", "USB-C", "HDR"],
+              "priceRange": { "min": 199.99, "max": 899.99 },
+              "brands": ["ViewSonic Pro", "ClearDisplay", "PixelPerfect", "UltraVue", "ScreenMaster"],
+              "materials": ["aluminium stand", "slim bezel", "VESA mount compatible"],
+              "colours": ["Black", "Silver", "White", "Space Grey"]
+            },
+            {
+              "type": "storage",
+              "variants": ["portable SSD", "external HDD", "NVMe enclosure", "flash drive", "memory card"],
+              "features": ["USB-C", "rugged", "encrypted", "high-speed", "compact"],
+              "priceRange": { "min": 29.99, "max": 299.99 },
+              "capacities": ["256GB", "512GB", "1TB", "2TB", "4TB"],
+              "brands": ["DataVault", "SpeedStore", "SecureDrive", "FlashForce", "StoragePro"],
+              "colours": ["Black", "Silver", "Blue", "Orange", "Green"]
+            }
+          ]
+        },
+        "mobile": {
+          "displayName": "Mobile Accessories",
+          "products": [
+            {
+              "type": "chargers",
+              "variants": ["wall charger", "car charger", "wireless pad", "power bank", "charging station"],
+              "features": ["fast charging", "GaN", "multi-port", "MagSafe compatible", "travel-friendly"],
+              "priceRange": { "min": 19.99, "max": 149.99 },
+              "brands": ["ChargeFast", "PowerUp", "VoltRush", "JuicePro", "EnergyMax"],
+              "materials": ["compact design", "foldable prongs", "braided cable"],
+              "colours": ["White", "Black", "Mint", "Lavender", "Peach"]
+            },
+            {
+              "type": "phone-stands",
+              "variants": ["desk stand", "car mount", "ring holder", "gimbal", "tripod"],
+              "features": ["adjustable", "magnetic", "foldable", "360-degree rotation", "wireless charging"],
+              "priceRange": { "min": 14.99, "max": 129.99 },
+              "brands": ["StandPro", "MountMaster", "GripTech", "FlexiHold", "StudioStand"],
+              "materials": ["aluminium", "silicone grip", "carbon fibre look"],
+              "colours": ["Silver", "Black", "Rose Gold", "Space Grey", "Gold"]
+            },
+            {
+              "type": "phone-cases",
+              "variants": ["slim", "rugged", "wallet", "clear", "battery case"],
+              "features": ["MagSafe", "drop protection", "antimicrobial", "eco-friendly", "kickstand"],
+              "priceRange": { "min": 19.99, "max": 79.99 },
+              "brands": ["ShieldCase", "ArmorTech", "SlimGuard", "ClearView", "EcoCase"],
+              "materials": ["silicone", "polycarbonate", "leather", "recycled plastic", "aramid fibre"],
+              "colours": ["Clear", "Black", "Navy", "Burgundy", "Forest", "Sand", "Pacific Blue"]
+            }
+          ]
+        },
+        "wearables": {
+          "displayName": "Wearables",
+          "products": [
+            {
+              "type": "smartwatches",
+              "variants": ["fitness-focused", "luxury", "rugged outdoor", "kids", "hybrid"],
+              "features": ["heart rate", "GPS", "blood oxygen", "sleep tracking", "water resistant"],
+              "priceRange": { "min": 149.99, "max": 599.99 },
+              "brands": ["FitPulse", "TimeSync", "HealthBand", "ActiveWatch", "SmartTech"],
+              "materials": ["aluminium case", "titanium", "stainless steel", "ceramic"],
+              "colours": ["Black", "Silver", "Gold", "Rose Gold", "Midnight", "Starlight"],
+              "bandTypes": ["silicone sport", "leather", "metal link", "nylon loop", "fabric"]
+            },
+            {
+              "type": "fitness-trackers",
+              "variants": ["band", "clip-on", "ring", "chest strap"],
+              "features": ["step counting", "heart rate", "sleep", "swim-proof", "long battery"],
+              "priceRange": { "min": 49.99, "max": 199.99 },
+              "brands": ["FitBit Pro", "HealthTrack", "MoveBand", "ActiveRing", "PulseFit"],
+              "materials": ["flexible silicone", "hypoallergenic", "lightweight"],
+              "colours": ["Black", "White", "Coral", "Teal", "Purple", "Neon Green"]
+            },
+            {
+              "type": "smart-glasses",
+              "variants": ["audio", "AR", "camera", "sport", "fashion"],
+              "features": ["speakers", "voice assistant", "prescription-ready", "UV protection", "transitions"],
+              "priceRange": { "min": 199.99, "max": 499.99 },
+              "brands": ["VisionTech", "SmartSpecs", "AudioView", "FrameAI", "LensLogic"],
+              "materials": ["acetate", "titanium", "TR90 nylon"],
+              "colours": ["Matte Black", "Tortoise", "Clear", "Navy", "Olive"]
+            }
+          ]
+        },
+        "smart-home": {
+          "displayName": "Smart Home",
+          "products": [
+            {
+              "type": "smart-bulbs",
+              "variants": ["standard", "spotlight", "strip", "filament", "outdoor"],
+              "features": ["colour changing", "dimmable", "voice control", "scheduling", "energy monitoring"],
+              "priceRange": { "min": 14.99, "max": 79.99 },
+              "brands": ["LumiSmart", "GlowTech", "BrightHome", "HueLite", "AmbientPro"],
+              "materials": ["glass", "plastic diffuser", "aluminium heatsink"],
+              "colours": ["Warm White", "Cool White", "Daylight", "RGB", "Tunable White"]
+            },
+            {
+              "type": "smart-plugs",
+              "variants": ["single", "power strip", "outdoor", "mini", "energy monitoring"],
+              "features": ["voice control", "scheduling", "away mode", "surge protection", "USB ports"],
+              "priceRange": { "min": 14.99, "max": 49.99 },
+              "brands": ["PlugSmart", "PowerLink", "HomeSwitch", "VoltControl", "SmartSocket"],
+              "colours": ["White", "Black", "Grey"]
+            },
+            {
+              "type": "smart-displays",
+              "variants": ["5-inch", "8-inch", "10-inch", "15-inch", "photo-frame"],
+              "features": ["voice assistant", "video calling", "smart home hub", "touchscreen", "camera"],
+              "priceRange": { "min": 79.99, "max": 299.99 },
+              "brands": ["HomeHub", "ViewSmart", "EchoDisplay", "NestView", "SmartFrame"],
+              "materials": ["fabric base", "aluminium frame", "glass screen"],
+              "colours": ["Charcoal", "Sand", "Blue", "Coral", "White"]
+            },
+            {
+              "type": "thermostats",
+              "variants": ["learning", "programmable", "simple", "zone control", "sensor"],
+              "features": ["energy saving", "geofencing", "humidity control", "air quality", "remote access"],
+              "priceRange": { "min": 99.99, "max": 299.99 },
+              "brands": ["ClimateIQ", "TempSmart", "EcoTherm", "HeatWise", "AirControl"],
+              "materials": ["glass face", "metal trim", "minimalist design"],
+              "colours": ["White", "Black", "Stainless", "Copper", "Brass"]
+            },
+            {
+              "type": "security-cameras",
+              "variants": ["indoor", "outdoor", "doorbell", "floodlight", "pan-tilt"],
+              "features": ["night vision", "two-way audio", "motion detection", "cloud storage", "local storage"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["SecureView", "WatchDog", "GuardCam", "SafeHome", "EyeWatch"],
+              "materials": ["weatherproof housing", "magnetic mount", "adjustable stand"],
+              "colours": ["White", "Black", "Grey", "Bronze"]
+            }
+          ]
+        }
+      }
+    },
+    "fashion": {
+      "slug": "fashion",
+      "displayName": "Fashion",
+      "description": "Clothing, accessories, and footwear",
+      "icon": "shirt",
+      "priceRange": { "min": 19.99, "max": 599.99 },
+      "subcategories": {
+        "accessories": {
+          "displayName": "Accessories",
+          "products": [
+            {
+              "type": "watches",
+              "variants": ["dress", "sport", "minimalist", "chronograph", "dive"],
+              "features": ["automatic", "quartz", "solar", "water resistant", "luminous"],
+              "priceRange": { "min": 79.99, "max": 499.99 },
+              "brands": ["TimeCraft", "Horologist", "ChronoStyle", "PrecisionTime", "ClassicWatch"],
+              "materials": ["stainless steel", "titanium", "leather strap", "ceramic", "sapphire crystal"],
+              "colours": ["Silver", "Gold", "Rose Gold", "Black PVD", "Two-Tone"],
+              "dialColours": ["White", "Black", "Blue", "Green", "Champagne"]
+            },
+            {
+              "type": "sunglasses",
+              "variants": ["aviator", "wayfarer", "round", "cat-eye", "sport"],
+              "features": ["polarised", "UV400", "gradient lens", "mirrored", "photochromic"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["SunStyle", "OpticPro", "ShadesMaster", "VisionWear", "LensCraft"],
+              "materials": ["acetate", "metal", "titanium", "TR90"],
+              "colours": ["Black", "Tortoise", "Crystal", "Gold", "Silver", "Havana"]
+            },
+            {
+              "type": "wallets",
+              "variants": ["bifold", "trifold", "card holder", "money clip", "travel wallet"],
+              "features": ["RFID blocking", "coin pocket", "ID window", "slim profile", "zip closure"],
+              "priceRange": { "min": 29.99, "max": 199.99 },
+              "brands": ["LeatherCraft", "WalletWorks", "SlimFold", "CarryAll", "PocketPro"],
+              "materials": ["full-grain leather", "top-grain leather", "vegan leather", "carbon fibre"],
+              "colours": ["Black", "Brown", "Tan", "Navy", "Burgundy", "Cognac"]
+            },
+            {
+              "type": "belts",
+              "variants": ["dress", "casual", "reversible", "braided", "stretch"],
+              "features": ["automatic buckle", "pin buckle", "no-hole", "adjustable", "engraved"],
+              "priceRange": { "min": 29.99, "max": 149.99 },
+              "brands": ["BeltCraft", "BuckleUp", "StrapMaster", "LeatherLine", "ClassicBelt"],
+              "materials": ["genuine leather", "bonded leather", "canvas", "suede"],
+              "colours": ["Black", "Brown", "Tan", "Cognac", "Navy"]
+            },
+            {
+              "type": "bags",
+              "variants": ["backpack", "messenger", "tote", "duffel", "crossbody"],
+              "features": ["laptop compartment", "water resistant", "anti-theft", "USB charging", "expandable"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["CarryPro", "BagWorks", "TravelMate", "UrbanPack", "DailyCarry"],
+              "materials": ["ballistic nylon", "canvas", "leather", "recycled polyester", "waxed cotton"],
+              "colours": ["Black", "Grey", "Navy", "Olive", "Tan", "Burgundy"]
+            }
+          ]
+        },
+        "footwear": {
+          "displayName": "Footwear",
+          "products": [
+            {
+              "type": "sneakers",
+              "variants": ["running", "lifestyle", "high-top", "slip-on", "retro"],
+              "features": ["cushioned", "breathable", "lightweight", "waterproof", "vegan"],
+              "priceRange": { "min": 69.99, "max": 249.99 },
+              "brands": ["StridePro", "UrbanStep", "RunFlex", "StreetWear", "ComfortKicks"],
+              "materials": ["mesh upper", "leather", "suede", "knit", "recycled materials"],
+              "colours": ["White", "Black", "Grey", "Navy", "Red", "Multi"]
+            },
+            {
+              "type": "boots",
+              "variants": ["chelsea", "hiking", "chukka", "combat", "dress"],
+              "features": ["waterproof", "insulated", "steel toe", "slip resistant", "goodyear welt"],
+              "priceRange": { "min": 99.99, "max": 399.99 },
+              "brands": ["BootCraft", "TrailMaster", "UrbanBoot", "AllWeather", "ClassicStep"],
+              "materials": ["full-grain leather", "suede", "nubuck", "synthetic"],
+              "colours": ["Black", "Brown", "Tan", "Olive", "Burgundy"]
+            }
+          ]
+        }
+      }
+    },
+    "home": {
+      "slug": "home",
+      "displayName": "Home & Living",
+      "description": "Home decor, furniture, and lifestyle products",
+      "icon": "home",
+      "priceRange": { "min": 14.99, "max": 799.99 },
+      "subcategories": {
+        "office": {
+          "displayName": "Office",
+          "products": [
+            {
+              "type": "desk-accessories",
+              "variants": ["desk organiser", "monitor stand", "laptop stand", "cable management", "desk mat"],
+              "features": ["adjustable", "foldable", "multi-device", "ventilated", "wireless charging"],
+              "priceRange": { "min": 19.99, "max": 149.99 },
+              "brands": ["DeskPro", "WorkSpace", "OfficeCraft", "TidyDesk", "ErgoWorks"],
+              "materials": ["bamboo", "aluminium", "walnut", "steel", "leather"],
+              "colours": ["Natural Wood", "Black", "White", "Walnut", "Grey"]
+            },
+            {
+              "type": "chairs",
+              "variants": ["ergonomic", "executive", "task", "kneeling", "balance ball"],
+              "features": ["lumbar support", "adjustable arms", "headrest", "mesh back", "reclining"],
+              "priceRange": { "min": 199.99, "max": 799.99 },
+              "brands": ["ErgoSeat", "ComfortPro", "PosturePlus", "OfficeLux", "SitRight"],
+              "materials": ["mesh", "leather", "fabric", "memory foam"],
+              "colours": ["Black", "Grey", "Blue", "White", "Brown"]
+            },
+            {
+              "type": "desk-lamps",
+              "variants": ["LED", "architect", "clip-on", "smart", "ambient"],
+              "features": ["dimmable", "colour temperature", "USB charging", "touch control", "eye-care"],
+              "priceRange": { "min": 29.99, "max": 149.99 },
+              "brands": ["LightWorks", "DeskGlow", "BrightTask", "AmbientPro", "LumiDesk"],
+              "materials": ["aluminium", "steel", "plastic", "wood base"],
+              "colours": ["Black", "White", "Silver", "Gold", "Rose Gold"]
+            }
+          ]
+        },
+        "kitchen": {
+          "displayName": "Kitchen",
+          "products": [
+            {
+              "type": "coffee-makers",
+              "variants": ["drip", "espresso", "french press", "pour over", "cold brew"],
+              "features": ["programmable", "built-in grinder", "milk frother", "thermal carafe", "single serve"],
+              "priceRange": { "min": 29.99, "max": 499.99 },
+              "brands": ["BrewMaster", "CafePro", "BeanCraft", "MorningBrew", "EspressoTech"],
+              "materials": ["stainless steel", "glass carafe", "BPA-free plastic"],
+              "colours": ["Stainless", "Black", "White", "Copper", "Matte Black"]
+            },
+            {
+              "type": "blenders",
+              "variants": ["countertop", "personal", "immersion", "high-performance", "portable"],
+              "features": ["variable speed", "pulse", "self-cleaning", "dishwasher safe", "rechargeable"],
+              "priceRange": { "min": 29.99, "max": 399.99 },
+              "brands": ["BlendPro", "SmoothieMaker", "PowerBlend", "NutriMix", "ChefBlend"],
+              "materials": ["tritan plastic", "glass jar", "stainless steel blades"],
+              "colours": ["Black", "White", "Red", "Silver", "Mint"]
+            },
+            {
+              "type": "kettles",
+              "variants": ["electric", "stovetop", "gooseneck", "smart", "travel"],
+              "features": ["temperature control", "keep warm", "rapid boil", "cordless", "LED display"],
+              "priceRange": { "min": 29.99, "max": 199.99 },
+              "brands": ["BoilFast", "KettleCraft", "TeaMaster", "QuickHeat", "BrewTemp"],
+              "materials": ["stainless steel", "glass", "copper", "ceramic"],
+              "colours": ["Stainless", "Matte Black", "White", "Copper", "Sage Green"]
+            }
+          ]
+        },
+        "lighting": {
+          "displayName": "Lighting",
+          "products": [
+            {
+              "type": "floor-lamps",
+              "variants": ["arc", "tripod", "torchiere", "reading", "smart"],
+              "features": ["dimmable", "adjustable height", "remote control", "colour changing", "energy efficient"],
+              "priceRange": { "min": 49.99, "max": 299.99 },
+              "brands": ["LightHouse", "AmbientGlow", "FloorLux", "ModernLight", "StandBright"],
+              "materials": ["metal", "wood", "marble base", "fabric shade", "glass"],
+              "colours": ["Black", "Brass", "Chrome", "Wood", "White"]
+            },
+            {
+              "type": "table-lamps",
+              "variants": ["bedside", "desk", "accent", "touch", "rechargeable"],
+              "features": ["USB ports", "wireless charging", "night light mode", "timer", "smart home compatible"],
+              "priceRange": { "min": 29.99, "max": 149.99 },
+              "brands": ["TableGlow", "BedLight", "AccentLux", "TouchBright", "NightStand"],
+              "materials": ["ceramic", "glass", "metal", "concrete", "resin"],
+              "colours": ["White", "Black", "Navy", "Terracotta", "Sage", "Blush"]
+            }
+          ]
+        }
+      }
+    },
+    "sport": {
+      "slug": "sport",
+      "displayName": "Sports & Fitness",
+      "description": "Exercise equipment and outdoor gear",
+      "icon": "dumbbell",
+      "priceRange": { "min": 9.99, "max": 499.99 },
+      "subcategories": {
+        "fitness-equipment": {
+          "displayName": "Fitness Equipment",
+          "products": [
+            {
+              "type": "yoga-mats",
+              "variants": ["standard", "travel", "thick cushion", "cork", "alignment"],
+              "features": ["non-slip", "eco-friendly", "antimicrobial", "carrying strap", "alignment lines"],
+              "priceRange": { "min": 19.99, "max": 129.99 },
+              "brands": ["YogaPro", "ZenMat", "FlexFlow", "NamasteGear", "BalancePad"],
+              "materials": ["TPE", "natural rubber", "cork", "jute", "PVC-free"],
+              "colours": ["Black", "Purple", "Blue", "Green", "Pink", "Grey"]
+            },
+            {
+              "type": "resistance-bands",
+              "variants": ["loop", "tube", "fabric", "figure-8", "therapy"],
+              "features": ["multi-resistance set", "door anchor", "handles", "ankle straps", "carry bag"],
+              "priceRange": { "min": 14.99, "max": 59.99 },
+              "brands": ["ResistPro", "BandFit", "StrengthLoop", "FlexForce", "ToneBand"],
+              "materials": ["latex", "fabric", "latex-free", "natural rubber"],
+              "colours": ["Multi-colour set", "Black", "Grey", "Pink", "Blue"]
+            },
+            {
+              "type": "dumbbells",
+              "variants": ["adjustable", "fixed", "neoprene", "hex", "smart"],
+              "features": ["quick-change", "rubber coated", "ergonomic grip", "compact storage", "weight tracking"],
+              "priceRange": { "min": 29.99, "max": 399.99 },
+              "weights": ["2kg", "5kg", "10kg", "15kg", "20kg", "adjustable 2-20kg"],
+              "brands": ["IronGrip", "LiftPro", "HomeFit", "PowerSet", "FlexWeight"],
+              "colours": ["Black", "Grey", "Black/Chrome", "Neoprene Multi"]
+            },
+            {
+              "type": "foam-rollers",
+              "variants": ["standard", "vibrating", "textured", "travel", "half-round"],
+              "features": ["high-density", "muscle recovery", "trigger point", "rechargeable", "multiple intensities"],
+              "priceRange": { "min": 19.99, "max": 149.99 },
+              "brands": ["RollRecovery", "MuscleRelief", "FoamFlex", "DeepTissue", "RecoverPro"],
+              "colours": ["Black", "Blue", "Orange", "Purple", "Green"]
+            }
+          ]
+        },
+        "hydration": {
+          "displayName": "Hydration",
+          "products": [
+            {
+              "type": "water-bottles",
+              "variants": ["insulated", "collapsible", "filtered", "smart", "sport"],
+              "features": ["temperature display", "UV sterilisation", "one-hand open", "leak-proof", "dishwasher safe"],
+              "priceRange": { "min": 14.99, "max": 79.99 },
+              "capacities": ["500ml", "750ml", "1L", "1.5L"],
+              "brands": ["HydroFlow", "AquaPro", "ChillBottle", "PureHydrate", "SportSip"],
+              "materials": ["stainless steel", "tritan plastic", "glass", "silicone"],
+              "colours": ["Black", "White", "Navy", "Coral", "Mint", "Lilac"]
+            },
+            {
+              "type": "shaker-bottles",
+              "variants": ["classic", "electric", "insulated", "multi-compartment", "glass"],
+              "features": ["blender ball", "USB rechargeable", "leak-proof", "measurement marks", "storage compartment"],
+              "priceRange": { "min": 9.99, "max": 49.99 },
+              "brands": ["ShakePro", "BlendMaster", "ProteinMix", "GymShake", "FitBottle"],
+              "colours": ["Clear/Black", "Black", "Blue", "Pink", "Green", "Grey"]
+            }
+          ]
+        }
+      }
+    },
+    "books": {
+      "slug": "books",
+      "displayName": "Books & Media",
+      "description": "Books, e-readers, and reading accessories",
+      "icon": "book",
+      "priceRange": { "min": 9.99, "max": 299.99 },
+      "subcategories": {
+        "e-readers": {
+          "displayName": "E-Readers",
+          "products": [
+            {
+              "type": "e-readers",
+              "variants": ["basic", "paperwhite", "premium", "note-taking", "colour"],
+              "features": ["waterproof", "warm light", "wireless charging", "stylus support", "audiobook support"],
+              "priceRange": { "min": 99.99, "max": 399.99 },
+              "brands": ["ReadEasy", "PageTurn", "BookLight", "InkReader", "DigitalPage"],
+              "materials": ["aluminium", "soft-touch plastic", "glass front"],
+              "colours": ["Black", "White", "Sage", "Denim", "Rose"]
+            }
+          ]
+        },
+        "reading-accessories": {
+          "displayName": "Reading Accessories",
+          "products": [
+            {
+              "type": "book-lights",
+              "variants": ["clip-on", "neck", "rechargeable", "amber", "dual-head"],
+              "features": ["adjustable brightness", "flexible neck", "USB rechargeable", "blue-light filter", "auto-off"],
+              "priceRange": { "min": 9.99, "max": 39.99 },
+              "brands": ["ReadBright", "NightReader", "BookGlow", "PageLight", "LitePage"],
+              "colours": ["Black", "White", "Silver", "Rose Gold"]
+            },
+            {
+              "type": "bookstands",
+              "variants": ["desktop", "bed", "adjustable", "cookbook", "page holder"],
+              "features": ["foldable", "page clips", "adjustable angle", "sturdy base", "portable"],
+              "priceRange": { "min": 14.99, "max": 59.99 },
+              "brands": ["StandRead", "BookRest", "PageProp", "ReadEase", "DeskBook"],
+              "materials": ["bamboo", "metal", "acrylic", "wood"],
+              "colours": ["Natural", "Black", "White", "Walnut"]
+            },
+            {
+              "type": "bookmarks",
+              "variants": ["metal", "leather", "magnetic", "corner", "page-clip"],
+              "features": ["gift-boxed", "personalised", "set of multiple", "tassel", "engraved"],
+              "priceRange": { "min": 9.99, "max": 29.99 },
+              "brands": ["PageMark", "BookTag", "ReadMark", "LitMark", "PageSave"],
+              "materials": ["brass", "stainless steel", "genuine leather", "enamel"],
+              "colours": ["Gold", "Silver", "Rose Gold", "Copper", "Black"]
+            }
+          ]
+        }
+      }
+    },
+    "food": {
+      "slug": "food",
+      "displayName": "Food & Drink",
+      "description": "Gourmet food, beverages, and food preparation gadgets",
+      "icon": "coffee",
+      "priceRange": { "min": 9.99, "max": 199.99 },
+      "subcategories": {
+        "coffee-tea": {
+          "displayName": "Coffee & Tea",
+          "products": [
+            {
+              "type": "coffee-grinders",
+              "variants": ["manual", "blade", "burr", "travel", "smart"],
+              "features": ["adjustable grind", "timer", "dosing", "low retention", "quiet operation"],
+              "priceRange": { "min": 29.99, "max": 199.99 },
+              "brands": ["GrindMaster", "BeanCrush", "BrewGrind", "CafeMilll", "PrecisionGrind"],
+              "materials": ["stainless steel burrs", "ceramic burrs", "glass container"],
+              "colours": ["Black", "Stainless", "White", "Copper"]
+            },
+            {
+              "type": "tea-infusers",
+              "variants": ["ball", "basket", "bottle", "travel mug", "teapot"],
+              "features": ["fine mesh", "easy clean", "heat resistant", "double-wall", "built-in timer"],
+              "priceRange": { "min": 9.99, "max": 49.99 },
+              "brands": ["TeaTime", "SteepWell", "LeafBrew", "InfusePro", "TeaCraft"],
+              "materials": ["stainless steel", "glass", "silicone", "borosilicate"],
+              "colours": ["Silver", "Rose Gold", "Black", "Copper", "Clear"]
+            },
+            {
+              "type": "milk-frothers",
+              "variants": ["handheld", "jug", "automatic", "steam", "cold foam"],
+              "features": ["rechargeable", "multiple speeds", "hot and cold", "dishwasher safe", "non-stick"],
+              "priceRange": { "min": 14.99, "max": 99.99 },
+              "brands": ["FrothPro", "MilkMaster", "LatteArt", "FoamCraft", "BaristaBuddy"],
+              "colours": ["Black", "Silver", "White", "Red"]
+            }
+          ]
+        },
+        "food-storage": {
+          "displayName": "Food Storage",
+          "products": [
+            {
+              "type": "containers",
+              "variants": ["glass set", "plastic set", "vacuum", "meal prep", "snack"],
+              "features": ["airtight", "stackable", "microwave safe", "freezer safe", "portion control"],
+              "priceRange": { "min": 19.99, "max": 79.99 },
+              "brands": ["FreshKeep", "SealTight", "StoreSmart", "MealBox", "AirLock"],
+              "materials": ["borosilicate glass", "BPA-free plastic", "stainless steel", "silicone lids"],
+              "colours": ["Clear/Blue", "Clear/Green", "Clear/Grey", "Amber"]
+            },
+            {
+              "type": "vacuum-sealers",
+              "variants": ["countertop", "handheld", "chamber", "compact", "commercial"],
+              "features": ["moist/dry modes", "marinate mode", "bag cutter", "roll storage", "pulse function"],
+              "priceRange": { "min": 39.99, "max": 199.99 },
+              "brands": ["SealFresh", "VacuumPro", "FoodSaver", "AirOut", "FreshSeal"],
+              "colours": ["Black", "Silver", "White", "Red"]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "globalAttributes": {
+    "conditions": ["new", "refurbished", "open-box"],
+    "availability": ["in-stock", "pre-order", "back-order", "limited-edition"],
+    "shipping": ["free", "standard", "express", "next-day"],
+    "warranty": ["1 year", "2 years", "3 years", "lifetime", "extended available"],
+    "sustainability": ["eco-friendly", "recycled materials", "carbon neutral", "plastic-free packaging"]
+  },
+  "imageGeneration": {
+    "styles": [
+      "Professional product photography, studio lighting, white background, high detail, commercial photography, 8k",
+      "Lifestyle product shot, natural lighting, minimalist setting, editorial style, premium feel",
+      "E-commerce product image, clean white background, multiple angles, shadow, professional",
+      "Hero shot, dramatic lighting, floating product, gradient background, advertising style"
+    ],
+    "negativePrompts": [
+      "bad quality, blurry, distorted, ugly, deformed, low resolution, watermark, text, logo, brand name, human hands, fingers"
+    ],
+    "angleVariants": [
+      "front view, straight on",
+      "three-quarter angle, slight tilt",
+      "side profile view",
+      "top-down flat lay",
+      "close-up detail shot"
+    ]
+  }
+}

@@ -1,0 +1,106 @@
+@model Product
+@{
+    ViewData["Title"] = Model.Name;
+    var relatedProducts = ViewData["RelatedProducts"] as List<Product> ?? [];
+}
+
+<div class="max-w-6xl mx-auto">
+    <!-- Breadcrumb -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <li><a href="/" class="hover:text-shop-primary dark:hover:text-blue-400">Home</a></li>
+            <li>/</li>
+            <li><a href="/products" class="hover:text-shop-primary dark:hover:text-blue-400">Products</a></li>
+            <li>/</li>
+            <li><a href="/products/category/@Model.Category" class="hover:text-shop-primary dark:hover:text-blue-400">
+                @InterestCategories.DisplayNames.GetValueOrDefault(Model.Category, Model.Category)
+            </a></li>
+            <li>/</li>
+            <li class="text-gray-900 dark:text-white">@Model.Name</li>
+        </ol>
+    </nav>
+    
+    <!-- Product Details -->
+    <div class="grid md:grid-cols-2 gap-8 mb-12">
+        <!-- Image -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg">
+            <img src="@Model.ImageUrl" 
+                 alt="@Model.Name"
+                 class="w-full h-auto object-cover" />
+        </div>
+        
+        <!-- Details -->
+        <div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                @InterestCategories.DisplayNames.GetValueOrDefault(Model.Category, Model.Category)
+            </p>
+            
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                @Model.Name
+            </h1>
+            
+            <!-- Price -->
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-3xl font-bold text-shop-primary dark:text-blue-400">
+                    £@Model.Price.ToString("0.00")
+                </span>
+                @if (Model.OriginalPrice.HasValue && Model.OriginalPrice > Model.Price)
+                {
+                    <span class="text-xl text-gray-500 line-through">
+                        £@Model.OriginalPrice.Value.ToString("0.00")
+                    </span>
+                    <span class="bg-red-100 text-red-800 text-sm font-semibold px-2 py-1 rounded">
+                        Save £@((Model.OriginalPrice.Value - Model.Price).ToString("0.00"))
+                    </span>
+                }
+            </div>
+            
+            <p class="text-gray-600 dark:text-gray-300 mb-6 text-lg">
+                @Model.Description
+            </p>
+            
+            <!-- Tags -->
+            @if (Model.Tags.Any())
+            {
+                <div class="flex flex-wrap gap-2 mb-6">
+                    @foreach (var tag in Model.Tags)
+                    {
+                        <span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-600 dark:text-gray-300">
+                            @tag
+                        </span>
+                    }
+                </div>
+            }
+            
+            <!-- Add to Cart -->
+            <div class="flex gap-4">
+                <button class="flex-1 btn-primary py-3 text-lg"
+                        hx-post="/cart/add/@Model.Id"
+                        hx-target="#cart-count"
+                        hx-swap="outerHTML">
+                    Add to Cart
+                </button>
+            </div>
+            
+            <!-- Personalisation Notice -->
+            @if (Model.IsRecommended)
+            {
+                <div class="mt-6 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
+                    <p class="text-sm text-teal-800 dark:text-teal-200">
+                        <strong>Recommended for you</strong> based on your browsing interests.
+                        <button class="underline ml-1" @@click="$dispatch('toggle-signature')">See why</button>
+                    </p>
+                </div>
+            }
+        </div>
+    </div>
+    
+    <!-- Related Products -->
+    @if (relatedProducts.Any())
+    {
+        <section>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Related Products</h2>
+            <partial name="Partials/_ProductList" model="relatedProducts" />
+        </section>
+    }
+</div>

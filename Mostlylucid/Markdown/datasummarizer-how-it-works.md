@@ -12,6 +12,8 @@ The tool keeps the heavy numeric work local and auditable (profiles, drift detec
 
 See [Part 1](/blog/analysing-large-csv-files-with-local-llms) for the schema+sample → LLM SQL pattern that inspired this design.
 
+**You'll notice this isn't 1.0 yet that's because I've yet to finalize it**
+
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 
 > README See the [tool's readme here for](https://github.com/scottgal/mostlylucidweb/blob/main/Mostlylucid.DataSummarizer/README.md) ALL the functionality it has. It's deceptively simple, but powerful. The tool is designed to be used by data analysts, engineers, and scientists who need to quickly understand and validate their data without compromising privacy or security. Well That's the PLAN...I'm neither of those things so 🤷‍♂️

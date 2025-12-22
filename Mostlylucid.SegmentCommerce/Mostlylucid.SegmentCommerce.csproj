@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Htmx" Version="1.8.3" />
+        <PackageReference Include="Htmx.TagHelpers" Version="1.8.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Controllers\" />
+        <Folder Include="Data\" />
+        <Folder Include="Models\" />
+        <Folder Include="Services\" />
+        <Folder Include="Views\Shared\Partials\" />
+        <Folder Include="Views\Home\" />
+        <Folder Include="Views\Products\" />
+        <Folder Include="Views\Cart\" />
+        <Folder Include="wwwroot\css\dist\" />
+        <Folder Include="wwwroot\js\dist\" />
+        <Folder Include="wwwroot\img\" />
+        <Folder Include="src\css\" />
+        <Folder Include="src\js\" />
+    </ItemGroup>
+
+</Project>

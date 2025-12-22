@@ -1,0 +1,101 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<!-- Hero Section -->
+<section class="mb-12 text-center">
+    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+        Welcome to SegmentCommerce
+    </h1>
+    <p class="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+        Experience personalised shopping without sacrificing your privacy.
+        We learn your preferences to show you relevant products - without tracking you across the web.
+    </p>
+    <div class="flex justify-center gap-4">
+        <a href="/products" class="btn-primary">Browse Products</a>
+        <button class="btn-secondary" @@click="$dispatch('toggle-signature')">
+            View Your Interests
+        </button>
+    </div>
+</section>
+
+<!-- Personalised Recommendations -->
+@if (Model.PersonalisedProducts.Any())
+{
+    <partial name="Partials/_ProductCarousel" model="@(("For You", Model.PersonalisedProducts.AsEnumerable()))" />
+}
+
+<!-- Trending Products -->
+@if (Model.TrendingProducts.Any())
+{
+    <partial name="Partials/_ProductCarousel" model="@(("Trending Now", Model.TrendingProducts.AsEnumerable()))" />
+}
+
+<!-- On Sale -->
+@if (Model.OnSaleProducts.Any())
+{
+    <section class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">On Sale</h2>
+        <partial name="Partials/_ProductList" model="Model.OnSaleProducts" />
+    </section>
+}
+
+<!-- Category Links -->
+<section class="mb-12">
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Shop by Category</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        @foreach (var category in Model.Categories)
+        {
+            var displayName = Mostlylucid.SegmentCommerce.Models.InterestCategories.DisplayNames.GetValueOrDefault(category, category);
+            var cssClass = Mostlylucid.SegmentCommerce.Models.InterestCategories.CssClasses.GetValueOrDefault(category, "bg-gray-400");
+            
+            <a href="/products/category/@category" 
+               class="flex flex-col items-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
+                <div class="w-12 h-12 rounded-full @cssClass opacity-80 mb-3"></div>
+                <span class="font-medium text-gray-900 dark:text-white">@displayName</span>
+            </a>
+        }
+    </div>
+</section>
+
+<!-- How It Works -->
+<section class="bg-blue-50 dark:bg-gray-800 -mx-4 px-4 py-12 rounded-lg mb-12">
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">How We Personalise Without Tracking</h2>
+    <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-shop-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+            </div>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Local Learning</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">
+                Your browsing behaviour stays on your device. We don't send it to external trackers.
+            </p>
+        </div>
+        <div class="text-center">
+            <div class="w-16 h-16 bg-shop-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Natural Decay</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">
+                Your interests fade over time unless reinforced. No permanent profiling.
+            </p>
+        </div>
+        <div class="text-center">
+            <div class="w-16 h-16 bg-shop-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+            </div>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Full Transparency</h3>
+            <p class="text-gray-600 dark:text-gray-400 text-sm">
+                See exactly what we know about your interests. Adjust or clear them anytime.
+            </p>
+        </div>
+    </div>
+</section>

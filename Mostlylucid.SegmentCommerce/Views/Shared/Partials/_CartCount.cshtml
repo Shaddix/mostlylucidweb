@@ -1,0 +1,10 @@
+@model int
+
+@if (Model > 0)
+{
+    <span id="cart-count" class="cart-badge">@Model</span>
+}
+else
+{
+    <span id="cart-count" class="cart-badge hidden">0</span>
+}

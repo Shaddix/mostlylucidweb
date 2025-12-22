@@ -1,0 +1,19 @@
+@model Cart
+@{
+    ViewData["Title"] = "Your Cart";
+}
+
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Your Cart</h1>
+    
+    <div id="cart-container">
+        <partial name="Partials/_Cart" model="Model" />
+    </div>
+    
+    <!-- Continue Shopping -->
+    <div class="mt-8 text-center">
+        <a href="/products" class="text-shop-primary dark:text-blue-400 hover:underline">
+            &larr; Continue Shopping
+        </a>
+    </div>
+</div>

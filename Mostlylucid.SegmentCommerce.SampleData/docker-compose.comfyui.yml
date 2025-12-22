@@ -1,0 +1,58 @@
+version: '3.8'
+
+# ComfyUI Docker Compose for product image generation
+# Requires NVIDIA GPU with CUDA support for optimal performance
+# CPU fallback available but significantly slower
+
+services:
+  comfyui:
+    image: yanwk/comfyui-boot:latest
+    container_name: segmentcommerce-comfyui
+    restart: unless-stopped
+    ports:
+      - "8188:8188"
+    volumes:
+      # Persist models, outputs, and custom nodes
+      - comfyui-storage:/home/runner
+      # Mount output directory for easy access
+      - ./Output/images:/home/runner/ComfyUI/output
+      # Mount custom workflows
+      - ./ComfyUI/workflows:/home/runner/ComfyUI/user/default/workflows
+    environment:
+      - CLI_ARGS=--listen 0.0.0.0 --port 8188
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Healthcheck to verify ComfyUI is ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188/system_stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Alternative CPU-only version (uncomment if no GPU available)
+  # comfyui-cpu:
+  #   image: yanwk/comfyui-boot:latest
+  #   container_name: segmentcommerce-comfyui-cpu
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8188:8188"
+  #   volumes:
+  #     - comfyui-storage:/home/runner
+  #     - ./Output/images:/home/runner/ComfyUI/output
+  #     - ./ComfyUI/workflows:/home/runner/ComfyUI/user/default/workflows
+  #   environment:
+  #     - CLI_ARGS=--listen 0.0.0.0 --port 8188 --cpu
+
+volumes:
+  comfyui-storage:
+    driver: local
+
+networks:
+  default:
+    name: segmentcommerce-network
