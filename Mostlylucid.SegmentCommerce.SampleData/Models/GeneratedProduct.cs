@@ -7,6 +7,9 @@ namespace Mostlylucid.SegmentCommerce.SampleData.Models;
 /// </summary>
 public class GeneratedProduct
 {
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12];
+
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -37,10 +40,19 @@ public class GeneratedProduct
     [JsonPropertyName("colour_variants")]
     public List<string> ColourVariants { get; set; } = [];
 
+    [JsonPropertyName("seller_id")]
+    public string? SellerId { get; set; }
+
     /// <summary>
     /// Generated image paths (filled after ComfyUI generation).
     /// </summary>
     public List<GeneratedImage> Images { get; set; } = [];
+
+    /// <summary>
+    /// Vector embedding for semantic search.
+    /// </summary>
+    [JsonIgnore]
+    public float[]? Embedding { get; set; }
 }
 
 public class GeneratedImage

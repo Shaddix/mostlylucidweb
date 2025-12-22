@@ -52,11 +52,18 @@ app.Configure(cfg =>
     cfg.SetApplicationVersion("1.0.0");
 
     cfg.AddCommand<GenerateCommand>("generate")
-        .WithDescription("Generate sample product data using taxonomy + Ollama + ComfyUI")
+        .WithDescription("Generate sample product data using taxonomy + Ollama + ComfyUI (v1)")
         .WithExample("generate")
         .WithExample("generate", "--category", "tech", "--count", "20")
         .WithExample("generate", "--no-ollama", "--no-images")
         .WithExample("generate", "--db");
+
+    cfg.AddCommand<GenerateV2Command>("gen")
+        .WithDescription("LLM-powered data generation with sellers, products, and customers (v2)")
+        .WithExample("gen")
+        .WithExample("gen", "--sellers", "50", "--products", "20", "--customers", "1000")
+        .WithExample("gen", "--no-llm", "--no-images")
+        .WithExample("gen", "--output", "D:\\segmentdata");
 
     cfg.AddCommand<ListCommand>("list")
         .WithDescription("List available categories and product types from the taxonomy")

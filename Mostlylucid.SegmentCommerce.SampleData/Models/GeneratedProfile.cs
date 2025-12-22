@@ -55,6 +55,12 @@ public class GeneratedSignal
     [JsonPropertyName("category")]
     public string? Category { get; set; }
 
+    [JsonPropertyName("product_id")]
+    public string? ProductId { get; set; }
+
     [JsonPropertyName("weight")]
     public double Weight { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
