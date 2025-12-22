@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
-using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Npgsql;
 
 namespace Mostlylucid.SegmentCommerce.Services.Queue;
@@ -31,7 +30,7 @@ public class JobWorkerService : BackgroundService
         _serviceProvider = serviceProvider;
         _logger = logger;
         _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}"[..32];
-        _queues = queues ?? new[] { "default", "embeddings", "events" };
+        _queues = queues ?? ["default", "embeddings", "events"];
         _pollInterval = pollInterval ?? TimeSpan.FromSeconds(1);
         _connectionString = configuration.GetConnectionString("DefaultConnection");
     }
@@ -61,7 +60,6 @@ public class JobWorkerService : BackgroundService
                     }
                 }
 
-                // If no jobs were found, wait before polling again (prefer LISTEN/NOTIFY)
                 if (!processedAny)
                 {
                     var notified = await WaitForNotifyAsync(stoppingToken);
@@ -119,12 +117,12 @@ public class JobWorkerService : BackgroundService
                 break;
 
             case JobTypes.ProcessInteractionEvent:
-                await HandleProcessInteractionEventAsync(serviceProvider, job, cancellationToken);
+                await HandleProcessInteractionEventAsync(job);
                 break;
 
             case JobTypes.DecayInterests:
             case JobTypes.DecayProfileInterests:
-                await HandleDecayInterestsAsync(serviceProvider, job, cancellationToken);
+                await HandleDecayInterestsAsync(serviceProvider, cancellationToken);
                 break;
 
             case JobTypes.CollectExpiredSessions:
@@ -132,7 +130,7 @@ public class JobWorkerService : BackgroundService
                 break;
 
             case JobTypes.PromoteSessionProfile:
-                await HandlePromoteSessionProfileAsync(serviceProvider, job, cancellationToken);
+                await HandleElevateSessionAsync(serviceProvider, job, cancellationToken);
                 break;
 
             default:
@@ -158,70 +156,72 @@ public class JobWorkerService : BackgroundService
         }
     }
 
-    private Task HandleProcessInteractionEventAsync(
-        IServiceProvider serviceProvider,
-        JobQueueEntity job,
-        CancellationToken cancellationToken)
+    private Task HandleProcessInteractionEventAsync(JobQueueEntity job)
     {
-        // Process interaction events for analytics
-        // This could update aggregate counters, trigger recommendations, etc.
         _logger.LogDebug("Processing interaction event: {Payload}", job.Payload);
         return Task.CompletedTask;
     }
 
     private async Task HandleDecayInterestsAsync(
         IServiceProvider serviceProvider,
-        JobQueueEntity job,
         CancellationToken cancellationToken)
     {
-        _ = job;
-
-        var context = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
+        var db = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
         var now = DateTime.UtcNow;
+        const double decayRate = 0.02;
 
-        var interests = await context.InterestScores
-            .OrderBy(i => i.LastUpdatedAt)
-            .Take(500)
+        // Decay persistent profile interests
+        var profiles = await db.PersistentProfiles
+            .Where(p => p.UpdatedAt < now.AddDays(-1))
+            .Take(100)
             .ToListAsync(cancellationToken);
 
-        foreach (var interest in interests)
+        foreach (var profile in profiles)
         {
-            var elapsedDays = Math.Max((now - interest.LastUpdatedAt).TotalDays, 0);
-            if (elapsedDays <= 0)
+            var elapsedDays = (now - profile.UpdatedAt).TotalDays;
+            var decayFactor = Math.Exp(-decayRate * elapsedDays);
+
+            foreach (var key in profile.Interests.Keys.ToList())
             {
-                continue;
+                profile.Interests[key] *= decayFactor;
+                if (profile.Interests[key] < 0.01)
+                    profile.Interests.Remove(key);
             }
 
-            var decayFactor = Math.Exp(-interest.DecayRate * elapsedDays);
-            interest.Score *= decayFactor;
-            interest.LastUpdatedAt = now;
+            profile.UpdatedAt = now;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
-        _logger.LogDebug("Decayed {Count} interest scores", interests.Count);
+        await db.SaveChangesAsync(cancellationToken);
+        _logger.LogDebug("Decayed interests for {Count} profiles", profiles.Count);
     }
 
     private async Task HandleCollectExpiredSessionsAsync(
         IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
-        var context = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
-        var promoter = serviceProvider.GetRequiredService<IProfilePromoter>();
+        var db = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
+        var collector = serviceProvider.GetRequiredService<Profiles.ISessionCollector>();
         var now = DateTime.UtcNow;
 
-        var expiredSessions = await context.SessionProfiles
-            .Where(s => s.ExpiresAt <= now && !s.IsPromoted)
-            .Select(s => s.Id)
-            .Take(500)
+        // Find expired sessions that haven't been elevated
+        var expiredSessions = await db.SessionProfiles
+            .Where(s => s.ExpiresAt <= now && !s.IsElevated && s.PersistentProfileId != null)
+            .Include(s => s.PersistentProfile)
+            .Take(100)
             .ToListAsync(cancellationToken);
 
-        foreach (var sessionId in expiredSessions)
+        foreach (var session in expiredSessions)
         {
-            await promoter.PromoteAsync(sessionId, cancellationToken);
+            if (session.PersistentProfile != null)
+            {
+                await collector.ElevateToProfileAsync(session, session.PersistentProfile, cancellationToken);
+            }
         }
+
+        _logger.LogDebug("Elevated {Count} expired sessions", expiredSessions.Count);
     }
 
-    private async Task HandlePromoteSessionProfileAsync(
+    private async Task HandleElevateSessionAsync(
         IServiceProvider serviceProvider,
         JobQueueEntity job,
         CancellationToken cancellationToken)
@@ -229,16 +229,23 @@ public class JobWorkerService : BackgroundService
         using var doc = JsonDocument.Parse(job.Payload);
         var sessionId = doc.RootElement.GetProperty("sessionId").GetGuid();
 
-        var promoter = serviceProvider.GetRequiredService<IProfilePromoter>();
-        await promoter.PromoteAsync(sessionId, cancellationToken);
+        var db = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
+        var collector = serviceProvider.GetRequiredService<Profiles.ISessionCollector>();
+
+        var session = await db.SessionProfiles
+            .Include(s => s.PersistentProfile)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+
+        if (session?.PersistentProfile != null && !session.IsElevated)
+        {
+            await collector.ElevateToProfileAsync(session, session.PersistentProfile, cancellationToken);
+        }
     }
 
     private async Task<bool> WaitForNotifyAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(_connectionString))
-        {
             return false;
-        }
 
         try
         {
@@ -250,8 +257,7 @@ public class JobWorkerService : BackgroundService
                 await listen.ExecuteNonQueryAsync(cancellationToken);
             }
 
-            var notified = await conn.WaitAsync(_notifyWait, cancellationToken);
-            return notified;
+            return await conn.WaitAsync(_notifyWait, cancellationToken);
         }
         catch (OperationCanceledException)
         {

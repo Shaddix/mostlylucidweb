@@ -11,66 +11,55 @@ public record SessionSignalInput(
     int? ProductId,
     double? Weight,
     Dictionary<string, object>? Context,
-    string? PageUrl,
-    string? Referrer,
-    string? ProfileKey);
+    string? PageUrl);
 
 public interface ISessionCollector
 {
-    Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken cancellationToken = default);
+    Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken ct = default);
+    Task ElevateToProfileAsync(SessionProfileEntity session, PersistentProfileEntity profile, CancellationToken ct = default);
 }
 
 public class SessionCollector : ISessionCollector
 {
-    private readonly SegmentCommerceDbContext _context;
+    private readonly SegmentCommerceDbContext _db;
     private readonly ILogger<SessionCollector> _logger;
     private readonly int _sessionTimeoutMinutes;
-    private readonly double _promotionThreshold;
 
     public SessionCollector(
-        SegmentCommerceDbContext context,
+        SegmentCommerceDbContext db,
         ILogger<SessionCollector> logger,
-        IConfiguration configuration)
+        IConfiguration config)
     {
-        _context = context;
+        _db = db;
         _logger = logger;
-        _sessionTimeoutMinutes = configuration.GetValue("Profiles:SessionTimeoutMinutes", 30);
-        _promotionThreshold = configuration.GetValue("Profiles:PromotionThreshold", 0.5);
+        _sessionTimeoutMinutes = config.GetValue("Profiles:SessionTimeoutMinutes", 30);
     }
 
-    public async Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken cancellationToken = default)
+    public async Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
 
-        var session = await _context.SessionProfiles
-            .Include(s => s.InterestScores)
-            .FirstOrDefaultAsync(s => s.SessionKey == input.SessionKey, cancellationToken);
+        var session = await _db.SessionProfiles
+            .FirstOrDefaultAsync(s => s.SessionKey == input.SessionKey, ct);
 
         if (session == null)
         {
             session = new SessionProfileEntity
             {
                 SessionKey = input.SessionKey,
-                ProfileKey = input.ProfileKey,
-                PromotionThreshold = _promotionThreshold,
                 StartedAt = now,
-                LastSeenAt = now,
+                LastActivityAt = now,
                 ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes)
             };
-
-            _context.SessionProfiles.Add(session);
+            _db.SessionProfiles.Add(session);
         }
 
-        if (!string.IsNullOrEmpty(input.ProfileKey) && string.IsNullOrEmpty(session.ProfileKey))
-        {
-            session.ProfileKey = input.ProfileKey;
-        }
-
-        session.LastSeenAt = now;
+        session.LastActivityAt = now;
         session.ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes);
 
         var weight = input.Weight ?? SignalTypes.GetBaseWeight(input.SignalType);
 
+        // Record detailed signal (optional, for history)
         var signal = new SignalEntity
         {
             SessionId = session.Id,
@@ -80,42 +69,81 @@ public class SessionCollector : ISessionCollector
             Weight = weight,
             Context = input.Context,
             PageUrl = input.PageUrl,
-            Referrer = input.Referrer,
             CreatedAt = now
         };
+        _db.Signals.Add(signal);
 
-        _context.Signals.Add(signal);
-
+        // Update aggregates
         session.TotalWeight += weight;
-        session.SignalCount += 1;
+        session.SignalCount++;
 
+        // Update JSONB interests
         if (!string.IsNullOrEmpty(input.Category))
         {
-            var interest = session.InterestScores.FirstOrDefault(i => i.Category == input.Category);
-            if (interest == null)
-            {
-                interest = new InterestScoreEntity
-                {
-                    Session = session,
-                    Category = input.Category,
-                    Score = weight,
-                    DecayRate = 0.02,
-                    LastUpdatedAt = now
-                };
+            session.Interests.TryGetValue(input.Category, out var currentScore);
+            session.Interests[input.Category] = currentScore + weight;
 
-                session.InterestScores.Add(interest);
-                _context.InterestScores.Add(interest);
-            }
-            else
+            // Update signal counts
+            if (!session.Signals.ContainsKey(input.Category))
+                session.Signals[input.Category] = new Dictionary<string, int>();
+
+            session.Signals[input.Category].TryGetValue(input.SignalType, out var count);
+            session.Signals[input.Category][input.SignalType] = count + 1;
+        }
+
+        // Track viewed products
+        if (input.ProductId.HasValue && input.SignalType == SignalTypes.ProductView)
+        {
+            if (!session.ViewedProducts.Contains(input.ProductId.Value))
             {
-                interest.Score += weight;
-                interest.LastUpdatedAt = now;
+                session.ViewedProducts.Add(input.ProductId.Value);
+                session.ProductViews++;
             }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
-        _logger.LogDebug("Recorded signal {SignalType} for session {SessionKey}", input.SignalType, input.SessionKey);
+        // Update counters
+        switch (input.SignalType)
+        {
+            case SignalTypes.PageView:
+                session.PageViews++;
+                break;
+            case SignalTypes.AddToCart:
+                session.CartAdds++;
+                break;
+        }
 
+        await _db.SaveChangesAsync(ct);
         return session;
+    }
+
+    public async Task ElevateToProfileAsync(SessionProfileEntity session, PersistentProfileEntity profile, CancellationToken ct = default)
+    {
+        if (session.IsElevated)
+            return;
+
+        // Merge interests (use higher value)
+        foreach (var (category, score) in session.Interests)
+        {
+            if (!profile.Interests.ContainsKey(category) || profile.Interests[category] < score)
+                profile.Interests[category] = score;
+        }
+
+        // Update stats
+        profile.TotalSessions++;
+        profile.TotalSignals += session.SignalCount;
+        profile.TotalCartAdds += session.CartAdds;
+        profile.LastSeenAt = DateTime.UtcNow;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        // Mark session as elevated
+        session.IsElevated = true;
+        session.PersistentProfileId = profile.Id;
+
+        // Clear segment cache (will be recomputed)
+        profile.SegmentsComputedAt = null;
+        profile.EmbeddingComputedAt = null;
+
+        await _db.SaveChangesAsync(ct);
+        _logger.LogDebug("Elevated session {SessionId} to profile {ProfileId}", session.Id, profile.Id);
     }
 }

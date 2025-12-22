@@ -59,10 +59,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ProductService>();
         services.AddScoped<InteractionService>();
         services.AddSingleton<GadgetAttributeProvider>();
-        services.AddScoped<IProfileKeyService, ProfileKeyService>();
+        
+        // Profile services (Zero PII)
+        services.AddScoped<IProfileResolver, ProfileResolver>();
         services.AddScoped<ISessionCollector, SessionCollector>();
-        services.AddScoped<IProfilePromoter, ProfilePromoter>();
-        services.AddScoped<IProfileMerger, ProfileMerger>();
+        
+        // Session helpers
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IInterestTrackingService, InterestTrackingService>();
         services.AddScoped<ICartService, CartService>();
