@@ -49,6 +49,7 @@ public class SegmentCommerceDbContext : DbContext
 
             entity.Property(e => e.CategoryPath).HasColumnType("ltree");
             entity.Property(e => e.Tags).HasColumnType("text[]");
+            entity.Property(e => e.Subcategory).HasMaxLength(100);
 
             entity.HasMany(e => e.Variations)
                 .WithOne(v => v.Product)

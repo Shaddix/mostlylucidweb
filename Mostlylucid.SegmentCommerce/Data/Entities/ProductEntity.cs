@@ -85,6 +85,10 @@ public class ProductEntity
     [Column("size")]
     public string? Size { get; set; }
 
+    [MaxLength(100)]
+    [Column("subcategory")]
+    public string? Subcategory { get; set; }
+
     // Navigation property for seller
     public SellerEntity Seller { get; set; } = null!;
 
