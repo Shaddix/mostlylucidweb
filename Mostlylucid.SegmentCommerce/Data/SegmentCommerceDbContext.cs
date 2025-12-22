@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data.Entities;
+using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Data;
 
@@ -15,6 +16,13 @@ public class SegmentCommerceDbContext : DbContext
     public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
     public DbSet<VisitorProfileEntity> VisitorProfiles => Set<VisitorProfileEntity>();
     public DbSet<InteractionEventEntity> InteractionEvents => Set<InteractionEventEntity>();
+
+    // Profiles
+    public DbSet<SessionProfileEntity> SessionProfiles => Set<SessionProfileEntity>();
+    public DbSet<AnonymousProfileEntity> AnonymousProfiles => Set<AnonymousProfileEntity>();
+    public DbSet<ProfileKeyEntity> ProfileKeys => Set<ProfileKeyEntity>();
+    public DbSet<InterestScoreEntity> InterestScores => Set<InterestScoreEntity>();
+    public DbSet<SignalEntity> Signals => Set<SignalEntity>();
 
     // Embeddings (pgvector)
     public DbSet<ProductEmbeddingEntity> ProductEmbeddings => Set<ProductEmbeddingEntity>();
@@ -71,6 +79,55 @@ public class SegmentCommerceDbContext : DbContext
             // Configure JSONB for metadata
             entity.Property(e => e.Metadata)
                 .HasColumnType("jsonb");
+        });
+
+        // Signal configuration
+        modelBuilder.Entity<SignalEntity>(entity =>
+        {
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => e.SignalType);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Category);
+
+            entity.Property(e => e.Context)
+                .HasColumnType("jsonb");
+        });
+
+        // Session profile configuration
+        modelBuilder.Entity<SessionProfileEntity>(entity =>
+        {
+            entity.HasIndex(e => e.SessionKey).IsUnique();
+            entity.HasIndex(e => e.ProfileKey);
+            entity.HasIndex(e => e.ExpiresAt);
+
+            entity.Property(e => e.PromotionThreshold)
+                .HasDefaultValue(0.5);
+        });
+
+        // Anonymous profile configuration
+        modelBuilder.Entity<AnonymousProfileEntity>(entity =>
+        {
+            entity.HasIndex(e => e.ProfileKey).IsUnique();
+            entity.HasIndex(e => e.LastSeenAt);
+        });
+
+        // Profile key configuration
+        modelBuilder.Entity<ProfileKeyEntity>(entity =>
+        {
+            entity.HasIndex(e => e.KeyHash).IsUnique();
+            entity.HasIndex(e => e.DerivationMethod);
+        });
+
+        // Interest score configuration
+        modelBuilder.Entity<InterestScoreEntity>(entity =>
+        {
+            entity.HasIndex(e => new { e.ProfileId, e.Category })
+                .IsUnique()
+                .HasFilter("profile_id IS NOT NULL");
+
+            entity.HasIndex(e => new { e.SessionId, e.Category })
+                .IsUnique()
+                .HasFilter("session_id IS NOT NULL");
         });
 
         // Product embedding configuration (pgvector)

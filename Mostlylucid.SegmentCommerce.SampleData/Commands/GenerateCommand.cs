@@ -47,16 +47,19 @@ public class GenerateSettings : CommandSettings
     public bool DryRun { get; set; }
 }
 
-public class GenerateCommand : AsyncCommand<GenerateSettings>
-{
-    private readonly GenerationConfig _config;
-    private readonly GadgetTaxonomy _taxonomy;
-
-    public GenerateCommand(GenerationConfig config, GadgetTaxonomy taxonomy)
+    public class GenerateCommand : AsyncCommand<GenerateSettings>
     {
-        _config = config;
-        _taxonomy = taxonomy;
-    }
+        private readonly GenerationConfig _config;
+        private readonly GadgetTaxonomy _taxonomy;
+        private readonly ProfileGenerator _profileGenerator;
+
+        public GenerateCommand(GenerationConfig config, GadgetTaxonomy taxonomy)
+        {
+            _config = config;
+            _taxonomy = taxonomy;
+            _profileGenerator = new ProfileGenerator(taxonomy);
+        }
+
 
     public override async Task<int> ExecuteAsync(CommandContext context, GenerateSettings settings)
     {
@@ -78,6 +81,7 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
         configTable.AddColumn("Value");
         configTable.AddRow("Categories", settings.Category ?? "All");
         configTable.AddRow("Products per category", settings.Count.ToString());
+        configTable.AddRow("Profiles", (settings.Count * 2).ToString());
         configTable.AddRow("Use Ollama", (!settings.NoOllama).ToString());
         configTable.AddRow("Generate images", (!settings.NoImages).ToString());
         configTable.AddRow("Write to database", settings.WriteToDatabase.ToString());
@@ -99,6 +103,9 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
         // Generate products
         var products = await GenerateProductsAsync(settings);
 
+        // Generate synthetic profiles tied to categories
+        var profiles = GenerateProfiles(settings);
+
         if (products.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No products generated[/]");
@@ -112,12 +119,12 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
         }
 
         // Save to JSON
-        await SaveToJsonAsync(products, settings);
+        await SaveToJsonAsync(products, profiles, settings);
 
         // Write to database if requested
         if (settings.WriteToDatabase)
         {
-            await WriteToDatabaseAsync(products, settings);
+            await WriteToDatabaseAsync(products, profiles, settings);
         }
 
         // Summary
@@ -200,6 +207,17 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
         return result;
     }
 
+    private List<GeneratedProfile> GenerateProfiles(GenerateSettings settings)
+    {
+        var categories = string.IsNullOrEmpty(settings.Category)
+            ? _taxonomy.Categories.Keys.ToArray()
+            : new[] { settings.Category };
+
+        // simple heuristic: 2 profiles per product requested per category
+        var profileCount = Math.Max(10, settings.Count * 2 * (categories.Count()));
+        return _profileGenerator.GenerateProfiles(profileCount, categories);
+    }
+
     private async Task GenerateImagesAsync(
         Dictionary<string, List<GeneratedProduct>> products,
         GenerateSettings settings)
@@ -243,21 +261,28 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
 
     private async Task SaveToJsonAsync(
         Dictionary<string, List<GeneratedProduct>> products,
+        List<GeneratedProfile> profiles,
         GenerateSettings settings)
     {
-        var jsonPath = Path.Combine(settings.OutputPath, "products.json");
-        var json = JsonSerializer.Serialize(products, new JsonSerializerOptions
+        var productsPath = Path.Combine(settings.OutputPath, "products.json");
+        var profilesPath = Path.Combine(settings.OutputPath, "profiles.json");
+
+        var options = new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        });
+        };
 
-        await File.WriteAllTextAsync(jsonPath, json);
-        AnsiConsole.MarkupLine($"[dim]Saved to {jsonPath}[/]");
+        await File.WriteAllTextAsync(productsPath, JsonSerializer.Serialize(products, options));
+        await File.WriteAllTextAsync(profilesPath, JsonSerializer.Serialize(profiles, options));
+
+        AnsiConsole.MarkupLine($"[dim]Saved products to {productsPath}[/]");
+        AnsiConsole.MarkupLine($"[dim]Saved profiles to {profilesPath}[/]");
     }
 
     private async Task WriteToDatabaseAsync(
         Dictionary<string, List<GeneratedProduct>> products,
+        List<GeneratedProfile> profiles,
         GenerateSettings settings)
     {
         var connectionString = settings.ConnectionString ?? _config.ConnectionString;
@@ -305,10 +330,38 @@ public class GenerateCommand : AsyncCommand<GenerateSettings>
                     }
                 }
 
+                // store profiles as interest scores
+                foreach (var profile in profiles)
+                {
+                    var anonProfile = new Mostlylucid.SegmentCommerce.Data.Entities.Profiles.AnonymousProfileEntity
+                    {
+                        ProfileKey = profile.ProfileKey,
+                        TotalWeight = profile.Signals.Sum(s => s.Weight),
+                        SignalCount = profile.Signals.Count,
+                        CreatedAt = DateTime.UtcNow,
+                        LastSeenAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    context.AnonymousProfiles.Add(anonProfile);
+
+                    foreach (var kvp in profile.Interests)
+                    {
+                        context.InterestScores.Add(new Mostlylucid.SegmentCommerce.Data.Entities.Profiles.InterestScoreEntity
+                        {
+                            Profile = anonProfile,
+                            Category = kvp.Key,
+                            Score = kvp.Value,
+                            DecayRate = 0.02,
+                            LastUpdatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+
                 await context.SaveChangesAsync();
             });
 
-        AnsiConsole.MarkupLine($"[green]Wrote {count} products to database[/]");
+        AnsiConsole.MarkupLine($"[green]Wrote {count} products and {profiles.Count} profiles to database[/]");
     }
 }
 

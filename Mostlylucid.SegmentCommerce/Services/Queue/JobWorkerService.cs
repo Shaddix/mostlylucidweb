@@ -1,6 +1,9 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
+using Mostlylucid.SegmentCommerce.Services.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Services.Queue;
 
@@ -111,7 +114,16 @@ public class JobWorkerService : BackgroundService
                 break;
 
             case JobTypes.DecayInterests:
+            case JobTypes.DecayProfileInterests:
                 await HandleDecayInterestsAsync(serviceProvider, job, cancellationToken);
+                break;
+
+            case JobTypes.CollectExpiredSessions:
+                await HandleCollectExpiredSessionsAsync(serviceProvider, cancellationToken);
+                break;
+
+            case JobTypes.PromoteSessionProfile:
+                await HandlePromoteSessionProfileAsync(serviceProvider, job, cancellationToken);
                 break;
 
             default:
@@ -148,15 +160,68 @@ public class JobWorkerService : BackgroundService
         return Task.CompletedTask;
     }
 
-    private Task HandleDecayInterestsAsync(
+    private async Task HandleDecayInterestsAsync(
         IServiceProvider serviceProvider,
         JobQueueEntity job,
         CancellationToken cancellationToken)
     {
-        // Apply interest decay to visitor profiles
-        // This would run periodically to reduce stale interests
-        _logger.LogDebug("Decaying interests");
-        return Task.CompletedTask;
+        _ = job;
+
+        var context = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
+        var now = DateTime.UtcNow;
+
+        var interests = await context.InterestScores
+            .OrderBy(i => i.LastUpdatedAt)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        foreach (var interest in interests)
+        {
+            var elapsedDays = Math.Max((now - interest.LastUpdatedAt).TotalDays, 0);
+            if (elapsedDays <= 0)
+            {
+                continue;
+            }
+
+            var decayFactor = Math.Exp(-interest.DecayRate * elapsedDays);
+            interest.Score *= decayFactor;
+            interest.LastUpdatedAt = now;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        _logger.LogDebug("Decayed {Count} interest scores", interests.Count);
+    }
+
+    private async Task HandleCollectExpiredSessionsAsync(
+        IServiceProvider serviceProvider,
+        CancellationToken cancellationToken)
+    {
+        var context = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
+        var promoter = serviceProvider.GetRequiredService<IProfilePromoter>();
+        var now = DateTime.UtcNow;
+
+        var expiredSessions = await context.SessionProfiles
+            .Where(s => s.ExpiresAt <= now && !s.IsPromoted)
+            .Select(s => s.Id)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        foreach (var sessionId in expiredSessions)
+        {
+            await promoter.PromoteAsync(sessionId, cancellationToken);
+        }
+    }
+
+    private async Task HandlePromoteSessionProfileAsync(
+        IServiceProvider serviceProvider,
+        JobQueueEntity job,
+        CancellationToken cancellationToken)
+    {
+        using var doc = JsonDocument.Parse(job.Payload);
+        var sessionId = doc.RootElement.GetProperty("sessionId").GetGuid();
+
+        var promoter = serviceProvider.GetRequiredService<IProfilePromoter>();
+        await promoter.PromoteAsync(sessionId, cancellationToken);
     }
 }
 

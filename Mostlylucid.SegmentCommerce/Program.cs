@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Services;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Mostlylucid.SegmentCommerce.Middleware;
+using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,9 +24,47 @@ builder.Services.AddDbContext<SegmentCommerceDbContext>(options =>
         npgsqlOptions.UseVector(); // Enable pgvector
     }));
 
+// Authentication / Authorization (Bearer/JWT)
+var signingKey = builder.Configuration["Jwt:SigningKey"];
+var audience = builder.Configuration["Jwt:Audience"];
+var authority = builder.Configuration["Jwt:Authority"];
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = authority;
+        options.Audience = audience;
+        options.RequireHttpsMetadata = true;
+
+        if (!string.IsNullOrEmpty(signingKey))
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = !string.IsNullOrEmpty(authority),
+                ValidateAudience = !string.IsNullOrEmpty(audience),
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
+            };
+        }
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("admin");
+    });
+});
+
 // Register application services
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<InteractionService>();
+builder.Services.AddScoped<IProfileKeyService, ProfileKeyService>();
+builder.Services.AddScoped<ISessionCollector, SessionCollector>();
+builder.Services.AddScoped<IProfilePromoter, ProfilePromoter>();
+builder.Services.AddScoped<IProfileMerger, ProfileMerger>();
 
 // Register queue services
 builder.Services.AddScoped<IJobQueue, PostgresJobQueue>();
@@ -82,7 +125,14 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseSession();
+app.UseProfileIdentification();
+
+app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapControllerRoute(
     name: "default",

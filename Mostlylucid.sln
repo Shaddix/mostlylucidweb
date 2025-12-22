@@ -95,6 +95,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.SegmentCommerce
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.SegmentCommerce.SampleData", "Mostlylucid.SegmentCommerce.SampleData\Mostlylucid.SegmentCommerce.SampleData.csproj", "{8FD343A9-23D3-4FD4-9D96-AD18ABFEF4EB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mostlylucid.SegmentCommerce.Tests", "Mostlylucid.SegmentCommerce.Tests\Mostlylucid.SegmentCommerce.Tests.csproj", "{76553D6C-24A5-4FA5-AE0C-75AE0470F692}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -513,6 +515,18 @@ Global
 		{8FD343A9-23D3-4FD4-9D96-AD18ABFEF4EB}.Release|x64.Build.0 = Release|Any CPU
 		{8FD343A9-23D3-4FD4-9D96-AD18ABFEF4EB}.Release|x86.ActiveCfg = Release|Any CPU
 		{8FD343A9-23D3-4FD4-9D96-AD18ABFEF4EB}.Release|x86.Build.0 = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|x64.Build.0 = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Debug|x86.Build.0 = Debug|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|x64.ActiveCfg = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|x64.Build.0 = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|x86.ActiveCfg = Release|Any CPU
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -525,5 +539,6 @@ Global
 		{DF808644-F4D7-4881-A4EA-A035CF1C7988} = {2A9DC317-7F4C-46CC-B84A-B0D46F88B070}
 		{35A5F3CE-4BBA-4B9D-804B-5526A2A6911F} = {2C20A17E-D561-4403-9E29-7218E34150F1}
 		{8FD343A9-23D3-4FD4-9D96-AD18ABFEF4EB} = {2C20A17E-D561-4403-9E29-7218E34150F1}
+		{76553D6C-24A5-4FA5-AE0C-75AE0470F692} = {2C20A17E-D561-4403-9E29-7218E34150F1}
 	EndGlobalSection
 EndGlobal

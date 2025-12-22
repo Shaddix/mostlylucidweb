@@ -184,6 +184,9 @@ public static class JobTypes
     public const string GenerateInterestEmbedding = "generate_interest_embedding";
     public const string ProcessInteractionEvent = "process_interaction_event";
     public const string DecayInterests = "decay_interests";
+    public const string CollectExpiredSessions = "collect_expired_sessions";
+    public const string PromoteSessionProfile = "promote_session_profile";
+    public const string DecayProfileInterests = "decay_profile_interests";
     public const string SendEmail = "send_email";
     public const string GenerateProductImage = "generate_product_image";
     public const string SyncToExternalSystem = "sync_to_external";
