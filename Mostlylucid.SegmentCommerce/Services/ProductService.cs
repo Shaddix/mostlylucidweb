@@ -106,7 +106,7 @@ public class ProductService
             .Select(p => new
             {
                 Entity = p,
-                Score = signature.Interests.TryGetValue(p.Category, out var interest) ? interest.EffectiveWeight : 0.0
+                Score = GetScore(signature, p.Category)
             })
             .OrderByDescending(p => p.Score)
             .Take(count * 2)
@@ -133,6 +133,11 @@ public class ProductService
             .ToListAsync();
 
         return entities.Select(e => MapToModel(e));
+    }
+
+    private static double GetScore(InterestSignature signature, string category)
+    {
+        return signature.Interests.TryGetValue(category, out var interest) ? interest.EffectiveWeight : 0.0;
     }
 
     private static Product MapToModel(ProductEntity entity, double relevanceScore = 0, bool isRecommended = false)
