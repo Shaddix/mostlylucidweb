@@ -14,6 +14,11 @@ public static class DbSeeder
             await SeedCategoriesAsync(context);
         }
 
+        if (!await context.Sellers.AnyAsync())
+        {
+            await SeedSellersAsync(context);
+        }
+
         if (!await context.Products.AnyAsync())
         {
             await SeedProductsAsync(context);
@@ -36,137 +41,115 @@ public static class DbSeeder
         await context.SaveChangesAsync();
     }
 
+    private static async Task SeedSellersAsync(SegmentCommerceDbContext context)
+    {
+        var sellers = new List<SellerEntity>
+        {
+            new()
+            {
+                Name = "SegmentCommerce",
+                Email = "hello@segmentcommerce.test",
+                Rating = 4.8,
+                ReviewCount = 120,
+                IsVerified = true
+            }
+        };
+
+        await context.Sellers.AddRangeAsync(sellers);
+        await context.SaveChangesAsync();
+    }
+
     private static async Task SeedProductsAsync(SegmentCommerceDbContext context)
     {
-        var categories = await context.Categories.Select(c => c.Slug).ToListAsync();
-        var products = new List<ProductEntity>();
+        var sellerId = await context.Sellers.Select(s => s.Id).FirstAsync();
+        var now = DateTime.UtcNow;
 
-        // Tech products (12 products)
-        products.AddRange(CreateTechProducts("tech"));
-        products.AddRange(CreateTechProducts("audio"));
-        products.AddRange(CreateTechProducts("gaming"));
+        var products = new List<ProductEntity>
+        {
+            // Tech
+            NewProduct("Wireless Noise-Cancelling Headphones", "tech", 249.99m, 299.99m, "Premium over-ear headphones with active noise cancellation and 30-hour battery life.", "https://picsum.photos/seed/headphones/400/400", ["audio", "wireless", "premium"], sellerId, true, true, now),
+            NewProduct("Mechanical Keyboard RGB", "tech", 129.99m, null, "Full-size mechanical keyboard with hot-swappable switches and per-key RGB lighting.", "https://picsum.photos/seed/keyboard/400/400", ["gaming", "peripherals", "rgb"], sellerId, false, false, now),
+            NewProduct("4K Webcam Pro", "tech", 179.99m, null, "Ultra HD webcam with autofocus and low-light correction for professional video calls.", "https://picsum.photos/seed/webcam/400/400", ["video", "streaming", "work-from-home"], sellerId, false, false, now),
+            NewProduct("Portable SSD 2TB", "tech", 199.99m, 249.99m, "Compact external SSD with USB-C and transfer speeds up to 1050MB/s.", "https://picsum.photos/seed/ssd/400/400", ["storage", "portable", "fast"], sellerId, false, false, now),
 
-        // Fashion products (10 products)
-        products.AddRange(CreateFashionProducts("clothing"));
-        products.AddRange(CreateFashionProducts("accessories"));
+            // Fashion
+            NewProduct("Classic Leather Jacket", "fashion", 299.99m, null, "Timeless genuine leather jacket with a modern slim fit.", "https://picsum.photos/seed/jacket/400/400", ["leather", "outerwear", "classic"], sellerId, false, true, now),
+            NewProduct("Premium Cotton T-Shirt Pack", "fashion", 49.99m, null, "Set of 3 essential cotton t-shirts in neutral colours.", "https://picsum.photos/seed/tshirt/400/400", ["basics", "cotton", "essentials"], sellerId, false, false, now),
+            NewProduct("Designer Sunglasses", "fashion", 189.99m, 229.99m, "UV400 polarised sunglasses with titanium frames.", "https://picsum.photos/seed/sunglasses/400/400", ["accessories", "summer", "uv-protection"], sellerId, true, false, now),
+            NewProduct("Minimalist Watch", "fashion", 349.99m, null, "Elegant watch with sapphire crystal and Swiss movement.", "https://picsum.photos/seed/watch/400/400", ["accessories", "luxury", "minimalist"], sellerId, false, false, now),
 
-        // Home products (10 products)
-        products.AddRange(CreateHomeProducts("furniture"));
-        products.AddRange(CreateHomeProducts("lighting"));
-        products.AddRange(CreateHomeProducts("kitchen"));
-        products.AddRange(CreateHomeProducts("decor"));
+            // Home
+            NewProduct("Smart LED Bulb Kit", "home", 79.99m, null, "Set of 4 colour-changing smart bulbs compatible with all major assistants.", "https://picsum.photos/seed/bulbs/400/400", ["smart-home", "lighting", "energy-efficient"], sellerId, false, false, now),
+            NewProduct("Ergonomic Office Chair", "home", 449.99m, 549.99m, "Fully adjustable mesh office chair with lumbar support.", "https://picsum.photos/seed/chair/400/400", ["office", "ergonomic", "comfort"], sellerId, false, true, now),
+            NewProduct("Indoor Plant Collection", "home", 59.99m, null, "Curated set of 3 low-maintenance indoor plants with ceramic pots.", "https://picsum.photos/seed/plants/400/400", ["plants", "decor", "wellness"], sellerId, false, false, now),
+            NewProduct("Aromatherapy Diffuser", "home", 39.99m, null, "Ultrasonic essential oil diffuser with ambient lighting.", "https://picsum.photos/seed/diffuser/400/400", ["wellness", "relaxation", "aromatherapy"], sellerId, false, false, now),
 
-        // Sport products (10 products)
-        products.AddRange(CreateSportProducts("equipment"));
-        products.AddRange(CreateSportProducts("apparel"));
+            // Sport
+            NewProduct("Running Shoes Pro", "sport", 159.99m, null, "Lightweight running shoes with responsive cushioning and breathable mesh.", "https://picsum.photos/seed/shoes/400/400", ["running", "fitness", "performance"], sellerId, true, false, now),
+            NewProduct("Yoga Mat Premium", "sport", 69.99m, null, "Non-slip yoga mat with alignment lines and carrying strap.", "https://picsum.photos/seed/yogamat/400/400", ["yoga", "fitness", "home-workout"], sellerId, false, false, now),
+            NewProduct("Fitness Tracker Band", "sport", 89.99m, 119.99m, "Water-resistant fitness tracker with heart rate and sleep monitoring.", "https://picsum.photos/seed/fitband/400/400", ["wearable", "health", "tracking"], sellerId, false, false, now),
+            NewProduct("Resistance Band Set", "sport", 29.99m, null, "Complete set of 5 resistance bands with different tension levels.", "https://picsum.photos/seed/bands/400/400", ["strength", "home-workout", "portable"], sellerId, false, false, now),
 
-        // Books products (8 products)
-        products.AddRange(CreateBooksProducts("development"));
-        products.AddRange(CreateBooksProducts("fiction"));
+            // Books
+            NewProduct("The Pragmatic Programmer", "books", 39.99m, null, "Classic software development book covering best practices and career advice.", "https://picsum.photos/seed/pragmatic/400/400", ["programming", "career", "classic"], sellerId, false, true, now),
+            NewProduct("Designing Data-Intensive Applications", "books", 44.99m, null, "Comprehensive guide to building reliable and scalable data systems.", "https://picsum.photos/seed/dataintensive/400/400", ["programming", "data", "architecture"], sellerId, false, false, now),
+            NewProduct("Atomic Habits", "books", 16.99m, null, "Practical strategies for building good habits and breaking bad ones.", "https://picsum.photos/seed/atomichabits/400/400", ["self-help", "productivity", "bestseller"], sellerId, true, false, now),
+            NewProduct("Clean Code", "books", 29.99m, null, "Essential guide to writing maintainable and readable code.", "https://picsum.photos/seed/cleancode/400/400", ["programming", "software-development", "reference"], sellerId, false, false, now),
 
-        // Food products (10 products)
-        products.AddRange(CreateFoodProducts("beverages"));
-        products.AddRange(CreateFoodProducts("snacks"));
-        products.AddRange(CreateFoodProducts("ingredients"));
+            // Food
+            NewProduct("Artisan Coffee Beans", "food", 24.99m, null, "Single-origin arabica beans, medium roast, 1kg bag.", "https://picsum.photos/seed/coffee/400/400", ["coffee", "organic", "fairtrade"], sellerId, false, false, now),
+            NewProduct("Matcha Green Tea", "food", 19.99m, null, "Premium organic green tea from Japanese gardens.", "https://picsum.photos/seed/tea/400/400", ["tea", "organic", "premium"], sellerId, false, false, now),
+            NewProduct("Dark Chocolate Bar", "food", 14.99m, null, "Single-origin dark chocolate bar with 70% cacao.", "https://picsum.photos/seed/chocolate/400/400", ["chocolate", "snacks", "dark", "vegan"], sellerId, false, false, now),
+            NewProduct("Organic Honey Jar", "food", 12.99m, null, "Raw wildflower honey from sustainable beekeepers.", "https://picsum.photos/seed/honey/400/400", ["pantry", "organic", "natural-sweetener"], sellerId, false, false, now),
+            NewProduct("Extra Virgin Olive Oil", "food", 24.99m, null, "Cold-pressed extra virgin olive oil from Tuscany, 750ml.", "https://picsum.photos/seed/oliveoil/400/400", ["cooking", "italian", "organic", "premium"], sellerId, false, false, now),
+            NewProduct("Gourmet Trail Mix", "food", 16.99m, null, "Energy-dense mix of nuts, seeds, and dried fruits.", "https://picsum.photos/seed/trailmix/400/400", ["snacks", "healthy", "energy"], sellerId, false, true, now)
+        };
 
         await context.Products.AddRangeAsync(products);
         await context.SaveChangesAsync();
     }
 
-    private static List<ProductEntity> CreateTechProducts(string subcategory)
+    private static ProductEntity NewProduct(
+        string name,
+        string category,
+        decimal price,
+        decimal? originalPrice,
+        string description,
+        string imageUrl,
+        List<string> tags,
+        int sellerId,
+        bool isTrending,
+        bool isFeatured,
+        DateTime now)
     {
-        var basePrice = 29.99m;
-        var originalPrice = subcategory == "audio" ? 59.99m : 34.99m;
-
-        return new List<ProductEntity>
+        return new ProductEntity
         {
-            new() { Name = "Wireless Noise-Cancelling Headphones", Category = "tech", Subcategory = subcategory, Price = basePrice, OriginalPrice = originalPrice, Description = "Premium over-ear headphones with active noise cancellation and 30-hour battery life.", ImageUrl = "https://picsum.photos/seed/headphones/400/400", Tags = ["audio", "wireless", "premium"], IsTrending = true },
-            new() { Name = "Mechanical Keyboard RGB", Category = "tech", Subcategory = "gaming", Price = 129.99m, Description = "Full-size mechanical keyboard with hot-swappable switches and per-key RGB lighting.", ImageUrl = "https://picsum.photos/seed/keyboard/400/400", Tags = ["gaming", "peripherals", "rgb"] },
-            new() { Name = "4K Webcam Pro", Category = "tech", Subcategory = "streaming", Price = 179.99m, Description = "Ultra HD webcam with autofocus and low-light correction for professional video calls.", ImageUrl = "https://picsum.photos/seed/webcam/400/400", Tags = ["video", "streaming", "work-from-home"] },
-            new() { Name = "Portable SSD 2TB", Category = "tech", Subcategory = "storage", Price = 199.99m, OriginalPrice = 249.99m, Description = "Compact external SSD with USB-C and transfer speeds up to 1050MB/s.", ImageUrl = "https://picsum.photos/seed/ssd/400/400", Tags = ["storage", "portable", "fast"] }
+            Name = name,
+            Handle = Slugify(name),
+            Category = category,
+            CategoryPath = category,
+            Price = price,
+            OriginalPrice = originalPrice,
+            Description = description,
+            ImageUrl = imageUrl,
+            Tags = tags,
+            SellerId = sellerId,
+            IsTrending = isTrending,
+            IsFeatured = isFeatured,
+            PublishedAt = now.AddDays(-7),
+            UpdatedAt = now,
+            CreatedAt = now
         };
     }
 
-    private static List<ProductEntity> CreateFashionProducts(string subcategory)
+    private static string Slugify(string value)
     {
-        return new List<ProductEntity>
-        {
-            new() { Name = "Classic Leather Jacket", Category = "fashion", Subcategory = subcategory, Price = 299.99m, Description = "Timeless genuine leather jacket with a modern slim fit.", ImageUrl = "https://picsum.photos/seed/jacket/400/400", Tags = ["leather", "outerwear", "classic"], IsFeatured = true },
-            new() { Name = "Premium Cotton T-Shirt Pack", Category = "fashion", Subcategory = subcategory, Price = 49.99m, Description = "Set of 3 essential cotton t-shirts in neutral colours.", ImageUrl = "https://picsum.photos/seed/tshirt/400/400", Tags = ["basics", "cotton", "essentials"] },
-            new() { Name = "Designer Sunglasses", Category = "fashion", Subcategory = "accessories", Price = 189.99m, OriginalPrice = 229.99m, Description = "UV400 polarised sunglasses with titanium frames.", ImageUrl = "https://picsum.photos/seed/sunglasses/400/400", Tags = ["accessories", "summer", "uv-protection"], IsTrending = true },
-            new() { Name = "Minimalist Watch", Category = "fashion", Subcategory = "accessories", Price = 349.99m, Description = "Elegant watch with sapphire crystal and Swiss movement.", ImageUrl = "https://picsum.photos/seed/watch/400/400", Tags = ["accessories", "luxury", "minimalist"] },
-            new() { Name = "Slim Fit Chino Pants", Category = "fashion", Subcategory = subcategory, Price = 89.99m, Description = "Modern slim-fit chinos with stretch comfort.", ImageUrl = "https://picsum.photos/seed/pants/400/400", Tags = ["casual", "chinos", "slim-fit"] },
-            new() { Name = "Wool Blend Sweater", Category = "fashion", Subcategory = subcategory, Price = 129.99m, Description = "Soft merino wool blend sweater perfect for layering.", ImageUrl = "https://picsum.photos/seed/sweater/400/400", Tags = ["knitwear", "winter", "warm"] },
-            new() { Name = "Linen Summer Dress", Category = "fashion", Subcategory = subcategory, Price = 179.99m, Description = "Lightweight linen dress with breathable fabric and elegant cut.", ImageUrl = "https://picsum.photos/seed/dress/400/400", Tags = ["summer", "dresses", "linen"] },
-            new() { Name = "Canvas Tote Bag", Category = "fashion", Subcategory = subcategory, Price = 59.99m, Description = "Durable canvas tote with reinforced handles and inner pocket.", ImageUrl = "https://picsum.photos/seed/tote/400/400", Tags = ["bags", "accessories", "everyday"] },
-            new() { Name = "Leather Belt", Category = "fashion", Subcategory = subcategory, Price = 49.99m, Description = "Genuine leather belt with brushed metal buckle.", ImageUrl = "https://picsum.photos/seed/belt/400/400", Tags = ["accessories", "leather", "classic"] }
-        };
-    }
-
-    private static List<ProductEntity> CreateHomeProducts(string subcategory)
-    {
-        return new List<ProductEntity>
-        {
-            new() { Name = "Smart LED Bulb Kit", Category = "home", Subcategory = subcategory, Price = 79.99m, Description = "Set of 4 colour-changing smart bulbs compatible with all major assistants.", ImageUrl = "https://picsum.photos/seed/bulbs/400/400", Tags = ["smart-home", "lighting", "energy-efficient"] },
-            new() { Name = "Ergonomic Office Chair", Category = "home", Subcategory = subcategory, Price = 449.99m, OriginalPrice = 549.99m, Description = "Fully adjustable mesh office chair with lumbar support.", ImageUrl = "https://picsum.photos/seed/chair/400/400", Tags = ["office", "ergonomic", "comfort"], IsFeatured = true },
-            new() { Name = "Indoor Plant Collection", Category = "home", Subcategory = subcategory, Price = 59.99m, Description = "Curated set of 3 low-maintenance indoor plants with ceramic pots.", ImageUrl = "https://picsum.photos/seed/plants/400/400", Tags = ["plants", "decor", "wellness"] },
-            new() { Name = "Aromatherapy Diffuser", Category = "home", Subcategory = subcategory, Price = 39.99m, Description = "Ultrasonic essential oil diffuser with ambient lighting.", ImageUrl = "https://picsum.photos/seed/diffuser/400/400", Tags = ["wellness", "relaxation", "aromatherapy"] },
-            new() { Name = "Modern Pendant Light", Category = "home", Subcategory = subcategory, Price = 149.99m, Description = "Minimalist geometric pendant with warm LED glow.", ImageUrl = "https://picsum.photos/seed/pendant/400/400", Tags = ["lighting", "modern", "decor"] },
-            new() { Name = "Bamboo Storage Baskets", Category = "home", Subcategory = subcategory, Price = 39.99m, Description = "Set of 3 sustainable bamboo storage baskets.", ImageUrl = "https://picsum.photos/seed/baskets/400/400", Tags = ["storage", "organizing", "bamboo", "sustainable"] },
-            new() { Name = "Silk Pillow Set", Category = "home", Subcategory = subcategory, Price = 89.99m, Description = "100% silk pillowcases with hypoallergenic fill.", ImageUrl = "https://picsum.photos/seed/pillows/400/400", Tags = ["bedroom", "textiles", "comfort"] },
-            new() { Name = "Cast Iron Skillet", Category = "home", Subcategory = subcategory, Price = 69.99m, Description = "Pre-seasoned cast iron skillet with excellent heat retention.", ImageUrl = "https://picsum.photos/seed/skillet/400/400", Tags = ["kitchen", "cookware", "cast-iron"] },
-            new() { Name = "Robot Vacuum", Category = "home", Subcategory = subcategory, Price = 349.99m, OriginalPrice = 449.99m, Description = "Smart robot vacuum with mapping and self-emptying base.", ImageUrl = "https://picsum.photos/seed/vacuum/400/400", Tags = ["smart-home", "cleaning", "robot"], IsFeatured = true }
-        };
-    }
-
-    private static List<ProductEntity> CreateSportProducts(string subcategory)
-    {
-        return new List<ProductEntity>
-        {
-            new() { Name = "Running Shoes Pro", Category = "sport", Subcategory = subcategory, Price = 159.99m, Description = "Lightweight running shoes with responsive cushioning and breathable mesh.", ImageUrl = "https://picsum.photos/seed/shoes/400/400", Tags = ["running", "fitness", "performance"], IsTrending = true },
-            new() { Name = "Yoga Mat Premium", Category = "sport", Subcategory = subcategory, Price = 69.99m, Description = "Non-slip yoga mat with alignment lines and carrying strap.", ImageUrl = "https://picsum.photos/seed/yogamat/400/400", Tags = ["yoga", "fitness", "home-workout"] },
-            new() { Name = "Fitness Tracker Band", Category = "sport", Subcategory = subcategory, Price = 89.99m, OriginalPrice = 119.99m, Description = "Water-resistant fitness tracker with heart rate and sleep monitoring.", ImageUrl = "https://picsum.photos/seed/fitband/400/400", Tags = ["wearable", "health", "tracking"] },
-            new() { Name = "Resistance Band Set", Category = "sport", Subcategory = subcategory, Price = 29.99m, Description = "Complete set of 5 resistance bands with different tension levels.", ImageUrl = "https://picsum.photos/seed/bands/400/400", Tags = ["strength", "home-workout", "portable"] },
-            new() { Name = "Training Gloves", Category = "sport", Subcategory = subcategory, Price = 49.99m, Description = "Breathable training gloves with padded palms.", ImageUrl = "https://picsum.photos/seed/gloves/400/400", Tags = ["fitness", "training", "gloves"] },
-            new() { Name = "Adjustable Dumbbells", Category = "sport", Subcategory = subcategory, Price = 199.99m, Description = "Set of 5 quick-adjust dumbbells from 5kg to 25kg.", ImageUrl = "https://picsum.photos/seed/dumbbells/400/400", Tags = ["strength", "weights", "adjustable"] },
-            new() { Name = "Pro Skipping Rope", Category = "sport", Subcategory = subcategory, Price = 34.99m, Description = "Professional speed rope with weighted handles.", ImageUrl = "https://picsum.photos/seed/rope/400/400", Tags = ["cardio", "fitness", "crossfit"] },
-            new() { Name = "Compression Shorts", Category = "sport", Subcategory = subcategory, Price = 59.99m, Description = "Moisture-wicking compression shorts with elastic waistband.", ImageUrl = "https://picsum.photos/seed/shorts/400/400", Tags = ["activewear", "running", "compression"] }
-        };
-    }
-
-    private static List<ProductEntity> CreateBooksProducts(string subcategory)
-    {
-        return new List<ProductEntity>
-        {
-            new() { Name = "The Pragmatic Programmer", Category = "books", Subcategory = subcategory, Price = 39.99m, Description = "Classic software development book covering best practices and career advice.", ImageUrl = "https://picsum.photos/seed/pragmatic/400/400", Tags = ["programming", "career", "classic"], IsFeatured = true },
-            new() { Name = "Designing Data-Intensive Applications", Category = "books", Subcategory = subcategory, Price = 44.99m, Description = "Comprehensive guide to building reliable and scalable data systems.", ImageUrl = "https://picsum.photos/seed/dataintensive/400/400", Tags = ["programming", "data", "architecture"] },
-            new() { Name = "Atomic Habits", Category = "books", Subcategory = subcategory, Price = 16.99m, Description = "Practical strategies for building good habits and breaking bad ones.", ImageUrl = "https://picsum.photos/seed/atomichabits/400/400", Tags = ["self-help", "productivity", "bestseller"], IsTrending = true },
-            new() { Name = "Clean Code", Category = "books", Subcategory = subcategory, Price = 29.99m, Description = "Essential guide to writing maintainable and readable code.", ImageUrl = "https://picsum.photos/seed/cleancode/400/400", Tags = ["programming", "software-development", "reference"] },
-            new() { Name = "The Algorithm Design Manual", Category = "books", Subcategory = subcategory, Price = 49.99m, Description = "Beautifully illustrated guide to algorithmic thinking and problem-solving.", ImageUrl = "https://picsum.photos/seed/algorithms/400/400", Tags = ["computer-science", "algorithms", "education"] },
-            new() { Name = "Refactoring UI Patterns", Category = "books", Subcategory = subcategory, Price = 54.99m, Description = "Modern guide to restructuring legacy codebases for better maintainability.", ImageUrl = "https://picsum.photos/seed/refactoring/400/400", Tags = ["programming", "software-design", "clean-code"] },
-            new() { Name = "Domain-Driven Design", Category = "books", Subcategory = subcategory, Price = 39.99m, Description = "Strategic approach to software design based on business domain.", ImageUrl = "https://picsum.photos/seed/ddd/400/400", Tags = ["software-architecture", "design", "enterprise"] },
-            new() { Name = "API Design Best Practices", Category = "books", Subcategory = subcategory, Price = 59.99m, Description = "Comprehensive patterns for building robust and scalable APIs.", ImageUrl = "https://picsum.photos/seed/apidesign/400/400", Tags = ["programming", "api", "rest", "backend"] },
-            new() { Name = "Microservices Patterns", Category = "books", Subcategory = subcategory, Price = 64.99m, Description = "Design patterns for distributed systems architecture.", ImageUrl = "https://picsum.photos/seed/microservices/400/400", Tags = ["software-architecture", "distributed-systems", "devops"] },
-            new() { Name = "System Design Interview", Category = "books", Subcategory = subcategory, Price = 34.99m, Description = "Essential preparation guide for system design job interviews.", ImageUrl = "https://picsum.photos/seed/sdinterview/400/400", Tags = ["career", "interviews", "education"] }
-        };
-    }
-
-    private static List<ProductEntity> CreateFoodProducts(string subcategory)
-    {
-        return new List<ProductEntity>
-        {
-            new() { Name = "Artisan Coffee Beans", Category = "food", Subcategory = subcategory, Price = 24.99m, Description = "Single-origin arabica beans, medium roast, 1kg bag.", ImageUrl = "https://picsum.photos/seed/coffee/400/400", Tags = ["coffee", "organic", "fairtrade"] },
-            new() { Name = "Matcha Green Tea", Category = "food", Subcategory = subcategory, Price = 19.99m, Description = "Premium organic green tea from Japanese gardens.", ImageUrl = "https://picsum.photos/seed/tea/400/400", Tags = ["tea", "organic", "premium"] },
-            new() { Name = "Dark Chocolate Bar", Category = "food", Subcategory = subcategory, Price = 14.99m, Description = "Single-origin dark chocolate bar with 70% cacao.", ImageUrl = "https://picsum.photos/seed/chocolate/400/400", Tags = ["chocolate", "snacks", "dark", "vegan"] },
-            new() { Name = "Organic Honey Jar", Category = "food", Subcategory = subcategory, Price = 12.99m, Description = "Raw wildflower honey from sustainable beekeepers.", ImageUrl = "https://picsum.photos/seed/honey/400/400", Tags = ["pantry", "organic", "natural-sweetener"] },
-            new() { Name = "Artisan Pasta", Category = "food", Subcategory = subcategory, Price = 8.99m, Description = "Bronze-die cut pasta from Italian durum wheat.", ImageUrl = "https://picsum.photos/seed/pasta/400/400", Tags = ["pasta", "italian", "artisan"] },
-            new() { Name = "Extra Virgin Olive Oil", Category = "food", Subcategory = subcategory, Price = 24.99m, Description = "Cold-pressed extra virgin olive oil from Tuscany, 750ml.", ImageUrl = "https://picsum.photos/seed/oliveoil/400/400", Tags = ["cooking", "italian", "organic", "premium"] },
-            new() { Name = "Gourmet Trail Mix", Category = "food", Subcategory = subcategory, Price = 16.99m, Description = "Energy-dense mix of nuts, seeds, and dried fruits.", ImageUrl = "https://picsum.photos/seed/trailmix/400/400", Tags = ["snacks", "healthy", "energy"], IsFeatured = true },
-            new() { Name = "Protein Powder", Category = "food", Subcategory = subcategory, Price = 29.99m, Description = "Whey protein isolate for post-workout recovery.", ImageUrl = "https://picsum.photos/seed/protein/400/400", Tags = ["supplements", "protein", "fitness"] },
-            new() { Name = "Bone Broth", Category = "food", Subcategory = subcategory, Price = 9.99m, Description = "Slow-simmered nutrient-rich bone broth in convenient jars.", ImageUrl = "https://picsum.photos/seed/broth/400/400", Tags = ["soup", "wellness", "paleo"], IsTrending = true },
-            new() { Name = "Sourdough Starter Kit", Category = "food", Subcategory = subcategory, Price = 29.99m, Description = "Complete kit with dehydrated starter, rye flour, and proofing basket.", ImageUrl = "https://picsum.photos/seed/sourdough/400/400", Tags = ["baking", "fermentation", "artisan"], IsFeatured = true },
-            new() { Name = "Herbal Tea Collection", Category = "food", Subcategory = subcategory, Price = 19.99m, Description = "Assortment of caffeine-free herbal blends.", ImageUrl = "https://picsum.photos/seed/herbaltea/400/400", Tags = ["tea", "herbal", "caffeine-free"] },
-            new() { Name = "Quinoa Trio Pack", Category = "food", Subcategory = subcategory, Price = 14.99m, Description = "White, red, and black quinoa in convenient packs.", ImageUrl = "https://picsum.photos/seed/quinoa/400/400", Tags = ["grains", "healthy", "gluten-free"] }
-        };
+        return value
+            .ToLowerInvariant()
+            .Replace(" ", "-")
+            .Replace(".", "")
+            .Replace(",", "")
+            .Replace("&", "and")
+            .Replace("--", "-");
     }
 }

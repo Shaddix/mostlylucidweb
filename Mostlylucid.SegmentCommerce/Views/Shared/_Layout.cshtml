@@ -94,7 +94,7 @@
          @@toggle-signature.window="show = !show"
          @@keydown.escape.window="show = false"
          class="interest-signature-panel animate-slide-up">
-        <partial name="Partials/_InterestSignature" />
+        <partial name="Partials/_InterestSignature" model="(ViewData.Model as HomeViewModel)?.InterestSignature" />
     </div>
 
     <!-- Footer -->

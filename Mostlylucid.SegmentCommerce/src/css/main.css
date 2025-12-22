@@ -115,6 +115,16 @@ body {
     @apply opacity-0 transition-opacity duration-200;
 }
 
+@layer utilities {
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* Dark mode toggle */
 .theme-toggle {
     @apply p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors;
