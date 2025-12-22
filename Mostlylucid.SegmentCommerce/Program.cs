@@ -1,22 +1,47 @@
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Services;
+using Mostlylucid.SegmentCommerce.Services.Embeddings;
+using Mostlylucid.SegmentCommerce.Services.Queue;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllersWithViews();
 
-// Configure PostgreSQL with EF Core
+// Configure PostgreSQL with EF Core + pgvector
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=segmentcommerce;Username=postgres;Password=postgres";
 
 builder.Services.AddDbContext<SegmentCommerceDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.UseVector(); // Enable pgvector
+    }));
 
 // Register application services
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<InteractionService>();
+
+// Register queue services
+builder.Services.AddScoped<IJobQueue, PostgresJobQueue>();
+builder.Services.AddScoped<IOutbox, PostgresOutbox>();
+builder.Services.AddScoped<IOutboxProcessor, OutboxProcessor>();
+
+// Register embedding service
+var ollamaUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
+builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client =>
+{
+    client.BaseAddress = new Uri(ollamaUrl);
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+
+// Background workers (only enable in production or explicitly)
+if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
+{
+    builder.Services.AddHostedService<JobWorkerService>();
+    builder.Services.AddHostedService<OutboxWorkerService>();
+}
 
 // Add session support for interest signatures
 builder.Services.AddDistributedMemoryCache();
