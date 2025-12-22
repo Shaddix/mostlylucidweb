@@ -92,7 +92,13 @@ public class FingerprintController : ControllerBase
             _logger.LogDebug("Linked session {SessionId} to profile {ProfileId} via fingerprint", 
                 sessionId, profile.Id);
 
-            return NoContent();
+            // Return profile info so client can trigger HTMX personalization
+            return Ok(new FingerprintResponse
+            {
+                ProfileId = profile.Id.ToString(),
+                IsNew = profile.CreatedAt > DateTime.UtcNow.AddSeconds(-5),
+                Segments = GetSegmentNames(profile.Segments)
+            });
         }
         catch (Exception ex)
         {
@@ -131,5 +137,30 @@ public class FingerprintController : ControllerBase
         }
 
         return profile;
+    }
+
+    /// <summary>
+    /// Convert bitflag segments to an array of segment names.
+    /// </summary>
+    private static string[] GetSegmentNames(ProfileSegments segments)
+    {
+        if (segments == ProfileSegments.None)
+            return [];
+
+        var names = new List<string>();
+        foreach (ProfileSegments flag in Enum.GetValues<ProfileSegments>())
+        {
+            if (flag != ProfileSegments.None && segments.HasFlag(flag))
+            {
+                names.Add(ToKebabCase(flag.ToString()));
+            }
+        }
+        return names.ToArray();
+    }
+
+    private static string ToKebabCase(string value)
+    {
+        return string.Concat(value.Select((c, i) =>
+            i > 0 && char.IsUpper(c) ? "-" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
     }
 }

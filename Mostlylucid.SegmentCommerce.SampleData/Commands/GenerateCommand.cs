@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
+using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 using Mostlylucid.SegmentCommerce.SampleData.Models;
 using Mostlylucid.SegmentCommerce.SampleData.Services;
 using Spectre.Console;
@@ -483,39 +484,21 @@ public class GenerateSettings : CommandSettings
                     }
                 }
 
-                // store profiles as interest scores
+                // store profiles using the new PersistentProfileEntity structure
                 foreach (var profile in profiles)
                 {
-                    var anonProfile = new Mostlylucid.SegmentCommerce.Data.Entities.Profiles.AnonymousProfileEntity
+                    var persistentProfile = new PersistentProfileEntity
                     {
                         ProfileKey = profile.ProfileKey,
-                        TotalWeight = profile.Signals.Sum(s => s.Weight),
-                        SignalCount = profile.Signals.Count,
-                        ProfileImageUrl = profile.ProfileImagePath,
-                        DisplayName = profile.DisplayName,
-                        Bio = profile.Bio,
-                        Age = profile.Age,
-                        BirthDate = profile.BirthDate,
-                        Likes = profile.Likes,
-                        Dislikes = profile.Dislikes,
+                        IdentificationMode = ProfileIdentificationMode.Fingerprint,
+                        Interests = profile.Interests,
+                        TotalSignals = profile.Signals.Count,
                         CreatedAt = DateTime.UtcNow,
                         LastSeenAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    context.AnonymousProfiles.Add(anonProfile);
-
-                    foreach (var kvp in profile.Interests)
-                    {
-                        context.InterestScores.Add(new Mostlylucid.SegmentCommerce.Data.Entities.Profiles.InterestScoreEntity
-                        {
-                            Profile = anonProfile,
-                            Category = kvp.Key,
-                            Score = kvp.Value,
-                            DecayRate = 0.02,
-                            LastUpdatedAt = DateTime.UtcNow
-                        });
-                    }
+                    context.PersistentProfiles.Add(persistentProfile);
                 }
 
                 await context.SaveChangesAsync();

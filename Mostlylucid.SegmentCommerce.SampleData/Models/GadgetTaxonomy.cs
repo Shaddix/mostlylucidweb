@@ -161,7 +161,8 @@ public class ProductType
 
         var variant = Variants.Count > 0 ? Variants[random.Next(Variants.Count)] : "";
         var brand = Brands.Count > 0 ? Brands[random.Next(Brands.Count)] : "GenericBrand";
-        var selectedFeatures = Features.OrderBy(_ => random.Next()).Take(random.Next(2, 4)).ToList();
+        var featureCount = Features.Count > 0 ? random.Next(1, Math.Min(4, Features.Count + 1)) : 0;
+        var selectedFeatures = Features.OrderBy(_ => random.Next()).Take(featureCount).ToList();
         var colour = Colours.Count > 0 ? Colours[random.Next(Colours.Count)] : "Black";
         var material = Materials.Count > 0 ? Materials[random.Next(Materials.Count)] : "";
 

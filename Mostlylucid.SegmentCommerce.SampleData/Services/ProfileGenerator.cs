@@ -27,8 +27,11 @@ public class ProfileGenerator
             var signals = new List<GeneratedSignal>();
             var segments = new List<GeneratedProfileSegment>();
 
-            // pick 2-4 categories
-            var chosen = categoryList.OrderBy(_ => _random.Next()).Take(_random.Next(2, Math.Min(5, categoryList.Count))).ToList();
+            // pick 1-4 categories (at least 1, up to all available)
+            var maxCategories = Math.Max(1, Math.Min(4, categoryList.Count));
+            var minCategories = Math.Min(1, categoryList.Count);
+            var categoryCount = categoryList.Count > 1 ? _random.Next(minCategories, maxCategories + 1) : 1;
+            var chosen = categoryList.OrderBy(_ => _random.Next()).Take(categoryCount).ToList();
             foreach (var cat in chosen)
             {
                 var weight = Math.Round(_random.NextDouble() * 0.8 + 0.1, 2);

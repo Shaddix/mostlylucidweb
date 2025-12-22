@@ -19,3 +19,27 @@ public class FingerprintRequest
     [JsonPropertyName("ts")]
     public long Timestamp { get; set; }
 }
+
+/// <summary>
+/// Response after fingerprint processing - provides profile info for HTMX personalization.
+/// </summary>
+public class FingerprintResponse
+{
+    /// <summary>
+    /// The persistent profile ID (for HTMX requests).
+    /// </summary>
+    [JsonPropertyName("profileId")]
+    public string ProfileId { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Whether this is a new profile (first visit).
+    /// </summary>
+    [JsonPropertyName("isNew")]
+    public bool IsNew { get; set; }
+    
+    /// <summary>
+    /// Computed segment names for client-side personalization hints.
+    /// </summary>
+    [JsonPropertyName("segments")]
+    public string[] Segments { get; set; } = [];
+}
