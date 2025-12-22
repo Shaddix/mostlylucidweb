@@ -93,6 +93,16 @@ public class ComfyUIImageGenerator : IDisposable
         return images;
     }
 
+    public Task<GeneratedImage?> GeneratePortraitAsync(
+        string prompt,
+        string profileKey,
+        CancellationToken cancellationToken = default)
+    {
+        var outputDir = Path.Combine(_config.OutputPath, "profile-images", SanitizeFileName(profileKey));
+        Directory.CreateDirectory(outputDir);
+        return GenerateImageAsync(prompt, outputDir, "portrait", cancellationToken);
+    }
+
     private async Task<GeneratedImage?> GenerateImageAsync(
         string prompt,
         string outputDir,
@@ -108,7 +118,7 @@ public class ComfyUIImageGenerator : IDisposable
             var promptId = await QueuePromptAsync(workflow, cancellationToken);
             if (string.IsNullOrEmpty(promptId))
             {
-                AnsiConsole.MarkupLine("[yellow]Failed to queue prompt[/]");
+                AnsiConsole.WriteLine("[yellow]Failed to queue prompt[/]");
                 return null;
             }
 
@@ -116,7 +126,7 @@ public class ComfyUIImageGenerator : IDisposable
             var imageData = await WaitForImageAsync(promptId, cancellationToken);
             if (imageData == null || imageData.Length == 0)
             {
-                AnsiConsole.MarkupLine("[yellow]No image data received[/]");
+                AnsiConsole.WriteLine("[yellow]No image data received[/]");
                 return null;
             }
 
@@ -134,7 +144,7 @@ public class ComfyUIImageGenerator : IDisposable
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]Error generating image: {ex.Message}[/]");
+            AnsiConsole.WriteLine($"[red]Error generating image: {ex.Message}[/]");
             return null;
         }
     }
@@ -182,6 +192,47 @@ public class ComfyUIImageGenerator : IDisposable
         return workflow;
     }
 
+    private void TryPatchCheckpoint(JsonObject workflow, string checkpoint)
+    {
+        if (string.IsNullOrWhiteSpace(checkpoint))
+        {
+            return;
+        }
+
+        foreach (var node in workflow)
+        {
+            if (node.Value is JsonObject nodeObj && nodeObj["class_type"]?.GetValue<string>() == "CheckpointLoaderSimple")
+            {
+                var inputs = nodeObj["inputs"]?.AsObject();
+                if (inputs != null)
+                {
+                    inputs["ckpt_name"] = checkpoint;
+                }
+            }
+        }
+    }
+
+    private void TryPatchRefiner(JsonObject workflow, string refiner)
+    {
+        if (string.IsNullOrWhiteSpace(refiner))
+        {
+            return;
+        }
+
+        foreach (var node in workflow)
+        {
+            if (node.Value is JsonObject nodeObj && nodeObj["class_type"]?.GetValue<string>() == "CheckpointLoaderSimple" && node.Key == "4")
+            {
+                var inputs = nodeObj["inputs"]?.AsObject();
+                if (inputs != null && inputs.ContainsKey("ckpt_name"))
+                {
+                    // only set if base checkpoint is missing
+                    inputs["ckpt_name"] ??= refiner;
+                }
+            }
+        }
+    }
+
     private async Task<string?> QueuePromptAsync(JsonObject workflow, CancellationToken cancellationToken)
     {
         var request = new JsonObject
@@ -189,6 +240,10 @@ public class ComfyUIImageGenerator : IDisposable
             ["prompt"] = workflow,
             ["client_id"] = _clientId
         };
+
+        // If no checkpoint provided in workflow, try to set a default SDXL base/refiner if present
+        TryPatchCheckpoint(workflow, _config.ComfyUICheckpointName ?? "sd_xl_base_1.0.safetensors");
+        TryPatchRefiner(workflow, _config.ComfyUIRefinerName ?? "sd_xl_refiner_1.0.safetensors");
 
         var content = new StringContent(
             request.ToJsonString(),
@@ -200,7 +255,7 @@ public class ComfyUIImageGenerator : IDisposable
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            AnsiConsole.MarkupLine($"[red]ComfyUI error: {error}[/]");
+            AnsiConsole.WriteLine($"[red]ComfyUI error: {error}[/]");
             return null;
         }
 

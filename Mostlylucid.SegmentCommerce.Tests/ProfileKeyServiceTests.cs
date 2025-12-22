@@ -71,6 +71,8 @@ public class ProfileKeyServiceTests
                 .Ignore(e => e.Embedding);
             modelBuilder.Entity<Mostlylucid.SegmentCommerce.Data.Entities.VisitorProfileEntity>()
                 .Ignore(e => e.Interests);
+            modelBuilder.Entity<Mostlylucid.SegmentCommerce.Data.Entities.ProductEntity>()
+                .Ignore(e => e.SearchVector);
         }
     }
 }

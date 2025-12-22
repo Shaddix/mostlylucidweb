@@ -72,6 +72,8 @@ public record GenerationConfig
     public int OllamaTimeoutSeconds { get; init; } = 120;
 
     public string ComfyUIBaseUrl { get; init; } = "http://localhost:8188";
+    public string? ComfyUICheckpointName { get; init; } = "sd_xl_base_1.0.safetensors";
+    public string? ComfyUIRefinerName { get; init; } = "sd_xl_refiner_1.0.safetensors";
     public string OutputPath { get; init; } = "./Output/images";
     public int ComfyUITimeoutSeconds { get; init; } = 300;
 

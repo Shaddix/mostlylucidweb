@@ -1,13 +1,15 @@
-using Microsoft.EntityFrameworkCore;
-using Mostlylucid.SegmentCommerce.Data;
-using Mostlylucid.SegmentCommerce.Services;
-using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Middleware;
+using Mostlylucid.SegmentCommerce.Services;
+using Mostlylucid.SegmentCommerce.Services.Attributes;
+using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +67,7 @@ builder.Services.AddScoped<IProfileKeyService, ProfileKeyService>();
 builder.Services.AddScoped<ISessionCollector, SessionCollector>();
 builder.Services.AddScoped<IProfilePromoter, ProfilePromoter>();
 builder.Services.AddScoped<IProfileMerger, ProfileMerger>();
+builder.Services.AddSingleton<GadgetAttributeProvider>();
 
 // Register queue services
 builder.Services.AddScoped<IJobQueue, PostgresJobQueue>();

@@ -15,6 +15,27 @@ public class GeneratedProfile
 
     [JsonPropertyName("signals")]
     public List<GeneratedSignal> Signals { get; set; } = [];
+
+    [JsonPropertyName("profile_image_path")]
+    public string? ProfileImagePath { get; set; }
+
+    [JsonPropertyName("display_name")]
+    public string? DisplayName { get; set; }
+
+    [JsonPropertyName("bio")]
+    public string? Bio { get; set; }
+
+    [JsonPropertyName("age")]
+    public int? Age { get; set; }
+
+    [JsonPropertyName("birth_date")]
+    public DateTime? BirthDate { get; set; }
+
+    [JsonPropertyName("likes")]
+    public List<string> Likes { get; set; } = [];
+
+    [JsonPropertyName("dislikes")]
+    public List<string> Dislikes { get; set; } = [];
 }
 
 public class GeneratedProfileSegment

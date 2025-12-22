@@ -4,6 +4,7 @@ using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
+using Npgsql;
 
 namespace Mostlylucid.SegmentCommerce.Services.Queue;
 
@@ -17,10 +18,13 @@ public class JobWorkerService : BackgroundService
     private readonly string _workerId;
     private readonly string[] _queues;
     private readonly TimeSpan _pollInterval;
+    private readonly string? _connectionString;
+    private readonly TimeSpan _notifyWait = TimeSpan.FromSeconds(5);
 
     public JobWorkerService(
         IServiceProvider serviceProvider,
         ILogger<JobWorkerService> logger,
+        IConfiguration configuration,
         string[]? queues = null,
         TimeSpan? pollInterval = null)
     {
@@ -29,6 +33,7 @@ public class JobWorkerService : BackgroundService
         _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}"[..32];
         _queues = queues ?? new[] { "default", "embeddings", "events" };
         _pollInterval = pollInterval ?? TimeSpan.FromSeconds(1);
+        _connectionString = configuration.GetConnectionString("DefaultConnection");
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -56,10 +61,14 @@ public class JobWorkerService : BackgroundService
                     }
                 }
 
-                // If no jobs were found, wait before polling again
+                // If no jobs were found, wait before polling again (prefer LISTEN/NOTIFY)
                 if (!processedAny)
                 {
-                    await Task.Delay(_pollInterval, stoppingToken);
+                    var notified = await WaitForNotifyAsync(stoppingToken);
+                    if (!notified)
+                    {
+                        await Task.Delay(_pollInterval, stoppingToken);
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -222,6 +231,37 @@ public class JobWorkerService : BackgroundService
 
         var promoter = serviceProvider.GetRequiredService<IProfilePromoter>();
         await promoter.PromoteAsync(sessionId, cancellationToken);
+    }
+
+    private async Task<bool> WaitForNotifyAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(_connectionString))
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var conn = new NpgsqlConnection(_connectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            await using (var listen = new NpgsqlCommand("LISTEN job_queue_notify;", conn))
+            {
+                await listen.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            var notified = await conn.WaitAsync(_notifyWait, cancellationToken);
+            return notified;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Listen failed; falling back to polling");
+            return false;
+        }
     }
 }
 

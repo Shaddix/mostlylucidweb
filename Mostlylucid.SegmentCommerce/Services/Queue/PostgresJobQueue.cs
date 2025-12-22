@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
+using Npgsql;
 
 namespace Mostlylucid.SegmentCommerce.Services.Queue;
 
@@ -58,11 +59,26 @@ public class PostgresJobQueue : IJobQueue
 
         _context.JobQueue.Add(job);
         await _context.SaveChangesAsync(cancellationToken);
+        await NotifyAsync(queue, cancellationToken);
 
         _logger.LogDebug("Enqueued job {JobId} of type {JobType} to queue {Queue}",
             job.Id, jobType, queue);
 
         return job.Id;
+    }
+
+
+
+    private async Task NotifyAsync(string queue, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.Database.ExecuteSqlRawAsync("SELECT pg_notify('job_queue_notify', {0});", new object[] { queue }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Notify failed (non-fatal)");
+        }
     }
 
     public async Task<JobQueueEntity?> DequeueAsync(

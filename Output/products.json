@@ -1,0 +1,282 @@
+{
+  "tech": [
+    {
+      "name": "AudioView Camera Smart Glasses 2.0",
+      "description": "Premium camera smart-glasses featuring UV protection, voice assistant. Crafted with titanium. Designed for exceptional performance and everyday reliability.",
+      "category": "tech",
+      "price": 478.34,
+      "original_price": null,
+      "tags": [
+        "smart-glasses",
+        "camera",
+        "uv-protection",
+        "voice-assistant"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Navy colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Navy",
+        "Olive",
+        "Clear"
+      ],
+      "images": []
+    },
+    {
+      "name": "AirControl Simple Thermostats Ultra",
+      "description": "Premium simple thermostats featuring energy saving, geofencing. Crafted with glass face. Designed for exceptional performance and everyday reliability.",
+      "category": "tech",
+      "price": 128.03,
+      "original_price": 152.11,
+      "tags": [
+        "thermostats",
+        "simple",
+        "energy-saving",
+        "geofencing"
+      ],
+      "is_trending": true,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Stainless colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Copper",
+        "Brass",
+        "White"
+      ],
+      "images": []
+    }
+  ],
+  "fashion": [
+    {
+      "name": "ComfortKicks Slip On Sneakers",
+      "description": "Premium slip-on sneakers featuring breathable, cushioned, waterproof. Crafted with suede. Designed for exceptional performance and everyday reliability.",
+      "category": "fashion",
+      "price": 105.05,
+      "original_price": null,
+      "tags": [
+        "sneakers",
+        "slip-on",
+        "breathable",
+        "cushioned",
+        "waterproof"
+      ],
+      "is_trending": true,
+      "is_featured": true,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Navy colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Red",
+        "Black",
+        "Navy"
+      ],
+      "images": []
+    },
+    {
+      "name": "BootCraft Chukka Boots Max",
+      "description": "Premium chukka boots featuring waterproof, insulated. Crafted with synthetic. Designed for exceptional performance and everyday reliability.",
+      "category": "fashion",
+      "price": 262.56,
+      "original_price": null,
+      "tags": [
+        "boots",
+        "chukka",
+        "waterproof",
+        "insulated"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Olive colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Tan",
+        "Olive",
+        "Burgundy"
+      ],
+      "images": []
+    }
+  ],
+  "home": [
+    {
+      "name": "BeanCraft French Press Coffee Makers",
+      "description": "Premium french press coffee-makers featuring built-in grinder, programmable. Crafted with stainless steel. Designed for exceptional performance and everyday reliability.",
+      "category": "home",
+      "price": 220.88,
+      "original_price": null,
+      "tags": [
+        "coffee-makers",
+        "french-press",
+        "built-in-grinder",
+        "programmable"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Stainless colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Matte Black",
+        "Copper",
+        "White"
+      ],
+      "images": []
+    },
+    {
+      "name": "NutriMix Personal Blenders",
+      "description": "Premium personal blenders featuring pulse, self-cleaning. Crafted with glass jar. Designed for exceptional performance and everyday reliability.",
+      "category": "home",
+      "price": 121.01,
+      "original_price": null,
+      "tags": [
+        "blenders",
+        "personal",
+        "pulse",
+        "self-cleaning"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Silver colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Silver",
+        "Black",
+        "White"
+      ],
+      "images": []
+    }
+  ],
+  "sport": [
+    {
+      "name": "ChillBottle Smart Water Bottles Elite",
+      "description": "Premium smart water-bottles featuring leak-proof, UV sterilisation. Crafted with glass. Designed for exceptional performance and everyday reliability.",
+      "category": "sport",
+      "price": 76.22,
+      "original_price": null,
+      "tags": [
+        "water-bottles",
+        "smart",
+        "leak-proof",
+        "uv-sterilisation"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, White colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Navy",
+        "Lilac",
+        "Black"
+      ],
+      "images": []
+    },
+    {
+      "name": "HydroFlow Insulated Water Bottles 2.0",
+      "description": "Premium insulated water-bottles featuring leak-proof, UV sterilisation. Crafted with stainless steel. Designed for exceptional performance and everyday reliability.",
+      "category": "sport",
+      "price": 36.89,
+      "original_price": null,
+      "tags": [
+        "water-bottles",
+        "insulated",
+        "leak-proof",
+        "uv-sterilisation"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Mint colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Lilac",
+        "Navy",
+        "Mint"
+      ],
+      "images": []
+    }
+  ],
+  "books": [
+    {
+      "name": "PageLight Neck Book Lights X",
+      "description": "Premium neck book-lights featuring flexible neck, auto-off, USB rechargeable. Designed for exceptional performance and everyday reliability.",
+      "category": "books",
+      "price": 27.86,
+      "original_price": 35.13,
+      "tags": [
+        "book-lights",
+        "neck",
+        "flexible-neck",
+        "auto-off",
+        "usb-rechargeable"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, White colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "White",
+        "Rose Gold",
+        "Silver"
+      ],
+      "images": []
+    },
+    {
+      "name": "PageSave Metal Bookmarks",
+      "description": "Premium metal bookmarks featuring engraved, personalised. Crafted with stainless steel. Designed for exceptional performance and everyday reliability.",
+      "category": "books",
+      "price": 14.72,
+      "original_price": null,
+      "tags": [
+        "bookmarks",
+        "metal",
+        "engraved",
+        "personalised"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Gold colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Copper",
+        "Gold",
+        "Rose Gold"
+      ],
+      "images": []
+    }
+  ],
+  "food": [
+    {
+      "name": "FoodSaver Countertop Vacuum Sealers Elite",
+      "description": "Premium countertop vacuum-sealers featuring marinate mode, pulse function, roll storage. Designed for exceptional performance and everyday reliability.",
+      "category": "food",
+      "price": 198.87,
+      "original_price": null,
+      "tags": [
+        "vacuum-sealers",
+        "countertop",
+        "marinate-mode",
+        "pulse-function",
+        "roll-storage"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, Red colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "Red",
+        "Silver",
+        "Black"
+      ],
+      "images": []
+    },
+    {
+      "name": "MilkMaster Jug Milk Frothers",
+      "description": "Premium jug milk-frothers featuring rechargeable, dishwasher safe, non-stick. Designed for exceptional performance and everyday reliability.",
+      "category": "food",
+      "price": 68.51,
+      "original_price": null,
+      "tags": [
+        "milk-frothers",
+        "jug",
+        "rechargeable",
+        "dishwasher-safe",
+        "non-stick"
+      ],
+      "is_trending": false,
+      "is_featured": false,
+      "image_prompt": "Professional product photography, studio lighting, white background, high detail, White colour, commercial product shot, 8k quality",
+      "colour_variants": [
+        "White",
+        "Black",
+        "Silver"
+      ],
+      "images": []
+    }
+  ]
+}

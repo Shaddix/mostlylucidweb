@@ -1,5 +1,18 @@
 namespace Mostlylucid.SegmentCommerce.Models;
 
+public class ProductVariation
+{
+    public int Id { get; set; }
+    public string Color { get; set; } = string.Empty;
+    public string Size { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public decimal? OriginalPrice { get; set; }
+    public string? ImageUrl { get; set; }
+    public string? Sku { get; set; }
+    public int StockQuantity { get; set; }
+    public bool IsActive { get; set; }
+}
+
 public class Product
 {
     public int Id { get; set; }
@@ -13,6 +26,10 @@ public class Product
     public bool IsRecommended { get; set; }
     public bool IsTrending { get; set; }
     public double RelevanceScore { get; set; }
+    public int SellerId { get; set; }
+    public string? Color { get; set; }
+    public string? Size { get; set; }
+    public List<ProductVariation> Variations { get; set; } = [];
 }
 
 public class CartItem

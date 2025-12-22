@@ -3,10 +3,12 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 using Pgvector;
 
 #nullable disable
@@ -14,9 +16,11 @@ using Pgvector;
 namespace Mostlylucid.SegmentCommerce.Data.Migrations
 {
     [DbContext(typeof(SegmentCommerceDbContext))]
-    partial class SegmentCommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251222124923_AddProfilePersonaFields")]
+    partial class AddProfilePersonaFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -402,11 +406,6 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                         .HasColumnType("ltree")
                         .HasColumnName("category_path");
 
-                    b.Property<string>("Color")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("color");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -444,14 +443,12 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("price");
 
-                    b.Property<int>("SellerId")
-                        .HasColumnType("integer")
-                        .HasColumnName("seller_id");
-
-                    b.Property<string>("Size")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("size");
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasColumnName("search_vector")
+                        .HasAnnotation("Npgsql:TsVectorConfig", "english")
+                        .HasAnnotation("Npgsql:TsVectorProperties", new[] { "Name", "Description" });
 
                     b.PrimitiveCollection<List<string>>("Tags")
                         .IsRequired()
@@ -474,83 +471,11 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
 
                     b.HasIndex("IsTrending");
 
-                    b.HasIndex("SellerId");
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
 
                     b.ToTable("products");
-                });
-
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.ProductVariationEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("color");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("image_url");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<decimal?>("OriginalPrice")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("original_price");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("price");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("integer")
-                        .HasColumnName("product_id");
-
-                    b.Property<string>("Size")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("size");
-
-                    b.Property<string>("Sku")
-                        .HasColumnType("text")
-                        .HasColumnName("sku");
-
-                    b.Property<int>("StockQuantity")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("stock_quantity");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Color");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("Size");
-
-                    b.HasIndex("ProductId", "Color", "Size")
-                        .IsUnique();
-
-                    b.ToTable("product_variations");
                 });
 
             modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.Profiles.AnonymousProfileEntity", b =>
@@ -853,92 +778,6 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                     b.ToTable("signals");
                 });
 
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.SellerEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("address");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("email");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsVerified")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_verified");
-
-                    b.Property<string>("LogoUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("logo_url");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Phone")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("phone");
-
-                    b.Property<double>("Rating")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("double precision")
-                        .HasDefaultValue(0.0)
-                        .HasColumnName("rating");
-
-                    b.Property<int>("ReviewCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("review_count");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<string>("Website")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("website");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("sellers");
-                });
-
             modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.VisitorProfileEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1023,28 +862,6 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.ProductEntity", b =>
-                {
-                    b.HasOne("Mostlylucid.SegmentCommerce.Data.Entities.SellerEntity", "Seller")
-                        .WithMany("Products")
-                        .HasForeignKey("SellerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Seller");
-                });
-
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.ProductVariationEntity", b =>
-                {
-                    b.HasOne("Mostlylucid.SegmentCommerce.Data.Entities.ProductEntity", "Product")
-                        .WithMany("Variations")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.Profiles.InterestScoreEntity", b =>
                 {
                     b.HasOne("Mostlylucid.SegmentCommerce.Data.Entities.Profiles.AnonymousProfileEntity", "Profile")
@@ -1091,11 +908,6 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                     b.Navigation("Session");
                 });
 
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.ProductEntity", b =>
-                {
-                    b.Navigation("Variations");
-                });
-
             modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.Profiles.AnonymousProfileEntity", b =>
                 {
                     b.Navigation("InterestScores");
@@ -1110,11 +922,6 @@ namespace Mostlylucid.SegmentCommerce.Data.Migrations
                     b.Navigation("InterestScores");
 
                     b.Navigation("Signals");
-                });
-
-            modelBuilder.Entity("Mostlylucid.SegmentCommerce.Data.Entities.SellerEntity", b =>
-                {
-                    b.Navigation("Products");
                 });
 #pragma warning restore 612, 618
         }

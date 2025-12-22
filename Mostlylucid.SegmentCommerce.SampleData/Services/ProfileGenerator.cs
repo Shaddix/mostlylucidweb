@@ -77,7 +77,9 @@ public class ProfileGenerator
                 ProfileKey = profileKey,
                 Interests = profileInterests,
                 Signals = signals,
-                Segments = segments
+                Segments = segments,
+                DisplayName = null,
+                Bio = null
             });
         }
 

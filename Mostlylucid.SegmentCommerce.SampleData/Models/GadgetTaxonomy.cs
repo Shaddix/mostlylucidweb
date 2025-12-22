@@ -212,7 +212,25 @@ public class ProductType
         var featureText = string.Join(", ", features.Take(3));
         var materialText = !string.IsNullOrEmpty(material) ? $" Crafted with {material}." : "";
 
-        return $"Premium {variant} {Type} featuring {featureText}.{materialText} Designed for exceptional performance and everyday reliability.";
+        // Variety of product quality descriptors
+        var qualityDescriptors = new[]
+        {
+            "",  // No descriptor (50% chance)
+            "",
+            "",
+            "",
+            "",
+            "Premium",
+            "Quality",
+            "Professional",
+            "Essential",
+            "Affordable"
+        };
+        
+        var quality = qualityDescriptors[Random.Shared.Next(qualityDescriptors.Length)];
+        var qualityPrefix = string.IsNullOrEmpty(quality) ? "" : $"{quality} ";
+
+        return $"{qualityPrefix}{variant} {Type} featuring {featureText}.{materialText} Designed for exceptional performance and everyday reliability.";
     }
 
     private string GenerateImagePrompt(string variant, string colour, List<string> features)

@@ -33,14 +33,41 @@ public class ProductEntity
     [Column("category")]
     public string Category { get; set; } = string.Empty;
 
+    [Column("category_path", TypeName = "ltree")]
+    public string CategoryPath { get; set; } = string.Empty;
+
     [Column("tags")]
     public List<string> Tags { get; set; } = [];
+
+    // [Column("search_vector", TypeName = "tsvector")]
+    // public string? SearchVector { get; set; }
 
     [Column("is_trending")]
     public bool IsTrending { get; set; }
 
     [Column("is_featured")]
     public bool IsFeatured { get; set; }
+
+    // Seller relationship
+    [Required]
+    [Column("seller_id")]
+    public int SellerId { get; set; }
+
+    // Constrained attributes
+    [MaxLength(50)]
+    [Column("color")]
+    public string? Color { get; set; }
+
+    [MaxLength(50)]
+    [Column("size")]
+    public string? Size { get; set; }
+
+    // Navigation property for seller
+    public SellerEntity Seller { get; set; } = null!;
+
+    // Product variations (for different colors/sizes)
+    [Column("variations")]
+    public List<ProductVariationEntity> Variations { get; set; } = [];
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

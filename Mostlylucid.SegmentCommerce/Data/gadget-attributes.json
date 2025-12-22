@@ -1,0 +1,580 @@
+{
+  "tech": {
+    "displayName": "Technology",
+    "subcategories": {
+      "audio": {
+        "sizes": [
+          "bookshelf",
+          "lavalier",
+          "portable",
+          "wireless system"
+        ],
+        "shapes": [
+          "bone-conduction",
+          "dynamic",
+          "earbuds",
+          "in-ear",
+          "on-ear",
+          "over-ear",
+          "party speaker",
+          "shotgun",
+          "smart speaker",
+          "soundbar",
+          "USB condenser"
+        ],
+        "colours": [
+          "Arctic White",
+          "Charcoal",
+          "Copper",
+          "Cream",
+          "Crimson",
+          "Forest Green",
+          "Graphite",
+          "Gunmetal",
+          "Matte Black",
+          "Midnight Black",
+          "Navy Blue",
+          "Rose Gold",
+          "Sand",
+          "Silver",
+          "Space Grey",
+          "Teal",
+          "White"
+        ]
+      },
+      "computing": {
+        "sizes": [
+          "1080p",
+          "24-inch",
+          "27-inch",
+          "32-inch",
+          "4K",
+          "compact 60%",
+          "external HDD",
+          "flash drive",
+          "mechanical",
+          "NVMe enclosure",
+          "portable",
+          "portable SSD",
+          "split",
+          "TKL",
+          "trackball",
+          "travel",
+          "ultrawide",
+          "vertical",
+          "wide-angle"
+        ],
+        "shapes": [
+          "ergonomic",
+          "gaming",
+          "membrane",
+          "memory card",
+          "PTZ",
+          "streaming"
+        ],
+        "colours": [
+          "Black",
+          "Blue",
+          "Coral",
+          "Graphite",
+          "Green",
+          "Lavender",
+          "Magenta",
+          "Mercury",
+          "Navy",
+          "Olive",
+          "Orange",
+          "Pink",
+          "Silver",
+          "Space Grey",
+          "White"
+        ]
+      },
+      "mobile": {
+        "sizes": [
+          "clear",
+          "gimbal",
+          "ring holder",
+          "slim",
+          "wall charger",
+          "wallet",
+          "wireless pad"
+        ],
+        "shapes": [
+          "battery case",
+          "car charger",
+          "car mount",
+          "charging station",
+          "desk stand",
+          "power bank",
+          "rugged",
+          "tripod"
+        ],
+        "colours": [
+          "Black",
+          "Burgundy",
+          "Clear",
+          "Forest",
+          "Gold",
+          "Lavender",
+          "Mint",
+          "Navy",
+          "Pacific Blue",
+          "Peach",
+          "Rose Gold",
+          "Sand",
+          "Silver",
+          "Space Grey",
+          "White"
+        ]
+      },
+      "wearables": {
+        "sizes": [
+          "clip-on",
+          "luxury"
+        ],
+        "shapes": [
+          "AR",
+          "audio",
+          "band",
+          "camera",
+          "chest strap",
+          "fashion",
+          "fitness-focused",
+          "hybrid",
+          "kids",
+          "ring",
+          "rugged outdoor",
+          "sport"
+        ],
+        "colours": [
+          "Black",
+          "Clear",
+          "Coral",
+          "Gold",
+          "Matte Black",
+          "Midnight",
+          "Navy",
+          "Neon Green",
+          "Olive",
+          "Purple",
+          "Rose Gold",
+          "Silver",
+          "Starlight",
+          "Teal",
+          "Tortoise",
+          "White"
+        ]
+      },
+      "smart-home": {
+        "sizes": [
+          "10-inch",
+          "15-inch",
+          "5-inch",
+          "8-inch",
+          "doorbell",
+          "filament",
+          "floodlight",
+          "learning",
+          "pan-tilt",
+          "programmable",
+          "simple",
+          "single",
+          "spotlight",
+          "standard",
+          "strip",
+          "zone control"
+        ],
+        "shapes": [
+          "energy monitoring",
+          "indoor",
+          "mini",
+          "outdoor",
+          "photo-frame",
+          "power strip",
+          "sensor"
+        ],
+        "colours": [
+          "Black",
+          "Blue",
+          "Brass",
+          "Bronze",
+          "Charcoal",
+          "Cool White",
+          "Copper",
+          "Coral",
+          "Daylight",
+          "Grey",
+          "RGB",
+          "Sand",
+          "Stainless",
+          "Tunable White",
+          "Warm White",
+          "White"
+        ]
+      }
+    }
+  },
+  "fashion": {
+    "displayName": "Fashion",
+    "subcategories": {
+      "accessories": {
+        "sizes": [
+          "bifold",
+          "card holder",
+          "casual",
+          "duffel",
+          "minimalist",
+          "money clip",
+          "reversible",
+          "travel wallet",
+          "trifold"
+        ],
+        "shapes": [
+          "aviator",
+          "backpack",
+          "braided",
+          "cat-eye",
+          "chronograph",
+          "crossbody",
+          "dive",
+          "dress",
+          "messenger",
+          "round",
+          "sport",
+          "stretch",
+          "tote",
+          "wayfarer"
+        ],
+        "colours": [
+          "Black",
+          "Black PVD",
+          "Brown",
+          "Burgundy",
+          "Cognac",
+          "Crystal",
+          "Gold",
+          "Grey",
+          "Havana",
+          "Navy",
+          "Olive",
+          "Rose Gold",
+          "Silver",
+          "Tan",
+          "Tortoise",
+          "Two-Tone"
+        ]
+      },
+      "footwear": {
+        "sizes": [
+          "chelsea",
+          "chukka",
+          "lifestyle",
+          "slip-on"
+        ],
+        "shapes": [
+          "combat",
+          "dress",
+          "high-top",
+          "hiking",
+          "retro",
+          "running"
+        ],
+        "colours": [
+          "Black",
+          "Brown",
+          "Burgundy",
+          "Grey",
+          "Multi",
+          "Navy",
+          "Olive",
+          "Red",
+          "Tan",
+          "White"
+        ]
+      }
+    }
+  },
+  "home": {
+    "displayName": "Home & Living",
+    "subcategories": {
+      "office": {
+        "sizes": [
+          "balance ball",
+          "cable management",
+          "clip-on",
+          "kneeling",
+          "laptop stand",
+          "LED"
+        ],
+        "shapes": [
+          "ambient",
+          "architect",
+          "desk mat",
+          "desk organiser",
+          "ergonomic",
+          "executive",
+          "monitor stand",
+          "smart",
+          "task"
+        ],
+        "colours": [
+          "Black",
+          "Blue",
+          "Brown",
+          "Gold",
+          "Grey",
+          "Natural Wood",
+          "Rose Gold",
+          "Silver",
+          "Walnut",
+          "White"
+        ]
+      },
+      "kitchen": {
+        "sizes": [
+          "cold brew",
+          "electric",
+          "immersion",
+          "personal",
+          "portable",
+          "travel"
+        ],
+        "shapes": [
+          "countertop",
+          "drip",
+          "espresso",
+          "french press",
+          "gooseneck",
+          "high-performance",
+          "pour over",
+          "smart",
+          "stovetop"
+        ],
+        "colours": [
+          "Black",
+          "Copper",
+          "Matte Black",
+          "Mint",
+          "Red",
+          "Sage Green",
+          "Silver",
+          "Stainless",
+          "White"
+        ]
+      },
+      "lighting": {
+        "sizes": [
+          "rechargeable"
+        ],
+        "shapes": [
+          "accent",
+          "arc",
+          "bedside",
+          "desk",
+          "reading",
+          "smart",
+          "torchiere",
+          "touch",
+          "tripod"
+        ],
+        "colours": [
+          "Black",
+          "Blush",
+          "Brass",
+          "Chrome",
+          "Navy",
+          "Sage",
+          "Terracotta",
+          "White",
+          "Wood"
+        ]
+      }
+    }
+  },
+  "sport": {
+    "displayName": "Sports & Fitness",
+    "subcategories": {
+      "fitness-equipment": {
+        "sizes": [
+          "adjustable",
+          "alignment",
+          "figure-8",
+          "half-round",
+          "loop",
+          "travel"
+        ],
+        "shapes": [
+          "cork",
+          "fabric",
+          "fixed",
+          "hex",
+          "neoprene",
+          "smart",
+          "standard",
+          "textured",
+          "therapy",
+          "thick cushion",
+          "tube",
+          "vibrating"
+        ],
+        "colours": [
+          "Black",
+          "Black/Chrome",
+          "Blue",
+          "Green",
+          "Grey",
+          "Multi-colour set",
+          "Neoprene Multi",
+          "Orange",
+          "Pink",
+          "Purple"
+        ]
+      },
+      "hydration": {
+        "sizes": [
+          "classic",
+          "collapsible",
+          "electric",
+          "filtered",
+          "glass",
+          "insulated",
+          "multi-compartment"
+        ],
+        "shapes": [
+          "smart",
+          "sport"
+        ],
+        "colours": [
+          "Black",
+          "Blue",
+          "Clear/Black",
+          "Coral",
+          "Green",
+          "Grey",
+          "Lilac",
+          "Mint",
+          "Navy",
+          "Pink",
+          "White"
+        ]
+      }
+    }
+  },
+  "books": {
+    "displayName": "Books & Media",
+    "subcategories": {
+      "e-readers": {
+        "sizes": [
+          "colour"
+        ],
+        "shapes": [
+          "basic",
+          "note-taking",
+          "paperwhite",
+          "premium"
+        ],
+        "colours": [
+          "Black",
+          "Denim",
+          "Rose",
+          "Sage",
+          "White"
+        ]
+      },
+      "reading-accessories": {
+        "sizes": [
+          "adjustable",
+          "clip-on",
+          "dual-head",
+          "leather",
+          "metal",
+          "page holder",
+          "page-clip",
+          "rechargeable"
+        ],
+        "shapes": [
+          "amber",
+          "bed",
+          "cookbook",
+          "corner",
+          "desktop",
+          "magnetic",
+          "neck"
+        ],
+        "colours": [
+          "Black",
+          "Copper",
+          "Gold",
+          "Natural",
+          "Rose Gold",
+          "Silver",
+          "Walnut",
+          "White"
+        ]
+      }
+    }
+  },
+  "food": {
+    "displayName": "Food & Drink",
+    "subcategories": {
+      "coffee-tea": {
+        "sizes": [
+          "ball",
+          "blade",
+          "bottle",
+          "cold foam",
+          "handheld",
+          "manual",
+          "travel",
+          "travel mug"
+        ],
+        "shapes": [
+          "automatic",
+          "basket",
+          "burr",
+          "jug",
+          "smart",
+          "steam",
+          "teapot"
+        ],
+        "colours": [
+          "Black",
+          "Clear",
+          "Copper",
+          "Red",
+          "Rose Gold",
+          "Silver",
+          "Stainless",
+          "White"
+        ]
+      },
+      "food-storage": {
+        "sizes": [
+          "commercial",
+          "glass set",
+          "handheld",
+          "meal prep",
+          "plastic set"
+        ],
+        "shapes": [
+          "chamber",
+          "compact",
+          "countertop",
+          "snack",
+          "vacuum"
+        ],
+        "colours": [
+          "Amber",
+          "Black",
+          "Clear/Blue",
+          "Clear/Green",
+          "Clear/Grey",
+          "Red",
+          "Silver",
+          "White"
+        ]
+      }
+    }
+  }
+}

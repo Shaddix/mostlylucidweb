@@ -11,9 +11,11 @@ public class SegmentCommerceDbContext : DbContext
     {
     }
 
-    // Core entities
+// Core entities
     public DbSet<ProductEntity> Products => Set<ProductEntity>();
     public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
+    public DbSet<ProductVariationEntity> ProductVariations => Set<ProductVariationEntity>();
+    public DbSet<SellerEntity> Sellers => Set<SellerEntity>();
     public DbSet<VisitorProfileEntity> VisitorProfiles => Set<VisitorProfileEntity>();
     public DbSet<InteractionEventEntity> InteractionEvents => Set<InteractionEventEntity>();
 
@@ -38,17 +40,68 @@ public class SegmentCommerceDbContext : DbContext
 
         // Enable pgvector extension
         modelBuilder.HasPostgresExtension("vector");
+        modelBuilder.HasPostgresExtension("ltree");
 
-        // Product configuration
+// Product configuration
         modelBuilder.Entity<ProductEntity>(entity =>
         {
             entity.HasIndex(e => e.Category);
             entity.HasIndex(e => e.IsTrending);
             entity.HasIndex(e => e.IsFeatured);
+            entity.HasIndex(e => e.CategoryPath).HasMethod("gist");
+
+            entity.Property(e => e.CategoryPath)
+                .HasColumnType("ltree");
 
             // Configure Tags as a PostgreSQL array
             entity.Property(e => e.Tags)
                 .HasColumnType("text[]");
+        });
+
+        // Product variation configuration
+        modelBuilder.Entity<ProductVariationEntity>(entity =>
+        {
+            entity.HasIndex(e => e.ProductId);
+            entity.HasIndex(e => e.Color);
+            entity.HasIndex(e => e.Size);
+            entity.HasIndex(e => new { e.ProductId, e.Color, e.Size }).IsUnique();
+
+            entity.Property(e => e.Color)
+                .IsRequired();
+
+            entity.Property(e => e.Size)
+                .IsRequired();
+
+            entity.Property(e => e.StockQuantity)
+                .HasDefaultValue(0);
+
+            // Configure relationship with Product
+            entity.HasOne(e => e.Product)
+                .WithMany(p => p.Variations)
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Seller configuration
+        modelBuilder.Entity<SellerEntity>(entity =>
+        {
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+
+            entity.Property(e => e.Rating)
+                .HasDefaultValue(0.0);
+
+            entity.Property(e => e.ReviewCount)
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.IsVerified)
+                .HasDefaultValue(false);
+
+            // Configure relationship with Products
+            entity.HasMany(e => e.Products)
+                .WithOne(p => p.Seller)
+                .HasForeignKey(p => p.SellerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Category configuration

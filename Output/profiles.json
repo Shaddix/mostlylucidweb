@@ -1,0 +1,1652 @@
+[
+  {
+    "profile_key": "1ad92f51c985f53a8421bb211ae50b9e920b98ba6cc714d8d3d0468f8b8b640a",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.63
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.22
+      }
+    ],
+    "interests": {
+      "food": 0.87,
+      "home": 0.66,
+      "books": 0.59
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.7
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.87
+      },
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.53
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.33
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.47
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "purchase",
+        "category": "books",
+        "weight": 0.59
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\1ad92f51c985f53a8421bb211ae50b9e920b98ba6cc714d8d3d0468f8b8b640a\\portrait.png",
+    "display_name": "Riley Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 35,
+    "birth_date": "1990-08-30T13:39:09.73543Z",
+    "likes": [
+      "food",
+      "home",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "720a5364cc9fe8fe6381e3be06419f44c149542c0ffe44982035c11ee2f43e3c",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.51
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.15
+      }
+    ],
+    "interests": {
+      "home": 0.76,
+      "books": 0.38,
+      "food": 0.24,
+      "sport": 0.28
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.61
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.38
+      },
+      {
+        "signal_type": "purchase",
+        "category": "home",
+        "weight": 0.76
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.19
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.19
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.12
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.22
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.14
+      },
+      {
+        "signal_type": "purchase",
+        "category": "sport",
+        "weight": 0.28
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\720a5364cc9fe8fe6381e3be06419f44c149542c0ffe44982035c11ee2f43e3c\\portrait.png",
+    "display_name": "Jamie Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 23,
+    "birth_date": "2002-07-14T13:39:09.7383624Z",
+    "likes": [
+      "home",
+      "books",
+      "sport"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "351b5376db9790ac218ec6974a42d0c7e19ca50a9ea2e1f41976c0a672c49f9f",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.97
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.3
+      }
+    ],
+    "interests": {
+      "food": 0.7,
+      "books": 0.63,
+      "sport": 0.85
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.56
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.35
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.5
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.32
+      },
+      {
+        "signal_type": "purchase",
+        "category": "books",
+        "weight": 0.63
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.68
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.42
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\351b5376db9790ac218ec6974a42d0c7e19ca50a9ea2e1f41976c0a672c49f9f\\portrait.png",
+    "display_name": "Taylor Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 31,
+    "birth_date": "1994-06-27T13:39:09.7383727Z",
+    "likes": [
+      "sport",
+      "food",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "94e5278c865a5c698824bb2eb04b3581c73f9d084949f4d1c187bdd0a7ae2c0d",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.42
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.42
+      }
+    ],
+    "interests": {
+      "food": 0.87,
+      "books": 0.71,
+      "fashion": 0.26
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.7
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.87
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.57
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.21
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.13
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.26
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\94e5278c865a5c698824bb2eb04b3581c73f9d084949f4d1c187bdd0a7ae2c0d\\portrait.png",
+    "display_name": "Casey Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 40,
+    "birth_date": "1985-10-29T13:39:09.7383751Z",
+    "likes": [
+      "food",
+      "books",
+      "fashion"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "c3af785a1e23d53b86001af3401968674d8f415675342d51fa11a01706bbe1a7",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.39
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.05
+      }
+    ],
+    "interests": {
+      "tech": 0.55,
+      "fashion": 0.71,
+      "books": 0.58,
+      "food": 0.54
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.28
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.57
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.46
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.29
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.43
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.27
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\c3af785a1e23d53b86001af3401968674d8f415675342d51fa11a01706bbe1a7\\portrait.png",
+    "display_name": "Riley Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 23,
+    "birth_date": "2002-08-20T13:39:09.7383764Z",
+    "likes": [
+      "fashion",
+      "books",
+      "tech"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "3298d60eac455f4ca4dbf800f29239699ba8f77995e85881222b6641f5ada47d",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.04
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.31
+      }
+    ],
+    "interests": {
+      "tech": 0.73,
+      "sport": 0.49
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.58
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.73
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.39
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.24
+      },
+      {
+        "signal_type": "purchase",
+        "category": "sport",
+        "weight": 0.49
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\3298d60eac455f4ca4dbf800f29239699ba8f77995e85881222b6641f5ada47d\\portrait.png",
+    "display_name": "Jamie Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 59,
+    "birth_date": "1966-10-11T13:39:09.738378Z",
+    "likes": [
+      "tech",
+      "sport"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "887afa9e3ee28df2681af25f757ea33bee80c33e74da444b9ec1819e5642ca3b",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.15
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.61
+      }
+    ],
+    "interests": {
+      "home": 0.76,
+      "books": 0.53,
+      "sport": 0.75
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.61
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.38
+      },
+      {
+        "signal_type": "purchase",
+        "category": "home",
+        "weight": 0.76
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.42
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.26
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.6
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.38
+      },
+      {
+        "signal_type": "purchase",
+        "category": "sport",
+        "weight": 0.75
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\887afa9e3ee28df2681af25f757ea33bee80c33e74da444b9ec1819e5642ca3b\\portrait.png",
+    "display_name": "Riley Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 30,
+    "birth_date": "1995-11-20T13:39:09.738379Z",
+    "likes": [
+      "home",
+      "sport",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "e52d3872db46985db3a44a1291f29be248720b948f9640e97e0316934549d430",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.17
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.9
+      }
+    ],
+    "interests": {
+      "home": 0.55,
+      "tech": 0.4,
+      "food": 0.65
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.28
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.32
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.2
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.4
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.52
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.32
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.65
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\e52d3872db46985db3a44a1291f29be248720b948f9640e97e0316934549d430\\portrait.png",
+    "display_name": "Alex Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 46,
+    "birth_date": "1980-01-11T13:39:09.7383802Z",
+    "likes": [
+      "food",
+      "home",
+      "tech"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "47e83ee153969bc52558d90e5b7df3e2e7fe909d4b7fbd31920221eda5a6d68c",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.34
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.05
+      }
+    ],
+    "interests": {
+      "home": 0.16,
+      "tech": 0.79,
+      "food": 0.61,
+      "sport": 0.85
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.13
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.08
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.63
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.4
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.49
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.61
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.68
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.42
+      },
+      {
+        "signal_type": "purchase",
+        "category": "sport",
+        "weight": 0.85
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\47e83ee153969bc52558d90e5b7df3e2e7fe909d4b7fbd31920221eda5a6d68c\\portrait.png",
+    "display_name": "Casey Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 41,
+    "birth_date": "1984-10-07T13:39:09.7383862Z",
+    "likes": [
+      "sport",
+      "tech",
+      "food"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "b68ed80d68ea74322170c5e52db5cfc9a9febc758ebb8082b70573ccb92f99cf",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.78
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.08
+      }
+    ],
+    "interests": {
+      "tech": 0.73,
+      "books": 0.67
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.58
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.54
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.34
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\b68ed80d68ea74322170c5e52db5cfc9a9febc758ebb8082b70573ccb92f99cf\\portrait.png",
+    "display_name": "Alex Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 54,
+    "birth_date": "1972-03-14T13:39:09.7383879Z",
+    "likes": [
+      "tech",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "0a61ed7ab8e516c90892e36b68296899ef327852e2ea44b15a0517fa182b2585",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.62
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.01
+      }
+    ],
+    "interests": {
+      "home": 0.23,
+      "food": 0.3
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.18
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.12
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.24
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.15
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\0a61ed7ab8e516c90892e36b68296899ef327852e2ea44b15a0517fa182b2585\\portrait.png",
+    "display_name": "Taylor Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 55,
+    "birth_date": "1971-02-27T13:39:09.7383899Z",
+    "likes": [
+      "food",
+      "home"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "2a33c5da841fe2e533c8213ea80bf79c1a1a5b2e8f5236fa2c7b9e03da37ced1",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.02
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.02
+      }
+    ],
+    "interests": {
+      "home": 0.37,
+      "fashion": 0.49
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.18
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.39
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.24
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.49
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\2a33c5da841fe2e533c8213ea80bf79c1a1a5b2e8f5236fa2c7b9e03da37ced1\\portrait.png",
+    "display_name": "Jordan Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 40,
+    "birth_date": "1985-09-19T13:39:09.7383925Z",
+    "likes": [
+      "fashion",
+      "home"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "19438faed90f633039d10496f09e51284229458d0d0d944aad30ddb135241e8a",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.13
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.61
+      }
+    ],
+    "interests": {
+      "books": 0.31,
+      "tech": 0.39
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.25
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.16
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.31
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.2
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\19438faed90f633039d10496f09e51284229458d0d0d944aad30ddb135241e8a\\portrait.png",
+    "display_name": "Taylor Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 37,
+    "birth_date": "1989-04-13T13:39:09.7383938Z",
+    "likes": [
+      "tech",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "8a3c3d4b7a882bd2ca38dc00ce0f05c04f0e88c6a62a8012a8082c95c79e9fa9",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.53
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.84
+      }
+    ],
+    "interests": {
+      "food": 0.35,
+      "sport": 0.73,
+      "tech": 0.31,
+      "fashion": 0.55
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.28
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.18
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.58
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.25
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.16
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.28
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\8a3c3d4b7a882bd2ca38dc00ce0f05c04f0e88c6a62a8012a8082c95c79e9fa9\\portrait.png",
+    "display_name": "Cameron Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 31,
+    "birth_date": "1995-03-16T13:39:09.7383951Z",
+    "likes": [
+      "sport",
+      "fashion",
+      "food"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "c12af94eaa7441f890007bcc5af709d77b6239c8ea5b90413dd85d9c36e6299d",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.72
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.67
+      }
+    ],
+    "interests": {
+      "fashion": 0.74,
+      "home": 0.37,
+      "food": 0.16
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.59
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.37
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.74
+      },
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.18
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.13
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.08
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.16
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\c12af94eaa7441f890007bcc5af709d77b6239c8ea5b90413dd85d9c36e6299d\\portrait.png",
+    "display_name": "Alex Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 47,
+    "birth_date": "1978-12-10T13:39:09.7383977Z",
+    "likes": [
+      "fashion",
+      "home",
+      "food"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "1dd6314143cc6e19282cd02fda74e3841c94a8c57a637b487a0241e0dfd9a8ee",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.68
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.47
+      }
+    ],
+    "interests": {
+      "home": 0.1,
+      "tech": 0.24
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.08
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.05
+      },
+      {
+        "signal_type": "purchase",
+        "category": "home",
+        "weight": 0.1
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.19
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.12
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\1dd6314143cc6e19282cd02fda74e3841c94a8c57a637b487a0241e0dfd9a8ee\\portrait.png",
+    "display_name": "Riley Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 25,
+    "birth_date": "2001-02-03T13:39:09.7384Z",
+    "likes": [
+      "tech",
+      "home"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "72bd14c209e2f59bc0245df32fb94b54ce46987c267b097aae8cbbe3f35fe22f",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.48
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.44
+      }
+    ],
+    "interests": {
+      "home": 0.79,
+      "fashion": 0.22,
+      "books": 0.84,
+      "sport": 0.44
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.63
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.4
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.18
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.11
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.22
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.67
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.42
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.35
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.22
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\72bd14c209e2f59bc0245df32fb94b54ce46987c267b097aae8cbbe3f35fe22f\\portrait.png",
+    "display_name": "Riley Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 54,
+    "birth_date": "1971-10-29T13:39:09.7384009Z",
+    "likes": [
+      "books",
+      "home",
+      "sport"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "b8863b5b2b5ebfd3fbf20279c00ea3b5094efa16ac370bf8b8f356e8cbc83b18",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.79
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.84
+      }
+    ],
+    "interests": {
+      "fashion": 0.54,
+      "food": 0.63,
+      "books": 0.45,
+      "tech": 0.29
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.43
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.27
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.5
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.32
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.36
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.22
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.23
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.14
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.29
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\b8863b5b2b5ebfd3fbf20279c00ea3b5094efa16ac370bf8b8f356e8cbc83b18\\portrait.png",
+    "display_name": "Taylor Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 45,
+    "birth_date": "1981-04-05T13:39:09.7384024Z",
+    "likes": [
+      "food",
+      "fashion",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "7db0751b931b3b4ebc6b477f942ec0a52b15f4107daf0c756adbd3ee985152bc",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.59
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.26
+      }
+    ],
+    "interests": {
+      "sport": 0.88,
+      "tech": 0.66,
+      "home": 0.55,
+      "fashion": 0.48
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.7
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "purchase",
+        "category": "sport",
+        "weight": 0.88
+      },
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.53
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.33
+      },
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.44
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.28
+      },
+      {
+        "signal_type": "purchase",
+        "category": "home",
+        "weight": 0.55
+      },
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.38
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.24
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.48
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\7db0751b931b3b4ebc6b477f942ec0a52b15f4107daf0c756adbd3ee985152bc\\portrait.png",
+    "display_name": "Casey Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 53,
+    "birth_date": "1972-12-06T13:39:09.7384035Z",
+    "likes": [
+      "sport",
+      "tech",
+      "home"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "cef390eca9daab0589f5b12e705b6d418ffaf3768b33b717128c347b868bf3e0",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.43
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.51
+      }
+    ],
+    "interests": {
+      "tech": 0.52,
+      "home": 0.8,
+      "sport": 0.36
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.42
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.26
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.52
+      },
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.64
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.4
+      },
+      {
+        "signal_type": "product_view",
+        "category": "sport",
+        "weight": 0.29
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "sport",
+        "weight": 0.18
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\cef390eca9daab0589f5b12e705b6d418ffaf3768b33b717128c347b868bf3e0\\portrait.png",
+    "display_name": "Alex Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 37,
+    "birth_date": "1989-02-06T13:39:09.7384072Z",
+    "likes": [
+      "home",
+      "tech",
+      "sport"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "9167182f3470459ae66131114427bcd25fa7c02c24c265e0fbde3e1022a3a85d",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.96
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.07
+      }
+    ],
+    "interests": {
+      "tech": 0.38,
+      "food": 0.35
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.19
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.38
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.28
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.18
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\9167182f3470459ae66131114427bcd25fa7c02c24c265e0fbde3e1022a3a85d\\portrait.png",
+    "display_name": "Jordan Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 38,
+    "birth_date": "1988-03-24T13:39:09.7384083Z",
+    "likes": [
+      "tech",
+      "food"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "1a1bcd0b7b234d85e43af9f0a1f88a26f2609396c84265d235ea46cc4f7fe0ea",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.71
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.6
+      }
+    ],
+    "interests": {
+      "tech": 0.74,
+      "books": 0.68
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "tech",
+        "weight": 0.59
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "tech",
+        "weight": 0.37
+      },
+      {
+        "signal_type": "purchase",
+        "category": "tech",
+        "weight": 0.74
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.54
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.34
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\1a1bcd0b7b234d85e43af9f0a1f88a26f2609396c84265d235ea46cc4f7fe0ea\\portrait.png",
+    "display_name": "Riley Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 59,
+    "birth_date": "1967-03-04T13:39:09.7384093Z",
+    "likes": [
+      "tech",
+      "books"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "23317ce6a9995963839b1e6acb8b948ed71a471506ebefe3a473a5ccdef06895",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.77
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.32
+      }
+    ],
+    "interests": {
+      "fashion": 0.58,
+      "food": 0.74
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "fashion",
+        "weight": 0.46
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "fashion",
+        "weight": 0.29
+      },
+      {
+        "signal_type": "purchase",
+        "category": "fashion",
+        "weight": 0.58
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.59
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.37
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\23317ce6a9995963839b1e6acb8b948ed71a471506ebefe3a473a5ccdef06895\\portrait.png",
+    "display_name": "Jordan Lee",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 57,
+    "birth_date": "1968-07-14T13:39:09.7384103Z",
+    "likes": [
+      "food",
+      "fashion"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  },
+  {
+    "profile_key": "7ab4b1d86341181eb58d6652e4785ba59512258ce1476ba2023d9b79d899f56b",
+    "segments": [
+      {
+        "name": "value_shopper",
+        "score": 0.56
+      },
+      {
+        "name": "brand_loyal",
+        "score": 0.5
+      }
+    ],
+    "interests": {
+      "home": 0.59,
+      "books": 0.49,
+      "food": 0.25
+    },
+    "signals": [
+      {
+        "signal_type": "product_view",
+        "category": "home",
+        "weight": 0.47
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "home",
+        "weight": 0.3
+      },
+      {
+        "signal_type": "product_view",
+        "category": "books",
+        "weight": 0.39
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "books",
+        "weight": 0.24
+      },
+      {
+        "signal_type": "product_view",
+        "category": "food",
+        "weight": 0.2
+      },
+      {
+        "signal_type": "add_to_cart",
+        "category": "food",
+        "weight": 0.12
+      },
+      {
+        "signal_type": "purchase",
+        "category": "food",
+        "weight": 0.25
+      }
+    ],
+    "profile_image_path": "./Output/images\\profile-images\\7ab4b1d86341181eb58d6652e4785ba59512258ce1476ba2023d9b79d899f56b\\portrait.png",
+    "display_name": "Taylor Smith",
+    "bio": "Privacy-first shopper exploring curated picks.",
+    "age": 25,
+    "birth_date": "2001-01-01T13:39:09.7384113Z",
+    "likes": [
+      "home",
+      "books",
+      "food"
+    ],
+    "dislikes": [
+      "pushy upsells",
+      "slow shipping"
+    ]
+  }
+]

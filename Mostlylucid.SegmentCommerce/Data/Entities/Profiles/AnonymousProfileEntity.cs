@@ -30,6 +30,29 @@ public class AnonymousProfileEntity
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [MaxLength(500)]
+    [Column("profile_image_url")]
+    public string? ProfileImageUrl { get; set; }
+
+    [MaxLength(150)]
+    [Column("display_name")]
+    public string? DisplayName { get; set; }
+
+    [Column("bio")]
+    public string? Bio { get; set; }
+
+    [Column("age")]
+    public int? Age { get; set; }
+
+    [Column("birth_date")]
+    public DateTime? BirthDate { get; set; }
+
+    [Column("likes", TypeName = "jsonb")]
+    public List<string>? Likes { get; set; }
+
+    [Column("dislikes", TypeName = "jsonb")]
+    public List<string>? Dislikes { get; set; }
+
     public ICollection<ProfileKeyEntity> Keys { get; set; } = new List<ProfileKeyEntity>();
 
     public ICollection<SessionProfileEntity> Sessions { get; set; } = new List<SessionProfileEntity>();

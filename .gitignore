@@ -288,3 +288,6 @@ mlmodels/
 *.duckdb
 *.constraints.json
 /*.csv
+/Output/
+nul
+/Mostlylucid.SegmentCommerce.SampleData/Output/

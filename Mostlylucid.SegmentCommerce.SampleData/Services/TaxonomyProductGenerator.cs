@@ -165,7 +165,7 @@ public class TaxonomyProductGenerator
             """;
 
         return $"""
-            You are a product copywriter for a premium e-commerce store. Enhance these {category.DisplayName} product listings with more compelling, unique descriptions.
+            You are a product copywriter for an e-commerce marketplace with products ranging from budget to premium. Enhance these {category.DisplayName} product listings with more compelling, unique descriptions that match their quality level.
 
             Category: {category.DisplayName}
             Description: {category.Description}
