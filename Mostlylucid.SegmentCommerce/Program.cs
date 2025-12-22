@@ -32,6 +32,9 @@ builder.Services.RegisterApplicationServices();
 
 builder.Services.RegisterQueueServices();
 
+// Client fingerprint (zero-cookie session identification)
+builder.Services.AddClientFingerprint(builder.Configuration);
+
 var ollamaUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
 builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client =>
 {

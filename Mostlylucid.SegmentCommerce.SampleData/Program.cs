@@ -66,6 +66,12 @@ app.Configure(cfg =>
 
     cfg.AddCommand<StatusCommand>("status")
         .WithDescription("Check the status of required services (Ollama, ComfyUI, PostgreSQL)");
+
+    cfg.AddCommand<ClearCommand>("clear")
+        .WithDescription("Clear all data from the database")
+        .WithExample("clear", "--confirm")
+        .WithExample("clear", "--keep-categories")
+        .WithExample("clear", "--connection", "Host=localhost;...");
 });
 
 // Register dependencies using type registrar

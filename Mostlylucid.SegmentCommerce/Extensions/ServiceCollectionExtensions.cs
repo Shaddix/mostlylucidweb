@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Mostlylucid.SegmentCommerce.ClientFingerprint;
 using Mostlylucid.SegmentCommerce.Services;
 using Mostlylucid.SegmentCommerce.Services.Attributes;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
@@ -66,6 +67,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInterestTrackingService, InterestTrackingService>();
         services.AddScoped<ICartService, CartService>();
         services.AddHttpContextAccessor();
+        
+        return services;
+    }
+
+    public static IServiceCollection AddClientFingerprint(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<ClientFingerprintConfig>(
+            configuration.GetSection(ClientFingerprintConfig.SectionName));
+        
+        services.AddSingleton<IClientFingerprintService, ClientFingerprintService>();
         
         return services;
     }

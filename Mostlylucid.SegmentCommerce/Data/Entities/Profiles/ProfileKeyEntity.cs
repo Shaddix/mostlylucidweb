@@ -3,6 +3,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 
+/// <summary>
+/// Alternate identification keys for a persistent profile.
+/// Allows merging profiles when user upgrades identification (e.g., fingerprint → login).
+/// </summary>
 [Table("profile_keys")]
 public class ProfileKeyEntity
 {
@@ -14,25 +18,31 @@ public class ProfileKeyEntity
     public Guid ProfileId { get; set; }
 
     [ForeignKey(nameof(ProfileId))]
-    public AnonymousProfileEntity Profile { get; set; } = null!;
+    public PersistentProfileEntity Profile { get; set; } = null!;
 
+    /// <summary>
+    /// The identification key (fingerprint hash, cookie ID, or user ID).
+    /// </summary>
     [Required]
     [MaxLength(256)]
-    [Column("key_hash")]
-    public string KeyHash { get; set; } = string.Empty;
+    [Column("key_value")]
+    public string KeyValue { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(50)]
-    [Column("derivation_method")]
-    public string DerivationMethod { get; set; } = string.Empty;
+    /// <summary>
+    /// Type of identification.
+    /// </summary>
+    [Column("key_type")]
+    public ProfileIdentificationMode KeyType { get; set; }
 
-    [MaxLength(200)]
-    [Column("source_hint")]
-    public string? SourceHint { get; set; }
-
+    /// <summary>
+    /// Whether this is the primary key for the profile.
+    /// </summary>
     [Column("is_primary")]
     public bool IsPrimary { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("last_used_at")]
+    public DateTime LastUsedAt { get; set; } = DateTime.UtcNow;
 }

@@ -11,24 +11,34 @@ public class SegmentCommerceDbContext : DbContext
     {
     }
 
+    // Products & Catalog
     public DbSet<ProductEntity> Products => Set<ProductEntity>();
     public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
     public DbSet<ProductVariationEntity> ProductVariations => Set<ProductVariationEntity>();
     public DbSet<SellerEntity> Sellers => Set<SellerEntity>();
-    public DbSet<VisitorProfileEntity> VisitorProfiles => Set<VisitorProfileEntity>();
-    public DbSet<InteractionEventEntity> InteractionEvents => Set<InteractionEventEntity>();
     public DbSet<TaxonomyNodeEntity> TaxonomyNodes => Set<TaxonomyNodeEntity>();
     public DbSet<ProductTaxonomyEntity> ProductTaxonomy => Set<ProductTaxonomyEntity>();
+
+    // Stores
     public DbSet<StoreEntity> Stores => Set<StoreEntity>();
     public DbSet<StoreUserEntity> StoreUsers => Set<StoreUserEntity>();
     public DbSet<StoreProductEntity> StoreProducts => Set<StoreProductEntity>();
+
+    // Profiles (Zero PII)
     public DbSet<SessionProfileEntity> SessionProfiles => Set<SessionProfileEntity>();
-    public DbSet<AnonymousProfileEntity> AnonymousProfiles => Set<AnonymousProfileEntity>();
+    public DbSet<PersistentProfileEntity> PersistentProfiles => Set<PersistentProfileEntity>();
     public DbSet<ProfileKeyEntity> ProfileKeys => Set<ProfileKeyEntity>();
-    public DbSet<InterestScoreEntity> InterestScores => Set<InterestScoreEntity>();
     public DbSet<SignalEntity> Signals => Set<SignalEntity>();
+
+    // Legacy (to be migrated)
+    public DbSet<VisitorProfileEntity> VisitorProfiles => Set<VisitorProfileEntity>();
+    public DbSet<InteractionEventEntity> InteractionEvents => Set<InteractionEventEntity>();
+
+    // Embeddings
     public DbSet<ProductEmbeddingEntity> ProductEmbeddings => Set<ProductEmbeddingEntity>();
     public DbSet<InterestEmbeddingEntity> InterestEmbeddings => Set<InterestEmbeddingEntity>();
+
+    // Queue
     public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
     public DbSet<JobQueueEntity> JobQueue => Set<JobQueueEntity>();
 
@@ -39,6 +49,7 @@ public class SegmentCommerceDbContext : DbContext
         modelBuilder.HasPostgresExtension("vector");
         modelBuilder.HasPostgresExtension("ltree");
 
+        // ============ PRODUCTS ============
         modelBuilder.Entity<ProductEntity>(entity =>
         {
             entity.HasIndex(e => e.Category);
@@ -115,6 +126,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => new { e.ProductId, e.TaxonomyNodeId }).IsUnique();
         });
 
+        // ============ STORES ============
         modelBuilder.Entity<StoreEntity>(entity =>
         {
             entity.HasIndex(e => e.Slug).IsUnique();
@@ -130,6 +142,64 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => new { e.StoreId, e.UserId }).IsUnique();
         });
 
+        // ============ PROFILES (ZERO PII) ============
+        modelBuilder.Entity<SessionProfileEntity>(entity =>
+        {
+            entity.HasIndex(e => e.SessionKey).IsUnique();
+            entity.HasIndex(e => e.PersistentProfileId);
+            entity.HasIndex(e => e.ExpiresAt);
+
+            // GIN indexes for JSONB querying
+            entity.HasIndex(e => e.Interests).HasMethod("gin");
+            entity.HasIndex(e => e.Signals).HasMethod("gin");
+
+            entity.Property(e => e.Interests).HasColumnType("jsonb");
+            entity.Property(e => e.Signals).HasColumnType("jsonb");
+            entity.Property(e => e.ViewedProducts).HasColumnType("jsonb");
+            entity.Property(e => e.Context).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<PersistentProfileEntity>(entity =>
+        {
+            entity.HasIndex(e => e.ProfileKey).IsUnique();
+            entity.HasIndex(e => e.IdentificationMode);
+            entity.HasIndex(e => e.Segments);
+            entity.HasIndex(e => e.LastSeenAt);
+
+            // GIN indexes for JSONB querying
+            entity.HasIndex(e => e.Interests).HasMethod("gin");
+            entity.HasIndex(e => e.Affinities).HasMethod("gin");
+            entity.HasIndex(e => e.LlmSegments).HasMethod("gin");
+
+            entity.Property(e => e.Interests).HasColumnType("jsonb");
+            entity.Property(e => e.Affinities).HasColumnType("jsonb");
+            entity.Property(e => e.BrandAffinities).HasColumnType("jsonb");
+            entity.Property(e => e.PricePreferences).HasColumnType("jsonb");
+            entity.Property(e => e.Traits).HasColumnType("jsonb");
+            entity.Property(e => e.LlmSegments).HasColumnType("jsonb");
+
+            // Vector embedding for similarity
+            entity.HasIndex(e => e.Embedding)
+                .HasMethod("hnsw")
+                .HasOperators("vector_cosine_ops");
+        });
+
+        modelBuilder.Entity<ProfileKeyEntity>(entity =>
+        {
+            entity.HasIndex(e => new { e.KeyValue, e.KeyType }).IsUnique();
+            entity.HasIndex(e => e.ProfileId);
+        });
+
+        modelBuilder.Entity<SignalEntity>(entity =>
+        {
+            entity.HasIndex(e => e.SessionId);
+            entity.HasIndex(e => e.SignalType);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.Category);
+            entity.Property(e => e.Context).HasColumnType("jsonb");
+        });
+
+        // ============ LEGACY ============
         modelBuilder.Entity<VisitorProfileEntity>(entity =>
         {
             entity.HasIndex(e => e.ProfileToken).IsUnique();
@@ -146,46 +216,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.Property(e => e.Metadata).HasColumnType("jsonb");
         });
 
-        modelBuilder.Entity<SignalEntity>(entity =>
-        {
-            entity.HasIndex(e => e.SessionId);
-            entity.HasIndex(e => e.SignalType);
-            entity.HasIndex(e => e.CreatedAt);
-            entity.HasIndex(e => e.Category);
-            entity.Property(e => e.Context).HasColumnType("jsonb");
-        });
-
-        modelBuilder.Entity<SessionProfileEntity>(entity =>
-        {
-            entity.HasIndex(e => e.SessionKey).IsUnique();
-            entity.HasIndex(e => e.ProfileKey);
-            entity.HasIndex(e => e.ExpiresAt);
-            entity.Property(e => e.PromotionThreshold).HasDefaultValue(0.5);
-        });
-
-        modelBuilder.Entity<AnonymousProfileEntity>(entity =>
-        {
-            entity.HasIndex(e => e.ProfileKey).IsUnique();
-            entity.HasIndex(e => e.LastSeenAt);
-        });
-
-        modelBuilder.Entity<ProfileKeyEntity>(entity =>
-        {
-            entity.HasIndex(e => e.KeyHash).IsUnique();
-            entity.HasIndex(e => e.DerivationMethod);
-        });
-
-        modelBuilder.Entity<InterestScoreEntity>(entity =>
-        {
-            entity.HasIndex(e => new { e.ProfileId, e.Category })
-                .IsUnique()
-                .HasFilter("profile_id IS NOT NULL");
-
-            entity.HasIndex(e => new { e.SessionId, e.Category })
-                .IsUnique()
-                .HasFilter("session_id IS NOT NULL");
-        });
-
+        // ============ EMBEDDINGS ============
         modelBuilder.Entity<ProductEmbeddingEntity>(entity =>
         {
             entity.HasIndex(e => e.ProductId).IsUnique();
