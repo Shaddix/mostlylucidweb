@@ -30,6 +30,9 @@ public class ProductVariationEntity
     [Column("original_price", TypeName = "decimal(18,2)")]
     public decimal? OriginalPrice { get; set; }
 
+    [Column("compare_at_price", TypeName = "decimal(18,2)")]
+    public decimal? CompareAtPrice { get; set; }
+
     [MaxLength(500)]
     [Column("image_url")]
     public string? ImageUrl { get; set; }
@@ -37,8 +40,19 @@ public class ProductVariationEntity
     [Column("sku")]
     public string? Sku { get; set; }
 
+    [MaxLength(64)]
+    [Column("gtin")]
+    public string? Gtin { get; set; }
+
+    [MaxLength(64)]
+    [Column("barcode")]
+    public string? Barcode { get; set; }
+
     [Column("stock_quantity")]
     public int StockQuantity { get; set; }
+
+    [Column("availability_status")]
+    public AvailabilityStatus AvailabilityStatus { get; set; } = AvailabilityStatus.InStock;
 
     [Column("is_active")]
     public bool IsActive { get; set; } = true;

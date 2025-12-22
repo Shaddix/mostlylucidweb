@@ -1,8 +1,7 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection;
 using Mostlylucid.SegmentCommerce.Data;
+using Mostlylucid.SegmentCommerce.Extensions;
 using Mostlylucid.SegmentCommerce.Middleware;
 using Mostlylucid.SegmentCommerce.Services;
 using Mostlylucid.SegmentCommerce.Services.Attributes;
@@ -10,71 +9,25 @@ using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
 builder.Services.AddControllersWithViews();
 
-// Configure PostgreSQL with EF Core + pgvector
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Host=localhost;Database=segmentcommerce;Username=postgres;Password=postgres";
 
 builder.Services.AddDbContext<SegmentCommerceDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.UseVector(); // Enable pgvector
+        npgsqlOptions.UseVector();
     }));
 
-// Authentication / Authorization (Bearer/JWT)
-var signingKey = builder.Configuration["Jwt:SigningKey"];
-var audience = builder.Configuration["Jwt:Audience"];
-var authority = builder.Configuration["Jwt:Authority"];
+builder.Services.AddAuthenticationAndAuthorization(builder.Configuration);
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = authority;
-        options.Audience = audience;
-        options.RequireHttpsMetadata = true;
+builder.Services.RegisterApplicationServices();
 
-        if (!string.IsNullOrEmpty(signingKey))
-        {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = !string.IsNullOrEmpty(authority),
-                ValidateAudience = !string.IsNullOrEmpty(audience),
-                ValidateIssuerSigningKey = true,
-                ValidateLifetime = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
-            };
-        }
-    });
+builder.Services.RegisterQueueServices();
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", policy =>
-    {
-        policy.RequireAuthenticatedUser();
-        policy.RequireRole("admin");
-    });
-});
-
-// Register application services
-builder.Services.AddScoped<ProductService>();
-builder.Services.AddScoped<InteractionService>();
-builder.Services.AddScoped<IProfileKeyService, ProfileKeyService>();
-builder.Services.AddScoped<ISessionCollector, SessionCollector>();
-builder.Services.AddScoped<IProfilePromoter, ProfilePromoter>();
-builder.Services.AddScoped<IProfileMerger, ProfileMerger>();
-builder.Services.AddSingleton<GadgetAttributeProvider>();
-
-// Register queue services
-builder.Services.AddScoped<IJobQueue, PostgresJobQueue>();
-builder.Services.AddScoped<IOutbox, PostgresOutbox>();
-builder.Services.AddScoped<IOutboxProcessor, OutboxProcessor>();
-
-// Register embedding service
 var ollamaUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
 builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client =>
 {
@@ -82,15 +35,12 @@ builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client
     client.Timeout = TimeSpan.FromSeconds(60);
 });
 
-// Background workers (only enable in production or explicitly)
 if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
 {
     builder.Services.AddHostedService<JobWorkerService>();
     builder.Services.AddHostedService<OutboxWorkerService>();
 }
 
-// Add session support for interest signatures
-builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
@@ -101,12 +51,10 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
-// Seed database on startup (for demo purposes)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<SegmentCommerceDbContext>();
     
-    // Apply migrations and seed data
     try
     {
         await DbSeeder.SeedAsync(context);
@@ -118,7 +66,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");

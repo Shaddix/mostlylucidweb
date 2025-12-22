@@ -123,7 +123,7 @@ public class PostgresJobQueue : IJobQueue
 
     public async Task CompleteAsync(long jobId, string? result = null, CancellationToken cancellationToken = default)
     {
-        var job = await _context.JobQueue.FindAsync(new object[] { jobId }, cancellationToken);
+        var job = await _context.JobQueue.FindAsync(jobId, cancellationToken);
         if (job == null) return;
 
         job.Status = JobStatus.Completed;
@@ -137,7 +137,7 @@ public class PostgresJobQueue : IJobQueue
 
     public async Task FailAsync(long jobId, string error, CancellationToken cancellationToken = default)
     {
-        var job = await _context.JobQueue.FindAsync(new object[] { jobId }, cancellationToken);
+        var job = await _context.JobQueue.FindAsync(jobId, cancellationToken);
         if (job == null) return;
 
         job.Error = error;
@@ -177,13 +177,14 @@ public class PostgresJobQueue : IJobQueue
         var stats = await query
             .GroupBy(j => j.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
 
         var byQueue = await query
             .Where(j => j.Status == JobStatus.Pending)
             .GroupBy(j => j.Queue)
             .Select(g => new { Queue = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.Queue, x => x.Count, cancellationToken);
+            .Where(x => x.Queue != null)
+            .ToDictionaryAsync(x => x.Queue!, x => x.Count, cancellationToken);
 
         var byJobType = await query
             .Where(j => j.Status == JobStatus.Pending)
@@ -193,10 +194,10 @@ public class PostgresJobQueue : IJobQueue
 
         return new QueueStats
         {
-            Pending = stats.FirstOrDefault(s => s.Status == JobStatus.Pending)?.Count ?? 0,
-            Processing = stats.FirstOrDefault(s => s.Status == JobStatus.Processing)?.Count ?? 0,
-            Completed = stats.FirstOrDefault(s => s.Status == JobStatus.Completed)?.Count ?? 0,
-            Failed = stats.FirstOrDefault(s => s.Status == JobStatus.Failed)?.Count ?? 0,
+            Pending = stats.GetValueOrDefault(JobStatus.Pending),
+            Processing = stats.GetValueOrDefault(JobStatus.Processing),
+            Completed = stats.GetValueOrDefault(JobStatus.Completed),
+            Failed = stats.GetValueOrDefault(JobStatus.Failed),
             ByQueue = byQueue,
             ByJobType = byJobType
         };

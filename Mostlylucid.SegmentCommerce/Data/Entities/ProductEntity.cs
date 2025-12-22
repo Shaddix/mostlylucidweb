@@ -15,6 +15,11 @@ public class ProductEntity
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
+    [Required]
+    [MaxLength(120)]
+    [Column("handle")]
+    public string Handle { get; set; } = string.Empty;
+
     [Column("description")]
     public string Description { get; set; } = string.Empty;
 
@@ -23,6 +28,9 @@ public class ProductEntity
 
     [Column("original_price", TypeName = "decimal(18,2)")]
     public decimal? OriginalPrice { get; set; }
+
+    [Column("compare_at_price", TypeName = "decimal(18,2)")]
+    public decimal? CompareAtPrice { get; set; }
 
     [MaxLength(500)]
     [Column("image_url")]
@@ -39,8 +47,23 @@ public class ProductEntity
     [Column("tags")]
     public List<string> Tags { get; set; } = [];
 
-    // [Column("search_vector", TypeName = "tsvector")]
-    // public string? SearchVector { get; set; }
+    [Column("status")]
+    public ProductStatus Status { get; set; } = ProductStatus.Active;
+
+    [Column("published_at")]
+    public DateTime? PublishedAt { get; set; }
+
+    [MaxLength(120)]
+    [Column("brand")]
+    public string? Brand { get; set; }
+
+    [MaxLength(180)]
+    [Column("seo_title")]
+    public string? SeoTitle { get; set; }
+
+    [MaxLength(320)]
+    [Column("seo_description")]
+    public string? SeoDescription { get; set; }
 
     [Column("is_trending")]
     public bool IsTrending { get; set; }
@@ -53,7 +76,7 @@ public class ProductEntity
     [Column("seller_id")]
     public int SellerId { get; set; }
 
-    // Constrained attributes
+    // Constrained attributes (default variant shortcut)
     [MaxLength(50)]
     [Column("color")]
     public string? Color { get; set; }
@@ -66,8 +89,13 @@ public class ProductEntity
     public SellerEntity Seller { get; set; } = null!;
 
     // Product variations (for different colors/sizes)
-    [Column("variations")]
     public List<ProductVariationEntity> Variations { get; set; } = [];
+
+    // Taxonomy mapping
+    public List<ProductTaxonomyEntity> ProductTaxonomy { get; set; } = [];
+
+    // Store mapping
+    public List<StoreProductEntity> StoreProducts { get; set; } = [];
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

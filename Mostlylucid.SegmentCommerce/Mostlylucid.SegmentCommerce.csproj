@@ -19,6 +19,8 @@
         <!-- pgvector for semantic search -->
         <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.2.0" />
         <PackageReference Include="Pgvector" Version="0.3.0" />
+        <PackageReference Include="Mapster" Version="7.4.0" />
+        <PackageReference Include="Mapster.DependencyInjection" Version="1.0.0" />
     </ItemGroup>
 
     <ItemGroup>

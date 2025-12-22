@@ -23,7 +23,7 @@ public class ProductService
             .OrderBy(p => p.Name)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
     public async Task<Product?> GetByIdAsync(int id)
@@ -39,7 +39,7 @@ public class ProductService
             .OrderBy(p => p.Name)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
     public async Task<IEnumerable<Product>> GetTrendingAsync(int count = 10)
@@ -50,7 +50,7 @@ public class ProductService
             .Take(count)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
     public async Task<IEnumerable<Product>> GetFeaturedAsync(int count = 10)
@@ -61,7 +61,7 @@ public class ProductService
             .Take(count)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
     public async Task<IEnumerable<Product>> GetOnSaleAsync(int count = 10)
@@ -72,7 +72,7 @@ public class ProductService
             .Take(count)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
     public async Task<IEnumerable<string>> GetCategoriesAsync()
@@ -96,37 +96,27 @@ public class ProductService
     {
         if (!signature.Interests.Any())
         {
-            // No interests yet - return trending items
             return await GetTrendingAsync(count);
         }
 
-        // Get all products
-        var allProducts = await _context.Products.ToListAsync();
-
-        // Score each product based on interest match
-        var scored = allProducts.Select(p =>
-        {
-            var score = 0.0;
-            if (signature.Interests.TryGetValue(p.Category, out var interest))
+        var categories = signature.Interests.Keys.ToList();
+        var scored = await _context.Products
+            .Where(p => categories.Contains(p.Category))
+            .OrderByDescending(p => p.IsTrending)
+            .Select(p => new
             {
-                score = interest.EffectiveWeight;
-            }
+                Entity = p,
+                Score = signature.Interests.TryGetValue(p.Category, out var interest) ? interest.EffectiveWeight : 0.0
+            })
+            .OrderByDescending(p => p.Score)
+            .Take(count * 2)
+            .ToListAsync();
 
-            return new { Entity = p, Score = score };
-        });
-
-        // Return products sorted by relevance score
         return scored
             .OrderByDescending(s => s.Score)
             .ThenByDescending(s => s.Entity.IsTrending)
             .Take(count)
-            .Select(s =>
-            {
-                var product = MapToModel(s.Entity);
-                product.RelevanceScore = s.Score;
-                product.IsRecommended = s.Score > 0.5;
-                return product;
-            });
+            .Select(s => MapToModel(s.Entity, s.Score, s.Score > 0.5));
     }
 
     /// <summary>
@@ -134,8 +124,6 @@ public class ProductService
     /// </summary>
     public async Task<IEnumerable<Product>> SearchAsync(string query, int count = 20)
     {
-        var lowerQuery = query.ToLowerInvariant();
-
         var entities = await _context.Products
             .Where(p => 
                 EF.Functions.ILike(p.Name, $"%{query}%") ||
@@ -144,10 +132,10 @@ public class ProductService
             .Take(count)
             .ToListAsync();
 
-        return entities.Select(MapToModel);
+        return entities.Select(e => MapToModel(e));
     }
 
-    private static Product MapToModel(ProductEntity entity)
+    private static Product MapToModel(ProductEntity entity, double relevanceScore = 0, bool isRecommended = false)
     {
         return new Product
         {
@@ -160,7 +148,8 @@ public class ProductService
             Category = entity.Category,
             Tags = entity.Tags,
             IsTrending = entity.IsTrending,
-            IsRecommended = entity.IsFeatured
+            IsRecommended = isRecommended,
+            RelevanceScore = relevanceScore
         };
     }
 }

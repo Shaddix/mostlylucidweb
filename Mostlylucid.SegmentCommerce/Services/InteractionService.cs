@@ -144,16 +144,24 @@ public class InteractionService
             query = query.Where(e => e.CreatedAt >= since.Value);
         }
 
-        var events = await query.ToListAsync();
+        var stats = await query
+            .GroupBy(e => e.EventType)
+            .Select(g => new { EventType = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.EventType, x => x.Count);
+
+        var uniqueVisitors = await query
+            .Select(e => e.SessionId)
+            .Distinct()
+            .CountAsync();
 
         return new CategoryStats
         {
             Category = category,
-            TotalViews = events.Count(e => e.EventType == EventTypes.View),
-            TotalClicks = events.Count(e => e.EventType == EventTypes.Click),
-            TotalAddToCarts = events.Count(e => e.EventType == EventTypes.AddToCart),
-            TotalPurchases = events.Count(e => e.EventType == EventTypes.Purchase),
-            UniqueVisitors = events.Select(e => e.SessionId).Distinct().Count()
+            TotalViews = stats.GetValueOrDefault(EventTypes.View),
+            TotalClicks = stats.GetValueOrDefault(EventTypes.Click),
+            TotalAddToCarts = stats.GetValueOrDefault(EventTypes.AddToCart),
+            TotalPurchases = stats.GetValueOrDefault(EventTypes.Purchase),
+            UniqueVisitors = uniqueVisitors
         };
     }
 }

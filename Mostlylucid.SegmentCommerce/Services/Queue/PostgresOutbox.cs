@@ -5,9 +5,6 @@ using Mostlylucid.SegmentCommerce.Data.Entities;
 
 namespace Mostlylucid.SegmentCommerce.Services.Queue;
 
-/// <summary>
-/// PostgreSQL-based outbox for reliable event publishing.
-/// </summary>
 public class PostgresOutbox : IOutbox
 {
     private readonly SegmentCommerceDbContext _context;
@@ -55,9 +52,6 @@ public class PostgresOutbox : IOutbox
     }
 }
 
-/// <summary>
-/// Processes outbox messages and dispatches to handlers.
-/// </summary>
 public class OutboxProcessor : IOutboxProcessor
 {
     private readonly SegmentCommerceDbContext _context;
@@ -76,7 +70,8 @@ public class OutboxProcessor : IOutboxProcessor
 
     public async Task ProcessPendingAsync(int batchSize = 100, CancellationToken cancellationToken = default)
     {
-        // Get pending messages in order
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
         var messages = await _context.OutboxMessages
             .Where(m => m.ProcessedAt == null && m.NextRetryAt == null)
             .OrderBy(m => m.CreatedAt)
@@ -98,19 +93,18 @@ public class OutboxProcessor : IOutboxProcessor
 
                 if (message.Attempts >= 5)
                 {
-                    // Give up after 5 attempts
                     message.ProcessedAt = DateTime.UtcNow;
                 }
                 else
                 {
-                    // Exponential backoff
                     var backoffSeconds = Math.Pow(2, message.Attempts) * 30;
                     message.NextRetryAt = DateTime.UtcNow.AddSeconds(backoffSeconds);
                 }
             }
-
-            await _context.SaveChangesAsync(cancellationToken);
         }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task RetryFailedAsync(int batchSize = 50, CancellationToken cancellationToken = default)
@@ -125,12 +119,10 @@ public class OutboxProcessor : IOutboxProcessor
 
         foreach (var message in messages)
         {
-            message.NextRetryAt = null; // Clear so it gets picked up by regular processing
+            message.NextRetryAt = null;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-
-        // Now process them
         await ProcessPendingAsync(batchSize, cancellationToken);
     }
 
@@ -139,19 +131,15 @@ public class OutboxProcessor : IOutboxProcessor
         _logger.LogDebug("Processing outbox message {MessageId} of type {EventType}",
             message.Id, message.EventType);
 
-        // Dispatch to appropriate handler based on event type
-        // In a real system, you'd use a more sophisticated dispatch mechanism
         switch (message.EventType)
         {
             case OutboxEventTypes.ProductCreated:
             case OutboxEventTypes.ProductUpdated:
-                // Could trigger embedding generation
                 await EnqueueEmbeddingJobAsync(message, cancellationToken);
                 break;
 
             case OutboxEventTypes.ProductViewed:
             case OutboxEventTypes.ProductAddedToCart:
-                // Could update analytics, recommendations, etc.
                 _logger.LogInformation("Processed {EventType} event", message.EventType);
                 break;
 
@@ -163,13 +151,11 @@ public class OutboxProcessor : IOutboxProcessor
 
     private async Task EnqueueEmbeddingJobAsync(OutboxMessageEntity message, CancellationToken cancellationToken)
     {
-        // Parse the product ID from the payload
         using var doc = JsonDocument.Parse(message.Payload);
         if (doc.RootElement.TryGetProperty("productId", out var productIdElement))
         {
             var productId = productIdElement.GetInt32();
 
-            // Enqueue a job to generate the embedding
             var job = new JobQueueEntity
             {
                 JobType = JobTypes.GenerateProductEmbedding,

@@ -8,10 +8,6 @@ using Pgvector.EntityFrameworkCore;
 
 namespace Mostlylucid.SegmentCommerce.Services.Embeddings;
 
-/// <summary>
-/// Embedding service using Ollama for local embedding generation.
-/// Uses nomic-embed-text or all-minilm models.
-/// </summary>
 public class OllamaEmbeddingService : IEmbeddingService
 {
     private readonly HttpClient _httpClient;
@@ -75,8 +71,6 @@ public class OllamaEmbeddingService : IEmbeddingService
         float minSimilarity = 0.5f,
         CancellationToken cancellationToken = default)
     {
-        // Use pgvector's cosine distance operator
-        // Lower distance = more similar, so we use 1 - distance for similarity
         var results = await _context.ProductEmbeddings
             .Include(e => e.Product)
             .Select(e => new
@@ -113,21 +107,19 @@ public class OllamaEmbeddingService : IEmbeddingService
 
     public async Task<bool> IndexProductAsync(int productId, CancellationToken cancellationToken = default)
     {
-        var product = await _context.Products.FindAsync(new object[] { productId }, cancellationToken);
+        var product = await _context.Products.FindAsync(productId, cancellationToken);
         if (product == null)
         {
             _logger.LogWarning("Product {ProductId} not found for indexing", productId);
             return false;
         }
 
-        // Combine product text for embedding
         var text = $"{product.Name}. {product.Description}. Category: {product.Category}. Tags: {string.Join(", ", product.Tags)}";
 
         try
         {
             var embedding = await GenerateEmbeddingAsync(text, cancellationToken);
 
-            // Upsert the embedding
             var existing = await _context.ProductEmbeddings
                 .FirstOrDefaultAsync(e => e.ProductId == productId, cancellationToken);
 
@@ -149,7 +141,6 @@ public class OllamaEmbeddingService : IEmbeddingService
             }
 
             await _context.SaveChangesAsync(cancellationToken);
-
             _logger.LogDebug("Indexed product {ProductId}", productId);
             return true;
         }
@@ -163,10 +154,12 @@ public class OllamaEmbeddingService : IEmbeddingService
     public async Task<int> ReindexAllProductsAsync(CancellationToken cancellationToken = default)
     {
         var productIds = await _context.Products
+            .OrderBy(p => p.Id)
             .Select(p => p.Id)
             .ToListAsync(cancellationToken);
 
         var indexed = 0;
+        var failures = 0;
 
         foreach (var productId in productIds)
         {
@@ -174,12 +167,15 @@ public class OllamaEmbeddingService : IEmbeddingService
             {
                 indexed++;
             }
+            else
+            {
+                failures++;
+            }
 
-            // Small delay to avoid overwhelming Ollama
             await Task.Delay(50, cancellationToken);
         }
 
-        _logger.LogInformation("Reindexed {Indexed}/{Total} products", indexed, productIds.Count);
+        _logger.LogInformation("Reindexed {Indexed}/{Total} products ({Failures} failures)", indexed, productIds.Count, failures);
         return indexed;
     }
 
