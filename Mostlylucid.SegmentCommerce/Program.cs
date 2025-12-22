@@ -10,11 +10,15 @@ using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
 
 var builder = WebApplication.CreateBuilder(args);
+var config = builder.Configuration;
+if (builder.Environment.IsDevelopment())
+{
+    config.AddUserSecrets<Program>();
+}
+config.AddEnvironmentVariables();
 
 builder.Services.AddControllersWithViews();
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Database=segmentcommerce;Username=postgres;Password=postgres";
+var connectionString = config.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<SegmentCommerceDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>

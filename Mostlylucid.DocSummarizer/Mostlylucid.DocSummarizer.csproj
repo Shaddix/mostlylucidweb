@@ -22,6 +22,7 @@
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <UserSecretsId>ce754d3c-97a9-4114-a390-95182a36eed0</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
