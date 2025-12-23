@@ -8,6 +8,7 @@ using Mostlylucid.SegmentCommerce.Services.Attributes;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
+using Mostlylucid.SegmentCommerce.Services.Segments;
 using System.Text;
 
 namespace Mostlylucid.SegmentCommerce.Extensions;
@@ -69,6 +70,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInterestTrackingService, InterestTrackingService>();
         services.AddScoped<ICartService, CartService>();
         services.AddHttpContextAccessor();
+        
+        // Segment services
+        services.AddSingleton<ISegmentService, SegmentService>();
+        services.AddScoped<ISegmentVisualizationService, SegmentVisualizationService>();
+        services.AddScoped<IDemoUserService, DemoUserService>();
         
         return services;
     }

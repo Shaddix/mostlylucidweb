@@ -1,0 +1,467 @@
+@{
+    ViewData["Title"] = "Segment Explorer";
+}
+
+<section class="mb-8" x-data="segmentExplorer()" x-init="init()">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Segment Explorer</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">
+                Visualise customer segments and explore profile clusters
+            </p>
+        </div>
+        
+        <!-- Demo User Selector -->
+        <div class="flex items-center gap-4">
+            <template x-if="currentDemoUser">
+                <div class="flex items-center gap-2 bg-green-100 dark:bg-green-900 px-4 py-2 rounded-lg">
+                    <span class="text-green-800 dark:text-green-200 text-sm font-medium">
+                        Browsing as: <span x-text="currentDemoUser.displayName"></span>
+                    </span>
+                    <button @@click="logoutDemoUser()" 
+                            class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </template>
+            <button @@click="showDemoUsers = !showDemoUsers"
+                    class="btn-secondary text-sm">
+                <span x-text="currentDemoUser ? 'Switch User' : 'Login as Demo User'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Demo User Selector Dropdown -->
+    <div x-show="showDemoUsers" 
+         x-cloak
+         x-transition
+         class="absolute right-8 top-48 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4 w-96 max-h-[500px] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-900 dark:text-white">Select a Demo Profile</h3>
+            <button @@click="showDemoUsers = false" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Segment Filter -->
+        <div class="mb-4">
+            <select x-model="selectedSegmentFilter" 
+                    @@change="filterDemoUsers()"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="">All Segments</option>
+                <template x-for="seg in segments" :key="seg.id">
+                    <option :value="seg.id" x-text="seg.icon + ' ' + seg.name"></option>
+                </template>
+            </select>
+        </div>
+        
+        <!-- Demo Users List -->
+        <div class="space-y-2">
+            <template x-for="user in demoUsers" :key="user.id">
+                <button @@click="loginAsDemoUser(user.id)"
+                        class="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="font-medium text-gray-900 dark:text-white" x-text="user.displayName"></span>
+                            <template x-if="user.primarySegment">
+                                <span class="ml-2 text-xs px-2 py-0.5 rounded-full"
+                                      :style="'background-color: ' + user.primarySegment.color + '20; color: ' + user.primarySegment.color"
+                                      x-text="user.primarySegment.name">
+                                </span>
+                            </template>
+                        </div>
+                        <span class="text-xs text-gray-500" x-text="user.segmentCount + ' segments'"></span>
+                    </div>
+                    <div class="mt-1 flex gap-1">
+                        <template x-for="interest in user.topInterests" :key="interest">
+                            <span class="text-xs bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded" x-text="interest"></span>
+                        </template>
+                    </div>
+                </button>
+            </template>
+            <template x-if="demoUsers.length === 0 && !loading">
+                <p class="text-center text-gray-500 py-4">No demo users found. Import sample data first.</p>
+            </template>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Visualization Panel (3 cols) -->
+        <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <!-- Segment Legend -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <template x-for="seg in segments" :key="seg.id">
+                    <button @@click="toggleSegmentFilter(seg.id)"
+                            class="flex items-center gap-1 px-3 py-1 rounded-full text-sm transition-all"
+                            :class="activeSegments.includes(seg.id) ? 'ring-2 ring-offset-2' : 'opacity-60 hover:opacity-100'"
+                            :style="'background-color: ' + seg.color + '20; color: ' + seg.color + '; --tw-ring-color: ' + seg.color">
+                        <span x-text="seg.icon"></span>
+                        <span x-text="seg.name"></span>
+                        <span class="text-xs opacity-70" x-text="'(' + seg.memberCount + ')'"></span>
+                    </button>
+                </template>
+            </div>
+            
+            <!-- Canvas for scatter plot -->
+            <div class="relative" style="height: 500px;">
+                <canvas id="segmentCanvas" class="w-full h-full cursor-crosshair"></canvas>
+                
+                <!-- Tooltip -->
+                <div x-show="hoveredPoint" 
+                     x-cloak
+                     class="absolute z-10 bg-white dark:bg-gray-900 shadow-lg rounded-lg p-3 pointer-events-none border border-gray-200 dark:border-gray-700"
+                     :style="'left: ' + tooltipX + 'px; top: ' + tooltipY + 'px'">
+                    <template x-if="hoveredPoint">
+                        <div>
+                            <div class="font-semibold text-gray-900 dark:text-white" x-text="hoveredPoint.displayName || hoveredPoint.profileKey"></div>
+                            <div class="text-sm mt-1" :style="'color: ' + hoveredPoint.primarySegmentColor" x-text="hoveredPoint.primarySegmentName"></div>
+                            <div class="text-xs text-gray-500 mt-1" x-text="hoveredPoint.stats.totalPurchases + ' purchases, ' + hoveredPoint.stats.totalSessions + ' sessions'"></div>
+                            <div class="flex gap-1 mt-2">
+                                <template x-for="interest in hoveredPoint.topInterests" :key="interest.category">
+                                    <span class="text-xs bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded" x-text="interest.category"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            
+            <!-- Stats Bar -->
+            <div class="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <span x-text="points.length + ' profiles visualised'"></span>
+                <span x-text="'Generated: ' + new Date(generatedAt).toLocaleString()"></span>
+            </div>
+        </div>
+        
+        <!-- Sidebar (1 col) -->
+        <div class="space-y-4">
+            <!-- Selected Profile Detail -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Profile Detail</h3>
+                
+                <template x-if="selectedProfile">
+                    <div>
+                        <div class="text-lg font-medium text-gray-900 dark:text-white" x-text="selectedProfile.displayName || selectedProfile.profileKey"></div>
+                        
+                        <!-- Segment Memberships -->
+                        <div class="mt-4">
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Segment Memberships</h4>
+                            <div class="space-y-2">
+                                <template x-for="m in selectedProfile.memberships" :key="m.segmentId">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm" :style="'color: ' + m.color" x-text="m.segmentName"></span>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-24 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                                <div class="h-full rounded-full" 
+                                                     :style="'width: ' + (m.score * 100) + '%; background-color: ' + m.color"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500" x-text="Math.round(m.score * 100) + '%'"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats -->
+                        <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <div class="text-gray-500 dark:text-gray-400">Purchases</div>
+                                <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedProfile.stats.totalPurchases"></div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <div class="text-gray-500 dark:text-gray-400">Sessions</div>
+                                <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedProfile.stats.totalSessions"></div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <div class="text-gray-500 dark:text-gray-400">Signals</div>
+                                <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedProfile.stats.totalSignals"></div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <div class="text-gray-500 dark:text-gray-400">Last Seen</div>
+                                <div class="font-semibold text-gray-900 dark:text-white" x-text="selectedProfile.stats.lastSeenDaysAgo + 'd ago'"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Login as this user -->
+                        <button @@click="loginAsDemoUser(selectedProfile.id)"
+                                class="w-full mt-4 btn-primary text-sm">
+                            Browse as this User
+                        </button>
+                    </div>
+                </template>
+                
+                <template x-if="!selectedProfile">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">Click a point to view profile details</p>
+                </template>
+            </div>
+            
+            <!-- Segment Stats -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Segment Overview</h3>
+                <div class="space-y-3">
+                    <template x-for="seg in segments" :key="seg.id">
+                        <div class="flex items-center gap-2">
+                            <span x-text="seg.icon"></span>
+                            <div class="flex-1">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-700 dark:text-gray-300" x-text="seg.name"></span>
+                                    <span class="text-gray-500" x-text="seg.memberCount"></span>
+                                </div>
+                                <div class="w-full h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full mt-1 overflow-hidden">
+                                    <div class="h-full rounded-full" 
+                                         :style="'width: ' + (seg.memberCount / points.length * 100) + '%; background-color: ' + seg.color"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+<script>
+function segmentExplorer() {
+    return {
+        loading: true,
+        points: [],
+        segments: [],
+        generatedAt: null,
+        activeSegments: [],
+        hoveredPoint: null,
+        selectedProfile: null,
+        tooltipX: 0,
+        tooltipY: 0,
+        canvas: null,
+        ctx: null,
+        demoUsers: [],
+        currentDemoUser: null,
+        showDemoUsers: false,
+        selectedSegmentFilter: '',
+        
+        async init() {
+            await this.loadVisualization();
+            await this.loadDemoUsers();
+            await this.checkCurrentDemoUser();
+            this.setupCanvas();
+        },
+        
+        async loadVisualization() {
+            try {
+                const response = await fetch('/api/segments/visualization?limit=500');
+                const data = await response.json();
+                this.points = data.points || [];
+                this.segments = data.segments || [];
+                this.generatedAt = data.generatedAt;
+                this.activeSegments = this.segments.map(s => s.id);
+                this.loading = false;
+                this.$nextTick(() => this.drawCanvas());
+            } catch (error) {
+                console.error('Failed to load visualization:', error);
+                this.loading = false;
+            }
+        },
+        
+        async loadDemoUsers() {
+            try {
+                const url = this.selectedSegmentFilter 
+                    ? `/api/segments/demo-users/by-segment/${this.selectedSegmentFilter}?count=10`
+                    : '/api/segments/demo-users?count=15';
+                const response = await fetch(url);
+                this.demoUsers = await response.json();
+            } catch (error) {
+                console.error('Failed to load demo users:', error);
+            }
+        },
+        
+        async filterDemoUsers() {
+            await this.loadDemoUsers();
+        },
+        
+        async checkCurrentDemoUser() {
+            try {
+                const response = await fetch('/api/segments/demo-users/current');
+                const data = await response.json();
+                if (data.loggedIn) {
+                    this.currentDemoUser = data.profile;
+                }
+            } catch (error) {
+                console.error('Failed to check current demo user:', error);
+            }
+        },
+        
+        async loginAsDemoUser(profileId) {
+            try {
+                const response = await fetch(`/api/segments/demo-users/${profileId}/login`, { method: 'POST' });
+                const data = await response.json();
+                if (data.profile) {
+                    this.currentDemoUser = data.profile;
+                    this.showDemoUsers = false;
+                }
+            } catch (error) {
+                console.error('Failed to login as demo user:', error);
+            }
+        },
+        
+        async logoutDemoUser() {
+            try {
+                await fetch('/api/segments/demo-users/logout', { method: 'POST' });
+                this.currentDemoUser = null;
+            } catch (error) {
+                console.error('Failed to logout:', error);
+            }
+        },
+        
+        toggleSegmentFilter(segmentId) {
+            const index = this.activeSegments.indexOf(segmentId);
+            if (index > -1) {
+                this.activeSegments.splice(index, 1);
+            } else {
+                this.activeSegments.push(segmentId);
+            }
+            this.drawCanvas();
+        },
+        
+        setupCanvas() {
+            this.canvas = document.getElementById('segmentCanvas');
+            if (!this.canvas) return;
+            
+            this.ctx = this.canvas.getContext('2d');
+            this.resizeCanvas();
+            
+            window.addEventListener('resize', () => this.resizeCanvas());
+            
+            this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+            this.canvas.addEventListener('click', (e) => this.handleClick(e));
+            this.canvas.addEventListener('mouseleave', () => { this.hoveredPoint = null; });
+        },
+        
+        resizeCanvas() {
+            const rect = this.canvas.parentElement.getBoundingClientRect();
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+            this.drawCanvas();
+        },
+        
+        drawCanvas() {
+            if (!this.ctx || !this.canvas) return;
+            
+            const { width, height } = this.canvas;
+            const padding = 40;
+            
+            // Clear
+            this.ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--tw-bg-opacity') === '1' 
+                ? '#1f2937' : '#ffffff';
+            this.ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            this.ctx.strokeStyle = '#e5e7eb';
+            this.ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 10; i++) {
+                const x = padding + (width - 2 * padding) * i / 10;
+                const y = padding + (height - 2 * padding) * i / 10;
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, padding);
+                this.ctx.lineTo(x, height - padding);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.moveTo(padding, y);
+                this.ctx.lineTo(width - padding, y);
+                this.ctx.stroke();
+            }
+            
+            // Draw segment centroids
+            for (const seg of this.segments) {
+                if (seg.centroid && this.activeSegments.includes(seg.id)) {
+                    const cx = padding + (seg.centroid.x + 1) / 2 * (width - 2 * padding);
+                    const cy = padding + (1 - (seg.centroid.y + 1) / 2) * (height - 2 * padding);
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(cx, cy, 25, 0, Math.PI * 2);
+                    this.ctx.fillStyle = seg.color + '20';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = seg.color;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    
+                    // Label
+                    this.ctx.font = '16px system-ui';
+                    this.ctx.fillStyle = seg.color;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(seg.icon, cx, cy + 5);
+                }
+            }
+            
+            // Draw points
+            for (const point of this.points) {
+                // Check if point's primary segment is active
+                if (point.primarySegmentId && !this.activeSegments.includes(point.primarySegmentId)) {
+                    continue;
+                }
+                
+                const px = padding + (point.x + 1) / 2 * (width - 2 * padding);
+                const py = padding + (1 - (point.y + 1) / 2) * (height - 2 * padding);
+                
+                const isSelected = this.selectedProfile && this.selectedProfile.id === point.id;
+                const isHovered = this.hoveredPoint && this.hoveredPoint.id === point.id;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(px, py, isSelected ? 8 : isHovered ? 6 : 4, 0, Math.PI * 2);
+                this.ctx.fillStyle = point.primarySegmentColor || '#94a3b8';
+                this.ctx.fill();
+                
+                if (isSelected || isHovered) {
+                    this.ctx.strokeStyle = '#000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                }
+                
+                // Store computed position for hit testing
+                point._px = px;
+                point._py = py;
+            }
+        },
+        
+        handleMouseMove(e) {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            let found = null;
+            for (const point of this.points) {
+                if (point._px === undefined) continue;
+                const dx = point._px - x;
+                const dy = point._py - y;
+                if (dx * dx + dy * dy < 100) { // 10px radius
+                    found = point;
+                    break;
+                }
+            }
+            
+            this.hoveredPoint = found;
+            if (found) {
+                this.tooltipX = Math.min(x + 10, this.canvas.width - 200);
+                this.tooltipY = Math.max(y - 80, 10);
+                this.canvas.style.cursor = 'pointer';
+            } else {
+                this.canvas.style.cursor = 'crosshair';
+            }
+        },
+        
+        handleClick(e) {
+            if (this.hoveredPoint) {
+                this.selectedProfile = this.hoveredPoint;
+                this.drawCanvas();
+            }
+        }
+    };
+}
+</script>
+}

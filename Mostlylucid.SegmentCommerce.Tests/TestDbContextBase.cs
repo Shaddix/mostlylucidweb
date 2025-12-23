@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
@@ -15,8 +17,14 @@ public class TestDbContextBase : SegmentCommerceDbContext
 
     public static SegmentCommerceDbContext Create()
     {
+        var serviceProvider = new ServiceCollection()
+            .AddEntityFrameworkInMemoryDatabase()
+            .AddLogging()
+            .BuildServiceProvider();
+        
         var options = new DbContextOptionsBuilder<SegmentCommerceDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseInternalServiceProvider(serviceProvider)
             .Options;
         return new TestDbContextBase(options);
     }
@@ -63,5 +71,13 @@ public class TestDbContextBase : SegmentCommerceDbContext
             .Ignore(e => e.Signals)
             .Ignore(e => e.ViewedProducts)
             .Ignore(e => e.Context);
+        
+        // OrderEntity - has JSONB metadata
+        modelBuilder.Entity<OrderEntity>()
+            .Ignore(e => e.Metadata);
+        
+        // TaxonomyNodeEntity - has JSONB attributes
+        modelBuilder.Entity<TaxonomyNodeEntity>()
+            .Ignore(e => e.Attributes);
     }
 }

@@ -48,6 +48,9 @@ if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
     builder.Services.AddHostedService<OutboxWorkerService>();
 }
 
+// In-memory cache for sessions (use Redis in production)
+builder.Services.AddDistributedMemoryCache();
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
