@@ -2,27 +2,120 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
+using Mostlylucid.SegmentCommerce.Services.Search;
 
 namespace Mostlylucid.SegmentCommerce.Controllers.Api;
 
-[ApiController]
-[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-[Route("api/[controller]")]
-public class SearchController : ControllerBase
+/// <summary>
+/// Search controller providing both public search and authenticated admin operations.
+/// </summary>
+[Route("api/search")]
+public class SearchController : Controller
 {
+    private readonly ISearchService _searchService;
     private readonly IEmbeddingService _embeddingService;
     private readonly ILogger<SearchController> _logger;
 
-    public SearchController(IEmbeddingService embeddingService, ILogger<SearchController> logger)
+    public SearchController(
+        ISearchService searchService,
+        IEmbeddingService embeddingService, 
+        ILogger<SearchController> logger)
     {
+        _searchService = searchService;
         _embeddingService = embeddingService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Semantic search for products.
+    /// Main search endpoint - public, no authentication required.
+    /// Supports HTMX (returns partial) and JSON.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Search(
+        [FromQuery] string q,
+        [FromQuery] int limit = 20,
+        [FromQuery] int offset = 0,
+        [FromQuery] string? category = null,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool semantic = true,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            if (Request.Headers.ContainsKey("HX-Request"))
+            {
+                return PartialView("Partials/_SearchResults", new SearchResults { Items = [], TotalCount = 0 });
+            }
+            return BadRequest(new { error = "Query parameter 'q' is required" });
+        }
+
+        try
+        {
+            var results = await _searchService.SearchAsync(new SearchRequest
+            {
+                Query = q,
+                Limit = Math.Min(limit, 50), // Cap at 50
+                Offset = offset,
+                Category = category,
+                MinPrice = minPrice,
+                MaxPrice = maxPrice,
+                SortBy = sortBy,
+                EnableSemantic = semantic
+            }, cancellationToken);
+
+            if (Request.Headers.ContainsKey("HX-Request"))
+            {
+                return PartialView("Partials/_SearchResults", results);
+            }
+
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Search failed for query: {Query}", q);
+            
+            if (Request.Headers.ContainsKey("HX-Request"))
+            {
+                return PartialView("Partials/_SearchError", new { Message = "Search temporarily unavailable" });
+            }
+            return StatusCode(500, new { error = "Search service unavailable" });
+        }
+    }
+
+    /// <summary>
+    /// Get search suggestions for autocomplete.
+    /// </summary>
+    [HttpGet("suggestions")]
+    public async Task<IActionResult> Suggestions(
+        [FromQuery] string q,
+        [FromQuery] int limit = 5,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        {
+            return Ok(Array.Empty<string>());
+        }
+
+        try
+        {
+            var suggestions = await _searchService.GetSuggestionsAsync(q, limit, cancellationToken);
+            return Ok(suggestions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Suggestions failed for prefix: {Prefix}", q);
+            return Ok(Array.Empty<string>());
+        }
+    }
+
+    /// <summary>
+    /// Semantic search for products (direct embedding search).
+    /// Requires authentication for admin/API use.
     /// </summary>
     [HttpGet("semantic")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> SemanticSearch(
         [FromQuery] string q,
         [FromQuery] int limit = 10,
@@ -63,8 +156,30 @@ public class SearchController : ControllerBase
             var results = await _embeddingService.FindSimilarProductsAsync(
                 embedding, limit, 0.5f, cancellationToken);
 
-            // Exclude the source product
-            return Ok(results.Where(r => r.ProductId != productId));
+            var filtered = results.Where(r => r.ProductId != productId).ToList();
+
+            if (Request.Headers.ContainsKey("HX-Request"))
+            {
+                // Convert to SearchResultItem for partial view
+                var searchItems = filtered.Select(r => new SearchResultItem
+                {
+                    ProductId = r.ProductId,
+                    Name = r.ProductName,
+                    Category = r.Category,
+                    Price = r.Price,
+                    Score = r.Similarity,
+                    SearchType = "semantic"
+                }).ToList();
+
+                return PartialView("Partials/_SearchResults", new SearchResults
+                {
+                    Items = searchItems,
+                    TotalCount = searchItems.Count,
+                    Query = $"similar to product {productId}"
+                });
+            }
+
+            return Ok(filtered);
         }
         catch (Exception ex)
         {
@@ -77,6 +192,7 @@ public class SearchController : ControllerBase
     /// Trigger reindexing of all products (admin operation).
     /// </summary>
     [HttpPost("reindex")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> ReindexAll(CancellationToken cancellationToken = default)
     {
         try
@@ -95,6 +211,7 @@ public class SearchController : ControllerBase
     /// Index a specific product.
     /// </summary>
     [HttpPost("index/{productId:int}")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> IndexProduct(
         int productId,
         CancellationToken cancellationToken = default)

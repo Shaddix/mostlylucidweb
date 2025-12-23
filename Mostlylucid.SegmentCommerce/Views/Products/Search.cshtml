@@ -1,0 +1,134 @@
+@using Mostlylucid.SegmentCommerce.Services.Search
+@model SearchResults
+@{
+    ViewData["Title"] = $"Search: {Model.Query}";
+    var categories = ViewData["Categories"] as IEnumerable<string> ?? [];
+    var currentCategory = Model.Filters?.Category;
+}
+
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        Search Results
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400">
+        @if (Model.TotalCount > 0)
+        {
+            <span>Found <strong>@Model.TotalCount</strong> results for "<strong>@Model.Query</strong>"</span>
+        }
+        else
+        {
+            <span>No results found for "<strong>@Model.Query</strong>"</span>
+        }
+    </p>
+</div>
+
+<div class="flex flex-col lg:flex-row gap-8">
+    <!-- Filters Sidebar -->
+    <aside class="w-full lg:w-64 flex-shrink-0">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sticky top-20">
+            <h2 class="font-semibold text-gray-900 dark:text-white mb-4">Filters</h2>
+            
+            <form method="get" action="/products/search" class="space-y-4">
+                <input type="hidden" name="q" value="@Model.Query" />
+                
+                <!-- Category Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Category
+                    </label>
+                    <select name="category" 
+                            class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm"
+                            onchange="this.form.submit()">
+                        <option value="">All Categories</option>
+                        @foreach (var cat in categories)
+                        {
+                            var displayName = Mostlylucid.SegmentCommerce.Models.InterestCategories.DisplayNames.GetValueOrDefault(cat, cat);
+                            <option value="@cat" selected="@(currentCategory == cat)">@displayName</option>
+                        }
+                    </select>
+                </div>
+                
+                <!-- Price Range -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Price Range
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="number" name="minPrice" placeholder="Min" 
+                               value="@Model.Filters?.MinPrice"
+                               class="w-1/2 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm" />
+                        <input type="number" name="maxPrice" placeholder="Max"
+                               value="@Model.Filters?.MaxPrice"
+                               class="w-1/2 px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm" />
+                    </div>
+                </div>
+                
+                <!-- Sort -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Sort By
+                    </label>
+                    <select name="sortBy" 
+                            class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-lg text-sm"
+                            onchange="this.form.submit()">
+                        <option value="">Relevance</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                        <option value="newest">Newest</option>
+                        <option value="name">Name</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="w-full btn-primary text-sm">
+                    Apply Filters
+                </button>
+                
+                @if (Model.Filters?.Category != null || Model.Filters?.MinPrice != null || Model.Filters?.MaxPrice != null)
+                {
+                    <a href="/products/search?q=@Uri.EscapeDataString(Model.Query)" 
+                       class="block text-center text-sm text-gray-500 hover:text-shop-primary">
+                        Clear Filters
+                    </a>
+                }
+            </form>
+        </div>
+    </aside>
+    
+    <!-- Results -->
+    <main class="flex-1">
+        @if (Model.Items.Any())
+        {
+            <div id="search-results">
+                <partial name="Partials/_SearchResults" model="Model" />
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-16">
+                <svg class="w-20 h-20 text-gray-300 dark:text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    No products found
+                </h2>
+                <p class="text-gray-500 dark:text-gray-400 mb-6">
+                    We couldn't find any products matching your search. Try adjusting your filters or search terms.
+                </p>
+                <div class="space-x-4">
+                    <a href="/products" class="btn-primary">Browse All Products</a>
+                    <a href="/" class="btn-secondary">Go Home</a>
+                </div>
+            </div>
+        }
+    </main>
+</div>
+
+<!-- Search Tips -->
+<section class="mt-12 bg-blue-50 dark:bg-gray-800 rounded-lg p-6">
+    <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Search Tips</h3>
+    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+        <li>Use specific terms like "wireless headphones" instead of just "headphones"</li>
+        <li>Try searching by category, brand, or product features</li>
+        <li>Our AI-powered search understands natural language - try "comfortable running shoes for beginners"</li>
+    </ul>
+</section>

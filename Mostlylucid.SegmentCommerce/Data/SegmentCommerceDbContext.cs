@@ -45,6 +45,9 @@ public class SegmentCommerceDbContext : DbContext
     // Orders (customer PII stored in transient cache only)
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<OrderItemEntity> OrderItems => Set<OrderItemEntity>();
+    
+    // Demo users for testing/demonstration
+    public DbSet<DemoUserEntity> DemoUsers => Set<DemoUserEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -268,6 +271,15 @@ public class SegmentCommerceDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.VariationId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+        
+        // ============ DEMO USERS ============
+        modelBuilder.Entity<DemoUserEntity>(entity =>
+        {
+            entity.HasIndex(e => e.SortOrder);
+            entity.Property(e => e.Interests).HasColumnType("jsonb");
+            entity.Property(e => e.BrandAffinities).HasColumnType("jsonb");
+            entity.Property(e => e.PreferredTags).HasColumnType("jsonb");
         });
     }
 }

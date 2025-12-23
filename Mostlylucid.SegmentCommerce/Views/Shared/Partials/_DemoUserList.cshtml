@@ -1,0 +1,75 @@
+@using Mostlylucid.SegmentCommerce.Data.Entities
+@model List<DemoUserDto>
+
+@* Demo User List - loaded via HTMX into tracking indicator dropdown *@
+
+@if (Model == null || !Model.Any())
+{
+    <p class="text-xs text-gray-500 dark:text-gray-400 italic">No demo users available</p>
+}
+else
+{
+    @foreach (var user in Model)
+    {
+        var colorClasses = user.AvatarColor switch
+        {
+            "blue" => "bg-blue-500",
+            "pink" => "bg-pink-500",
+            "green" => "bg-green-500",
+            "orange" => "bg-orange-500",
+            "yellow" => "bg-yellow-500",
+            "purple" => "bg-purple-500",
+            "red" => "bg-red-500",
+            _ => "bg-gray-500"
+        };
+        
+        <button 
+            type="button"
+            @@click="loginDemoUser({ id: '@user.Id', name: '@user.Name', persona: '@user.Persona' })"
+            class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group">
+            
+            <!-- Avatar -->
+            <div class="w-8 h-8 rounded-full @colorClasses flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                @user.Name[0]
+            </div>
+            
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">@user.Name</p>
+                    <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                        @user.Persona
+                    </span>
+                </div>
+                
+                <!-- Top interests -->
+                <div class="flex items-center gap-1 mt-0.5">
+                    @foreach (var cat in user.TopCategories.Take(3))
+                    {
+                        var catColor = cat switch
+                        {
+                            "tech" => "text-blue-600 dark:text-blue-400",
+                            "fashion" => "text-pink-600 dark:text-pink-400",
+                            "home" => "text-green-600 dark:text-green-400",
+                            "sport" => "text-orange-600 dark:text-orange-400",
+                            "books" => "text-purple-600 dark:text-purple-400",
+                            "food" => "text-yellow-600 dark:text-yellow-400",
+                            _ => "text-gray-600 dark:text-gray-400"
+                        };
+                        <span class="text-xs @catColor">@cat</span>
+                        if (cat != user.TopCategories.Take(3).Last())
+                        {
+                            <span class="text-gray-300 dark:text-gray-600">·</span>
+                        }
+                    }
+                </div>
+            </div>
+            
+            <!-- Arrow indicator on hover -->
+            <svg class="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" 
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
+    }
+}

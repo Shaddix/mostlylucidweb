@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Models;
 using Mostlylucid.SegmentCommerce.Services;
+using Mostlylucid.SegmentCommerce.Services.Search;
 
 namespace Mostlylucid.SegmentCommerce.Controllers;
 
@@ -9,7 +10,8 @@ public class ProductsController(
     ProductService productService,
     InteractionService interactionService,
     ISessionService sessionService,
-    IInterestTrackingService interestTrackingService) : Controller
+    IInterestTrackingService interestTrackingService,
+    ISearchService searchService) : Controller
 {
     public async Task<IActionResult> Index(string? category = null)
     {
@@ -97,7 +99,12 @@ public class ProductsController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Search(string q)
+    public async Task<IActionResult> Search(
+        string q,
+        string? category = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        string? sortBy = null)
     {
         if (string.IsNullOrWhiteSpace(q))
         {
@@ -109,12 +116,22 @@ public class ProductsController(
             EventTypes.Search,
             metadata: new InteractionMetadata { SearchQuery = q });
 
-        var products = await productService.SearchAsync(q);
+        var results = await searchService.SearchAsync(new SearchRequest
+        {
+            Query = q,
+            Category = category,
+            MinPrice = minPrice,
+            MaxPrice = maxPrice,
+            SortBy = sortBy,
+            Limit = 40,
+            EnableSemantic = true
+        });
         
         ViewData["SearchQuery"] = q;
         ViewData["Categories"] = await productService.GetCategoriesAsync();
+        ViewData["SearchFilters"] = results.Filters;
 
-        return View("Index", products.ToList());
+        return View("Search", results);
     }
 
     private async Task TrackProductViewAsync(Product product, double weight = 0.1)

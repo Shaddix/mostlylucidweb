@@ -1,0 +1,159 @@
+@using Mostlylucid.SegmentCommerce.Services.Search
+@model SearchResults
+
+@{
+    var hasResults = Model.Items.Any();
+}
+
+<div class="search-results" data-total="@Model.TotalCount">
+    @if (!hasResults)
+    {
+        <div class="text-center py-12">
+            <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
+            <p class="text-gray-500 dark:text-gray-400">
+                @if (!string.IsNullOrEmpty(Model.Query))
+                {
+                    @:No products matching "@Model.Query" were found.
+                }
+                else
+                {
+                    @:Enter a search query to find products.
+                }
+            </p>
+        </div>
+    }
+    else
+    {
+        <!-- Results header -->
+        <div class="flex items-center justify-between mb-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+                Found <span class="font-medium text-gray-900 dark:text-white">@Model.TotalCount</span> 
+                result@(Model.TotalCount != 1 ? "s" : "") for 
+                "<span class="font-medium text-gray-900 dark:text-white">@Model.Query</span>"
+            </p>
+        </div>
+        
+        <!-- Results grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            @foreach (var item in Model.Items)
+            {
+                <div class="product-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative"
+                     hx-post="/products/track-view/@item.ProductId"
+                     hx-trigger="intersect once"
+                     hx-swap="none">
+                    
+                    @* Search type badge *@
+                    @{
+                        var (badgeClass, badgeText) = item.SearchType switch
+                        {
+                            "semantic" => ("bg-purple-500", "AI Match"),
+                            "hybrid" => ("bg-green-500", "Best Match"),
+                            _ => ("bg-blue-500", "Match")
+                        };
+                    }
+                    <span class="absolute top-2 left-2 z-10 px-2 py-1 text-xs font-medium text-white rounded-full @badgeClass">
+                        @badgeText
+                    </span>
+                    
+                    @* Sale badge *@
+                    @if (item.IsOnSale)
+                    {
+                        var discount = Math.Round((1 - (double)item.Price / (double)(item.OriginalPrice ?? item.Price)) * 100);
+                        <span class="absolute top-2 right-2 z-10 px-2 py-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                            -@discount%
+                        </span>
+                    }
+                    
+                    @* Trending badge *@
+                    @if (item.IsTrending)
+                    {
+                        <span class="absolute top-10 left-2 z-10 px-2 py-1 text-xs font-medium text-white bg-orange-500 rounded-full flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clip-rule="evenodd"/>
+                            </svg>
+                        </span>
+                    }
+                    
+                    @* Product Image *@
+                    <div class="aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700">
+                        <img src="@item.ImageUrl" 
+                             alt="@item.Name"
+                             class="object-cover w-full h-40"
+                             loading="lazy" />
+                    </div>
+                    
+                    @* Product Details *@
+                    <div class="p-4">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            @item.Category
+                        </p>
+                        
+                        <h3 class="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 text-sm">
+                            <a href="/products/@item.ProductId" class="hover:text-shop-primary">
+                                @item.Name
+                            </a>
+                        </h3>
+                        
+                        @* Description snippet *@
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">
+                                @item.Description
+                            </p>
+                        }
+                        
+                        @* Price *@
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-lg font-bold text-shop-primary">
+                                @item.Price.ToString("C")
+                            </span>
+                            @if (item.OriginalPrice.HasValue && item.OriginalPrice > item.Price)
+                            {
+                                <span class="text-sm text-gray-400 line-through">
+                                    @item.OriginalPrice.Value.ToString("C")
+                                </span>
+                            }
+                        </div>
+                        
+                        @* Tags *@
+                        @if (item.Tags.Any())
+                        {
+                            <div class="flex flex-wrap gap-1 mb-3">
+                                @foreach (var tag in item.Tags.Take(2))
+                                {
+                                    <span class="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300">
+                                        @tag
+                                    </span>
+                                }
+                            </div>
+                        }
+                        
+                        @* Add to Cart *@
+                        <button class="w-full btn-primary text-sm py-2"
+                                hx-post="/cart/add/@item.ProductId"
+                                hx-target="#cart-count"
+                                hx-swap="outerHTML">
+                            Add to Cart
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        @* Load more (if there are more results) *@
+        @if (Model.TotalCount > Model.Items.Count)
+        {
+            <div class="text-center mt-8">
+                <button class="btn-secondary"
+                        hx-get="/api/search?q=@Uri.EscapeDataString(Model.Query)&offset=@Model.Items.Count&limit=20"
+                        hx-target=".search-results .grid"
+                        hx-swap="beforeend">
+                    Load More (@(Model.TotalCount - Model.Items.Count) remaining)
+                </button>
+            </div>
+        }
+    }
+</div>

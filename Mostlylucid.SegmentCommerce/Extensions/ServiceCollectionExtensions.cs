@@ -12,6 +12,7 @@ using Mostlylucid.SegmentCommerce.Services.Orders;
 using Mostlylucid.SegmentCommerce.Services.Payments;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
+using Mostlylucid.SegmentCommerce.Services.Search;
 using Mostlylucid.SegmentCommerce.Services.Segments;
 using System.Text;
 
@@ -78,7 +79,11 @@ public static class ServiceCollectionExtensions
         // Segment services
         services.AddSingleton<ISegmentService, SegmentService>();
         services.AddScoped<ISegmentVisualizationService, SegmentVisualizationService>();
-        services.AddScoped<IDemoUserService, DemoUserService>();
+        services.AddScoped<IDemoPersonaService, DemoPersonaService>();
+        services.AddScoped<IRecommendationService, RecommendationService>();
+        
+        // Search service
+        services.AddScoped<ISearchService, SearchService>();
         
         // Event publishing
         services.AddScoped<IEventPublisher, OutboxEventPublisher>();
