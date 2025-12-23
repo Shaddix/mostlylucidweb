@@ -15,7 +15,7 @@ Over the years, I've noticed something: the best code I've ever written came fro
 
 This isn't accidental. **Creativity and pressure don't mix well.**
 
-So I've developed an approach that separates the messy, creative exploration from the polished, production-ready delivery. I call it "[Make it work, make it pretty, lock it down](/blog/makeitworkthenmakeitpretty)" — but really, it's about giving yourself permission to experiment without the weight of perfection hanging over you.
+So I've developed an approach that separates the messy, creative exploration from the polished, production-ready delivery. I call it "[Make it work, make it pretty, lock it down](/blog/makeitworkthenmakeitpretty)" - but really, it's about giving yourself permission to experiment without the weight of perfection hanging over you.
 
 
 [TOC]

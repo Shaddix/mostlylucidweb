@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" 
-      x-init="$watch('darkMode', val => localStorage.setItem('darkMode', val))"
+<html lang="en" 
+      x-data="sessionStore()" 
+      x-init="init()"
       :class="{ 'dark': darkMode }">
 <head>
     <meta charset="utf-8" />
@@ -10,13 +11,26 @@
     <!-- Tailwind CSS -->
     <link rel="stylesheet" href="~/css/dist/main.css" />
     
-    <!-- Alpine.js -->
+    <!-- HTMX with preload extension -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx-ext-preload@2.1.0/preload.js"></script>
+    
+    <!-- Session store - must load BEFORE Alpine.js -->
+    <script src="~/js/session-store.js"></script>
+    
+    <!-- Alpine.js - must load after HTMX for integration -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     
-    <!-- HTMX -->
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <!-- XSRF Token for HTMX -->
+    @Html.AntiForgeryToken()
+    <meta name="xsrf-token" content="@(Context.RequestServices.GetService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>()?.GetTokens(Context).RequestToken)" />
 </head>
-<body class="min-h-screen bg-shop-surface dark:bg-shop-surface-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
+<body class="min-h-screen bg-shop-surface dark:bg-shop-surface-dark text-gray-900 dark:text-gray-100 transition-colors duration-300"
+      hx-boost="true"
+      hx-target="#main-content"
+      hx-swap="innerHTML show:window:top"
+      hx-push-url="true"
+      hx-ext="preload">
     <!-- Header -->
     <header class="sticky top-0 z-40 bg-white dark:bg-gray-900 shadow-sm">
         <nav class="container mx-auto px-4 py-3">
@@ -31,12 +45,12 @@
 
                 <!-- Navigation -->
                 <div class="hidden md:flex items-center gap-6">
-                    <a href="/" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
-                    <a href="/products" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Products</a>
-                    <a href="/products/category/tech" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Tech</a>
-                    <a href="/products/category/fashion" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Fashion</a>
-                    <a href="/products/category/home" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
-                    <a href="/segments" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Segments</a>
+                    <a href="/" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
+                    <a href="/products" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Products</a>
+                    <a href="/products/category/tech" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Tech</a>
+                    <a href="/products/category/fashion" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Fashion</a>
+                    <a href="/products/category/home" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
+                    <a href="/segments" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Segments</a>
                 </div>
 
                 <!-- Right side actions -->
@@ -84,7 +98,7 @@
     </header>
 
     <!-- Main content -->
-    <main class="container mx-auto px-4 py-8">
+    <main id="main-content" class="container mx-auto px-4 py-8">
         @RenderBody()
     </main>
 

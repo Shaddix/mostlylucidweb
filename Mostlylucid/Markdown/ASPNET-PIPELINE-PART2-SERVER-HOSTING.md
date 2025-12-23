@@ -209,7 +209,7 @@ flowchart TD
   cc --> ch --> parser --> ctx --> pipeline
 ```
 
-#### Kestrel Architecture — Deeper Dive
+#### Kestrel Architecture - Deeper Dive
 
 To understand how bytes become an HttpContext that your middleware can use, it helps to zoom in on Kestrel’s internal flow and responsibilities.
 

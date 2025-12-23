@@ -4,7 +4,7 @@
 <datetime class="hidden">2025-11-26T09:00</datetime>
 
 > "We're building an AI-powered knowledge assistant that will revolutionise how our employees access information..."
-> — Every job advert, pitch deck, and consultancy proposal in 2024-2025
+> - Every job advert, pitch deck, and consultancy proposal in 2024-2025
 
 ## Introduction
 

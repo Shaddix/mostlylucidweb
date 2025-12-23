@@ -193,7 +193,7 @@ Three constraints blocked progress in 2023:
 
 | Limitation (2023) | Consequence | What Changed (2024–2025) |
 |-------------------|-------------|--------------------------|
-| GPT-4 was the only reliable reasoning engine | One model had to do everything | Tiered model stacks — GPT-4o + Qwen + DeepSeek + Llama |
+| GPT-4 was the only reliable reasoning engine | One model had to do everything | Tiered model stacks - GPT-4o + Qwen + DeepSeek + Llama |
 | Local embeddings were weak or unused | Retrieval was expensive | BGE / Arctic / MiniLM on consumer GPUs |
 | No structured evaluation harness | LLM judged LLM | LLMs now run code cleanly via containerized exec |
 
@@ -207,7 +207,7 @@ They solved the **"can we?"** question.
 
 DiSE solves the **"how do we keep improving?"** question.
 
-Not because I'm smarter than Wang or Schick — but because the hardware, tooling, and economics finally caught up.
+Not because I'm smarter than Wang or Schick - but because the hardware, tooling, and economics finally caught up.
 
 **This is an engineering problem.**
 And engineering is always a question of timing.

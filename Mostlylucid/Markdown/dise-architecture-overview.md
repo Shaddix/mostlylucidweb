@@ -5,9 +5,9 @@
 
 Most software architectures assume the system is static. DiSE assumes the system is alive.
 
-> **Note:** This is Part 4 in the "Cooking with DiSE" series. See [Part 1](/blog/semantidintelligence-part1), [Part 2: Graduated Apprenticeships](/blog/blog-article-cooking-dise-part2-apprenticeships), and [Part 3: Untrustworthy Gods](/blog/blog-article-cooking-dise-part3-untrustworthy-gods) for background. This article is the architectural overview — and now we have a working C# implementation: [mostlylucid.botdetection](/blog/botdetection-introduction).
+> **Note:** This is Part 4 in the "Cooking with DiSE" series. See [Part 1](/blog/semantidintelligence-part1), [Part 2: Graduated Apprenticeships](/blog/blog-article-cooking-dise-part2-apprenticeships), and [Part 3: Untrustworthy Gods](/blog/blog-article-cooking-dise-part3-untrustworthy-gods) for background. This article is the architectural overview - and now we have a working C# implementation: [mostlylucid.botdetection](/blog/botdetection-introduction).
 
-**Key concept: Behavioural Routing.** This architecture enables a new category — where transparent, adjustable "teams" of detectors and learning systems reflexively route traffic based on learned behaviour patterns, not static rules. With the [YARP Gateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway), bots never reach your backend. Or use the middleware to build behavioural routing directly into your app layer.
+**Key concept: Behavioural Routing.** This architecture enables a new category - where transparent, adjustable "teams" of detectors and learning systems reflexively route traffic based on learned behaviour patterns, not static rules. With the [YARP Gateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway), bots never reach your backend. Or use the middleware to build behavioural routing directly into your app layer.
 
 [TOC]
 
@@ -15,7 +15,7 @@ Most software architectures assume the system is static. DiSE assumes the system
 
 For years, we've built software like clockwork: inputs, outputs, rules, pipelines, tests, deployments. All linear, all predictable.
 
-But modern systems — especially AI-augmented ones — no longer behave like clocks. They behave like ecosystems:
+But modern systems - especially AI-augmented ones - no longer behave like clocks. They behave like ecosystems:
 
 - Attackers evolve their techniques
 - Users change their behaviour
@@ -66,7 +66,7 @@ This isn't metaphor. This is literally how your system evolves smarter behaviour
 
 ### Perception: The Blackboard Architecture
 
-The system uses a **blackboard orchestrator** — detectors contribute evidence to a shared state, triggering other detectors as signals accumulate:
+The system uses a **blackboard orchestrator** - detectors contribute evidence to a shared state, triggering other detectors as signals accumulate:
 
 ```csharp
 // Detectors emit contributions (evidence), not verdicts
@@ -109,7 +109,7 @@ while (waveNumber < MaxWaves && !cancellationToken.IsCancellationRequested)
 
 ### Evaluation: Weighted Consensus with Sigmoid
 
-Evidence aggregates into a decision using sigmoid transformation — this properly leverages strong signals from high-weight detectors:
+Evidence aggregates into a decision using sigmoid transformation - this properly leverages strong signals from high-weight detectors:
 
 ```csharp
 private (double botProbability, double confidence) CalculateWeightedScore()
@@ -131,7 +131,7 @@ private (double botProbability, double confidence) CalculateWeightedScore()
 }
 ```
 
-The evaluation isn't a single model making a decision. It's **weighted consensus** across multiple specialised detectors — and crucially, when AI hasn't run, the probability is **clamped** to avoid overconfidence:
+The evaluation isn't a single model making a decision. It's **weighted consensus** across multiple specialised detectors - and crucially, when AI hasn't run, the probability is **clamped** to avoid overconfidence:
 
 ```csharp
 // CRITICAL: Clamp probability when AI hasn't run
@@ -249,7 +249,7 @@ flowchart TB
 
 The key insight: the system learns its own weights in real-time. No external ML models required. The heuristic detector starts with sensible defaults and evolves based on detection feedback.
 
-> **Future:** ONNX models with RAG and embedding are planned for v2. The current heuristic model's output serves as labelled training data for future model training. The architecture already has the "genetic" artifacts (contributions, weights, signals) that make adding directed synthetic evolution straightforward — it's designed as a plugin point.
+> **Future:** ONNX models with RAG and embedding are planned for v2. The current heuristic model's output serves as labelled training data for future model training. The architecture already has the "genetic" artifacts (contributions, weights, signals) that make adding directed synthetic evolution straightforward - it's designed as a plugin point.
 
 This mirrors biological cognition:
 - **Innate immune system** → Static heuristics
@@ -379,7 +379,7 @@ This is **mutation through observation**. Every detection teaches the system som
 
 In DiSE, LLM hallucination isn't a bug. It's the generative substrate of evolution.
 
-A high-temperature LLM proposing ten variants of a detection rule isn't "hallucinating" — it's **mutating the genome** of the system:
+A high-temperature LLM proposing ten variants of a detection rule isn't "hallucinating" - it's **mutating the genome** of the system:
 
 ```csharp
 public async Task<List<DetectionRule>> GenerateMutationsAsync(DetectionContext context)
@@ -435,7 +435,7 @@ Only the fittest survive to production. This transforms LLMs from brittle chatbo
 
 ## The Genome: Policy-Based Configuration
 
-At the centre of DiSE is the **policy system** — named configurations that define how detection behaves:
+At the centre of DiSE is the **policy system** - named configurations that define how detection behaves:
 
 ```json
 {
@@ -467,13 +467,13 @@ At the centre of DiSE is the **policy system** — named configurations that def
 ```
 
 Policies define:
-- **FastPath detectors** — run in parallel, sub-10ms
-- **AI path** — Heuristic (1-5ms) and/or LLM (500ms+)
-- **Thresholds** — when to early exit, when to block
-- **Transitions** — automatic escalation to other policies when uncertain
-- **Per-policy weights** — tune detector importance per use case
+- **FastPath detectors** - run in parallel, sub-10ms
+- **AI path** - Heuristic (1-5ms) and/or LLM (500ms+)
+- **Thresholds** - when to early exit, when to block
+- **Transitions** - automatic escalation to other policies when uncertain
+- **Per-policy weights** - tune detector importance per use case
 
-The system can **transition between policies mid-request**. Uncertain fastpath results escalate to the full demo pipeline. This is **adaptive routing** — the genome responds to evidence in real-time.
+The system can **transition between policies mid-request**. Uncertain fastpath results escalate to the full demo pipeline. This is **adaptive routing** - the genome responds to evidence in real-time.
 
 You don't ship static configs. You ship **behavioural species** that adapt to traffic.
 
@@ -578,10 +578,10 @@ flowchart LR
 
 The key concepts:
 
-- **Detector teams** — configurable groups of detectors that work together, adjustable per policy
-- **Transparent decisions** — every routing decision is explainable (see the contribution breakdown)
-- **Reflexive adjustment** — the system learns from its decisions and adjusts weights over time
-- **Edge-level protection** — bots never reach your backend; blocked at the router
+- **Detector teams** - configurable groups of detectors that work together, adjustable per policy
+- **Transparent decisions** - every routing decision is explainable (see the contribution breakdown)
+- **Reflexive adjustment** - the system learns from its decisions and adjusts weights over time
+- **Edge-level protection** - bots never reach your backend; blocked at the router
 
 This isn't just "bot detection at the edge." It's a new routing primitive where traffic flows are shaped by learned behaviour patterns, not just static rules.
 
@@ -605,16 +605,16 @@ Every industry dealing with adversaries, drift, or scale pressure will eventuall
 - LLM ecosystems
 - Self-optimising microservices
 - Autonomous debugging systems
-- **Behavioural routing** — traffic shaping based on learned patterns
+- **Behavioural routing** - traffic shaping based on learned patterns
 
 ## What DiSE Isn't
 
 Let me be clear about what this isn't:
 
-- **Not "big LLMs everywhere"** — LLMs are expensive. Use them strategically.
-- **Not "replace business logic with AI"** — Heuristics are faster and more predictable.
-- **Not "let the system run wild"** — Evolution is directed, bounded, governed.
-- **Not "AutoML on steroids"** — This is about behaviour, not just model tuning.
+- **Not "big LLMs everywhere"** - LLMs are expensive. Use them strategically.
+- **Not "replace business logic with AI"** - Heuristics are faster and more predictable.
+- **Not "let the system run wild"** - Evolution is directed, bounded, governed.
+- **Not "AutoML on steroids"** - This is about behaviour, not just model tuning.
 
 DiSE is controlled, explainable evolution:
 - Bounded by constraints
@@ -623,7 +623,7 @@ DiSE is controlled, explainable evolution:
 - Versioned
 - Safe to deploy
 
-It's *directed* evolution — guided, not random.
+It's *directed* evolution - guided, not random.
 
 ## Try It
 
@@ -685,4 +685,4 @@ Static architectures cannot keep up with dynamic environments. Attackers evolve.
 Systems must evolve too.
 
 If you want systems that merely run, build them the old way.
-If you want systems that **survive** — build them with DiSE.
+If you want systems that **survive** - build them with DiSE.

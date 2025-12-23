@@ -92,37 +92,37 @@ Because signals live inside the ephemeral window, they inherit its guarantees: b
 ---
 
 # The Ephemeral Signal Laws
-## Law 1 — Signals Never Implicitly Trigger Execution
+## Law 1 - Signals Never Implicitly Trigger Execution
 
 A signal, by itself, does not cause execution.
 It only records a fact in the ephemeral window.
 Nothing runs because a signal was emitted.
 
-## Law 2 — OnSignal Is Explicit, Local, and Optional
+## Law 2 - OnSignal Is Explicit, Local, and Optional
 
-If a coordinator defines an OnSignal handler, it runs synchronously when a signal is emitted — but only because the coordinator chose to attach it.
+If a coordinator defines an OnSignal handler, it runs synchronously when a signal is emitted - but only because the coordinator chose to attach it.
 Emitters do not know or care.
 Removing all handlers leaves core behaviour unchanged.
 
-## Law 3 — Signals Are Local to the Atom
+## Law 3 - Signals Are Local to the Atom
 
 A signal is attached only to the atom/operation that emitted it.
 No signal ever mutates or annotates another atom.
 There is no shared writable bus.
 
-## Law 4 — Signals Are Append-Only Facts
+## Law 4 - Signals Are Append-Only Facts
 
 Emitting a signal appends a fact to the atom’s history.
 Signals are never updated or overwritten.
 Retractions remove only the emitter’s own signals.
 
-## Law 5 — The Signal Surface Is Bounded and Time-Limited
+## Law 5 - The Signal Surface Is Bounded and Time-Limited
 
 Signals exist only within the coordinator’s ephemeral window.
 They expire automatically as the window ages out.
 Nothing is persisted unless you explicitly build persistence.
 
-## Law 6 — Observers Read, They Do Not Write
+## Law 6 - Observers Read, They Do Not Write
 
 When a coordinator “checks signals for key K”, it scans:
 
@@ -131,7 +131,7 @@ the atoms in its window
 and the signals local to those atoms
 Observers never modify an atom’s signal state.
 
-## Law 7 — Event-like Behaviour Is a Layer, Not a Primitive
+## Law 7 - Event-like Behaviour Is a Layer, Not a Primitive
 
 If you want signals to drive async workflows, you must use:
 
@@ -143,7 +143,7 @@ or other adapters.
 
 These are optional layers built on top of signals, not part of their semantics.
 
-## Law 8 — No Cross-Atom Mutation Under Any Circumstances
+## Law 8 - No Cross-Atom Mutation Under Any Circumstances
 
 No atom may alter the snapshot, state, signals, or metadata of another atom.
 Coordination occurs through:
@@ -158,12 +158,12 @@ Coordination occurs through:
 
 **Not through writes.**
 
-## Law 9 — Global Views Are Derived, Never Mutable
+## Law 9 - Global Views Are Derived, Never Mutable
 
 A SignalSink or swarm-aggregated surface may show a combined view of signals —
 but it is always read-only, never authoritative, never writable.
 
-## Law 10 — Removing Handlers Yields the Same Core System
+## Law 10 - Removing Handlers Yields the Same Core System
 
 If all handlers (OnSignal, dispatchers, processors) are detached,
 the system remains fully correct and predictable.
@@ -175,7 +175,7 @@ Signals still have meaning because they are facts, not triggers.
 > "I'm calling you right now. Pick up and react."
 
 **Signals** are like footprints in the snow:
-> "I left footprints. If you want to know where I went — look. If you don't care — ignore it."
+> "I left footprints. If you want to know where I went - look. If you don't care - ignore it."
 
 This is why signals never break, never block, and never interact with control flow unless you *choose* to poll them.
 
@@ -280,7 +280,7 @@ Depending on your background:
 | **PL/Concurrency Nerds** | An implicit, temporal blackboard paired with bounded concurrency semantics |
 | **Framework Users** | An in-process, self-cleaning state surface you can query at any time |
 
-Signals are traces left in a shared, bounded memory surface. Anyone can look at them. No one is obligated to react. This is a fundamentally *stigmergic* model of coordination — the same one ants use, the same one blackboard systems used in early AI, and the same one modern CRDT gossip networks hint at.
+Signals are traces left in a shared, bounded memory surface. Anyone can look at them. No one is obligated to react. This is a fundamentally *stigmergic* model of coordination - the same one ants use, the same one blackboard systems used in early AI, and the same one modern CRDT gossip networks hint at.
 
 ---
 

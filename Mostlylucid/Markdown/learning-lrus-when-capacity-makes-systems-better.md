@@ -1,4 +1,4 @@
-# Learning LRUs — When Exceeding Capacity Makes Your System Better
+# Learning LRUs - When Exceeding Capacity Makes Your System Better
 
 <!--category-- ASP.NET, Architecture, CQRS, Bot Detection, Caching, Systems Design -->
 <datetime class="hidden">2025-12-09T12:00</datetime>
@@ -7,15 +7,15 @@ Most systems degrade when overloaded. Memory fills up, queries slow down, users 
 
 A few unusual ones get *better*.
 
-This article shows how an **LRU-based behavioural memory** becomes self-optimising when it hits capacity — and how this pattern powers the learning system in my [bot detection engine](/blog/botdetection-introduction). This is also the smallest possible version of [DiSE architecture](/blog/dise-architecture-overview) — controlled evolution through resource pressure.
+This article shows how an **LRU-based behavioural memory** becomes self-optimising when it hits capacity - and how this pattern powers the learning system in my [bot detection engine](/blog/botdetection-introduction). This is also the smallest possible version of [DiSE architecture](/blog/dise-architecture-overview) - controlled evolution through resource pressure.
 
-If you've read my article on [CQRS and Event Sourcing](/blog/moderncqrsandeventsourcing), you'll recognise some of the patterns here. But this is CQRS stripped to the bone — no event store, no projections, no Marten. Just a memory cache, a background worker, and SQLite.
+If you've read my article on [CQRS and Event Sourcing](/blog/moderncqrsandeventsourcing), you'll recognise some of the patterns here. But this is CQRS stripped to the bone - no event store, no projections, no Marten. Just a memory cache, a background worker, and SQLite.
 
 [TOC]
 
-## The Basic Idea — Behavioural Memory on a Budget
+## The Basic Idea - Behavioural Memory on a Budget
 
-Before we dive in, let me define one term I'll use throughout: **signature**. A signature is any stable key that represents a behaviour pattern — a hash of IP + User-Agent, a fingerprint of header combinations, a detector's classification of "this request looks like X". The cache stores these signatures along with learned weights that evolve over time.
+Before we dive in, let me define one term I'll use throughout: **signature**. A signature is any stable key that represents a behaviour pattern - a hash of IP + User-Agent, a fingerprint of header combinations, a detector's classification of "this request looks like X". The cache stores these signatures along with learned weights that evolve over time.
 
 What if you could build a system that:
 - Responds in under 1ms
@@ -24,7 +24,7 @@ What if you could build a system that:
 - Forgets what doesn't matter
 - Remembers what does
 
-That's exactly what `IMemoryCache` with sliding expiration gives you — if you understand what you're building.
+That's exactly what `IMemoryCache` with sliding expiration gives you - if you understand what you're building.
 
 ### What an LRU Cache Actually Does
 
@@ -45,7 +45,7 @@ _cache = new MemoryCache(new MemoryCacheOptions
 
 That `SizeLimit` isn't just a memory constraint. It's a **selection pressure**. It determines how much the system "remembers" and forces it to focus on what matters.
 
-### Sliding Expiration — The Clock That Forgets
+### Sliding Expiration - The Clock That Forgets
 
 Combined with sliding expiration, you get automatic forgetting:
 
@@ -59,7 +59,7 @@ private MemoryCacheEntryOptions GetCacheEntryOptions()
 }
 ```
 
-If a signature isn't accessed within 30 minutes, it's evicted. Not because it's wrong — because it's no longer relevant.
+If a signature isn't accessed within 30 minutes, it's evicted. Not because it's wrong - because it's no longer relevant.
 
 This creates **natural forgetting**:
 - IPs get reassigned
@@ -69,7 +69,7 @@ This creates **natural forgetting**:
 
 Static blocklists go stale. Sliding expiration keeps the memory fresh.
 
-## The IMemoryCache Pattern — Tiny CQRS Without Saying CQRS
+## The IMemoryCache Pattern - Tiny CQRS Without Saying CQRS
 
 Here's the pattern that makes it work. From the `SqliteWeightStore` class:
 
@@ -92,7 +92,7 @@ public class SqliteWeightStore : IWeightStore, IAsyncDisposable
     private readonly TimeSpan _flushInterval = TimeSpan.FromMilliseconds(500);
 ```
 
-This is [informal CQRS](/blog/moderncqrsandeventsourcing#part-2-the-half-assed-approach-cache-invalidation) — but without the tedious cache invalidation. Instead of invalidating cache entries after writes, **the cache IS the write model**. SQLite is just the durable ledger.
+This is [informal CQRS](/blog/moderncqrsandeventsourcing#part-2-the-half-assed-approach-cache-invalidation) - but without the tedious cache invalidation. Instead of invalidating cache entries after writes, **the cache IS the write model**. SQLite is just the durable ledger.
 
 ```mermaid
 flowchart LR
@@ -110,9 +110,9 @@ flowchart LR
     style DB fill:none,stroke:#6366f1,stroke-width:2px
 ```
 
-Key insight: **reads and writes go to memory**. The database is eventually consistent — and that's fine.
+Key insight: **reads and writes go to memory**. The database is eventually consistent - and that's fine.
 
-## The Read Path — Cache First, Always
+## The Read Path - Cache First, Always
 
 When a detector needs a learned weight, it hits the cache:
 
@@ -163,7 +163,7 @@ public async Task<double> GetWeightAsync(
 
 Hot paths **never hit the database**. The cache is the source of truth for reads. SQLite is just backup storage.
 
-## The Write Path — Cache Immediately, Persist Later
+## The Write Path - Cache Immediately, Persist Later
 
 When the system learns something new, it updates the cache immediately and queues the database write:
 
@@ -199,12 +199,12 @@ public Task UpdateWeightAsync(
 }
 ```
 
-Notice: `UpdateWeightAsync` returns `Task.CompletedTask` — it's essentially synchronous. The write is queued, not executed. This means:
+Notice: `UpdateWeightAsync` returns `Task.CompletedTask` - it's essentially synchronous. The write is queued, not executed. This means:
 - Sub-millisecond write latency
 - No blocking on I/O
 - Writes are coalesced (last write wins)
 
-## The Background Flusher — 500ms of Boring Magic
+## The Background Flusher - 500ms of Boring Magic
 
 Every 500ms, pending writes are flushed to SQLite in a single batch:
 
@@ -280,7 +280,7 @@ This is **event-sourcing-light**. You get:
 - Coalesced updates (if the same signature is updated 10 times in 500ms, only the final value is written)
 - SQLite is perfectly happy with this access pattern
 
-## EMA Updates — Learning with Exponential Moving Averages
+## EMA Updates - Learning with Exponential Moving Averages
 
 When a new observation arrives, the system uses exponential moving averages to update weights:
 
@@ -352,14 +352,14 @@ Here's the key insight that most people miss.
 When the cache fills up:
 - Low-frequency signatures fall out
 - Only hot (frequently accessed) signatures stay in memory
-- The database lags by one flush cycle — and that's fine
+- The database lags by one flush cycle - and that's fine
 - The system **focuses** under pressure
 
 Think about it: if 50,000 unique signatures hit your bot detector, but you only have memory for 10,000, which signatures matter?
 
-**The hottest 10,000** — which typically represent 99% of actual traffic.
+**The hottest 10,000** - which typically represent 99% of actual traffic.
 
-In production, I see roughly 40,000 one-off signatures per day (scrapers trying once, random probes, legitimate users who never return) and maybe 5–10,000 that recur constantly. Those 5–10,000 are where 99% of the risk lives. The long-tail signatures? Noise. Evicting them doesn't hurt detection accuracy — it might even improve it by reducing false positives from low-confidence patterns.
+In production, I see roughly 40,000 one-off signatures per day (scrapers trying once, random probes, legitimate users who never return) and maybe 5–10,000 that recur constantly. Those 5–10,000 are where 99% of the risk lives. The long-tail signatures? Noise. Evicting them doesn't hurt detection accuracy - it might even improve it by reducing false positives from low-confidence patterns.
 
 ```mermaid
 flowchart TB
@@ -397,9 +397,9 @@ This isn't magic. There are edge cases where LRU pressure works against you:
 
 - **Cold-start problem**: A freshly deployed system has no learned weights. Everything is equally cold. The first few hours will have higher false positive rates until the hot signatures establish themselves.
 
-The pattern works best when you have **high cardinality with power-law distribution** — lots of unique signatures, but a small subset that dominates traffic. That's exactly what bot detection traffic looks like.
+The pattern works best when you have **high cardinality with power-law distribution** - lots of unique signatures, but a small subset that dominates traffic. That's exactly what bot detection traffic looks like.
 
-## Keeping Cache and Database in Sync — Tag-Based Invalidation
+## Keeping Cache and Database in Sync - Tag-Based Invalidation
 
 The cache is the source of truth for reads, but the database is the durable ledger. What happens when they drift?
 
@@ -453,11 +453,11 @@ public async Task DecayOldWeightsAsync(TimeSpan maxAge, double decayFactor, Canc
 }
 ```
 
-After decaying database records, we call `_cache.Compact(0.25)` — this forces the `MemoryCache` to evict 25% of its entries, prioritising the least recently used. The next read will reload fresh values from the database.
+After decaying database records, we call `_cache.Compact(0.25)` - this forces the `MemoryCache` to evict 25% of its entries, prioritising the least recently used. The next read will reload fresh values from the database.
 
 ### Tag-Based Eviction
 
-Sometimes you need to invalidate a whole category of cached entries — for example, when retraining a detector or when external data changes:
+Sometimes you need to invalidate a whole category of cached entries - for example, when retraining a detector or when external data changes:
 
 ```csharp
 // From WeightStore.cs:768-777
@@ -479,10 +479,10 @@ public void EvictByTag(string signatureType)
 
 The key insight is that **perfect sync isn't necessary**. The system tolerates drift because:
 
-1. **Cache misses reload from DB** — if an entry is evicted, the next read fetches fresh data
-2. **Sliding expiration handles staleness** — entries not accessed within 30 minutes auto-evict
-3. **Compaction forces renewal** — periodic compaction pushes out old entries
-4. **Write-behind coalesces updates** — multiple rapid updates become one DB write
+1. **Cache misses reload from DB** - if an entry is evicted, the next read fetches fresh data
+2. **Sliding expiration handles staleness** - entries not accessed within 30 minutes auto-evict
+3. **Compaction forces renewal** - periodic compaction pushes out old entries
+4. **Write-behind coalesces updates** - multiple rapid updates become one DB write
 
 This is eventual consistency done right. The cache stays "close enough" to the database without requiring complex invalidation logic.
 
@@ -502,7 +502,7 @@ No cache invalidation hell. No complex pub/sub. Just compaction and natural expi
 
 ## Going Deeper: The Reputation System
 
-> **Note:** If you just wanted the LRU + write-behind pattern, you can stop here. The rest of this article shows how I apply the same ideas to full pattern reputation — state machines, hysteresis, and time decay. It's the "extra mile" for those building adaptive systems.
+> **Note:** If you just wanted the LRU + write-behind pattern, you can stop here. The rest of this article shows how I apply the same ideas to full pattern reputation - state machines, hysteresis, and time decay. It's the "extra mile" for those building adaptive systems.
 
 ### Hysteresis and Decay
 
@@ -580,9 +580,9 @@ public PatternReputation EvaluateStateChange(PatternReputation reputation)
 }
 ```
 
-Note the asymmetry: it's easier to get blocked than unblocked. `ConfirmedBad → Suspect` requires 100 support, while `Neutral → Suspect` only needs 10. This is intentional — it's harder to forgive than to suspect.
+Note the asymmetry: it's easier to get blocked than unblocked. `ConfirmedBad → Suspect` requires 100 support, while `Neutral → Suspect` only needs 10. This is intentional - it's harder to forgive than to suspect.
 
-### Time Decay — Exponential Forgetting
+### Time Decay - Exponential Forgetting
 
 When patterns go quiet, they decay toward neutral:
 
@@ -617,10 +617,10 @@ public PatternReputation ApplyTimeDecay(PatternReputation reputation)
 ```
 
 The default time constants:
-- **Score decay τ**: 168 hours (7 days) — scores move 63% toward neutral after a week of inactivity
-- **Support decay τ**: 336 hours (14 days) — confidence drops 63% after two weeks
+- **Score decay τ**: 168 hours (7 days) - scores move 63% toward neutral after a week of inactivity
+- **Support decay τ**: 336 hours (14 days) - confidence drops 63% after two weeks
 
-This means a confirmed-bad IP that goes quiet for a month will eventually drop back to Neutral. Not because it reformed — because its evidence became stale.
+This means a confirmed-bad IP that goes quiet for a month will eventually drop back to Neutral. Not because it reformed - because its evidence became stale.
 
 ## The Background Maintenance Service
 
@@ -687,15 +687,15 @@ The garbage collector removes patterns that are:
 
 This prevents the in-memory dictionary from growing unbounded while preserving valuable learned patterns.
 
-## SQLite is Not a Joke — It's Perfect Here
+## SQLite is Not a Joke - It's Perfect Here
 
 A lot of developers reflexively reach for PostgreSQL or Redis. But for this pattern, SQLite is ideal:
 
-1. **Write-behind eliminates bottlenecks** — SQLite's single-writer limitation doesn't matter when writes are batched
-2. **Local storage** — no network latency, no connection pools
-3. **Zero configuration** — just a file path
-4. **Perfect for edge deployment** — runs on a Raspberry Pi
-5. **Portable** — the database is just a file you can copy around
+1. **Write-behind eliminates bottlenecks** - SQLite's single-writer limitation doesn't matter when writes are batched
+2. **Local storage** - no network latency, no connection pools
+3. **Zero configuration** - just a file path
+4. **Perfect for edge deployment** - runs on a Raspberry Pi
+5. **Portable** - the database is just a file you can copy around
 
 The schema is minimal:
 
@@ -716,11 +716,11 @@ CREATE INDEX IF NOT EXISTS idx_confidence ON learned_weights(confidence);
 CREATE INDEX IF NOT EXISTS idx_last_seen ON learned_weights(last_seen);
 ```
 
-If you need bigger scale, swap to PostgreSQL. If you need HA or replication, swap to Redis or a distributed cache. The architecture doesn't change — just the connection string. SQLite is the default for edge deployment, not a religion.
+If you need bigger scale, swap to PostgreSQL. If you need HA or replication, swap to Redis or a distributed cache. The architecture doesn't change - just the connection string. SQLite is the default for edge deployment, not a religion.
 
-## The DiSE Tie-In — Failure as Evolution
+## The DiSE Tie-In - Failure as Evolution
 
-If [DiSE](/blog/dise-architecture-overview) is the full evolutionary engine, this cache pattern is the mitochondria — the smallest piece that still behaves like evolution under constraint.
+If [DiSE](/blog/dise-architecture-overview) is the full evolutionary engine, this cache pattern is the mitochondria - the smallest piece that still behaves like evolution under constraint.
 
 This pattern implements DiSE principles at the most minimal level:
 
@@ -734,16 +734,16 @@ A full cache isn't a failure. It's **evolutionary pressure**. The system self-op
 
 No ML training. No external models. Just architecture that behaves like a living system.
 
-## Conclusion — Simple Structures, Emergent Behaviour
+## Conclusion - Simple Structures, Emergent Behaviour
 
 The entire pattern boils down to:
 
-1. **Cache is the source of truth for reads** — sub-millisecond access
-2. **Writes update cache immediately, persist later** — no blocking I/O
-3. **Sliding expiration provides automatic LRU** — built into .NET
-4. **Bounded size creates selection pressure** — overflow sharpens focus
-5. **Background flush keeps SQLite in sync** — eventual consistency is fine
-6. **Time decay enables forgetting** — stale evidence disappears
+1. **Cache is the source of truth for reads** - sub-millisecond access
+2. **Writes update cache immediately, persist later** - no blocking I/O
+3. **Sliding expiration provides automatic LRU** - built into .NET
+4. **Bounded size creates selection pressure** - overflow sharpens focus
+5. **Background flush keeps SQLite in sync** - eventual consistency is fine
+6. **Time decay enables forgetting** - stale evidence disappears
 
 Your small behavioural store acts more like a living system than CRUD. It remembers what matters, forgets what doesn't, and gets better under pressure.
 
@@ -751,12 +751,12 @@ Minimal architecture → emergent correctness.
 Overflow → better focus.
 Pressure → stability.
 
-If you want to see this in action, check out [mostlylucid.botdetection](/blog/botdetection-introduction) — and the [DiSE architecture series](/blog/dise-architecture-overview) for the deeper philosophy.
+If you want to see this in action, check out [mostlylucid.botdetection](/blog/botdetection-introduction) - and the [DiSE architecture series](/blog/dise-architecture-overview) for the deeper philosophy.
 
 ## Links
 
-- [Bot Detection Introduction](/blog/botdetection-introduction) — the system that uses these patterns
-- [DiSE Architecture Overview](/blog/dise-architecture-overview) — controlled evolution through pressure
-- [Modern CQRS and Event Sourcing](/blog/moderncqrsandeventsourcing) — the full pattern (when you need it)
-- [GitHub: mostlylucid.botdetection](https://github.com/scottgal/mostlylucid.nugetpackages) — full source code
-- [NuGet Package](https://www.nuget.org/packages/mostlylucid.botdetection/) — install it
+- [Bot Detection Introduction](/blog/botdetection-introduction) - the system that uses these patterns
+- [DiSE Architecture Overview](/blog/dise-architecture-overview) - controlled evolution through pressure
+- [Modern CQRS and Event Sourcing](/blog/moderncqrsandeventsourcing) - the full pattern (when you need it)
+- [GitHub: mostlylucid.botdetection](https://github.com/scottgal/mostlylucid.nugetpackages) - full source code
+- [NuGet Package](https://www.nuget.org/packages/mostlylucid.botdetection/) - install it

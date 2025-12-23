@@ -465,7 +465,7 @@ When summaries aren't what you expected:
 
 ## Why This Matters Operationally
 
-This matters when you have hundreds or thousands of documents, compliance requirements, or cost sensitivity — which is where most real systems end up. A single API call works for a demo; a pipeline works for production.
+This matters when you have hundreds or thousands of documents, compliance requirements, or cost sensitivity - which is where most real systems end up. A single API call works for a demo; a pipeline works for production.
 
 The difference shows up in:
 - **Audit trails**: Citations trace claims back to source material

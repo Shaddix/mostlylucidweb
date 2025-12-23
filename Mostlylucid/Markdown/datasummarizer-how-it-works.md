@@ -8,7 +8,7 @@
 
 Most “chat with your data” systems make the same mistake: they treat an LLM as if it were a database.
 
-They shove rows into context, embed chunks, or pick “representative samples” and hope the model can infer structure, quality, and truth from anecdotes. It works just well enough to demo — and then collapses under scale, privacy constraints, or basic questions like “is this column junk?”
+They shove rows into context, embed chunks, or pick “representative samples” and hope the model can infer structure, quality, and truth from anecdotes. It works just well enough to demo - and then collapses under scale, privacy constraints, or basic questions like “is this column junk?”
 
 **DataSummarizer takes the opposite approach.**
 
@@ -33,7 +33,7 @@ This article pushes that idea further:
 * don’t even feed it “samples” unless you must
 * feed it **statistical shape**
 * let DuckDB compute facts
-* let the LLM reason over those facts — and ask for more
+* let the LLM reason over those facts - and ask for more
 
 ---
 
@@ -153,7 +153,7 @@ You need better evidence.
 
 ## The Tool: DataSummarizer
 
-I turned this into a CLI so I could run it on arbitrary files — including in cron and CI — without hand-writing analysis every time.
+I turned this into a CLI so I could run it on arbitrary files - including in cron and CI - without hand-writing analysis every time.
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=datasummarizer*\&label=datasummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=datasummarizer)
 
@@ -191,7 +191,7 @@ That `profile.json` is the contract:
     * max 20 rows returned to the LLM
     * forbidden: `COPY`, `ATTACH`, `INSTALL`, `CREATE`, `DROP`, `INSERT`, `UPDATE`, `DELETE`, unsafe `PRAGMA`
 
-The defaults are intentionally conservative. You can loosen them — but you have to opt in.
+The defaults are intentionally conservative. You can loosen them - but you have to opt in.
 
 ---
 
@@ -208,7 +208,7 @@ Output (974 patient records with PII):
 974 rows, 20 columns. 4 columns have >10% nulls. 8 warnings.
 ```
 
-Alerts flag leakage risks, high-null columns, constant fields, and suspicious identifiers — all computed by DuckDB.
+Alerts flag leakage risks, high-null columns, constant fields, and suspicious identifiers - all computed by DuckDB.
 
 No guessing. No hallucination.
 
@@ -252,7 +252,7 @@ datasummarizer tool -f daily_export.csv --auto-drift --store
 * Jensen–Shannon divergence for categoricals
 * schema-fingerprinted baselines
 
-It’s boring infrastructure — which is exactly what you want.
+It’s boring infrastructure - which is exactly what you want.
 
 ---
 
@@ -268,7 +268,7 @@ Generate synthetic datasets that:
 
 This is ideal for demos, CI, support repros, and shareable samples.
 
-The fidelity report quantifies how close the synthetic data is — rather than hand-waving “realistic”.
+The fidelity report quantifies how close the synthetic data is - rather than hand-waving “realistic”.
 
 ---
 

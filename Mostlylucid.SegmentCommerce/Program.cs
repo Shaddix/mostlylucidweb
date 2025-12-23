@@ -1,3 +1,4 @@
+using Htmx;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Mostlylucid.SegmentCommerce.Data;
@@ -18,10 +19,23 @@ if (builder.Environment.IsDevelopment())
 config.AddEnvironmentVariables();
 
 builder.Services.AddControllersWithViews();
+
+// Add antiforgery with HTMX header support
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-XSRF-TOKEN";
+    options.Cookie.Name = "XSRF-TOKEN";
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
 var connectionString = config.GetConnectionString("DefaultConnection");
 
+// Configure NpgsqlDataSource with dynamic JSON support for JSONB columns
+var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson();
+var dataSource = dataSourceBuilder.Build();
+
 builder.Services.AddDbContext<SegmentCommerceDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions =>
+    options.UseNpgsql(dataSource, npgsqlOptions =>
     {
         npgsqlOptions.UseVector();
     }));

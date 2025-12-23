@@ -133,17 +133,24 @@ public class ProfileResolver : IProfileResolver
 
     private static string GetOrCreateSessionKey(HttpContext context)
     {
-        // Use ASP.NET session ID if available
+        // 1. Check if middleware provided a session key (from header or query - cookieless mode)
+        if (context.Items.TryGetValue("ProvidedSessionKey", out var providedKey) && 
+            providedKey is string pk && !string.IsNullOrEmpty(pk))
+            return pk;
+        
+        // 2. Use ASP.NET session ID if available
         if (context.Session.IsAvailable && !string.IsNullOrEmpty(context.Session.Id))
             return context.Session.Id;
 
-        // Fallback to cookie
+        // 3. Fallback to cookie
         if (context.Request.Cookies.TryGetValue(SessionCookieName, out var existing) && 
             !string.IsNullOrEmpty(existing))
             return existing;
 
-        // Generate new
-        var key = Guid.NewGuid().ToString("N");
+        // 4. Generate new session key
+        var key = $"s_{Guid.NewGuid():N}";
+        
+        // Still set cookie as fallback, but client JS will prefer header/query approach
         context.Response.Cookies.Append(SessionCookieName, key, new CookieOptions
         {
             HttpOnly = true,

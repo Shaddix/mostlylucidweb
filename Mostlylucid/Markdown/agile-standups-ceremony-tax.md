@@ -1,6 +1,6 @@
 # Daily Standups Are Bullshit (Unless They Earn Their Pay)
 
-> Daily standups aren’t inherently bad — but when they become ritual instead of alignment, they waste time and damage trust. This article explores why ceremony is tax, how to measure its value, and practical async-first alternatives that keep teams aligned without burning energy or time. Agile is adaptation — not adherence.
+> Daily standups aren’t inherently bad - but when they become ritual instead of alignment, they waste time and damage trust. This article explores why ceremony is tax, how to measure its value, and practical async-first alternatives that keep teams aligned without burning energy or time. Agile is adaptation - not adherence.
 
 
 <!-- category -- Agile,Development,Project Management -->
@@ -8,7 +8,7 @@
 
 ## Introduction
 
-In my almost 30 years of software development, I've attended more daily standups than I care to count. Some were electric — brief moments of alignment that cleared blockers and sent us sprinting forward. Others were performative rituals where tired developers recited "same as yesterday" to a gallery of muted cameras.
+In my almost 30 years of software development, I've attended more daily standups than I care to count. Some were electric - brief moments of alignment that cleared blockers and sent us sprinting forward. Others were performative rituals where tired developers recited "same as yesterday" to a gallery of muted cameras.
 
 The difference? One type of standup *earned its tax*. The other was just ceremony.
 
@@ -20,29 +20,29 @@ I have to confess: I am an inveterate Agilist. I became that way by experiencing
 
 The simple fact is: **Agile is the BEST way to build good software.** To paraphrase Churchill:
 
-> *"Indeed it has been said that Agile is the worst form of software development process — except for all those other forms that have been tried from time to time."*
+> *"Indeed it has been said that Agile is the worst form of software development process - except for all those other forms that have been tried from time to time."*
 
 But here's the thing: **being pro-Agile doesn't mean being pro-ritual**. In fact, defending unquestioned ceremonies is the *opposite* of agile.
 
-Here's what I've learned: **agile is about adaptation, not adherence**. Yet most teams inherit Scrum rituals wholesale, treating them as sacred rather than pragmatic. Daily standups, sprint planning, retrospectives — these are tools, not commandments. And like any tool, they should be evaluated by whether they *work*.
+Here's what I've learned: **agile is about adaptation, not adherence**. Yet most teams inherit Scrum rituals wholesale, treating them as sacred rather than pragmatic. Daily standups, sprint planning, retrospectives - these are tools, not commandments. And like any tool, they should be evaluated by whether they *work*.
 
 This article isn't about eliminating standups. It's about questioning whether your ceremonies deliver value proportional to their cost. Because in my experience, **the most agile thing you can do is adapt your agile process**.
 
 ## Scrum Is a Template, Not Dogma
 
-Let me be clear: **Scrum is brilliant as a starting point.** It gave teams structure when we were drowning in waterfall. If you're just starting with Agile, Scrum is about as good as they come — it provides clear ceremonies, defined roles, and a proven framework that works for many teams.
+Let me be clear: **Scrum is brilliant as a starting point.** It gave teams structure when we were drowning in waterfall. If you're just starting with Agile, Scrum is about as good as they come - it provides clear ceremonies, defined roles, and a proven framework that works for many teams.
 
 But somewhere along the line, we confused *following Scrum* with *being agile*.
 
 Scrum is a **toolkit**. Agile is a **mindset**.
 
-Here's the part nobody talks about: **once Scrum starts to fray, slow you down, or offer less value than it costs — that's when you adapt**. This takes experience, but it's KEY to true agility. The ability to recognize when your process needs evolution is what separates mature agile teams from those cargo-culting ceremonies.
+Here's the part nobody talks about: **once Scrum starts to fray, slow you down, or offer less value than it costs - that's when you adapt**. This takes experience, but it's KEY to true agility. The ability to recognize when your process needs evolution is what separates mature agile teams from those cargo-culting ceremonies.
 
 And here's the uncomfortable truth: Scrum Masters only get paid as long as you keep using Scrum. So take their advice, but remember their incentives aren't perfectly aligned with "use whatever works best."
 
-[The Agile Manifesto](https://agilemanifesto.org/) never mandated daily standups. It valued "individuals and interactions over processes and tools" and emphasized **"self-organizing teams"** as a core principle. Yet I've watched teams force 9am standups across three timezones because "that's what Scrum says." That's not agility — that's tradition dressed as methodology.
+[The Agile Manifesto](https://agilemanifesto.org/) never mandated daily standups. It valued "individuals and interactions over processes and tools" and emphasized **"self-organizing teams"** as a core principle. Yet I've watched teams force 9am standups across three timezones because "that's what Scrum says." That's not agility - that's tradition dressed as methodology.
 
-I've realized many people doing "agile" have never actually read the Agile Manifesto. It's the foundational document — written in 2001 by 17 software developers who were tired of heavyweight, process-driven development. They met for three days and distilled what actually worked into four value statements.
+I've realized many people doing "agile" have never actually read the Agile Manifesto. It's the foundational document - written in 2001 by 17 software developers who were tired of heavyweight, process-driven development. They met for three days and distilled what actually worked into four value statements.
 
 Here it is:
 
@@ -85,7 +85,7 @@ In my experience, the teams that ship fastest aren't the ones who follow Scrum b
 
 Let me paint a picture you might recognize:
 
-It's 9:00 AM. You're deep in solving a gnarly concurrency bug. Your IDE is open, debugger attached, mental model fully loaded. Then — ping — the standup meeting starts in 2 minutes.
+It's 9:00 AM. You're deep in solving a gnarly concurrency bug. Your IDE is open, debugger attached, mental model fully loaded. Then - ping - the standup meeting starts in 2 minutes.
 
 You context-switch. Join the call. Wait while three people unmute. Then:
 
@@ -113,7 +113,7 @@ When these symptoms appear, your standup isn't creating alignment. It's creating
 
 ### The Attendance Roll Problem
 
-Let's be honest: in many workplaces, the 9am standup is an attendance roll. It's a way to verify people are "at their desks" (or at least awake). This isn't agile — it's surveillance theatre.
+Let's be honest: in many workplaces, the 9am standup is an attendance roll. It's a way to verify people are "at their desks" (or at least awake). This isn't agile - it's surveillance theatre.
 
 If you need a daily standup to know whether your developers are working, you have a trust problem, not a process problem. **Treat your developers like professionals.** Judge them by what they deliver, not by whether they showed up to a meeting on time.
 
@@ -142,12 +142,12 @@ graph LR
 Here's the framework that changed how I think about agile practices:
 
 **Every ritual consumes resources:**
-- **Time** — 15 minutes × 5 developers × 5 days = 6.25 hours/week
-- **Cognitive energy** — context switching destroys deep work
-- **Emotional bandwidth** — "performative presence" is exhausting
-- **Focus** — interrupting flow states has compound costs
+- **Time** - 15 minutes × 5 developers × 5 days = 6.25 hours/week
+- **Cognitive energy** - context switching destroys deep work
+- **Emotional bandwidth** - "performative presence" is exhausting
+- **Focus** - interrupting flow states has compound costs
 
-In democratic societies, we accept taxation *when it funds essential services*. Roads, schools, healthcare — these justify the burden because we get value in return.
+In democratic societies, we accept taxation *when it funds essential services*. Roads, schools, healthcare - these justify the burden because we get value in return.
 
 Agile ceremonies work the same way.
 
@@ -202,7 +202,7 @@ Instead of synchronous meetings, try:
 
 ### The Communication Multiplier Effect
 
-Here's a KEY BENEFIT most teams miss: **Slack check-ins become THE place to communicate with anyone interested in progress.** Product managers, stakeholders, designers, other engineering teams — they can all subscribe to the channel and stay informed without forcing developers into yet another meeting.
+Here's a KEY BENEFIT most teams miss: **Slack check-ins become THE place to communicate with anyone interested in progress.** Product managers, stakeholders, designers, other engineering teams - they can all subscribe to the channel and stay informed without forcing developers into yet another meeting.
 
 **Your job is to build your team as a feature delivery machine. Communication is the oil that keeps it running.**
 
@@ -213,9 +213,9 @@ When the CEO asks "what's the team working on?", send them a link. When product 
 Here's how to make this work across any timezone:
 
 **The Pattern:**
-"Status updates by 9am" (your local time) — and leave **detailed notes for each task in the Slack thread**. Not just "working on auth" but "Auth refactor: finished JWT validation, starting refresh token flow, blocker: need design approval on error states."
+"Status updates by 9am" (your local time) - and leave **detailed notes for each task in the Slack thread**. Not just "working on auth" but "Auth refactor: finished JWT validation, starting refresh token flow, blocker: need design approval on error states."
 
-The Australia dev leaves their note whenever works best for them — maybe at the end of their day. At 9am UK time (or before if urgent), you read it and action it: "Dave, can you help Joe with the design approval?" Then you let the TEAM arrange how it happens.
+The Australia dev leaves their note whenever works best for them - maybe at the end of their day. At 9am UK time (or before if urgent), you read it and action it: "Dave, can you help Joe with the design approval?" Then you let the TEAM arrange how it happens.
 
 **THEY drive the process.** You're not orchestrating every interaction. You're removing blockers and letting professionals coordinate directly.
 
@@ -225,7 +225,7 @@ Now you've made your process truly async. The detail in the notes means you don'
 
 ### GitHub + Slack = Culture + Status
 
-Link GitHub to your Slack channel. Now a status update BECOMES a PR. Code reviews are visible. You celebrate wins with emoji. That's not frivolous — it's culture.
+Link GitHub to your Slack channel. Now a status update BECOMES a PR. Code reviews are visible. You celebrate wins with emoji. That's not frivolous - it's culture.
 
 ```
 🎉 @alice opened PR #234: Add JWT refresh token flow
@@ -253,18 +253,18 @@ Async-first isn't perfect. Common failure modes:
 
 **The Same Goes for Physical Spaces**
 
-If you're still in an office and have a team room — make it NICE. You WANT your team to hang out in there.
+If you're still in an office and have a team room - make it NICE. You WANT your team to hang out in there.
 
 Good chairs. Decent coffee. Whiteboards that actually work. Natural light if possible. A space that doesn't feel like a punishment.
 
-When the team room is pleasant, people naturally gravitate there. Conversations happen. Problems get solved at the whiteboard. Someone overhears a blocker and jumps in to help. That's organic collaboration — the kind that standups try (and fail) to manufacture.
+When the team room is pleasant, people naturally gravitate there. Conversations happen. Problems get solved at the whiteboard. Someone overhears a blocker and jumps in to help. That's organic collaboration - the kind that standups try (and fail) to manufacture.
 
 This is what **self-organizing teams** actually look like. Not standing in a circle reporting to a Scrum Master. But professionals who organize around the work because the environment makes it easy.
 
 A depressing room with broken furniture and fluorescent lighting? People work from home or hide at their desks. Your communication machine stays fragmented.
 
 **About Sync Meetings:**
-You CAN still book recurring meetings when needed — you don't have to cancel everything. The key is intentionality. A weekly 1-on-1? Keep it. It preserves space on calendars and shows importance. The difference is these become *optional synchronous discussion* rather than *mandatory status reporting*.
+You CAN still book recurring meetings when needed - you don't have to cancel everything. The key is intentionality. A weekly 1-on-1? Keep it. It preserves space on calendars and shows importance. The difference is these become *optional synchronous discussion* rather than *mandatory status reporting*.
 
 Book the recurrence, but make it clear: "If you have nothing to discuss this week, you can skip it."
 
@@ -310,10 +310,10 @@ The argument I hear most often: *"But standups keep us connected as a team!"*
 Fair point. But is a daily status update the best way to build connection?
 
 In my experience, these create *stronger* bonds:
-- **Pairing sessions** — actual collaboration
-- **Weekly retros** — honest reflection
-- **Slack water cooler channels** — async social time
-- **Monthly team lunches** — non-work connection
+- **Pairing sessions** - actual collaboration
+- **Weekly retros** - honest reflection
+- **Slack water cooler channels** - async social time
+- **Monthly team lunches** - non-work connection
 
 ```mermaid
 graph LR
@@ -350,7 +350,7 @@ Not all teams should adopt the same ceremonies. Here's my heuristic:
 >
 > Common wisdom: "Juniors need daily standups to learn." Reality: standups often **increase anxiety** for juniors without actually helping them grow.
 >
-> **YOUR TEAM RAISES YOUR JUNIORS.** Not standups. Mentorship does. Allocate time for seniors to help them. Make it cultural: Leads run Seniors, Seniors run Juniors. Juniors can prep with their senior before updates, but they must have their own voice — a senior never speaks FOR them.
+> **YOUR TEAM RAISES YOUR JUNIORS.** Not standups. Mentorship does. Allocate time for seniors to help them. Make it cultural: Leads run Seniors, Seniors run Juniors. Juniors can prep with their senior before updates, but they must have their own voice - a senior never speaks FOR them.
 >
 > **Professional development happens through mentorship, not status reporting.** Standups don't teach estimation, architecture, or debugging. Pairing does. Code reviews do. 1-on-1s do.
 
@@ -362,7 +362,7 @@ Here's the truth: **EVERYTHING adapts to what works best for your team.**
 
 This is what the Agile principle of **self-organizing teams** actually means. Not "teams that follow Scrum perfectly," but **teams that continuously adapt their process to serve the work**.
 
-Some teams LIVE FOR daily standups — the energy, the connection, the rapid-fire problem solving. Some will protest even at a Slack message, preferring deep focus with minimal interruption.
+Some teams LIVE FOR daily standups - the energy, the connection, the rapid-fire problem solving. Some will protest even at a Slack message, preferring deep focus with minimal interruption.
 
 A truly self-organizing team experiments, measures, and chooses. You adapt to achieve the result.
 
@@ -371,15 +371,15 @@ A truly self-organizing team experiments, measures, and chooses. You adapt to ac
 When I say "the team decides," who actually makes that call? Usually **leads or senior developers** propose changes. That's fine. Leadership creates conditions for improvement.
 
 **The pattern:**
-1. Anyone proposes an experiment — "try async check-ins for 2 weeks?"
-2. Team discusses trade-offs — concerns, metrics, how to revert
-3. Lead decides whether to run it — based on buy-in and feasibility
-4. Team measures results — blocker time? satisfaction?
+1. Anyone proposes an experiment - "try async check-ins for 2 weeks?"
+2. Team discusses trade-offs - concerns, metrics, how to revert
+3. Lead decides whether to run it - based on buy-in and feasibility
+4. Team measures results - blocker time? satisfaction?
 5. Team decides to keep, revert, or iterate
 
 **Transparency is key.** Change based on evidence ("we have data this isn't working"), not opinion ("I think this is better").
 
-If your team can't voice concerns about process changes, you don't have a self-organizing team — you have command-and-control with better buzzwords.
+If your team can't voice concerns about process changes, you don't have a self-organizing team - you have command-and-control with better buzzwords.
 
 ### Spikes: The Experimentation Muscle
 
@@ -395,7 +395,7 @@ Here's a pattern I love: **spikes**. If you use sprints (or just rapid cycle fee
 - How long should this spike be? (2 hours? 1 day? 3 days?)
 - What are we trying to learn? ("Does this approach work?" not "Build the whole feature")
 - How do we know if it succeeded? ("Can render 10k items without lag")
-- **Present findings at the end** — you're not just goofing off, you're answering questions for the team
+- **Present findings at the end** - you're not just goofing off, you're answering questions for the team
 
 That last point is critical. The spike ends with "here's what I learned." Could be 10 minutes in Slack, could be 20 minutes at a whiteboard. The format doesn't matter. What matters is **you're contributing to the team's knowledge, not just extracting from it**.
 
@@ -403,30 +403,30 @@ That last point is critical. The spike ends with "here's what I learned." Could 
 
 "You mentioned wanting to learn about caching. Here's a 2-day spike: investigate Redis vs in-memory caching for our API responses. Present your findings to the team on Friday."
 
-Now the junior isn't just consuming knowledge from seniors — they're **contributing to the team's collective understanding**. That's how you build confidence. That's how juniors stop feeling like imposters.
+Now the junior isn't just consuming knowledge from seniors - they're **contributing to the team's collective understanding**. That's how you build confidence. That's how juniors stop feeling like imposters.
 
 ### Spikes Pay for Themselves
 
-Here's the economic argument for spikes: they're not just learning exercises — they're decision accelerators.
+Here's the economic argument for spikes: they're not just learning exercises - they're decision accelerators.
 
 **Path 1: Adoption**
 Next dev cycle, you can use that tech. You deliver MORE value as a result of the spike. It paid for itself. Alice spent a day spiking React Server Components? Two weeks later, the team ships a feature with 80% less client-side JavaScript. That one-day investment saved days of debugging hydration issues.
 
 **Path 2: Elimination**
-Or you eliminate a choice, making spec'ing more valuable by reducing pathways. "We tried GraphQL federation and it's way too complex for our team size. Now we know: stick with REST for the next 6 months." That's not a failed spike — that's a **successful decision**. You stopped wasting time wondering "should we use GraphQL?" The answer is no, backed by evidence.
+Or you eliminate a choice, making spec'ing more valuable by reducing pathways. "We tried GraphQL federation and it's way too complex for our team size. Now we know: stick with REST for the next 6 months." That's not a failed spike - that's a **successful decision**. You stopped wasting time wondering "should we use GraphQL?" The answer is no, backed by evidence.
 
-Both outcomes have value. Either you gain a tool or you eliminate distraction. The worst outcome is never spiking — just endlessly debating "should we try X?" without data.
+Both outcomes have value. Either you gain a tool or you eliminate distraction. The worst outcome is never spiking - just endlessly debating "should we try X?" without data.
 
 **Even process gets spikes.** You can be a "process owner" on the team and use process spikes. "Let's try async check-ins for 2 weeks. That's a process spike. We'll measure blocker response time and see what happens."
 
-**The principle: change is driven by experimentation.** It's healthy for a team to play with technology. It's healthy to play with process. The alternative is stagnation — same tools, same ceremonies, same frustrations for years.
+**The principle: change is driven by experimentation.** It's healthy for a team to play with technology. It's healthy to play with process. The alternative is stagnation - same tools, same ceremonies, same frustrations for years.
 
 Spikes normalize experimentation. They make it safe to say "I don't know if this will work" and try it anyway.
 
 Ask yourself: **What does the output of the team need to be?**
 
-1. **Status updates** (updated at least daily) — so stakeholders know what's happening
-2. **Input to change direction** (really core to agile) — but standups aren't REALLY for that anyway; that's a separate async process through backlog refinement, retros, and stakeholder feedback
+1. **Status updates** (updated at least daily) - so stakeholders know what's happening
+2. **Input to change direction** (really core to agile) - but standups aren't REALLY for that anyway; that's a separate async process through backlog refinement, retros, and stakeholder feedback
 
 The *best result* I've had is with the async self-organizing Slack approach. You identify what should be "taken offline" (into a separate meeting of stakeholders) or when you need a team meeting to discuss something complex.
 
@@ -445,7 +445,7 @@ If your company needs rolling progress updates, think about how you can deliver 
 
 There are OPTIONS that are cheaper than forcing humans to manually report progress every single day.
 
-The goal isn't to eliminate communication. It's to **automate the mechanical parts so humans can focus on the valuable parts** — the decisions, the collaboration, the creative problem-solving.
+The goal isn't to eliminate communication. It's to **automate the mechanical parts so humans can focus on the valuable parts** - the decisions, the collaboration, the creative problem-solving.
 
 ## Measure Rituals Like Systems
 
@@ -473,7 +473,7 @@ Before you can measure ceremonies, measure the **communication itself**. Here ar
 - If it's low, your channel isn't functioning as a communication hub
 
 **Deploy Frequency**
-- Not just a DevOps metric — it's a communication metric
+- Not just a DevOps metric - it's a communication metric
 - If you're deploying daily, coordination is working
 - If deployments cluster on Thursdays, your process has bottlenecks
 
@@ -575,7 +575,7 @@ In my experience, daily standups deliver value for:
 
 **The key principle:** When your team's context changes, your ceremonies should too.
 
-I've worked with teams that did standups during a 6-week product launch, then switched to async afterwards. That's not inconsistency — **that's adaptation**.
+I've worked with teams that did standups during a 6-week product launch, then switched to async afterwards. That's not inconsistency - **that's adaptation**.
 
 ## What Good Looks Like
 
@@ -684,7 +684,7 @@ This is **self-organizing teams in practice**. Not teams that follow a prescribe
 
 Agile isn't about protecting rituals. It's about **protecting clarity, flow, and delivery**.
 
-If a 2-minute Slack check-in achieves what a 15-minute standup used to — and your team ships faster, feels less fatigued, and maintains alignment — **that is agility in action**.
+If a 2-minute Slack check-in achieves what a 15-minute standup used to - and your team ships faster, feels less fatigued, and maintains alignment - **that is agility in action**.
 
 So here's my challenge to you:
 
@@ -693,9 +693,9 @@ So here's my challenge to you:
 2. What would we gain?
 3. Are we willing to test it?
 
-You might discover the standup is essential. Great — now you have evidence, not assumption.
+You might discover the standup is essential. Great - now you have evidence, not assumption.
 
-Or you might discover it's been tax without benefit for months. Also great — now you can optimize.
+Or you might discover it's been tax without benefit for months. Also great - now you can optimize.
 
 Either way, you'll be doing the most agile thing possible: **adapting based on reality, not ritual**.
 
@@ -703,10 +703,10 @@ Either way, you'll be doing the most agile thing possible: **adapting based on r
 
 ## References & Further Reading
 
-- [Agile Manifesto](https://agilemanifesto.org/) — The original principles
-- [Turn the Ship Around!](https://davidmarquet.com/) by L. David Marquet — Intent-based leadership reduces ceremony needs
-- [Team Topologies](https://teamtopologies.com/) — How team structure impacts communication needs
-- [Remote: Office Not Required](https://basecamp.com/books/remote) — Async-first thinking from Basecamp
+- [Agile Manifesto](https://agilemanifesto.org/) - The original principles
+- [Turn the Ship Around!](https://davidmarquet.com/) by L. David Marquet - Intent-based leadership reduces ceremony needs
+- [Team Topologies](https://teamtopologies.com/) - How team structure impacts communication needs
+- [Remote: Office Not Required](https://basecamp.com/books/remote) - Async-first thinking from Basecamp
 
 ---
 

@@ -115,7 +115,7 @@ Here's the bit nobody else is doing. The "AI" that builds tools isn't a single m
 1. **Special case detection** – "Is this a common task we already handle?" (In future, the CLI will mutate to add these common patterns automatically)
 2. **Task decomposition** – A fairly good LLM (locally I use a 7B model, nothing spectacular) breaks down the prompt: "How can I break this down? What tools exist for each part?"
 3. **Parallel vs sequential planning** – Decides what can run in parallel vs sequence
-4. **Generates tool calls** – Outputs `call_tool("tool_name", prompt)` — this is KEY to composability
+4. **Generates tool calls** – Outputs `call_tool("tool_name", prompt)` - this is KEY to composability
 5. **RAG lookup** – Does "tool_name" exist? If yes, use it. If no, the prompt becomes the instruction to the next Forge instance
 6. **Recursive decomposition** – That next Forge does the same breakdown, all the way down to small, unit-testable steps
 
@@ -371,7 +371,7 @@ You're essentially paying for intelligence upfront, then running on autopilot af
 
 The graduating workflow concept means you can respond to environmental changes dynamically and maintain a massive system for pennies a day, only escalating to expensive models when you genuinely need them.
 
-## AI Didn't Fix the Problem — It Evolved Away From It
+## AI Didn't Fix the Problem - It Evolved Away From It
 
 Right, let me be clear about what this system actually does, because most AI claims sound like Silicon Valley fairy tales: "The AI noticed everything was down and heroically saved the day!" That's not what happens here. This is more mature than that.
 

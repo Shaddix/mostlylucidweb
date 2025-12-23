@@ -3,7 +3,7 @@
 <!--category-- AI, LLM, Data Analysis, DuckDB, C#, Ollama -->
 <datetime class="hidden">2025-12-18T10:00</datetime>
 
-**Series: Local LLMs for Data — Part 1 of 2**
+**Series: Local LLMs for Data - Part 1 of 2**
 
 Here's the mistake everyone makes: they try to feed their CSV into an LLM. Don't. **LLMs should generate queries, not consume data.**
 
@@ -13,7 +13,7 @@ This article shows you how - locally, privately, in C#.
 
 > Use DuckDB to query CSV files directly. Use a local LLM to generate the SQL. The LLM never sees your data - just the schema. Result: sub-100ms queries on million-row files, completely offline.
 
-For a complementary, more CLI-focused treatment that expands on using statistical profiles as the LLM interface (and shows a full tool implementing these ideas — profiling, safe SQL mode, synthetic cloning and drift detection), see the companion article: **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works)** — especially the section "The Key Upgrade: Statistics as the Interface". These two articles form a short series on practical local LLM + query patterns.
+For a complementary, more CLI-focused treatment that expands on using statistical profiles as the LLM interface (and shows a full tool implementing these ideas - profiling, safe SQL mode, synthetic cloning and drift detection), see the companion article: **[DataSummarizer: Fast Local Data Profiling](/blog/datasummarizer-how-it-works)** - especially the section "The Key Upgrade: Statistics as the Interface". These two articles form a short series on practical local LLM + query patterns.
 
 [TOC]
 

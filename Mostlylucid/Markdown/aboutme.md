@@ -5,7 +5,7 @@
 
 # Scott Galloway | CTO | Head of Engineering | Systems Architect | Remote
 
-I'm a technical leader with over 30 years building and scaling engineering teams and products. I've served as CTO, Head of Engineering, and Lead Architect across startups and enterprises — from pre-seed companies building their first MVP to scaling systems serving millions of users.
+I'm a technical leader with over 30 years building and scaling engineering teams and products. I've served as CTO, Head of Engineering, and Lead Architect across startups and enterprises - from pre-seed companies building their first MVP to scaling systems serving millions of users.
 
 I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond campus, which gave me deep insights into how the .NET ecosystem works from the inside. Since 2012, I've run **mostlylucid limited**, working with companies at every stage: founding technical teams, architecting platforms from scratch, rescuing legacy systems, and leading departments through growth phases.         
 
@@ -21,7 +21,7 @@ I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond 
 
 **My sweet spot:** Early to mid-stage startups that need someone who can architect the right solution, build or lead the team to deliver it, and scale both the system and the organization as the company grows. I'm equally comfortable leading a department or rolling up my sleeves as the technical co-founder on a small team.
 
-**Tech stack:** I've worked in everything from Perl CGI scripts to modern Go microservices, though my primary focus is .NET (ASP.NET Core through .NET 9). I'm language-agnostic and pragmatic about choosing the right tool for the job — whether that's modern frontend frameworks (HTMX, Alpine.js, React, Vue.js), databases (PostgreSQL, SQL Server, MongoDB), or infrastructure (Docker, Kubernetes, Azure). I build in public and contribute back to the dev community through open-source packages and detailed technical writing.
+**Tech stack:** I've worked in everything from Perl CGI scripts to modern Go microservices, though my primary focus is .NET (ASP.NET Core through .NET 9). I'm language-agnostic and pragmatic about choosing the right tool for the job - whether that's modern frontend frameworks (HTMX, Alpine.js, React, Vue.js), databases (PostgreSQL, SQL Server, MongoDB), or infrastructure (Docker, Kubernetes, Azure). I build in public and contribute back to the dev community through open-source packages and detailed technical writing.
 
 ## Open Source & Packages
 
@@ -59,24 +59,24 @@ I've also built and run a **developer training program** that's helped over 400 
 
 I FORMERLY ran the website www.mostlylucid.co.uk where I published popular  ASP.NET articles for 10 years before joining the ASP.NET Team at Microsoft in Redmond. After leaving there I closed the site (it was a measured metric at Microsoft how often I posted and it sucked the fun out of it) then opened (lasst year)... 
 
-**[mostlylucid.net](https://www.mostlylucid.net)** is my crazy lab — a living codebase where I experiment with whatever catches my interest in web development. The entire platform is [open source on GitHub](https://github.com/scottgal/mostlylucidweb), and it's become a breeding ground for the NuGet and NPM packages I've published.
+**[mostlylucid.net](https://www.mostlylucid.net)** is my crazy lab - a living codebase where I experiment with whatever catches my interest in web development. The entire platform is [open source on GitHub](https://github.com/scottgal/mostlylucidweb), and it's become a breeding ground for the NuGet and NPM packages I've published.
 
 **The theme:** See problem, find solution, implement it, then extract it into a reusable package.
 
 The infrastructure itself is a case study in efficient server operations:
 - **Docker Compose orchestration** for the entire stack (app, database, analytics, translation services, monitoring)
 - **Full CI/CD pipeline** with GitHub Actions, automated testing, and deployment
-- **Comprehensive observability** (Serilog + Seq, Prometheus, Grafana) — because you can't fix what you can't see
-- **Self-hosted everything** — database, analytics (Umami), translation (EasyNMT), reverse proxy (Caddy)
+- **Comprehensive observability** (Serilog + Seq, Prometheus, Grafana) - because you can't fix what you can't see
+- **Self-hosted everything** - database, analytics (Umami), translation (EasyNMT), reverse proxy (Caddy)
    
 The platform features that spawned packages:
-- **Dual-mode blog system** (file-based markdown or PostgreSQL) — led to the Markdig.FetchExtension package
-- **[Automated translation system](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** — complete Python / Pytorch / FastAPI rewrite of EasyNMT supporting 100+ languages with automatic fallback between neural machine translation model families. Production-ready with intelligent caching, GPU optimization, and robust error handling. Translates the entire blog to 12+ languages automatically. This is exactly my wheelhouse: novel technology solving a real problem (abandoned EasyNMT project) with an amazing solution that handles messy real-world input at scale.  
+- **Dual-mode blog system** (file-based markdown or PostgreSQL) - led to the Markdig.FetchExtension package
+- **[Automated translation system](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** - complete Python / Pytorch / FastAPI rewrite of EasyNMT supporting 100+ languages with automatic fallback between neural machine translation model families. Production-ready with intelligent caching, GPU optimization, and robust error handling. Translates the entire blog to 12+ languages automatically. This is exactly my wheelhouse: novel technology solving a real problem (abandoned EasyNMT project) with an amazing solution that handles messy real-world input at scale.  
 - **Full-text search** using PostgreSQL tsvector/GIN indexes 
-- **Interactive Mermaid diagrams** with pan/zoom/export — became the @mostlylucid/mermaid-enhancements npm package
-- **HTMX-powered paging** — extracted into the pagingtaghelper NuGet package
-- **Umami analytics integration** — became the Umami.Net package
-- **LLM-powered mock APIs** for development — became the mockllmapi package
+- **Interactive Mermaid diagrams** with pan/zoom/export - became the @mostlylucid/mermaid-enhancements npm package
+- **HTMX-powered paging** - extracted into the pagingtaghelper NuGet package
+- **Umami analytics integration** - became the Umami.Net package
+- **LLM-powered mock APIs** for development - became the mockllmapi package
 
 It's messy, experimental, and constantly evolving. That's the point.
 
@@ -98,7 +98,7 @@ LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 
 ### Tech Stack
 
-**Languages:** From Perl CGI to Go microservices — C#/.NET (my primary focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++. I'm language-agnostic and choose based on the problem, not the hype.
+**Languages:** From Perl CGI to Go microservices - C#/.NET (my primary focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++. I'm language-agnostic and choose based on the problem, not the hype.
 **Backend:** ASP.NET Core through .NET 9, Node.js, Python APIs, Go services
 **Frontend:** HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (whatever fits the use case)
 **CSS:** Tailwind CSS, Bootstrap, DaisyUI
@@ -148,10 +148,10 @@ Stirling, Scotland, UK
 
 **I make things work properly and make them last.** I've migrated legacy monoliths to cloud-native architectures, cutting infrastructure costs by 50% and improving deployment times by 80%. I've reduced runtime errors by >90% in multiple systems through careful profiling and optimization.
 
-**I've led developer bootcamps with 200+ graduates and a 90%+ placement rate.** Teaching and mentorship aren't side projects for me — they're core to how I work. I believe in building teams that outlast any single project.
+**I've led developer bootcamps with 200+ graduates and a 90%+ placement rate.** Teaching and mentorship aren't side projects for me - they're core to how I work. I believe in building teams that outlast any single project.
 
 **I deliver.** Whether it's architecting a global search product on Kubernetes, integrating payment systems for e-commerce platforms, or modernizing legacy systems under tight deadlines, I've done it across fintech, healthcare, government, and SaaS.
 
 The thread through it all is simple: **make things work properly and make them last**.
 
-If you're looking for someone who can architect, build, lead, and ship — someone who's been doing this since before "full-stack" was a term — let's talk.
+If you're looking for someone who can architect, build, lead, and ship - someone who's been doing this since before "full-stack" was a term - let's talk.

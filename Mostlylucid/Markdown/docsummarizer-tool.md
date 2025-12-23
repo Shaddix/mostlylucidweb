@@ -9,7 +9,7 @@
 
 This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval.
 
-> **Turn documents or URLs into evidence-grounded summaries — for humans or AI agents — without sending anything to the cloud.**
+> **Turn documents or URLs into evidence-grounded summaries - for humans or AI agents - without sending anything to the cloud.**
 
 Every claim is traceable. Every fact cites its source. Self-contained binary, runs entirely on your machine.
 
@@ -38,7 +38,7 @@ Most summarizers give you text. This gives you *evidence*.
 - **Structured JSON output** for agent integration, CI pipelines, or MCP servers
 - **Quality metrics** catch hallucinations before they escape
 
-If you need to *trust* a summary — or feed it to another system — that matters.
+If you need to *trust* a summary - or feed it to another system - that matters.
 
 ## Features
 

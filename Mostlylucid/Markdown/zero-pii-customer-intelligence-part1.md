@@ -1,4 +1,4 @@
-# Zero PII Customer Intelligence — Part 1: The Segmentation Model
+# Zero PII Customer Intelligence - Part 1: The Segmentation Model
 
 <!--category-- Product, Privacy, RAG, DuckDB, Qdrant, C# -->
 <datetime class="hidden">2025-12-24T20:00</datetime>
@@ -220,9 +220,9 @@ Here's what works:
 
 Three key concepts to communicate:
 
-1. **Segments are fluid** — They're not categories you get locked into
-2. **You're in many at once** — Interest in hiking gear doesn't prevent you from also being interested in cooking
-3. **They change over time** — Last month's interests don't define you forever
+1. **Segments are fluid** - They're not categories you get locked into
+2. **You're in many at once** - Interest in hiking gear doesn't prevent you from also being interested in cooking
+3. **They change over time** - Last month's interests don't define you forever
 
 ```mermaid
 graph TB
@@ -426,7 +426,7 @@ The important design point is that *persistence does not have to mean identity*.
 
 The problem is not that signals exist. If a store learns that you’re interested in running shoes and uses that to show you better running shoes, great.
 
-The problem is when the same signals are repurposed for **targeting, attribution, and behavioural manipulation** — and when identity makes those signals portable across the web.
+The problem is when the same signals are repurposed for **targeting, attribution, and behavioural manipulation** - and when identity makes those signals portable across the web.
 
 ### The Network Effect of Third-Party Identity
 
@@ -569,9 +569,9 @@ This sets the right expectations:
 What you're really building are **process-first systems**.
 
 These must be explained in terms of:
-- **Flow** — How signals move through the system
-- **Influence** — What actions change what outcomes
-- **Change over time** — How the system evolves and adapts
+- **Flow** - How signals move through the system
+- **Influence** - What actions change what outcomes
+- **Change over time** - How the system evolves and adapts
 
 Not static snapshots. Not fixed categories. Not permanent profiles.
 

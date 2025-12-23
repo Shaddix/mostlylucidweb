@@ -56,7 +56,7 @@ flowchart LR
 
 - Client-carried: query, route, headers, forms, cookies, JWT. Scales horizontally but is visible to the client (must be validated/signed/encrypted where appropriate).
 - Server-carried: TempData, Session, caches, DB. Requires affinity or distribution strategy.
-- Per-request: HttpContext.Items — useful for passing data internally during a single request.
+- Per-request: HttpContext.Items - useful for passing data internally during a single request.
 
 ## Golden Rules (before we dive into APIs)
 
@@ -1892,7 +1892,7 @@ That should cover the gaps: stronger security defaults, multi‑node readiness, 
 HttpContext.Items is a per-request bag (IDictionary<object, object?>) that lives only for the lifetime of a single request. It’s perfect for passing computed values from middleware/filters to your endpoints, controllers, and Razor Pages handlers without touching global state or long‑lived stores.
 
 - Lifecycle: created at request start; discarded when the response completes.
-- Scope: current request only — never crosses redirects or background work.
+- Scope: current request only - never crosses redirects or background work.
 - Performance: O(1) lookups; ideal for per-request caching.
 - Safety: server-side only; not visible to the client.
 

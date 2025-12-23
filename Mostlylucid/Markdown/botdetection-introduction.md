@@ -2,7 +2,7 @@
 
 *Scrapers are about to start using AI to mimic real users - so I built a bot detector that learns, adapts, and fights back.*
 
-**Key concept: Behavioural Routing.** This enables a new category — where transparent, adjustable "teams" of detectors and learning systems reflexively route traffic based on learned behaviour patterns, not static rules. With the [YARP Gateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway), bots never reach your backend. Or use the middleware to build behavioural routing directly into your app layer.
+**Key concept: Behavioural Routing.** This enables a new category - where transparent, adjustable "teams" of detectors and learning systems reflexively route traffic based on learned behaviour patterns, not static rules. With the [YARP Gateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway), bots never reach your backend. Or use the middleware to build behavioural routing directly into your app layer.
 
 <pinned/>
 <!--category-- ASP.NET, Bot Detection, Security -->
@@ -192,7 +192,7 @@ Consistency is the sleeper feature - modern bots can spoof *one* signal but usua
 
 ## **A Real Detection Result (Broken Down)**
 
-Here's what a real detection looks like — this is from the demo running the `fastpath` policy (all detectors in parallel). In production, most requests exit early after just 2-3 detectors agree.
+Here's what a real detection looks like - this is from the demo running the `fastpath` policy (all detectors in parallel). In production, most requests exit early after just 2-3 detectors agree.
 
 ### Summary
 
@@ -213,7 +213,7 @@ Here's what a real detection looks like — this is from the demo running the `f
 }
 ```
 
-**8 detectors ran in 51ms** — that's parallel execution across multiple evidence sources.
+**8 detectors ran in 51ms** - that's parallel execution across multiple evidence sources.
 
 ### Detector Contributions
 
@@ -230,7 +230,7 @@ Each detector contributes a weighted impact. Negative = human signal. Positive =
 | **Inconsistency** | -0.05 | 0.8 | -0.04 | No header/UA inconsistencies |
 | **IP** | 0.00 | 0.5 | 0.00 | Localhost (neutral in dev) |
 
-The **Heuristic detector** dominates here — it's weighted 2x and used 16 features to reach 88% human confidence.
+The **Heuristic detector** dominates here - it's weighted 2x and used 16 features to reach 88% human confidence.
 
 ### Signals Collected
 
@@ -272,11 +272,11 @@ Scores aggregate by category for the final decision:
 
 **Total weighted score: -2.11** → Strong human signal → Allow.
 
-> **Note:** This is the demo's `fastpath` policy which runs **all** detectors for visibility. In real production with early exit enabled, high-confidence requests exit after just 2-3 detectors agree — typically **under 10ms**. The 51ms here is because demo mode disables early exit to show all contributions.
+> **Note:** This is the demo's `fastpath` policy which runs **all** detectors for visibility. In real production with early exit enabled, high-confidence requests exit after just 2-3 detectors agree - typically **under 10ms**. The 51ms here is because demo mode disables early exit to show all contributions.
 
 ### Full Pipeline (Demo Mode with LLM)
 
-For comparison, here's the `demo` policy — the complete pipeline including LLM reasoning. This shows what happens when detectors **disagree**:
+For comparison, here's the `demo` policy - the complete pipeline including LLM reasoning. This shows what happens when detectors **disagree**:
 
 ```json
 {
@@ -297,7 +297,7 @@ For comparison, here's the `demo` policy — the complete pipeline including LLM
 }
 ```
 
-**10 detectors in 1.4 seconds** — the LLM ran and *disagreed* with the heuristics.
+**10 detectors in 1.4 seconds** - the LLM ran and *disagreed* with the heuristics.
 
 | Detector | Impact | Weight | Weighted | Reason |
 |----------|--------|--------|----------|--------|
@@ -312,7 +312,7 @@ For comparison, here's the `demo` policy — the complete pipeline including LLM
 | **Inconsistency** | -0.05 | 0.8 | -0.04 | No header/UA inconsistencies |
 | **IP** | 0.00 | 0.5 | 0.00 | Localhost (neutral) |
 
-This is the interesting case — **the LLM flagged it as a potential bot** while all static detectors said human:
+This is the interesting case - **the LLM flagged it as a potential bot** while all static detectors said human:
 
 ```json
 {
@@ -326,13 +326,13 @@ The LLM's reasoning gets recorded as a signal that feeds back into the learning 
 
 Notice:
 
-1. **Heuristic runs twice** — early (before all detectors) and late (after all evidence). Both said "human" with 88% confidence.
+1. **Heuristic runs twice** - early (before all detectors) and late (after all evidence). Both said "human" with 88% confidence.
 
-2. **LLM disagreed** — it spotted patterns the static detectors missed. Its +2.13 weighted impact partially counters the heuristic's -3.46.
+2. **LLM disagreed** - it spotted patterns the static detectors missed. Its +2.13 weighted impact partially counters the heuristic's -3.46.
 
-3. **No fingerprint** — ClientSide returned 0 because JS hadn't executed yet. In a real browser, this would add more human signal.
+3. **No fingerprint** - ClientSide returned 0 because JS hadn't executed yet. In a real browser, this would add more human signal.
 
-4. **Final verdict: Allow** — even with the LLM's suspicion, the combined evidence still favours human (87%). But the `botType: "Scraper"` flag means it's being watched.
+4. **Final verdict: Allow** - even with the LLM's suspicion, the combined evidence still favours human (87%). But the `botType: "Scraper"` flag means it's being watched.
 
 The category breakdown shows the tension:
 
@@ -350,9 +350,9 @@ The category breakdown shows the tension:
 
 **Total weighted score: -1.86** → Human wins, but the LLM's dissent is noted.
 
-> **Key insight:** The system doesn't blindly trust any single detector. When they disagree, evidence is weighted and the majority wins — but minority opinions get recorded for learning.
+> **Key insight:** The system doesn't blindly trust any single detector. When they disagree, evidence is weighted and the majority wins - but minority opinions get recorded for learning.
 
-> **Important:** This verbose output is demo-only. In production, you get a slim response via HTTP headers (`X-Bot-Confidence`, `X-Bot-RiskBand`, etc.) or a simple `context.IsBot()` check. The full JSON is for debugging and tuning — you'd never send this to clients.
+> **Important:** This verbose output is demo-only. In production, you get a slim response via HTTP headers (`X-Bot-Confidence`, `X-Bot-RiskBand`, etc.) or a simple `context.IsBot()` check. The full JSON is for debugging and tuning - you'd never send this to clients.
 
 ---
 

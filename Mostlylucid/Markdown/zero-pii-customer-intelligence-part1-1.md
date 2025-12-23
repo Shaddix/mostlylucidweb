@@ -1,4 +1,4 @@
-# Zero PII Customer Intelligence — Part 1.1: Generating Sample Data (and Images) Locally
+# Zero PII Customer Intelligence - Part 1.1: Generating Sample Data (and Images) Locally
 
 <!--category-- Product, Privacy, LLM, ComfyUI, C# -->
 <datetime class="hidden">2025-12-24T20:00</datetime>

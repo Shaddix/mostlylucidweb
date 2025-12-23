@@ -5,7 +5,7 @@
 
 # Introduction
 
-If you've ever left a meeting wondering "what was the point of that?" or found yourself having the same discussion for the third time, you're not alone. Most meetings fail — and it's not because people are lazy or disorganized.
+If you've ever left a meeting wondering "what was the point of that?" or found yourself having the same discussion for the third time, you're not alone. Most meetings fail - and it's not because people are lazy or disorganized.
 
 Meetings fail because they lack structure. Specifically, they lack the one thing that makes anything work: **accountability**.
 
@@ -28,7 +28,7 @@ That's it. Simple, right?
 
 But here's what this prevents:
 
-When someone says "we should improve the documentation" in a meeting, that's not an action — it's a wish. It has no owner, no deadline, no way to verify it happened. It'll never get done.
+When someone says "we should improve the documentation" in a meeting, that's not an action - it's a wish. It has no owner, no deadline, no way to verify it happened. It'll never get done.
 
 An action looks like this:
 
@@ -39,7 +39,7 @@ An action looks like this:
 | **When** | By Friday EOD |
 | **Check** | Review in Monday's team meeting |
 
-Without all four elements, you don't have commitment — you have conversation.
+Without all four elements, you don't have commitment - you have conversation.
 
 # Why Recurring Meetings Become Groundhog Day
 
@@ -64,16 +64,16 @@ The difference? You're building on previous work instead of starting from scratc
 
 # What This Actually Prevents
 
-Here are the common ways meetings fail — and how this simple structure prevents them:
+Here are the common ways meetings fail - and how this simple structure prevents them:
 
 | What Always Goes Wrong | What Prevents It |
 |----------------------|------------------|
-| "I thought someone else was doing that" | **Explicit owner** — one person is responsible |
-| "I didn't know the deadline" | **Defined timeline** — everyone knows when |
-| "I assumed we dropped that" | **Follow-up check** — we verify completion |
-| "I forgot what I was supposed to do" | **Written down** — not in someone's memory |
-| Same discussion every meeting | **Progress check** — we see what actually happened |
-| Everyone's responsible = no one's responsible | **Single owner** — one name per action |
+| "I thought someone else was doing that" | **Explicit owner** - one person is responsible |
+| "I didn't know the deadline" | **Defined timeline** - everyone knows when |
+| "I assumed we dropped that" | **Follow-up check** - we verify completion |
+| "I forgot what I was supposed to do" | **Written down** - not in someone's memory |
+| Same discussion every meeting | **Progress check** - we see what actually happened |
+| Everyone's responsible = no one's responsible | **Single owner** - one name per action |
 
 This isn't complicated. It's just:
 - Write it down
@@ -193,7 +193,7 @@ When every action has an owner, a timeline, and a check point, you eliminate:
 - Surprise about deadlines
 - Mystery about what actually happened
 
-This is what people mean when they say someone "runs a tight ship" — but what you're actually doing is just being clear about who does what by when.
+This is what people mean when they say someone "runs a tight ship" - but what you're actually doing is just being clear about who does what by when.
 
 That's it. Simple, but powerful.
 
@@ -201,7 +201,7 @@ That's it. Simple, but powerful.
 
 ## "This feels too rigid"
 
-Structure isn't the enemy of getting things done — it's what makes things actually get done.
+Structure isn't the enemy of getting things done - it's what makes things actually get done.
 
 The question isn't "is this rigid?" The question is "does it work?"
 
@@ -259,7 +259,7 @@ It works because it's simple and clear:
 
 No ambiguity. No confusion. No wasted time.
 
-The meetings that work — in any field, in any industry — all follow this pattern. Not because it's sophisticated, but because it's effective.
+The meetings that work - in any field, in any industry - all follow this pattern. Not because it's sophisticated, but because it's effective.
 
 Try it in your next recurring meeting. I promise you'll see the difference.
 

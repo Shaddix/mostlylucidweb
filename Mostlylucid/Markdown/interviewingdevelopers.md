@@ -12,7 +12,7 @@ One of the MANY things that bug me on LinkedIn is the "how to interview develope
 2. The **"What can you remember from your CS degree?"** approach.
 3. The **"Write code while we watch you"** approach.
 
-Over the years I've interviewed dozens of times and hired **hundreds** of developers for various companies — from Microsoft and Dell to tiny startups. I also had a former life as a **research psychologist specializing in psychometrics** (the science of measuring mental capacities). So I've seen the process from *every* side.
+Over the years I've interviewed dozens of times and hired **hundreds** of developers for various companies - from Microsoft and Dell to tiny startups. I also had a former life as a **research psychologist specializing in psychometrics** (the science of measuring mental capacities). So I've seen the process from *every* side.
 
 [TOC]
 
@@ -20,11 +20,11 @@ Over the years I've interviewed dozens of times and hired **hundreds** of develo
 
 ## The Problem
 
-Writing code is often not a social activity. Sure — soft skills matter. But they're often orthogonal to the actual practice of writing code to solve real user problems.
+Writing code is often not a social activity. Sure - soft skills matter. But they're often orthogonal to the actual practice of writing code to solve real user problems.
 
 So how do you interview someone for a job that's *mostly* about writing code?
 
-Our profession is also rife with **impostor syndrome** — I've seen it in myself and countless others. How do you interview someone who *already* feels like a fraud?
+Our profession is also rife with **impostor syndrome** - I've seen it in myself and countless others. How do you interview someone who *already* feels like a fraud?
 
 And we are often a **socially awkward bunch** (myself included). An interview that is both stressful *and* requires live problem-solving is a recipe for disaster.
 
@@ -51,7 +51,7 @@ Make the process clear and human. That means:
 
 ## The Interview
 
-Be **on time**. Anxiety spikes while waiting. If they're late, give them a few minutes — chances are they're not in back-to-back meetings like you are.
+Be **on time**. Anxiety spikes while waiting. If they're late, give them a few minutes - chances are they're not in back-to-back meetings like you are.
 
 Ask yourself:
 **Would they fit the team temperamentally?**
@@ -61,9 +61,9 @@ After years of Fibonacci questions and linked list marathons, I learned one core
 
 > ## **Coders love talking about code they know.**
 
-That's the secret. And it only works if the interviewer actually understands what's being shown. If you don't know the framework (Angular, React, whatever) — still fine. Focus on structure, clarity, naming, intent.
+That's the secret. And it only works if the interviewer actually understands what's being shown. If you don't know the framework (Angular, React, whatever) - still fine. Focus on structure, clarity, naming, intent.
 
-So — tell them **in advance** (5 days is fair) that you'll want to discuss code they've written. No pressure. No trick. Just: *Show me something you can talk about.*
+So - tell them **in advance** (5 days is fair) that you'll want to discuss code they've written. No pressure. No trick. Just: *Show me something you can talk about.*
 
 They might not have GitHub – that's ok. A personal or work snippet is fine. The goal isn't to find genius. It's to find **ownership**.
 
@@ -73,23 +73,23 @@ They might not have GitHub – that's ok. A personal or work snippet is fine. Th
 
 ## Why This Works
 
-**I** personally leave coding interviews these days. It makes me MASSIVELY anxious — though I've built hundreds of systems. It's UNNECESSARY.
+**I** personally leave coding interviews these days. It makes me MASSIVELY anxious - though I've built hundreds of systems. It's UNNECESSARY.
 
 Here's why this approach is better:
 
-1. **It's less stressful.** They're talking about familiar code — not panic-writing something under pressure.
+1. **It's less stressful.** They're talking about familiar code - not panic-writing something under pressure.
 2. **It reveals truth.** If they can't explain code they "wrote", they probably didn't write it.
 3. **It leads to natural exploration:**
    * Why that approach?
    * Why not use a library?
    * What were the constraints?
-4. **You see code they wrote with time — not while sweating.** Unless your workplace is chaos, people don't normally code under panic conditions.
+4. **You see code they wrote with time - not while sweating.** Unless your workplace is chaos, people don't normally code under panic conditions.
 
 ---
 
 ## Exceptions to the Rule
 
-Junior candidates *may* need a small practical test — but keep it humane. Don't make them refactor a 4,000-line legacy file.
+Junior candidates *may* need a small practical test - but keep it humane. Don't make them refactor a 4,000-line legacy file.
 
 Ask about loops, conditions, real-world basics. Keep it tied to the job.
 
@@ -101,7 +101,7 @@ Logic puzzles? Never once needed them in real work. Never once seen a real use f
 
 ## Follow Up
 
-Whether the candidate gets the role or not — **follow up**.
+Whether the candidate gets the role or not - **follow up**.
 
 If they didn't get it:
 Explain why.
@@ -113,8 +113,8 @@ Let them breathe.
 
 Because ultimately:
 
-> **An interview should reveal ability — not protect ego.**
-> **It should add value — even when the answer is no.**
+> **An interview should reveal ability - not protect ego.**
+> **It should add value - even when the answer is no.**
 
 ---
 

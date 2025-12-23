@@ -3,9 +3,9 @@
 <!--category-- AI, Architecture, LLM, Agents, Systems Design, C# -->
 <datetime class="hidden">2025-12-18T10:00</datetime>
 
-I'm a .NET developer. When I started building LLM-powered systems, everyone pointed me toward LangChain. "It's the standard," they said. "All the examples use it." And they were right — if you're in the Python ecosystem, LangChain is everywhere.
+I'm a .NET developer. When I started building LLM-powered systems, everyone pointed me toward LangChain. "It's the standard," they said. "All the examples use it." And they were right - if you're in the Python ecosystem, LangChain is everywhere.
 
-But here's the thing: I don't avoid LangChain because it's bad. I avoid it because it solves problems I already solve more explicitly, and for my use cases — C#, local inference, privacy, determinism — frameworks add friction rather than value.
+But here's the thing: I don't avoid LangChain because it's bad. I avoid it because it solves problems I already solve more explicitly, and for my use cases - C#, local inference, privacy, determinism - frameworks add friction rather than value.
 
 This isn't an anti-LangChain post. It's a post about understanding what problems frameworks solve, and realizing you might not need them.
 
@@ -42,7 +42,7 @@ These are legitimate problems. The question is: do you need a framework to solve
 
 ## Where LangChain Starts to Hurt
 
-For my work — building production .NET systems with local LLMs, strict privacy requirements, and deterministic behavior — LangChain introduces friction in several areas.
+For my work - building production .NET systems with local LLMs, strict privacy requirements, and deterministic behavior - LangChain introduces friction in several areas.
 
 ### Hidden State and Implicit Control Flow
 
@@ -54,7 +54,7 @@ The framework concatenates prompts, manages memory, and handles execution order 
 
 Once you adopt LangChain, you start designing **for LangChain**. Your architecture becomes coupled to the framework's abstractions: chains, agents, retrievers, memory buffers.
 
-This isn't unique to LangChain — all frameworks do this. But in a fast-moving field like LLMs, where the right abstractions aren't settled yet, coupling to a framework's worldview is risky.
+This isn't unique to LangChain - all frameworks do this. But in a fast-moving field like LLMs, where the right abstractions aren't settled yet, coupling to a framework's worldview is risky.
 
 ### The Python Impedance Mismatch
 
@@ -175,7 +175,7 @@ if (error != null)
 var results = ExecuteQuery(connection, sql);
 ```
 
-This is safer, faster, and debuggable. The LLM can't accidentally run `DROP TABLE` because I validate the SQL first. The LLM can't leak data because it never sees the data — only the schema.
+This is safer, faster, and debuggable. The LLM can't accidentally run `DROP TABLE` because I validate the SQL first. The LLM can't leak data because it never sees the data - only the schema.
 
 ## A Concrete Example: CSV Analysis Without Frameworks
 
@@ -198,7 +198,7 @@ The system then:
 
 The LLM never sees the actual data. It only sees structure.
 
-This is what LangChain would call an "agent" — a system that uses an LLM to generate actions, validates them, executes them, and potentially retries on failure.
+This is what LangChain would call an "agent" - a system that uses an LLM to generate actions, validates them, executes them, and potentially retries on failure.
 
 Except I built it in ~200 lines of C# with no framework:
 
