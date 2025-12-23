@@ -50,7 +50,7 @@ public class InteractionEventEntity
     /// Additional event metadata as JSONB.
     /// </summary>
     [Column("metadata", TypeName = "jsonb")]
-    public Dictionary<string, object>? Metadata { get; set; }
+    public InteractionMetadata? Metadata { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

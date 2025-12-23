@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
@@ -12,12 +13,14 @@ using Pgvector;
 
 #nullable disable
 
-namespace Mostlylucid.SegmentCommerce.Data.Migrations
+namespace Mostlylucid.SegmentCommerce.Migrations
 {
     [DbContext(typeof(SegmentCommerceDbContext))]
-    partial class SegmentCommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251223115252_AddMetadataTypes")]
+    partial class AddMetadataTypes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

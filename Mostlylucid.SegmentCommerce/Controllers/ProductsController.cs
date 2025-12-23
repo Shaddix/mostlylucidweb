@@ -107,7 +107,7 @@ public class ProductsController(
         await interactionService.RecordEventAsync(
             sessionService.GetSessionId(),
             EventTypes.Search,
-            metadata: new Dictionary<string, object> { { "query", q } });
+            metadata: new InteractionMetadata { SearchQuery = q });
 
         var products = await productService.SearchAsync(q);
         

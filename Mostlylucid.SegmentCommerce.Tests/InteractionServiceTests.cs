@@ -37,7 +37,7 @@ public class InteractionServiceTests
     {
         using var context = CreateContext();
         var service = new InteractionService(context);
-        var metadata = new Dictionary<string, object> { ["scrollDepth"] = 75, ["timeOnPage"] = 120 };
+        var metadata = new InteractionMetadata { ScrollDepth = 75, TimeOnPageSeconds = 120 };
 
         await service.RecordEventAsync(
             sessionId: "session-meta",
@@ -46,7 +46,8 @@ public class InteractionServiceTests
 
         var evt = await context.InteractionEvents.FirstAsync();
         Assert.NotNull(evt.Metadata);
-        // Note: In-memory DB may not preserve JSONB exactly
+        Assert.Equal(75, evt.Metadata.ScrollDepth);
+        Assert.Equal(120, evt.Metadata.TimeOnPageSeconds);
     }
 
     [Fact]
@@ -149,12 +150,12 @@ public class InteractionServiceTests
         var signature = new InterestSignature();
 
         var profile = await service.CreateProfileAsync("token-visits", signature);
-        Assert.Equal(0, profile.TotalVisits);
+        Assert.Equal(1, profile.TotalVisits); // First visit on creation
 
         await service.UpdateProfileInterestsAsync(profile.Id, signature);
 
         var updated = await context.VisitorProfiles.FindAsync(profile.Id);
-        Assert.Equal(1, updated!.TotalVisits);
+        Assert.Equal(2, updated!.TotalVisits); // Incremented after update
     }
 
     [Fact]
@@ -206,13 +207,20 @@ public class InteractionServiceTests
         using var context = CreateContext();
         var service = new InteractionService(context);
 
+        // Create first event
         await service.RecordEventAsync("s1", EventTypes.View, category: "tech");
-        var since = DateTime.UtcNow.AddSeconds(1);
-        await Task.Delay(10);
+        
+        // Wait a bit and capture the cutoff time
+        await Task.Delay(50);
+        var since = DateTime.UtcNow;
+        await Task.Delay(50);
+        
+        // Create second event after the cutoff
         await service.RecordEventAsync("s2", EventTypes.View, category: "tech");
 
         var stats = await service.GetCategoryStatsAsync("tech", since);
 
+        // Only the second event should be counted (created after 'since')
         Assert.Equal(1, stats.TotalViews);
     }
 

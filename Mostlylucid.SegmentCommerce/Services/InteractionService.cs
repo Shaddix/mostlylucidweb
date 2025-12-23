@@ -26,7 +26,7 @@ public class InteractionService
         int? productId = null,
         string? category = null,
         Guid? profileId = null,
-        Dictionary<string, object>? metadata = null)
+        InteractionMetadata? metadata = null)
     {
         var evt = new InteractionEventEntity
         {

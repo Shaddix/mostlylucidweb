@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Mostlylucid.SegmentCommerce.Data.Entities;
 
 namespace Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 
@@ -55,7 +56,7 @@ public class SignalEntity
     /// Additional context as JSONB (scroll depth, time on page, etc.)
     /// </summary>
     [Column("context", TypeName = "jsonb")]
-    public Dictionary<string, object>? Context { get; set; }
+    public SignalContext? Context { get; set; }
 
     /// <summary>
     /// Page/URL where the signal was captured.

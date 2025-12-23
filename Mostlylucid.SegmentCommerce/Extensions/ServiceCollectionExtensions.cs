@@ -6,6 +6,10 @@ using Mostlylucid.SegmentCommerce.ClientFingerprint;
 using Mostlylucid.SegmentCommerce.Services;
 using Mostlylucid.SegmentCommerce.Services.Attributes;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
+using Mostlylucid.SegmentCommerce.Services.Events;
+using Mostlylucid.SegmentCommerce.Services.Inventory;
+using Mostlylucid.SegmentCommerce.Services.Orders;
+using Mostlylucid.SegmentCommerce.Services.Payments;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
 using Mostlylucid.SegmentCommerce.Services.Segments;
@@ -75,6 +79,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISegmentService, SegmentService>();
         services.AddScoped<ISegmentVisualizationService, SegmentVisualizationService>();
         services.AddScoped<IDemoUserService, DemoUserService>();
+        
+        // Event publishing
+        services.AddScoped<IEventPublisher, OutboxEventPublisher>();
+        
+        // Inventory management
+        services.AddScoped<IInventoryService, InventoryService>();
+        
+        // Order processing
+        services.AddScoped<IOrderService, OrderService>();
+        
+        // Payment processing (use mock by default, configure for Stripe in production)
+        services.AddScoped<IPaymentService, MockPaymentService>();
         
         return services;
     }

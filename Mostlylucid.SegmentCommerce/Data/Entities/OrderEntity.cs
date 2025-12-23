@@ -103,7 +103,7 @@ public class OrderEntity
     // ============ METADATA ============
 
     [Column("metadata", TypeName = "jsonb")]
-    public Dictionary<string, object>? Metadata { get; set; }
+    public OrderMetadata? Metadata { get; set; }
 
     // ============ TIMESTAMPS ============
 

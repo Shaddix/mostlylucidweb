@@ -1,487 +1,379 @@
-# Zero PII Customer Intelligence — Part 1.1: Generating Realistic Test Data with Local AI
+# Zero PII Customer Intelligence — Part 1.1: Generating Sample Data (and Images) Locally
 
 <!--category-- Product, Privacy, LLM, ComfyUI, C# -->
 <datetime class="hidden">2025-12-24T20:00</datetime>
 
-## Introduction
+In [Part 1](/blog/zero-pii-customer-intelligence-part1) I talked about the architecture: sessions, anonymous profiles, decay, and explainable segments.
 
-In [Part 1](/blog/zero-pii-customer-intelligence-part1), we established the conceptual foundation for zero-PII customer intelligence. But there's a practical challenge: **how do you test and validate these systems without real customer data?**
+Here’s the very practical follow-up: **how do you validate any of this without ever touching real customer data?**
 
-The answer lies in generating sophisticated synthetic data that mirrors real-world complexity while containing zero personal information. This isn't just about creating dummy records—it's about building a realistic testbed that can stress-test your algorithms and demonstrate the system's capabilities.
+For this series I generate a complete synthetic ecommerce dataset locally:
+- Product catalog (names, descriptions, tags, prices)
+- Anonymous “profiles” / personas (interests + signals)
+- Product images (and profile portraits) via ComfyUI
+- Optional DB import so the real app can run against it
 
-We'll use local Large Language Models (LLMs) and AI image generation (ComfyUI) to create a complete ecommerce ecosystem—products, customers, sellers, and visual content—that's both realistic and completely synthetic.
+This is one of those “it feels like cheating” workflows: you get realistic inputs, you can regenerate them any time, and you never introduce PII into your dev environment.
 
-## Why Synthetic Data Matters
+## Why Local Synthetic Data Is So Powerful
 
-### The Validation Problem
+If you’re building segmentation / personalisation, you need datasets that:
+- Have enough variation to break naive heuristics
+- Are safe to share (in code, tests, demos)
+- Are reproducible (so you can compare model changes)
 
-Building intelligent systems requires validation. You need to answer questions like:
+Real data is the opposite: sensitive, messy, hard to move around, and full of historical bias.
 
-- Does our semantic segmentation actually group related products?
-- Do customer profiles evolve realistically over time?
-- Can our recommendation engine handle edge cases?
-- How does the system perform with different data distributions?
+Synthetic data gives you three superpowers:
 
-Using real customer data is problematic:
-- Privacy concerns and regulatory compliance
-- Bias amplification from historical data
-- Limited to existing patterns (hard to test novel scenarios)
-- Data access restrictions and governance overhead
-
-### The Synthetic Data Advantage
-
-Synthetic data, when generated intelligently, solves these problems:
+1. **Fast iteration**: change the segmentation logic, regenerate, re-run.
+2. **Hardening**: simulate weird long-tail behaviours you won’t see in a tiny dev dataset.
+3. **Explainability testing**: you can *inspect every generated field* and confirm your “show me why” UI is truthful.
 
 ```mermaid
-graph LR
-    subgraph RealData["Real Customer Data"]
-        RD1[Privacy risks]
-        RD2[Bias inherited]
-        RD3[Limited scope]
-        RD4[Regulatory burden]
-    end
-    
-    subgraph SyntheticData["AI-Generated Synthetic Data"]
-        SD1[Zero PII]
-        SD2[Controlled bias]
-        SD3[Infinite variety]
-        SD4[No compliance issues]
-    end
-    
-    subgraph Testing["Validation Benefits"]
-        T1[Edge case testing]
-        T2[Scale simulation]
-        T3[Pattern validation]
-        T4[Performance benchmarking]
-    end
-    
-    RD1 -.-> SD1
-    RD2 -.-> SD2
-    RD3 -.-> SD3
-    RD4 -.-> SD4
-    
-    SD1 --> T1
-    SD2 --> T2
-    SD3 --> T3
-    SD4 --> T4
-    
-    style RD1 stroke:#c92a2a,stroke-width:2px
-    style RD2 stroke:#c92a2a,stroke-width:2px
-    style SD1 stroke:#1971c2,stroke-width:3px
-    style SD2 stroke:#1971c2,stroke-width:3px
-    style T1 stroke:#2f9e44,stroke-width:2px
-    style T2 stroke:#2f9e44,stroke-width:2px
+flowchart LR
+    Taxonomy[gadget-taxonomy.json] --> Gen[SampleData generator]
+    Gen --> Products[products.json]
+    Gen --> Profiles[profiles.json]
+    Gen --> Images[images/*]
+    Products --> Import[Import into Postgres]
+    Profiles --> Import
+
+    style Taxonomy stroke:#1971c2,stroke-width:3px
+    style Gen stroke:#1971c2,stroke-width:3px
+    style Import stroke:#2f9e44,stroke-width:3px
 ```
 
-## The Architecture: Local AI Pipeline
+## The Tooling (What Actually Runs)
 
-Our data generation pipeline combines three key components:
+The generator lives in `Mostlylucid.SegmentCommerce.SampleData`.
 
-### 1. Local LLMs for Content Generation
+It’s intentionally not “a framework”; it’s a pragmatic CLI that talks to:
 
-We use Ollama running locally to generate:
-- **Product descriptions** with realistic marketing language
-- **Customer personas** with consistent interests and behaviors
-- **Seller profiles** with authentic business details
-- **Review content** that reflects actual customer experiences
+- **Ollama** (local LLM) for structured JSON generation.
+- **ComfyUI** (local Stable Diffusion) for product photography-style images.
+- A **taxonomy JSON** that keeps outputs coherent (categories, types, variants, price ranges).
+
+Configuration is wired up so you can drive it via environment variables:
 
 ```csharp
-// Example: Product generation prompt
-var prompt = $"""
-    Generate {count} unique products for "{category.DisplayName}" category.
-    
+// Mostlylucid.SegmentCommerce.SampleData/Program.cs
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddEnvironmentVariables("SAMPLEDATA_")
+    .Build();
+```
+
+## Quickstart
+
+You’ll typically run three local services alongside the generator:
+
+```mermaid
+flowchart LR
+    CLI[SampleData CLI] --> Ollama["Ollama
+    http://localhost:11434"]
+    CLI --> Comfy["ComfyUI
+    http://localhost:8188"]
+    CLI -. optional .-> DB[(Postgres)]
+
+    style CLI stroke:#1971c2,stroke-width:3px
+    style Ollama stroke:#1971c2,stroke-width:3px
+    style Comfy stroke:#2f9e44,stroke-width:3px
+    style DB stroke:#fab005,stroke-width:3px
+```
+
+Run the generator from the repo root:
+
+```bash
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- status
+```
+
+Then generate a dataset:
+
+```bash
+# v1 generator: taxonomy + optional Ollama + optional ComfyUI
+# Writes ./Output/products.json, ./Output/profiles.json, ./Output/images/...
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- generate --count 20
+```
+
+Useful switches:
+
+```bash
+# No LLM calls, taxonomy only
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- generate --no-ollama
+
+# No ComfyUI images
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- generate --no-images
+
+# Write into Postgres (uses configured connection string)
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- generate --db
+```
+
+Note: if ComfyUI isn’t available, the v1 generator falls back to placeholder images (it uses `picsum.photos`, so that path is not “fully offline”). If you want strictly-local, run with `--no-images`.
+
+## v2 Generator: Sellers → Products → Customers → Orders → Embeddings
+
+There’s also a newer generator command (`gen`) that builds a more complete “marketplace-shaped” dataset:
+
+```bash
+# v2 generator
+# Writes dataset.json plus sellers/products/customers/orders split files
+dotnet run --project Mostlylucid.SegmentCommerce.SampleData -- gen --sellers 50 --products 20 --customers 1000
+```
+
+It’s orchestrated as a multi-phase pipeline:
+
+```mermaid
+flowchart LR
+    A[Sellers] --> B[Products]
+    B --> C[Customers]
+    C --> D[Orders]
+    D --> E[Embeddings]
+
+    B -. optional .-> I[ComfyUI images]
+
+    style A stroke:#1971c2,stroke-width:3px
+    style B stroke:#1971c2,stroke-width:3px
+    style C stroke:#1971c2,stroke-width:3px
+    style D stroke:#1971c2,stroke-width:3px
+    style E stroke:#2f9e44,stroke-width:3px
+    style I stroke:#2f9e44,stroke-width:3px
+```
+
+And you can see those phases directly in code:
+
+```csharp
+// Mostlylucid.SegmentCommerce.SampleData/Services/DataGenerator.cs
+// 1. Generate Sellers
+// 2. Generate Products for each seller
+// 3. Generate Customers
+// 4. Generate Orders (with fake checkout data via Bogus)
+// 5. Generate embeddings for all entities
+```
+
+### Embeddings (Local ONNX, Cached After First Run)
+
+The v2 generator can compute embeddings using an ONNX model (default: `all-MiniLM-L6-v2`). The first time you run it, it downloads the model and vocab into your output folder.
+
+That means:
+- First run needs network access (model download)
+- Subsequent runs are local and fast
+- If you want “no network ever”, run `--no-embeddings`
+
+```csharp
+// Mostlylucid.SegmentCommerce.SampleData/Services/EmbeddingService.cs
+private const string ModelUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx";
+private const string VocabUrl = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt";
+
+// Download model if not exists
+if (!File.Exists(_config.ModelPath))
+{
+    await DownloadFileAsync(ModelUrl, _config.ModelPath, ct);
+}
+```
+
+## How We Generate “LLM-Shaped” Products (JSON Only)
+
+The product generation prompt is deliberately strict: the LLM must return JSON only, with an embedded JSON schema example.
+
+```csharp
+// Mostlylucid.SegmentCommerce.SampleData/Services/OllamaProductGenerator.cs
+return $"""
+    You are a product catalog generator for an e-commerce store. Generate {count} unique, realistic product listings for the \"{category.DisplayName}\" category.
+
     Category description: {category.Description}
+    Example products in this category: {category.ExampleProducts}
     Price range: £{category.PriceRange.Min:F2} - £{category.PriceRange.Max:F2}
-    
+
     For each product, provide:
-    - Compelling name (brand-style)
-    - Detailed description (2-3 sentences, key features/benefits)
-    - Realistic price within range
-    - 3-5 relevant tags
-    - Trending/featured status (20%/15% respectively)
-    - Image generation prompt (product photography style)
-    - 2-3 colour variants
-    
-    Respond with valid JSON only.
+    1. A compelling product name (realistic brand-style naming)
+    2. A detailed description (2-3 sentences, highlighting key features and benefits)
+    3. A realistic price within the range
+    4. Optional original price if on sale (20-40% higher than current price)
+    5. 3-5 relevant tags
+    6. Whether it's trending (about 20% should be trending)
+    7. Whether it's featured (about 15% should be featured)
+    8. An image prompt for AI image generation (detailed, product photography style)
+    9. 2-3 colour variants for the product
+
+    IMPORTANT: Respond with ONLY valid JSON, no markdown formatting, no code blocks, no explanations.
+
+    Generate {count} diverse products now:
     """;
 ```
 
-### 2. ComfyUI for Realistic Images
+This matters because downstream systems (image generation + import + embeddings) want structured data. The LLM is producing *inputs to a pipeline*, not writing prose.
 
-Visual content makes the synthetic ecosystem believable. We use ComfyUI (local Stable Diffusion) to generate:
+### LLM Responses: Parse JSON, or Fall Back
 
-- **Product photography** with consistent lighting and backgrounds
-- **Customer profile pictures** with diverse, realistic portraits
-- **Color variants** for each product
-- **Category-appropriate styling** (tech products vs fashion items)
+LLMs are not compilers. Even with “JSON only”, you still need defensive parsing and graceful fallback.
 
-```csharp
-// Image generation workflow integration
-var workflow = BuildWorkflow(product.ImagePrompt);
-var promptId = await QueuePromptAsync(workflow);
-var imageData = await WaitForImageAsync(promptId);
-await File.WriteAllBytesAsync(filePath, imageData);
-```
-
-### 3. Structured Taxonomy for Consistency
-
-The secret to realistic data is a **taxonomy** that ensures consistency:
-
-```json
-{
-  "categories": {
-    "tech": {
-      "display_name": "Technology & Electronics",
-      "subcategories": {
-        "audio": {
-          "products": [
-            {"type": "Wireless Headphones", "variants": ["Over-ear", "In-ear", "On-ear"]},
-            {"type": "Bluetooth Speakers", "variants": ["Portable", "Home", "Outdoor"]}
-          ]
-        }
-      },
-      "price_range": {"min": 29.99, "max": 1299.99}
-    }
-  }
-}
-```
-
-This taxonomy guides the LLM to generate coherent data that follows real-world patterns.
-
-## The Generation Process: Step by Step
-
-### Step 1: Category-Driven Product Creation
-
-We start with the taxonomy and ask the LLM to generate products that fit specific categories and price ranges:
+The v2 generator does that via a small helper (`LlmService`) that extracts the first `{...}` block and deserializes it:
 
 ```csharp
-public async Task<List<GeneratedProduct>> GenerateProductsAsync(
-    string categorySlug,
-    int count,
-    bool useOllama = true)
+// Mostlylucid.SegmentCommerce.SampleData/Services/LlmService.cs
+var jsonStart = response.IndexOf('{');
+var jsonEnd = response.LastIndexOf('}');
+
+if (jsonStart >= 0 && jsonEnd > jsonStart)
 {
-    var category = _taxonomy.Categories[categorySlug];
-    
-    if (useOllama)
+    var jsonStr = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+    return JsonSerializer.Deserialize<T>(jsonStr, new JsonSerializerOptions
     {
-        var prompt = BuildProductGenerationPrompt(category, count);
-        var response = await CallOllamaAsync(prompt);
-        return ParseProductResponse(response, categorySlug);
-    }
-    else
-    {
-        // Fallback to taxonomy-based generation
-        return GenerateFromTaxonomy(category, count);
-    }
-}
-```
-
-The LLM creates products like:
-
-```json
-{
-  "name": "AuraSound Pro X1",
-  "description": "Premium wireless headphones with active noise cancellation and 40-hour battery life. Engineered for audiophiles who demand crystal-clear audio and all-day comfort.",
-  "price": 249.99,
-  "original_price": 349.99,
-  "tags": ["wireless", "noise-cancelling", "premium", "long-battery"],
-  "image_prompt": "Professional product photography of high-end wireless headphones, studio lighting, white background, sleek modern design, commercial photography style",
-  "colour_variants": ["Midnight Black", "Arctic White", "Space Gray"]
-}
-```
-
-### Step 2: Image Generation with Contextual Awareness
-
-Each product gets multiple images:
-
-1. **Primary product image** using the LLM-generated prompt
-2. **Color variants** by modifying the base prompt
-3. **Different angles** (when applicable)
-
-```csharp
-private static string ModifyPromptForColour(string basePrompt, string colour)
-{
-    return $"{basePrompt}, {colour} colour variant, product colour is {colour}";
-}
-```
-
-The result is realistic product photography that matches the item's description and price point.
-
-### Step 3: Customer Persona Generation
-
-We create synthetic customers with:
-
-- **Interest profiles** aligned with product categories
-- **Behavioral patterns** (view, cart, purchase probabilities)
-- **Demographic consistency** (age-appropriate interests)
-- **Visual identity** through AI-generated portraits
-
-```csharp
-public class GeneratedProfile
-{
-    public string ProfileKey { get; set; } // Anonymous identifier
-    public Dictionary<string, double> Interests { get; set; } // Category weights
-    public List<GeneratedSignal> Signals { get; set; } // Behavioral data
-    public string? DisplayName { get; set; }
-    public string? Bio { get; set; }
-    public int? Age { get; set; }
-    public string? ProfileImagePath { get; set; } // AI-generated portrait
-}
-```
-
-The LLM ensures personas are consistent:
-
-```json
-{
-  "name": "Alex Chen",
-  "bio": "Tech enthusiast who values quality and sustainability. Always looking for innovative gadgets that make life easier.",
-  "age": 28,
-  "interests": {
-    "tech": 0.85,
-    "sustainability": 0.72,
-    "home-automation": 0.68
-  },
-  "shopping_style": "Research-driven, prefers premium quality over price"
-}
-```
-
-## Why This Approach is Powerful
-
-### 1. Realistic Complexity
-
-Real ecommerce data is messy. Our synthetic generation includes:
-
-- **Price elasticity**: Some products have discounts, others don't
-- **Inventory variation**: Not all colors/sizes are available
-- **Quality ranges**: Budget options alongside premium ones
-- **Seasonal trends**: Some products marked as "trending"
-- **Customer diversity**: Different shopping patterns and preferences
-
-This complexity is crucial for testing segmentation algorithms that need to handle real-world variation.
-
-### 2. Edge Case Generation
-
-LLMs can create scenarios that are rare in real data but critical for testing:
-
-```csharp
-// Generate edge case products
-var edgeCases = await GenerateProductsAsync("tech", 5, new EdgeCaseOptions
-{
-    IncludeExtremePricing = true, // £9.99 and £1999.99 items
-    IncludeBundles = true, // Multi-item packages
-    IncludeLimitedEdition = true, // Scarcity signals
-    IncludeNewCategories = true // Novel product types
-});
-```
-
-### 3. Controlled Bias
-
-Unlike real data that inherits societal biases, we can control our synthetic data:
-
-```csharp
-public class BiasControls
-{
-    public float GenderBalance { get; set; } = 0.5f; // 50/50 split
-    public float AgeDistribution { get; set; } = 0.3f; // Younger skew
-    public Dictionary<string, float> CategoryDiversity { get; set; } // Category balance
-    public bool IncludeUnderrepresented { get; set; } = true; // Ensure inclusion
-}
-```
-
-This lets us test for algorithmic fairness and bias mitigation.
-
-### 4. Scale and Reproducibility
-
-Need to test with 1 million customers? Just adjust the parameters:
-
-```bash
-sampledata gen --sellers 1000 --products 50 --customers 1000000 --no-images
-```
-
-Every generation run is reproducible through seeded random numbers and deterministic LLM parameters.
-
-## Real-World Testing Scenarios
-
-### Scenario 1: Cold Start Performance
-
-Generate a fresh dataset and test:
-- How quickly does the system identify customer segments?
-- When do recommendations become meaningful?
-- What's the minimum data needed for useful personalization?
-
-```csharp
-// Test cold start with varying data densities
-var testScenarios = new[]
-{
-    new { Products = 100, Customers = 1000, InteractionsPerCustomer = 2 },
-    new { Products = 500, Customers = 5000, InteractionsPerCustomer = 5 },
-    new { Products = 2000, Customers = 20000, InteractionsPerCustomer = 15 }
-};
-```
-
-### Scenario 2: Seasonal Shifts
-
-Generate time-stamped data to test:
-- How does the system handle changing interests?
-- Do decay functions work as expected?
-- Can it detect emerging trends?
-
-```csharp
-// Simulate seasonal behavior
-var seasonalGenerator = new SeasonalDataGenerator
-{
-    SummerInterest = new Dictionary<string, double> { ["outdoor"] = 0.8, ["sport"] = 0.7 },
-    WinterInterest = new Dictionary<string, double> { ["home"] = 0.9, ["tech"] = 0.6 },
-    TransitionRate = 0.1 // Interest drift per week
-};
-```
-
-### Scenario 3: Anomaly Detection
-
-Inject unusual patterns to test:
-- Can the system detect bot-like behavior?
-- Are outlier customers identified correctly?
-- How does it handle sudden market changes?
-
-## Performance and Resource Considerations
-
-### Local AI Benefits
-
-Running everything locally provides:
-
-1. **Privacy**: No data leaves your environment
-2. **Cost**: No API calls after initial model download
-3. **Speed**: Parallel processing on local hardware
-4. **Customization**: Fine-tune models for your domain
-
-### Resource Optimization
-
-```csharp
-// Batch processing for efficiency
-public async Task GenerateInBatches<T>(
-    IEnumerable<T> items,
-    Func<T, Task> processor,
-    int batchSize = 10)
-{
-    var batches = items.Chunk(batchSize);
-    await Parallel.ForEachAsync(batches, async batch =>
-    {
-        await Task.WhenAll(batch.Select(processor));
+        PropertyNameCaseInsensitive = true
     });
 }
 ```
 
-### Fallback Strategies
+And the overall generation pipeline explicitly checks availability and downgrades to deterministic templates when needed:
 
-Not everyone has powerful GPUs. The system gracefully degrades:
+```mermaid
+flowchart LR
+    A[EnableLlm=true?] -->|no| F[Fallback templates]
+    A -->|yes| B[GET /api/tags]
+    B -->|model present| C[LLM JSON prompts]
+    B -->|not available| F
 
-```csharp
-// Check service availability and adapt
-if (!await ollamaService.IsAvailableAsync())
-{
-    AnsiConsole.MarkupLine("[yellow]Ollama not available - using rule-based generation[/]");
-    await GenerateUsingRulesAsync();
-}
-
-if (!await comfyUIService.IsAvailableAsync())
-{
-    AnsiConsole.MarkupLine("[yellow]ComfyUI not available - using placeholder images[/]");
-    await GeneratePlaceholderImagesAsync();
-}
+    style A stroke:#1971c2,stroke-width:3px
+    style C stroke:#2f9e44,stroke-width:3px
+    style F stroke:#fab005,stroke-width:3px
 ```
 
-## Validation: How Good Is Our Synthetic Data?
+### Example: Customer Personas (v2)
 
-### Semantic Consistency
-
-We validate that generated products make semantic sense:
+The persona prompt for customers is short and structured so it can be generated quickly with a small local model:
 
 ```csharp
-public float CalculateSemanticConsistency(GeneratedProduct product)
-{
-    var nameEmbedding = _embeddingService.GenerateEmbedding(product.Name);
-    var descriptionEmbedding = _embeddingService.GenerateEmbedding(product.Description);
-    
-    return CosineSimilarity(nameEmbedding, descriptionEmbedding);
-}
-```
+// Mostlylucid.SegmentCommerce.SampleData/Services/DataGenerator.cs
+var prompt = $$"""
+    Generate a shopper persona interested in: {{string.Join(", ", categoryNames)}}.
 
-### Price Plausibility
-
-Check that prices align with product categories and features:
-
-```csharp
-public bool ValidatePrice(GeneratedProduct product, CategoryDefinition category)
-{
-    var expectedRange = category.PriceRange;
-    
-    // Allow some outliers but flag extreme cases
-    if (product.Price < expectedRange.Min * 0.5 || product.Price > expectedRange.Max * 2.0)
+    Return JSON only:
     {
-        AnsiConsole.MarkupLine($"[yellow]Unusual price: {product.Name} - £{product.Price}[/]");
-        return false;
+      "persona": "Brief persona description (e.g. 'Tech enthusiast who values quality')",
+      "name": "Realistic first name",
+      "bio": "One sentence about their shopping habits",
+      "age": 25,
+      "shopping_style": "budget|value|premium|luxury",
+      "preferred_categories": ["category1", "category2"]
     }
-    
-    return true;
-}
+    """;
 ```
 
-### Diversity Metrics
+## ComfyUI: Product Photography via API
 
-Ensure the generated dataset represents different segments:
+ComfyUI is great because it gives you a controllable pipeline (workflows) rather than a “single black box image endpoint”.
+
+The generator:
+1. Loads a workflow template (`ComfyUI/workflows/product_image.json`)
+2. Patches the prompt into `CLIPTextEncode`
+3. Queues `/prompt`
+4. Polls `/history/{promptId}`
+5. Downloads the image via `/view?...`
+
+```mermaid
+sequenceDiagram
+    participant Gen as SampleData
+    participant Comfy as ComfyUI
+
+    Gen->>Comfy: POST /prompt (workflow + prompt)
+    Comfy-->>Gen: prompt_id
+    loop poll
+        Gen->>Comfy: GET /history/{prompt_id}
+        Comfy-->>Gen: outputs / images
+    end
+    Gen->>Comfy: GET /view?filename=...&type=output
+    Comfy-->>Gen: PNG bytes
+```
+
+ComfyUI model selection is also patched into the workflow at runtime (so you can swap checkpoints without editing the JSON):
 
 ```csharp
-public void AnalyzeDiversity(List<GeneratedProfile> profiles)
+// Mostlylucid.SegmentCommerce.SampleData/Services/ComfyUIImageGenerator.cs
+TryPatchCheckpoint(workflow, _config.ComfyUICheckpointName ?? "sd_xl_base_1.0.safetensors");
+TryPatchRefiner(workflow, _config.ComfyUIRefinerName ?? "sd_xl_refiner_1.0.safetensors");
+```
+
+And the workflow patching is intentionally simple and robust:
+
+```csharp
+// Mostlylucid.SegmentCommerce.SampleData/Services/ComfyUIImageGenerator.cs
+// Update CLIPTextEncode nodes with our prompt
+if (classType == "CLIPTextEncode")
 {
-    var categoryDistribution = profiles
-        .SelectMany(p => p.Interests)
-        .GroupBy(kvp => kvp.Key)
-        .ToDictionary(g => g.Key, g => g.Average(kvp => kvp.Value));
-    
-    // Check for healthy distribution across categories
-    foreach (var category in categoryDistribution)
+    var inputs = nodeObj["inputs"]?.AsObject();
+    if (inputs != null && inputs.ContainsKey("text"))
     {
-        AnsiConsole.MarkupLine($"[dim]{category.Key}: {category.Value:F2} average interest[/]");
+        var currentText = inputs["text"]?.GetValue<string>() ?? "";
+        if (!currentText.Contains("bad") && !currentText.Contains("ugly") && !currentText.Contains("deformed"))
+        {
+            inputs["text"] = prompt;
+        }
+    }
+}
+
+// Update image dimensions
+if (classType == "EmptyLatentImage")
+{
+    var inputs = nodeObj["inputs"]?.AsObject();
+    if (inputs != null)
+    {
+        inputs["width"] = _config.ImageWidth;
+        inputs["height"] = _config.ImageHeight;
     }
 }
 ```
 
-## Integration with the Zero-PII System
+## Profiles and Personas (Useful, Not Creepy)
 
-This synthetic data becomes the foundation for testing our zero-PII customer intelligence:
+The v1 generator creates anonymous profiles and then enriches them with a persona (still no PII). You end up with realistic “people-shaped” test data without emails, addresses, or anything you could ever accidentally ship.
 
-1. **Products**: No PII, just semantic attributes and embeddings
-2. **Customers**: Anonymous profiles with interest signatures
-3. **Interactions**: Behavioral signals without identity linkage
-4. **Images**: Realistic visuals without real people or products
+In v1, profiles are keyed using a one-way hash, so there’s nothing to “recover”:
 
 ```csharp
-// All data is PII-free by design
-public class SyntheticCustomer
+// Mostlylucid.SegmentCommerce.SampleData/Services/ProfileGenerator.cs
+var profileKey = Hash($"fp-{Guid.NewGuid():N}");
+
+private static string Hash(string input)
 {
-    public string ProfileKey { get; set; } // Hashed anonymous ID
-    public Dictionary<string, double> Interests { get; set; } // Semantic interests
-    public List<BehavioralSignal> Signals { get; set; } // Actions, not identity
-    public float[] InterestEmbedding { get; set; } // Vector representation
+    using var sha = SHA256.Create();
+    var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+    return Convert.ToHexString(bytes).ToLowerInvariant();
 }
 ```
 
-## Next Steps
+That’s exactly the mindset of the whole series: you can’t leak what you never stored.
 
-With this synthetic data pipeline, we can:
+```mermaid
+flowchart TB
+    Signals["Generated signals
+    views/cart/purchase weights"] --> Persona["Persona enrichment
+    Ollama JSON-only"]
+    Persona --> Portrait[Portrait prompt]
+    Portrait --> Comfy[ComfyUI]
 
-1. **Build and test** the complete zero-PII intelligence system
-2. **Benchmark** different algorithms without privacy concerns
-3. **Demonstrate** capabilities with realistic examples
-4. **Stress test** edge cases and failure modes
-5. **Validate** that transparency doesn't harm performance
+    style Signals stroke:#1971c2,stroke-width:3px
+    style Persona stroke:#1971c2,stroke-width:3px
+    style Comfy stroke:#2f9e44,stroke-width:3px
+```
 
-The generated data serves as both a testing platform and a demonstration dataset—proving that sophisticated customer intelligence doesn't require harvesting personal information.
+## Validation: What This Lets You Prove
 
----
+This local pipeline is powerful because it supports *model validation*, not just demos.
 
-**Next:** [Part 2 - Core Implementation] where we'll use this synthetic data to build the actual zero-PII segmentation system.
+- **Segmentation sanity**: do the segments you compute “feel” coherent when you inspect product names/tags and generated personas?
+- **Recommendation explainability**: does “show me why” point at a real signal you can verify?
+- **Cold start**: if you wipe the dataset and regenerate, does the system behave predictably?
+- **Regression testing**: regenerate the same shape of data and ensure your changes don’t break ranking, scoring, or UI.
 
-**Code Repository:** The complete data generation pipeline is available in the `Mostlylucid.SegmentCommerce.SampleData` project.
+The important subtlety: by generating both the *text* and the *images*, you can validate the entire product experience, not just back-end math.
 
-*This approach demonstrates how local AI can create realistic, privacy-preserving test data that enables innovation without compromising ethics.*
+## Next
+
+**Next:** [Part 2 - Core Implementation] where we wire session signals, decay, and segments against this dataset.
+
+If you want to explore the generator code as you read this post:
+- `Mostlylucid.SegmentCommerce.SampleData/Commands/GenerateCommand.cs`
+- `Mostlylucid.SegmentCommerce.SampleData/Services/OllamaProductGenerator.cs`
+- `Mostlylucid.SegmentCommerce.SampleData/Services/ComfyUIImageGenerator.cs`

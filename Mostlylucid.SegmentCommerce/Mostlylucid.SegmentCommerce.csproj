@@ -25,6 +25,8 @@
         <PackageReference Include="Pgvector" Version="0.3.0" />
         <PackageReference Include="Mapster" Version="7.4.0" />
         <PackageReference Include="Mapster.DependencyInjection" Version="1.0.0" />
+        <!-- Redis distributed cache for production deployments -->
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.0" />
     </ItemGroup>
 
     <ItemGroup>

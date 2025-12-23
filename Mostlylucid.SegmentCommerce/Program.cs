@@ -48,8 +48,22 @@ if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
     builder.Services.AddHostedService<OutboxWorkerService>();
 }
 
-// In-memory cache for sessions (use Redis in production)
-builder.Services.AddDistributedMemoryCache();
+// Distributed cache - Redis in production, in-memory for development
+var useRedis = builder.Configuration.GetValue<bool>("Cache:UseRedis", false);
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+
+if (useRedis && !string.IsNullOrEmpty(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = builder.Configuration["Cache:InstanceName"] ?? "SegmentCommerce_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
 
 builder.Services.AddSession(options =>
 {

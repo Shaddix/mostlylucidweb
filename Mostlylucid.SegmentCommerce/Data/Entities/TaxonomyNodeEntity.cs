@@ -26,7 +26,7 @@ public class TaxonomyNodeEntity
     public string Path { get; set; } = string.Empty;
 
     [Column("attributes", TypeName = "jsonb")]
-    public Dictionary<string, object>? Attributes { get; set; }
+    public TaxonomyAttributes? Attributes { get; set; }
 
     [Column("sort_order")]
     public int SortOrder { get; set; }

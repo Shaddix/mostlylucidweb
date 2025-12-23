@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
+using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Services.Profiles;
@@ -10,7 +11,7 @@ public record SessionSignalInput(
     string? Category,
     int? ProductId,
     double? Weight,
-    Dictionary<string, object>? Context,
+    SignalContext? Context,
     string? PageUrl);
 
 public interface ISessionCollector

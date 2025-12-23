@@ -428,7 +428,7 @@ public class GenerateSettings : CommandSettings
                             OriginalPrice = product.OriginalPrice,
                             ImageUrl = product.Images.FirstOrDefault(i => i.IsPrimary)?.FilePath
                                        ?? product.Images.FirstOrDefault()?.FilePath
-                                       ?? $"https://picsum.photos/seed/{product.Name.GetHashCode()}/400/400",
+                                       ?? $"/api/placeholder/{Uri.EscapeDataString(categorySlug)}/{Uri.EscapeDataString(product.Name)}",
                             Tags = product.Tags,
                             IsTrending = product.IsTrending,
                             IsFeatured = product.IsFeatured,
@@ -456,7 +456,7 @@ public class GenerateSettings : CommandSettings
                             {
                                 var colorImage = product.Images.FirstOrDefault(i => i.Variant == color)?.FilePath
                                                ?? product.Images.FirstOrDefault(i => i.IsPrimary)?.FilePath
-                                               ?? $"https://picsum.photos/seed/{product.Name.GetHashCode()}-{color}/400/400";
+                                               ?? $"/api/placeholder/{Uri.EscapeDataString(categorySlug)}/{Uri.EscapeDataString(product.Name + "-" + color)}";
 
                                 var variation = new ProductVariationEntity
                                 {
@@ -558,34 +558,41 @@ public class GenerateSettings : CommandSettings
         }
     }
 
-    private async Task<GeneratedImage?> CreatePlaceholderImage(string seed, string outputDir, string variant)
+    private Task<GeneratedImage?> CreatePlaceholderImage(string seed, string outputDir, string variant)
     {
-        try
-        {
-            var seedHash = Math.Abs(seed.GetHashCode());
-            var fileName = $"{variant}.jpg";
-            var filePath = Path.Combine(outputDir, fileName);
-            
-            // Use picsum.photos with seed
-            var imageUrl = $"https://picsum.photos/seed/{seedHash}/400/400";
-            
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(10);
-            var imageData = await client.GetByteArrayAsync(imageUrl);
-            await File.WriteAllBytesAsync(filePath, imageData);
+        // Instead of downloading from picsum, we'll just record the path
+        // The actual image will be served by the PlaceholderController at runtime
+        var fileName = $"{variant}.svg";
+        var filePath = Path.Combine(outputDir, fileName);
+        
+        // Create a simple SVG placeholder file
+        var svgContent = GenerateSvgPlaceholder(seed, variant);
+        File.WriteAllText(filePath, svgContent);
 
-            return new GeneratedImage
-            {
-                FilePath = filePath,
-                Variant = variant,
-                IsPrimary = false
-            };
-        }
-        catch (Exception ex)
+        return Task.FromResult<GeneratedImage?>(new GeneratedImage
         {
-            AnsiConsole.WriteLine($"[yellow]Failed to generate placeholder: {ex.Message}[/]");
-            return null;
-        }
+            FilePath = filePath,
+            Variant = variant,
+            IsPrimary = false
+        });
+    }
+
+    private static string GenerateSvgPlaceholder(string productName, string variant)
+    {
+        var hash = Math.Abs(productName.GetHashCode());
+        var hue = hash % 360;
+        
+        return $"""
+            <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+              <rect width="100%" height="100%" fill="hsl({hue}, 30%, 20%)"/>
+              <text x="50%" y="50%" text-anchor="middle" fill="hsl({hue}, 50%, 70%)" font-family="system-ui" font-size="16" dy=".3em">
+                {System.Security.SecurityElement.Escape(productName.Length > 30 ? productName[..27] + "..." : productName)}
+              </text>
+              <text x="50%" y="60%" text-anchor="middle" fill="hsl({hue}, 50%, 60%)" font-family="system-ui" font-size="12" opacity="0.7">
+                {System.Security.SecurityElement.Escape(variant)}
+              </text>
+            </svg>
+            """;
     }
 
     private static string SanitizeFileName(string name)

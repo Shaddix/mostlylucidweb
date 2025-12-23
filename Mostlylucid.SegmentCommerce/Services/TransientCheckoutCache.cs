@@ -181,7 +181,7 @@ public class CheckoutData
     public PaymentData? Payment { get; set; }
     
     // Cart state
-    public List<CartItemData> CartItems { get; set; } = [];
+    public List<CheckoutCartItemData> CartItems { get; set; } = [];
     
     // Checkout state
     public CheckoutStep CurrentStep { get; set; } = CheckoutStep.Cart;
@@ -209,7 +209,11 @@ public class PaymentData
     public string? CardholderName { get; set; }
 }
 
-public class CartItemData
+/// <summary>
+/// Checkout cart item with full display data (stored in transient cache).
+/// This is richer than Models.CartItemData which is just for session storage.
+/// </summary>
+public class CheckoutCartItemData
 {
     public int ProductId { get; set; }
     public int? VariationId { get; set; }

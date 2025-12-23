@@ -118,6 +118,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.ShopifyTaxonomyId).IsUnique();
             entity.HasIndex(e => e.Path).HasMethod("gist");
             entity.Property(e => e.Path).HasColumnType("ltree");
+            entity.OwnsOne(e => e.Attributes, b => b.ToJson());
 
             entity.HasOne(e => e.Parent)
                 .WithMany(e => e.Children)
@@ -200,7 +201,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.SignalType);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => e.Category);
-            entity.Property(e => e.Context).HasColumnType("jsonb");
+            entity.OwnsOne(e => e.Context, b => b.ToJson());
         });
 
         // ============ LEGACY ============
@@ -217,7 +218,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.EventType);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.Category, e.CreatedAt });
-            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.OwnsOne(e => e.Metadata, b => b.ToJson());
         });
 
         // ============ EMBEDDINGS ============
@@ -245,7 +246,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.SessionKey);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
-            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.OwnsOne(e => e.Metadata, b => b.ToJson());
 
             entity.HasMany(e => e.Items)
                 .WithOne(i => i.Order)

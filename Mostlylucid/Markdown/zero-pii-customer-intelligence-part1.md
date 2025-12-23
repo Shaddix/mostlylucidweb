@@ -23,6 +23,8 @@ We'll build this using vector embeddings, session-based tracking, and aggregate 
 
 In this first part, we establish the conceptual foundation: **why transparency isn't just ethical, it's better product design**.
 
+[TOC]
+
 ## The False Dichotomy
 
 The industry presents personalisation as a binary choice:
@@ -30,7 +32,7 @@ The industry presents personalisation as a binary choice:
 **Option A: Sophisticated but Misaligned**
 - Collect lots of signals (some genuinely useful)
 - Build permanent profiles optimised for targeting
-- Cross-site tracking, third-party fingerprinting, persistent IDs
+- Cross-site tracking, third-party IDs, and often invasive fingerprinting
 - Opaque algorithms users can't inspect or control
 - Result: behavioural manipulation and advertising value, not customer value
 
@@ -85,7 +87,33 @@ An interest signature like:
 
 It can live for a single session, or persist as an **anonymous profile** that the user can reset or export.
 
-Early on, the simplest way to keep that profile stable without logins is **first-party fingerprinting** (the same idea as the signatures used in my bot detection work: [/blog/botdetection-introduction](/blog/botdetection-introduction)). Later in the series we’ll switch to a first-party identity token issued by the store itself.
+Early on, the simplest way to keep that profile stable without logins is **client-side fingerprinting**—but implemented in a *zero-PII / zero-tracking-cookie* way.
+
+In the current codebase (`Mostlylucid.SegmentCommerce`) the browser computes a fingerprint **hash** (no raw signals sent, no localStorage, no tracking cookie) and POSTs it to `/api/fingerprint`. The server then **HMACs** that hash (so it’s useless outside this site) and links it to the current session.
+
+We still use an **essential session cookie** for short-lived session state (views, cart events, etc.), but we do *not* need a dedicated “follow-you-forever” tracking cookie to get useful continuity. Later in the series we can upgrade to a logged-in identity mode (highest trust) without changing the rest of the segmentation design.
+
+```mermaid
+flowchart TB
+    A[Session only]
+    B[Fingerprint mode]
+    C[Cookie mode]
+    D[Identity mode]
+
+    A -->|no persistence| A
+    B -->|hash in browser| E[/api/fingerprint/]
+    E -->|HMAC on server| F[PersistentProfile key]
+
+    A -. upgrade .-> B
+    B -. optional upgrade .-> D
+    C -. optional upgrade .-> D
+
+    style A stroke:#868e96,stroke-width:2px
+    style B stroke:#1971c2,stroke-width:3px
+    style C stroke:#fab005,stroke-width:3px
+    style D stroke:#2f9e44,stroke-width:3px
+    style F stroke:#1971c2,stroke-width:3px
+```
 
 Crucially: persistence does not have to mean identity. The profile remains detached unless the user explicitly chooses to “unmask” it.
 
@@ -384,14 +412,15 @@ Key insight: Vector databases let you compare **interest patterns**, not user pr
 
 ### Session Signals (Plus an Anonymous Profile)
 
-We'll use session cookies/tokens for short-term personalisation. When the session ends, the *session state* ends too.
+We use a short-lived **session profile** for immediate intent. In code this is a `SessionProfileEntity`: it stores “what’s happening *right now*” (recent interactions, context, decay timers).
 
-Separately, we can maintain a **persistent anonymous profile** keyed by a stable anonymous key.
+Then, *optionally*, we link that session to a **persistent profile** (`PersistentProfileEntity`) via one of three identification modes:
 
-- Initially, that key can be a first-party **device/browser fingerprint** (see [/blog/botdetection-introduction](/blog/botdetection-introduction) for how I think about signatures).
-- Later, we can move to an **internal identity token** issued by the store (still anonymous; still not an email address).
+- `Fingerprint`: the browser computes a fingerprint hash and sends **only the hash** to `/api/fingerprint` (no raw signals, no localStorage). The server HMACs that hash and uses it as the stable key. This is “zero tracking cookie” identification.
+- `Cookie`: a classic first-party tracking cookie approach (useful, but should be consent-gated).
+- `Identity`: logged-in user id (highest trust, easiest to explain).
 
-This profile is detached from identity by default, and only becomes identifiable if the user explicitly chooses to “unmask” it.
+The important design point is that *persistence does not have to mean identity*. Even in `Fingerprint` mode, the key is site-scoped and opaque; it only becomes “identified” if the user explicitly upgrades to an account / unmask flow.
 
 ## How Commercial Providers Stitch Profiles Together
 
@@ -425,7 +454,7 @@ That’s why “Sign in with Google” can be a step-change: it replaces a local
 
 In this series, persistence is either:
 - session-scoped, or
-- attached to a first-party anonymous key (fingerprint initially; later a store-issued token)
+- attached to a first-party anonymous key (fingerprint-hash HMAC, optional cookie ID, or logged-in user ID)
 
 And it only becomes identifiable if the user explicitly chooses to unmask it.
 
@@ -435,50 +464,40 @@ This keeps the useful part (better recommendations) while avoiding the commercia
 sequenceDiagram
     participant Browser
     participant Server
-    participant Session as Session Store
-    participant Profile as Anonymous Profile Store
-    participant Qdrant as Vector DB
-    
-    Browser->>Server: View product (yoga mat)
-    Server->>Session: Get/Create session token
-    Session-->>Server: Anonymous session ID
-    
-    Server->>Qdrant: Find similar products
-    Qdrant-->>Server: Related items
-    
-    Server->>Session: Update session signature
-    Note over Session: Session signature updated (yoga, wellness)
+    participant Session as SessionProfile (short-lived)
+    participant Profile as PersistentProfile (optional)
+    participant Vector as Vector DB
 
-    Server->>Profile: Merge into anonymous profile (optional)
-    Note over Profile: Anonymous profile merged (fingerprint/first-party token)
-    
-    Server-->>Browser: Recommendations
-    
-    Note over Browser,Session: 30 minutes later...
-    
-    Browser->>Server: View another product
-    Server->>Session: Get session
-    Session-->>Server: Apply decay to signals
-    Note over Session: Strength reduced by time elapsed
-    
-    Note over Browser,Session: Session expires (24 hours)
-    Session->>Session: Delete session state
-    Note over Session: Session state is ephemeral.
+    Browser->>Server: First page view
+    Server->>Session: Create/refresh session profile
+    Note over Session: Essential session cookie only
 
-    Note over Profile: Anonymous profile may persist (still detached unless unmasked)
+    Browser-->>Server: POST /api/fingerprint (sendBeacon hash)
+    Server->>Profile: HMAC hash -> get/create profile
+    Server->>Session: Link session -> profile (Fingerprint mode)
+
+    Browser->>Server: View product
+    Server->>Vector: Similarity lookup
+    Vector-->>Server: Related items
+    Server->>Session: Update session signals + decay timers
+    Server->>Profile: Elevate strong signals (optional)
+    Server-->>Browser: Recommendations + explanations
+
+    Note over Session: Session expires naturally
+    Note over Profile: Profile persists, still anonymous
 ```
 
-The session stores:
-- Recent interactions (views, clicks, hidden items)
-- Current segment assignments
-- Decay timers
+The **session profile** stores:
+- Recent interactions (views, cart adds, hides)
+- Context (device type, referrer domain, time-of-day)
+- Decay timers and “right now” intent
 
-Separately, an anonymous profile (if enabled) stores:
-- A long-lived interest signature keyed by a stable anonymous key (fingerprint initially; later a first-party identity token)
-- Decayed signals (so old intent fades out)
-- User-controlled settings (reset/export/unmask)
+The **persistent profile** (optional) stores:
+- A stable, site-scoped key (fingerprint HMAC / optional cookie / optional user id)
+- Long-lived interests/signals that have been elevated
+- Segment membership and derived attributes
 
-No PII by default. Persistence is anonymous and revocable, unless explicitly unmasked.
+No PII by default. Even when you persist, you’re persisting an **opaque key + interest signals**, not an identity.
 
 ### Aggregate Analytics with DuckDB
 
@@ -527,7 +546,7 @@ This is where the series gets concrete: in Part 2 we’ll build the session-scop
 The important conceptual point for Part 1 is simply this:
 
 - We can segment **sessions** for immediate intent
-- We can also maintain a **persistent anonymous profile** (fingerprint initially; later a first-party token)
+- We can also maintain a **persistent anonymous profile** (fingerprint-hash HMAC / optional cookie / optional user id)
 - The signature **decays** (so old intent fades out)
 - The segments are **explainable** (users can see and adjust them)
 - Identity is only introduced if the user explicitly “unmasks” the profile
@@ -564,7 +583,7 @@ This series will implement a complete proof-of-concept ecommerce system demonstr
 
 ### Part 2: Core Implementation
 - Session-based interest tracking (ephemeral signatures)
-- Persistent anonymous profiles (fingerprint → first-party token)
+- Persistent anonymous profiles (fingerprint-hash HMAC / cookie / identity mode)
 - Vector embeddings for semantic product grouping ([extending our Qdrant work](semantic-search-with-onnx-and-qdrant))
 - Segment assignment from the session embedding
 - Decay functions that feel natural

@@ -36,11 +36,39 @@ public class CartItem
 {
     public Product Product { get; set; } = null!;
     public int Quantity { get; set; }
+    public int? VariationId { get; set; }
+    public ProductVariation? Variation { get; set; }
+    
+    /// <summary>
+    /// Get the effective price (variation price if selected, otherwise product price).
+    /// </summary>
+    public decimal UnitPrice => Variation?.Price ?? Product.Price;
+    
+    /// <summary>
+    /// Line total for this cart item.
+    /// </summary>
+    public decimal LineTotal => UnitPrice * Quantity;
+}
+
+/// <summary>
+/// Cart session data stored in session (without hydrated products).
+/// </summary>
+public class CartSessionData
+{
+    public List<CartItemData> Items { get; set; } = [];
+}
+
+public class CartItemData
+{
+    public int ProductId { get; set; }
+    public int? VariationId { get; set; }
+    public int Quantity { get; set; }
 }
 
 public class Cart
 {
     public List<CartItem> Items { get; set; } = [];
-    public decimal Total => Items.Sum(i => i.Product.Price * i.Quantity);
+    public decimal Subtotal => Items.Sum(i => i.LineTotal);
+    public decimal Total => Subtotal; // Can add shipping/tax later
     public int ItemCount => Items.Sum(i => i.Quantity);
 }
