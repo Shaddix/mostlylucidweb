@@ -79,6 +79,13 @@ app.Configure(cfg =>
         .WithExample("clear", "--confirm")
         .WithExample("clear", "--keep-categories")
         .WithExample("clear", "--connection", "Host=localhost;...");
+
+    cfg.AddCommand<ImportCommand>("import")
+        .WithDescription("Import generated JSON data into the PostgreSQL database")
+        .WithExample("import")
+        .WithExample("import", "--input", "D:\\segmentdata")
+        .WithExample("import", "--clear", "--connection", "Host=localhost;...")
+        .WithExample("import", "--no-profiles", "--no-embeddings");
 });
 
 // Register dependencies using type registrar

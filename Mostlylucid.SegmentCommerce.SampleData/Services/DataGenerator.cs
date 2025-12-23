@@ -74,8 +74,13 @@ public class DataGenerator : IDisposable
         AnsiConsole.MarkupLine("\n[bold cyan]Phase 3: Generating Customers[/]");
         dataset.Customers = await GenerateCustomersAsync(llmAvailable, ct);
 
-        // 4. Generate embeddings for all entities
-        AnsiConsole.MarkupLine("\n[bold cyan]Phase 4: Computing Embeddings[/]");
+        // 4. Generate Orders (with fake checkout data via Bogus)
+        AnsiConsole.MarkupLine("\n[bold cyan]Phase 4: Generating Orders[/]");
+        var allProducts = dataset.Sellers.SelectMany(s => s.Products).ToList();
+        dataset.Orders = GenerateOrders(dataset.Customers, allProducts);
+
+        // 5. Generate embeddings for all entities
+        AnsiConsole.MarkupLine("\n[bold cyan]Phase 5: Computing Embeddings[/]");
         await GenerateEmbeddingsAsync(dataset, ct);
 
         // Compute stats
@@ -84,6 +89,7 @@ public class DataGenerator : IDisposable
             TotalSellers = dataset.Sellers.Count,
             TotalProducts = dataset.Sellers.Sum(s => s.Products.Count),
             TotalCustomers = dataset.Customers.Count,
+            TotalOrders = dataset.Orders.Count,
             TotalImages = dataset.Sellers.Sum(s => s.Products.Sum(p => p.Images.Count)),
             TotalEmbeddings = dataset.Sellers.Count(s => s.Embedding != null)
                 + dataset.Sellers.Sum(s => s.Products.Count(p => p.Embedding != null))
@@ -94,6 +100,18 @@ public class DataGenerator : IDisposable
         return dataset;
     }
 
+    #region Order Generation
+
+    private List<GeneratedOrder> GenerateOrders(List<GeneratedCustomer> customers, List<GeneratedProduct> products)
+    {
+        var orderGenerator = new OrderGenerator();
+        var orders = orderGenerator.GenerateOrders(customers, products, 0, 3);
+        AnsiConsole.MarkupLine($"[green]Generated {orders.Count} orders[/]");
+        return orders;
+    }
+
+    #endregion
+
     #region Seller Generation
 
     private async Task<List<GeneratedSeller>> GenerateSellersAsync(bool useLlm, CancellationToken ct)
@@ -101,28 +119,27 @@ public class DataGenerator : IDisposable
         var sellers = new List<GeneratedSeller>();
         var categories = _taxonomy.Categories.Keys.ToList();
 
-        await AnsiConsole.Progress()
-            .StartAsync(async ctx =>
+        for (int i = 0; i < _settings.SellersCount; i++)
+        {
+            // Assign 1-3 categories to each seller
+            var sellerCategories = categories
+                .OrderBy(_ => _random.Next())
+                .Take(_random.Next(1, Math.Min(4, categories.Count + 1)))
+                .ToArray();
+
+            var seller = useLlm
+                ? await GenerateSellerWithLlmAsync(sellerCategories, i, ct)
+                : GenerateSellerFallback(sellerCategories, i);
+
+            sellers.Add(seller);
+            
+            if ((i + 1) % 10 == 0 || i == _settings.SellersCount - 1)
             {
-                var task = ctx.AddTask("[green]Generating sellers[/]", maxValue: _settings.SellersCount);
+                AnsiConsole.MarkupLine($"[dim]Generated {i + 1}/{_settings.SellersCount} sellers[/]");
+            }
+        }
 
-                for (int i = 0; i < _settings.SellersCount; i++)
-                {
-                    // Assign 1-3 categories to each seller
-                    var sellerCategories = categories
-                        .OrderBy(_ => _random.Next())
-                        .Take(_random.Next(1, Math.Min(4, categories.Count + 1)))
-                        .ToArray();
-
-                    var seller = useLlm
-                        ? await GenerateSellerWithLlmAsync(sellerCategories, i, ct)
-                        : GenerateSellerFallback(sellerCategories, i);
-
-                    sellers.Add(seller);
-                    task.Increment(1);
-                }
-            });
-
+        AnsiConsole.MarkupLine($"[green]Generated {sellers.Count} sellers[/]");
         return sellers;
     }
 
@@ -203,54 +220,40 @@ public class DataGenerator : IDisposable
 
     #region Product Generation
 
-    private async Task GenerateProductsForSellersAsync(
+    private Task GenerateProductsForSellersAsync(
         List<GeneratedSeller> sellers, bool useLlm, bool generateImages, CancellationToken ct)
     {
         var totalProducts = sellers.Count * _settings.ProductsPerSeller;
+        var generated = 0;
 
-        await AnsiConsole.Progress()
-            .StartAsync(async ctx =>
+        foreach (var seller in sellers)
+        {
+            for (int i = 0; i < _settings.ProductsPerSeller; i++)
             {
-                var task = ctx.AddTask("[green]Generating products[/]", maxValue: totalProducts);
+                // Pick a category this seller specializes in
+                var category = seller.Categories[_random.Next(seller.Categories.Length)];
+                var productType = _taxonomy.GetRandomProductType(category, _random);
 
-                foreach (var seller in sellers)
+                if (productType == null)
                 {
-                    for (int i = 0; i < _settings.ProductsPerSeller; i++)
-                    {
-                        // Pick a category this seller specializes in
-                        var category = seller.Categories[_random.Next(seller.Categories.Length)];
-                        var productType = _taxonomy.GetRandomProductType(category, _random);
-
-                        if (productType == null)
-                        {
-                            task.Increment(1);
-                            continue;
-                        }
-
-                        var product = useLlm
-                            ? await GenerateProductWithLlmAsync(seller, category, productType, ct)
-                            : GenerateProductFallback(seller, category, productType);
-
-                        product.SellerId = seller.Id;
-
-                        // Generate images if available
-                        if (generateImages)
-                        {
-                            try
-                            {
-                                product.Images = await _imageGenerator.GenerateProductImagesAsync(product, ct);
-                            }
-                            catch (Exception ex)
-                            {
-                                AnsiConsole.MarkupLine($"[yellow]Image gen failed: {ex.Message}[/]");
-                            }
-                        }
-
-                        seller.Products.Add(product);
-                        task.Increment(1);
-                    }
+                    generated++;
+                    continue;
                 }
-            });
+
+                // For now, always use fallback (sync) - LLM handled separately
+                var product = GenerateProductFallback(seller, category, productType);
+                product.SellerId = seller.Id;
+
+                seller.Products.Add(product);
+                generated++;
+            }
+            
+            // Progress update per seller
+            AnsiConsole.MarkupLine($"[dim]Seller {seller.Name}: generated {seller.Products.Count} products ({generated}/{totalProducts} total)[/]");
+        }
+        
+        AnsiConsole.MarkupLine($"[green]Generated {generated} products for {sellers.Count} sellers[/]");
+        return Task.CompletedTask;
     }
 
     private async Task<GeneratedProduct> GenerateProductWithLlmAsync(
@@ -367,34 +370,26 @@ public class DataGenerator : IDisposable
         var customers = new List<GeneratedCustomer>();
         var categories = _taxonomy.Categories.Keys.ToList();
 
-        await AnsiConsole.Progress()
-            .StartAsync(async ctx =>
+        for (int i = 0; i < _settings.CustomersCount; i++)
+        {
+            var customerCategories = categories
+                .OrderBy(_ => _random.Next())
+                .Take(_random.Next(1, Math.Min(4, categories.Count + 1)))
+                .ToList();
+
+            var customer = useLlm
+                ? await GenerateCustomerWithLlmAsync(customerCategories, ct)
+                : GenerateCustomerFallback(customerCategories);
+
+            customers.Add(customer);
+            
+            if ((i + 1) % 100 == 0 || i == _settings.CustomersCount - 1)
             {
-                var task = ctx.AddTask("[green]Generating customers[/]", maxValue: _settings.CustomersCount);
+                AnsiConsole.MarkupLine($"[dim]Generated {i + 1}/{_settings.CustomersCount} customers[/]");
+            }
+        }
 
-                // Generate in batches for efficiency
-                var batchSize = _settings.BatchSize;
-                for (int i = 0; i < _settings.CustomersCount; i += batchSize)
-                {
-                    var batchCount = Math.Min(batchSize, _settings.CustomersCount - i);
-
-                    for (int j = 0; j < batchCount; j++)
-                    {
-                        var customerCategories = categories
-                            .OrderBy(_ => _random.Next())
-                            .Take(_random.Next(1, Math.Min(4, categories.Count + 1)))
-                            .ToList();
-
-                        var customer = useLlm
-                            ? await GenerateCustomerWithLlmAsync(customerCategories, ct)
-                            : GenerateCustomerFallback(customerCategories);
-
-                        customers.Add(customer);
-                        task.Increment(1);
-                    }
-                }
-            });
-
+        AnsiConsole.MarkupLine($"[green]Generated {customers.Count} customers[/]");
         return customers;
     }
 
@@ -571,40 +566,44 @@ public class DataGenerator : IDisposable
         var totalItems = dataset.Sellers.Count
             + dataset.Sellers.Sum(s => s.Products.Count)
             + dataset.Customers.Count;
+        var processed = 0;
 
-        await AnsiConsole.Progress()
-            .StartAsync(async ctx =>
+        // Seller embeddings
+        foreach (var seller in dataset.Sellers)
+        {
+            var text = $"{seller.Name}. {seller.Description}. Specializes in {string.Join(", ", seller.Specialties)}";
+            seller.Embedding = await _embeddings.GenerateAsync(text, ct);
+            processed++;
+        }
+        AnsiConsole.MarkupLine($"[dim]Computed {processed}/{totalItems} embeddings (sellers done)[/]");
+
+        // Product embeddings
+        foreach (var seller in dataset.Sellers)
+        {
+            foreach (var product in seller.Products)
             {
-                var task = ctx.AddTask("[green]Computing embeddings[/]", maxValue: totalItems);
+                var text = $"{product.Name}. {product.Description}. Tags: {string.Join(", ", product.Tags)}";
+                product.Embedding = await _embeddings.GenerateAsync(text, ct);
+                processed++;
+            }
+        }
+        AnsiConsole.MarkupLine($"[dim]Computed {processed}/{totalItems} embeddings (products done)[/]");
 
-                // Seller embeddings
-                foreach (var seller in dataset.Sellers)
-                {
-                    var text = $"{seller.Name}. {seller.Description}. Specializes in {string.Join(", ", seller.Specialties)}";
-                    seller.Embedding = await _embeddings.GenerateAsync(text, ct);
-                    task.Increment(1);
-                }
-
-                // Product embeddings
-                foreach (var seller in dataset.Sellers)
-                {
-                    foreach (var product in seller.Products)
-                    {
-                        var text = $"{product.Name}. {product.Description}. Tags: {string.Join(", ", product.Tags)}";
-                        product.Embedding = await _embeddings.GenerateAsync(text, ct);
-                        task.Increment(1);
-                    }
-                }
-
-                // Customer embeddings
-                foreach (var customer in dataset.Customers)
-                {
-                    var interests = string.Join(", ", customer.Interests.OrderByDescending(kv => kv.Value).Select(kv => kv.Key));
-                    var text = $"{customer.Persona}. Interested in {interests}. {customer.Bio}";
-                    customer.Embedding = await _embeddings.GenerateAsync(text, ct);
-                    task.Increment(1);
-                }
-            });
+        // Customer embeddings
+        foreach (var customer in dataset.Customers)
+        {
+            var interests = string.Join(", ", customer.Interests.OrderByDescending(kv => kv.Value).Select(kv => kv.Key));
+            var text = $"{customer.Persona}. Interested in {interests}. {customer.Bio}";
+            customer.Embedding = await _embeddings.GenerateAsync(text, ct);
+            processed++;
+            
+            if (processed % 500 == 0)
+            {
+                AnsiConsole.MarkupLine($"[dim]Computed {processed}/{totalItems} embeddings[/]");
+            }
+        }
+        
+        AnsiConsole.MarkupLine($"[green]Computed {processed} embeddings[/]");
     }
 
     #endregion

@@ -189,6 +189,11 @@ public class GenerateV2Command : AsyncCommand<GenerateV2Settings>
         var customersPath = Path.Combine(outputPath, "customers.json");
         await File.WriteAllTextAsync(customersPath, JsonSerializer.Serialize(dataset.Customers, options));
         AnsiConsole.MarkupLine($"[dim]Saved customers to {customersPath}[/]");
+
+        // Save orders (with fake checkout data)
+        var ordersPath = Path.Combine(outputPath, "orders.json");
+        await File.WriteAllTextAsync(ordersPath, JsonSerializer.Serialize(dataset.Orders, options));
+        AnsiConsole.MarkupLine($"[dim]Saved orders to {ordersPath}[/]");
     }
 
     private void PrintSummary(GeneratedDataset dataset)
@@ -202,6 +207,7 @@ public class GenerateV2Command : AsyncCommand<GenerateV2Settings>
         summaryTable.AddRow("Sellers", dataset.Stats.TotalSellers.ToString());
         summaryTable.AddRow("Products", dataset.Stats.TotalProducts.ToString());
         summaryTable.AddRow("Customers", dataset.Stats.TotalCustomers.ToString());
+        summaryTable.AddRow("Orders", dataset.Stats.TotalOrders.ToString());
         summaryTable.AddRow("Images", dataset.Stats.TotalImages.ToString());
         summaryTable.AddRow("Embeddings", dataset.Stats.TotalEmbeddings.ToString());
         summaryTable.AddRow("Duration", dataset.Stats.Duration.ToString(@"hh\:mm\:ss"));

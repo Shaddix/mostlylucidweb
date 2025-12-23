@@ -42,6 +42,10 @@ public class SegmentCommerceDbContext : DbContext
     public DbSet<OutboxMessageEntity> OutboxMessages => Set<OutboxMessageEntity>();
     public DbSet<JobQueueEntity> JobQueue => Set<JobQueueEntity>();
 
+    // Orders (customer PII stored in transient cache only)
+    public DbSet<OrderEntity> Orders => Set<OrderEntity>();
+    public DbSet<OrderItemEntity> OrderItems => Set<OrderItemEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -231,6 +235,38 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.Embedding)
                 .HasMethod("hnsw")
                 .HasOperators("vector_cosine_ops");
+        });
+
+        // ============ ORDERS ============
+        modelBuilder.Entity<OrderEntity>(entity =>
+        {
+            entity.HasIndex(e => e.OrderNumber).IsUnique();
+            entity.HasIndex(e => e.ProfileId);
+            entity.HasIndex(e => e.SessionKey);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+
+            entity.HasMany(e => e.Items)
+                .WithOne(i => i.Order)
+                .HasForeignKey(i => i.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OrderItemEntity>(entity =>
+        {
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.ProductId);
+
+            entity.HasOne(e => e.Product)
+                .WithMany()
+                .HasForeignKey(e => e.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Variation)
+                .WithMany()
+                .HasForeignKey(e => e.VariationId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

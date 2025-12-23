@@ -66,6 +66,7 @@ public class GeneratedDataset
     public GenerationStats Stats { get; set; } = new();
     public List<GeneratedSeller> Sellers { get; set; } = [];
     public List<GeneratedCustomer> Customers { get; set; } = [];
+    public List<GeneratedOrder> Orders { get; set; } = [];
 }
 
 /// <summary>
@@ -76,6 +77,7 @@ public class GenerationStats
     public int TotalSellers { get; set; }
     public int TotalProducts { get; set; }
     public int TotalCustomers { get; set; }
+    public int TotalOrders { get; set; }
     public int TotalImages { get; set; }
     public int TotalEmbeddings { get; set; }
     public TimeSpan Duration { get; set; }
