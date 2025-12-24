@@ -387,7 +387,25 @@ public class SearchResultItem
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public decimal? OriginalPrice { get; set; }
-    public string ImageUrl { get; set; } = string.Empty;
+    
+    private string _imageUrl = string.Empty;
+    
+    /// <summary>
+    /// Image URL with placeholder fallback for products without images.
+    /// </summary>
+    public string ImageUrl
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_imageUrl) || _imageUrl.Contains("placeholder"))
+            {
+                return $"/api/placeholder/{Uri.EscapeDataString(Category)}/{Uri.EscapeDataString(Name)}?w=288&h=160";
+            }
+            return _imageUrl;
+        }
+        set => _imageUrl = value;
+    }
+    
     public string Category { get; set; } = string.Empty;
     public string? Subcategory { get; set; }
     public string? Brand { get; set; }

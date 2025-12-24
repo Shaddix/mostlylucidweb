@@ -334,6 +334,10 @@ public class ImportCommand : AsyncCommand<ImportSettings>
                                 continue;
                             }
 
+                            // Determine image URL - check if generated image exists
+                            var sanitizedName = SanitizeProductName(genProduct.Name);
+                            var imageUrl = GetProductImageUrl(settings.InputPath, genProduct.Category, sanitizedName);
+
                             var product = new ProductEntity
                             {
                                 Name = genProduct.Name,
@@ -341,7 +345,7 @@ public class ImportCommand : AsyncCommand<ImportSettings>
                                 Description = genProduct.Description,
                                 Price = genProduct.Price,
                                 OriginalPrice = genProduct.OriginalPrice,
-                                ImageUrl = genProduct.Images.FirstOrDefault()?.FilePath ?? "/images/placeholder.jpg",
+                                ImageUrl = imageUrl,
                                 Category = genProduct.Category,
                                 CategoryPath = genProduct.Category,
                                 Tags = genProduct.Tags,
@@ -533,6 +537,36 @@ public class ImportCommand : AsyncCommand<ImportSettings>
     private static string ToTitleCase(string input)
     {
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(input.ToLower());
+    }
+
+    /// <summary>
+    /// Sanitize product name to match folder naming convention used by image generator.
+    /// </summary>
+    private static string SanitizeProductName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries))
+            .Replace(" ", "_")
+            .ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Get the image URL for a product. Returns API endpoint URL if generated image exists,
+    /// otherwise returns placeholder URL.
+    /// </summary>
+    private static string GetProductImageUrl(string inputPath, string category, string sanitizedName)
+    {
+        // Check if generated image exists
+        var imagePath = Path.Combine(inputPath, "images", category, sanitizedName, "main.png");
+        
+        if (File.Exists(imagePath))
+        {
+            // Return URL to our ImageController endpoint
+            return $"/api/images/products/{Uri.EscapeDataString(category)}/{Uri.EscapeDataString(sanitizedName)}/main.png";
+        }
+
+        // Fallback to placeholder (will be handled by PlaceholderController)
+        return "/images/placeholder.jpg";
     }
 
     private class ImportStats

@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "alpinejs": "^3.14.1",
-    "htmx.org": "^2.0.8"
+    "htmx.org": "^2.0.8",
+    "puppeteer": "^24.34.0"
   }
 }

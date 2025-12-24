@@ -69,7 +69,7 @@ public class LlmService : IDisposable
         }
         catch (JsonException ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]JSON parse error: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]JSON parse error: {Markup.Escape(ex.Message)}[/]");
         }
 
         return null;
@@ -108,7 +108,7 @@ public class LlmService : IDisposable
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[red]LLM error: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[red]LLM error: {Markup.Escape(ex.Message)}[/]");
             return string.Empty;
         }
     }

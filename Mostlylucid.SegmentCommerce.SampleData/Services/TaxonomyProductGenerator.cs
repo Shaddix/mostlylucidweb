@@ -137,7 +137,7 @@ public class TaxonomyProductGenerator
         }
         catch (Exception ex)
         {
-            AnsiConsole.MarkupLine($"[yellow]Ollama enhancement failed, using taxonomy-only: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[yellow]Ollama enhancement failed, using taxonomy-only: {Markup.Escape(ex.Message)}[/]");
             return products;
         }
     }
@@ -243,7 +243,7 @@ public class TaxonomyProductGenerator
         }
         catch (JsonException ex)
         {
-            AnsiConsole.MarkupLine($"[dim]Could not parse Ollama response: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[dim]Could not parse Ollama response: {Markup.Escape(ex.Message)}[/]");
         }
 
         return originals;

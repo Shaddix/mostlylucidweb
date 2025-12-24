@@ -7,10 +7,13 @@ namespace Mostlylucid.SegmentCommerce.Services.Profiles;
 /// <summary>
 /// Resolves session profiles for requests.
 /// 
+/// Session profiles are stored ONLY in memory (IMemoryCache) with sliding expiration.
+/// They are NEVER persisted to database - ephemeral by design.
+/// 
 /// Flow:
-/// 1. First request → create session (no persistent profile yet)
-/// 2. Fingerprint JS runs → FingerprintController links session to profile
-/// 3. Subsequent requests → session already linked
+/// 1. First request → create session in cache (no persistent profile yet)
+/// 2. Fingerprint JS runs → FingerprintController links session to persistent profile
+/// 3. Subsequent requests → session retrieved from cache
 /// 
 /// For cookie/identity modes, we can link immediately.
 /// For fingerprint mode, linking happens async via JS callback.
@@ -19,10 +22,16 @@ public interface IProfileResolver
 {
     Task<SessionProfileEntity> GetOrCreateSessionAsync(HttpContext context);
     Task<PersistentProfileEntity?> GetPersistentProfileAsync(Guid profileId);
+    
+    /// <summary>
+    /// Link a session to a persistent profile (e.g., after fingerprint resolution).
+    /// </summary>
+    Task LinkSessionToProfileAsync(string sessionKey, Guid persistentProfileId, ProfileIdentificationMode mode);
 }
 
 public class ProfileResolver : IProfileResolver
 {
+    private readonly ISessionProfileCache _sessionCache;
     private readonly SegmentCommerceDbContext _db;
     private readonly ILogger<ProfileResolver> _logger;
     private readonly int _sessionTimeoutMinutes;
@@ -31,10 +40,12 @@ public class ProfileResolver : IProfileResolver
     private const string SessionContextKey = "ProfileResolver.Session";
 
     public ProfileResolver(
+        ISessionProfileCache sessionCache,
         SegmentCommerceDbContext db,
         ILogger<ProfileResolver> logger,
         IConfiguration config)
     {
+        _sessionCache = sessionCache;
         _db = db;
         _logger = logger;
         _sessionTimeoutMinutes = config.GetValue("Profiles:SessionTimeoutMinutes", 30);
@@ -49,56 +60,34 @@ public class ProfileResolver : IProfileResolver
         var sessionKey = GetOrCreateSessionKey(context);
         var now = DateTime.UtcNow;
 
-        var session = await _db.SessionProfiles
-            .FirstOrDefaultAsync(s => s.SessionKey == sessionKey && s.ExpiresAt > now);
-
-        if (session == null)
+        // Get or create from in-memory cache
+        var session = _sessionCache.GetOrCreate(sessionKey, () => new SessionProfileEntity
         {
-            session = new SessionProfileEntity
-            {
-                SessionKey = sessionKey,
-                StartedAt = now,
-                LastActivityAt = now,
-                ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes),
-                Context = BuildSessionContext(context)
-            };
+            SessionKey = sessionKey,
+            StartedAt = now,
+            LastActivityAt = now,
+            ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes),
+            Context = BuildSessionContext(context)
+        });
 
-            // Check if user is logged in - link immediately
+        // Check if user is logged in - link immediately if not already linked
+        if (session.IdentificationMode != ProfileIdentificationMode.Identity)
+        {
             var userId = GetUserId(context);
             if (!string.IsNullOrEmpty(userId))
             {
                 var profile = await GetOrCreateIdentityProfileAsync(userId);
                 session.PersistentProfileId = profile.Id;
                 session.IdentificationMode = ProfileIdentificationMode.Identity;
+                _sessionCache.Set(sessionKey, session);
+                _logger.LogDebug("Linked session to identity profile {ProfileId}", profile.Id);
             }
-
-            _db.SessionProfiles.Add(session);
-            await _db.SaveChangesAsync();
-            
-            _logger.LogDebug("Created session {SessionKey}", sessionKey);
-        }
-        else
-        {
-            // Update activity
-            session.LastActivityAt = now;
-            session.ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes);
-            
-            // Check if user just logged in
-            if (session.IdentificationMode != ProfileIdentificationMode.Identity)
-            {
-                var userId = GetUserId(context);
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    var profile = await GetOrCreateIdentityProfileAsync(userId);
-                    session.PersistentProfileId = profile.Id;
-                    session.IdentificationMode = ProfileIdentificationMode.Identity;
-                    _logger.LogDebug("Upgraded session to identity mode");
-                }
-            }
-            
-            await _db.SaveChangesAsync();
         }
 
+        // Update activity timestamp
+        session.LastActivityAt = now;
+
+        // Store in HttpContext.Items for this request
         context.Items[SessionContextKey] = session;
         context.Items["SessionId"] = session.Id;
         context.Items["SessionKey"] = session.SessionKey;
@@ -109,6 +98,30 @@ public class ProfileResolver : IProfileResolver
     public async Task<PersistentProfileEntity?> GetPersistentProfileAsync(Guid profileId)
     {
         return await _db.PersistentProfiles.FindAsync(profileId);
+    }
+
+    public async Task LinkSessionToProfileAsync(string sessionKey, Guid persistentProfileId, ProfileIdentificationMode mode)
+    {
+        var session = _sessionCache.Get(sessionKey);
+        if (session == null)
+        {
+            _logger.LogWarning("Cannot link session {SessionKey} - not found in cache", sessionKey);
+            return;
+        }
+
+        // Only upgrade if not already at a higher identification level
+        if (session.IdentificationMode >= mode)
+        {
+            _logger.LogDebug("Session already has identification mode {Mode}, skipping", session.IdentificationMode);
+            return;
+        }
+
+        session.PersistentProfileId = persistentProfileId;
+        session.IdentificationMode = mode;
+        _sessionCache.Set(sessionKey, session);
+
+        _logger.LogDebug("Linked session {SessionKey} to profile {ProfileId} via {Mode}", 
+            sessionKey, persistentProfileId, mode);
     }
 
     private async Task<PersistentProfileEntity> GetOrCreateIdentityProfileAsync(string userId)

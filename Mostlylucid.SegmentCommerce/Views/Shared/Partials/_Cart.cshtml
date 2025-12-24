@@ -8,9 +8,14 @@
         <div class="divide-y divide-gray-200 dark:divide-gray-700">
             @foreach (var item in Model.Items)
             {
+                var imageUrl = item.Product.ImageUrl;
+                if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
+                {
+                    imageUrl = $"/api/placeholder/{Uri.EscapeDataString(item.Product.Category)}/{Uri.EscapeDataString(item.Product.Name)}?w=64&h=64";
+                }
                 <div class="py-4 flex items-center gap-4">
                     <!-- Product Image -->
-                    <img src="@item.Product.ImageUrl" 
+                    <img src="@imageUrl" 
                          alt="@item.Product.Name"
                          class="w-16 h-16 object-cover rounded-lg" />
                     

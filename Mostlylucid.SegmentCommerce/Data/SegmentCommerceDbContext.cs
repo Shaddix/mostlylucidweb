@@ -25,7 +25,7 @@ public class SegmentCommerceDbContext : DbContext
     public DbSet<StoreProductEntity> StoreProducts => Set<StoreProductEntity>();
 
     // Profiles (Zero PII)
-    public DbSet<SessionProfileEntity> SessionProfiles => Set<SessionProfileEntity>();
+    // NOTE: SessionProfiles are now stored in-memory only (ISessionProfileCache), not in DB
     public DbSet<PersistentProfileEntity> PersistentProfiles => Set<PersistentProfileEntity>();
     public DbSet<ProfileKeyEntity> ProfileKeys => Set<ProfileKeyEntity>();
     public DbSet<SignalEntity> Signals => Set<SignalEntity>();
@@ -151,21 +151,7 @@ public class SegmentCommerceDbContext : DbContext
         });
 
         // ============ PROFILES (ZERO PII) ============
-        modelBuilder.Entity<SessionProfileEntity>(entity =>
-        {
-            entity.HasIndex(e => e.SessionKey).IsUnique();
-            entity.HasIndex(e => e.PersistentProfileId);
-            entity.HasIndex(e => e.ExpiresAt);
-
-            // GIN indexes for JSONB querying
-            entity.HasIndex(e => e.Interests).HasMethod("gin");
-            entity.HasIndex(e => e.Signals).HasMethod("gin");
-
-            entity.Property(e => e.Interests).HasColumnType("jsonb");
-            entity.Property(e => e.Signals).HasColumnType("jsonb");
-            entity.Property(e => e.ViewedProducts).HasColumnType("jsonb");
-            entity.Property(e => e.Context).HasColumnType("jsonb");
-        });
+        // NOTE: SessionProfileEntity is no longer mapped to DB - stored in IMemoryCache only
 
         modelBuilder.Entity<PersistentProfileEntity>(entity =>
         {

@@ -16,63 +16,61 @@ public record SessionSignalInput(
 
 public interface ISessionCollector
 {
+    /// <summary>
+    /// Record a signal to the session profile (in-memory only).
+    /// </summary>
+    SessionProfileEntity RecordSignal(SessionSignalInput input);
+    
+    /// <summary>
+    /// Record a signal asynchronously (still in-memory, async for interface compatibility).
+    /// </summary>
     Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken ct = default);
+    
+    /// <summary>
+    /// Elevate session signals to a persistent profile (this DOES write to DB).
+    /// </summary>
     Task ElevateToProfileAsync(SessionProfileEntity session, PersistentProfileEntity profile, CancellationToken ct = default);
 }
 
 public class SessionCollector : ISessionCollector
 {
+    private readonly ISessionProfileCache _sessionCache;
     private readonly SegmentCommerceDbContext _db;
     private readonly ILogger<SessionCollector> _logger;
     private readonly int _sessionTimeoutMinutes;
 
     public SessionCollector(
+        ISessionProfileCache sessionCache,
         SegmentCommerceDbContext db,
         ILogger<SessionCollector> logger,
         IConfiguration config)
     {
+        _sessionCache = sessionCache;
         _db = db;
         _logger = logger;
         _sessionTimeoutMinutes = config.GetValue("Profiles:SessionTimeoutMinutes", 30);
     }
 
-    public async Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken ct = default)
+    /// <summary>
+    /// Record a signal to the session profile. 
+    /// Session profiles are in-memory only - no database writes.
+    /// </summary>
+    public SessionProfileEntity RecordSignal(SessionSignalInput input)
     {
         var now = DateTime.UtcNow;
 
-        var session = await _db.SessionProfiles
-            .FirstOrDefaultAsync(s => s.SessionKey == input.SessionKey, ct);
-
-        if (session == null)
+        // Get or create session from in-memory cache
+        var session = _sessionCache.GetOrCreate(input.SessionKey, () => new SessionProfileEntity
         {
-            session = new SessionProfileEntity
-            {
-                SessionKey = input.SessionKey,
-                StartedAt = now,
-                LastActivityAt = now,
-                ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes)
-            };
-            _db.SessionProfiles.Add(session);
-        }
+            SessionKey = input.SessionKey,
+            StartedAt = now,
+            LastActivityAt = now,
+            ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes)
+        });
 
         session.LastActivityAt = now;
-        session.ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes);
 
         var weight = input.Weight ?? SignalTypes.GetBaseWeight(input.SignalType);
-
-        // Record detailed signal (optional, for history)
-        var signal = new SignalEntity
-        {
-            SessionId = session.Id,
-            SignalType = input.SignalType,
-            Category = input.Category,
-            ProductId = input.ProductId,
-            Weight = weight,
-            Context = input.Context,
-            PageUrl = input.PageUrl,
-            CreatedAt = now
-        };
-        _db.Signals.Add(signal);
 
         // Update aggregates
         session.TotalWeight += weight;
@@ -113,10 +111,26 @@ public class SessionCollector : ISessionCollector
                 break;
         }
 
-        await _db.SaveChangesAsync(ct);
+        // Update cache (refreshes sliding expiration)
+        _sessionCache.Set(input.SessionKey, session);
+
         return session;
     }
 
+    /// <summary>
+    /// Async wrapper for RecordSignal - still in-memory, no DB writes.
+    /// Kept for interface compatibility.
+    /// </summary>
+    public Task<SessionProfileEntity> RecordSignalAsync(SessionSignalInput input, CancellationToken ct = default)
+    {
+        var session = RecordSignal(input);
+        return Task.FromResult(session);
+    }
+
+    /// <summary>
+    /// Elevate high-value session signals to a persistent profile.
+    /// This DOES write to the database (persistent profiles are stored in DB).
+    /// </summary>
     public async Task ElevateToProfileAsync(SessionProfileEntity session, PersistentProfileEntity profile, CancellationToken ct = default)
     {
         if (session.IsElevated)
@@ -136,15 +150,17 @@ public class SessionCollector : ISessionCollector
         profile.LastSeenAt = DateTime.UtcNow;
         profile.UpdatedAt = DateTime.UtcNow;
 
-        // Mark session as elevated
+        // Mark session as elevated (in cache)
         session.IsElevated = true;
         session.PersistentProfileId = profile.Id;
+        _sessionCache.Set(session.SessionKey, session);
 
         // Clear segment cache (will be recomputed)
         profile.SegmentsComputedAt = null;
         profile.EmbeddingComputedAt = null;
 
+        // Save persistent profile to database
         await _db.SaveChangesAsync(ct);
-        _logger.LogDebug("Elevated session {SessionId} to profile {ProfileId}", session.Id, profile.Id);
+        _logger.LogDebug("Elevated session {SessionKey} to profile {ProfileId}", session.SessionKey, profile.Id);
     }
 }

@@ -3,6 +3,7 @@ using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 using Mostlylucid.SegmentCommerce.Models;
+using Mostlylucid.SegmentCommerce.Services.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Services;
 
@@ -71,11 +72,16 @@ public class RecommendedProduct
 public class RecommendationService : IRecommendationService
 {
     private readonly SegmentCommerceDbContext _db;
+    private readonly ISessionProfileCache _sessionCache;
     private readonly ILogger<RecommendationService> _logger;
 
-    public RecommendationService(SegmentCommerceDbContext db, ILogger<RecommendationService> logger)
+    public RecommendationService(
+        SegmentCommerceDbContext db, 
+        ISessionProfileCache sessionCache,
+        ILogger<RecommendationService> logger)
     {
         _db = db;
+        _sessionCache = sessionCache;
         _logger = logger;
     }
 
@@ -223,9 +229,8 @@ public class RecommendationService : IRecommendationService
 
     public async Task<List<RecommendedProduct>> GetRecommendationsForSessionAsync(string sessionKey, int count = 8)
     {
-        // Find session and check if it has a linked profile
-        var session = await _db.SessionProfiles
-            .FirstOrDefaultAsync(s => s.SessionKey == sessionKey);
+        // Find session from in-memory cache
+        var session = _sessionCache.Get(sessionKey);
 
         if (session == null)
         {

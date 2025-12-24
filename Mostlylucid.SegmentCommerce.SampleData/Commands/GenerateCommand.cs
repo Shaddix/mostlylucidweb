@@ -71,7 +71,7 @@ public class GenerateSettings : CommandSettings
         // Validate category if specified
         if (!string.IsNullOrEmpty(settings.Category) && !_taxonomy.Categories.ContainsKey(settings.Category))
         {
-            AnsiConsole.MarkupLine($"[red]Unknown category: {settings.Category}[/]");
+            AnsiConsole.MarkupLine($"[red]Unknown category: {Markup.Escape(settings.Category ?? "")}[/]");
             AnsiConsole.MarkupLine($"Available: {string.Join(", ", _taxonomy.Categories.Keys)}");
             return 1;
         }
@@ -187,14 +187,74 @@ public class GenerateSettings : CommandSettings
     private async Task<Dictionary<string, List<GeneratedProduct>>> GenerateProductsAsync(GenerateSettings settings)
     {
         var httpClient = new HttpClient();
-        var generator = new TaxonomyProductGenerator(httpClient, _config, _taxonomy);
-
+        
         var categories = string.IsNullOrEmpty(settings.Category)
             ? _taxonomy.Categories.Keys.ToList()
             : new List<string> { settings.Category };
 
         var result = new Dictionary<string, List<GeneratedProduct>>();
 
+        // Try LLM-based generation first (creates unique products)
+        if (!settings.NoOllama)
+        {
+            var llmConfig = new LlmConfig
+            {
+                BaseUrl = _config.OllamaBaseUrl,
+                Model = _config.OllamaModel,
+                TimeoutSeconds = _config.OllamaTimeoutSeconds,
+                Temperature = 0.9, // Higher for more variety
+                MaxTokens = 2048
+            };
+            var llmService = new LlmService(httpClient, llmConfig);
+            
+            if (await llmService.IsAvailableAsync())
+            {
+                AnsiConsole.MarkupLine("[blue]Using LLM for unique product generation[/]");
+                var llmGenerator = new LlmProductGenerator(llmService, _taxonomy);
+                
+                await AnsiConsole.Progress()
+                    .StartAsync(async ctx =>
+                    {
+                        var task = ctx.AddTask("[green]Generating unique products via LLM[/]", maxValue: categories.Count);
+
+                        foreach (var categorySlug in categories)
+                        {
+                            task.Description = $"Generating {Markup.Escape(categorySlug)} products";
+                            
+                            // Get product types from taxonomy for this category
+                            var productTypes = _taxonomy.Categories[categorySlug].Subcategories.Values
+                                .SelectMany(s => s.Products.Select(p => p.Type))
+                                .Distinct()
+                                .ToList();
+                            
+                            var categoryProducts = new List<GeneratedProduct>();
+                            var productsPerType = Math.Max(1, settings.Count / Math.Max(1, productTypes.Count));
+                            
+                            foreach (var productType in productTypes)
+                            {
+                                var products = await llmGenerator.GenerateProductsAsync(
+                                    categorySlug,
+                                    productType,
+                                    productsPerType);
+                                categoryProducts.AddRange(products);
+                                
+                                if (categoryProducts.Count >= settings.Count) break;
+                            }
+
+                            result[categorySlug] = categoryProducts.Take(settings.Count).ToList();
+                            task.Increment(1);
+                        }
+                    });
+                
+                return result;
+            }
+            
+            AnsiConsole.MarkupLine("[yellow]LLM not available, falling back to taxonomy generator[/]");
+        }
+
+        // Fallback to taxonomy-based generation
+        var taxonomyGenerator = new TaxonomyProductGenerator(httpClient, _config, _taxonomy);
+        
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
@@ -202,12 +262,12 @@ public class GenerateSettings : CommandSettings
 
                 foreach (var categorySlug in categories)
                 {
-                    task.Description = $"[green]Generating {categorySlug}[/]";
+                    task.Description = $"Generating {Markup.Escape(categorySlug)} products";
 
-                    var products = await generator.GenerateProductsAsync(
+                    var products = await taxonomyGenerator.GenerateProductsAsync(
                         categorySlug,
                         settings.Count,
-                        useOllama: !settings.NoOllama);
+                        useOllama: false);
 
                     result[categorySlug] = products;
                     task.Increment(1);
@@ -267,7 +327,7 @@ public class GenerateSettings : CommandSettings
                     }
                     catch (Exception ex)
                     {
-                        AnsiConsole.WriteLine($"Failed portrait for {profile.ProfileKey}: {ex.Message}");
+                        AnsiConsole.WriteLine($"Failed portrait for {Markup.Escape(profile.ProfileKey)}: {Markup.Escape(ex.Message)}");
                     }
 
                     task.Increment(1);
@@ -299,7 +359,7 @@ public class GenerateSettings : CommandSettings
 
                 foreach (var product in allProducts)
                 {
-                    task.Description = $"[blue]Imaging: {product.Name.Truncate(30)}[/]";
+                    task.Description = $"Imaging: {Markup.Escape(product.Name.Truncate(30))}";
 
                     try
                     {
@@ -308,7 +368,7 @@ public class GenerateSettings : CommandSettings
                     }
                     catch (Exception ex)
                     {
-                        AnsiConsole.WriteLine($"Failed: {product.Name}: {ex.Message}");
+                        AnsiConsole.WriteLine($"Failed: {Markup.Escape(product.Name)}: {Markup.Escape(ex.Message)}");
                     }
 
                     task.Increment(1);
@@ -360,6 +420,8 @@ public class GenerateSettings : CommandSettings
 
         var count = 0;
 
+        try
+        {
         await AnsiConsole.Status()
             .StartAsync("Writing to database...", async ctx =>
             {
@@ -369,11 +431,12 @@ public class GenerateSettings : CommandSettings
                 
                 foreach (var profile in sellerProfiles)
                 {
+                    var uniqueId = Guid.NewGuid().ToString("N")[..6];
                     var seller = new SellerEntity
                     {
-                        Name = profile.DisplayName ?? $"Seller {profile.ProfileKey[..8]}",
+                        Name = profile.DisplayName ?? $"Seller {profile.ProfileKey[..8]}-{uniqueId}",
                         Description = profile.Bio ?? "Trusted marketplace seller",
-                        Email = $"seller{profile.ProfileKey[..8]}@marketplace.com",
+                        Email = $"seller{profile.ProfileKey[..8]}-{uniqueId}@marketplace.com",
                         Phone = $"+1{Random.Shared.Next(2000000000, int.MaxValue)}",
                         Rating = Math.Round(Random.Shared.NextDouble() * 2 + 3, 1), // 3.0-5.0
                         ReviewCount = Random.Shared.Next(10, 5000),
@@ -418,9 +481,11 @@ public class GenerateSettings : CommandSettings
                         sellerIndex++;
                         
                         var defaultColor = product.ColourVariants.FirstOrDefault() ?? "Default";
+                        var handle = GenerateHandle(product.Name);
                         var entity = new ProductEntity
                         {
                             Name = product.Name,
+                            Handle = handle,
                             Description = product.Description,
                             Category = categorySlug,
                             CategoryPath = categorySlug,
@@ -505,6 +570,11 @@ public class GenerateSettings : CommandSettings
             });
 
         AnsiConsole.MarkupLine($"[green]Wrote {count} products and {profiles.Count} profiles to database[/]");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+        }
     }
 
     private async Task GeneratePlaceholderImages(
@@ -520,7 +590,7 @@ public class GenerateSettings : CommandSettings
 
                 foreach (var product in allProducts)
                 {
-                    task.Description = $"[blue]Placeholder: {product.Name.Truncate(30)}[/]";
+                    task.Description = $"Placeholder: {Markup.Escape(product.Name.Truncate(30))}";
                     await CreatePlaceholderImagesForProduct(product, settings);
                     task.Increment(1);
                 }
@@ -646,6 +716,21 @@ public class GenerateSettings : CommandSettings
         var additionalDetails = details.Count > 0 ? ", " + string.Join(", ", details) : "";
 
         return $"photorealistic portrait photograph of a {age} {ethnicity} {gender}, {skinTone}, {eyeColor}, {facialFeature}, {hairColor}, {hairstyle}, {expression}, {clothingColor} {clothingStyle}{additionalDetails}, professional headshot, {lightingStyle}, {background}, 85mm portrait lens, f/1.4 aperture, bokeh, sharp focus on face, natural skin texture with pores, professional photography, magazine quality, 4K resolution, extremely detailed, realistic human face, candid portrait, NO illustration, NO cartoon, NO anime, NO drawing, NO digital art, NO CGI, NO 3D render, NO artificial, pure photography";
+    }
+
+    private static string GenerateHandle(string name)
+    {
+        var handle = name.ToLowerInvariant();
+        handle = System.Text.RegularExpressions.Regex.Replace(handle, @"[^a-z0-9\s-]", "");
+        handle = System.Text.RegularExpressions.Regex.Replace(handle, @"\s+", "-");
+        handle = System.Text.RegularExpressions.Regex.Replace(handle, @"-+", "-");
+        handle = handle.Trim('-');
+
+        // Add uniqueness suffix if needed
+        if (handle.Length > 100)
+            handle = handle[..100];
+
+        return $"{handle}-{Guid.NewGuid().ToString("N")[..6]}";
     }
 }
 

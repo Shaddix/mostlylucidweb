@@ -122,7 +122,8 @@ public class PersistentProfileEntity
     // ============ NAVIGATION ============
 
     public ICollection<ProfileKeyEntity> AlternateKeys { get; set; } = new List<ProfileKeyEntity>();
-    public ICollection<SessionProfileEntity> Sessions { get; set; } = new List<SessionProfileEntity>();
+    
+    // Note: Sessions are now in-memory only (ISessionProfileCache), not navigable from DB
 }
 
 /// <summary>

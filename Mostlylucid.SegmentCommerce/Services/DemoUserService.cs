@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
+using Mostlylucid.SegmentCommerce.Services.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Services;
 
@@ -49,11 +50,16 @@ public record DemoLoginResult(
 public class DemoPersonaService : IDemoPersonaService
 {
     private readonly SegmentCommerceDbContext _db;
+    private readonly ISessionProfileCache _sessionCache;
     private readonly ILogger<DemoPersonaService> _logger;
 
-    public DemoPersonaService(SegmentCommerceDbContext db, ILogger<DemoPersonaService> logger)
+    public DemoPersonaService(
+        SegmentCommerceDbContext db, 
+        ISessionProfileCache sessionCache,
+        ILogger<DemoPersonaService> logger)
     {
         _db = db;
+        _sessionCache = sessionCache;
         _logger = logger;
     }
 
@@ -131,26 +137,25 @@ public class DemoPersonaService : IDemoPersonaService
             // Get or create persistent profile for this demo user
             var profile = await GetOrCreateDemoProfileAsync(demoUser);
 
-            // Find and update the session
-            var session = await _db.SessionProfiles
-                .FirstOrDefaultAsync(s => s.SessionKey == sessionKey);
+            // Get session from in-memory cache
+            var session = _sessionCache.Get(sessionKey);
 
             if (session == null)
             {
                 return new DemoLoginResult(false, "Session not found", null, null);
             }
 
-            // Link session to demo user's profile
+            // Link session to demo user's profile (in cache only)
             session.PersistentProfileId = profile.Id;
             session.IdentificationMode = ProfileIdentificationMode.Identity;
+            _sessionCache.Set(sessionKey, session);
 
-            // Update demo user's profile link if not set
+            // Update demo user's profile link if not set (this goes to DB)
             if (!demoUser.ProfileId.HasValue)
             {
                 demoUser.ProfileId = profile.Id;
+                await _db.SaveChangesAsync();
             }
-
-            await _db.SaveChangesAsync();
 
             _logger.LogInformation("Demo user {DemoUserId} logged in, session {SessionKey} linked to profile {ProfileId}",
                 demoUserId, sessionKey, profile.Id);
@@ -166,29 +171,26 @@ public class DemoPersonaService : IDemoPersonaService
 
     public async Task LogoutAsync(string sessionKey)
     {
-        var session = await _db.SessionProfiles
-            .FirstOrDefaultAsync(s => s.SessionKey == sessionKey);
+        var session = _sessionCache.Get(sessionKey);
 
         if (session == null) return;
 
-        // Unlink from profile but keep session
+        // Unlink from profile but keep session (in cache only)
         session.PersistentProfileId = null;
         session.IdentificationMode = ProfileIdentificationMode.None;
-
-        await _db.SaveChangesAsync();
+        _sessionCache.Set(sessionKey, session);
 
         _logger.LogInformation("Demo user logged out from session {SessionKey}", sessionKey);
+        await Task.CompletedTask; // Keep async signature
     }
 
     public async Task<DemoUserEntity?> GetCurrentDemoUserAsync(string sessionKey)
     {
-        var session = await _db.SessionProfiles
-            .Include(s => s.PersistentProfile)
-            .FirstOrDefaultAsync(s => s.SessionKey == sessionKey);
+        var session = _sessionCache.Get(sessionKey);
 
         if (session?.PersistentProfileId == null) return null;
 
-        // Find demo user with this profile
+        // Find demo user with this profile (from DB)
         return await _db.DemoUsers
             .FirstOrDefaultAsync(u => u.ProfileId == session.PersistentProfileId);
     }

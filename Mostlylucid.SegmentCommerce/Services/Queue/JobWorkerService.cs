@@ -195,51 +195,27 @@ public class JobWorkerService : BackgroundService
         _logger.LogDebug("Decayed interests for {Count} profiles", profiles.Count);
     }
 
-    private async Task HandleCollectExpiredSessionsAsync(
+    private Task HandleCollectExpiredSessionsAsync(
         IServiceProvider serviceProvider,
         CancellationToken cancellationToken)
     {
-        var db = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
-        var collector = serviceProvider.GetRequiredService<Profiles.ISessionCollector>();
-        var now = DateTime.UtcNow;
-
-        // Find expired sessions that haven't been elevated
-        var expiredSessions = await db.SessionProfiles
-            .Where(s => s.ExpiresAt <= now && !s.IsElevated && s.PersistentProfileId != null)
-            .Include(s => s.PersistentProfile)
-            .Take(100)
-            .ToListAsync(cancellationToken);
-
-        foreach (var session in expiredSessions)
-        {
-            if (session.PersistentProfile != null)
-            {
-                await collector.ElevateToProfileAsync(session, session.PersistentProfile, cancellationToken);
-            }
-        }
-
-        _logger.LogDebug("Elevated {Count} expired sessions", expiredSessions.Count);
+        // Session profiles are now in-memory only.
+        // Expiration and elevation is handled automatically via ISessionProfileCache.OnSessionExpired event.
+        // This job is now a no-op but kept for backwards compatibility.
+        _logger.LogDebug("CollectExpiredSessions job is now handled by cache eviction callbacks");
+        return Task.CompletedTask;
     }
 
-    private async Task HandleElevateSessionAsync(
+    private Task HandleElevateSessionAsync(
         IServiceProvider serviceProvider,
         JobQueueEntity job,
         CancellationToken cancellationToken)
     {
-        using var doc = JsonDocument.Parse(job.Payload);
-        var sessionId = doc.RootElement.GetProperty("sessionId").GetGuid();
-
-        var db = serviceProvider.GetRequiredService<SegmentCommerceDbContext>();
-        var collector = serviceProvider.GetRequiredService<Profiles.ISessionCollector>();
-
-        var session = await db.SessionProfiles
-            .Include(s => s.PersistentProfile)
-            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
-
-        if (session?.PersistentProfile != null && !session.IsElevated)
-        {
-            await collector.ElevateToProfileAsync(session, session.PersistentProfile, cancellationToken);
-        }
+        // Session profiles are now in-memory only.
+        // Elevation is triggered by cache eviction or explicit calls.
+        // This job is now a no-op but kept for backwards compatibility.
+        _logger.LogDebug("ElevateSession job is now handled by cache eviction callbacks");
+        return Task.CompletedTask;
     }
 
     private async Task<bool> WaitForNotifyAsync(CancellationToken cancellationToken)

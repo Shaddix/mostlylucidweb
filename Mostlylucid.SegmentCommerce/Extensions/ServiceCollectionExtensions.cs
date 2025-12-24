@@ -67,6 +67,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GadgetAttributeProvider>();
         
         // Profile services (Zero PII)
+        // Session profiles are stored in-memory only (never in DB)
+        services.AddSingleton<ISessionProfileCache, SessionProfileCache>();
+        services.AddHostedService<SessionExpirationHandler>();
         services.AddScoped<IProfileResolver, ProfileResolver>();
         services.AddScoped<ISessionCollector, SessionCollector>();
         

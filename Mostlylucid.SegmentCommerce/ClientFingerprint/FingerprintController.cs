@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Mostlylucid.SegmentCommerce.Data;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
+using Mostlylucid.SegmentCommerce.Services.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.ClientFingerprint;
 
@@ -21,17 +22,23 @@ namespace Mostlylucid.SegmentCommerce.ClientFingerprint;
 public class FingerprintController : ControllerBase
 {
     private readonly IClientFingerprintService _fingerprintService;
+    private readonly ISessionProfileCache _sessionCache;
+    private readonly IProfileResolver _profileResolver;
     private readonly SegmentCommerceDbContext _db;
     private readonly ClientFingerprintConfig _config;
     private readonly ILogger<FingerprintController> _logger;
 
     public FingerprintController(
         IClientFingerprintService fingerprintService,
+        ISessionProfileCache sessionCache,
+        IProfileResolver profileResolver,
         SegmentCommerceDbContext db,
         IOptions<ClientFingerprintConfig> config,
         ILogger<FingerprintController> logger)
     {
         _fingerprintService = fingerprintService;
+        _sessionCache = sessionCache;
+        _profileResolver = profileResolver;
         _db = db;
         _config = config.Value;
         _logger = logger;
@@ -65,8 +72,7 @@ public class FingerprintController : ControllerBase
                     return NoContent();
                 }
 
-                var session = await _db.SessionProfiles
-                    .FirstOrDefaultAsync(s => s.SessionKey == sessionKey);
+                var session = _sessionCache.Get(sessionKey);
                 
                 if (session != null)
                     sessionId = session.Id;
@@ -77,12 +83,12 @@ public class FingerprintController : ControllerBase
             // Get or create persistent profile for this fingerprint
             var profile = await GetOrCreateProfileAsync(profileKey);
 
-            // Link session to profile
-            await _db.SessionProfiles
-                .Where(s => s.Id == sessionId)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(p => p.PersistentProfileId, profile.Id)
-                    .SetProperty(p => p.IdentificationMode, ProfileIdentificationMode.Fingerprint));
+            // Link session to profile (use profile resolver which updates cache)
+            var sessionKey2 = HttpContext.Items["SessionKey"] as string;
+            if (!string.IsNullOrEmpty(sessionKey2))
+            {
+                await _profileResolver.LinkSessionToProfileAsync(sessionKey2, profile.Id, ProfileIdentificationMode.Fingerprint);
+            }
 
             // Store in HttpContext for rest of this request
             HttpContext.Items["ProfileId"] = profile.Id;

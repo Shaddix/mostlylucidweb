@@ -47,12 +47,23 @@
                     
                     @* Search type badge *@
                     @{
-                        var (badgeClass, badgeText) = item.SearchType switch
+                        string badgeClass;
+                        string badgeText;
+                        switch (item.SearchType)
                         {
-                            "semantic" => ("bg-purple-500", "AI Match"),
-                            "hybrid" => ("bg-green-500", "Best Match"),
-                            _ => ("bg-blue-500", "Match")
-                        };
+                            case "semantic":
+                                badgeClass = "bg-purple-500";
+                                badgeText = "AI Match";
+                                break;
+                            case "hybrid":
+                                badgeClass = "bg-green-500";
+                                badgeText = "Best Match";
+                                break;
+                            default:
+                                badgeClass = "bg-blue-500";
+                                badgeText = "Match";
+                                break;
+                        }
                     }
                     <span class="absolute top-2 left-2 z-10 px-2 py-1 text-xs font-medium text-white rounded-full @badgeClass">
                         @badgeText
@@ -78,8 +89,15 @@
                     }
                     
                     @* Product Image *@
+                    @{
+                        var imageUrl = item.ImageUrl;
+                        if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
+                        {
+                            imageUrl = $"/api/placeholder/{Uri.EscapeDataString(item.Category)}/{Uri.EscapeDataString(item.Name)}?w=288&h=160";
+                        }
+                    }
                     <div class="aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700">
-                        <img src="@item.ImageUrl" 
+                        <img src="@imageUrl" 
                              alt="@item.Name"
                              class="object-cover w-full h-40"
                              loading="lazy" />

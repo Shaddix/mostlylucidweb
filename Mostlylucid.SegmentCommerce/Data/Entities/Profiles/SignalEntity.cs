@@ -17,12 +17,10 @@ public class SignalEntity
 
     /// <summary>
     /// The session this signal belongs to.
+    /// Note: SessionId is kept for analytics but FK is removed since sessions are now in-memory only.
     /// </summary>
     [Column("session_id")]
     public Guid SessionId { get; set; }
-
-    [ForeignKey(nameof(SessionId))]
-    public SessionProfileEntity Session { get; set; } = null!;
 
     /// <summary>
     /// Type of signal (view, click, scroll, add_to_cart, purchase, etc.)

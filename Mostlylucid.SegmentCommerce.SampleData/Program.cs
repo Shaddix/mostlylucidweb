@@ -86,6 +86,13 @@ app.Configure(cfg =>
         .WithExample("import", "--input", "D:\\segmentdata")
         .WithExample("import", "--clear", "--connection", "Host=localhost;...")
         .WithExample("import", "--no-profiles", "--no-embeddings");
+
+    cfg.AddCommand<ShopifyTaxonomyCommand>("shopify")
+        .WithDescription("Generate products using Shopify taxonomy data")
+        .WithExample("shopify", "--stats-only")
+        .WithExample("shopify", "--categories", "10", "--products", "5")
+        .WithExample("shopify", "--verticals", "Electronics,Apparel & Accessories")
+        .WithExample("shopify", "--no-llm");
 });
 
 // Register dependencies using type registrar

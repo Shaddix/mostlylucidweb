@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Schema defining product categories and their attribute types - NOT fixed values",
+  "version": "2.0.0",
+  "categories": {
+    "tech": {
+      "displayName": "Technology",
+      "description": "Consumer electronics and gadgets",
+      "productTypes": {
+        "headphones": {
+          "attributes": {
+            "style": { "type": "enum", "values": ["over-ear", "on-ear", "in-ear", "earbuds", "bone-conduction"] },
+            "connectivity": { "type": "enum", "values": ["wireless", "wired", "both"] },
+            "useCase": { "type": "enum", "values": ["general", "gaming", "studio", "sport", "travel"] },
+            "hasANC": { "type": "boolean" },
+            "color": { "type": "color" },
+            "material": { "type": "material", "options": ["plastic", "metal", "leather", "fabric", "silicone"] }
+          },
+          "priceRange": { "min": 29.99, "max": 549.99 }
+        },
+        "speakers": {
+          "attributes": {
+            "formFactor": { "type": "enum", "values": ["portable", "bookshelf", "soundbar", "smart", "party"] },
+            "connectivity": { "type": "enum", "values": ["bluetooth", "wifi", "wired", "multi"] },
+            "waterproof": { "type": "boolean" },
+            "color": { "type": "color" },
+            "power": { "type": "enum", "values": ["battery", "mains", "both"] }
+          },
+          "priceRange": { "min": 39.99, "max": 399.99 }
+        },
+        "monitors": {
+          "attributes": {
+            "size": { "type": "dimension", "unit": "inches", "range": [21, 49] },
+            "resolution": { "type": "enum", "values": ["1080p", "1440p", "4K", "5K"] },
+            "panelType": { "type": "enum", "values": ["IPS", "VA", "OLED", "TN"] },
+            "refreshRate": { "type": "enum", "values": ["60Hz", "75Hz", "144Hz", "165Hz", "240Hz"] },
+            "curved": { "type": "boolean" },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 149.99, "max": 1499.99 }
+        },
+        "keyboards": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["mechanical", "membrane", "optical", "topre"] },
+            "layout": { "type": "enum", "values": ["full", "TKL", "75%", "65%", "60%"] },
+            "wireless": { "type": "boolean" },
+            "rgbLighting": { "type": "boolean" },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 49.99, "max": 349.99 }
+        }
+      }
+    },
+    "fashion": {
+      "displayName": "Fashion & Accessories",
+      "description": "Clothing, footwear, and accessories",
+      "productTypes": {
+        "shoes": {
+          "attributes": {
+            "style": { "type": "enum", "values": ["sneakers", "boots", "sandals", "loafers", "heels", "flats"] },
+            "size": { "type": "shoeSize" },
+            "color": { "type": "color" },
+            "material": { "type": "material", "options": ["leather", "canvas", "synthetic", "suede", "mesh"] },
+            "gender": { "type": "enum", "values": ["mens", "womens", "unisex"] }
+          },
+          "priceRange": { "min": 49.99, "max": 299.99 }
+        },
+        "watches": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["analog", "digital", "smart", "hybrid"] },
+            "caseMaterial": { "type": "material", "options": ["stainless-steel", "titanium", "ceramic", "plastic"] },
+            "bandType": { "type": "enum", "values": ["leather", "metal", "silicone", "nato", "fabric"] },
+            "diameter": { "type": "dimension", "unit": "mm", "range": [36, 50] },
+            "waterResistance": { "type": "enum", "values": ["none", "30m", "50m", "100m", "200m"] },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 79.99, "max": 599.99 }
+        },
+        "bags": {
+          "attributes": {
+            "style": { "type": "enum", "values": ["backpack", "tote", "messenger", "duffel", "clutch", "crossbody"] },
+            "size": { "type": "enum", "values": ["small", "medium", "large"] },
+            "material": { "type": "material", "options": ["leather", "canvas", "nylon", "polyester"] },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 39.99, "max": 299.99 }
+        }
+      }
+    },
+    "home": {
+      "displayName": "Home & Garden",
+      "description": "Home furnishings and garden equipment",
+      "productTypes": {
+        "lighting": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["table-lamp", "floor-lamp", "pendant", "wall-sconce", "smart-bulb"] },
+            "brightness": { "type": "enum", "values": ["low", "medium", "high", "adjustable"] },
+            "colorTemp": { "type": "enum", "values": ["warm", "neutral", "cool", "rgb"] },
+            "smart": { "type": "boolean" },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 19.99, "max": 199.99 }
+        },
+        "furniture": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["chair", "desk", "table", "shelf", "storage"] },
+            "material": { "type": "material", "options": ["wood", "metal", "glass", "plastic", "fabric"] },
+            "color": { "type": "color" },
+            "assembly": { "type": "enum", "values": ["assembled", "flat-pack", "partial"] }
+          },
+          "priceRange": { "min": 49.99, "max": 999.99 }
+        }
+      }
+    },
+    "sport": {
+      "displayName": "Sports & Fitness",
+      "description": "Sports equipment and fitness gear",
+      "productTypes": {
+        "fitness-equipment": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["dumbbells", "resistance-bands", "yoga-mat", "foam-roller", "kettlebell"] },
+            "weight": { "type": "weight", "unit": "kg" },
+            "color": { "type": "color" }
+          },
+          "priceRange": { "min": 14.99, "max": 299.99 }
+        },
+        "activewear": {
+          "attributes": {
+            "type": { "type": "enum", "values": ["t-shirt", "shorts", "leggings", "hoodie", "jacket"] },
+            "size": { "type": "clothingSize" },
+            "color": { "type": "color" },
+            "gender": { "type": "enum", "values": ["mens", "womens", "unisex"] }
+          },
+          "priceRange": { "min": 24.99, "max": 149.99 }
+        }
+      }
+    }
+  },
+  "attributeTypes": {
+    "color": {
+      "description": "Product color - LLM should generate realistic color names",
+      "examples": ["Midnight Black", "Ocean Blue", "Forest Green", "Rose Gold", "Arctic White"]
+    },
+    "material": {
+      "description": "Product material - varies by product type"
+    },
+    "shoeSize": {
+      "description": "Standard shoe sizes",
+      "formats": {
+        "US": { "mens": [7, 14], "womens": [5, 12] },
+        "UK": { "all": [4, 13] },
+        "EU": { "all": [36, 48] }
+      }
+    },
+    "clothingSize": {
+      "description": "Standard clothing sizes",
+      "values": ["XS", "S", "M", "L", "XL", "XXL"]
+    }
+  },
+  "brandGeneration": {
+    "description": "Brands should be generated by LLM to be unique and realistic",
+    "guidelines": [
+      "2-3 syllables typically",
+      "Should sound professional and modern",
+      "Can combine descriptive words with tech/style suffixes",
+      "Examples: 'Pulse Audio', 'NovaTech', 'Stride Athletics', 'Lumina Home'"
+    ]
+  }
+}

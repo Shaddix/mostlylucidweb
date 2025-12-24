@@ -43,17 +43,52 @@
                             
                             @* Recommendation badge *@
                             @{
-                                var (badgeClass, badgeText, badgeIcon) = product.RecommendationType switch
+                                string badgeClass;
+                                string badgeText;
+                                string badgeIcon;
+                                switch (product.RecommendationType)
                                 {
-                                    "interest" => ("bg-blue-500", "For You", "star"),
-                                    "brand" => ("bg-purple-500", product.Brand ?? "Brand Pick", "tag"),
-                                    "deal" => ("bg-green-500", "Great Deal", "percent"),
-                                    "trending" => ("bg-orange-500", "Trending", "fire"),
-                                    "similar" => ("bg-indigo-500", "Similar", "sparkles"),
-                                    "cross_sell" => ("bg-pink-500", "Pairs Well", "puzzle"),
-                                    "session_interest" => ("bg-blue-400", "Recent Interest", "clock"),
-                                    _ => ("bg-gray-500", "Suggested", "lightbulb")
-                                };
+                                    case "interest":
+                                        badgeClass = "bg-blue-500";
+                                        badgeText = "For You";
+                                        badgeIcon = "star";
+                                        break;
+                                    case "brand":
+                                        badgeClass = "bg-purple-500";
+                                        badgeText = product.Brand ?? "Brand Pick";
+                                        badgeIcon = "tag";
+                                        break;
+                                    case "deal":
+                                        badgeClass = "bg-green-500";
+                                        badgeText = "Great Deal";
+                                        badgeIcon = "percent";
+                                        break;
+                                    case "trending":
+                                        badgeClass = "bg-orange-500";
+                                        badgeText = "Trending";
+                                        badgeIcon = "fire";
+                                        break;
+                                    case "similar":
+                                        badgeClass = "bg-indigo-500";
+                                        badgeText = "Similar";
+                                        badgeIcon = "sparkles";
+                                        break;
+                                    case "cross_sell":
+                                        badgeClass = "bg-pink-500";
+                                        badgeText = "Pairs Well";
+                                        badgeIcon = "puzzle";
+                                        break;
+                                    case "session_interest":
+                                        badgeClass = "bg-blue-400";
+                                        badgeText = "Recent Interest";
+                                        badgeIcon = "clock";
+                                        break;
+                                    default:
+                                        badgeClass = "bg-gray-500";
+                                        badgeText = "Suggested";
+                                        badgeIcon = "lightbulb";
+                                        break;
+                                }
                             }
                             
                             <span class="absolute top-2 left-2 z-10 px-2 py-1 text-xs font-medium text-white rounded-full @badgeClass flex items-center gap-1">
@@ -113,8 +148,15 @@
                             }
                             
                             @* Product Image *@
+                            @{
+                                var imageUrl = product.ImageUrl;
+                                if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
+                                {
+                                    imageUrl = $"/api/placeholder/{Uri.EscapeDataString(product.Category)}/{Uri.EscapeDataString(product.Name)}?w=288&h=160";
+                                }
+                            }
                             <div class="aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700">
-                                <img src="@product.ImageUrl" 
+                                <img src="@imageUrl" 
                                      alt="@product.Name"
                                      class="object-cover w-full h-40"
                                      loading="lazy" />

@@ -197,15 +197,36 @@ public class ProductType
 
     private string GenerateProductName(string brand, string variant, Random random)
     {
-        var suffixes = new[] { "Pro", "Elite", "Plus", "Max", "Ultra", "X", "2.0", "Series", "Edition" };
-        var suffix = random.NextDouble() < 0.6 ? $" {suffixes[random.Next(suffixes.Length)]}" : "";
-
         var formattedType = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(Type.Replace("-", " "));
         var formattedVariant = !string.IsNullOrEmpty(variant)
             ? System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(variant.Replace("-", " "))
             : "";
 
-        return $"{brand} {formattedVariant} {formattedType}{suffix}".Trim();
+        // Pick a colour to include in the name
+        var colour = Colours.Count > 0 ? Colours[random.Next(Colours.Count)] : "";
+        
+        // Pick a key feature to include
+        var feature = Features.Count > 0 ? Features[random.Next(Features.Count)] : "";
+        var formattedFeature = !string.IsNullOrEmpty(feature)
+            ? System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(feature.Replace("-", " "))
+            : "";
+
+        // Pick a material if available
+        var material = Materials.Count > 0 ? Materials[random.Next(Materials.Count)] : "";
+        var formattedMaterial = !string.IsNullOrEmpty(material)
+            ? System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(material.Replace("-", " "))
+            : "";
+
+        // Build name with real attributes - vary the format
+        var nameFormat = random.Next(5);
+        return nameFormat switch
+        {
+            0 => $"{brand} {formattedVariant} {formattedType} in {colour}".Trim(),
+            1 => $"{brand} {formattedFeature} {formattedVariant} {formattedType}".Trim(),
+            2 => $"{brand} {colour} {formattedVariant} {formattedType}".Trim(),
+            3 => $"{brand} {formattedVariant} {formattedType} with {formattedFeature}".Trim(),
+            _ => $"{brand} {formattedMaterial} {formattedVariant} {formattedType}".Trim(),
+        };
     }
 
     private string GenerateDescription(string variant, List<string> features, string material)
