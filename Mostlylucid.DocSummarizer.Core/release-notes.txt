@@ -1,0 +1,17 @@
+## v1.0.0
+
+Initial release of Mostlylucid.DocSummarizer.Core - a local-first document summarization library.
+
+### Features
+- BERT-based extractive summarization using local ONNX models
+- RAG pipeline with semantic retrieval and LLM synthesis
+- Support for Markdown, PDF, DOCX, HTML, and URLs
+- Citation grounding - every claim traceable to source
+- Multiple vector store backends: DuckDB (default), Qdrant, In-Memory
+- Configurable summary templates and styles
+- Web fetching with Playwright support for JavaScript-rendered pages
+
+### Dependencies
+- Requires .NET 9.0
+- Optional: Ollama for LLM synthesis
+- Optional: Docling for advanced PDF/DOCX conversion

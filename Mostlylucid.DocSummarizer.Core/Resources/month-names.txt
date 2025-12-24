@@ -1,6 +1,6 @@
 # Month names from .NET CultureInfo (all cultures)
 # Auto-generated from .NET's globalization data
-# Generated: 2025-12-24 13:22:02 UTC
+# Generated: 2025-12-24 13:21:44 UTC
 # Total: 3748 entries
 
 1-Kysã

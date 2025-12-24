@@ -1,4 +1,4 @@
-# The Ten Commandments of LLM Use :  How Not to Turn Probability Into Production Outages
+# Probability Is Not a System: The Ten Commandments of LLM Use
 
 <!--category-- AI, LLM, Opinion -->
 <datetime class="hidden">2025-12-25T12:40</datetime>
@@ -319,3 +319,5 @@ Don't unlearn that just because the demo looks clever.
 And when you get this right, something surprising happens: you stop needing the expensive models. A 7B parameter model running locally can classify, summarise, and generate hypotheses just fine - **because the deterministic systems around it handle everything that actually needs to be correct.** The frontier models are selling you reliability you should be building yourself.
 
 Build the boring machinery. Demote the LLM to advisor. Then watch a tiny model punch way above its weight.
+
+**If this feels obvious, good. It means you already know how to build reliable systems. The problem is pretending those rules no longer apply.**

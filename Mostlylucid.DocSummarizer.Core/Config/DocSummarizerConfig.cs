@@ -821,6 +821,40 @@ public class ExtractionConfigSection
     /// </summary>
     public double MmrLambda { get; set; } = 0.7;
     
+    // === Length-based quality scoring ===
+    
+    /// <summary>
+    ///     Minimum character length for a segment to receive full quality score.
+    ///     Segments shorter than this are penalized proportionally.
+    ///     Default: 80 characters (~15-20 words, a substantive sentence)
+    /// </summary>
+    public int IdealMinLength { get; set; } = 80;
+    
+    /// <summary>
+    ///     Maximum character length for quality scoring. Segments beyond this
+    ///     receive no additional benefit. Default: 500 characters (~80-100 words)
+    /// </summary>
+    public int IdealMaxLength { get; set; } = 500;
+    
+    /// <summary>
+    ///     Minimum quality score for very short segments. Prevents short
+    ///     headings from being excluded but de-prioritizes them.
+    ///     Range 0-1. Default: 0.3
+    /// </summary>
+    public double MinLengthQualityScore { get; set; } = 0.3;
+    
+    /// <summary>
+    ///     Boost for headings. Default: 1.15 (reduced from 1.5 to prevent
+    ///     short headings from dominating top segments)
+    /// </summary>
+    public double HeadingBoost { get; set; } = 1.15;
+    
+    /// <summary>
+    ///     Boost for the document title (first H1). Important but balanced.
+    ///     Default: 1.8 (reduced from 4.5x to allow substantive content to rank)
+    /// </summary>
+    public double DocumentTitleBoost { get; set; } = 1.8;
+    
     /// <summary>
     ///     Convert to the internal ExtractionConfig model
     /// </summary>
@@ -830,7 +864,12 @@ public class ExtractionConfigSection
         MinSegments = MinSegments,
         MaxSegments = MaxSegments,
         MaxSegmentsToEmbed = MaxSegmentsToEmbed,
-        MmrLambda = MmrLambda
+        MmrLambda = MmrLambda,
+        IdealMinLength = IdealMinLength,
+        IdealMaxLength = IdealMaxLength,
+        MinLengthQualityScore = MinLengthQualityScore,
+        HeadingBoost = HeadingBoost,
+        DocumentTitleBoost = DocumentTitleBoost
     };
 }
 
