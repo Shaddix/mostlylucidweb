@@ -1,9 +1,9 @@
-# The Ten Commandments of LLM Use
+# The Ten Commandments of LLM Use :  How Not to Turn Probability Into Production Outages
 
 <!--category-- AI, LLM, Opinion -->
 <datetime class="hidden">2025-12-25T12:40</datetime>
 
-*(Or: How Not to Turn Probability Into Production Outages)*
+
 
 I keep seeing the same failure mode in "AI-powered" systems: LLMs are being asked to do jobs we already solved decades ago - badly, probabilistically, and without guarantees.
 
@@ -17,6 +17,8 @@ Here's the payoff: **if you follow these rules, you don't need frontier models.*
 
 ---
 [TOC]
+
+These are not philosophical rules. They are operational constraints learned the hard way.
 
 ---
 
@@ -174,6 +176,8 @@ If your "AI platform" needs "deterministic triggers" to work reliably, congratul
 
 These aren't hypotheticals. These are real failures from companies with billions in resources.
 
+Notice the pattern: every failure is an LLM being allowed to *define* reality instead of *interpret* it.
+
 ### Vivint + Salesforce Agentforce
 
 Home security company Vivint uses Agentforce to handle customer support for 2.5 million customers. Despite providing clear instructions to send satisfaction surveys after each customer interaction, [The Information reported](https://www.theinformation.com/articles/salesforces-ai-struggles-to-do-its-own-job) that Agentforce sometimes failed to send surveys "for unexplained reasons."
@@ -184,11 +188,9 @@ The fix? Vivint worked with Salesforce to implement "deterministic triggers."
 
 ### McDonald's + IBM Drive-Thru AI
 
-McDonald's ran an AI-powered drive-thru ordering system in partnership with IBM across over 100 US locations. Social media filled with videos of the system adding hundreds of dollars of chicken nuggets, putting bacon on ice cream, and failing to understand basic modifications.
+McDonald's ran an AI-powered drive-thru ordering system in partnership with IBM across over 100 US locations. The system routinely failed to understand basic modifications. In June 2024, McDonald's ended the partnership.
 
-In June 2024, McDonald's ended the partnership.
-
-**The software engineering lesson:** Order-taking is a structured data problem - a finite menu, known modifiers, clear pricing. This is a form with speech recognition, not a reasoning task. When you collapse a bounded domain into free-form language generation, you inherit all of the LLM's failure modes. *Commandment V*: if the rule can be written as `if X then Y`, it doesn't belong in a prompt.
+**The software engineering lesson:** Order-taking is a structured data problem - a finite menu, known modifiers, clear pricing. This is a form with speech recognition, not a reasoning task. *Commandment V*: if the rule can be written as `if X then Y`, it doesn't belong in a prompt.
 
 ### Air Canada Chatbot
 
@@ -214,7 +216,7 @@ In July 2025, [Replit's AI coding assistant went rogue](https://cybernews.com/ai
 
 Replit CEO Amjad Masad acknowledged it was "unacceptable and should never be possible."
 
-**The software engineering lesson:** This is *Commandment II* on steroids. An AI agent with write access to production and no hard guardrails will eventually do something catastrophic. The fix isn't better prompting - it's environment isolation, permission boundaries, and the same infrastructure controls you'd apply to any untrusted code. *Commandment IX*: build the boring machinery first.
+**The software engineering lesson:** This isn't about malice - it's about unbounded authority. An AI agent with write access to production and no hard guardrails will eventually do something catastrophic. The fix isn't better prompting - it's environment isolation, permission boundaries, and the same infrastructure controls you'd apply to any untrusted code. *Commandment II* and *Commandment IX*: side effects need deterministic systems, and boring machinery comes first.
 
 ### NYC MyCity Chatbot Advises Breaking the Law
 
@@ -234,11 +236,9 @@ In 2023, tutoring company iTutor Group [paid $365,000 to settle an EEOC lawsuit]
 
 ### Chicago Sun-Times Publishes AI-Hallucinated Book List
 
-In May 2025, the *Chicago Sun-Times* and *Philadelphia Inquirer* [published a summer reading list](https://chicago.suntimes.com/news/2025/05/20/syndicated-content-sunday-print-sun-times-ai-misinformation) recommending books that don't exist. The author admitted using AI to generate the list and failed to fact-check.
+In May 2025, the *Chicago Sun-Times* [published a summer reading list](https://chicago.suntimes.com/news/2025/05/20/syndicated-content-sunday-print-sun-times-ai-misinformation) recommending books that don't exist - real authors attributed fake titles that sounded plausible but were entirely hallucinated.
 
-Real authors were attributed fake books - like *Tidewater Dreams* by Isabel Allende, which sounds plausible but was entirely hallucinated.
-
-**The software engineering lesson:** LLMs are not databases. They do not "know" what books exist - they generate statistically plausible text. If you need facts, query a source of truth. *Commandment VI*: fluency is not reliability.
+**The software engineering lesson:** LLMs are not databases. They generate statistically plausible text. If you need facts, query a source of truth. *Commandment VI*: fluency is not reliability.
 
 ---
 
@@ -250,7 +250,9 @@ The vendors sell "AI agents" as a way to skip the boring work - the queues, stat
 
 As [CIO's Thor Olavsrud notes](https://www.cio.com/article/190888/5-famous-analytics-and-ai-disasters.html): "Understanding your data and what it's telling you is important, but it's equally vital to understand your tools, know your data, and keep your organization's values firmly in mind."
 
-Every single failure above would have been prevented by basic software engineering discipline:
+Every single failure above would have been prevented by basic software engineering discipline.
+
+Notice that none of these fixes involve better models:
 
 | Failure | Would have been prevented by |
 |---------|------------------------------|
@@ -272,7 +274,7 @@ The irony is thick: these companies implemented "deterministic triggers" and "st
 
 The Hall of Shame shows what happens when you ignore these principles. But these aren't just theoretical constraints - they're the foundation of systems that actually work.
 
-Here are examples from this blog that demonstrate the correct approach:
+This isn't hypothetical. These principles already work in production - including systems I've built:
 
 ### DiSE: Controlled Evolution with Untrustworthy Gods
 
@@ -314,6 +316,6 @@ Use each tool for what it's good at.
 We already solved state, causality, and guarantees.
 Don't unlearn that just because the demo looks clever.
 
-And when you get this right, something surprising happens: you stop needing the expensive models. A 7B parameter model running locally can classify, summarise, and generate hypotheses just fine - because the deterministic systems around it handle everything that actually needs to be correct. The frontier models are selling you reliability you should be building yourself.
+And when you get this right, something surprising happens: you stop needing the expensive models. A 7B parameter model running locally can classify, summarise, and generate hypotheses just fine - **because the deterministic systems around it handle everything that actually needs to be correct.** The frontier models are selling you reliability you should be building yourself.
 
 Build the boring machinery. Demote the LLM to advisor. Then watch a tiny model punch way above its weight.
