@@ -14,6 +14,7 @@ In [Part 1](/blog/rag-primer) and [Part 2](/blog/rag-architecture) of this serie
 - [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
 - [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
+- [Part 6: GraphRAG](/blog/graphrag-knowledge-graphs-for-rag) - Knowledge graphs for corpus-level understanding
 
 If you haven't read Parts 1 and 2, I recommend starting there to understand:
 - What RAG is and why it matters (Part 1)

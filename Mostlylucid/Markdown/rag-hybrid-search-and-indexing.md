@@ -1,4 +1,4 @@
-﻿# RAG for Implementers: Hybrid Search and Automatic Indexing
+# RAG for Implementers: Hybrid Search and Automatic Indexing
 
 <datetime class="hidden">2025-11-22T12:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, ONNX, Qdrant, Machine Learning, Vector Search, RAG, AI-Article -->
@@ -7,11 +7,12 @@
 
 **📖 Part of the RAG Series:** This is Part 5 - production integration patterns:
 - [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
-- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenisation, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
 - [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
 - [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - **Part 5: Hybrid Search & Auto-Indexing** (this article) - Production integration patterns
+- [Part 6: GraphRAG](/blog/graphrag-knowledge-graphs-for-rag) - Knowledge graphs for corpus-level understanding
 
 In [Part 4a](/blog/semantic-search-with-onnx-and-qdrant), we built the foundation: ONNX embeddings and Qdrant storage. In [Part 4b](/blog/semantic-search-in-action), we covered the search UI and hybrid search implementation. Now we'll make it production-ready with **automatic indexing** (zero-touch content updates) via FileSystemWatcher.
 

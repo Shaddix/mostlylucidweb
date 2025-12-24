@@ -9,11 +9,12 @@ Ever searched for "deployment guide" and got nothing, even though there's an art
 
 **📖 Series Navigation:** This is Part 1 of the RAG (Retrieval-Augmented Generation) series:
 - **Part 1: RAG Origins and Fundamentals** (this article) - What embeddings are, why they matter
-- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenisation, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
 - [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
 - [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
+- [Part 6: GraphRAG](/blog/graphrag-knowledge-graphs-for-rag) - Knowledge graphs for corpus-level understanding
 
 RAG (Retrieval-Augmented Generation) was developed to make AI smarter—giving LLMs access to information they weren't trained on. But here's what's interesting: the technology opens opportunities far beyond AI chatbots. It powers semantic search on websites, content recommendation, writing assistance, and knowledge management.
 

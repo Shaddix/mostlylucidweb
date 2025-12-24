@@ -7,11 +7,12 @@
 
 **📖 Part of the RAG Series:** This is Part 4a - core implementation:
 - [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
-- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenisation, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
 - **Part 4a: ONNX & Qdrant Implementation** (this article) - CPU-friendly semantic search foundation
 - [Part 4b: Semantic Search in Action](/blog/semantic-search-in-action) - Typeahead, hybrid search, and UI components
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
+- [Part 6: GraphRAG](/blog/graphrag-knowledge-graphs-for-rag) - Knowledge graphs for corpus-level understanding
 
 Parts 1-3 explain *why* semantic search works. This article shows *how* to build the foundation - a **zero-cost, CPU-friendly implementation** using ONNX Runtime and Qdrant. [Part 4b](/blog/semantic-search-in-action) covers the search UI and hybrid search implementation, and [Part 5](/blog/rag-hybrid-search-and-indexing) covers production auto-indexing.
 

@@ -1,17 +1,18 @@
 # RAG for Implementers: Semantic Search in Action
 
-<datetime class="hidden">2025-11-25Add T09:00</datetime>
+<datetime class="hidden">2025-11-25T09:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, Alpine.js, HTMX, Hybrid Search, RAG, AI-Article -->
 
 # Introduction
 
 **📖 Part of the RAG Series:** This is Part 4b - search features and UI:
 - [Part 1: RAG Origins and Fundamentals](/blog/rag-primer) - What embeddings are, why they matter
-- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenization, vector databases
+- [Part 2: RAG Architecture and Internals](/blog/rag-architecture) - Chunking, tokenisation, vector databases
 - [Part 3: RAG in Practice](/blog/rag-practical-applications) - Building complete RAG systems
 - [Part 4a: ONNX & Qdrant Implementation](/blog/semantic-search-with-onnx-and-qdrant) - CPU-friendly semantic search foundation
 - **Part 4b: Semantic Search in Action** (this article) - Typeahead, hybrid search, and UI components
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration patterns
+- [Part 6: GraphRAG](/blog/graphrag-knowledge-graphs-for-rag) - Knowledge graphs for corpus-level understanding
 
 In [Part 4a](/blog/semantic-search-with-onnx-and-qdrant), we built the foundation: ONNX embeddings and Qdrant vector storage. Now let's put it to work with a **real search UI** - including typeahead autocomplete, hybrid search combining semantic + full-text, and advanced filtering.
 
