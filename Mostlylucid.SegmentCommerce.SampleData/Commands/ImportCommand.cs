@@ -189,7 +189,7 @@ public class ImportCommand : AsyncCommand<ImportSettings>
                 ctx.Status("Clearing profiles...");
                 await db.Signals.ExecuteDeleteAsync();
                 await db.ProfileKeys.ExecuteDeleteAsync();
-                await db.SessionProfiles.ExecuteDeleteAsync();
+                // NOTE: SessionProfiles are now in-memory only (ISessionProfileCache), not in DB
                 await db.PersistentProfiles.ExecuteDeleteAsync();
 
                 AnsiConsole.MarkupLine("[yellow]Cleared existing data[/]");

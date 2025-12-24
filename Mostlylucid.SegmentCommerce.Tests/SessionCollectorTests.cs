@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Mostlylucid.SegmentCommerce.Data;
@@ -7,6 +6,64 @@ using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Xunit;
 
 namespace Mostlylucid.SegmentCommerce.Tests;
+
+/// <summary>
+/// Simple in-memory session cache for testing purposes.
+/// </summary>
+public class TestSessionProfileCache : ISessionProfileCache
+{
+    private readonly Dictionary<string, SessionProfileEntity> _cache = new();
+    
+    public event Action<SessionProfileEntity>? OnSessionExpired;
+
+    public SessionProfileEntity GetOrCreate(string sessionKey, Func<SessionProfileEntity>? factory = null)
+    {
+        if (_cache.TryGetValue(sessionKey, out var existing))
+            return existing;
+            
+        var profile = factory?.Invoke() ?? new SessionProfileEntity
+        {
+            SessionKey = sessionKey,
+            StartedAt = DateTime.UtcNow,
+            LastActivityAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        };
+        
+        _cache[sessionKey] = profile;
+        return profile;
+    }
+
+    public SessionProfileEntity? Get(string sessionKey)
+    {
+        return _cache.TryGetValue(sessionKey, out var profile) ? profile : null;
+    }
+
+    public void Set(string sessionKey, SessionProfileEntity profile)
+    {
+        _cache[sessionKey] = profile;
+    }
+
+    public void Remove(string sessionKey)
+    {
+        _cache.Remove(sessionKey);
+    }
+
+    public SessionCacheStats GetStats() => new()
+    {
+        Hits = 0,
+        Misses = 0,
+        Evictions = 0,
+        HitRatio = 0
+    };
+    
+    public void TriggerExpiration(string sessionKey)
+    {
+        if (_cache.TryGetValue(sessionKey, out var session))
+        {
+            OnSessionExpired?.Invoke(session);
+        }
+    }
+}
 
 public class SessionCollectorTests
 {
@@ -18,12 +75,19 @@ public class SessionCollectorTests
             ["Profiles:SessionTimeoutMinutes"] = "30"
         })
         .Build();
+    
+    private static (SessionCollector collector, TestSessionProfileCache cache) CreateCollector(SegmentCommerceDbContext context)
+    {
+        var cache = new TestSessionProfileCache();
+        var collector = new SessionCollector(cache, context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        return (collector, cache);
+    }
 
     [Fact]
     public async Task RecordSignalAsync_CreatesNewSession_WhenNotExists()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         var input = new SessionSignalInput(
             SessionKey: "new-session-key",
@@ -46,7 +110,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_UpdatesExistingSession()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         var input1 = new SessionSignalInput("session-1", SignalTypes.PageView, "tech", null, null, null, "/");
         var input2 = new SessionSignalInput("session-1", SignalTypes.ProductView, "tech", 123, null, null, "/products/123");
@@ -63,7 +127,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_TracksInterests_ByCategory()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         await collector.RecordSignalAsync(new SessionSignalInput("session-interests", SignalTypes.ProductView, "tech", 1, null, null, null));
         await collector.RecordSignalAsync(new SessionSignalInput("session-interests", SignalTypes.ProductView, "tech", 2, null, null, null));
@@ -78,7 +142,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_TracksViewedProducts()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         await collector.RecordSignalAsync(new SessionSignalInput("session-views", SignalTypes.ProductView, "tech", 100, null, null, null));
         await collector.RecordSignalAsync(new SessionSignalInput("session-views", SignalTypes.ProductView, "tech", 200, null, null, null));
@@ -95,7 +159,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_TracksCartAdds()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         await collector.RecordSignalAsync(new SessionSignalInput("session-cart", SignalTypes.AddToCart, "tech", 1, null, null, null));
         var session = await collector.RecordSignalAsync(new SessionSignalInput("session-cart", SignalTypes.AddToCart, "tech", 2, null, null, null));
@@ -107,7 +171,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_AppliesBaseWeight_WhenNotSpecified()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         // Add to cart has base weight of 0.35
         var session = await collector.RecordSignalAsync(new SessionSignalInput("session-weight", SignalTypes.AddToCart, "tech", 1, null, null, null));
@@ -119,7 +183,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_UsesCustomWeight_WhenSpecified()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         var session = await collector.RecordSignalAsync(new SessionSignalInput("session-custom", SignalTypes.ProductView, "tech", 1, 0.99, null, null));
 
@@ -130,7 +194,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_ExtendsSessionExpiry()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         var first = await collector.RecordSignalAsync(new SessionSignalInput("session-expiry", SignalTypes.PageView, null, null, null, null, null));
         var originalExpiry = first.ExpiresAt;
@@ -147,7 +211,7 @@ public class SessionCollectorTests
     public async Task ElevateToProfileAsync_MergesInterests()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         // Create session with interests
         var session = await collector.RecordSignalAsync(new SessionSignalInput("session-elevate", SignalTypes.ProductView, "tech", 1, 0.5, null, null));
@@ -171,7 +235,7 @@ public class SessionCollectorTests
     public async Task ElevateToProfileAsync_DoesNotDuplicate_IfAlreadyElevated()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         var session = await collector.RecordSignalAsync(new SessionSignalInput("session-no-dup", SignalTypes.ProductView, "tech", 1, 0.5, null, null));
 
@@ -190,7 +254,7 @@ public class SessionCollectorTests
     public async Task RecordSignalAsync_TracksSignalsByType()
     {
         using var context = CreateContext();
-        var collector = new SessionCollector(context, NullLogger<SessionCollector>.Instance, CreateConfig());
+        var (collector, _) = CreateCollector(context);
 
         await collector.RecordSignalAsync(new SessionSignalInput("session-signals", SignalTypes.ProductView, "tech", 1, null, null, null));
         await collector.RecordSignalAsync(new SessionSignalInput("session-signals", SignalTypes.ProductView, "tech", 2, null, null, null));
