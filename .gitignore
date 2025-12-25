@@ -296,3 +296,4 @@ nul
 /Mostlylucid.SegmentCommerce.SampleData/TestOutput/sellers.json
 /Mostlylucid.SegmentCommerce.SampleData/TestOutput/dataset.json
 /Mostlylucid.SegmentCommerce.SampleData/TestOutput/customers.json
+*.summary.md

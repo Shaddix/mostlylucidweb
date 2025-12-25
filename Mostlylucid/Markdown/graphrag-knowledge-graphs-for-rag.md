@@ -1,21 +1,25 @@
 # GraphRAG: Why Vector Search Breaks Down at the Corpus Level
 
-<datetime class="hidden">2025-11-26T12:00</datetime>
+<datetime class="hidden">2025-12-26T12:00</datetime>
 <!-- category -- ASP.NET, Semantic Search, ONNX, Qdrant, Machine Learning, Vector Search, RAG -->
 
-Your RAG system works great for "needle" questions: retrieve the right chunks, synthesise an answer, done. But it struggles with two common query types:
+Your RAG system is great at "needle" questions: retrieve a few relevant chunks and synthesise an answer. It struggles with two common query types:
 
 - **Sensemaking**: "What are the main themes across this corpus?"
 - **Connective**: "How does X relate to Y across different documents?"
 
-Those questions aren't answered by any single chunk. They need **aggregation** and **relationships**.
+Those aren't answered by any single chunk. They require **coverage + clustering + linkage**.
 
-**The key insight:** GraphRAG changes what you retrieve. Instead of chunks, you retrieve *graph-derived summaries of connected concepts*. That's the whole trick; everything else is implementation detail.
+**Why vector search fails here:**
+- It ranks chunks **independently** by similarity to the query
+- Similarity optimises relevance, not **global coverage**
+- Embeddings capture "what sounds similar", not "what connects to what"
+
+You can brute-force this with prompting and post-processing, but you end up rebuilding a graph-shaped solution.
+
+**The key insight:** GraphRAG changes the retrieval unit. For corpus questions you don't want "top-K similar chunks"; you want **connected concept communities** (and their summaries), so the model sees structure, not fragments.
 
 [GraphRAG](https://microsoft.github.io/graphrag/) comes from Microsoft Research's [paper](https://arxiv.org/pdf/2404.16130) and is available as an [open-source implementation](https://github.com/microsoft/graphrag). It keeps vector search for specific questions, but adds a knowledge graph and community summaries for corpus-level reasoning.
-
-<datetime class="hidden">2025-12-24T09:00</datetime>
-<!-- category -- AI, RAG, Machine Learning, Semantic Search, LLM, Knowledge Graphs, AI-Article -->
 
 ## When NOT to Use GraphRAG
 
@@ -39,7 +43,7 @@ If your users only ask specific questions, stick with [semantic search](/blog/se
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing) - Production integration
 - **Part 6: GraphRAG** (this article) - Knowledge graphs for corpus-level understanding
 
-Throughout this series, we've built increasingly sophisticated RAG systems. We started with basic vector search, added hybrid keyword+semantic retrieval, and integrated auto-indexing. But all these approaches share a fundamental limitation: they find **similar chunks**, not **connected concepts**. For document-level work, [BertRag in DocSummarizer](/blog/docsummarizer-tool) handles salience and extraction well. But for *corpus-level* questions (themes spanning many documents) you need structure.
+Throughout this series, we've built increasingly sophisticated RAG systems. We started with basic vector search, added hybrid keyword+semantic retrieval, and integrated auto-indexing. But all these approaches share a fundamental limitation: they find **similar chunks**, not **connected concepts**. For *corpus-level* questions (themes spanning many documents) you need structure.
 
 **The recommended path:** If you already have Qdrant-based local search working (like we do), prototype with the Python sidecar to validate value, keep vectors for local search, and add a lightweight graph for global/DRIFT queries. Only go "full GraphRAG" once you've proven users ask those questions.
 
@@ -92,7 +96,7 @@ The problem: This question requires **aggregation and relationship understanding
 - Understand which are used together
 - Group them into coherent themes
 
-Vector similarity alone doesn't give you this; you need aggregation and structure. You *can* hack around this with lots of prompting and post-processing, but you're building a graph-shaped solution implicitly. GraphRAG just makes that structure explicit.
+Vector similarity alone doesn't give you this. If you try to patch this with prompting, you end up reinventing a graph.
 
 # Enter GraphRAG
 
@@ -101,6 +105,10 @@ Vector similarity alone doesn't give you this; you need aggregation and structur
 Instead of just embedding chunks, GraphRAG builds a **knowledge graph** that captures entities and their relationships, then clusters them into communities with summaries.
 
 ## How GraphRAG Works
+
+**Pipeline at a glance:**
+- **Indexing:** Chunks → entities/relations → graph → communities → summaries
+- **Query:** Local = chunks + graph neighbourhood | Global = community summaries | DRIFT = paths + summaries
 
 GraphRAG adds several components to the RAG pipeline, grouped into three categories:
 
@@ -213,7 +221,7 @@ graph LR
 
 ### Step 4: Community Detection (Leiden Algorithm)
 
-The [Leiden algorithm](https://arxiv.org/pdf/1810.08473.pdf) clusters densely connected nodes into communities:
+The [Leiden algorithm](https://arxiv.org/pdf/1810.08473.pdf) clusters densely connected nodes into communities. This matters because it gives you *stable* clusters to summarise and retrieve; the communities become your retrieval units for global queries.
 
 - **Community 1**: "Frontend Stack" (HTMX, Alpine.js, Tailwind)
 - **Community 2**: "Container Infrastructure" (Docker, Compose, PostgreSQL, Qdrant)
@@ -289,7 +297,7 @@ Response includes:
 
 **Best for:** "How does X relate to Y?" "Compare A and B."
 
-DRIFT (Dynamic Reasoning and Inference with Flexible Traversal) combines local search with community context. It's still using LLM reasoning over retrieved structured context (not magic graph inference), but the structure helps the LLM see connections it would miss with flat chunks.
+DRIFT search (Dynamic Reasoning and Inference with Flexible Traversal), [as described in the GraphRAG docs](https://microsoft.github.io/graphrag/query/drift_search/), combines local search with community context. It's still using LLM reasoning over retrieved structured context (not magic graph inference), but the structure helps the LLM see connections it would miss with flat chunks.
 
 ```
 Query: "How do the frontend and backend technologies connect?"
@@ -409,11 +417,11 @@ public class GraphRagClient
 
 ## Option 2: .NET Native (Production Path)
 
-Build the key components in C#. If you've used [DocSummarizer](/blog/docsummarizer-tool), you'll recognise some patterns: the BERT-based extraction and Ollama integration work similarly here.
+Build the key components in C#. The BERT-based extraction and Ollama patterns from [DocSummarizer](/blog/docsummarizer-tool) work similarly here.
 
 ### Entity Extraction
 
-The core idea: ask an LLM to identify *things* (entities) in each chunk. This is similar to how [DocSummarizer's topic extraction](/blog/building-a-document-summarizer-with-rag) identifies key themes, but we're extracting structured entities instead of free-form topics.
+Ask an LLM to identify *things* (entities) in each chunk - structured entities rather than free-form topics:
 
 ```csharp
 public async Task<List<Entity>> ExtractEntitiesAsync(string chunk)
@@ -435,7 +443,7 @@ public async Task<List<Entity>> ExtractEntitiesAsync(string chunk)
 - **Retry-with-repair loops** (detect malformed JSON, ask LLM to fix it)
 - **Fallback extraction** (regex patterns for common entity types)
 
-LLMs are probabilistic; your extraction pipeline must not be. The [DocSummarizer](/blog/docsummarizer-tool) handles this with structured output modes.
+LLMs are probabilistic; your extraction pipeline must not be.
 
 ### Relationship Extraction
 
@@ -480,6 +488,12 @@ public class KnowledgeGraph
 ```
 
 For serious use, consider embedding-based entity deduplication: if two entity names have similar embeddings, they're probably the same thing.
+
+**Production pain points** (GraphRAG's value hinges on graph quality):
+- **Synonym/alias tables**: maintain canonical names and known aliases
+- **Relationship schema control**: constrain allowed predicates to prevent hallucinated relationship types
+- **Confidence scoring + pruning**: not all extracted relationships are equally reliable
+- **Incremental re-indexing**: when documents update, you need to patch the graph, not rebuild it
 
 ### Graph Traversal
 
@@ -573,6 +587,8 @@ This is the recommended approach if you already have working vector search. Keep
 First, detect what kind of question this is:
 
 ```csharp
+// WARNING: Toy heuristic for illustration only.
+// In production, use a classifier prompt or few-shot rules and log misroutes.
 private QueryMode ClassifyQuery(string query)
 {
     var q = query.ToLowerInvariant();
@@ -650,20 +666,13 @@ GraphRAG has significant tradeoffs compared to pure vector RAG.
 
 Entity/relationship extraction costs vary significantly by model, prompt design, and chunk size. As a rough order-of-magnitude, assume **one or two LLM calls per chunk** plus a smaller number of calls for community summaries.
 
-*Illustrative example (not a quote; your numbers will vary):*
-
 | Operation | Vector RAG | GraphRAG |
 |-----------|------------|----------|
-| **Embedding** | ~$0.0001/1K tokens | Same |
+| **Embedding** | 1 call/chunk | Same |
 | **Entity/Relationship Extraction** | None | 1-2 LLM calls/chunk |
 | **Community Summarisation** | None | 1 LLM call/community |
 
-**Example:** 1,000 blog posts with 5 chunks each = 5,000 chunks
-
-- Vector RAG: ~$0.50 (embeddings only)
-- GraphRAG: Ballpark $50-150 depending on model and prompt efficiency
-
-**Mitigation:** Use local models (Ollama with llama3.2) for extraction to eliminate API costs.
+For a corpus of 1,000 blog posts with 5 chunks each (5,000 chunks total), vector-only indexing is essentially just embedding costs. GraphRAG adds thousands of LLM calls for extraction and summarisation. The exact cost depends heavily on your model choice and prompt efficiency; using local models (Ollama with llama3.2 or similar) eliminates API costs entirely, which is the recommended approach for experimentation.
 
 ## Query Costs
 
@@ -701,14 +710,14 @@ User types in search → SemanticSearchService → Qdrant → Results
 
 ## Enhanced Flow
 
+The classifier routes queries to different search strategies. Here's how a **global query** flows - note that it never touches the vector store:
+
 ```mermaid
 sequenceDiagram
     participant U as User
     participant API as Search API
     participant C as Query Classifier
-    participant L as Local Search
     participant G as Global Search
-    participant Q as Qdrant
     participant KG as Knowledge Graph
 
     U->>API: "What topics does this blog cover?"
@@ -723,6 +732,8 @@ sequenceDiagram
 
     API-->>U: "The blog covers three main areas..."
 ```
+
+Compare this to a **local query**, which combines vector search with graph context for richer answers:
 
 ```mermaid
 sequenceDiagram
@@ -747,6 +758,10 @@ sequenceDiagram
     API-->>U: "HTMX is used with Alpine.js for..."
 ```
 
+The key difference: global queries aggregate community summaries (corpus-level themes), while local queries retrieve specific chunks enriched with entity relationships.
+
+> **A simpler alternative:** GraphRAG is still very much a research tool - entity extraction, graph construction, and community detection add significant complexity and LLM costs. For most use cases, **BERT embeddings + BM25 keyword matching** works better. This is what [Sourcegraph's Cody](https://sourcegraph.com/blog/how-cody-understands-your-codebase) uses for code intelligence, and what [DocSummarizer](/blog/docsummarizer-part3) uses for document summarisation. The pattern: hybrid retrieval handles relevance; the LLM handles *assembly*, not *decision-making*. You get 80% of the benefit with 20% of the complexity.
+
 ## Implementation Sketch
 
 The API is straightforward: classify the query, route to the appropriate handler:
@@ -758,41 +773,17 @@ public async Task<IActionResult> Search([FromQuery] string q, [FromQuery] string
     if (mode == "auto")
         mode = ClassifyQuery(q);
 
+    // global/local return synthesised answers; default returns raw search results
     return mode switch
     {
-        "global" => Ok(await _graphRag.GlobalSearchAsync(q)),
-        "local" => Ok(await SearchWithGraphContext(q)),
-        _ => Ok(await _semanticSearch.SearchAsync(q))
+        "global" => Ok(await _graphRag.GlobalSearchAsync(q)),  // synthesised answer
+        "local" => Ok(await SearchWithGraphContext(q)),        // answer with citations
+        _ => Ok(await _semanticSearch.SearchAsync(q))          // raw ranked results
     };
 }
 ```
 
-The key insight: vector search and graph search complement each other. Use vectors for "how do I" questions, graphs for "what are the themes" questions.
-
-# How DocSummarizer's BertRag Relates
-
-If you've been following the [DocSummarizer series](/blog/building-a-document-summarizer-with-rag), you might notice some overlapping concepts. [BertRag mode](/blog/docsummarizer-tool) already does extractive summarisation with BERT embeddings. How does that relate to GraphRAG?
-
-**What BertRag does well:**
-- Extracts key sentences using BERT embeddings (local, no LLM needed)
-- Ranks by salience (position, content type, semantic centrality)
-- Generates summaries with citations
-
-**What GraphRAG adds:**
-- Entity/relationship extraction (structured knowledge, not just sentences)
-- Community detection (automatic theme discovery)
-- Global queries (aggregate across entire corpus)
-
-**They're complementary:**
-
-| Task | BertRag | GraphRAG |
-|------|---------|----------|
-| Summarize one document | Excellent | Overkill |
-| "What are the key points?" | Great | Unnecessary |
-| "What themes span all documents?" | Can't do | Built for this |
-| "How do topics X and Y connect?" | Limited | Native support |
-
-**Practical combination:** Use BertRag for document-level summarisation (fast, local, cheap), add GraphRAG for corpus-level queries when users need the big picture. The [DocSummarizer's topic extraction](/blog/building-a-document-summarizer-with-rag) could even feed entity candidates into GraphRAG's extraction pipeline.
+Vector search and graph search complement each other. Use vectors for "how do I" questions, graphs for "what are the themes" questions.
 
 # Conclusion
 
@@ -812,9 +803,10 @@ GraphRAG extends RAG from "find similar chunks" to "understand the knowledge str
 - You want to surface connections automatically
 
 **Implementation path:**
-1. Start with Python sidecar to validate value
-2. Build .NET native if costs/latency matter
-3. Use local LLMs (Ollama) to control indexing costs
+1. First, ask: do you actually need this? BERT + BM25 hybrid retrieval handles most use cases
+2. If yes, prototype with Python sidecar to validate value
+3. Build .NET native if costs/latency matter
+4. Use local LLMs (Ollama) to control indexing costs
 
 ## Resources
 
@@ -831,7 +823,6 @@ GraphRAG extends RAG from "find similar chunks" to "understand the knowledge str
 - [Part 4: Semantic Search with ONNX and Qdrant](/blog/semantic-search-with-onnx-and-qdrant)
 - [Part 5: Hybrid Search & Auto-Indexing](/blog/rag-hybrid-search-and-indexing)
 
-**DocSummarizer (Related):**
-- [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag) - Architecture and patterns
-- [DocSummarizer CLI Tool](/blog/docsummarizer-tool) - BertRag mode for extractive summarisation
-- [DocSummarizer Advanced Concepts](/blog/docsummarizer-advanced-concepts) - Embeddings and retrieval deep dive
+**Simpler Alternative (BERT + BM25):**
+- [DocSummarizer Part 3](/blog/docsummarizer-part3) - Hybrid retrieval without graph overhead
+- [Sourcegraph Cody Architecture](https://sourcegraph.com/blog/how-cody-understands-your-codebase) - Production hybrid search

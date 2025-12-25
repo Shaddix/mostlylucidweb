@@ -194,7 +194,7 @@ McDonald's ran an AI-powered drive-thru ordering system in partnership with IBM 
 
 ### Air Canada Chatbot
 
-Air Canada's customer service chatbot invented a bereavement fare policy that didn't exist, confidently telling a customer they could book a full-fare flight and apply for a retroactive discount. When the customer tried to claim this discount, Air Canada refused - and was [subsequently ordered by a tribunal](https://www.bbc.com/news/technology-68363543) to honour the chatbot's hallucinated promise.
+Air Canada's customer service chatbot invented a bereavement fare policy that didn't exist, confidently telling a customer they could book a full-fare flight and apply for a retroactive discount. When the customer tried to claim this discount, Air Canada refused - and was [subsequently ordered by a tribunal](https://www.wired.com/story/air-canada-chatbot-refund-policy/) to honour the chatbot's hallucinated promise.
 
 **The software engineering lesson:** LLMs cannot be the authoritative source for policy. They can *explain* policy pulled from a document store, but the source of truth must be external and verified. This is *Commandment I* (state lives outside the model) and *Commandment VI* (fluency is not reliability).
 
@@ -206,7 +206,7 @@ Parcel delivery company DPD's customer service chatbot was jailbroken by a frust
 
 ### Chevrolet Dealership ChatGPT
 
-A Chevrolet dealership integrated ChatGPT into their website. Users promptly got it to [agree to sell them a 2024 Chevy Tahoe for $1](https://arstechnica.com/ai/2023/12/chevy-dealer-chatgpt-goes-off-script-tells-customer-to-buy-a-ford/), write Python code, and recommend Ford vehicles instead.
+A Chevrolet dealership integrated ChatGPT into their website. Users promptly got it to [agree to sell them a 2024 Chevy Tahoe for $1](https://cybernews.com/ai-news/chevrolet-dealership-chatbot-hack/), write Python code, and recommend Ford vehicles instead.
 
 **The software engineering lesson:** You cannot bolt a general-purpose LLM onto a transactional system and expect it to enforce business rules. The model has no concept of "this is a joke" vs "this is a binding offer." *Commandment III*: causality belongs in code.
 

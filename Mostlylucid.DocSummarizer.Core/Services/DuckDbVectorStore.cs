@@ -8,20 +8,13 @@ namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
 /// DuckDB-backed vector store for document segments and embeddings.
-/// Provides an embedded, zero-external-dependency alternative to Qdrant.
+/// Uses native HNSW index for fast vector similarity search.
 /// 
 /// Features:
-/// - Vector similarity search (cosine, L2, inner product)
+/// - Vector similarity search via HNSW index (cosine distance)
 /// - Metadata filtering with SQL
 /// - Persistent storage in a single file
 /// - Word lists and caches in the same database
-/// - No external services required
-/// 
-/// Use cases:
-/// - Local development without Qdrant
-/// - CLI tools and scripts
-/// - Single-machine deployments
-/// - Offline/air-gapped environments
 /// 
 /// For enterprise/distributed deployments, use QdrantVectorStore instead.
 /// </summary>
@@ -34,42 +27,30 @@ public sealed class DuckDbVectorStore : IVectorStore
     private bool _initialized;
     private bool _vssLoaded;
 
-    /// <summary>
-    /// Create a DuckDB vector store.
-    /// </summary>
-    /// <param name="dbPath">Path to database file, or ":memory:" for in-memory</param>
-    /// <param name="vectorDimension">Embedding dimension (e.g., 384 for all-MiniLM-L6-v2)</param>
-    /// <param name="verbose">Enable verbose logging</param>
     public DuckDbVectorStore(string? dbPath = null, int vectorDimension = 384, bool verbose = false)
     {
         _dbPath = dbPath ?? ":memory:";
         _vectorDimension = vectorDimension;
         _verbose = verbose;
-        // Use DataSource (no space) - matches working CsvLlm pattern
         _connection = new DuckDBConnection($"DataSource={_dbPath}");
         _connection.Open();
     }
 
-    /// <inheritdoc />
     public bool IsPersistent => _dbPath != ":memory:";
 
-    /// <inheritdoc />
     public async Task InitializeAsync(string collectionName, int vectorSize, CancellationToken ct = default)
     {
         _vectorDimension = vectorSize;
-        
         if (_initialized) return;
 
-        // Try to load VSS extension for optimized vector search
         await TryLoadVssExtensionAsync(ct);
-        
         await CreateSchemaAsync(ct);
         _initialized = true;
 
         if (_verbose)
         {
             Console.WriteLine($"[DuckDbVectorStore] Initialized at {_dbPath}");
-            Console.WriteLine($"[DuckDbVectorStore] VSS extension: {(_vssLoaded ? "loaded" : "not available, using fallback")}");
+            Console.WriteLine($"[DuckDbVectorStore] VSS extension: {(_vssLoaded ? "loaded (HNSW enabled)" : "not available, using fallback")}");
         }
     }
 
@@ -80,11 +61,19 @@ public sealed class DuckDbVectorStore : IVectorStore
             await using var cmd = _connection.CreateCommand();
             cmd.CommandText = "INSTALL vss; LOAD vss;";
             await cmd.ExecuteNonQueryAsync(ct);
+            
+            // Enable experimental HNSW persistence for disk-backed databases
+            if (_dbPath != ":memory:")
+            {
+                await using var cmd2 = _connection.CreateCommand();
+                cmd2.CommandText = "SET hnsw_enable_experimental_persistence = true;";
+                await cmd2.ExecuteNonQueryAsync(ct);
+            }
+            
             _vssLoaded = true;
         }
         catch
         {
-            // VSS not available - will use manual cosine similarity
             _vssLoaded = false;
         }
     }
@@ -93,9 +82,10 @@ public sealed class DuckDbVectorStore : IVectorStore
     {
         await using var cmd = _connection.CreateCommand();
         
-        // Segments table with embedding stored as FLOAT array
-        // Note: We use TEXT for embedding since DuckDB array syntax varies by version
-        cmd.CommandText = """
+        // Segments table - use native FLOAT[] for embeddings when VSS is available
+        var embeddingType = _vssLoaded ? $"FLOAT[{_vectorDimension}]" : "TEXT";
+        
+        cmd.CommandText = $"""
             CREATE TABLE IF NOT EXISTS segments (
                 id VARCHAR PRIMARY KEY,
                 collection VARCHAR NOT NULL,
@@ -107,7 +97,7 @@ public sealed class DuckDbVectorStore : IVectorStore
                 heading_level INTEGER DEFAULT 0,
                 index_position INTEGER DEFAULT 0,
                 salience FLOAT DEFAULT 0.0,
-                embedding TEXT,
+                embedding {embeddingType},
                 metadata JSON,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -116,8 +106,32 @@ public sealed class DuckDbVectorStore : IVectorStore
             CREATE INDEX IF NOT EXISTS idx_segments_doc ON segments(collection, doc_id);
             CREATE INDEX IF NOT EXISTS idx_segments_hash ON segments(collection, content_hash);
             CREATE INDEX IF NOT EXISTS idx_segments_salience ON segments(collection, salience DESC);
-            
-            -- Summary cache table
+            """;
+        
+        await cmd.ExecuteNonQueryAsync(ct);
+        
+        // Create HNSW index for vector search if VSS is loaded
+        if (_vssLoaded)
+        {
+            try
+            {
+                await using var idxCmd = _connection.CreateCommand();
+                // Use cosine metric - queries must use array_cosine_distance + ORDER BY + LIMIT to engage index
+                idxCmd.CommandText = """
+                    CREATE INDEX IF NOT EXISTS idx_segments_embedding ON segments USING HNSW (embedding) WITH (metric = 'cosine')
+                    """;
+                await idxCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose)
+                    Console.WriteLine($"[DuckDbVectorStore] HNSW index creation failed: {ex.Message}");
+            }
+        }
+        
+        // Summary cache and word lists tables
+        await using var cmd2 = _connection.CreateCommand();
+        cmd2.CommandText = """
             CREATE TABLE IF NOT EXISTS summary_cache (
                 cache_key VARCHAR PRIMARY KEY,
                 collection VARCHAR NOT NULL,
@@ -129,7 +143,6 @@ public sealed class DuckDbVectorStore : IVectorStore
             CREATE INDEX IF NOT EXISTS idx_cache_collection ON summary_cache(collection);
             CREATE INDEX IF NOT EXISTS idx_cache_evidence ON summary_cache(collection, evidence_hash);
             
-            -- Word lists table (for entity extraction)
             CREATE TABLE IF NOT EXISTS word_lists (
                 id INTEGER PRIMARY KEY,
                 word VARCHAR NOT NULL,
@@ -143,12 +156,11 @@ public sealed class DuckDbVectorStore : IVectorStore
             CREATE INDEX IF NOT EXISTS idx_wordlist_category ON word_lists(category);
             """;
         
-        await cmd.ExecuteNonQueryAsync(ct);
+        await cmd2.ExecuteNonQueryAsync(ct);
     }
 
     #region IVectorStore Implementation
 
-    /// <inheritdoc />
     public async Task<bool> HasDocumentAsync(string collectionName, string docId, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -162,7 +174,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         return Convert.ToInt64(result) > 0;
     }
 
-    /// <inheritdoc />
     public async Task UpsertSegmentsAsync(string collectionName, IEnumerable<Segment> segments, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -170,7 +181,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         var segmentList = segments.ToList();
         if (segmentList.Count == 0) return;
 
-        // Use transaction for batch insert
         await using var transaction = _connection.BeginTransaction();
         
         try
@@ -196,26 +206,41 @@ public sealed class DuckDbVectorStore : IVectorStore
     {
         await using var cmd = _connection.CreateCommand();
         
-        // Serialize embedding to JSON array string for storage
-        var embeddingJson = segment.Embedding != null 
-            ? JsonSerializer.Serialize(segment.Embedding)
-            : null;
-        
-        // Get docId - we need to extract it from the segment Id or use a default
-        // Segment.Id format: "{docId}_{type}_{index}"
         var docId = ExtractDocIdFromSegment(segment);
         
-        cmd.CommandText = """
-            INSERT INTO segments (id, collection, doc_id, content_hash, text, section_title, segment_type, 
-                                  heading_level, index_position, salience, embedding)
-            VALUES ($id, $collection, $doc_id, $hash, $text, $section, $type, $level, $idx, $salience, $embedding)
-            ON CONFLICT (id) DO UPDATE SET
-                text = $text,
-                content_hash = $hash,
-                section_title = $section,
-                salience = $salience,
-                embedding = $embedding
-            """;
+        if (_vssLoaded && segment.Embedding != null)
+        {
+            // Native FLOAT[] storage for VSS
+            cmd.CommandText = """
+                INSERT INTO segments (id, collection, doc_id, content_hash, text, section_title, segment_type, 
+                                      heading_level, index_position, salience, embedding)
+                VALUES ($id, $collection, $doc_id, $hash, $text, $section, $type, $level, $idx, $salience, $embedding)
+                ON CONFLICT (id) DO UPDATE SET
+                    text = $text,
+                    content_hash = $hash,
+                    section_title = $section,
+                    salience = $salience,
+                    embedding = $embedding
+                """;
+            cmd.Parameters.Add(new DuckDBParameter("embedding", segment.Embedding));
+        }
+        else
+        {
+            // JSON TEXT fallback
+            var embeddingJson = segment.Embedding != null ? JsonSerializer.Serialize(segment.Embedding) : null;
+            cmd.CommandText = """
+                INSERT INTO segments (id, collection, doc_id, content_hash, text, section_title, segment_type, 
+                                      heading_level, index_position, salience, embedding)
+                VALUES ($id, $collection, $doc_id, $hash, $text, $section, $type, $level, $idx, $salience, $embedding)
+                ON CONFLICT (id) DO UPDATE SET
+                    text = $text,
+                    content_hash = $hash,
+                    section_title = $section,
+                    salience = $salience,
+                    embedding = $embedding
+                """;
+            cmd.Parameters.Add(new DuckDBParameter("embedding", embeddingJson ?? (object)DBNull.Value));
+        }
         
         cmd.Parameters.Add(new DuckDBParameter("id", segment.Id));
         cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
@@ -227,24 +252,22 @@ public sealed class DuckDbVectorStore : IVectorStore
         cmd.Parameters.Add(new DuckDBParameter("level", segment.HeadingLevel));
         cmd.Parameters.Add(new DuckDBParameter("idx", segment.Index));
         cmd.Parameters.Add(new DuckDBParameter("salience", segment.SalienceScore));
-        cmd.Parameters.Add(new DuckDBParameter("embedding", embeddingJson ?? (object)DBNull.Value));
         
         await cmd.ExecuteNonQueryAsync(ct);
     }
     
     private static string ExtractDocIdFromSegment(Segment segment)
     {
-        // Segment.Id format: "{docId}_{type}_{index}" e.g., "mydoc_s_42"
         var parts = segment.Id.Split('_');
         if (parts.Length >= 3)
-        {
-            // Join all parts except the last two (type and index)
             return string.Join("_", parts.Take(parts.Length - 2));
-        }
         return segment.Id;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Vector similarity search. Uses HNSW index when VSS is loaded.
+    /// Query pattern: ORDER BY array_cosine_distance(...) LIMIT n triggers HNSW_INDEX_SCAN.
+    /// </summary>
     public async Task<List<Segment>> SearchAsync(
         string collectionName,
         float[] queryEmbedding,
@@ -254,26 +277,79 @@ public sealed class DuckDbVectorStore : IVectorStore
     {
         await EnsureInitializedAsync(ct);
         
-        // Get all segments with embeddings, then compute similarity in memory
-        // This is less efficient than native vector search but works without VSS extension
-        var segments = await GetAllSegmentsWithEmbeddingsAsync(collectionName, docId, ct);
+        if (_vssLoaded)
+        {
+            // Use native HNSW vector search
+            return await SearchWithHnswAsync(collectionName, queryEmbedding, topK, docId, ct);
+        }
+        else
+        {
+            // Fallback to in-memory cosine similarity
+            return await SearchWithFallbackAsync(collectionName, queryEmbedding, topK, docId, ct);
+        }
+    }
+
+    private async Task<List<Segment>> SearchWithHnswAsync(
+        string collectionName, float[] queryEmbedding, int topK, string? docId, CancellationToken ct)
+    {
+        var segments = new List<Segment>();
         
-        if (segments.Count == 0)
+        await using var cmd = _connection.CreateCommand();
+        
+        // IMPORTANT: array_cosine_distance + ORDER BY + LIMIT triggers HNSW_INDEX_SCAN
+        // Using array_cosine_similarity or other patterns may cause full table scan!
+        var docFilter = docId != null ? "AND doc_id = $doc_id" : "";
+        
+        cmd.CommandText = $"""
+            SELECT id, doc_id, content_hash, text, section_title, segment_type, heading_level,
+                   index_position, salience, embedding,
+                   array_cosine_distance(embedding, $query::FLOAT[{_vectorDimension}]) as distance
+            FROM segments
+            WHERE collection = $collection {docFilter} AND embedding IS NOT NULL
+            ORDER BY distance
+            LIMIT $topk
+            """;
+        
+        cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
+        cmd.Parameters.Add(new DuckDBParameter("query", queryEmbedding));
+        cmd.Parameters.Add(new DuckDBParameter("topk", topK));
+        if (docId != null)
+            cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
+        
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var segment = ReadSegmentFromReader(reader, useNativeEmbedding: true);
+            if (segment != null)
+            {
+                // Convert distance to similarity (cosine distance = 1 - similarity for normalized vectors)
+                var distance = reader.GetFloat(10);
+                segment.QuerySimilarity = 1.0 - distance;
+                segments.Add(segment);
+            }
+        }
+        
+        return segments;
+    }
+
+    private async Task<List<Segment>> SearchWithFallbackAsync(
+        string collectionName, float[] queryEmbedding, int topK, string? docId, CancellationToken ct)
+    {
+        // Load all segments with embeddings, compute similarity in memory
+        var allSegments = await GetAllSegmentsWithEmbeddingsAsync(collectionName, docId, ct);
+        
+        if (allSegments.Count == 0)
             return new List<Segment>();
 
-        // Score by cosine similarity
-        var scored = segments
+        var scored = allSegments
             .Where(s => s.Embedding != null)
             .Select(s => (Segment: s, Score: CosineSimilarity(queryEmbedding, s.Embedding!)))
             .OrderByDescending(x => x.Score)
             .Take(topK)
             .ToList();
 
-        // Update QuerySimilarity on segments
         foreach (var (segment, score) in scored)
-        {
             segment.QuerySimilarity = score;
-        }
 
         return scored.Select(x => x.Segment).ToList();
     }
@@ -284,34 +360,23 @@ public sealed class DuckDbVectorStore : IVectorStore
         
         await using var cmd = _connection.CreateCommand();
         
-        if (docId != null)
-        {
-            cmd.CommandText = """
-                SELECT id, doc_id, content_hash, text, section_title, segment_type, heading_level,
-                       index_position, salience, embedding
-                FROM segments
-                WHERE collection = $collection AND doc_id = $doc_id AND embedding IS NOT NULL
-                ORDER BY index_position
-                """;
-            cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
-        }
-        else
-        {
-            cmd.CommandText = """
-                SELECT id, doc_id, content_hash, text, section_title, segment_type, heading_level,
-                       index_position, salience, embedding
-                FROM segments
-                WHERE collection = $collection AND embedding IS NOT NULL
-                ORDER BY salience DESC
-                """;
-        }
+        var docFilter = docId != null ? "AND doc_id = $doc_id" : "";
+        cmd.CommandText = $"""
+            SELECT id, doc_id, content_hash, text, section_title, segment_type, heading_level,
+                   index_position, salience, embedding
+            FROM segments
+            WHERE collection = $collection {docFilter} AND embedding IS NOT NULL
+            ORDER BY salience DESC
+            """;
         
         cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
+        if (docId != null)
+            cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
         
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var segment = ReadSegmentFromReader(reader);
+            var segment = ReadSegmentFromReader(reader, useNativeEmbedding: false);
             if (segment != null)
                 segments.Add(segment);
         }
@@ -319,7 +384,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         return segments;
     }
 
-    /// <inheritdoc />
     public async Task<List<Segment>> GetDocumentSegmentsAsync(string collectionName, string docId, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -340,7 +404,7 @@ public sealed class DuckDbVectorStore : IVectorStore
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var segment = ReadSegmentFromReader(reader);
+            var segment = ReadSegmentFromReader(reader, useNativeEmbedding: _vssLoaded);
             if (segment != null)
                 segments.Add(segment);
         }
@@ -348,7 +412,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         return segments;
     }
 
-    /// <inheritdoc />
     public async Task DeleteCollectionAsync(string collectionName, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -359,7 +422,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         
-        // Also delete cached summaries for this collection
         await using var cacheCmd = _connection.CreateCommand();
         cacheCmd.CommandText = "DELETE FROM summary_cache WHERE collection = $collection";
         cacheCmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
@@ -369,7 +431,6 @@ public sealed class DuckDbVectorStore : IVectorStore
             Console.WriteLine($"[DuckDbVectorStore] Deleted {deleted} segments from '{collectionName}'");
     }
 
-    /// <inheritdoc />
     public async Task DeleteDocumentAsync(string collectionName, string docId, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -382,10 +443,9 @@ public sealed class DuckDbVectorStore : IVectorStore
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         
         if (_verbose)
-            Console.WriteLine($"[DuckDbVectorStore] Deleted {deleted} segments for doc '{docId}' from '{collectionName}'");
+            Console.WriteLine($"[DuckDbVectorStore] Deleted {deleted} segments for doc '{docId}'");
     }
 
-    /// <inheritdoc />
     public async Task<Dictionary<string, Segment>> GetSegmentsByHashAsync(
         string collectionName,
         IEnumerable<string> contentHashes,
@@ -399,7 +459,6 @@ public sealed class DuckDbVectorStore : IVectorStore
 
         var result = new Dictionary<string, Segment>();
         
-        // Query in batches to avoid very long IN clauses
         const int batchSize = 100;
         for (int i = 0; i < hashList.Count; i += batchSize)
         {
@@ -416,25 +475,20 @@ public sealed class DuckDbVectorStore : IVectorStore
             cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
             
             for (int j = 0; j < batch.Count; j++)
-            {
                 cmd.Parameters.Add(new DuckDBParameter($"hash{j}", batch[j]));
-            }
             
             await using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var segment = ReadSegmentFromReader(reader);
+                var segment = ReadSegmentFromReader(reader, useNativeEmbedding: _vssLoaded);
                 if (segment != null && !string.IsNullOrEmpty(segment.ContentHash))
-                {
                     result[segment.ContentHash] = segment;
-                }
             }
         }
         
         return result;
     }
 
-    /// <inheritdoc />
     public async Task RemoveStaleSegmentsAsync(
         string collectionName,
         string docId,
@@ -447,12 +501,10 @@ public sealed class DuckDbVectorStore : IVectorStore
         
         if (hashList.Count == 0)
         {
-            // Remove all segments for this document
             await DeleteDocumentAsync(collectionName, docId, ct);
             return;
         }
 
-        // Delete segments NOT in the valid hash list
         var placeholders = string.Join(",", hashList.Select((_, idx) => $"$hash{idx}"));
         
         await using var cmd = _connection.CreateCommand();
@@ -466,9 +518,7 @@ public sealed class DuckDbVectorStore : IVectorStore
         cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
         
         for (int i = 0; i < hashList.Count; i++)
-        {
             cmd.Parameters.Add(new DuckDBParameter($"hash{i}", hashList[i]));
-        }
         
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         
@@ -476,7 +526,6 @@ public sealed class DuckDbVectorStore : IVectorStore
             Console.WriteLine($"[DuckDbVectorStore] Removed {deleted} stale segments from '{docId}'");
     }
 
-    /// <inheritdoc />
     public async Task<DocumentSummary?> GetCachedSummaryAsync(string collectionName, string evidenceHash, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -489,11 +538,9 @@ public sealed class DuckDbVectorStore : IVectorStore
         var result = await cmd.ExecuteScalarAsync(ct);
         if (result == null || result == DBNull.Value) return null;
         
-        var json = result.ToString();
-        return JsonSerializer.Deserialize<DocumentSummary>(json!);
+        return JsonSerializer.Deserialize<DocumentSummary>(result.ToString()!);
     }
 
-    /// <inheritdoc />
     public async Task CacheSummaryAsync(string collectionName, string evidenceHash, DocumentSummary summary, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -513,18 +560,12 @@ public sealed class DuckDbVectorStore : IVectorStore
         cmd.Parameters.Add(new DuckDBParameter("json", json));
         
         await cmd.ExecuteNonQueryAsync(ct);
-        
-        if (_verbose)
-            Console.WriteLine($"[DuckDbVectorStore] Cached summary for evidence hash '{evidenceHash[..Math.Min(8, evidenceHash.Length)]}...'");
     }
 
     #endregion
 
-    #region Word Lists (Bonus Feature)
+    #region Word Lists
 
-    /// <summary>
-    /// Load a word list into the database for entity extraction.
-    /// </summary>
     public async Task LoadWordListAsync(string category, IEnumerable<string> words, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -556,9 +597,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         }
     }
 
-    /// <summary>
-    /// Get all words in a category.
-    /// </summary>
     public async Task<HashSet<string>> GetWordListAsync(string category, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -571,16 +609,11 @@ public sealed class DuckDbVectorStore : IVectorStore
         
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
-        {
             words.Add(reader.GetString(0));
-        }
         
         return words;
     }
 
-    /// <summary>
-    /// Check if a word is in a category.
-    /// </summary>
     public async Task<bool> IsInWordListAsync(string word, string category, CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -590,17 +623,13 @@ public sealed class DuckDbVectorStore : IVectorStore
         cmd.Parameters.Add(new DuckDBParameter("word", word.ToLowerInvariant()));
         cmd.Parameters.Add(new DuckDBParameter("category", category));
         
-        var result = await cmd.ExecuteScalarAsync(ct);
-        return result != null;
+        return await cmd.ExecuteScalarAsync(ct) != null;
     }
 
     #endregion
 
     #region Statistics & Maintenance
 
-    /// <summary>
-    /// Get database statistics.
-    /// </summary>
     public async Task<(int Segments, int Collections, int CachedSummaries, long DbSizeBytes)> GetStatsAsync(CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -622,9 +651,7 @@ public sealed class DuckDbVectorStore : IVectorStore
             
             long dbSize = 0;
             if (_dbPath != ":memory:" && File.Exists(_dbPath))
-            {
                 dbSize = new FileInfo(_dbPath).Length;
-            }
             
             return (segments, collections, cached, dbSize);
         }
@@ -632,9 +659,6 @@ public sealed class DuckDbVectorStore : IVectorStore
         return (0, 0, 0, 0);
     }
 
-    /// <summary>
-    /// Run vacuum to reclaim space.
-    /// </summary>
     public async Task VacuumAsync(CancellationToken ct = default)
     {
         await EnsureInitializedAsync(ct);
@@ -651,13 +675,12 @@ public sealed class DuckDbVectorStore : IVectorStore
 
     #region Helpers
 
-    private Segment? ReadSegmentFromReader(DbDataReader reader)
+    private Segment? ReadSegmentFromReader(DbDataReader reader, bool useNativeEmbedding)
     {
         try
         {
             var id = reader.GetString(0);
             var docId = reader.GetString(1);
-            var contentHash = reader.GetString(2);
             var text = reader.GetString(3);
             var sectionTitle = reader.IsDBNull(4) ? "" : reader.GetString(4);
             var typeStr = reader.IsDBNull(5) ? "Sentence" : reader.GetString(5);
@@ -665,27 +688,37 @@ public sealed class DuckDbVectorStore : IVectorStore
             var index = reader.IsDBNull(7) ? 0 : reader.GetInt32(7);
             var salience = reader.IsDBNull(8) ? 0.0 : reader.GetDouble(8);
             
-            // Read embedding from JSON
             float[]? embedding = null;
             if (!reader.IsDBNull(9))
             {
-                var embeddingJson = reader.GetString(9);
-                if (!string.IsNullOrEmpty(embeddingJson))
+                if (useNativeEmbedding)
                 {
-                    embedding = JsonSerializer.Deserialize<float[]>(embeddingJson);
+                    // Read native FLOAT[] array
+                    var value = reader.GetValue(9);
+                    embedding = value switch
+                    {
+                        float[] arr => arr,
+                        IEnumerable<float> enumerable => enumerable.ToArray(),
+                        IEnumerable<double> doubles => doubles.Select(d => (float)d).ToArray(),
+                        _ => null
+                    };
+                }
+                else
+                {
+                    // Read JSON TEXT
+                    var json = reader.GetString(9);
+                    if (!string.IsNullOrEmpty(json))
+                        embedding = JsonSerializer.Deserialize<float[]>(json);
                 }
             }
             
             var type = Enum.TryParse<SegmentType>(typeStr, out var t) ? t : SegmentType.Sentence;
             
-            // Create segment using existing constructor
-            var segment = new Segment(docId, text, type, index, 0, text.Length)
+            return new Segment(docId, text, type, index, 0, text.Length)
             {
                 SalienceScore = salience,
                 Embedding = embedding
             };
-            
-            return segment;
         }
         catch
         {
@@ -695,22 +728,18 @@ public sealed class DuckDbVectorStore : IVectorStore
 
     private static double CosineSimilarity(float[] a, float[] b)
     {
-        if (a.Length != b.Length || a.Length == 0)
-            return 0;
+        if (a.Length != b.Length || a.Length == 0) return 0;
 
-        double dotProduct = 0;
-        double normA = 0;
-        double normB = 0;
-
+        double dot = 0, normA = 0, normB = 0;
         for (int i = 0; i < a.Length; i++)
         {
-            dotProduct += a[i] * b[i];
+            dot += a[i] * b[i];
             normA += a[i] * a[i];
             normB += b[i] * b[i];
         }
 
         var denom = Math.Sqrt(normA) * Math.Sqrt(normB);
-        return denom == 0 ? 0 : dotProduct / denom;
+        return denom == 0 ? 0 : dot / denom;
     }
 
     private async Task EnsureInitializedAsync(CancellationToken ct)
@@ -719,7 +748,6 @@ public sealed class DuckDbVectorStore : IVectorStore
             await InitializeAsync("default", _vectorDimension, ct);
     }
 
-    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         _connection.Close();
