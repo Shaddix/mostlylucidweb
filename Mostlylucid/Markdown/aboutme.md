@@ -3,7 +3,7 @@
 <!--category-- Resume , introduction -->
 <datetime class="hidden">2025-12-31T22:30</datetime>
 
-# Scott Galloway | CTO | Head of Engineering | Systems Architect | Remote
+# Scott Galloway | AI Systems Engineer | CTO | Head of Engineering | Systems Architect | Remote
 
 I'm a technical leader with over 30 years building and scaling engineering teams and products. I've served as CTO, Head of Engineering, and Lead Architect across startups and enterprises - from pre-seed companies building their first MVP to scaling systems serving millions of users.
 
@@ -27,7 +27,19 @@ I spent several years at Microsoft as an ASP.NET Program Manager on the Redmond 
 
 I believe in giving back to the dev community. Here's what I've published:
 
+### CLI Tools
+
+Self-contained, portable executables; no runtime install required.
+
+- **[BotDetection](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.BotDetection)** - Detects bot / scraper / hacker activity in web traffic using machine learning models. Supports HTTP request analysis, user agent parsing, and IP reputation checks. Provides real-time alerts and customizable rules for blocking suspicious traffic and optional LLM interpretation .
+
+- **[DataSummarizer](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer)** - Fast, local, privacy-first data profiling with DuckDB + optional LLM narration. Profile any CSV, Excel, Parquet, JSON, SQLite, or log file in seconds. Features include 52K+ rows profiled in ~1 second, privacy-safe PII detection, drift detection, constraint validation, and natural language Q&A with SQL generation.
+
+- **[DocSummarizer](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer)** - Turn documents or URLs into evidence-grounded summaries where every claim cites its source. Runs entirely on your machine. Supports PDF, DOCX, PPTX, XLSX, Markdown, and HTML. Offers Bert mode (pure ONNX, no LLM, ~1-3 seconds) and BertRag mode (LLM synthesis with citations). Includes an MCP server for AI agent integration.
+
 ### NuGet Packages
+
+- **[Mostlylucid.MinimalBlog](https://www.nuget.org/packages/Mostlylucid.MinimalBlog)** - A minimal, file-based markdown blog for ASP.NET Core. Just point to a folder of markdown files and go. ~500 lines of code total, with memory and output caching built-in, MetaWeblog API support, and a GitHub-inspired dark theme.
 
 - **[Umami.Net](https://www.nuget.org/packages/Umami.Net)** - A .NET client for Umami Web Analytics. Privacy-focused analytics made simple.
 
@@ -44,6 +56,26 @@ I believe in giving back to the dev community. Here's what I've published:
 - **[@mostlylucid/mermaid-enhancements](https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements)** - Enhances Mermaid diagrams with export, panning, zoom, expanding lightbox, and theme switching.
 
 All of these came out of real needs in projects I was working on. When I hit a problem that doesn't have a good solution, I build one and share it.
+
+### Additional Projects
+
+These are experimental projects and demos from the [mostlylucidweb repository](https://github.com/scottgal/mostlylucidweb):
+
+- **[TinyLLM](https://github.com/scottgal/mostlylucidweb/tree/main/TinyLLM)** - Windows WPF app for local AI chat with RAG memory. Supports Ollama and direct GGUF model loading.
+
+- **[Chat.Server](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Chat.Server)** - SignalR hub for real-time chat between website visitors and administrators.
+
+- **[Chat.Widget](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Chat.Widget)** - Embeddable JavaScript chat widget for any website.
+
+- **[SemanticSearch](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.SemanticSearch)** - CPU-friendly semantic search using ONNX embeddings and Qdrant vector database.
+
+- **[BlogLLM](https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid.blogllm)** - RAG knowledge base builder for markdown documents.
+
+- **[SemanticGallery.Demo](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.SemanticGallery.Demo)** - Image gallery with semantic search capabilities.
+
+- **[SentimentAnalysis](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.SentimentAnalysis)** - Local sentiment analysis using ONNX models.
+
+- **[Workflow.Engine](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Workflow.Engine)** - Simple workflow execution engine.
 
 ## Background & Experience
 
@@ -70,13 +102,16 @@ The infrastructure itself is a case study in efficient server operations:
 - **Self-hosted everything** - database, analytics (Umami), translation (EasyNMT), reverse proxy (Caddy)
    
 The platform features that spawned packages:
-- **Dual-mode blog system** (file-based markdown or PostgreSQL) - led to the Markdig.FetchExtension package
-- **[Automated translation system](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** - complete Python / Pytorch / FastAPI rewrite of EasyNMT supporting 100+ languages with automatic fallback between neural machine translation model families. Production-ready with intelligent caching, GPU optimization, and robust error handling. Translates the entire blog to 12+ languages automatically. This is exactly my wheelhouse: novel technology solving a real problem (abandoned EasyNMT project) with an amazing solution that handles messy real-world input at scale.  
-- **Full-text search** using PostgreSQL tsvector/GIN indexes 
+- **Dual-mode blog system** (file-based markdown or PostgreSQL) - led to the Markdig.FetchExtension package and MinimalBlog package
+- **[Automated translation system](https://www.mostlylucid.net/blog/mostlylucid-nmt-complete-guide)** - complete Python / Pytorch / FastAPI rewrite of EasyNMT supporting 100+ languages with automatic fallback between neural machine translation model families. Production-ready with intelligent caching, GPU optimisation, and robust error handling. Translates the entire blog to 12+ languages automatically. This is exactly my wheelhouse: novel technology solving a real problem (abandoned EasyNMT project) with an amazing solution that handles messy real-world input at scale.  
+- **Full-text search** using PostgreSQL tsvector/GIN indexes
+- **Semantic search** with ONNX embeddings and Qdrant vector database - CPU-friendly, no GPU required
+- **Real-time chat system** with SignalR hub and embeddable widget
 - **Interactive Mermaid diagrams** with pan/zoom/export - became the @mostlylucid/mermaid-enhancements npm package
 - **HTMX-powered paging** - extracted into the pagingtaghelper NuGet package
 - **Umami analytics integration** - became the Umami.Net package
 - **LLM-powered mock APIs** for development - became the mockllmapi package
+- **Document and data summarisation tools** - became the DocSummarizer and DataSummarizer CLI tools
 
 It's messy, experimental, and constantly evolving. That's the point.
 
@@ -99,13 +134,13 @@ LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 ### Tech Stack
 
 **Languages:** From Perl CGI to Go microservices - C#/.NET (my primary focus), Python, Java, Node.js, JavaScript/TypeScript, PHP, C++. I'm language-agnostic and choose based on the problem, not the hype.
-**Backend:** ASP.NET Core through .NET 9, Node.js, Python APIs, Go services
+**Backend:** ASP.NET Core through .NET 10, Node.js, Python APIs, Go services
 **Frontend:** HTMX, Alpine.js, Vue.js, React, Angular, Blazor, jQuery (whatever fits the use case)
 **CSS:** Tailwind CSS, Bootstrap, DaisyUI
 **Databases:** PostgreSQL, SQL Server, MySQL, SQLite, MongoDB, RavenDB, Cosmos, OpenSearch
 **DevOps:** Docker, Kubernetes, GitHub Actions, Azure DevOps, CI/CD pipelines, Infrastructure-as-Code
 **Cloud:** Azure (though I increasingly prefer self-hosted solutions for cost and control)
-**AI/ML:** Ollama, EasyNMT, ML.NET, scikit-learn, embeddings, ANNs, RAG pipelines, Azure OpenAI
+**AI/ML:** Ollama, ONNX Runtime, Qdrant, DuckDB, EasyNMT, ML.NET, scikit-learn, embeddings, vector search, RAG pipelines, MCP servers, Azure OpenAI
 
 ### Career Highlights
 
@@ -136,7 +171,7 @@ LinkedIn: [Scott Galloway](https://www.linkedin.com/in/scott-galloway-91608691/)
 **University of Stirling** - BSc (Hons) Psychology
 Stirling, Scotland, UK
 
-(Yes, psychology. It's actually been incredibly useful in understanding user behavior and leading teams.)
+(Yes, psychology. It's actually been incredibly useful in understanding user behaviour and leading teams.)
 
 ---
 
