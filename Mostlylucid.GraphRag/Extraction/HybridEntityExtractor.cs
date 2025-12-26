@@ -72,6 +72,7 @@ public sealed class HybridEntityExtractor : IEntityExtractor
         var allEntities = new Dictionary<string, HybridEntity>(StringComparer.OrdinalIgnoreCase);
         var allRelationships = new List<HybridRelationship>();
         var linkRelationships = new List<(string Source, string Target, string Type, string[] ChunkIds)>();
+        var coOccurrences = new Dictionary<(string, string), int>();
 
         int docIndex = 0;
         int totalDocs = documentChunks.Count;
@@ -111,6 +112,18 @@ public sealed class HybridEntityExtractor : IEntityExtractor
                 // Extract explicit link relationships
                 foreach (var link in ExtractLinks(chunk.Text, chunk.Id))
                     linkRelationships.Add(link);
+                    
+                // Track co-occurrences within chunks (fallback for relationship detection)
+                var chunkTerms = chunkCandidates.Select(c => c.Name).Distinct().ToList();
+                for (int j = 0; j < chunkTerms.Count; j++)
+                {
+                    for (int k = j + 1; k < chunkTerms.Count; k++)
+                    {
+                        var pair = string.Compare(chunkTerms[j], chunkTerms[k], StringComparison.OrdinalIgnoreCase) < 0
+                            ? (chunkTerms[j], chunkTerms[k]) : (chunkTerms[k], chunkTerms[j]);
+                        coOccurrences[pair] = coOccurrences.GetValueOrDefault(pair) + 1;
+                    }
+                }
             }
 
             // Filter to significant candidates for this document
@@ -172,13 +185,14 @@ public sealed class HybridEntityExtractor : IEntityExtractor
         progress?.Report(new ProgressInfo(0, 1, "Storing relationships..."));
         var linkRelsStored = await StoreLinkRelationshipsAsync(linkRelationships, deduped);
         var semanticRelsStored = await StoreSemanticRelationshipsAsync(allRelationships, deduped);
+        var coOccurRelsStored = await StoreCoOccurrenceRelationshipsAsync(coOccurrences, deduped);
 
         sw.Stop();
 
         return new ExtractionResult
         {
             EntitiesExtracted = deduped.Count,
-            RelationshipsExtracted = linkRelsStored + semanticRelsStored,
+            RelationshipsExtracted = linkRelsStored + semanticRelsStored + coOccurRelsStored,
             LlmCallCount = _llmCallCount,
             Duration = sw.Elapsed,
             Mode = ExtractionMode.Hybrid
@@ -542,6 +556,29 @@ public sealed class HybridEntityExtractor : IEntityExtractor
 
             await _db.UpsertRelationshipAsync($"r_{srcId}_{tgtId}_{g.Key.Type}",
                 srcId, tgtId, g.Key.Type, null, chunkIds);
+            count++;
+        }
+        return count;
+    }
+
+    private async Task<int> StoreCoOccurrenceRelationshipsAsync(
+        Dictionary<(string, string), int> coOccur,
+        List<HybridEntity> entities)
+    {
+        var lookup = entities.ToDictionary(e => e.Name, StringComparer.OrdinalIgnoreCase);
+        var count = 0;
+
+        // Only significant co-occurrences (appear together 2+ times)
+        foreach (var ((a, b), occurrences) in coOccur.Where(kv => kv.Value >= 2).OrderByDescending(kv => kv.Value).Take(500))
+        {
+            if (!lookup.TryGetValue(a, out var ea) || !lookup.TryGetValue(b, out var eb))
+                continue;
+
+            var srcId = EntityId(a);
+            var tgtId = EntityId(b);
+            var chunkIds = ea.ChunkIds.Intersect(eb.ChunkIds).ToArray();
+
+            await _db.UpsertRelationshipAsync($"r_{srcId}_{tgtId}", srcId, tgtId, "co_occurs_with", null, chunkIds);
             count++;
         }
         return count;
