@@ -50,6 +50,11 @@ public class IndexCommand : AsyncCommand<IndexCommand.Settings>
         [Description("Ollama model for LLM tasks")]
         [DefaultValue("llama3.2:3b")]
         public string Model { get; set; } = "llama3.2:3b";
+
+        [CommandOption("-e|--extraction-mode")]
+        [Description("Entity extraction mode: heuristic (fast, no per-chunk LLM) or llm (MSFT-style, 2 LLM calls per chunk)")]
+        [DefaultValue("heuristic")]
+        public string ExtractionMode { get; set; } = "heuristic";
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
@@ -60,17 +65,29 @@ public class IndexCommand : AsyncCommand<IndexCommand.Settings>
             return 1;
         }
 
+        var extractionMode = settings.ExtractionMode.ToLowerInvariant() switch
+        {
+            "llm" => ExtractionMode.Llm,
+            "msft" => ExtractionMode.Llm,
+            _ => ExtractionMode.Heuristic
+        };
+
         var config = new GraphRagConfig
         {
             DatabasePath = settings.Database,
             OllamaUrl = settings.OllamaUrl,
-            Model = settings.Model
+            Model = settings.Model,
+            ExtractionMode = extractionMode
         };
 
+        var modeColor = extractionMode == ExtractionMode.Llm ? "yellow" : "green";
+        var modeLabel = extractionMode == ExtractionMode.Llm ? "LLM (MSFT-style)" : "Heuristic (IDF + signals)";
+        
         AnsiConsole.MarkupLine($"[bold blue]GraphRAG Indexer[/]");
         AnsiConsole.MarkupLine($"  Source: [green]{settings.Path}[/]");
         AnsiConsole.MarkupLine($"  Database: [green]{settings.Database}[/]");
         AnsiConsole.MarkupLine($"  Model: [green]{settings.Model}[/]");
+        AnsiConsole.MarkupLine($"  Extraction: [{modeColor}]{modeLabel}[/]");
         AnsiConsole.WriteLine();
 
         using var pipeline = new GraphRagPipeline(config);

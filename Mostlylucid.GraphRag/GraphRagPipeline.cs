@@ -19,9 +19,11 @@ public class GraphRagPipeline : IDisposable
     private readonly OllamaClient _llm;
     private readonly SearchService _search;
     private readonly QueryEngine _queryEngine;
+    private readonly GraphRagConfig _config;
 
     public GraphRagPipeline(GraphRagConfig config)
     {
+        _config = config;
         _db = new GraphRagDb(config.DatabasePath, config.EmbeddingDimension);
         _embedder = new EmbeddingService();
         _llm = new OllamaClient(config.OllamaUrl, config.Model);
@@ -52,16 +54,18 @@ public class GraphRagPipeline : IDisposable
             new Progress<IndexProgress>(p => progress?.Report(
                 new PipelineProgress(PipelinePhase.Indexing, p.Percentage, p.Message))), ct);
 
-        // Phase 2: Extract entities using hybrid approach (heuristics + embeddings + links)
-        progress?.Report(new PipelineProgress(PipelinePhase.EntityExtraction, 0, "Extracting entities..."));
+        // Phase 2: Extract entities using selected mode
+        var modeLabel = _config.ExtractionMode == ExtractionMode.Llm ? "LLM" : "Heuristic";
+        progress?.Report(new PipelineProgress(PipelinePhase.EntityExtraction, 0, 
+            $"Extracting entities ({modeLabel} mode)..."));
         
-        var extractor = new EntityExtractor(_db, _embedder, _llm);
-        var stats = await extractor.ExtractAsync(
+        var extractor = new EntityExtractor(_db, _embedder, _llm, _config.ExtractionMode);
+        var extractionResult = await extractor.ExtractAsync(
             new Progress<ProgressInfo>(p => progress?.Report(
                 new PipelineProgress(PipelinePhase.EntityExtraction, p.Percentage, p.Message))), ct);
 
         progress?.Report(new PipelineProgress(PipelinePhase.EntityExtraction, 100,
-            $"Extracted {stats.EntitiesStored} entities, {stats.TotalRelationships} relationships"));
+            $"Extracted {extractionResult.EntitiesExtracted} entities, {extractionResult.RelationshipsExtracted} rels ({extractionResult.LlmCallCount} LLM calls)"));
 
         // Phase 3: Detect communities and generate summaries
         progress?.Report(new PipelineProgress(PipelinePhase.CommunityDetection, 0, "Detecting communities..."));

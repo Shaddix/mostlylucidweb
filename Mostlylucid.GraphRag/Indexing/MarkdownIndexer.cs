@@ -64,12 +64,20 @@ public class MarkdownIndexer : IDisposable
     {
         var content = await File.ReadAllTextAsync(filePath, ct);
         var docId = ComputeDocumentId(filePath);
+        var contentHash = ComputeContentHash(content);
+        
+        // Skip if document already indexed with same content
+        if (await _db.DocumentExistsWithHashAsync(docId, contentHash))
+            return;
+        
+        // Delete existing chunks (HNSW index doesn't support duplicate keys)
+        await _db.DeleteDocumentChunksAsync(docId);
         
         // Extract title from frontmatter or first heading
         var title = ExtractTitle(content, filePath);
         
         // Store document
-        await _db.UpsertDocumentAsync(docId, filePath, title, content);
+        await _db.UpsertDocumentAsync(docId, filePath, title, contentHash);
 
         // Chunk the content
         var chunks = ChunkMarkdown(content);
@@ -84,6 +92,13 @@ public class MarkdownIndexer : IDisposable
             var chunkId = $"{docId}_{i}";
             await _db.InsertChunkAsync(chunkId, docId, i, chunk.Text, embeddings[i], chunk.TokenCount);
         }
+    }
+    
+    private static string ComputeContentHash(string content)
+    {
+        using var sha = SHA256.Create();
+        var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private List<ChunkInfo> ChunkMarkdown(string content)

@@ -60,12 +60,41 @@ public record ProgressInfo(int Current, int Total, string Message)
     public double Percentage => Total > 0 ? (double)Current / Total * 100 : 0;
 }
 
+/// <summary>
+/// Entity extraction mode - controls how entities are identified.
+/// </summary>
+public enum ExtractionMode
+{
+    /// <summary>
+    /// Heuristic extraction using IDF + structural signals (fast, no LLM per chunk)
+    /// </summary>
+    Heuristic,
+    
+    /// <summary>
+    /// LLM-based extraction (MSFT GraphRAG style - 2 LLM calls per chunk)
+    /// </summary>
+    Llm
+}
+
 public class GraphRagConfig
 {
     public string DatabasePath { get; set; } = "graphrag.duckdb";
     public string OllamaUrl { get; set; } = "http://localhost:11434";
     public string Model { get; set; } = "llama3.2:3b";
     public int EmbeddingDimension { get; set; } = 384;
+    public ExtractionMode ExtractionMode { get; set; } = ExtractionMode.Heuristic;
+}
+
+/// <summary>
+/// Extraction statistics with LLM call tracking for cost comparison
+/// </summary>
+public record ExtractionResult
+{
+    public int EntitiesExtracted { get; init; }
+    public int RelationshipsExtracted { get; init; }
+    public int LlmCallCount { get; init; }
+    public TimeSpan Duration { get; init; }
+    public ExtractionMode Mode { get; init; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

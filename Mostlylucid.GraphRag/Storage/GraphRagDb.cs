@@ -133,12 +133,40 @@ public sealed class GraphRagDb : IDisposable
             ON CONFLICT(id) DO UPDATE SET path=EXCLUDED.path, title=EXCLUDED.title, content_hash=EXCLUDED.content_hash, indexed_at=now()
             """, id, path, title, contentHash);
 
+    /// <summary>Check if document exists with the same content hash (skip re-indexing if unchanged)</summary>
+    public async Task<bool> DocumentExistsWithHashAsync(string id, string contentHash)
+    {
+        using var cmd = _conn!.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM documents WHERE id = $1 AND content_hash = $2";
+        cmd.Parameters.Add(new DuckDBParameter { Value = id });
+        cmd.Parameters.Add(new DuckDBParameter { Value = contentHash });
+        var result = await cmd.ExecuteScalarAsync();
+        return Convert.ToInt64(result) > 0;
+    }
+
+    /// <summary>Delete all chunks for a document (required before re-indexing due to HNSW constraints)</summary>
+    public async Task DeleteDocumentChunksAsync(string docId)
+    {
+        // First delete entity mentions that reference these chunks
+        await ExecAsync("""
+            DELETE FROM entity_mentions WHERE chunk_id IN (SELECT id FROM chunks WHERE document_id = $1)
+            """, docId);
+        
+        // Then delete relationship mentions
+        await ExecAsync("""
+            DELETE FROM relationship_mentions WHERE chunk_id IN (SELECT id FROM chunks WHERE document_id = $1)
+            """, docId);
+        
+        // Finally delete the chunks themselves
+        await ExecAsync("DELETE FROM chunks WHERE document_id = $1", docId);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Chunks
     // ═══════════════════════════════════════════════════════════════════════════
 
     public Task InsertChunkAsync(string id, string docId, int idx, string text, float[] emb, int tokens) =>
-        ExecAsync("INSERT INTO chunks VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT(id) DO UPDATE SET text=EXCLUDED.text,embedding=EXCLUDED.embedding,token_count=EXCLUDED.token_count",
+        ExecAsync("INSERT INTO chunks VALUES ($1,$2,$3,$4,$5,$6)",
             id, docId, idx, text, emb, tokens);
 
     /// <summary>
@@ -189,13 +217,10 @@ public sealed class GraphRagDb : IDisposable
                 mention_count = entities.mention_count + EXCLUDED.mention_count
             """, id, name, normalized, type, desc, chunkIds.Length);
 
-        // Insert mentions (provenance)
-        foreach (var chunkId in chunkIds)
+        // Batch insert mentions (provenance) - single SQL with VALUES list
+        if (chunkIds.Length > 0)
         {
-            await ExecAsync("""
-                INSERT INTO entity_mentions (entity_id, chunk_id, mention_count) VALUES ($1, $2, 1)
-                ON CONFLICT(entity_id, chunk_id) DO UPDATE SET mention_count = entity_mentions.mention_count + 1
-                """, id, chunkId);
+            await BatchUpsertMentionsAsync("entity_mentions", "entity_id", id, chunkIds);
         }
     }
 
@@ -253,13 +278,10 @@ public sealed class GraphRagDb : IDisposable
                 description = COALESCE(EXCLUDED.description, relationships.description)
             """, id, srcId, tgtId, relType, desc);
 
-        // Insert mentions (provenance)
-        foreach (var chunkId in chunkIds)
+        // Batch insert mentions (provenance) - single SQL with VALUES list
+        if (chunkIds.Length > 0)
         {
-            await ExecAsync("""
-                INSERT INTO relationship_mentions (relationship_id, chunk_id, mention_count) VALUES ($1, $2, 1)
-                ON CONFLICT(relationship_id, chunk_id) DO UPDATE SET mention_count = relationship_mentions.mention_count + 1
-                """, id, chunkId);
+            await BatchUpsertMentionsAsync("relationship_mentions", "relationship_id", id, chunkIds);
         }
     }
 
@@ -344,6 +366,35 @@ public sealed class GraphRagDb : IDisposable
     // ═══════════════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Batch upsert mentions (entity_mentions or relationship_mentions) in a single SQL statement.
+    /// Uses VALUES list instead of N individual inserts.
+    /// </summary>
+    private async Task BatchUpsertMentionsAsync(string table, string idColumn, string id, string[] chunkIds)
+    {
+        // Build: INSERT INTO table (id_column, chunk_id, mention_count) VALUES ($1, $2, 1), ($1, $3, 1), ...
+        // ON CONFLICT DO UPDATE
+        
+        var paramIdx = 2;
+        var valuesClauses = new List<string>(chunkIds.Length);
+        var parameters = new List<object?> { id };
+        
+        foreach (var chunkId in chunkIds)
+        {
+            valuesClauses.Add($"($1, ${paramIdx}, 1)");
+            parameters.Add(chunkId);
+            paramIdx++;
+        }
+        
+        var sql = $"""
+            INSERT INTO {table} ({idColumn}, chunk_id, mention_count) 
+            VALUES {string.Join(", ", valuesClauses)}
+            ON CONFLICT({idColumn}, chunk_id) DO UPDATE SET mention_count = {table}.mention_count + 1
+            """;
+        
+        await ExecAsync(sql, parameters.ToArray());
+    }
 
     /// <summary>
     /// Normalize entity name for deduplication. Preserves C#, C++, .NET etc.
