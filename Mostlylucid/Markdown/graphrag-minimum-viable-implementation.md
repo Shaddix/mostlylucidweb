@@ -1,14 +1,20 @@
-# GraphRAG Part 2: Minimum Viable GraphRAG (Optional Per-Chunk LLM Calls)
+# GraphRAG Part 2: Minimum Viable GraphRAG
 
 <datetime class="hidden">2025-12-27T14:00</datetime>
 <!-- category -- ASP.NET, GraphRAG, DuckDB, Vector Search, Machine Learning, Knowledge Graphs -->
 
-In [Part 1](/blog/graphrag-knowledge-graphs-for-rag), we explored why GraphRAG matters. Now let's build a **minimum viable GraphRAG that works without per-chunk LLM calls** — pragmatic, offline-first, and cheap enough to run on a laptop:
+In [Part 1](/blog/graphrag-knowledge-graphs-for-rag), we explored why GraphRAG matters. Now let's build a **minimum viable GraphRAG** with three extraction modes:
 
+| Mode | LLM Calls | Best For |
+|------|-----------|----------|
+| **Heuristic** (default) | 0 per chunk | Fast indexing, structured markdown |
+| **Hybrid** | 1 per document | Balance of speed and quality |
+| **LLM** | 2 per chunk | Maximum entity quality |
+
+All modes use:
 - **DuckDB** for unified storage (vectors + graph in a single file)
-- **IDF + structural signals** for entity extraction (no LLM per chunk)
 - **BM25 + BERT hybrid search** via RRF fusion
-- **Ollama** for synthesis only (zero API costs)
+- **Ollama** for synthesis and optional batch classification (zero API costs)
 
 **Series Navigation:**
 - [Part 1: GraphRAG Fundamentals](/blog/graphrag-knowledge-graphs-for-rag)
@@ -65,7 +71,7 @@ Microsoft's GraphRAG uses separate storage for vectors (LanceDB), entities (Parq
 - SQL for both vector search and graph traversal
 - Zero deployment complexity
 
-**DuckDB is not a graph database — and that's the point.** This isn't Neo4j. Traversals are shallow, SQL-based, and deliberate. That constraint keeps the system debuggable and cheap.
+**DuckDB is not a graph database - and that's the point.** This isn't Neo4j. Traversals are shallow, SQL-based, and deliberate. That constraint keeps the system debuggable and cheap.
 
 ## Storage Schema
 
@@ -122,11 +128,11 @@ cmd.CommandText = $"""
 // Convert distance to similarity: 1.0f - distance
 ```
 
-**Using `array_cosine_similarity` will not use the index** — it forces a full table scan. On non-trivial corpora, this turns a 5ms query into seconds.
+**Using `array_cosine_similarity` will not use the index** — it won’t trigger the HNSW index. On non-trivial corpora, this turns a ~5ms indexed query into a full table scan.
 
 ## Entity Extraction
 
-This is where we diverge from Microsoft's approach. Instead of **2 LLM calls per chunk**, we use **IDF-based statistical extraction**. The goal isn't perfect entities — it's *stable, corpus-relative signals* that don't require an LLM to produce:
+This is where we diverge from Microsoft's approach. Instead of the **LLM-per-chunk extraction passes** used in Microsoft's reference GraphRAG pipeline, we use **IDF-based statistical extraction**. The goal isn't perfect entities - it's *stable, corpus-relative signals* that don't require an LLM to produce. This trades some recall for determinism, auditability, and predictable cost — a deliberate choice for technical corpora:
 
 ```mermaid
 flowchart TB
@@ -171,10 +177,10 @@ The naive approach is a hardcoded `HashSet<string> KnownTech = { "Docker", "Kube
 $$\text{IDF}(t) = \log\frac{N}{df(t)}$$
 
 Where:
-- $N$ = total documents (chunks)
+- $N$ = total chunks
 - $df(t)$ = documents containing term $t$
 
-High IDF = **rare term** = likely an entity. "Docker" appearing in 5/100 chunks has higher IDF than "the" appearing in 100/100.
+High IDF = **rare term** = likely an entity. "Docker" appearing in 5 of 100 chunks has higher IDF than "the" appearing in 100 of 100.
 
 For more on TF-IDF and BM25, see my post on [hybrid search with BM25](/blog/rag-hybrid-search-and-indexing).
 
@@ -241,7 +247,66 @@ for (int i = 0; i < candidates.Count; i++)
 }
 ```
 
-This is O(n²) within a candidate set, but candidate counts are bounded by IDF filtering and structural signals — not corpus size. For details on BERT embeddings, see [semantic search with ONNX and BERT](/blog/semantic-search-with-onnx-and-qdrant).
+This step is O(n²) within a bounded candidate set, but candidate counts are bounded by IDF filtering and structural signals - not corpus size. For details on BERT embeddings, see [semantic search with ONNX and BERT](/blog/semantic-search-with-onnx-and-qdrant).
+
+## Extraction Modes
+
+The CLI supports three extraction modes via `--extraction-mode`:
+
+### Heuristic Mode (Default)
+
+```bash
+dotnet run --project Mostlylucid.GraphRag -- index ./Markdown --extraction-mode heuristic
+```
+
+Uses IDF + structural signals for entity detection, with optional LLM batch classification. **Zero per-chunk LLM calls** - only ~1 call per 50 entities for type classification.
+
+### Hybrid Mode (Recommended)
+
+```bash
+dotnet run --project Mostlylucid.GraphRag -- index ./Markdown --extraction-mode hybrid
+```
+
+Best of both worlds:
+1. **Heuristic detection**: IDF + structural signals find entity candidates (deterministic)
+2. **LLM enhancement**: One call per *document* validates entities and extracts semantic relationships
+
+```mermaid
+flowchart LR
+    subgraph "Per Document"
+        CHUNKS[Document Chunks] --> HEUR[Heuristic Extraction]
+        HEUR --> CAND[30 Candidates]
+        CAND --> LLM[Single LLM Call]
+        LLM --> ENT[Validated Entities]
+        LLM --> REL[Semantic Relationships]
+    end
+    
+    style HEUR stroke:#22c55e,stroke-width:2px
+    style LLM stroke:#a855f7,stroke-width:2px
+```
+
+For 5 documents with 62 chunks, hybrid mode makes **5 LLM calls** (vs 124 for full LLM mode). You get:
+- Deterministic entity coverage from heuristics
+- LLM-quality relationship extraction (semantic, not just co-occurrence)
+- Descriptions and validated types
+
+### LLM Mode (Microsoft-Style)
+
+```bash
+dotnet run --project Mostlylucid.GraphRag -- index ./Markdown --extraction-mode llm
+```
+
+Full Microsoft GraphRAG approach: **2 LLM calls per chunk** (entity extraction + relationship extraction). Most expensive, but highest quality for unstructured text.
+
+### When to Use Each
+
+| Mode | LLM Calls | Best For |
+|------|-----------|----------|
+| **Heuristic** | ~1 per 50 entities | Fast indexing, well-structured markdown |
+| **Hybrid** | 1 per document | Balance of coverage and quality |
+| **LLM** | 2 per chunk | Unstructured prose, maximum quality |
+
+For technical documentation, start with **hybrid** mode. It gives you semantic relationships without the per-chunk cost. Fall back to **heuristic** for pure speed, or **llm** for narrative text.
 
 ## Hybrid Search: BM25 + BERT
 
@@ -348,14 +413,18 @@ private static QueryMode ClassifyQuery(string query)
 }
 ```
 
-This classifier is deliberately simple — and easy to replace with a small intent model later. If no entities match, the system falls back to pure hybrid retrieval.
+This classifier is deliberately simple - and easy to replace with a small intent model later. If no entities match, the system degrades cleanly to pure hybrid retrieval.
 
 ## CLI Usage
 
 ### Indexing
 
 ```bash
+# Heuristic mode (default) - fast, no per-chunk LLM
 dotnet run --project Mostlylucid.GraphRag -- index ./test-markdown
+
+# LLM mode - Microsoft-style classification
+dotnet run --project Mostlylucid.GraphRag -- index ./test-markdown --extraction-mode llm
 ```
 
 ```text
@@ -363,6 +432,7 @@ GraphRAG Indexer
   Source: test-markdown
   Database: graphrag.duckdb
   Model: llama3.2:3b
+  Extraction: Heuristic (IDF + signals)
 
 Initializing...
 Indexing docker-development-deep-dive.md: 0%
@@ -370,7 +440,7 @@ Indexing docker-swarm-cluster-guide.md: 40%
 Indexing dockercomposedevdeps.md: 80%
 Indexing complete: 100%
 Classifying entities...: 0%
-Extracted 168 entities, 315 relationships: 100%
+Extracted 168 entities, 315 rels (4 LLM calls): 100%
 Found 10 communities: 100%
 Summarizing c_0_2 (12 entities): 20%
 Summarizing c_0_8 (4 entities): 80%
@@ -437,52 +507,62 @@ Database size: 7.76 MB
 
 ## Cost Comparison
 
-For 100 blog posts (~500 chunks):
+For 100 blog posts (~500 chunks, ~100 documents):
 
-| Operation | Microsoft GraphRAG | This Implementation |
-|-----------|-------------------|---------------------|
-| Entity extraction | 2 × 500 = 1,000 LLM calls | 0-1 (optional batch) |
-| Relationships | Included above | Co-occurrence (free) |
-| Community summaries | ~20 calls | Same |
-| **Total indexing** | ~1,020 calls | ~20 calls |
-| **Cost (gpt-4o-mini)** | ~$5-10 | ~$0.10 |
-| **Cost (Ollama)** | N/A | $0 |
+| Operation | MSFT GraphRAG | Heuristic | Hybrid | LLM |
+|-----------|---------------|-----------|--------|-----|
+| Entity extraction | 1,000 calls | 0 | 0 | 1,000 calls |
+| Document enhancement | — | — | 100 calls | — |
+| Classification | Included | ~4 batch | — | ~4 batch |
+| Community summaries | ~20 | ~20 | ~20 | ~20 |
+| **Total LLM calls** | ~1,020 | ~24 | ~120 | ~1,024 |
+| **Relationship quality** | Semantic | Co-occurrence | Semantic | Semantic |
+| **Cost (gpt-4o-mini)** | ~$5-10 | ~$0.15 | ~$0.75 | ~$5-10 |
+| **Cost (Ollama)** | N/A | $0 | $0 | $0 |
 
-**One to two orders of magnitude cheaper** for structured technical content (markdown with headings, code blocks, and links).
+**Hybrid mode is the sweet spot** for most technical content: you get semantic relationships (not just co-occurrence) at ~10% of MSFT's cost.
+
+> Rough order-of-magnitude estimate; exact cost depends on chunk size and prompt shape.
 
 ## Tradeoffs
 
-| This Implementation | LLM-Heavy GraphRAG |
-|---------------------|-------------------|
-| Fast, cheap indexing | Higher entity quality |
-| Good for tech docs | Better for general text |
-| Co-occurrence relationships | Semantic relationships |
-| Works offline | Requires API access |
+| Aspect | Heuristic | Hybrid | LLM | MSFT GraphRAG |
+|--------|-----------|--------|-----|---------------|
+| Entity detection | IDF + structure | IDF + structure | IDF + structure | LLM per chunk |
+| Relationships | Co-occurrence | LLM-inferred | Co-occurrence | LLM-inferred |
+| LLM calls (100 docs) | ~24 | ~120 | ~24 | ~1,020 |
+| Relationship quality | Low | High | Low | High |
+| Works offline | Yes | Yes (Ollama) | Yes (Ollama) | API required |
+| Best for | Speed-critical | **Recommended** | Legacy compat | Unstructured text |
 
-> **Where this breaks down:** Fiction or narrative text without structural markup. Implicit relationships with no lexical signal. Highly ambiguous entity names that require world knowledge to disambiguate.
+Conceptually, this is the same pipeline as [DocSummarizer](/blog/docsummarizer-tool): build structure first, then let an LLM narrate it.
+
+> **Where this breaks down:** Fiction or narrative text without structural markup. Implicit relationships with no lexical signal. Highly ambiguous entity names that require world knowledge to disambiguate. For those cases, use LLM mode or Microsoft's full approach.
 
 ## Code
 
-The implementation is minimal - 11 files, ~1,500 lines:
+The implementation is minimal - ~2,000 lines across these files:
 
 ```
 Mostlylucid.GraphRag/
-├── Storage/GraphRagDb.cs        # DuckDB with HNSW + provenance
-├── Services/EmbeddingService.cs # ONNX BERT wrapper
-├── Services/OllamaClient.cs     # LLM client
-├── Extraction/EntityExtractor.cs # Heuristic + link extraction
-├── Search/SearchService.cs      # BM25 + BERT hybrid
-├── Graph/CommunityDetector.cs   # Leiden + summarization
-├── Query/QueryEngine.cs         # Local/Global/DRIFT
-├── Indexing/MarkdownIndexer.cs  # Chunking
-├── GraphRagPipeline.cs          # Orchestration
-├── Models.cs                    # Shared types
-└── Program.cs                   # CLI
+├── Storage/GraphRagDb.cs              # DuckDB with HNSW + provenance
+├── Services/EmbeddingService.cs       # ONNX BERT wrapper
+├── Services/OllamaClient.cs           # LLM client
+├── Extraction/
+│   ├── IEntityExtractor.cs            # Extractor interface
+│   ├── EntityExtractor.cs             # Heuristic mode
+│   ├── HybridEntityExtractor.cs       # Hybrid mode (recommended)
+│   └── LlmEntityExtractor.cs          # Full LLM mode
+├── Search/SearchService.cs            # BM25 + BERT hybrid
+├── Graph/CommunityDetector.cs         # Leiden + summarization
+├── Query/QueryEngine.cs               # Local/Global/DRIFT
+├── Indexing/MarkdownIndexer.cs        # Chunking
+├── GraphRagPipeline.cs                # Orchestration
+├── Models.cs                          # Shared types + ExtractionMode enum
+└── Program.cs                         # CLI
 ```
 
 **Source:** [`Mostlylucid.GraphRag/`](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.GraphRag)
-
-This implementation shares its core philosophy with [DocSummarizer](/blog/docsummarizer-tool): extract deterministic structure first, then let an LLM explain it — not invent it.
 
 ## Related Posts
 

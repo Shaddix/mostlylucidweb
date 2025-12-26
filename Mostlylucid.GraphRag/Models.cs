@@ -73,7 +73,13 @@ public enum ExtractionMode
     /// <summary>
     /// LLM-based extraction (MSFT GraphRAG style - 2 LLM calls per chunk)
     /// </summary>
-    Llm
+    Llm,
+    
+    /// <summary>
+    /// Hybrid: Heuristic extraction for candidates, then LLM enhancement per document.
+    /// Best of both worlds - deterministic coverage with LLM-quality relationships.
+    /// </summary>
+    Hybrid
 }
 
 public class GraphRagConfig

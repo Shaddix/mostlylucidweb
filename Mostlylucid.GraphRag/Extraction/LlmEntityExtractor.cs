@@ -15,7 +15,7 @@ namespace Mostlylucid.GraphRag.Extraction;
 /// This is included for comparison with the heuristic approach.
 /// For 100 chunks, expect ~200 LLM calls vs ~1 with heuristics.
 /// </summary>
-public sealed class LlmEntityExtractor
+public sealed class LlmEntityExtractor : IEntityExtractor
 {
     private readonly GraphRagDb _db;
     private readonly EmbeddingService _embedder;

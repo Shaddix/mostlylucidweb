@@ -52,7 +52,7 @@ public class IndexCommand : AsyncCommand<IndexCommand.Settings>
         public string Model { get; set; } = "llama3.2:3b";
 
         [CommandOption("-e|--extraction-mode")]
-        [Description("Entity extraction mode: heuristic (fast, no per-chunk LLM) or llm (MSFT-style, 2 LLM calls per chunk)")]
+        [Description("Entity extraction mode: heuristic (fast, no per-chunk LLM), hybrid (heuristic + LLM per doc), or llm (MSFT-style, 2 LLM calls per chunk)")]
         [DefaultValue("heuristic")]
         public string ExtractionMode { get; set; } = "heuristic";
     }
@@ -69,6 +69,7 @@ public class IndexCommand : AsyncCommand<IndexCommand.Settings>
         {
             "llm" => ExtractionMode.Llm,
             "msft" => ExtractionMode.Llm,
+            "hybrid" => ExtractionMode.Hybrid,
             _ => ExtractionMode.Heuristic
         };
 
@@ -80,8 +81,12 @@ public class IndexCommand : AsyncCommand<IndexCommand.Settings>
             ExtractionMode = extractionMode
         };
 
-        var modeColor = extractionMode == ExtractionMode.Llm ? "yellow" : "green";
-        var modeLabel = extractionMode == ExtractionMode.Llm ? "LLM (MSFT-style)" : "Heuristic (IDF + signals)";
+        var (modeColor, modeLabel) = extractionMode switch
+        {
+            ExtractionMode.Llm => ("yellow", "LLM (MSFT-style, 2 calls/chunk)"),
+            ExtractionMode.Hybrid => ("cyan", "Hybrid (heuristic + LLM/doc)"),
+            _ => ("green", "Heuristic (IDF + signals)")
+        };
         
         AnsiConsole.MarkupLine($"[bold blue]GraphRAG Indexer[/]");
         AnsiConsole.MarkupLine($"  Source: [green]{settings.Path}[/]");

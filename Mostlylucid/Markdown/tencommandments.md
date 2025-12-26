@@ -15,6 +15,12 @@ So here it is. Not academic. Not vendor-friendly. Just the rules that stop you d
 
 Here's the payoff: **if you follow these rules, you don't need frontier models.** A tiny local LLM running on commodity hardware becomes a force multiplier when it's doing classification, summarisation, and hypothesis generation - not pretending to be a database or a state machine. The boring machinery handles the hard parts. The LLM handles the fuzzy parts. And you're not paying per-token for the privilege of probabilistic failures.
 
+One persistent source of confusion is the casual use of human terms for machine behaviour - “reasoning”, “thinking”, “agency”.
+
+LLMs can appear to reason only because they decompress and replay the traces of human reasoning already embedded in our written record. 
+
+Language is saturated with “if X then Y”, counterfactuals, procedures, explanations, corrections - we don’t notice them as reasoning because they are native to us. LLMs operate directly on those traces, recombining them fluently, which is powerful - but not the same as having goals, intentions, or agency. There is no internal decision-maker, no capacity to choose objectives, no accountability. Treating pattern continuation as agency is a category error, and designing systems as if it were real is how probability engines get promoted into production decision-makers. That mistake doesn’t make systems smarter - it just makes failures harder to diagnose.
+
 ---
 [TOC]
 

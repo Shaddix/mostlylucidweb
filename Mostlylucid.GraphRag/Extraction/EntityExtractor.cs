@@ -15,7 +15,7 @@ namespace Mostlylucid.GraphRag.Extraction;
 /// 
 /// See also: Mostlylucid.DocSummarizer for BM25Scorer and embedding infrastructure.
 /// </summary>
-public sealed class EntityExtractor
+public sealed class EntityExtractor : IEntityExtractor
 {
     private readonly GraphRagDb _db;
     private readonly EmbeddingService _embedder;

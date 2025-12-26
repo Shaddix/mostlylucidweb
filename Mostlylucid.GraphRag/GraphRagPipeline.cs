@@ -55,11 +55,22 @@ public class GraphRagPipeline : IDisposable
                 new PipelineProgress(PipelinePhase.Indexing, p.Percentage, p.Message))), ct);
 
         // Phase 2: Extract entities using selected mode
-        var modeLabel = _config.ExtractionMode == ExtractionMode.Llm ? "LLM" : "Heuristic";
+        var modeLabel = _config.ExtractionMode switch
+        {
+            ExtractionMode.Llm => "LLM (MSFT-style)",
+            ExtractionMode.Hybrid => "Hybrid (heuristic + LLM)",
+            _ => "Heuristic"
+        };
         progress?.Report(new PipelineProgress(PipelinePhase.EntityExtraction, 0, 
-            $"Extracting entities ({modeLabel} mode)..."));
+            $"Extracting entities ({modeLabel})..."));
         
-        var extractor = new EntityExtractor(_db, _embedder, _llm, _config.ExtractionMode);
+        IEntityExtractor extractor = _config.ExtractionMode switch
+        {
+            ExtractionMode.Llm => new LlmEntityExtractor(_db, _embedder, _llm),
+            ExtractionMode.Hybrid => new HybridEntityExtractor(_db, _embedder, _llm),
+            _ => new EntityExtractor(_db, _embedder, _llm, _config.ExtractionMode)
+        };
+        
         var extractionResult = await extractor.ExtractAsync(
             new Progress<ProgressInfo>(p => progress?.Report(
                 new PipelineProgress(PipelinePhase.EntityExtraction, p.Percentage, p.Message))), ct);

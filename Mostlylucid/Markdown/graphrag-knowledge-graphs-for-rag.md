@@ -21,6 +21,10 @@ You can brute-force this with prompting and post-processing, but you end up rebu
 
 [GraphRAG](https://microsoft.github.io/graphrag/) comes from Microsoft Research's [paper](https://arxiv.org/pdf/2404.16130) and is available as an [open-source implementation](https://github.com/microsoft/graphrag). It keeps vector search for specific questions, but adds a knowledge graph and community summaries for corpus-level reasoning.
 
+**GraphRAG Series Navigation:**
+- **Part 1: GraphRAG Fundamentals** (this article)
+- [Part 2: Minimum Viable GraphRAG](/blog/graphrag-minimum-viable-implementation)
+
 ## When NOT to Use GraphRAG
 
 Before diving in, let's be clear about when this is overkill:
