@@ -105,8 +105,13 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "Building version: $VERSION"
 
+    - name: Clear NuGet cache (avoid stale GPU packages)
+      run: dotnet nuget locals all --clear
+      shell: bash
+
     - name: Restore dependencies
-      run: dotnet restore ${{ env.PROJECT_PATH }}
+      run: dotnet restore ${{ env.PROJECT_PATH }} --force
+      shell: bash
 
     - name: Build and Publish (self-contained)
       run: |
