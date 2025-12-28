@@ -48,12 +48,13 @@ public class OnnxModelDownloader
         if (tasks.Count > 0)
         {
             // Always show download message (not just verbose) - this is a one-time operation
+            // Write to stderr to avoid polluting stdout (which is reserved for JSON output)
             VerboseHelper.Log($"[yellow]First run: downloading ONNX embedding model {model.Name} (~{model.SizeBytes / 1_000_000}MB)...[/]");
-            Console.WriteLine($"[dim]Models are cached at: {modelDir}[/]");
+            Console.Error.WriteLine($"Models are cached at: {modelDir}");
             
             await Task.WhenAll(tasks);
             
-            Console.WriteLine($"[green]Model downloaded successfully![/]");
+            Console.Error.WriteLine($"Model downloaded successfully!");
         }
 
         return new EmbeddingModelPaths(modelPath, tokenizerPath, vocabPath);

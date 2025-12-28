@@ -50,7 +50,7 @@ public class ProgressService
     }
 
     /// <summary>
-    /// Write a divider line to the console.
+    /// Write a divider line to the console (stderr to avoid polluting JSON output).
     /// </summary>
     /// <param name="label">Optional label for the divider.</param>
     public void WriteDivider(string? label = null)
@@ -59,53 +59,54 @@ public class ProgressService
         {
             if (!string.IsNullOrEmpty(label))
             {
-                Console.WriteLine($"--- {label} ---");
+                Console.Error.WriteLine($"--- {label} ---");
             }
             else
             {
-                Console.WriteLine("---");
+                Console.Error.WriteLine("---");
             }
         }
     }
 
     /// <summary>
-    /// Write an info message.
+    /// Write an info message (stderr to avoid polluting JSON output).
     /// </summary>
     /// <param name="message">The message to write.</param>
     public void Info(string message)
     {
         if (_verbose)
         {
-            Console.WriteLine($"[INFO] {VerboseHelper.Escape(message)}");
+            Console.Error.WriteLine($"[INFO] {VerboseHelper.Escape(message)}");
         }
     }
 
     /// <summary>
-    /// Write a success message.
+    /// Write a success message (stderr to avoid polluting JSON output).
     /// </summary>
     /// <param name="message">The message to write.</param>
     public void Success(string message)
     {
         if (_verbose)
         {
-            Console.WriteLine($"[SUCCESS] {VerboseHelper.Escape(message)}");
+            Console.Error.WriteLine($"[SUCCESS] {VerboseHelper.Escape(message)}");
         }
     }
 
     /// <summary>
-    /// Write a warning message.
+    /// Write a warning message (stderr to avoid polluting JSON output).
     /// </summary>
     /// <param name="message">The message to write.</param>
     public void Warning(string message)
     {
         if (_verbose)
         {
-            Console.WriteLine($"[WARNING] {VerboseHelper.Escape(message)}");
+            Console.Error.WriteLine($"[WARNING] {VerboseHelper.Escape(message)}");
         }
     }
 
     /// <summary>
     /// Execute an action with a status message (no-op spinner in library mode).
+    /// Status message goes to stderr to avoid polluting JSON output.
     /// </summary>
     /// <param name="statusMessage">The status message to display.</param>
     /// <param name="action">The action to execute.</param>
@@ -114,13 +115,14 @@ public class ProgressService
     {
         if (_verbose)
         {
-            Console.WriteLine($"[STATUS] {statusMessage}");
+            Console.Error.WriteLine($"[STATUS] {statusMessage}");
         }
         await action();
     }
 
     /// <summary>
     /// Execute a function with a status message and return the result.
+    /// Status message goes to stderr to avoid polluting JSON output.
     /// </summary>
     /// <typeparam name="T">The return type.</typeparam>
     /// <param name="statusMessage">The status message to display.</param>
@@ -130,7 +132,7 @@ public class ProgressService
     {
         if (_verbose)
         {
-            Console.WriteLine($"[STATUS] {statusMessage}");
+            Console.Error.WriteLine($"[STATUS] {statusMessage}");
         }
         return await func();
     }

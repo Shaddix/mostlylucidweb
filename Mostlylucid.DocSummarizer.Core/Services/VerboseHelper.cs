@@ -7,6 +7,7 @@ internal static class VerboseHelper
 {
     /// <summary>
     /// Write a verbose log message if verbose mode is enabled.
+    /// Messages go to stderr to avoid polluting stdout (which is reserved for JSON output).
     /// </summary>
     /// <param name="verbose">Whether verbose mode is enabled.</param>
     /// <param name="message">The message to write.</param>
@@ -14,17 +15,18 @@ internal static class VerboseHelper
     {
         if (verbose)
         {
-            Console.WriteLine(StripMarkup(message));
+            Console.Error.WriteLine(StripMarkup(message));
         }
     }
 
     /// <summary>
     /// Write a verbose log message unconditionally.
+    /// Messages go to stderr to avoid polluting stdout (which is reserved for JSON output).
     /// </summary>
     /// <param name="message">The message to write.</param>
     public static void Log(string message)
     {
-        Console.WriteLine(StripMarkup(message));
+        Console.Error.WriteLine(StripMarkup(message));
     }
 
     /// <summary>

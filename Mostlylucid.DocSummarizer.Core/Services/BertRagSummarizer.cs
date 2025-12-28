@@ -782,12 +782,26 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             coverage,
             documentTitle);
         
-        var rawSummary = await _ollama.GenerateAsync(synthesisPrompt, temperature: 0.3);
-        var executiveSummary = CleanSynthesisResponse(rawSummary);
+        // Check if Ollama is available for LLM synthesis
+        string executiveSummary;
+        var ollamaAvailable = await _ollama.IsAvailableAsync();
+        
+        if (ollamaAvailable)
+        {
+            var rawSummary = await _ollama.GenerateAsync(synthesisPrompt, temperature: 0.3);
+            executiveSummary = CleanSynthesisResponse(rawSummary);
+        }
+        else
+        {
+            // Fallback to extractive summary (no LLM polishing)
+            VerboseHelper.Log(_verbose, "[yellow]Ollama not available - using extractive summary only[/]");
+            executiveSummary = BuildExtractiveSummary(synthesisSegments, targetWords, documentTitle);
+        }
         
         // === FACT SANITY PASS: Verify key claims against evidence ===
         // For narrative content, run a quick fact-check to catch "Captain Morstan's father" type drift
-        if (extraction.ContentType == ContentType.Narrative && synthesisSegments.Count >= 5)
+        // Only run if Ollama is available (fact-check uses LLM)
+        if (ollamaAvailable && extraction.ContentType == ContentType.Narrative && synthesisSegments.Count >= 5)
         {
             executiveSummary = await FactCheckSummaryAsync(executiveSummary, synthesisSegments, ct);
         }
@@ -1040,6 +1054,36 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
         return string.Join("\n", cleaned).Trim();
     }
 
+    /// <summary>
+    /// Build a pure extractive summary when LLM is not available.
+    /// Concatenates the top segments with their citations.
+    /// </summary>
+    private static string BuildExtractiveSummary(List<Segment> segments, int targetWords, string? documentTitle)
+    {
+        var sb = new StringBuilder();
+        
+        if (!string.IsNullOrEmpty(documentTitle))
+        {
+            sb.AppendLine($"**{documentTitle}**");
+            sb.AppendLine();
+        }
+        
+        var wordCount = 0;
+        foreach (var segment in segments.OrderByDescending(s => s.SalienceScore))
+        {
+            var text = segment.Text.Trim();
+            var segmentWords = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            
+            if (wordCount + segmentWords > targetWords * 1.2 && wordCount > 0)
+                break;
+                
+            sb.AppendLine($"- {text} {segment.Citation}");
+            wordCount += segmentWords;
+        }
+        
+        return sb.ToString().Trim();
+    }
+    
     /// <summary>
     /// Entity extraction from retrieved segments with aggressive filtering to reduce noise.
     /// Filters: stopwords, pronouns, determiners, sentence adverbs, requires frequency ≥2, titlecase validation.
