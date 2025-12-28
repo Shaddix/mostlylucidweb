@@ -23,7 +23,7 @@ public class TelemetryOptions
     /// <summary>Service name for telemetry</summary>
     public string ServiceName { get; set; } = "docsummarizer";
     
-    /// <summary>Service version</summary>
+    /// <summary>Service version (matches CLI version)</summary>
     public string ServiceVersion { get; set; } = "4.0.0";
 }
 

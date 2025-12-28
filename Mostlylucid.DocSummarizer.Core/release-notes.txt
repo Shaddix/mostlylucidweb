@@ -1,4 +1,4 @@
-## v1.3.0
+## v4.0.0
 
 ### New Features
 
@@ -30,11 +30,11 @@ Polly-based resilience for WebFetcher with production-grade fault tolerance.
 ### Dependencies
 - Added `OpenTelemetry.Api` 1.12.0
 - Added `System.Diagnostics.DiagnosticSource` 10.0.1
-- Added `Polly.Core` 8.6.0 (for WebFetcher resilience)
+- Added `Polly.Core` 8.6.5 (for WebFetcher resilience)
 
 ---
 
-## v1.2.0
+## v3.0.0
 
 ### Improvements
 - Added .NET 8 LTS support (now targets net8.0, net9.0, and net10.0)
@@ -43,7 +43,7 @@ Polly-based resilience for WebFetcher with production-grade fault tolerance.
 
 ---
 
-## v1.1.0
+## v2.0.0
 
 ### New Features
 - **.NET 10 Support** - Now targets net9.0 and net10.0 (dropped net8.0)
