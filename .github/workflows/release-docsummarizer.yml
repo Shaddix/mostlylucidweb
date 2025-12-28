@@ -112,6 +112,7 @@ jobs:
       run: |
         dotnet publish ${{ env.PROJECT_PATH }} \
           -c Release \
+          -f net10.0 \
           -r ${{ matrix.rid }} \
           --self-contained \
           -p:Version=${{ steps.get_version.outputs.VERSION }} \
