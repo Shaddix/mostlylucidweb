@@ -82,14 +82,16 @@ jobs:
       run: |
         dotnet build ${{ env.PROJECT_PATH }} \
           --configuration Release \
-          --no-restore
+          --no-restore \
+          -p:MinVerVersionOverride=${{ steps.get_version.outputs.VERSION }}
 
     - name: Pack
       run: |
         dotnet pack ${{ env.PROJECT_PATH }} \
           --configuration Release \
           --no-build \
-          --output ./artifacts
+          --output ./artifacts \
+          -p:MinVerVersionOverride=${{ steps.get_version.outputs.VERSION }}
 
     - name: List artifacts
       run: ls -la ./artifacts/
