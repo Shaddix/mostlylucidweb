@@ -122,12 +122,28 @@ public static class OutputFormatter
             sb.AppendLine();
             sb.AppendLine("### Trace");
             sb.AppendLine();
+
+            // Show metadata if available (sanity check)
+            if (summary.Trace.Metadata != null && summary.Trace.Metadata.HasExternalMetadata)
+            {
+                var meta = summary.Trace.Metadata;
+                if (!string.IsNullOrEmpty(meta.Title))
+                    sb.AppendLine($"- Title: {meta.Title}");
+                if (!string.IsNullOrEmpty(meta.Authors))
+                    sb.AppendLine($"- Authors: {meta.Authors}");
+                if (meta.Date.HasValue)
+                    sb.AppendLine($"- Date: {meta.Date.Value:yyyy-MM-dd}");
+                if (meta.ExternalIdType != ExternalIdType.None)
+                    sb.AppendLine($"- {meta.ExternalIdType}: {meta.ExternalId}");
+                sb.AppendLine();
+            }
+
             sb.AppendLine($"- Document: {summary.Trace.DocumentId}");
-            sb.AppendLine($"- Chunks: {summary.Trace.TotalChunks} total, {summary.Trace.ChunksProcessed} processed");
+            sb.AppendLine($"- Evidence: {summary.Trace.ChunksProcessed} segments used ({summary.Trace.CoverageScore:P1} of {summary.Trace.TotalChunks} total)");
             sb.AppendLine($"- Topics: {summary.Trace.Topics.Count}");
             sb.AppendLine($"- Time: {summary.Trace.TotalTime.TotalSeconds:F1}s");
-            sb.AppendLine($"- Coverage: {summary.Trace.CoverageScore:P0}");
-            sb.AppendLine($"- Citation rate: {summary.Trace.CitationRate:F2}");
+            var confidence = summary.Trace.CoverageScore < 0.05 ? "Low" : summary.Trace.CoverageScore < 0.15 ? "Medium" : "High";
+            sb.AppendLine($"- Confidence: {confidence}");
         }
 
         if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })
@@ -183,11 +199,11 @@ public static class OutputFormatter
             sb.AppendLine("PROCESSING TRACE");
             sb.AppendLine(new string('-', 80));
             sb.AppendLine($"Document: {summary.Trace.DocumentId}");
-            sb.AppendLine($"Chunks: {summary.Trace.TotalChunks} total, {summary.Trace.ChunksProcessed} processed");
+            sb.AppendLine($"Evidence: {summary.Trace.ChunksProcessed} segments used ({summary.Trace.CoverageScore:P1} of {summary.Trace.TotalChunks} total)");
             sb.AppendLine($"Topics: {summary.Trace.Topics.Count}");
             sb.AppendLine($"Time: {summary.Trace.TotalTime.TotalSeconds:F1}s");
-            sb.AppendLine($"Coverage: {summary.Trace.CoverageScore:P0}");
-            sb.AppendLine($"Citation rate: {summary.Trace.CitationRate:F2}");
+            var confidence = summary.Trace.CoverageScore < 0.05 ? "Low" : summary.Trace.CoverageScore < 0.15 ? "Medium" : "High";
+            sb.AppendLine($"Confidence: {confidence}");
         }
 
         if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })
@@ -306,16 +322,40 @@ public static class OutputFormatter
 
         if (config.IncludeTrace)
         {
+            // Show metadata section if available
+            if (summary.Trace.Metadata != null && summary.Trace.Metadata.HasExternalMetadata)
+            {
+                sb.AppendLine("## Document Information");
+                sb.AppendLine();
+                var meta = summary.Trace.Metadata;
+                sb.AppendLine("| Field | Value |");
+                sb.AppendLine("|-------|-------|");
+                if (!string.IsNullOrEmpty(meta.Title))
+                    sb.AppendLine($"| Title | {meta.Title.Replace("|", "\\|")} |");
+                if (!string.IsNullOrEmpty(meta.Authors))
+                    sb.AppendLine($"| Authors | {meta.Authors.Replace("|", "\\|")} |");
+                if (meta.Date.HasValue)
+                    sb.AppendLine($"| Date | {meta.Date.Value:yyyy-MM-dd} |");
+                if (meta.ExternalIdType != ExternalIdType.None && !string.IsNullOrEmpty(meta.ExternalId))
+                {
+                    var idLink = meta.ExternalIdType == ExternalIdType.ArXiv
+                        ? $"[{meta.ExternalId}](https://arxiv.org/abs/{meta.ExternalId})"
+                        : meta.ExternalId;
+                    sb.AppendLine($"| {meta.ExternalIdType} | {idLink} |");
+                }
+                sb.AppendLine();
+            }
+
             sb.AppendLine("## Processing Trace");
             sb.AppendLine();
+            var confidence = summary.Trace.CoverageScore < 0.05 ? "Low" : summary.Trace.CoverageScore < 0.15 ? "Medium" : "High";
             sb.AppendLine("| Metric | Value |");
             sb.AppendLine("|--------|-------|");
             sb.AppendLine($"| Document | {summary.Trace.DocumentId} |");
-            sb.AppendLine($"| Chunks | {summary.Trace.TotalChunks} total, {summary.Trace.ChunksProcessed} processed |");
+            sb.AppendLine($"| Evidence | {summary.Trace.ChunksProcessed} segments ({summary.Trace.CoverageScore:P1} of {summary.Trace.TotalChunks}) |");
             sb.AppendLine($"| Topics | {summary.Trace.Topics.Count} |");
             sb.AppendLine($"| Time | {summary.Trace.TotalTime.TotalSeconds:F1}s |");
-            sb.AppendLine($"| Coverage | {summary.Trace.CoverageScore:P0} |");
-            sb.AppendLine($"| Citation rate | {summary.Trace.CitationRate:F2} |");
+            sb.AppendLine($"| Confidence | {confidence} |");
         }
 
         if (config.IncludeChunkIndex && summary.Trace.ChunkIndex is { Count: > 0 })

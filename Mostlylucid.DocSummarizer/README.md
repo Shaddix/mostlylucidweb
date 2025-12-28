@@ -212,18 +212,28 @@ Zero-config local embeddings using ONNX Runtime. Models auto-download on first u
 
 | Model | Size | Dims | Max Seq | Best For |
 |-------|------|------|---------|----------|
-| `AllMiniLmL6V2` | ~23MB | 384 | 256 | **Default** - fast, general-purpose |
+| `BgeBaseEnV15` | ~110MB | 768 | 512 | **Default** - best quality/speed balance |
+| `BgeLargeEnV15` | ~335MB | 1024 | 512 | Maximum quality |
+| `GteLarge` | ~335MB | 1024 | 512 | Top-tier quality |
+| `GteBase` | ~110MB | 768 | 512 | Strong MTEB performer |
+| `JinaEmbeddingsV2BaseEn` | ~137MB | 768 | 8192 | Long context specialist |
+| `SnowflakeArcticEmbedM` | ~110MB | 768 | 512 | Top MTEB retrieval |
+| `NomicEmbedTextV15` | ~137MB | 768 | 8192 | Long context + Matryoshka |
 | `BgeSmallEnV15` | ~34MB | 384 | 512 | Best quality for size |
+| `AllMiniLmL6V2` | ~23MB | 384 | 256 | Fast, general-purpose (legacy default) |
 | `GteSmall` | ~34MB | 384 | 512 | Good all-around |
 | `MultiQaMiniLm` | ~23MB | 384 | 512 | QA-optimized |
 | `ParaphraseMiniLmL3` | ~17MB | 384 | 128 | Smallest/fastest |
 
 ```bash
-# Use default ONNX embedding (AllMiniLmL6V2)
-docsummarizer -f doc.pdf -m Rag
+# Use default ONNX embedding (BgeBaseEnV15 - 768d)
+docsummarizer -f doc.pdf -m BertRag
 
-# Use a different ONNX model
-docsummarizer -f doc.pdf -m Rag --embedding-model BgeSmallEnV15
+# Use a different ONNX model for maximum quality
+docsummarizer -f doc.pdf -m BertRag --embedding-model BgeLargeEnV15
+
+# Use long-context model for huge documents
+docsummarizer -f doc.pdf -m BertRag --embedding-model JinaEmbeddingsV2BaseEn
 ```
 
 ### Ollama Embeddings (Optional)
@@ -554,7 +564,7 @@ For small documents, sends full text to LLM. For larger documents, uses semantic
 | `--query` | `-q` | Query mode | - |
 | `--model` | | Ollama model | `llama3.2:3b` |
 | `--embedding-backend` | | Onnx or Ollama | `Onnx` |
-| `--embedding-model` | | ONNX model name | `AllMiniLmL6V2` |
+| `--embedding-model` | | ONNX model name | `BgeBaseEnV15` |
 | `--verbose` | `-v` | Show progress | `false` |
 | `--template` | `-t` | Summary template | `default` |
 | `--output-format` | `-o` | Console, Text, Markdown, Json | `Console` |
@@ -757,9 +767,9 @@ Auto-discovery order:
 {
   "embeddingBackend": "Onnx",
   "onnx": {
-    "embeddingModel": "AllMiniLmL6V2",
+    "embeddingModel": "BgeBaseEnV15",
     "useQuantized": true,
-    "maxEmbeddingSequenceLength": 256
+    "maxEmbeddingSequenceLength": 512
   },
   "ollama": {
     "model": "llama3.2:3b",
@@ -787,7 +797,8 @@ Auto-discovery order:
     "topK": 25,
     "fallbackCount": 5,
     "useRRF": true,
-    "useHybridSearch": true
+    "useHybridSearch": true,
+    "useReranking": true
   },
   "adaptiveRetrieval": {
     "enabled": true,
@@ -870,8 +881,9 @@ Auto-discovery order:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `embeddingBackend` | `Onnx` | Embedding backend: `Onnx` (local, zero-config) or `Ollama` |
-| `onnx.embeddingModel` | `AllMiniLmL6V2` | ONNX model to use |
+| `onnx.embeddingModel` | `BgeBaseEnV15` | ONNX model to use (768d, best quality/speed balance) |
 | `onnx.useQuantized` | `true` | Use quantized models (smaller, faster) |
+| `onnx.maxEmbeddingSequenceLength` | `512` | Max tokens per embedding (8192 for Jina/Nomic) |
 
 #### Ollama Settings
 
@@ -938,6 +950,7 @@ Auto-discovery order:
 | `retrieval.fallbackCount` | `5` | Always include top-N salient segments |
 | `retrieval.useRRF` | `true` | Use Reciprocal Rank Fusion for scoring |
 | `retrieval.useHybridSearch` | `true` | Use hybrid BM25 + dense + salience search |
+| `retrieval.useReranking` | `true` | Cross-encoder reranking for precision boost |
 
 #### Adaptive Retrieval Settings
 

@@ -487,31 +487,73 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
 
     /// <summary>
     /// Calculate adaptive TopK based on document size and content type.
-    /// Larger documents and narrative content get more segments to maintain quality.
+    ///
+    /// Key insight: smaller documents should have HIGHER coverage percentage.
+    /// - A 50-segment document at 5% = only 2.5 segments (useless)
+    /// - A 5000-segment document at 5% = 250 segments (too many)
+    ///
+    /// We use an inverse scaling formula:
+    /// - Under 100 segments: 30-50% coverage (most of the document)
+    /// - 100-300 segments: 15-30% coverage
+    /// - 300-1000 segments: 10-15% coverage
+    /// - Over 1000 segments: 5-10% coverage (large documents)
     /// </summary>
     private int CalculateAdaptiveTopK(int totalSegments, ContentType contentType)
     {
         if (!_retrievalConfig.AdaptiveTopK)
             return _retrievalConfig.TopK;
-        
-        // Calculate TopK to meet minimum coverage percentage
-        var coverageTopK = (int)Math.Ceiling(totalSegments * _retrievalConfig.MinCoveragePercent / 100.0);
-        
+
+        // Inverse scaling: smaller docs get higher coverage
+        // Formula: coverage% = baseMin + (baseMax - baseMin) * (1 - segmentFactor)
+        // segmentFactor = log(segments) / log(maxThreshold)
+        double coveragePercent;
+        if (totalSegments <= 50)
+        {
+            // Very small docs: 40-50% coverage
+            coveragePercent = 40.0 + (50.0 - 40.0) * (1 - totalSegments / 50.0);
+        }
+        else if (totalSegments <= 150)
+        {
+            // Small docs: 20-40% coverage
+            var factor = (totalSegments - 50.0) / 100.0; // 0 to 1
+            coveragePercent = 40.0 - factor * 20.0; // 40 -> 20
+        }
+        else if (totalSegments <= 400)
+        {
+            // Medium docs: 10-20% coverage
+            var factor = (totalSegments - 150.0) / 250.0; // 0 to 1
+            coveragePercent = 20.0 - factor * 10.0; // 20 -> 10
+        }
+        else if (totalSegments <= 1000)
+        {
+            // Large docs: 5-10% coverage
+            var factor = (totalSegments - 400.0) / 600.0; // 0 to 1
+            coveragePercent = 10.0 - factor * 5.0; // 10 -> 5
+        }
+        else
+        {
+            // Very large docs: use configured minimum (typically 5%)
+            coveragePercent = _retrievalConfig.MinCoveragePercent;
+        }
+
+        // Calculate TopK from coverage percentage
+        var coverageTopK = (int)Math.Ceiling(totalSegments * coveragePercent / 100.0);
+
         // Apply narrative boost for fiction/stories (they need more context to avoid hallucinations)
         if (contentType == ContentType.Narrative)
         {
             coverageTopK = (int)Math.Ceiling(coverageTopK * _retrievalConfig.NarrativeBoost);
         }
-        
+
         // Clamp to configured min/max
         var adaptiveTopK = Math.Max(_retrievalConfig.MinTopK, Math.Min(_retrievalConfig.MaxTopK, coverageTopK));
-        
-        if (_verbose && adaptiveTopK != _retrievalConfig.TopK)
+
+        if (_verbose)
         {
             var contentLabel = contentType == ContentType.Narrative ? "narrative" : "expository";
-            AnsiConsole.MarkupLine($"[dim]Adaptive TopK: {adaptiveTopK} (base {_retrievalConfig.TopK}, {totalSegments} segments, {contentLabel})[/]");
+            AnsiConsole.MarkupLine($"[dim]Adaptive TopK: {adaptiveTopK} ({coveragePercent:F1}% of {totalSegments} segments, {contentLabel})[/]");
         }
-        
+
         return adaptiveTopK;
     }
 
@@ -603,22 +645,33 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
             if (_verbose) AnsiConsole.MarkupLine($"[dim]Using weighted sum (alpha={alpha}, topK={effectiveTopK})[/]");
         }
         
+        // === Optional: Cross-encoder reranking for precision boost ===
+        // Rerank the top candidates using multiple cross-encoder signals
+        if (_retrievalConfig.UseReranking && !string.IsNullOrWhiteSpace(focusQuery))
+        {
+            var reranker = new CrossEncoderReranker(_verbose);
+            // Over-retrieve then rerank to top-K
+            var reranked = reranker.Rerank(topByRetrieval, focusQuery, effectiveTopK);
+            topByRetrieval = reranked;
+            if (_verbose) AnsiConsole.MarkupLine($"[dim]Reranked to {reranked.Count} segments[/]");
+        }
+
         // Merge with fallback bucket (ensures global coverage even if query is narrow)
         var fallbackNeeded = _retrievalConfig.FallbackCount;
         var fallbackToAdd = topBySalience
             .Where(s => !topByRetrieval.Contains(s))
             .Take(fallbackNeeded);
-        
+
         var result = topByRetrieval.Concat(fallbackToAdd)
             .OrderBy(s => s.Index) // Restore document order for coherent synthesis
             .ToList();
-        
+
         if (_verbose)
         {
             AnsiConsole.MarkupLine($"[dim]Query: \"{Markup.Escape(focusQuery ?? "")}\"[/]");
             AnsiConsole.MarkupLine($"[dim]Top by retrieval: {topByRetrieval.Count}, fallback added: {result.Count - topByRetrieval.Count}[/]");
         }
-        
+
         return result;
     }
 

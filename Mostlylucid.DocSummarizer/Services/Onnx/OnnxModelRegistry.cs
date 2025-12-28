@@ -39,6 +39,32 @@ public static class OnnxModelRegistry
                 RequiresInstruction = true,
                 QueryInstruction = "Represent this sentence for searching relevant passages: "
             },
+            OnnxEmbeddingModel.BgeBaseEnV15 => new EmbeddingModelInfo
+            {
+                Name = "bge-base-en-v1.5",
+                HuggingFaceRepo = "Xenova/bge-base-en-v1.5",
+                ModelFile = quantized ? "onnx/model_quantized.onnx" : "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 768,
+                MaxSequenceLength = 512,
+                SizeBytes = quantized ? 110_000_000 : 438_000_000,
+                RequiresInstruction = true,
+                QueryInstruction = "Represent this sentence for searching relevant passages: "
+            },
+            OnnxEmbeddingModel.BgeLargeEnV15 => new EmbeddingModelInfo
+            {
+                Name = "bge-large-en-v1.5",
+                HuggingFaceRepo = "Xenova/bge-large-en-v1.5",
+                ModelFile = quantized ? "onnx/model_quantized.onnx" : "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 1024,
+                MaxSequenceLength = 512,
+                SizeBytes = quantized ? 335_000_000 : 1_340_000_000,
+                RequiresInstruction = true,
+                QueryInstruction = "Represent this sentence for searching relevant passages: "
+            },
             OnnxEmbeddingModel.GteSmall => new EmbeddingModelInfo
             {
                 Name = "gte-small",
@@ -49,6 +75,30 @@ public static class OnnxModelRegistry
                 EmbeddingDimension = 384,
                 MaxSequenceLength = 512,
                 SizeBytes = quantized ? 34_000_000 : 133_000_000,
+                RequiresInstruction = false
+            },
+            OnnxEmbeddingModel.GteBase => new EmbeddingModelInfo
+            {
+                Name = "gte-base",
+                HuggingFaceRepo = "Xenova/gte-base",
+                ModelFile = quantized ? "onnx/model_quantized.onnx" : "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 768,
+                MaxSequenceLength = 512,
+                SizeBytes = quantized ? 110_000_000 : 438_000_000,
+                RequiresInstruction = false
+            },
+            OnnxEmbeddingModel.GteLarge => new EmbeddingModelInfo
+            {
+                Name = "gte-large",
+                HuggingFaceRepo = "Xenova/gte-large",
+                ModelFile = quantized ? "onnx/model_quantized.onnx" : "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 1024,
+                MaxSequenceLength = 512,
+                SizeBytes = quantized ? 335_000_000 : 1_340_000_000,
                 RequiresInstruction = false
             },
             OnnxEmbeddingModel.MultiQaMiniLm => new EmbeddingModelInfo
@@ -74,6 +124,44 @@ public static class OnnxModelRegistry
                 MaxSequenceLength = 128,
                 SizeBytes = quantized ? 17_000_000 : 69_000_000,
                 RequiresInstruction = false
+            },
+            OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn => new EmbeddingModelInfo
+            {
+                Name = "jina-embeddings-v2-base-en",
+                HuggingFaceRepo = "Xenova/jina-embeddings-v2-base-en",
+                ModelFile = "onnx/model.onnx", // No quantized version available
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 768,
+                MaxSequenceLength = 8192, // Long context!
+                SizeBytes = 137_000_000,
+                RequiresInstruction = false
+            },
+            OnnxEmbeddingModel.SnowflakeArcticEmbedM => new EmbeddingModelInfo
+            {
+                Name = "snowflake-arctic-embed-m",
+                HuggingFaceRepo = "Xenova/snowflake-arctic-embed-m",
+                ModelFile = quantized ? "onnx/model_quantized.onnx" : "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 768,
+                MaxSequenceLength = 512,
+                SizeBytes = quantized ? 110_000_000 : 438_000_000,
+                RequiresInstruction = true,
+                QueryInstruction = "Represent this sentence for searching relevant passages: "
+            },
+            OnnxEmbeddingModel.NomicEmbedTextV15 => new EmbeddingModelInfo
+            {
+                Name = "nomic-embed-text-v1.5",
+                HuggingFaceRepo = "nomic-ai/nomic-embed-text-v1.5",
+                ModelFile = "onnx/model.onnx",
+                TokenizerFile = "tokenizer.json",
+                VocabFile = "vocab.txt",
+                EmbeddingDimension = 768,
+                MaxSequenceLength = 8192, // Long context with Matryoshka
+                SizeBytes = 137_000_000,
+                RequiresInstruction = true,
+                QueryInstruction = "search_query: "
             },
             _ => throw new ArgumentOutOfRangeException(nameof(model))
         };

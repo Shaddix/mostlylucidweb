@@ -348,6 +348,17 @@ public class DocumentSummarizer
             }
         }
  
+        // Extract document metadata early for sanity check
+        DocumentMetadata? metadata = null;
+        try
+        {
+            metadata = await MetadataExtractor.ExtractAsync(filePath, fetchExternal: true);
+        }
+        catch
+        {
+            // Metadata extraction failed - continue without it
+        }
+
         try
         {
         if (_verbose)
@@ -356,6 +367,22 @@ public class DocumentSummarizer
                 PrintBanner();
                 _progress.WriteDivider("Document Processing");
                 _progress.Info($"Document: {docId}");
+
+                // Show metadata sanity banner if available
+                if (metadata != null && metadata.HasExternalMetadata)
+                {
+                    _progress.WriteDivider("Document Metadata");
+                    if (!string.IsNullOrEmpty(metadata.Title))
+                        _progress.Info($"Title: {metadata.Title}");
+                    if (!string.IsNullOrEmpty(metadata.Authors))
+                        _progress.Info($"Authors: {metadata.Authors}");
+                    if (metadata.Date.HasValue)
+                        _progress.Info($"Date: {metadata.Date.Value:yyyy-MM-dd}");
+                    if (metadata.ExternalIdType != ExternalIdType.None)
+                        _progress.Info($"{metadata.ExternalIdType}: {metadata.ExternalId}");
+                    Console.WriteLine();
+                }
+
                 _progress.Info($"Mode: {mode}");
                 _progress.Info($"Timeout: {_ollama.Timeout.TotalMinutes:F0} minutes per LLM operation");
                 if (!string.IsNullOrEmpty(focus)) _progress.Info($"Focus: {focus}");
@@ -551,6 +578,15 @@ public class DocumentSummarizer
                 SummarizationMode.Auto => throw new InvalidOperationException("Auto mode should have been resolved"),
                 _ => throw new ArgumentException($"Unknown mode: {effectiveMode}")
             };
+
+            // Inject metadata into the result trace
+            if (metadata != null)
+            {
+                result = result with
+                {
+                    Trace = result.Trace with { Metadata = metadata }
+                };
+            }
 
             return (result, chunks, docId);
         }

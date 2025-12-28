@@ -864,17 +864,23 @@ public class RetrievalConfigSection
     ///     Use hybrid search (BM25 + dense + salience) - recommended
     /// </summary>
     public bool UseHybridSearch { get; set; } = true;
-    
+
+    /// <summary>
+    ///     Use cross-encoder reranking for precision boost on focus queries.
+    ///     Adds a second-stage ranking using term overlap, density, and structural signals.
+    /// </summary>
+    public bool UseReranking { get; set; } = true;
+
     /// <summary>
     ///     Query-salience blend alpha (only used when UseRRF = false)
     /// </summary>
     public double Alpha { get; set; } = 0.6;
-    
+
     /// <summary>
     ///     Minimum similarity threshold (only for non-RRF mode)
     /// </summary>
     public double MinSimilarity { get; set; } = 0.3;
-    
+
     /// <summary>
     ///     Convert to the internal RetrievalConfig model
     /// </summary>
@@ -885,6 +891,7 @@ public class RetrievalConfigSection
         UseRRF = UseRRF,
         RrfK = RrfK,
         UseHybridSearch = UseHybridSearch,
+        UseReranking = UseReranking,
         Alpha = Alpha,
         MinSimilarity = MinSimilarity
     };

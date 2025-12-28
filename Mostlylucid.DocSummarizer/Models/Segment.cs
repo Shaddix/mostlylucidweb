@@ -399,7 +399,14 @@ public class RetrievalConfig
     /// Default: true (recommended for documents with specific terminology)
     /// </summary>
     public bool UseHybridSearch { get; set; } = true;
-    
+
+    /// <summary>
+    /// Use cross-encoder reranking for precision boost on focus queries.
+    /// Adds a second-stage ranking using term overlap, density, and structural signals.
+    /// Default: true (recommended for better precision on specific queries)
+    /// </summary>
+    public bool UseReranking { get; set; } = true;
+
     /// <summary>
     /// Weight for BM25 in hybrid RRF fusion.
     /// Only used when UseHybridSearch = true.

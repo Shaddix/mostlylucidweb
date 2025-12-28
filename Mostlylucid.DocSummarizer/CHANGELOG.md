@@ -1,5 +1,119 @@
 # Changelog - DocSummarizer
 
+## v3.2.0 - Enhanced Embeddings & Intelligent Retrieval (2025-12-28)
+
+### Major Improvements
+
+#### Higher Quality Embedding Models
+
+**New default: `BgeBaseEnV15` (768d)** - 2x better quality than previous `AllMiniLmL6V2` (384d).
+
+8 new embedding models added:
+
+| Model | Dimensions | Context | Use Case |
+|-------|-----------|---------|----------|
+| `BgeBaseEnV15` | 768 | 512 | **New default** - best quality/speed |
+| `BgeLargeEnV15` | 1024 | 512 | Maximum quality |
+| `GteBase` | 768 | 512 | Strong MTEB performer |
+| `GteLarge` | 1024 | 512 | Top-tier quality |
+| `JinaEmbeddingsV2BaseEn` | 768 | **8192** | Long context specialist |
+| `SnowflakeArcticEmbedM` | 768 | 512 | Top MTEB retrieval |
+| `NomicEmbedTextV15` | 768 | **8192** | Long context + Matryoshka |
+
+```bash
+# Use new default (auto)
+docsummarizer -f doc.pdf
+
+# Use maximum quality model
+docsummarizer -f doc.pdf --embedding-model BgeLargeEnV15
+
+# Use long-context model for huge documents
+docsummarizer -f doc.pdf --embedding-model JinaEmbeddingsV2BaseEn
+```
+
+#### Adaptive Sampling for Smaller Documents
+
+New inverse-scaling algorithm ensures smaller documents get higher coverage:
+
+| Document Size | Coverage | Example |
+|--------------|----------|---------|
+| ≤50 segments | 40-50% | Nearly all content |
+| 150-400 segments | 10-20% | 310 segments → 43 retrieved (13.6%) |
+| 400-1000 segments | 5-10% | Balanced coverage |
+| >1000 segments | 5% | Large document optimization |
+
+**Before**: 310 segments → 16 retrieved (5.2%)
+**After**: 310 segments → 43 retrieved (13.6%)
+
+#### Cross-Encoder Reranking
+
+New second-stage precision reranker using:
+- Exact term overlap with early-match bonus
+- Query term density analysis
+- Exact phrase matching (huge boost)
+- Structural signals (heading/section relevance)
+- Embedding similarity integration
+
+Enable with `retrieval.useReranking: true` (default: enabled).
+
+#### Document Metadata & arXiv Banner
+
+Automatic metadata extraction and display:
+- Detects arXiv IDs from filenames (e.g., `1506.01057v2.pdf`)
+- Fetches metadata from arXiv API (title, authors, date, abstract)
+- Extracts PDF embedded metadata as fallback
+- Displays "sanity banner" to confirm correct document
+
+```
+--- Document Metadata ---
+Title: A Hierarchical Neural Autoencoder for Paragraphs and Documents
+Authors: Jiwei Li, Minh-Thang Luong, Dan Jurafsky
+Date: 2015-06-02
+ArXiv: 1506.01057
+```
+
+#### Clearer Coverage Labels
+
+Changed from misleading "Coverage: 5%" to:
+```
+Evidence: 43 segments (13.6% of 310)
+Confidence: Medium
+```
+
+### Files Added
+
+```
+Services/
+├── HierarchicalEncoder.cs      # Section-aware document encoding
+├── CrossEncoderReranker.cs     # Precision reranking service
+
+Models/
+└── DocumentMetadata.cs         # arXiv/DOI detection and API lookup
+```
+
+### Files Modified
+
+```
+Config/BackendConfig.cs              # New embedding models, new defaults
+Config/DocSummarizerConfig.cs        # UseReranking option
+Services/Onnx/OnnxModelRegistry.cs   # Model registry expansion
+Services/BertRagSummarizer.cs        # Adaptive sampling, reranking integration
+Services/OutputFormatter.cs          # Clearer coverage labels
+Services/DocumentSummarizer.cs       # Metadata extraction and display
+Models/Segment.cs                    # UseReranking config property
+README.md                            # Documentation updates
+```
+
+### Breaking Changes
+
+**Default embedding model changed**: `AllMiniLmL6V2` → `BgeBaseEnV15`
+
+The new model is ~4x larger (110MB vs 23MB) but produces significantly better quality embeddings. First run will auto-download the new model.
+
+To use the old default: `--embedding-model AllMiniLmL6V2`
+
+---
+
 ## v3.1.0 - Documentation Improvements & Template Expansion (2025-12-18)
 
 ### Documentation Updates

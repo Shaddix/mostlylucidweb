@@ -660,7 +660,8 @@ public record SummarizationTrace(
     TimeSpan TotalTime,
     double CoverageScore,
     double CitationRate,
-    List<ChunkIndexEntry>? ChunkIndex = null);
+    List<ChunkIndexEntry>? ChunkIndex = null,
+    DocumentMetadata? Metadata = null);
 
 /// <summary>
 /// Index entry for a document chunk - provides overview without full content

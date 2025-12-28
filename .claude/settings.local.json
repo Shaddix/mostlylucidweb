@@ -33,7 +33,8 @@
       "Bash(npm run dev:js:*)",
       "Bash(webpack --mode development)",
       "Bash(npx webpack:*)",
-      "Bash(node check-network.js:*)"
+      "Bash(node check-network.js:*)",
+      "Bash(dotnet run:*)"
     ],
     "deny": [],
     "ask": []
