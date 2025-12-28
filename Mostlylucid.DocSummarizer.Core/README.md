@@ -9,6 +9,13 @@ Local-first document summarization library using BERT embeddings, RAG retrieval,
 - **Multiple modes**: Pure BERT extraction, hybrid BERT+LLM, full RAG pipeline
 - **Format support**: Markdown, PDF, DOCX, HTML, URLs
 - **Vector storage**: In-memory, DuckDB (embedded), or Qdrant (external)
+- **Multi-framework**: .NET 8, .NET 9, and .NET 10 support
+
+## Installation
+
+```bash
+dotnet add package Mostlylucid.DocSummarizer
+```
 
 ## Quick Start
 
@@ -36,7 +43,7 @@ builder.Services.AddDocSummarizer(options =>
 {
     // Use local ONNX embeddings (default, no external services)
     options.EmbeddingBackend = EmbeddingBackend.Onnx;
-    
+
     // Or use Ollama for embeddings
     options.EmbeddingBackend = EmbeddingBackend.Ollama;
     options.Ollama.BaseUrl = "http://localhost:11434";
@@ -56,7 +63,7 @@ builder.Services.AddDocSummarizer(options =>
       "CollectionName": "my-documents"
     },
     "Onnx": {
-      "ModelName": "all-MiniLM-L6-v2"
+      "EmbeddingModel": "AllMiniLmL6V2"
     }
   }
 }
@@ -66,6 +73,16 @@ builder.Services.AddDocSummarizer(options =>
 builder.Services.AddDocSummarizer(
     builder.Configuration.GetSection("DocSummarizer"));
 ```
+
+## Embedding Models
+
+| Model | Dimensions | Max Tokens | Size | Use Case |
+|-------|-----------|------------|------|----------|
+| `AllMiniLmL6V2` | 384 | 256 | ~23MB | Fast general-purpose (default) |
+| `BgeSmallEnV15` | 384 | 512 | ~34MB | Best quality for size |
+| `GteSmall` | 384 | 512 | ~34MB | Good all-around |
+| `MultiQaMiniLm` | 384 | 512 | ~23MB | QA-optimized |
+| `ParaphraseMiniLmL3` | 384 | 128 | ~17MB | Smallest/fastest |
 
 ## Summarization Modes
 
@@ -79,7 +96,7 @@ builder.Services.AddDocSummarizer(
 ```csharp
 // Pure BERT - no LLM needed, fastest
 var summary = await summarizer.SummarizeMarkdownAsync(
-    markdown, 
+    markdown,
     mode: SummarizationMode.Bert);
 
 // BertRag - full pipeline with LLM synthesis
@@ -89,28 +106,7 @@ var summary = await summarizer.SummarizeMarkdownAsync(
     mode: SummarizationMode.BertRag);
 ```
 
-## Key Configuration Options
-
-### `BertRag.ReindexOnStartup`
-
-Controls whether to clear and rebuild the vector index on application startup.
-
-```csharp
-options.BertRag.ReindexOnStartup = true;  // Development (default)
-options.BertRag.ReindexOnStartup = false; // Production
-```
-
-When `true`:
-- All existing embeddings are deleted on startup
-- Documents are re-indexed on first access
-- Useful when embedding models or extraction logic changes
-
-When `false`:
-- Existing embeddings are preserved
-- Faster startup
-- Only new/changed documents are re-indexed
-
-### Vector Store Backends
+## Vector Store Backends
 
 ```csharp
 // In-memory (no persistence, fastest)
@@ -136,15 +132,6 @@ record DocumentSummary(
     List<string> OpenQuestions,        // Questions that couldn't be answered
     SummarizationTrace Trace,          // Processing metadata
     ExtractedEntities? Entities);      // Named entities (people, places, etc.)
-```
-
-### TopicSummary
-
-```csharp
-record TopicSummary(
-    string Topic,              // Topic name
-    string Summary,            // Summary for this topic
-    List<string> SourceChunks); // Citations to source segments
 ```
 
 ## Query Mode
@@ -181,7 +168,7 @@ foreach (var segment in extraction.TopBySalience)
 
 ## Dependencies
 
-- **Required**: .NET 9.0+
+- **Supported**: .NET 8.0+, .NET 9.0+, .NET 10.0+
 - **Included**: ONNX Runtime, Markdig, PdfPig, OpenXml, AngleSharp
 - **Optional**: Ollama (for LLM synthesis), Docling (for complex PDF conversion)
 

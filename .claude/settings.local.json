@@ -35,7 +35,9 @@
       "Bash(npx webpack:*)",
       "Bash(node check-network.js:*)",
       "Bash(dotnet run:*)",
-      "Bash(dotnet clean:*)"
+      "Bash(dotnet clean:*)",
+      "Bash(dotnet new:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

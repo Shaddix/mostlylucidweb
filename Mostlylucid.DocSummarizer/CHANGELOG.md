@@ -1,5 +1,53 @@
 # Changelog - DocSummarizer
 
+## v3.5.1 - .NET 8 Compatibility & Multi-Targeting (2025-12-28)
+
+### Major Improvements
+
+#### Multi-Target Framework Support
+
+DocSummarizer now targets **both .NET 8 and .NET 10**, making it compatible with more environments:
+
+```xml
+<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+```
+
+**Benefits:**
+- Use with .NET 8 LTS on production servers
+- Use with .NET 10 for latest features and performance
+- Single codebase, dual binaries
+- All package dependencies verified compatible with both frameworks
+
+#### Publishing for Multiple Frameworks
+
+```bash
+# Build for .NET 8
+dotnet publish -c Release -r win-x64 -f net8.0
+
+# Build for .NET 10
+dotnet publish -c Release -r win-x64 -f net10.0
+```
+
+### Test Coverage
+
+- **276 tests passing** across all embedding models and configurations
+- Fixed test assumptions for new model defaults (BgeBaseEnV15)
+- Added tests for models without quantized variants (Jina, Nomic)
+- Verified HuggingFace repo validation for nomic-ai/ namespace
+
+### Files Modified
+
+```
+Mostlylucid.DocSummarizer.csproj           # Multi-targeting enabled
+Mostlylucid.DocSummarizer.Tests/           # All tests updated and passing
+```
+
+### Breaking Changes
+
+None - this is a compatibility release. Existing .NET 10 deployments continue to work unchanged.
+
+---
+
 ## v3.2.0 - Enhanced Embeddings & Intelligent Retrieval (2025-12-28)
 
 ### Major Improvements

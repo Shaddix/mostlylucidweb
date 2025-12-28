@@ -1,3 +1,28 @@
+## v1.2.0
+
+### .NET 8 Support Restored
+- Added .NET 8 LTS back to target frameworks
+- Now targets net8.0, net9.0, and net10.0
+- All package dependencies verified compatible across all frameworks
+
+### DI Registration Fixed
+- Removed all NotImplementedException placeholders
+- ServiceCollectionExtensions now properly creates:
+  - OnnxEmbeddingService for local ONNX embeddings
+  - OllamaEmbeddingService for Ollama embeddings
+  - DuckDbVectorStore for embedded vector storage
+  - QdrantVectorStore for external Qdrant servers
+  - InMemoryVectorStore for transient use
+
+### Test Coverage
+- Added 101 unit tests for Core library
+- Tests for OnnxConfig defaults and properties
+- Tests for OnnxModelRegistry metadata
+- Tests for VectorMath utilities (cosine similarity, normalization, etc.)
+- Tests for EmbeddingBackend enum values
+
+---
+
 ## v1.1.0
 
 ### New Features

@@ -146,14 +146,19 @@ public static class ServiceCollectionExtensions
 
     private static IEmbeddingService CreateOnnxEmbeddingService(OnnxConfig config, bool verbose)
     {
-        // Will be implemented when we copy services to Core
-        throw new NotImplementedException("ONNX embedding service - copy from DocSummarizer");
+        return new Services.Onnx.OnnxEmbeddingService(config, verbose);
     }
 
     private static IEmbeddingService CreateOllamaEmbeddingService(OllamaConfig config)
     {
-        // Will be implemented when we copy services to Core
-        throw new NotImplementedException("Ollama embedding service - copy from DocSummarizer");
+        var ollamaService = new OllamaService(
+            model: config.Model,
+            embedModel: config.EmbedModel,
+            baseUrl: config.BaseUrl,
+            timeout: TimeSpan.FromSeconds(config.TimeoutSeconds),
+            classifierModel: config.ClassifierModel
+        );
+        return new OllamaEmbeddingService(ollamaService);
     }
 
     private static IVectorStore CreateVectorStore(DocSummarizerConfig config)
@@ -169,13 +174,21 @@ public static class ServiceCollectionExtensions
 
     private static IVectorStore CreateDuckDbStore(DocSummarizerConfig config)
     {
-        // Will be implemented when we copy services to Core
-        throw new NotImplementedException("DuckDB vector store - copy from DocSummarizer");
+        // Get db path from BertRag config or default to app directory
+        var dbPath = Path.Combine(AppContext.BaseDirectory, $"{config.BertRag.CollectionName}.duckdb");
+        return new DuckDbVectorStore(dbPath, config.Onnx.EmbeddingModel switch
+        {
+            OnnxEmbeddingModel.AllMiniLmL6V2 => 384,
+            OnnxEmbeddingModel.BgeSmallEnV15 => 384,
+            OnnxEmbeddingModel.GteSmall => 384,
+            OnnxEmbeddingModel.MultiQaMiniLm => 384,
+            OnnxEmbeddingModel.ParaphraseMiniLmL3 => 384,
+            _ => 384
+        }, config.Output.Verbose);
     }
 
     private static IVectorStore CreateQdrantStore(DocSummarizerConfig config)
     {
-        // Will be implemented when we copy services to Core
-        throw new NotImplementedException("Qdrant vector store - copy from DocSummarizer");
+        return new QdrantVectorStore(config.Qdrant, config.Output.Verbose);
     }
 }

@@ -2,26 +2,19 @@ using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Services.Onnx;
 using Xunit;
 
-namespace Mostlylucid.DocSummarizer.Tests.Services;
+namespace Mostlylucid.DocSummarizer.Core.Tests.Services;
 
 /// <summary>
-/// Tests for OnnxModelRegistry - validates model metadata
+/// Tests for OnnxModelRegistry - validates model metadata for all supported models
 /// </summary>
 public class OnnxModelRegistryTests
 {
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2, 384)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15, 384)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15, 768)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15, 1024)]
     [InlineData(OnnxEmbeddingModel.GteSmall, 384)]
-    [InlineData(OnnxEmbeddingModel.GteBase, 768)]
-    [InlineData(OnnxEmbeddingModel.GteLarge, 1024)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm, 384)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3, 384)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn, 768)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM, 768)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15, 768)]
     public void GetEmbeddingModel_ReturnsCorrectDimension(OnnxEmbeddingModel model, int expectedDimension)
     {
         // Act
@@ -34,16 +27,9 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
     public void GetEmbeddingModel_HasValidModelUrl(OnnxEmbeddingModel model)
     {
         // Act
@@ -59,16 +45,9 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
     public void GetEmbeddingModel_HasValidVocabUrl(OnnxEmbeddingModel model)
     {
         // Act
@@ -84,16 +63,27 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
+    public void GetEmbeddingModel_HasValidTokenizerUrl(OnnxEmbeddingModel model)
+    {
+        // Act
+        var modelInfo = OnnxModelRegistry.GetEmbeddingModel(model, quantized: true);
+        var tokenizerUrl = modelInfo.GetTokenizerUrl();
+
+        // Assert
+        Assert.NotNull(tokenizerUrl);
+        Assert.StartsWith("https://huggingface.co/", tokenizerUrl);
+        Assert.Contains("tokenizer.json", tokenizerUrl);
+    }
+
+    [Theory]
+    [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
+    [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
+    [InlineData(OnnxEmbeddingModel.GteSmall)]
+    [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
+    [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
     public void GetEmbeddingModel_HasPositiveMaxSequenceLength(OnnxEmbeddingModel model)
     {
         // Act
@@ -101,22 +91,15 @@ public class OnnxModelRegistryTests
 
         // Assert
         Assert.True(modelInfo.MaxSequenceLength > 0);
-        Assert.True(modelInfo.MaxSequenceLength <= 8192); // Long-context models support up to 8K
+        Assert.True(modelInfo.MaxSequenceLength <= 512);
     }
 
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
     public void GetEmbeddingModel_HasNonEmptyName(OnnxEmbeddingModel model)
     {
         // Act
@@ -150,16 +133,9 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2, 256)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15, 512)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15, 512)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15, 512)]
     [InlineData(OnnxEmbeddingModel.GteSmall, 512)]
-    [InlineData(OnnxEmbeddingModel.GteBase, 512)]
-    [InlineData(OnnxEmbeddingModel.GteLarge, 512)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm, 512)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3, 128)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn, 8192)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM, 512)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15, 8192)]
     public void GetEmbeddingModel_HasExpectedSequenceLength(OnnxEmbeddingModel model, int expectedMaxSeq)
     {
         // Act
@@ -172,16 +148,9 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
     public void GetEmbeddingModel_HasValidHuggingFaceRepo(OnnxEmbeddingModel model)
     {
         // Act
@@ -190,11 +159,7 @@ public class OnnxModelRegistryTests
         // Assert
         Assert.NotNull(modelInfo.HuggingFaceRepo);
         Assert.Contains("/", modelInfo.HuggingFaceRepo); // format: owner/repo
-        // Most models from Xenova, but some from original authors (nomic-ai)
-        Assert.True(
-            modelInfo.HuggingFaceRepo.StartsWith("Xenova/") ||
-            modelInfo.HuggingFaceRepo.StartsWith("nomic-ai/"),
-            $"Expected repo to start with Xenova/ or nomic-ai/, got: {modelInfo.HuggingFaceRepo}");
+        Assert.StartsWith("Xenova/", modelInfo.HuggingFaceRepo);
     }
 
     [Fact]
@@ -236,15 +201,9 @@ public class OnnxModelRegistryTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    // Note: JinaEmbeddingsV2BaseEn and NomicEmbedTextV15 don't have quantized versions
     public void GetEmbeddingModel_Quantized_HasSmallerSize(OnnxEmbeddingModel model)
     {
         // Act
@@ -257,16 +216,17 @@ public class OnnxModelRegistryTests
     }
 
     [Theory]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
-    public void GetEmbeddingModel_ModelsWithoutQuantized_HaveSameSize(OnnxEmbeddingModel model)
+    [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
+    [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
+    [InlineData(OnnxEmbeddingModel.GteSmall)]
+    [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
+    [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
+    public void GetEmbeddingModel_HasPositiveSizeBytes(OnnxEmbeddingModel model)
     {
         // Act
-        var quantized = OnnxModelRegistry.GetEmbeddingModel(model, quantized: true);
-        var notQuantized = OnnxModelRegistry.GetEmbeddingModel(model, quantized: false);
+        var modelInfo = OnnxModelRegistry.GetEmbeddingModel(model, quantized: true);
 
-        // Assert - these models don't have quantized versions
-        Assert.Equal(quantized.SizeBytes, notQuantized.SizeBytes);
-        Assert.DoesNotContain("quantized", quantized.ModelFile);
+        // Assert
+        Assert.True(modelInfo.SizeBytes > 0);
     }
 }
