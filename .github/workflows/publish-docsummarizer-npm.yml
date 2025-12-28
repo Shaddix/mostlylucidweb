@@ -1,0 +1,151 @@
+name: Publish DocSummarizer npm
+
+on:
+  push:
+    tags:
+      - 'docsummarizer-npm-v*'  # Triggers on tags like docsummarizer-npm-v1.0.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write  # Required for provenance
+
+    defaults:
+      run:
+        working-directory: docsummarizer-node
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Display checkout info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref Type: ${{ github.ref_type }}"
+          echo "Ref Name: ${{ github.ref_name }}"
+          echo "SHA: ${{ github.sha }}"
+          git log -1 --pretty=format:"Commit: %H%nAuthor: %an <%ae>%nDate: %ad%nMessage: %s" --date=iso
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            # Extract version from tag (e.g., docsummarizer-npm-v1.2.3 -> 1.2.3)
+            VERSION=$(echo ${GITHUB_REF#refs/tags/docsummarizer-npm-v})
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version from tag: $VERSION"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version from input: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "Version from package.json: $VERSION"
+          fi
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Expected format: X.Y.Z or X.Y.Z-suffix (e.g., 1.2.3 or 1.2.3-beta.1)"
+            exit 1
+          fi
+          echo "Valid version format: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          echo "Updating package.json to version $VERSION"
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          echo "Updated package.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Build failed - dist directory not found"
+            exit 1
+          fi
+          echo "Build successful - dist directory exists"
+          echo ""
+          echo "Build Output:"
+          ls -lh dist/
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Display package info
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          echo ""
+          echo "Package published successfully!"
+          echo ""
+          echo "npm Package:"
+          echo "   https://www.npmjs.com/package/@mostlylucid/docsummarizer/v/$VERSION"
+          echo ""
+          echo "Install:"
+          echo "   npm install @mostlylucid/docsummarizer@$VERSION"
+          echo ""
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: DocSummarizer npm v${{ steps.get_version.outputs.version }}
+          body: |
+            ## @mostlylucid/docsummarizer v${{ steps.get_version.outputs.version }}
+
+            Published to npm: https://www.npmjs.com/package/@mostlylucid/docsummarizer/v/${{ steps.get_version.outputs.version }}
+
+            ### Installation
+            ```bash
+            npm install @mostlylucid/docsummarizer@${{ steps.get_version.outputs.version }}
+            ```
+
+            The package will automatically download the platform-appropriate CLI binary on first install.
+
+            ### Quick Start
+            ```typescript
+            import { DocSummarizer } from "@mostlylucid/docsummarizer";
+
+            const doc = new DocSummarizer();
+            const result = await doc.summarizeFile("./document.md");
+            console.log(result.summary);
+            ```
+
+            ### Changes
+            See [README.md](https://github.com/${{ github.repository }}/blob/main/docsummarizer-node/README.md) for full documentation.
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, '-') }}

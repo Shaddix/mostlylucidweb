@@ -1,0 +1,62 @@
+{
+  "name": "@mostlylucid/docsummarizer",
+  "version": "0.1.0",
+  "description": "Local-first RAG engine for documents: semantic segmentation, embeddings, salience-aware retrieval, and citation-grounded Q&A",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "docsummarizer": "./bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "keywords": [
+    "document-summarization",
+    "summarization",
+    "rag",
+    "embeddings",
+    "bert",
+    "llm",
+    "local-first",
+    "onnx",
+    "nlp",
+    "ai"
+  ],
+  "author": "Scott Galloway",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/scottgal/mostlylucidweb",
+    "directory": "docsummarizer-node"
+  },
+  "homepage": "https://www.mostlylucid.net/blog/docsummarizer-tool",
+  "bugs": {
+    "url": "https://github.com/scottgal/mostlylucidweb/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
