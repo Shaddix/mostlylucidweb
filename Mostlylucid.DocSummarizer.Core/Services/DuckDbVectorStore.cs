@@ -18,7 +18,7 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// 
 /// For enterprise/distributed deployments, use QdrantVectorStore instead.
 /// </summary>
-public sealed class DuckDbVectorStore : IVectorStore
+public sealed class DuckDbVectorStore : IVectorStore, IDisposable
 {
     private readonly DuckDBConnection _connection;
     private readonly string _dbPath;
@@ -752,6 +752,12 @@ public sealed class DuckDbVectorStore : IVectorStore
     {
         _connection.Close();
         await _connection.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        _connection.Close();
+        _connection.Dispose();
     }
 
     #endregion

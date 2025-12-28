@@ -141,9 +141,14 @@ public class InMemoryVectorStore : IVectorStore
     
     public ValueTask DisposeAsync()
     {
+        Dispose();
+        return ValueTask.CompletedTask;
+    }
+
+    public void Dispose()
+    {
         _collections.Clear();
         _summaryCache.Clear();
-        return ValueTask.CompletedTask;
     }
     
     // === Segment-Level Caching (Granular Invalidation) ===

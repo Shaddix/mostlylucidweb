@@ -297,6 +297,23 @@ public class QdrantVectorStore : IVectorStore
         
         _client.Dispose();
     }
+
+    public void Dispose()
+    {
+        if (_deleteOnDispose && !string.IsNullOrEmpty(_activeCollection))
+        {
+            try
+            {
+                DeleteCollectionAsync(_activeCollection).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Ignore errors on cleanup
+            }
+        }
+        
+        _client.Dispose();
+    }
     
     /// <summary>
     /// Generate a deterministic UUID from segment ID for Qdrant point ID

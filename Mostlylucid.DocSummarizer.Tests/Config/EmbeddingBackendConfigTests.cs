@@ -23,13 +23,13 @@ public class EmbeddingBackendConfigTests
     }
 
     [Fact]
-    public void OnnxConfig_DefaultModel_IsBgeBaseEnV15()
+    public void OnnxConfig_DefaultModel_IsAllMiniLmL6V2()
     {
         // Arrange & Act
         var config = new OnnxConfig();
 
-        // Assert - BGE-base is the default (better quality than MiniLM)
-        Assert.Equal(OnnxEmbeddingModel.BgeBaseEnV15, config.EmbeddingModel);
+        // Assert - all-MiniLM-L6-v2 is the default (fast and compact)
+        Assert.Equal(OnnxEmbeddingModel.AllMiniLmL6V2, config.EmbeddingModel);
     }
 
     [Fact]
@@ -43,13 +43,13 @@ public class EmbeddingBackendConfigTests
     }
 
     [Fact]
-    public void OnnxConfig_DefaultMaxSequenceLength_Is512()
+    public void OnnxConfig_DefaultMaxSequenceLength_Is256()
     {
         // Arrange & Act
         var config = new OnnxConfig();
 
-        // Assert - 512 is the default for BGE models
-        Assert.Equal(512, config.MaxEmbeddingSequenceLength);
+        // Assert - 256 is the default for all-MiniLM-L6-v2
+        Assert.Equal(256, config.MaxEmbeddingSequenceLength);
     }
 
     [Fact]
@@ -77,16 +77,9 @@ public class EmbeddingBackendConfigTests
     [Theory]
     [InlineData(OnnxEmbeddingModel.AllMiniLmL6V2)]
     [InlineData(OnnxEmbeddingModel.BgeSmallEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeBaseEnV15)]
-    [InlineData(OnnxEmbeddingModel.BgeLargeEnV15)]
     [InlineData(OnnxEmbeddingModel.GteSmall)]
-    [InlineData(OnnxEmbeddingModel.GteBase)]
-    [InlineData(OnnxEmbeddingModel.GteLarge)]
     [InlineData(OnnxEmbeddingModel.MultiQaMiniLm)]
     [InlineData(OnnxEmbeddingModel.ParaphraseMiniLmL3)]
-    [InlineData(OnnxEmbeddingModel.JinaEmbeddingsV2BaseEn)]
-    [InlineData(OnnxEmbeddingModel.SnowflakeArcticEmbedM)]
-    [InlineData(OnnxEmbeddingModel.NomicEmbedTextV15)]
     public void OnnxConfig_EmbeddingModel_CanBeSet(OnnxEmbeddingModel expectedModel)
     {
         // Arrange

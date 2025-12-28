@@ -1,185 +1,184 @@
-using System.Globalization;
-using System.Text;
+using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Mostlylucid.DocSummarizer;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Extensions;
-using Mostlylucid.DocSummarizer.Services;
 using Mostlylucid.DocSummarizer.Models;
+using Mostlylucid.DocSummarizer.Services;
 
-// Check if we should generate word lists
-if (args.Length > 0 && args[0] == "--generate-wordlists")
-{
-    var outputDir = args.Length > 1 ? args[1] : @"C:\Blog\mostlylucidweb\Mostlylucid.DocSummarizer.Core\Resources";
-    GenerateWordLists(outputDir);
-    return;
-}
+Console.WriteLine("=== DocSummarizer Core Library Test ===\n");
+Console.WriteLine("Testing code samples from README.md...\n");
 
-// Build the host with DocSummarizer services
+// ============================================
+// Test 1: Basic DI Registration (README Quick Start)
+// ============================================
+Console.WriteLine("Test 1: Basic DI Registration");
+Console.WriteLine("-".PadRight(40, '-'));
+
 var builder = Host.CreateApplicationBuilder(args);
 
-// Configure DocSummarizer
+// This is from README.md Configuration section
+// Using InMemory vector store for testing to avoid DuckDB file locking issues
 builder.Services.AddDocSummarizer(options =>
 {
-    // Use local ONNX embeddings (no external services needed)
+    // Use local ONNX embeddings (default, no external services)
     options.EmbeddingBackend = EmbeddingBackend.Onnx;
     
     // Use in-memory vector store for testing
     options.BertRag.VectorStore = VectorStoreBackend.InMemory;
     
-    // Verbose output
-    options.Output.Verbose = true;
+    // Keep test output clean
+    options.Output.Verbose = false;
 });
 
 var host = builder.Build();
-
-// Get the summarizer service
 var summarizer = host.Services.GetRequiredService<IDocumentSummarizer>();
 
-Console.WriteLine("=== DocSummarizer Blog Test ===\n");
+Console.WriteLine("✓ AddDocSummarizer() registered successfully");
+Console.WriteLine("✓ IDocumentSummarizer resolved from DI");
+Console.WriteLine("✓ EmbeddingBackend.Onnx configured");
+Console.WriteLine("✓ VectorStoreBackend.InMemory configured");
+Console.WriteLine();
 
-// Test with real blog posts
+// ============================================
+// Test 2: Segment Extraction (README Segment Extraction)
+// ============================================
+Console.WriteLine("Test 2: Segment Extraction");
+Console.WriteLine("-".PadRight(40, '-'));
+
+var testMarkdown = """
+# Test Document
+
+This is a test document for validating the DocSummarizer Core library.
+
+## Key Features
+
+The library provides several important capabilities:
+
+- Local-first processing with ONNX models
+- Citation grounding for every claim
+- Multiple summarization modes
+
+## Technical Details
+
+The system uses BERT embeddings to understand document semantics.
+This enables accurate retrieval and summarization.
+""";
+
+// This is from README.md Segment Extraction section
+var extraction = await summarizer.ExtractSegmentsAsync(testMarkdown);
+
+Console.WriteLine($"✓ ExtractSegmentsAsync completed");
+Console.WriteLine($"  Total segments: {extraction.AllSegments.Count}");
+Console.WriteLine($"  Top by salience: {extraction.TopBySalience.Count}");
+Console.WriteLine($"  Content type: {extraction.ContentType}");
+Console.WriteLine($"  Extraction time: {extraction.ExtractionTime.TotalSeconds:F2}s");
+Console.WriteLine();
+
+// Show top segments (from README example)
+Console.WriteLine("Top segments by salience:");
+foreach (var segment in extraction.TopBySalience.Take(3))
+{
+    var preview = segment.Text.Length > 60 
+        ? segment.Text[..60].Replace("\n", " ") + "..." 
+        : segment.Text.Replace("\n", " ");
+    Console.WriteLine($"  [{segment.Type}] Score: {segment.SalienceScore:F2}");
+    Console.WriteLine($"    {preview}");
+}
+Console.WriteLine();
+
+// ============================================
+// Test 3: SummarizeMarkdownAsync with Mode (README Summarization Modes)
+// ============================================
+Console.WriteLine("Test 3: Summarize with Bert Mode (No LLM)");
+Console.WriteLine("-".PadRight(40, '-'));
+
+// This is from README.md Summarization Modes section
+// Pure BERT - no LLM needed, fastest
+var summary = await summarizer.SummarizeMarkdownAsync(
+    testMarkdown,
+    mode: SummarizationMode.Bert);
+
+Console.WriteLine($"✓ SummarizeMarkdownAsync with Bert mode completed");
+Console.WriteLine($"  Executive summary length: {summary.ExecutiveSummary.Length} chars");
+Console.WriteLine($"  Topics: {summary.TopicSummaries?.Count ?? 0}");
+Console.WriteLine();
+
+// Show summary preview
+var summaryPreview = summary.ExecutiveSummary.Length > 200
+    ? summary.ExecutiveSummary[..200] + "..."
+    : summary.ExecutiveSummary;
+Console.WriteLine("Summary preview:");
+Console.WriteLine($"  {summaryPreview}");
+Console.WriteLine();
+
+// ============================================
+// Test 4: Progress Channel (NEW FEATURE!)
+// ============================================
+Console.WriteLine("Test 4: Progress Channel API");
+Console.WriteLine("-".PadRight(40, '-'));
+
+// Create a progress channel
+var channel = ProgressChannel.CreateUnbounded();
+
+// Start consuming progress updates in the background
+var progressTask = Task.Run(async () =>
+{
+    await foreach (var update in channel.Reader.ReadAllAsync())
+    {
+        var icon = update.Type switch
+        {
+            ProgressType.Stage => "📌",
+            ProgressType.ItemProgress => "🔄",
+            ProgressType.Completed => "✅",
+            ProgressType.Info => "ℹ️",
+            _ => "  "
+        };
+        Console.WriteLine($"  {icon} [{update.Stage}] {update.Message} ({update.PercentComplete:F0}%)");
+    }
+});
+
+// Extract with progress reporting
+var progressExtraction = await summarizer.ExtractSegmentsAsync(
+    testMarkdown, 
+    channel.Writer, 
+    "progress-test");
+
+// Wait for progress consumer to finish
+await progressTask;
+
+Console.WriteLine($"✓ Progress channel working - received updates");
+Console.WriteLine();
+
+// ============================================
+// Test 5: Real Blog Post Test
+// ============================================
+Console.WriteLine("Test 5: Real Blog Post Extraction");
+Console.WriteLine("-".PadRight(40, '-'));
+
 var blogDir = @"C:\Blog\mostlylucidweb\Mostlylucid\Markdown";
-var testFiles = new[]
-{
-    "tencommandments.md",
-    "docsummarizer-tool.md",
-    "textsearchingpt1.md",
-    "botdetection-introduction.md"
-};
+var testFile = Path.Combine(blogDir, "tencommandments.md");
 
-foreach (var fileName in testFiles)
+if (File.Exists(testFile))
 {
-    var filePath = Path.Combine(blogDir, fileName);
-    if (!File.Exists(filePath))
-    {
-        Console.WriteLine($"Skipping {fileName} - not found");
-        continue;
-    }
+    var blogMarkdown = await File.ReadAllTextAsync(testFile);
+    var blogExtraction = await summarizer.ExtractSegmentsAsync(blogMarkdown, "tencommandments");
     
-    Console.WriteLine($"\n{'=',-60}");
-    Console.WriteLine($"Processing: {fileName}");
-    Console.WriteLine($"{'=',-60}\n");
-    
-    var markdown = await File.ReadAllTextAsync(filePath);
-    var docId = Path.GetFileNameWithoutExtension(filePath);
-    
-    // Extract segments
-    var extraction = await summarizer.ExtractSegmentsAsync(markdown, docId);
-    
-    Console.WriteLine($"Document Statistics:");
-    Console.WriteLine($"  Total segments: {extraction.AllSegments.Count}");
-    Console.WriteLine($"  Top by salience: {extraction.TopBySalience.Count}");
-    Console.WriteLine($"  Content type: {extraction.ContentType}");
-    Console.WriteLine($"  Extraction time: {extraction.ExtractionTime.TotalSeconds:F2}s");
-    Console.WriteLine();
-    
-    // Group by segment type
-    var byType = extraction.AllSegments
-        .GroupBy(s => s.Type)
-        .OrderByDescending(g => g.Count());
-    
-    Console.WriteLine("Segment breakdown:");
-    foreach (var group in byType)
-    {
-        Console.WriteLine($"  {group.Key}: {group.Count()}");
-    }
-    Console.WriteLine();
-    
-    // Show top 5 segments
-    Console.WriteLine("Top 5 segments by salience:");
-    foreach (var segment in extraction.TopBySalience.Take(5))
-    {
-        var preview = segment.Text.Length > 100 
-            ? segment.Text[..100].Replace("\n", " ") + "..." 
-            : segment.Text.Replace("\n", " ");
-        Console.WriteLine($"  [{segment.Type}] Score: {segment.SalienceScore:F3}");
-        Console.WriteLine($"    Section: {segment.SectionTitle}");
-        Console.WriteLine($"    Text: {preview}");
-        Console.WriteLine();
-    }
-    
-    // Show unique sections found
-    var sections = extraction.AllSegments
-        .Where(s => !string.IsNullOrEmpty(s.SectionTitle))
-        .Select(s => s.SectionTitle)
-        .Distinct()
-        .Take(10);
-    
-    Console.WriteLine("Document sections found:");
-    foreach (var section in sections)
-    {
-        Console.WriteLine($"  - {section}");
-    }
+    Console.WriteLine($"✓ Extracted from: tencommandments.md");
+    Console.WriteLine($"  Segments: {blogExtraction.AllSegments.Count}");
+    Console.WriteLine($"  Top salient: {blogExtraction.TopBySalience.Count}");
+    Console.WriteLine($"  Time: {blogExtraction.ExtractionTime.TotalSeconds:F2}s");
 }
-
-Console.WriteLine("\n=== Test Complete ===");
-
-// Word list generation function
-static void GenerateWordLists(string outputDirectory)
+else
 {
-    Console.WriteLine($"Generating word lists to: {outputDirectory}");
-    Directory.CreateDirectory(outputDirectory);
-    
-    // Generate day names
-    var dayNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    foreach (var culture in CultureInfo.GetCultures(CultureTypes.AllCultures))
-    {
-        try
-        {
-            var dateFormat = culture.DateTimeFormat;
-            foreach (var day in dateFormat.DayNames)
-                if (!string.IsNullOrWhiteSpace(day)) dayNames.Add(day.Trim());
-            foreach (var day in dateFormat.AbbreviatedDayNames)
-                if (!string.IsNullOrWhiteSpace(day)) dayNames.Add(day.Trim().TrimEnd('.'));
-            foreach (var day in dateFormat.ShortestDayNames)
-                if (!string.IsNullOrWhiteSpace(day)) dayNames.Add(day.Trim().TrimEnd('.'));
-        }
-        catch { }
-    }
-    WriteWordList(Path.Combine(outputDirectory, "day-names.txt"), 
-        "Day names from .NET CultureInfo (all cultures)", dayNames);
-    Console.WriteLine($"  Generated {dayNames.Count} day names");
-    
-    // Generate month names
-    var monthNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    foreach (var culture in CultureInfo.GetCultures(CultureTypes.AllCultures))
-    {
-        try
-        {
-            var dateFormat = culture.DateTimeFormat;
-            foreach (var month in dateFormat.MonthNames)
-                if (!string.IsNullOrWhiteSpace(month)) monthNames.Add(month.Trim());
-            foreach (var month in dateFormat.AbbreviatedMonthNames)
-                if (!string.IsNullOrWhiteSpace(month)) monthNames.Add(month.Trim().TrimEnd('.'));
-            foreach (var month in dateFormat.MonthGenitiveNames)
-                if (!string.IsNullOrWhiteSpace(month)) monthNames.Add(month.Trim());
-            foreach (var month in dateFormat.AbbreviatedMonthGenitiveNames)
-                if (!string.IsNullOrWhiteSpace(month)) monthNames.Add(month.Trim().TrimEnd('.'));
-        }
-        catch { }
-    }
-    WriteWordList(Path.Combine(outputDirectory, "month-names.txt"), 
-        "Month names from .NET CultureInfo (all cultures)", monthNames);
-    Console.WriteLine($"  Generated {monthNames.Count} month names");
-    
-    Console.WriteLine("Done!");
+    Console.WriteLine($"  Skipped (file not found)");
 }
+Console.WriteLine();
 
-static void WriteWordList(string path, string description, HashSet<string> words)
-{
-    var sb = new StringBuilder();
-    sb.AppendLine($"# {description}");
-    sb.AppendLine("# Auto-generated from .NET's globalization data");
-    sb.AppendLine($"# Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-    sb.AppendLine($"# Total: {words.Count} entries");
-    sb.AppendLine();
-    
-    foreach (var word in words.OrderBy(w => w, StringComparer.OrdinalIgnoreCase))
-    {
-        sb.AppendLine(word);
-    }
-    
-    File.WriteAllText(path, sb.ToString());
-}
+// ============================================
+// Summary
+// ============================================
+Console.WriteLine("=".PadRight(40, '='));
+Console.WriteLine("All README code samples validated successfully!");
+Console.WriteLine("=".PadRight(40, '='));

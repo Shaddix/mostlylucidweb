@@ -1,5 +1,7 @@
+using System.Threading.Channels;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
+using Mostlylucid.DocSummarizer.Services;
 
 namespace Mostlylucid.DocSummarizer;
 
@@ -66,6 +68,45 @@ public interface IDocumentSummarizer
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Summarize markdown content with progress reporting via a channel.
+    /// </summary>
+    /// <param name="markdown">The markdown content to summarize.</param>
+    /// <param name="progress">Channel writer to receive progress updates. Create with <see cref="ProgressChannel.CreateUnbounded"/> or <see cref="ProgressChannel.CreateBounded"/>.</param>
+    /// <param name="documentId">Optional document identifier for caching.</param>
+    /// <param name="focusQuery">Optional focus query to bias retrieval toward specific topics.</param>
+    /// <param name="mode">Summarization mode. Defaults to Auto.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="DocumentSummary"/> containing the summary and metadata.</returns>
+    /// <example>
+    /// <code>
+    /// // Create a progress channel
+    /// var channel = ProgressChannel.CreateUnbounded();
+    /// 
+    /// // Start consuming progress updates in the background
+    /// _ = Task.Run(async () =>
+    /// {
+    ///     await foreach (var update in channel.Reader.ReadAllAsync())
+    ///     {
+    ///         Console.WriteLine($"[{update.Stage}] {update.Message} ({update.PercentComplete:F0}%)");
+    ///     }
+    /// });
+    /// 
+    /// // Summarize with progress
+    /// var summary = await summarizer.SummarizeMarkdownAsync(
+    ///     markdown,
+    ///     channel.Writer,
+    ///     focusQuery: "key points");
+    /// </code>
+    /// </example>
+    Task<DocumentSummary> SummarizeMarkdownAsync(
+        string markdown,
+        ChannelWriter<ProgressUpdate> progress,
+        string? documentId = null,
+        string? focusQuery = null,
+        SummarizationMode mode = SummarizationMode.Auto,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Summarize a file (markdown, PDF, DOCX, or text).
     /// </summary>
     /// <param name="filePath">Path to the file to summarize.</param>
@@ -90,6 +131,16 @@ public interface IDocumentSummarizer
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Summarize a file with progress reporting via a channel.
+    /// </summary>
+    Task<DocumentSummary> SummarizeFileAsync(
+        string filePath,
+        ChannelWriter<ProgressUpdate> progress,
+        string? focusQuery = null,
+        SummarizationMode mode = SummarizationMode.Auto,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Summarize content from a URL.
     /// </summary>
     /// <param name="url">The URL to fetch and summarize.</param>
@@ -100,6 +151,17 @@ public interface IDocumentSummarizer
     /// <returns>A <see cref="DocumentSummary"/> containing the summary and metadata.</returns>
     Task<DocumentSummary> SummarizeUrlAsync(
         string url,
+        string? focusQuery = null,
+        SummarizationMode mode = SummarizationMode.Auto,
+        bool usePlaywright = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Summarize content from a URL with progress reporting via a channel.
+    /// </summary>
+    Task<DocumentSummary> SummarizeUrlAsync(
+        string url,
+        ChannelWriter<ProgressUpdate> progress,
         string? focusQuery = null,
         SummarizationMode mode = SummarizationMode.Auto,
         bool usePlaywright = false,
@@ -133,6 +195,15 @@ public interface IDocumentSummarizer
     /// <returns>An <see cref="ExtractionResult"/> containing all segments with embeddings and salience scores.</returns>
     Task<ExtractionResult> ExtractSegmentsAsync(
         string markdown,
+        string? documentId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Extract segments with progress reporting via a channel.
+    /// </summary>
+    Task<ExtractionResult> ExtractSegmentsAsync(
+        string markdown,
+        ChannelWriter<ProgressUpdate> progress,
         string? documentId = null,
         CancellationToken cancellationToken = default);
 

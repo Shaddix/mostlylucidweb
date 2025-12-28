@@ -7,6 +7,28 @@ using Spectre.Console;
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
+/// Tracks whether we're inside a batch processing context to prevent nested Spectre progress bars.
+/// </summary>
+internal static class BatchContextTracker
+{
+    [ThreadStatic]
+    private static bool _isInContext;
+    
+    public static bool IsInContext => _isInContext;
+    
+    public static IDisposable Enter()
+    {
+        _isInContext = true;
+        return new BatchContextGuard();
+    }
+    
+    private class BatchContextGuard : IDisposable
+    {
+        public void Dispose() => _isInContext = false;
+    }
+}
+
+/// <summary>
 /// Handles batch processing of multiple documents
 /// </summary>
 public class BatchProcessor
@@ -56,7 +78,7 @@ public class BatchProcessor
             return new BatchSummary(0, 0, 0, new List<BatchResult>(), sw.Elapsed);
         }
 
-        using var _ = ProgressService.EnterInteractiveContext();
+        using var _ = BatchContextTracker.Enter();
 
         // Use Spectre progress for batch processing
         await AnsiConsole.Progress()

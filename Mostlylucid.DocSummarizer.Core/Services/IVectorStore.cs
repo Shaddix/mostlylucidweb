@@ -7,7 +7,7 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// Allows switching between in-memory (default) and persistent (Qdrant) storage.
 /// Supports both segment storage (for retrieval) and summary caching (to avoid re-LLM).
 /// </summary>
-public interface IVectorStore : IAsyncDisposable
+public interface IVectorStore : IAsyncDisposable, IDisposable
 {
     /// <summary>
     /// Initialize the vector store (create collection if needed)

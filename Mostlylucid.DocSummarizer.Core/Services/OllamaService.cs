@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -15,6 +17,10 @@ namespace Mostlylucid.DocSummarizer.Services;
 ///     Lightweight Ollama HTTP client for AOT compatibility.
 ///     Replaces OllamaSharp to reduce binary size and avoid reflection.
 ///     Uses Polly for resilience (retry with jitter backoff + circuit breaker).
+/// 
+///     Observability:
+///     - OpenTelemetry tracing with Activity spans for generate and embed operations
+///     - Metrics for request counts, durations, token usage, and errors
 /// </summary>
 public class OllamaService
 {
@@ -22,6 +28,64 @@ public class OllamaService
     ///     Default timeout for LLM generation (20 minutes for large documents/slow models)
     /// </summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(20);
+
+    #region OpenTelemetry Instrumentation
+    
+    /// <summary>ActivitySource for distributed tracing</summary>
+    private static readonly ActivitySource ActivitySource = new("Mostlylucid.DocSummarizer.Ollama", "1.0.0");
+    
+    /// <summary>Meter for metrics</summary>
+    private static readonly Meter Meter = new("Mostlylucid.DocSummarizer.Ollama", "1.0.0");
+    
+    /// <summary>Counter for generate requests</summary>
+    private static readonly Counter<long> GenerateCounter = Meter.CreateCounter<long>(
+        "docsummarizer.ollama.generate.requests",
+        "requests",
+        "Total number of LLM generate requests");
+    
+    /// <summary>Counter for embedding requests</summary>
+    private static readonly Counter<long> EmbedCounter = Meter.CreateCounter<long>(
+        "docsummarizer.ollama.embed.requests",
+        "requests",
+        "Total number of embedding requests");
+    
+    /// <summary>Histogram for generate duration</summary>
+    private static readonly Histogram<double> GenerateDurationHistogram = Meter.CreateHistogram<double>(
+        "docsummarizer.ollama.generate.duration",
+        "ms",
+        "Duration of LLM generate operations in milliseconds");
+    
+    /// <summary>Histogram for embed duration</summary>
+    private static readonly Histogram<double> EmbedDurationHistogram = Meter.CreateHistogram<double>(
+        "docsummarizer.ollama.embed.duration",
+        "ms",
+        "Duration of embedding operations in milliseconds");
+    
+    /// <summary>Histogram for prompt token count</summary>
+    private static readonly Histogram<long> PromptTokensHistogram = Meter.CreateHistogram<long>(
+        "docsummarizer.ollama.prompt.tokens",
+        "tokens",
+        "Number of prompt tokens sent");
+    
+    /// <summary>Histogram for response token count</summary>
+    private static readonly Histogram<long> ResponseTokensHistogram = Meter.CreateHistogram<long>(
+        "docsummarizer.ollama.response.tokens",
+        "tokens",
+        "Number of response tokens generated");
+    
+    /// <summary>Counter for errors by type</summary>
+    private static readonly Counter<long> ErrorCounter = Meter.CreateCounter<long>(
+        "docsummarizer.ollama.errors",
+        "errors",
+        "Total number of Ollama errors");
+    
+    /// <summary>Counter for circuit breaker events</summary>
+    private static readonly Counter<long> CircuitBreakerCounter = Meter.CreateCounter<long>(
+        "docsummarizer.ollama.circuit_breaker",
+        "events",
+        "Circuit breaker state changes");
+    
+    #endregion
 
     private readonly string _baseUrl;
     private readonly HttpClient _httpClient;
@@ -151,6 +215,13 @@ public class OllamaService
     public async Task<string> GenerateWithModelAsync(string modelName, string prompt, double temperature = 0.3,
         CancellationToken cancellationToken = default)
     {
+        using var activity = ActivitySource.StartActivity("OllamaGenerate", ActivityKind.Client);
+        activity?.SetTag("llm.model", modelName);
+        activity?.SetTag("llm.temperature", temperature);
+        activity?.SetTag("llm.prompt_length", prompt.Length);
+        
+        var sw = Stopwatch.StartNew();
+        
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(_timeout);
 
@@ -163,6 +234,11 @@ public class OllamaService
 
         var json = JsonSerializer.Serialize(request, DocSummarizerJsonContext.Default.OllamaGenerateRequest);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+        
+        // Estimate prompt tokens (rough: ~4 chars per token for English)
+        var estimatedPromptTokens = prompt.Length / 4;
+        PromptTokensHistogram.Record(estimatedPromptTokens, 
+            new KeyValuePair<string, object?>("model", modelName));
 
         var sb = new StringBuilder();
         try
@@ -184,15 +260,47 @@ public class OllamaService
 
                 if (chunk?.Done == true) break;
             }
+            
+            var result = sb.ToString().Trim();
+            
+            // Estimate response tokens
+            var estimatedResponseTokens = result.Length / 4;
+            ResponseTokensHistogram.Record(estimatedResponseTokens,
+                new KeyValuePair<string, object?>("model", modelName));
+            
+            activity?.SetTag("llm.response_length", result.Length);
+            activity?.SetTag("llm.estimated_tokens", estimatedResponseTokens);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            
+            GenerateCounter.Add(1, new KeyValuePair<string, object?>("model", modelName));
+            
+            return result;
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested &&
                                                  !cancellationToken.IsCancellationRequested)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Timeout");
+            ErrorCounter.Add(1,
+                new KeyValuePair<string, object?>("model", modelName),
+                new KeyValuePair<string, object?>("error.type", "timeout"));
+            
             throw new TimeoutException(
                 $"LLM generation timed out after {_timeout.TotalMinutes:F0} minutes. Consider using a faster model or increasing the timeout.");
         }
-
-        return sb.ToString().Trim();
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            ErrorCounter.Add(1,
+                new KeyValuePair<string, object?>("model", modelName),
+                new KeyValuePair<string, object?>("error.type", ex.GetType().Name));
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            GenerateDurationHistogram.Record(sw.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("model", modelName));
+        }
     }
 
     /// <summary>
@@ -309,18 +417,53 @@ public class OllamaService
     /// </summary>
     private async Task<float[]> EmbedSingleChunkAsync(string cleanText, int maxRetries, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("OllamaEmbed", ActivityKind.Client);
+        activity?.SetTag("llm.model", EmbedModel);
+        activity?.SetTag("llm.text_length", cleanText.Length);
+        
+        var sw = Stopwatch.StartNew();
+        
         try
         {
-            return await _embeddingResiliencePipeline.ExecuteAsync(
+            var result = await _embeddingResiliencePipeline.ExecuteAsync(
                 async ct => await ExecuteEmbeddingRequestAsync(cleanText, ct),
                 cancellationToken);
+            
+            activity?.SetTag("llm.embedding_dimension", result.Length);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            
+            EmbedCounter.Add(1, new KeyValuePair<string, object?>("model", EmbedModel));
+            
+            return result;
         }
         catch (BrokenCircuitException ex)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "CircuitBreakerOpen");
+            CircuitBreakerCounter.Add(1, 
+                new KeyValuePair<string, object?>("state", "rejected"),
+                new KeyValuePair<string, object?>("model", EmbedModel));
+            ErrorCounter.Add(1,
+                new KeyValuePair<string, object?>("model", EmbedModel),
+                new KeyValuePair<string, object?>("error.type", "circuit_breaker"));
+            
             throw new InvalidOperationException(
                 $"Circuit breaker is open - Ollama appears unavailable. " +
                 $"Will retry after circuit breaker timeout. " +
                 "This usually indicates Ollama is overloaded or crashed.", ex);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            ErrorCounter.Add(1,
+                new KeyValuePair<string, object?>("model", EmbedModel),
+                new KeyValuePair<string, object?>("error.type", ex.GetType().Name));
+            throw;
+        }
+        finally
+        {
+            sw.Stop();
+            EmbedDurationHistogram.Record(sw.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("model", EmbedModel));
         }
     }
     

@@ -62,6 +62,10 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
         <PackageReference Include="Polly.Core" Version="8.6.5" />
         
+        <!-- OpenTelemetry for observability -->
+        <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.1" />
+        
         <!-- ML/Embeddings -->
         <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
         <PackageReference Include="Markdig" Version="0.44.0" />

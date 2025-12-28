@@ -142,7 +142,7 @@ public class SpectreProgressService : IProgressReporter
     public static async Task<T> WithSpinnerAsync<T>(string message, Func<Task<T>> task)
     {
         // Skip spinner if already in a batch context to avoid nested interactive displays
-        if (ProgressService.IsInInteractiveContext)
+        if (BatchContextTracker.IsInContext)
         {
             return await task();
         }
@@ -318,7 +318,7 @@ public class SpectreProgressService : IProgressReporter
     {
         // If we're already inside a Spectre progress context (e.g., batch mode),
         // use a simple non-interactive fallback to avoid "concurrent interactive functions" error
-        if (ProgressService.IsInInteractiveContext)
+        if (BatchContextTracker.IsInContext)
         {
             return await RunConversionWithoutProgressAsync(docling, filePath, description);
         }

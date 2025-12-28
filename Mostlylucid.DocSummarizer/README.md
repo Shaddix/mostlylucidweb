@@ -1179,6 +1179,79 @@ The `OllamaService` uses Polly v8 for robust LLM operations:
 | **Connection Recovery** | Fresh connections per request (Windows wsarecv fix) |
 | **Rate Limiting** | Jittered delays between requests |
 
+### OpenTelemetry Observability
+
+DocSummarizer includes built-in OpenTelemetry instrumentation for distributed tracing and metrics.
+
+#### CLI Telemetry Options
+
+```bash
+# Enable telemetry with console output
+docsummarizer -f doc.pdf --telemetry-console
+
+# Send telemetry to Jaeger/Grafana via OTLP
+docsummarizer -f doc.pdf --telemetry-otlp http://localhost:4317
+
+# Enable both
+docsummarizer -f doc.pdf --telemetry --telemetry-console --telemetry-otlp http://jaeger:4317
+```
+
+| Option | Description |
+|--------|-------------|
+| `--telemetry` | Enable OpenTelemetry instrumentation |
+| `--telemetry-console` | Export traces and metrics to console (auto-enables telemetry) |
+| `--telemetry-otlp <endpoint>` | Export to OTLP endpoint (auto-enables telemetry) |
+
+#### Activity Sources (Tracing)
+
+| Source Name | Activities | Description |
+|-------------|------------|-------------|
+| `Mostlylucid.DocSummarizer` | Summarize, Query | Main summarization operations |
+| `Mostlylucid.DocSummarizer.Ollama` | Generate, Embed | LLM API calls |
+| `Mostlylucid.DocSummarizer.WebFetcher` | WebFetch | Web content fetching |
+
+#### Metrics Exposed
+
+**DocumentSummarizer:**
+- `docsummarizer.summarizations` - Total summarization requests
+- `docsummarizer.queries` - Total query requests  
+- `docsummarizer.summarization.duration` - Duration in milliseconds
+- `docsummarizer.document.size` - Document sizes in bytes
+- `docsummarizer.errors` - Errors by type
+
+**OllamaService:**
+- `docsummarizer.ollama.generate.requests` - LLM generation count
+- `docsummarizer.ollama.embed.requests` - Embedding count
+- `docsummarizer.ollama.generate.duration` - Generation duration
+- `docsummarizer.ollama.embed.duration` - Embedding duration
+- `docsummarizer.ollama.prompt.tokens` - Prompt token counts
+- `docsummarizer.ollama.response.tokens` - Response token counts
+- `docsummarizer.ollama.errors` - LLM errors
+- `docsummarizer.ollama.circuit_breaker` - Circuit breaker state changes
+
+**WebFetcher:**
+- `docsummarizer.webfetch.requests` - Web fetch count
+- `docsummarizer.webfetch.duration` - Fetch duration
+- `docsummarizer.webfetch.errors` - Fetch errors by type
+- `docsummarizer.webfetch.retries` - Retry attempts
+- `docsummarizer.webfetch.ratelimits` - HTTP 429 hits
+- `docsummarizer.webfetch.circuit_breaker` - Circuit breaker state changes
+
+#### Example: Send to Jaeger
+
+```bash
+# Start Jaeger
+docker run -d --name jaeger \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  jaegertracing/jaeger:latest
+
+# Run with OTLP export
+docsummarizer -f document.pdf --telemetry-otlp http://localhost:4317
+
+# View traces at http://localhost:16686
+```
+
 ### Web Fetch Security
 
 The `WebFetcher` implements comprehensive security controls:

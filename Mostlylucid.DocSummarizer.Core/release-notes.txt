@@ -1,25 +1,45 @@
+## v1.3.0
+
+### New Features
+
+#### OpenTelemetry Instrumentation
+Full observability with distributed tracing and metrics for production monitoring.
+
+**Activity Sources (Tracing):**
+- `Mostlylucid.DocSummarizer` - SummarizeMarkdown, SummarizeFile, SummarizeUrl, Query
+- `Mostlylucid.DocSummarizer.Ollama` - OllamaGenerate, OllamaEmbed  
+- `Mostlylucid.DocSummarizer.WebFetcher` - WebFetch, FetchWithSecurity
+
+**Metrics:**
+- DocumentSummarizer: `docsummarizer.summarizations`, `docsummarizer.queries`, `docsummarizer.summarization.duration`, `docsummarizer.document.size`, `docsummarizer.errors`
+- OllamaService: `docsummarizer.ollama.generate.requests`, `docsummarizer.ollama.embed.requests`, `docsummarizer.ollama.generate.duration`, `docsummarizer.ollama.embed.duration`, `docsummarizer.ollama.prompt.tokens`, `docsummarizer.ollama.response.tokens`, `docsummarizer.ollama.errors`, `docsummarizer.ollama.circuit_breaker`
+- WebFetcher: `docsummarizer.webfetch.requests`, `docsummarizer.webfetch.duration`, `docsummarizer.webfetch.errors`, `docsummarizer.webfetch.retries`, `docsummarizer.webfetch.ratelimits`, `docsummarizer.webfetch.circuit_breaker`
+
+#### Enhanced HTTP Resilience
+Polly-based resilience for WebFetcher with production-grade fault tolerance.
+
+- **Circuit breaker**: Opens after 5 failures in 30s, stays open for 60s, half-open probe before recovery
+- **Retry**: Exponential backoff with decorrelated jitter (3 attempts max, 0.5s-30s delay range)
+- **Rate limiting**: Respects HTTP 429 Retry-After headers (both delta and date formats)
+- **Permanent failures**: 400, 401, 402, 403, 404, 405, 410 fail immediately with descriptive messages (no retry)
+
+#### New Exception Types
+- `WebFetchPermanentException` - For non-retryable HTTP errors with StatusCode property
+- `SecurityException` - For SSRF and security policy violations
+
+### Dependencies
+- Added `OpenTelemetry.Api` 1.12.0
+- Added `System.Diagnostics.DiagnosticSource` 10.0.1
+- Added `Polly.Core` 8.6.0 (for WebFetcher resilience)
+
+---
+
 ## v1.2.0
 
-### .NET 8 Support Restored
-- Added .NET 8 LTS back to target frameworks
-- Now targets net8.0, net9.0, and net10.0
-- All package dependencies verified compatible across all frameworks
-
-### DI Registration Fixed
-- Removed all NotImplementedException placeholders
-- ServiceCollectionExtensions now properly creates:
-  - OnnxEmbeddingService for local ONNX embeddings
-  - OllamaEmbeddingService for Ollama embeddings
-  - DuckDbVectorStore for embedded vector storage
-  - QdrantVectorStore for external Qdrant servers
-  - InMemoryVectorStore for transient use
-
-### Test Coverage
-- Added 101 unit tests for Core library
-- Tests for OnnxConfig defaults and properties
-- Tests for OnnxModelRegistry metadata
-- Tests for VectorMath utilities (cosine similarity, normalization, etc.)
-- Tests for EmbeddingBackend enum values
+### Improvements
+- Added .NET 8 LTS support (now targets net8.0, net9.0, and net10.0)
+- Fixed DI registration - all services now properly registered
+- 101 unit tests covering OnnxConfig, OnnxModelRegistry, and VectorMath utilities
 
 ---
 

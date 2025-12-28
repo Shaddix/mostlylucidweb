@@ -10,6 +10,8 @@ Local-first document summarization library using BERT embeddings, RAG retrieval,
 - **Format support**: Markdown, PDF, DOCX, HTML, URLs
 - **Vector storage**: In-memory, DuckDB (embedded), or Qdrant (external)
 - **Multi-framework**: .NET 8, .NET 9, and .NET 10 support
+- **OpenTelemetry**: Built-in distributed tracing and metrics
+- **Resilience**: Polly-based retry, circuit breaker, and rate limiting
 
 ## Installation
 
@@ -166,10 +168,134 @@ foreach (var segment in extraction.TopBySalience)
 }
 ```
 
+## OpenTelemetry Observability
+
+The library includes built-in OpenTelemetry instrumentation for distributed tracing and metrics. All instrumentation follows OpenTelemetry semantic conventions.
+
+### Activity Sources (Distributed Tracing)
+
+| Source Name | Activities | Description |
+|-------------|------------|-------------|
+| `Mostlylucid.DocSummarizer` | `SummarizeMarkdown`, `SummarizeFile`, `SummarizeUrl`, `Query` | Main summarization operations |
+| `Mostlylucid.DocSummarizer.Ollama` | `OllamaGenerate`, `OllamaEmbed` | LLM API calls |
+| `Mostlylucid.DocSummarizer.WebFetcher` | `WebFetch`, `FetchWithSecurity` | Web content fetching |
+
+Each activity includes relevant tags (e.g., `url.host`, `http.response.status_code`, `error.type`) for filtering and analysis.
+
+### Metrics
+
+#### DocumentSummarizerService Metrics
+
+| Metric | Type | Unit | Description |
+|--------|------|------|-------------|
+| `docsummarizer.summarizations` | Counter | requests | Total summarization requests |
+| `docsummarizer.queries` | Counter | requests | Total query requests |
+| `docsummarizer.summarization.duration` | Histogram | ms | Summarization duration |
+| `docsummarizer.document.size` | Histogram | bytes | Document sizes processed |
+| `docsummarizer.errors` | Counter | errors | Total errors by type |
+
+#### OllamaService Metrics
+
+| Metric | Type | Unit | Description |
+|--------|------|------|-------------|
+| `docsummarizer.ollama.generate.requests` | Counter | requests | LLM generation requests |
+| `docsummarizer.ollama.embed.requests` | Counter | requests | Embedding requests |
+| `docsummarizer.ollama.generate.duration` | Histogram | ms | Generation duration |
+| `docsummarizer.ollama.embed.duration` | Histogram | ms | Embedding duration |
+| `docsummarizer.ollama.prompt.tokens` | Histogram | tokens | Prompt token counts |
+| `docsummarizer.ollama.response.tokens` | Histogram | tokens | Response token counts |
+| `docsummarizer.ollama.errors` | Counter | errors | LLM errors by type |
+| `docsummarizer.ollama.circuit_breaker` | Counter | transitions | Circuit breaker state changes |
+
+#### WebFetcher Metrics
+
+| Metric | Type | Unit | Description |
+|--------|------|------|-------------|
+| `docsummarizer.webfetch.requests` | Counter | requests | Web fetch requests |
+| `docsummarizer.webfetch.duration` | Histogram | ms | Fetch duration |
+| `docsummarizer.webfetch.errors` | Counter | errors | Fetch errors by type |
+| `docsummarizer.webfetch.retries` | Counter | retries | Retry attempts |
+| `docsummarizer.webfetch.ratelimits` | Counter | responses | HTTP 429 rate limit hits |
+| `docsummarizer.webfetch.circuit_breaker` | Counter | transitions | Circuit breaker state changes |
+
+### Metric Dimensions (Tags)
+
+Common tags available on metrics:
+
+| Tag | Metrics | Values |
+|-----|---------|--------|
+| `mode` | summarizations, webfetch | `Bert`, `BertRag`, `MapReduce`, `Simple`, `Playwright` |
+| `error.type` | errors | `security`, `http`, `timeout`, `operation`, `unknown` |
+| `url.host` | webfetch | Target hostname |
+| `model` | ollama | LLM model name |
+| `state` | circuit_breaker | `opened`, `closed`, `half-opened` |
+| `attempt` | retries | Retry attempt number |
+
+### Example: Wire up in ASP.NET Core
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddSource("Mostlylucid.DocSummarizer")
+        .AddSource("Mostlylucid.DocSummarizer.Ollama")
+        .AddSource("Mostlylucid.DocSummarizer.WebFetcher")
+        .AddOtlpExporter())
+    .WithMetrics(metrics => metrics
+        .AddMeter("Mostlylucid.DocSummarizer")
+        .AddMeter("Mostlylucid.DocSummarizer.Ollama")
+        .AddMeter("Mostlylucid.DocSummarizer.WebFetcher")
+        .AddOtlpExporter());
+```
+
+### Example: Console Application
+
+```csharp
+using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .AddSource("Mostlylucid.DocSummarizer")
+    .AddSource("Mostlylucid.DocSummarizer.Ollama")
+    .AddSource("Mostlylucid.DocSummarizer.WebFetcher")
+    .AddConsoleExporter()
+    .Build();
+
+using var meterProvider = Sdk.CreateMeterProviderBuilder()
+    .AddMeter("Mostlylucid.DocSummarizer")
+    .AddMeter("Mostlylucid.DocSummarizer.Ollama")
+    .AddMeter("Mostlylucid.DocSummarizer.WebFetcher")
+    .AddConsoleExporter()
+    .Build();
+```
+
+### Grafana/Jaeger Integration
+
+Send telemetry to Jaeger or Grafana Tempo:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing
+        .AddSource("Mostlylucid.DocSummarizer")
+        .AddSource("Mostlylucid.DocSummarizer.Ollama")
+        .AddSource("Mostlylucid.DocSummarizer.WebFetcher")
+        .AddOtlpExporter(o => o.Endpoint = new Uri("http://jaeger:4317")))
+    .WithMetrics(metrics => metrics
+        .AddMeter("Mostlylucid.DocSummarizer")
+        .AddMeter("Mostlylucid.DocSummarizer.Ollama")
+        .AddMeter("Mostlylucid.DocSummarizer.WebFetcher")
+        .AddPrometheusExporter());  // For Prometheus/Grafana
+```
+
+## HTTP Resilience
+
+The WebFetcher service includes Polly-based resilience:
+
+- **Circuit Breaker**: Opens after 5 failures in 30s, stays open for 60s
+- **Retry**: Exponential backoff with jitter (3 attempts, 0.5s-30s)
+- **Rate Limiting**: Respects HTTP 429 Retry-After headers
+- **Permanent Failures**: 403/404/401 fail immediately with clear messages
+
 ## Dependencies
 
 - **Supported**: .NET 8.0+, .NET 9.0+, .NET 10.0+
-- **Included**: ONNX Runtime, Markdig, PdfPig, OpenXml, AngleSharp
+- **Included**: ONNX Runtime, Markdig, PdfPig, OpenXml, AngleSharp, Polly, OpenTelemetry.Api
 - **Optional**: Ollama (for LLM synthesis), Docling (for complex PDF conversion)
 
 ## License

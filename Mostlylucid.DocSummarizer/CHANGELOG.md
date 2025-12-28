@@ -1,50 +1,126 @@
 # Changelog - DocSummarizer
 
-## v3.5.1 - .NET 8 Compatibility & Multi-Targeting (2025-12-28)
+## v4.0.0 - Core Library Refactoring & DI Architecture (2025-12-28)
 
-### Major Improvements
+### Major Changes
 
-#### Multi-Target Framework Support
+This release represents a major architectural refactoring, extracting all document processing logic into a reusable **Mostlylucid.DocSummarizer.Core** NuGet library. The CLI is now a thin wrapper that uses Core via dependency injection.
 
-DocSummarizer now targets **both .NET 8 and .NET 10**, making it compatible with more environments:
-
-```xml
-<TargetFrameworks>net8.0;net10.0</TargetFrameworks>
-```
-
-**Benefits:**
-- Use with .NET 8 LTS on production servers
-- Use with .NET 10 for latest features and performance
-- Single codebase, dual binaries
-- All package dependencies verified compatible with both frameworks
-
-#### Publishing for Multiple Frameworks
-
-```bash
-# Build for .NET 8
-dotnet publish -c Release -r win-x64 -f net8.0
-
-# Build for .NET 10
-dotnet publish -c Release -r win-x64 -f net10.0
-```
-
-### Test Coverage
-
-- **276 tests passing** across all embedding models and configurations
-- Fixed test assumptions for new model defaults (BgeBaseEnV15)
-- Added tests for models without quantized variants (Jina, Nomic)
-- Verified HuggingFace repo validation for nomic-ai/ namespace
-
-### Files Modified
+### Architecture
 
 ```
-Mostlylucid.DocSummarizer.csproj           # Multi-targeting enabled
-Mostlylucid.DocSummarizer.Tests/           # All tests updated and passing
+CLI (thin wrapper) → IDocumentSummarizer (DI) → Core services
 ```
+
+**Before**: ~40 service files duplicated between CLI and any consumers
+**After**: Single Core library with `IDocumentSummarizer` interface for all consumers
 
 ### Breaking Changes
 
-None - this is a compatibility release. Existing .NET 10 deployments continue to work unchanged.
+- **Namespace restructured**: All Core types now live in `Mostlylucid.DocSummarizer.*` namespace (shared between CLI and Core)
+- **DI-first architecture**: Services now registered via `services.AddDocSummarizer()` extension method
+- **IVectorStore interface updated**: Now implements both `IDisposable` and `IAsyncDisposable` for proper container disposal
+
+### New Features
+
+#### Mostlylucid.DocSummarizer.Core NuGet Package
+
+A standalone library for document summarization that can be consumed by any .NET application:
+
+```csharp
+// Register services
+services.AddDocSummarizer(config =>
+{
+    config.Ollama.Model = "llama3.2:3b";
+    config.EmbeddingBackend = EmbeddingBackend.Onnx;
+});
+
+// Inject and use
+public class MyService(IDocumentSummarizer summarizer)
+{
+    public async Task<string> Summarize(string markdown)
+    {
+        var result = await summarizer.SummarizeMarkdownAsync(markdown);
+        return result.ExecutiveSummary;
+    }
+}
+```
+
+#### IDocumentSummarizer Interface
+
+Clean, DI-friendly API with comprehensive functionality:
+
+- `SummarizeMarkdownAsync()` - Summarize markdown content
+- `SummarizeFileAsync()` - Summarize from file path (PDF, DOCX, MD, etc.)
+- `SummarizeUrlAsync()` - Fetch and summarize web content
+- `QueryAsync()` - Query documents with natural language
+- `ExtractSegmentsAsync()` - Extract structured segments with embeddings
+- `Template` property - Apply summary templates (brief, executive, detailed, etc.)
+
+### Improvements
+
+- **Proper disposal**: All vector stores (`DuckDbVectorStore`, `QdrantVectorStore`, `InMemoryVectorStore`) now implement both `IDisposable` and `IAsyncDisposable`
+- **101 tests passing**: Comprehensive test coverage for Core library
+- **CLI simplified**: Program.cs reduced from top-level statements to proper `Program` class with explicit `Main` method
+- **Enhanced `tool` command**: Comprehensive JSON output for LLM integration with:
+  - Entity extraction (people, organizations, locations, dates, events)
+  - Source chunk references for citation tracking
+  - Processing metadata (coverage, citation rate, timing, model)
+  - Q&A mode via `--ask` flag with evidence segments
+
+### Files Added (Core Library)
+
+```
+Mostlylucid.DocSummarizer.Core/
+├── IDocumentSummarizer.cs              # Public API interface
+├── Extensions/
+│   └── ServiceCollectionExtensions.cs  # AddDocSummarizer() registration
+├── Services/
+│   └── DocumentSummarizerService.cs    # IDocumentSummarizer implementation
+└── (all other services moved from CLI)
+```
+
+### Files Removed (from CLI)
+
+~40 service files removed from CLI - now consumed from Core library:
+- `Services/Onnx/*.cs` (tokenizer, embedding, model registry)
+- `Services/Utilities/*.cs` (vector math, word lists, response cleaner)
+- `Services/*.cs` (all summarizers, extractors, vector stores)
+- `Config/*.cs` (configuration classes)
+- `Models/*.cs` (document models)
+
+### Migration Guide
+
+**For CLI users**: No changes required - the CLI works exactly as before.
+
+**For library consumers**: 
+
+1. Add reference to `Mostlylucid.DocSummarizer.Core`
+2. Register services: `services.AddDocSummarizer()`
+3. Inject `IDocumentSummarizer` where needed
+
+```csharp
+// Old way (direct instantiation)
+var summarizer = new DocumentSummarizer(model, doclingUrl, ...);
+
+// New way (DI)
+services.AddDocSummarizer();
+// Then inject IDocumentSummarizer
+```
+
+---
+
+## v3.5.1 - .NET 8 Compatibility (2025-12-28)
+
+### Improvements
+
+- Added .NET 8 LTS support alongside .NET 10 for broader environment compatibility
+- 276 tests passing across all embedding models and configurations
+- Fixed test assumptions for new model defaults (BgeBaseEnV15)
+
+### Breaking Changes
+
+None - this is a compatibility release.
 
 ---
 

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -8,6 +10,9 @@ using AngleSharp.Html.Parser;
 using Microsoft.Playwright;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
@@ -26,10 +31,60 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// - Decompression bomb protection: limits expansion ratio
 /// - HTML sanitization: removes scripts, event handlers, dangerous URLs
 /// - Image guardrails: size limits, count limits, hash deduplication
+/// 
+/// Resilience features:
+/// - Polly retry with exponential backoff and jitter
+/// - Special handling for 429 (rate limited) with Retry-After header respect
+/// - Circuit breaker for persistent failures
+/// 
+/// Observability:
+/// - OpenTelemetry tracing with Activity spans
+/// - Metrics for request counts, durations, and status codes
 /// </summary>
 public class WebFetcher
 {
     private readonly WebFetchConfig _config;
+    private readonly ResiliencePipeline<HttpResponseMessage> _resiliencePipeline;
+    
+    #region OpenTelemetry Instrumentation
+    
+    /// <summary>ActivitySource for distributed tracing</summary>
+    private static readonly ActivitySource ActivitySource = new("Mostlylucid.DocSummarizer.WebFetcher", "1.0.0");
+    
+    /// <summary>Meter for metrics</summary>
+    private static readonly Meter Meter = new("Mostlylucid.DocSummarizer.WebFetcher", "1.0.0");
+    
+    /// <summary>Counter for total fetch requests</summary>
+    private static readonly Counter<long> FetchRequestsCounter = Meter.CreateCounter<long>(
+        "docsummarizer.webfetch.requests",
+        "requests",
+        "Total number of web fetch requests");
+    
+    /// <summary>Counter for fetch errors by type</summary>
+    private static readonly Counter<long> FetchErrorsCounter = Meter.CreateCounter<long>(
+        "docsummarizer.webfetch.errors",
+        "errors",
+        "Total number of web fetch errors");
+    
+    /// <summary>Histogram for fetch duration</summary>
+    private static readonly Histogram<double> FetchDurationHistogram = Meter.CreateHistogram<double>(
+        "docsummarizer.webfetch.duration",
+        "ms",
+        "Duration of web fetch operations in milliseconds");
+    
+    /// <summary>Counter for retries</summary>
+    private static readonly Counter<long> RetryCounter = Meter.CreateCounter<long>(
+        "docsummarizer.webfetch.retries",
+        "retries",
+        "Total number of retry attempts");
+    
+    /// <summary>Counter for rate limit hits (429 responses)</summary>
+    private static readonly Counter<long> RateLimitCounter = Meter.CreateCounter<long>(
+        "docsummarizer.webfetch.ratelimits",
+        "responses",
+        "Total number of 429 rate limit responses");
+    
+    #endregion
 
     #region Security Constants
 
@@ -167,10 +222,152 @@ public class WebFetcher
     };
 
     #endregion
+    
+    #region Resilience Configuration
+    
+    /// <summary>Maximum retry attempts for transient failures</summary>
+    private const int MaxRetryAttempts = 3;
+    
+    /// <summary>Initial retry delay in milliseconds</summary>
+    private const int InitialRetryDelayMs = 500;
+    
+    /// <summary>Maximum retry delay in milliseconds</summary>
+    private const int MaxRetryDelayMs = 30000;
+    
+    /// <summary>HTTP status codes that should trigger a retry</summary>
+    private static readonly HashSet<HttpStatusCode> RetryableStatusCodes = new()
+    {
+        HttpStatusCode.RequestTimeout,           // 408
+        HttpStatusCode.TooManyRequests,          // 429
+        HttpStatusCode.InternalServerError,      // 500
+        HttpStatusCode.BadGateway,               // 502
+        HttpStatusCode.ServiceUnavailable,       // 503
+        HttpStatusCode.GatewayTimeout            // 504
+    };
+    
+    /// <summary>HTTP status codes that are permanent failures (no retry)</summary>
+    private static readonly HashSet<HttpStatusCode> PermanentFailureStatusCodes = new()
+    {
+        HttpStatusCode.BadRequest,               // 400
+        HttpStatusCode.Unauthorized,             // 401
+        HttpStatusCode.PaymentRequired,          // 402
+        HttpStatusCode.Forbidden,                // 403
+        HttpStatusCode.NotFound,                 // 404
+        HttpStatusCode.MethodNotAllowed,         // 405
+        HttpStatusCode.Gone                      // 410
+    };
+    
+    /// <summary>Circuit breaker failure threshold before opening</summary>
+    private const int CircuitBreakerFailureThreshold = 5;
+    
+    /// <summary>Sampling duration for circuit breaker</summary>
+    private static readonly TimeSpan CircuitBreakerSamplingDuration = TimeSpan.FromSeconds(30);
+    
+    /// <summary>Duration circuit stays open before half-open state</summary>
+    private static readonly TimeSpan CircuitBreakerBreakDuration = TimeSpan.FromSeconds(60);
+    
+    /// <summary>Counter for circuit breaker state changes</summary>
+    private static readonly Counter<long> CircuitBreakerCounter = Meter.CreateCounter<long>(
+        "docsummarizer.webfetch.circuit_breaker",
+        "transitions",
+        "Circuit breaker state transitions");
+    
+    #endregion
 
     public WebFetcher(WebFetchConfig config)
     {
         _config = config;
+        _resiliencePipeline = BuildResiliencePipeline();
+    }
+    
+    /// <summary>
+    /// Build Polly resilience pipeline with circuit breaker and retry logic.
+    /// Pipeline order: CircuitBreaker -> Retry
+    /// - Circuit breaker opens after repeated failures to fail fast and protect downstream services
+    /// - Retry handles transient failures with exponential backoff
+    /// - Special handling for 429 with Retry-After header respect
+    /// </summary>
+    private ResiliencePipeline<HttpResponseMessage> BuildResiliencePipeline()
+    {
+        return new ResiliencePipelineBuilder<HttpResponseMessage>()
+            // Circuit breaker - opens after repeated failures to fail fast
+            .AddCircuitBreaker(new CircuitBreakerStrategyOptions<HttpResponseMessage>
+            {
+                FailureRatio = 0.5, // Open circuit if 50% of requests fail
+                MinimumThroughput = CircuitBreakerFailureThreshold,
+                SamplingDuration = CircuitBreakerSamplingDuration,
+                BreakDuration = CircuitBreakerBreakDuration,
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>(ex => !ex.CancellationToken.IsCancellationRequested)
+                    .HandleResult(response => RetryableStatusCodes.Contains(response.StatusCode)),
+                OnOpened = args =>
+                {
+                    CircuitBreakerCounter.Add(1, new KeyValuePair<string, object?>("state", "opened"));
+                    Console.WriteLine($"[WebFetch] Circuit breaker OPENED - requests will fail fast for {args.BreakDuration.TotalSeconds:F0}s");
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = _ =>
+                {
+                    CircuitBreakerCounter.Add(1, new KeyValuePair<string, object?>("state", "closed"));
+                    Console.WriteLine("[WebFetch] Circuit breaker CLOSED - normal operation resumed");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = _ =>
+                {
+                    CircuitBreakerCounter.Add(1, new KeyValuePair<string, object?>("state", "half-opened"));
+                    Console.WriteLine("[WebFetch] Circuit breaker HALF-OPEN - testing with probe request");
+                    return ValueTask.CompletedTask;
+                }
+            })
+            // Retry - handles transient failures with exponential backoff
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage>
+            {
+                MaxRetryAttempts = MaxRetryAttempts,
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true, // Decorrelated jitter for distributed systems
+                Delay = TimeSpan.FromMilliseconds(InitialRetryDelayMs),
+                MaxDelay = TimeSpan.FromMilliseconds(MaxRetryDelayMs),
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TaskCanceledException>(ex => !ex.CancellationToken.IsCancellationRequested)
+                    .HandleResult(response => RetryableStatusCodes.Contains(response.StatusCode)),
+                DelayGenerator = args =>
+                {
+                    // Special handling for 429 - respect Retry-After header
+                    if (args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        RateLimitCounter.Add(1, new KeyValuePair<string, object?>("url.host", args.Context.Properties.GetValue(new ResiliencePropertyKey<string>("host"), "unknown")));
+                        
+                        var retryAfter = args.Outcome.Result.Headers.RetryAfter;
+                        if (retryAfter?.Delta != null)
+                        {
+                            return ValueTask.FromResult<TimeSpan?>(retryAfter.Delta.Value);
+                        }
+                        if (retryAfter?.Date != null)
+                        {
+                            var delay = retryAfter.Date.Value - DateTimeOffset.UtcNow;
+                            if (delay > TimeSpan.Zero && delay <= TimeSpan.FromMinutes(5))
+                            {
+                                return ValueTask.FromResult<TimeSpan?>(delay);
+                            }
+                        }
+                    }
+                    // Return null to use default exponential backoff
+                    return ValueTask.FromResult<TimeSpan?>(null);
+                },
+                OnRetry = args =>
+                {
+                    RetryCounter.Add(1, new KeyValuePair<string, object?>("attempt", args.AttemptNumber));
+                    
+                    var statusCode = args.Outcome.Result?.StatusCode.ToString() ?? "Exception";
+                    var message = args.Outcome.Exception?.Message ?? $"HTTP {statusCode}";
+                    
+                    Console.WriteLine($"[WebFetch] Retry {args.AttemptNumber}/{MaxRetryAttempts} after {args.RetryDelay.TotalSeconds:F1}s: {message}");
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .Build();
     }
 
     /// <summary>
@@ -179,33 +376,85 @@ public class WebFetcher
     /// </summary>
     public async Task<WebFetchResult> FetchAsync(string url, WebFetchMode mode)
     {
-        if (!_config.Enabled)
+        using var activity = ActivitySource.StartActivity("WebFetch", ActivityKind.Client);
+        activity?.SetTag("url.full", url);
+        activity?.SetTag("webfetch.mode", mode.ToString());
+        
+        var stopwatch = Stopwatch.StartNew();
+        var host = "unknown";
+        
+        try
         {
-            throw new InvalidOperationException(
-                "Web fetch is not enabled. Use --web-enabled flag or set WebFetch.Enabled = true in config.");
+            if (!_config.Enabled)
+            {
+                throw new InvalidOperationException(
+                    "Web fetch is not enabled. Use --web-enabled flag or set WebFetch.Enabled = true in config.");
+            }
+
+            // Validate URL structure
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                throw new ArgumentException($"Invalid URL: {url}");
+            }
+            
+            host = uri.Host;
+            activity?.SetTag("url.host", host);
+            activity?.SetTag("url.scheme", uri.Scheme);
+
+            // Validate scheme (only http/https)
+            if (uri.Scheme != "http" && uri.Scheme != "https")
+            {
+                throw new SecurityException($"Blocked scheme '{uri.Scheme}': only HTTP/HTTPS allowed");
+            }
+
+            // Validate host is not blocked (SSRF protection)
+            await ValidateHostAsync(uri);
+            
+            FetchRequestsCounter.Add(1, 
+                new KeyValuePair<string, object?>("mode", mode.ToString()),
+                new KeyValuePair<string, object?>("url.host", host));
+
+            var result = mode switch
+            {
+                WebFetchMode.Simple => await FetchWithSecurityAsync(uri),
+                WebFetchMode.Playwright => await FetchWithPlaywrightAsync(uri),
+                _ => throw new ArgumentOutOfRangeException(nameof(mode), $"Unsupported mode: {mode}")
+            };
+            
+            activity?.SetTag("http.response.content_type", result.ContentType);
+            activity?.SetTag("webfetch.file_extension", result.FileExtension);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            
+            return result;
         }
-
-        // Validate URL structure
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        catch (Exception ex)
         {
-            throw new ArgumentException($"Invalid URL: {url}");
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetTag("error.type", ex.GetType().Name);
+            
+            var errorType = ex switch
+            {
+                SecurityException => "security",
+                HttpRequestException => "http",
+                TaskCanceledException => "timeout",
+                InvalidOperationException => "operation",
+                ArgumentException => "argument",
+                _ => "unknown"
+            };
+            
+            FetchErrorsCounter.Add(1,
+                new KeyValuePair<string, object?>("error.type", errorType),
+                new KeyValuePair<string, object?>("url.host", host));
+            
+            throw;
         }
-
-        // Validate scheme (only http/https)
-        if (uri.Scheme != "http" && uri.Scheme != "https")
+        finally
         {
-            throw new SecurityException($"Blocked scheme '{uri.Scheme}': only HTTP/HTTPS allowed");
+            stopwatch.Stop();
+            FetchDurationHistogram.Record(stopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("mode", mode.ToString()),
+                new KeyValuePair<string, object?>("url.host", host));
         }
-
-        // Validate host is not blocked (SSRF protection)
-        await ValidateHostAsync(uri);
-
-        return mode switch
-        {
-            WebFetchMode.Simple => await FetchWithSecurityAsync(uri),
-            WebFetchMode.Playwright => await FetchWithPlaywrightAsync(uri),
-            _ => throw new ArgumentOutOfRangeException(nameof(mode), $"Unsupported mode: {mode}")
-        };
     }
 
     #region SSRF Protection
@@ -304,10 +553,14 @@ public class WebFetcher
     #region Secure Fetch
 
     /// <summary>
-    /// Fetch with security controls: redirect limits, size limits, content-type validation
+    /// Fetch with security controls: redirect limits, size limits, content-type validation.
+    /// Uses Polly resilience pipeline for retries on transient failures and rate limiting.
     /// </summary>
     private async Task<WebFetchResult> FetchWithSecurityAsync(Uri originalUri)
     {
+        using var activity = ActivitySource.StartActivity("FetchWithSecurity", ActivityKind.Client);
+        activity?.SetTag("url.original", originalUri.ToString());
+        
         using var handler = new HttpClientHandler
         {
             AllowAutoRedirect = false, // Handle redirects manually for security
@@ -333,26 +586,61 @@ public class WebFetcher
                 await ValidateHostAsync(currentUri);
             }
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, currentUri);
-            
-            // Accept only safe content types
-            request.Headers.Accept.Clear();
-            request.Headers.Accept.ParseAdd("text/html, application/xhtml+xml, application/pdf, text/plain, text/markdown, application/json, image/png, image/jpeg, image/tiff, image/webp");
-
             HttpResponseMessage response;
             try
             {
-                response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                // Execute with Polly resilience pipeline (retry on transient failures, rate limiting)
+                response = await _resiliencePipeline.ExecuteAsync(
+                    async token =>
+                    {
+                        // Clone request for retry (HttpRequestMessage can only be sent once)
+                        using var clonedRequest = new HttpRequestMessage(HttpMethod.Get, currentUri);
+                        clonedRequest.Headers.Accept.Clear();
+                        clonedRequest.Headers.Accept.ParseAdd("text/html, application/xhtml+xml, application/pdf, text/plain, text/markdown, application/json, image/png, image/jpeg, image/tiff, image/webp");
+                        
+                        var resp = await httpClient.SendAsync(clonedRequest, HttpCompletionOption.ResponseHeadersRead, token);
+                        
+                        // For non-redirect responses, check if we should handle status code errors
+                        if ((int)resp.StatusCode >= 400)
+                        {
+                            // Permanent failures - throw immediately without retry
+                            if (PermanentFailureStatusCodes.Contains(resp.StatusCode))
+                            {
+                                var errorMessage = resp.StatusCode switch
+                                {
+                                    HttpStatusCode.Forbidden => $"Access forbidden (403): {currentUri}. The server is blocking access - this may require authentication or the resource is restricted.",
+                                    HttpStatusCode.Unauthorized => $"Unauthorized (401): {currentUri}. Authentication is required.",
+                                    HttpStatusCode.NotFound => $"Not found (404): {currentUri}. The resource does not exist.",
+                                    HttpStatusCode.Gone => $"Gone (410): {currentUri}. The resource has been permanently removed.",
+                                    _ => $"HTTP {(int)resp.StatusCode} ({resp.StatusCode}): {currentUri}"
+                                };
+                                throw new WebFetchPermanentException(errorMessage, resp.StatusCode);
+                            }
+                        }
+                        
+                        return resp;
+                    }, 
+                    CancellationToken.None);
+            }
+            catch (WebFetchPermanentException ex)
+            {
+                // Re-throw permanent failures with clear message
+                activity?.SetTag("http.response.status_code", (int)ex.StatusCode);
+                throw new HttpRequestException(ex.Message, ex, ex.StatusCode);
             }
             catch (HttpRequestException ex)
             {
                 throw new InvalidOperationException($"Failed to fetch {currentUri}: {ex.Message}", ex);
             }
 
+            activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+
             // Handle redirects manually
             if ((int)response.StatusCode >= 300 && (int)response.StatusCode < 400)
             {
                 redirectCount++;
+                activity?.SetTag("http.redirect_count", redirectCount);
+                
                 if (redirectCount > MaxRedirects)
                 {
                     throw new SecurityException($"Too many redirects ({MaxRedirects} max)");
@@ -912,6 +1200,25 @@ public class SecurityException : Exception
 {
     public SecurityException(string message) : base(message) { }
     public SecurityException(string message, Exception inner) : base(message, inner) { }
+}
+
+/// <summary>
+/// Exception for permanent HTTP failures that should not be retried (403, 404, etc.)
+/// </summary>
+public class WebFetchPermanentException : Exception
+{
+    public HttpStatusCode StatusCode { get; }
+    
+    public WebFetchPermanentException(string message, HttpStatusCode statusCode) : base(message)
+    {
+        StatusCode = statusCode;
+    }
+    
+    public WebFetchPermanentException(string message, HttpStatusCode statusCode, Exception inner) 
+        : base(message, inner)
+    {
+        StatusCode = statusCode;
+    }
 }
 
 /// <summary>
