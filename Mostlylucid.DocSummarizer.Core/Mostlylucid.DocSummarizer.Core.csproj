@@ -67,7 +67,10 @@
         <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.1" />
         
         <!-- ML/Embeddings -->
-        <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
+        <!-- GPU support: DirectML on Windows, CUDA on Linux, CPU-only on macOS -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.23.2" Condition="$(RuntimeIdentifier.StartsWith('linux'))" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.0" Condition="$(RuntimeIdentifier.StartsWith('osx')) OR '$(RuntimeIdentifier)' == ''" />
         <PackageReference Include="Markdig" Version="0.44.0" />
         
         <!-- Document Processing -->

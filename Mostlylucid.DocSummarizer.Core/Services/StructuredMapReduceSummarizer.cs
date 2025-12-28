@@ -66,7 +66,7 @@ public class StructuredMapReduceSummarizer
         Console.WriteLine($"Stitcher Phase: Deduplicating entities...");
 
         // Stitcher phase: deduplicate and resolve entities
-        var stitcherOutput = await RunStitcherAsync(mapOutputs);
+        var stitcherOutput = RunStitcher(mapOutputs);
 
         Console.WriteLine($"Reduce Phase: Synthesizing final summary...");
 
@@ -406,7 +406,7 @@ public class StructuredMapReduceSummarizer
 
     #region Stitcher Phase
 
-    private async Task<StitcherOutput> RunStitcherAsync(List<StructuredMapOutput> mapOutputs)
+    private StitcherOutput RunStitcher(List<StructuredMapOutput> mapOutputs)
     {
         // Collect all entities across chunks
         var allEntities = mapOutputs

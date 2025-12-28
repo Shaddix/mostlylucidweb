@@ -1,0 +1,93 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS dotnet-build
+
+WORKDIR /src
+
+# Copy the entire solution for building
+COPY Mostlylucid.DocSummarizer/ ./Mostlylucid.DocSummarizer/
+COPY Mostlylucid.DocSummarizer.Core/ ./Mostlylucid.DocSummarizer.Core/
+
+# Restore and publish for Linux x64
+RUN dotnet publish Mostlylucid.DocSummarizer/Mostlylucid.DocSummarizer.csproj \
+    -c Release \
+    -f net10.0 \
+    -r linux-x64 \
+    --self-contained \
+    -o /app/publish
+
+# List what was published
+RUN ls -la /app/publish/
+
+# --- Node.js test stage ---
+FROM node:20-slim
+
+# Install ICU for .NET globalization support and CA certs for HTTPS
+RUN apt-get update && apt-get install -y libicu-dev ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built CLI from dotnet stage
+COPY --from=dotnet-build /app/publish/ ./vendor/
+
+# Verify binary works
+RUN chmod +x ./vendor/docsummarizer && ./vendor/docsummarizer --version
+
+# Copy package files
+COPY docsummarizer-node/package*.json ./
+COPY docsummarizer-node/tsconfig.json ./
+COPY docsummarizer-node/tsup.config.ts ./
+
+# Copy source
+COPY docsummarizer-node/src/ ./src/
+COPY docsummarizer-node/scripts/ ./scripts/
+COPY docsummarizer-node/tests/ ./tests/
+
+# Install dependencies (skip binary download - we already have it)
+ENV DOCSUMMARIZER_SKIP_DOWNLOAD=1
+RUN npm ci
+
+# Build
+RUN npm run build
+
+# Create bin directory with CLI wrapper
+RUN mkdir -p bin && \
+    cat > bin/cli.js << 'EOFCLI'
+#!/usr/bin/env node
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+const isWindows = process.platform === 'win32';
+const exeName = isWindows ? 'docsummarizer.exe' : 'docsummarizer';
+const vendorPath = path.join(__dirname, '..', 'vendor', exeName);
+const envPath = process.env.DOCSUMMARIZER_PATH;
+
+if (process.argv[2] === 'doctor') {
+  console.log('DocSummarizer Diagnostics');
+  console.log('=========================');
+  console.log('Platform: ' + process.platform + '/' + process.arch);
+  console.log('Node: ' + process.version);
+  console.log('CLI found: ' + (fs.existsSync(vendorPath) ? vendorPath : (envPath || 'not found')));
+  console.log('Vendor path: ' + vendorPath);
+  console.log('Env DOCSUMMARIZER_PATH: ' + (envPath || '(not set)'));
+}
+
+let cliPath = null;
+if (envPath && fs.existsSync(envPath)) {
+  cliPath = envPath;
+} else if (fs.existsSync(vendorPath)) {
+  cliPath = vendorPath;
+}
+
+if (!cliPath) {
+  console.error('docsummarizer CLI not found.');
+  console.error('Run: npx @mostlylucid/docsummarizer postinstall');
+  process.exit(1);
+}
+
+const child = spawn(cliPath, process.argv.slice(2), { stdio: 'inherit' });
+child.on('close', (code) => process.exit(code || 0));
+EOFCLI
+RUN chmod +x bin/cli.js
+
+# Run tests
+CMD ["npm", "test"]

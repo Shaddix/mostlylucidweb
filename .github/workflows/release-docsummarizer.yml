@@ -127,7 +127,8 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         cd ./publish/${{ matrix.rid }}
-        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json README.md *.dll
+        # Include all files - self-contained publish includes everything needed
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip .
       shell: bash
 
     - name: Create archive (Linux)
@@ -135,7 +136,8 @@ jobs:
       run: |
         cd ./publish/${{ matrix.rid }}
         chmod +x ${{ matrix.executable }}
-        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md *.so 2>/dev/null || tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+        # Include all files - self-contained publish includes everything needed
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz .
       shell: bash
 
     - name: Create archive (macOS)
@@ -143,7 +145,8 @@ jobs:
       run: |
         cd ./publish/${{ matrix.rid }}
         chmod +x ${{ matrix.executable }}
-        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md *.dylib 2>/dev/null || tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+        # Include all files - self-contained publish includes everything needed
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz .
       shell: bash
 
     - name: Upload artifact

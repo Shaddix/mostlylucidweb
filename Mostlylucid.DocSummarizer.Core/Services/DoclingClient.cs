@@ -732,11 +732,11 @@ public class DoclingClient : IDisposable
     /// <summary>
     /// Detect GPU by timing a small conversion (fallback method)
     /// </summary>
-    private async Task<bool?> DetectGpuByTimingAsync()
+    private Task<bool?> DetectGpuByTimingAsync()
     {
         // This is a rough heuristic - don't use unless needed
         // A GPU typically processes pages in <1 second each, CPU takes 3-10 seconds
-        return null; // For now, don't do timing detection - too invasive
+        return Task.FromResult<bool?>(null); // For now, don't do timing detection - too invasive
     }
     
     /// <summary>

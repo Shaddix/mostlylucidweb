@@ -529,7 +529,7 @@ public class DocumentSummarizer
             if (mode == SummarizationMode.Auto)
             {
                 var llmAvailable = await IsLlmAvailableAsync();
-                effectiveMode = await AutoSelectModeAsync(chunks, markdownForBert, focus, llmAvailable);
+                effectiveMode = AutoSelectMode(chunks, markdownForBert, focus, llmAvailable);
                 if (_verbose) Console.WriteLine($"[Auto] Selected mode: {effectiveMode}");
             }
 
@@ -901,7 +901,7 @@ public class DocumentSummarizer
     /// 
     /// BertRag is also used when a focus query is provided (retrieval-optimized).
     /// </summary>
-    private async Task<SummarizationMode> AutoSelectModeAsync(
+    private SummarizationMode AutoSelectMode(
         List<DocumentChunk> chunks,
         string? markdown,
         string? focus,
