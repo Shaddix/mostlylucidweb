@@ -10,6 +10,7 @@ This is **Part 3** of the DocSummarizer series:
 1. **[Part 1: Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag)** - The architecture and why the pipeline approach beats naive LLM calls
 2. **[Part 2: Using the Tool](/blog/docsummarizer-tool)** - Quick-start guide for the CLI
 3. **Part 3: Advanced Concepts** (this article) - The "I went too far" technical deep dive
+4. **[Part 4: Building RAG Pipelines](/blog/docsummarizer-rag-pipeline)** - Use the NuGet library to build your own RAG apps
 
 ---
 

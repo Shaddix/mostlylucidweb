@@ -20,6 +20,7 @@ This is **Part 1** of the DocSummarizer series:
 1. **Part 1: Architecture & Patterns** (this article) - Why the pipeline approach works and how to build it
 2. **[Part 2: Using the Tool](/blog/docsummarizer-tool)** - Quick-start guide: installation, modes, templates
 3. **[Part 3: Advanced Concepts](/blog/docsummarizer-advanced-concepts)** - Deep dive: BERT embeddings, ONNX, hybrid search, failure modes
+4. **[Part 4: Building RAG Pipelines](/blog/docsummarizer-rag-pipeline)** - Use the NuGet library to build your own RAG apps
 
 ---
 

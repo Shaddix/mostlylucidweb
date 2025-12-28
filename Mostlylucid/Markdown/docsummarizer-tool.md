@@ -4,10 +4,9 @@
 <datetime class="hidden">2025-12-21T11:00</datetime>
 
 [![GitHub release](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=docsummarizer*&label=docsummarizer)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
-[![Version](https://img.shields.io/badge/version-3.1.0-blue)](https://github.com/scottgal/mostlylucidweb/releases?q=docsummarizer)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 
-This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval.
+This is **Part 2** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture and patterns, [Part 3](/blog/docsummarizer-advanced-concepts) for the deep technical dive into embeddings and retrieval, or [Part 4](/blog/docsummarizer-rag-pipeline) to use the NuGet library for building your own RAG apps.
 
 > **Turn documents or URLs into evidence-grounded summaries - for humans or AI agents - without sending anything to the cloud.**
 

@@ -256,6 +256,182 @@ public class ExtractionResult
     public Dictionary<SegmentType, int> SegmentCounts => AllSegments
         .GroupBy(s => s.Type)
         .ToDictionary(g => g.Key, g => g.Count());
+    
+    // Lazy-initialized lookup dictionaries for O(1) segment access
+    private Dictionary<string, Segment>? _segmentLookup;
+    private Dictionary<int, Segment>? _segmentByIndex;
+    
+    /// <summary>
+    /// Fast lookup of segments by ID. Useful for resolving citations like [s42].
+    /// </summary>
+    public Dictionary<string, Segment> SegmentsById => 
+        _segmentLookup ??= AllSegments.ToDictionary(s => s.Id);
+    
+    /// <summary>
+    /// Fast lookup of segments by their 0-based index in the document.
+    /// </summary>
+    public Dictionary<int, Segment> SegmentsByIndex =>
+        _segmentByIndex ??= AllSegments.ToDictionary(s => s.Index);
+    
+    /// <summary>
+    /// Get a segment by its ID. Returns null if not found.
+    /// </summary>
+    /// <param name="segmentId">The segment ID (e.g., "s42")</param>
+    /// <returns>The segment, or null if not found</returns>
+    public Segment? GetSegment(string segmentId) =>
+        SegmentsById.TryGetValue(segmentId, out var segment) ? segment : null;
+    
+    /// <summary>
+    /// Get a segment by its 0-based index in the document.
+    /// </summary>
+    /// <param name="index">The segment index (0, 1, 2, ...)</param>
+    /// <returns>The segment, or null if not found</returns>
+    public Segment? GetSegmentByIndex(int index) =>
+        SegmentsByIndex.TryGetValue(index, out var segment) ? segment : null;
+    
+    /// <summary>
+    /// Find the segment containing a specific character position in the original document.
+    /// Useful for highlighting or linking back to source text.
+    /// </summary>
+    /// <param name="charPosition">Character offset in the original document</param>
+    /// <returns>The segment containing that position, or null if not found</returns>
+    public Segment? GetSegmentAtPosition(int charPosition) =>
+        AllSegments.FirstOrDefault(s => charPosition >= s.StartChar && charPosition < s.EndChar);
+    
+    /// <summary>
+    /// Find all segments on a specific page (for PDF documents).
+    /// </summary>
+    /// <param name="pageNumber">The 1-based page number</param>
+    /// <returns>All segments on that page, ordered by position</returns>
+    public IEnumerable<Segment> GetSegmentsOnPage(int pageNumber) =>
+        AllSegments.Where(s => s.PageNumber == pageNumber).OrderBy(s => s.Index);
+    
+    /// <summary>
+    /// Find all segments within a character range in the original document.
+    /// </summary>
+    /// <param name="startChar">Start of range (inclusive)</param>
+    /// <param name="endChar">End of range (exclusive)</param>
+    /// <returns>Segments that overlap with the range</returns>
+    public IEnumerable<Segment> GetSegmentsInRange(int startChar, int endChar) =>
+        AllSegments.Where(s => s.StartChar < endChar && s.EndChar > startChar).OrderBy(s => s.StartChar);
+    
+    /// <summary>
+    /// Try to get a segment by its ID.
+    /// </summary>
+    /// <param name="segmentId">The segment ID</param>
+    /// <param name="segment">The segment if found</param>
+    /// <returns>True if found, false otherwise</returns>
+    public bool TryGetSegment(string segmentId, out Segment? segment) =>
+        SegmentsById.TryGetValue(segmentId, out segment);
+    
+    /// <summary>
+    /// Get the source location of a segment for highlighting in the original document.
+    /// Returns character offsets and line number that can be used to extract/highlight
+    /// the exact text in the source.
+    /// </summary>
+    /// <param name="segmentId">The segment ID</param>
+    /// <returns>Source location info, or null if segment not found</returns>
+    public SourceLocation? GetSourceLocation(string segmentId)
+    {
+        if (!TryGetSegment(segmentId, out var segment) || segment == null)
+            return null;
+            
+        return new SourceLocation(
+            SegmentId: segment.Id,
+            StartChar: segment.StartChar,
+            EndChar: segment.EndChar,
+            LineNumber: segment.LineNumber,
+            PageNumber: segment.PageNumber,
+            SectionTitle: segment.SectionTitle,
+            HeadingPath: segment.HeadingPath
+        );
+    }
+    
+    /// <summary>
+    /// Extract the highlighted text from the original document using segment location info.
+    /// </summary>
+    /// <param name="originalDocument">The original document text</param>
+    /// <param name="segmentId">The segment ID to highlight</param>
+    /// <param name="contextChars">Number of characters of context to include before/after (default 0)</param>
+    /// <returns>The extracted text with optional context, or null if segment not found</returns>
+    public HighlightedText? GetHighlightedText(string originalDocument, string segmentId, int contextChars = 0)
+    {
+        var location = GetSourceLocation(segmentId);
+        if (location == null) return null;
+        
+        var contextStart = Math.Max(0, location.StartChar - contextChars);
+        var contextEnd = Math.Min(originalDocument.Length, location.EndChar + contextChars);
+        
+        return new HighlightedText(
+            FullText: originalDocument[contextStart..contextEnd],
+            HighlightStart: location.StartChar - contextStart,
+            HighlightEnd: location.EndChar - contextStart,
+            BeforeContext: contextChars > 0 ? originalDocument[contextStart..location.StartChar] : "",
+            SegmentText: originalDocument[location.StartChar..location.EndChar],
+            AfterContext: contextChars > 0 ? originalDocument[location.EndChar..contextEnd] : "",
+            Location: location
+        );
+    }
+}
+
+/// <summary>
+/// Source location of a segment in the original document.
+/// Use this to highlight or link back to the exact source text.
+/// </summary>
+/// <param name="SegmentId">The segment's unique ID</param>
+/// <param name="StartChar">Character offset where segment starts (0-based)</param>
+/// <param name="EndChar">Character offset where segment ends (exclusive)</param>
+/// <param name="LineNumber">Line number in source (1-based, if available)</param>
+/// <param name="PageNumber">Page number for PDFs (1-based, if available)</param>
+/// <param name="SectionTitle">Section heading the segment belongs to</param>
+/// <param name="HeadingPath">Full heading path (e.g., "Chapter 1 > Intro")</param>
+public record SourceLocation(
+    string SegmentId,
+    int StartChar,
+    int EndChar,
+    int? LineNumber,
+    int? PageNumber,
+    string SectionTitle,
+    string HeadingPath
+)
+{
+    /// <summary>Length of the segment in characters</summary>
+    public int Length => EndChar - StartChar;
+}
+
+/// <summary>
+/// Extracted text from the original document with highlight positions.
+/// Use this to display the segment with surrounding context.
+/// </summary>
+/// <param name="FullText">The full extracted text including context</param>
+/// <param name="HighlightStart">Start position of the segment within FullText</param>
+/// <param name="HighlightEnd">End position of the segment within FullText</param>
+/// <param name="BeforeContext">Text before the segment (if context was requested)</param>
+/// <param name="SegmentText">The actual segment text</param>
+/// <param name="AfterContext">Text after the segment (if context was requested)</param>
+/// <param name="Location">The source location info</param>
+public record HighlightedText(
+    string FullText,
+    int HighlightStart,
+    int HighlightEnd,
+    string BeforeContext,
+    string SegmentText,
+    string AfterContext,
+    SourceLocation Location
+)
+{
+    /// <summary>
+    /// Format as HTML with the segment wrapped in a highlight span.
+    /// </summary>
+    /// <param name="highlightClass">CSS class for the highlight span (default: "highlight")</param>
+    public string ToHtml(string highlightClass = "highlight") =>
+        $"{System.Net.WebUtility.HtmlEncode(BeforeContext)}<span class=\"{highlightClass}\">{System.Net.WebUtility.HtmlEncode(SegmentText)}</span>{System.Net.WebUtility.HtmlEncode(AfterContext)}";
+    
+    /// <summary>
+    /// Format as Markdown with the segment wrapped in **bold**.
+    /// </summary>
+    public string ToMarkdown() =>
+        $"{BeforeContext}**{SegmentText}**{AfterContext}";
 }
 
 /// <summary>
