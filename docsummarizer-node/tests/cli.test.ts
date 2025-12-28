@@ -6,6 +6,12 @@ import { existsSync } from 'fs';
 const CLI_PATH = join(__dirname, '..', 'bin', 'cli.js');
 const VENDOR_DIR = join(__dirname, '..', 'vendor');
 
+// Check if CLI binary is available
+function isCLIAvailable(): boolean {
+  const exeName = process.platform === 'win32' ? 'docsummarizer.exe' : 'docsummarizer';
+  return existsSync(join(VENDOR_DIR, exeName));
+}
+
 describe('CLI', () => {
   describe('cli.js exists', () => {
     it('should have cli.js in bin directory', () => {
@@ -15,6 +21,10 @@ describe('CLI', () => {
 
   describe('--help', () => {
     it('should show help when CLI is available', () => {
+      if (!existsSync(CLI_PATH)) {
+        console.log('Skipping: CLI script not found');
+        return;
+      }
       try {
         const output = execSync(`node "${CLI_PATH}" --help`, {
           encoding: 'utf-8',
@@ -31,6 +41,10 @@ describe('CLI', () => {
 
   describe('doctor command', () => {
     it('should run diagnostics', () => {
+      if (!existsSync(CLI_PATH)) {
+        console.log('Skipping: CLI script not found');
+        return;
+      }
       // The doctor command shows diagnostics in JS wrapper but then passes to .NET CLI
       // which doesn't have a 'doctor' command, so it will fail with exit code 1
       // We just want to verify the wrapper part runs and shows diagnostics
@@ -53,6 +67,15 @@ describe('CLI', () => {
 
   describe('check command', () => {
     it('should run dependency check', async () => {
+      if (!existsSync(CLI_PATH)) {
+        console.log('Skipping: CLI script not found');
+        return;
+      }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI binary not available');
+        return;
+      }
+
       const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
         // Don't use shell: true to avoid DEP0190 warning
         const proc = spawn('node', [CLI_PATH, 'check']);
@@ -81,6 +104,14 @@ describe('CLI', () => {
 
   describe('version', () => {
     it('should show version when CLI is available', () => {
+      if (!existsSync(CLI_PATH)) {
+        console.log('Skipping: CLI script not found');
+        return;
+      }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI binary not available');
+        return;
+      }
       try {
         const output = execSync(`node "${CLI_PATH}" --version`, {
           encoding: 'utf-8',

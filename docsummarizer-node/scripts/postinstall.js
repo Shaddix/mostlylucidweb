@@ -25,9 +25,21 @@ const { createUnzip } = require('zlib');
 const GITHUB_REPO = 'scottgal/mostlylucidweb';
 const RELEASE_TAG_PREFIX = 'docsummarizer-v';
 
-// Skip download in CI or when DOCSUMMARIZER_SKIP_DOWNLOAD is set
-if (process.env.CI || process.env.DOCSUMMARIZER_SKIP_DOWNLOAD) {
-  console.log('Skipping binary download (CI or DOCSUMMARIZER_SKIP_DOWNLOAD set)');
+// Skip download when DOCSUMMARIZER_SKIP_DOWNLOAD is set
+// In CI, we skip by default unless DOCSUMMARIZER_FORCE_DOWNLOAD is set
+const skipDownload = process.env.DOCSUMMARIZER_SKIP_DOWNLOAD === '1' || 
+  process.env.DOCSUMMARIZER_SKIP_DOWNLOAD === 'true';
+const forceDownload = process.env.DOCSUMMARIZER_FORCE_DOWNLOAD === '1' || 
+  process.env.DOCSUMMARIZER_FORCE_DOWNLOAD === 'true';
+const isCI = process.env.CI === 'true' || process.env.CI === '1' || !!process.env.GITHUB_ACTIONS;
+
+if (skipDownload) {
+  console.log('Skipping binary download (DOCSUMMARIZER_SKIP_DOWNLOAD set)');
+  process.exit(0);
+}
+
+if (isCI && !forceDownload) {
+  console.log('Skipping binary download in CI (set DOCSUMMARIZER_FORCE_DOWNLOAD=1 to override)');
   process.exit(0);
 }
 

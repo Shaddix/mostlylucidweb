@@ -78,7 +78,15 @@ describe('Package files', () => {
   });
 
   it('should have bin/cli.js', () => {
-    expect(existsSync(join(PKG_ROOT, 'bin', 'cli.js'))).toBe(true);
+    const binPath = join(PKG_ROOT, 'bin', 'cli.js');
+    if (!existsSync(binPath)) {
+      console.log('bin/cli.js not found at:', binPath);
+      // In development/CI the bin folder should exist
+      // List what's actually in the package root
+      const fs = require('fs');
+      console.log('Package root contents:', fs.readdirSync(PKG_ROOT));
+    }
+    expect(existsSync(binPath)).toBe(true);
   });
 
   it('should have scripts/postinstall.js', () => {

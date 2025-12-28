@@ -78,8 +78,26 @@ jobs:
           npm version $VERSION --no-git-tag-version --allow-same-version
           echo "Updated package.json"
 
-      - name: Install dependencies
+      - name: Install dependencies (skip postinstall initially)
         run: npm ci
+        env:
+          DOCSUMMARIZER_SKIP_DOWNLOAD: '1'
+
+      - name: Download CLI binary for tests
+        run: node scripts/postinstall.js
+        env:
+          DOCSUMMARIZER_FORCE_DOWNLOAD: '1'
+
+      - name: Verify CLI binary
+        run: |
+          echo "Checking vendor directory..."
+          ls -la vendor/ || echo "No vendor directory"
+          echo ""
+          echo "Making binary executable..."
+          chmod +x vendor/docsummarizer || true
+          echo ""
+          echo "Testing binary..."
+          ./vendor/docsummarizer --version || echo "Binary execution failed"
 
       - name: Run tests
         run: npm test

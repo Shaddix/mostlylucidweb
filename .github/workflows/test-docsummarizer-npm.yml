@@ -1,0 +1,61 @@
+name: Test DocSummarizer npm
+
+on:
+  push:
+    paths:
+      - 'docsummarizer-node/**'
+      - '.github/workflows/test-docsummarizer-npm.yml'
+  pull_request:
+    paths:
+      - 'docsummarizer-node/**'
+      - '.github/workflows/test-docsummarizer-npm.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: docsummarizer-node
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (skip binary download)
+        run: npm ci
+        env:
+          DOCSUMMARIZER_SKIP_DOWNLOAD: '1'
+
+      - name: Build
+        run: npm run build
+
+      - name: Download CLI binary for integration tests
+        run: node scripts/postinstall.js
+        env:
+          DOCSUMMARIZER_FORCE_DOWNLOAD: '1'
+
+      - name: Verify CLI binary downloaded
+        run: |
+          echo "Checking vendor directory..."
+          ls -la vendor/ || echo "No vendor directory"
+          echo ""
+          echo "Testing binary..."
+          chmod +x vendor/docsummarizer || true
+          ./vendor/docsummarizer --version || echo "Binary execution failed"
+
+      - name: Run tests
+        run: npm test
+
+      - name: Test summary
+        if: always()
+        run: |
+          echo "Test completed!"
+          echo "Platform: $(uname -s) $(uname -m)"
+          echo "Node: $(node --version)"

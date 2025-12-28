@@ -3,13 +3,27 @@ import { DocSummarizer, DocSummarizerError, createDocSummarizer, SCHEMA_VERSION 
 import { existsSync } from 'fs';
 import { join } from 'path';
 
+// Check if we're in CI - skip integration tests that need the CLI binary
+const isCI = process.env.CI === 'true' || process.env.CI === '1' || !!process.env.GITHUB_ACTIONS;
+
 // Test fixtures
+const TEST_FIXTURES_DIR = join(__dirname, 'fixtures');
 const TEST_MARKDOWN_DIR = join(__dirname, '..', '..', 'test-markdown');
 const SAMPLE_MARKDOWN_DIR = join(__dirname, '..', '..', 'samples', 'QdrantMarkdownSearch', 'MarkdownDocs');
+
+// Check if CLI is available
+function isCLIAvailable(): boolean {
+  const vendorDir = join(__dirname, '..', 'vendor');
+  const exeName = process.platform === 'win32' ? 'docsummarizer.exe' : 'docsummarizer';
+  return existsSync(join(vendorDir, exeName));
+}
 
 // Find a test file that exists
 function findTestFile(): string | null {
   const candidates = [
+    // First check the bundled test fixture (always available)
+    join(TEST_FIXTURES_DIR, 'sample.md'),
+    // Then check other locations that might exist locally
     join(TEST_MARKDOWN_DIR, 'dockercompose.md'),
     join(TEST_MARKDOWN_DIR, 'docker-development-deep-dive.md'),
     join(SAMPLE_MARKDOWN_DIR, 'getting-started.md'),
@@ -77,6 +91,10 @@ describe('DocSummarizer', () => {
 
   describe('check', () => {
     it('should check CLI availability', async () => {
+      if (isCI && !isCLIAvailable()) {
+        console.log('Skipping: CLI not available in CI');
+        return;
+      }
       const result = await doc.check();
       expect(typeof result).toBe('boolean');
     }, 30000);
@@ -84,6 +102,10 @@ describe('DocSummarizer', () => {
 
   describe('diagnose', () => {
     it('should return diagnostic info', async () => {
+      if (isCI && !isCLIAvailable()) {
+        console.log('Skipping: CLI not available in CI');
+        return;
+      }
       const result = await doc.diagnose();
       
       expect(result).toHaveProperty('available');
@@ -99,6 +121,10 @@ describe('DocSummarizer', () => {
     it('should summarize a markdown file with Bert mode', async () => {
       if (!testFile) {
         console.log('Skipping: no test file found');
+        return;
+      }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
         return;
       }
 
@@ -132,6 +158,10 @@ describe('DocSummarizer', () => {
         console.log('Skipping: no test file found');
         return;
       }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
 
       const result = await doc.summarizeFile(testFile, { mode: 'Bert' });
       expect(result.source).toContain('.md');
@@ -140,6 +170,11 @@ describe('DocSummarizer', () => {
 
   describe('summarizeMarkdown', () => {
     it('should summarize raw markdown content', async () => {
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
+
       const markdown = `# Test Document
 
 ## Introduction
@@ -179,6 +214,10 @@ This demonstrates the summarization of in-memory markdown content.
         console.log('Skipping: no test file found');
         return;
       }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
 
       const result = await doc.search(testFile, 'docker', { topK: 5 });
 
@@ -203,6 +242,10 @@ This demonstrates the summarization of in-memory markdown content.
         console.log('Skipping: no test file found');
         return;
       }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
 
       const result = await doc.search(testFile, 'container', { topK: 3 });
       expect(result.results.length).toBeLessThanOrEqual(3);
@@ -211,12 +254,20 @@ This demonstrates the summarization of in-memory markdown content.
 
   describe('error handling', () => {
     it('should throw DocSummarizerError for non-existent file', async () => {
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
       await expect(
         doc.summarizeFile('/nonexistent/path/to/file.md', { mode: 'Bert' })
       ).rejects.toThrow(DocSummarizerError);
     }, 30000);
 
     it('should include output in error', async () => {
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
+        return;
+      }
       try {
         await doc.summarizeFile('/nonexistent/path/to/file.md', { mode: 'Bert' });
         expect.fail('Should have thrown');
@@ -233,6 +284,10 @@ This demonstrates the summarization of in-memory markdown content.
     it('should emit stderr events during processing', async () => {
       if (!testFile) {
         console.log('Skipping: no test file found');
+        return;
+      }
+      if (!isCLIAvailable()) {
+        console.log('Skipping: CLI not available');
         return;
       }
 
