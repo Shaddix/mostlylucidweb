@@ -72,6 +72,25 @@ Date: 2015-06-02
 ArXiv: 1506.01057
 ```
 
+#### Fully Configurable Scoring Components
+
+All hardcoded scoring values now have sensible defaults but are fully configurable:
+
+**Hierarchical Encoder** (`HierarchicalEncoderConfig`):
+- Section context blending weight (default: 15%)
+- Per-section-type boosts (introduction: 1.3x, conclusion: 1.25x, results: 1.2x)
+- Position boosts (first sentence: 1.2x, last sentence: 1.1x)
+- Heading level boosts (H1: 1.15x, H2: 1.1x, H3: 1.05x)
+
+**Cross-Encoder Reranker** (`RerankerConfig`):
+- 12 configurable scoring signals
+- Term overlap, exact phrase, heading match, density, position weights
+
+**Adaptive Sampling** (`RetrievalConfig`):
+- Document size thresholds (50, 150, 400, 1000 segments)
+- Coverage percentages per tier (50%, 40%, 20%, 10%, 5%)
+- All configurable via JSON config
+
 #### Clearer Coverage Labels
 
 Changed from misleading "Coverage: 5%" to:

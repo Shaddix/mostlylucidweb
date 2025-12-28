@@ -34,7 +34,8 @@
       "Bash(webpack --mode development)",
       "Bash(npx webpack:*)",
       "Bash(node check-network.js:*)",
-      "Bash(dotnet run:*)"
+      "Bash(dotnet run:*)",
+      "Bash(dotnet clean:*)"
     ],
     "deny": [],
     "ask": []

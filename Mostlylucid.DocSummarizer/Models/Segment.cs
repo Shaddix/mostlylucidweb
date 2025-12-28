@@ -457,4 +457,56 @@ public class RetrievalConfig
     /// Default: 1.5
     /// </summary>
     public double NarrativeBoost { get; set; } = 1.5;
+
+    // === Adaptive Sampling Thresholds ===
+    // These define the segment count boundaries for different coverage tiers.
+    // Coverage scales inversely with document size (smaller docs = higher coverage).
+
+    /// <summary>
+    /// Very small document threshold. Documents with fewer segments get 40-50% coverage.
+    /// Default: 50
+    /// </summary>
+    public int VerySmallDocThreshold { get; set; } = 50;
+
+    /// <summary>
+    /// Small document threshold. Documents between VerySmall and this get 20-40% coverage.
+    /// Default: 150
+    /// </summary>
+    public int SmallDocThreshold { get; set; } = 150;
+
+    /// <summary>
+    /// Medium document threshold. Documents between Small and this get 10-20% coverage.
+    /// Default: 400
+    /// </summary>
+    public int MediumDocThreshold { get; set; } = 400;
+
+    /// <summary>
+    /// Large document threshold. Documents between Medium and this get 5-10% coverage.
+    /// Default: 1000
+    /// </summary>
+    public int LargeDocThreshold { get; set; } = 1000;
+
+    /// <summary>
+    /// Maximum coverage percentage for very small documents.
+    /// Default: 50.0
+    /// </summary>
+    public double MaxCoveragePercent { get; set; } = 50.0;
+
+    /// <summary>
+    /// Coverage percentage at the very small/small boundary.
+    /// Default: 40.0
+    /// </summary>
+    public double SmallDocCoverage { get; set; } = 40.0;
+
+    /// <summary>
+    /// Coverage percentage at the small/medium boundary.
+    /// Default: 20.0
+    /// </summary>
+    public double MediumDocCoverage { get; set; } = 20.0;
+
+    /// <summary>
+    /// Coverage percentage at the medium/large boundary.
+    /// Default: 10.0
+    /// </summary>
+    public double LargeDocCoverage { get; set; } = 10.0;
 }

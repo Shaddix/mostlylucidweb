@@ -3,6 +3,61 @@ using Mostlylucid.DocSummarizer.Models;
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
+/// Configuration for hierarchical document encoding.
+/// All values have sensible defaults - only override if you need to tune behavior.
+/// </summary>
+public class HierarchicalEncoderConfig
+{
+    // === Embedding blending ===
+
+    /// <summary>
+    /// Weight for section context when blending with segment embedding (0-1).
+    /// Higher values = more section influence, lower = more individual segment focus.
+    /// Default: 0.15 (15% section context)
+    /// </summary>
+    public float SectionContextWeight { get; set; } = 0.15f;
+
+    // === Section-type boosts (applied to all segments in matching sections) ===
+
+    /// <summary>Boost for introduction/abstract sections. Default: 1.3</summary>
+    public double IntroductionBoost { get; set; } = 1.3;
+
+    /// <summary>Boost for conclusion/summary sections. Default: 1.25</summary>
+    public double ConclusionBoost { get; set; } = 1.25;
+
+    /// <summary>Boost for results/findings sections. Default: 1.2</summary>
+    public double ResultsBoost { get; set; } = 1.2;
+
+    /// <summary>Boost for methods/approach sections. Default: 1.1</summary>
+    public double MethodsBoost { get; set; } = 1.1;
+
+    /// <summary>Boost for related work/background sections (lower = less novel). Default: 0.9</summary>
+    public double BackgroundBoost { get; set; } = 0.9;
+
+    // === Position-within-section boosts ===
+
+    /// <summary>Boost for first sentence in section (topic sentence). Default: 1.2</summary>
+    public double FirstSentenceBoost { get; set; } = 1.2;
+
+    /// <summary>Boost for last sentence in section (conclusion/transition). Default: 1.1</summary>
+    public double LastSentenceBoost { get; set; } = 1.1;
+
+    /// <summary>Boost for second sentence (elaboration). Default: 1.05</summary>
+    public double SecondSentenceBoost { get; set; } = 1.05;
+
+    // === Heading level boosts ===
+
+    /// <summary>Boost for H1 level headings. Default: 1.15</summary>
+    public double H1Boost { get; set; } = 1.15;
+
+    /// <summary>Boost for H2 level headings. Default: 1.1</summary>
+    public double H2Boost { get; set; } = 1.1;
+
+    /// <summary>Boost for H3 level headings. Default: 1.05</summary>
+    public double H3Boost { get; set; } = 1.05;
+}
+
+/// <summary>
 /// Hierarchical document encoder that captures structure at multiple levels:
 /// - Token level: Individual word embeddings (handled by base embedder)
 /// - Sentence level: Sentence embeddings with positional context
@@ -12,14 +67,39 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// This enables structure-aware retrieval where sentences are understood
 /// in the context of their containing section and the overall document.
 /// </summary>
+/// <remarks>
+/// Scoring weights are configurable via <see cref="HierarchicalEncoderConfig"/>.
+/// Defaults are tuned empirically for academic/technical documents. Adjust for your domain:
+/// - Higher SectionContextWeight = more coherence within sections
+/// - Higher IntroductionBoost = more weight on opening content
+/// - Adjust heading boosts based on document structure depth
+/// </remarks>
 public class HierarchicalEncoder
 {
     private readonly IEmbeddingService _embedder;
+    private readonly HierarchicalEncoderConfig _config;
     private readonly bool _verbose;
 
+    /// <summary>
+    /// Create a new hierarchical encoder with default configuration.
+    /// </summary>
+    /// <param name="embedder">The embedding service to use</param>
+    /// <param name="verbose">If true, logs encoding statistics to console</param>
     public HierarchicalEncoder(IEmbeddingService embedder, bool verbose = false)
+        : this(embedder, new HierarchicalEncoderConfig(), verbose)
+    {
+    }
+
+    /// <summary>
+    /// Create a new hierarchical encoder with custom configuration.
+    /// </summary>
+    /// <param name="embedder">The embedding service to use</param>
+    /// <param name="config">Configuration with custom weights</param>
+    /// <param name="verbose">If true, logs encoding statistics to console</param>
+    public HierarchicalEncoder(IEmbeddingService embedder, HierarchicalEncoderConfig config, bool verbose = false)
     {
         _embedder = embedder;
+        _config = config ?? new HierarchicalEncoderConfig();
         _verbose = verbose;
     }
 
@@ -85,7 +165,7 @@ public class HierarchicalEncoder
                     segment.Embedding = BlendEmbeddings(
                         segment.Embedding,
                         sectionEmbedding,
-                        sectionWeight: 0.15f); // 15% section context
+                        sectionWeight: _config.SectionContextWeight);
                 }
             }
         }
@@ -123,20 +203,20 @@ public class HierarchicalEncoder
         {
             var sectionLower = sectionTitle.ToLowerInvariant();
 
-            // Section-level boost
+            // Section-level boost (configurable per section type)
             double sectionBoost = 1.0;
             if (sectionLower.Contains("introduction") || sectionLower.Contains("abstract"))
-                sectionBoost = 1.3;
+                sectionBoost = _config.IntroductionBoost;
             else if (sectionLower.Contains("conclusion") || sectionLower.Contains("summary"))
-                sectionBoost = 1.25;
+                sectionBoost = _config.ConclusionBoost;
             else if (sectionLower.Contains("result") || sectionLower.Contains("finding"))
-                sectionBoost = 1.2;
+                sectionBoost = _config.ResultsBoost;
             else if (sectionLower.Contains("method") || sectionLower.Contains("approach"))
-                sectionBoost = 1.1;
+                sectionBoost = _config.MethodsBoost;
             else if (sectionLower.Contains("related work") || sectionLower.Contains("background"))
-                sectionBoost = 0.9; // Slightly lower - often less novel content
+                sectionBoost = _config.BackgroundBoost;
 
-            // Position within section
+            // Position within section (configurable boosts)
             for (int i = 0; i < sectionSegments.Count; i++)
             {
                 var segment = sectionSegments[i];
@@ -144,20 +224,20 @@ public class HierarchicalEncoder
 
                 // First sentence in section (topic sentence)
                 if (i == 0)
-                    positionBoost = 1.2;
+                    positionBoost = _config.FirstSentenceBoost;
                 // Last sentence in section (often conclusion/transition)
                 else if (i == sectionSegments.Count - 1 && sectionSegments.Count > 2)
-                    positionBoost = 1.1;
+                    positionBoost = _config.LastSentenceBoost;
                 // Second sentence (often elaborates on topic)
                 else if (i == 1 && sectionSegments.Count > 3)
-                    positionBoost = 1.05;
+                    positionBoost = _config.SecondSentenceBoost;
 
-                // Heading level boost (H1 > H2 > H3)
+                // Heading level boost (H1 > H2 > H3, configurable)
                 double levelBoost = segment.HeadingLevel switch
                 {
-                    1 => 1.15,
-                    2 => 1.1,
-                    3 => 1.05,
+                    1 => _config.H1Boost,
+                    2 => _config.H2Boost,
+                    3 => _config.H3Boost,
                     _ => 1.0
                 };
 

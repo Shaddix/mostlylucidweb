@@ -759,10 +759,16 @@ public class DocumentSummarizer
             _docling.OnChunkComplete = null;
         }
 
-        // If nothing was parsed/embedded, fall back to single-pass conversion
+        // If nothing was parsed/embedded, fall back to single-pass conversion.
+        // This happens when the document is small (below MinPagesForSplit threshold)
+        // so Docling doesn't use chunk-by-chunk streaming - it converts the whole file at once.
         if (bertRag.SegmentCount == 0)
         {
-            _progress.Warning("No segments produced from streaming conversion; falling back to full convert");
+            if (_verbose)
+            {
+                var minPages = _docling.Config.MinPagesForSplit;
+                Console.WriteLine($"[BertRag] Document below split threshold ({minPages} pages) - using standard conversion");
+            }
             var fullMarkdown = await _docling.ConvertAsync(filePath, CancellationToken.None);
             var fallback = await SummarizeBertRagAsync(fullMarkdown, docId, focusQuery);
             return (fallback, docId);

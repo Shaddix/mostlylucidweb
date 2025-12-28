@@ -964,6 +964,55 @@ Automatically scales retrieval based on document size and content type.
 | `adaptiveRetrieval.maxTopK` | `100` | Maximum segments (LLM context limit) |
 | `adaptiveRetrieval.narrativeBoost` | `1.5` | Retrieve 50% more for fiction/narrative content |
 
+**Advanced: Adaptive Sampling Thresholds**
+
+Coverage scales inversely with document size. These thresholds define the segment count boundaries:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `adaptiveRetrieval.verySmallDocThreshold` | `50` | Docs ≤50 segments get 40-50% coverage |
+| `adaptiveRetrieval.smallDocThreshold` | `150` | Docs ≤150 segments get 20-40% coverage |
+| `adaptiveRetrieval.mediumDocThreshold` | `400` | Docs ≤400 segments get 10-20% coverage |
+| `adaptiveRetrieval.largeDocThreshold` | `1000` | Docs ≤1000 segments get 5-10% coverage |
+| `adaptiveRetrieval.maxCoveragePercent` | `50.0` | Maximum coverage for tiny documents |
+| `adaptiveRetrieval.smallDocCoverage` | `40.0` | Coverage at small/very-small boundary |
+| `adaptiveRetrieval.mediumDocCoverage` | `20.0` | Coverage at medium/small boundary |
+| `adaptiveRetrieval.largeDocCoverage` | `10.0` | Coverage at large/medium boundary |
+
+#### Hierarchical Encoder Settings (Advanced)
+
+Section-aware document encoding. All values have sensible defaults tuned for academic/technical documents.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `hierarchical.sectionContextWeight` | `0.15` | Blend 15% section context into segment embeddings |
+| `hierarchical.introductionBoost` | `1.3` | Boost for intro/abstract sections |
+| `hierarchical.conclusionBoost` | `1.25` | Boost for conclusion/summary sections |
+| `hierarchical.resultsBoost` | `1.2` | Boost for results/findings sections |
+| `hierarchical.methodsBoost` | `1.1` | Boost for methods/approach sections |
+| `hierarchical.backgroundBoost` | `0.9` | Slight reduction for related work/background |
+| `hierarchical.firstSentenceBoost` | `1.2` | Boost for topic sentences (first in section) |
+| `hierarchical.lastSentenceBoost` | `1.1` | Boost for section conclusions |
+| `hierarchical.h1Boost` | `1.15` | Boost for H1 level headings |
+| `hierarchical.h2Boost` | `1.1` | Boost for H2 level headings |
+
+#### Cross-Encoder Reranker Settings (Advanced)
+
+Precision boost via multi-signal reranking. Used when `retrieval.useReranking` is true.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `reranker.termOverlapWeight` | `3.0` | Weight for term overlap (BM25-like) |
+| `reranker.exactPhraseBonus` | `5.0` | Bonus for exact query phrase matches |
+| `reranker.headingMatchBonus` | `2.0` | Bonus for headings matching query |
+| `reranker.embeddingSimilarityWeight` | `2.0` | Weight for pre-computed similarity |
+| `reranker.earlyMatchBonus` | `0.1` | Bonus per early term occurrence |
+| `reranker.maxDensityScore` | `2.0` | Cap on query term density score |
+| `reranker.sectionTermWeight` | `0.5` | Weight per section title term match |
+| `reranker.positionWeight` | `0.5` | Weight for intro/conclusion boost |
+| `reranker.maxLengthBonus` | `0.3` | Max bonus for segment length |
+| `reranker.optimalLength` | `200` | Characters for "optimal" length |
+
 **Content-Type Aware Weighting:**
 
 The extraction phase automatically adjusts segment importance based on content type:

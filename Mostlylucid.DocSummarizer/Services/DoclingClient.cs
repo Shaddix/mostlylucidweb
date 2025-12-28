@@ -49,6 +49,11 @@ public class DoclingClient : IDisposable
     /// </summary>
     public bool? HasGpu => _hasGpu;
 
+    /// <summary>
+    /// The configuration used by this client
+    /// </summary>
+    public DoclingConfig Config => _config;
+
     public DoclingClient(DoclingConfig? config = null)
     {
         _config = config ?? new DoclingConfig();

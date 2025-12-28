@@ -3,25 +3,100 @@ using Mostlylucid.DocSummarizer.Models;
 namespace Mostlylucid.DocSummarizer.Services;
 
 /// <summary>
+/// Configuration for the cross-encoder reranker.
+/// All values have sensible defaults - only override if you need to tune behavior.
+/// </summary>
+public class RerankerConfig
+{
+    /// <summary>Weight for term overlap ratio (0-1 scaled to this max). Default: 3.0</summary>
+    public double TermOverlapWeight { get; set; } = 3.0;
+
+    /// <summary>Bonus per early match (term in first N chars). Default: 0.1</summary>
+    public double EarlyMatchBonus { get; set; } = 0.1;
+
+    /// <summary>Max score contribution from query term density. Default: 2.0</summary>
+    public double MaxDensityScore { get; set; } = 2.0;
+
+    /// <summary>Bonus for exact phrase match. Default: 5.0</summary>
+    public double ExactPhraseBonus { get; set; } = 5.0;
+
+    /// <summary>Bonus for heading segments matching query. Default: 2.0</summary>
+    public double HeadingMatchBonus { get; set; } = 2.0;
+
+    /// <summary>Weight per section title term match. Default: 0.5</summary>
+    public double SectionTermWeight { get; set; } = 0.5;
+
+    /// <summary>Multiplier for existing embedding similarity. Default: 2.0</summary>
+    public double EmbeddingSimilarityWeight { get; set; } = 2.0;
+
+    /// <summary>Weight for position boost (intro/conclusion). Default: 0.5</summary>
+    public double PositionWeight { get; set; } = 0.5;
+
+    /// <summary>Max length bonus contribution. Default: 0.3</summary>
+    public double MaxLengthBonus { get; set; } = 0.3;
+
+    /// <summary>Characters for "optimal" length bonus. Default: 200</summary>
+    public double OptimalLength { get; set; } = 200.0;
+
+    /// <summary>Minimum query length for exact phrase matching. Default: 5</summary>
+    public int MinPhraseLength { get; set; } = 5;
+
+    /// <summary>Character position threshold for early match bonus. Default: 50</summary>
+    public int EarlyMatchThreshold { get; set; } = 50;
+}
+
+/// <summary>
 /// Cross-encoder style reranker for precision boost on retrieved segments.
 ///
+/// <para>
 /// Unlike bi-encoders (which embed query and document separately), cross-encoders
 /// jointly encode query + document pairs, enabling deeper interaction modeling.
+/// </para>
 ///
-/// This implementation uses a lightweight proxy approach:
-/// 1. Exact term overlap (like a mini BM25)
-/// 2. Semantic similarity boost from existing embeddings
-/// 3. Structural signals (heading proximity, section relevance)
-/// 4. Query term density
+/// <para>
+/// This implementation uses a lightweight proxy approach combining multiple signals:
+/// </para>
+/// <list type="number">
+///   <item>Exact term overlap (like a mini BM25)</item>
+///   <item>Semantic similarity boost from existing embeddings</item>
+///   <item>Structural signals (heading proximity, section relevance)</item>
+///   <item>Query term density</item>
+/// </list>
 ///
-/// For production, you could swap this with a real cross-encoder model via ONNX.
+/// <para>
+/// For production with higher accuracy, you could swap this with a real cross-encoder
+/// model (e.g., ms-marco-MiniLM-L-6-v2) via ONNX.
+/// </para>
 /// </summary>
+/// <remarks>
+/// Scoring weights are configurable via <see cref="RerankerConfig"/>.
+/// Defaults are tuned empirically for general documents. Adjust for your domain:
+/// - Higher TermOverlapWeight = more lexical matching (BM25-like)
+/// - Higher EmbeddingSimilarityWeight = more semantic matching
+/// - Higher ExactPhraseBonus = stricter exact matching
+/// </remarks>
 public class CrossEncoderReranker
 {
+    private readonly RerankerConfig _config;
     private readonly bool _verbose;
 
+    /// <summary>
+    /// Create a new cross-encoder reranker with default configuration.
+    /// </summary>
+    /// <param name="verbose">If true, logs scoring statistics to console</param>
     public CrossEncoderReranker(bool verbose = false)
+        : this(new RerankerConfig(), verbose)
     {
+    }
+
+    /// <summary>
+    /// Create a new cross-encoder reranker with custom configuration.
+    /// </summary>
+    /// <param name="config">Configuration with custom weights</param>
+    /// <param name="verbose">If true, logs scoring statistics to console</param>
+    public CrossEncoderReranker(RerankerConfig config, bool verbose = false)
+    {
+        _config = config ?? new RerankerConfig();
         _verbose = verbose;
     }
 
@@ -68,17 +143,21 @@ public class CrossEncoderReranker
     /// <summary>
     /// Compute cross-encoder proxy score combining multiple signals.
     /// </summary>
+    /// <param name="segment">The segment to score</param>
+    /// <param name="queryTerms">Tokenized query terms (lowercased, stop words removed)</param>
+    /// <param name="fullQuery">Original query string for exact phrase matching</param>
+    /// <returns>Composite relevance score (higher = more relevant)</returns>
     private double ComputeCrossEncoderScore(Segment segment, List<string> queryTerms, string fullQuery)
     {
         var text = segment.Text;
         var textLower = text.ToLowerInvariant();
-        var textTerms = Tokenize(text);
 
         double score = 0;
 
-        // === Signal 1: Exact term overlap (weighted by position and rarity) ===
+        // === Signal 1: Exact term overlap (like BM25 term frequency) ===
+        // Terms appearing early in text get a bonus (often more important)
         var overlapCount = 0;
-        var earlyOverlapBonus = 0.0;
+        var earlyBonus = 0.0;
 
         foreach (var queryTerm in queryTerms)
         {
@@ -86,56 +165,59 @@ public class CrossEncoderReranker
             {
                 overlapCount++;
 
-                // Early match bonus (term appears in first 50 chars)
+                // Early match bonus (term appears in first N chars = more prominent)
                 var firstOccurrence = textLower.IndexOf(queryTerm, StringComparison.Ordinal);
-                if (firstOccurrence < 50)
-                    earlyOverlapBonus += 0.1;
+                if (firstOccurrence < _config.EarlyMatchThreshold)
+                    earlyBonus += _config.EarlyMatchBonus;
             }
         }
 
         var overlapRatio = queryTerms.Count > 0 ? (double)overlapCount / queryTerms.Count : 0;
-        score += overlapRatio * 3.0; // Strong weight for term overlap
-        score += earlyOverlapBonus;
+        score += overlapRatio * _config.TermOverlapWeight;
+        score += earlyBonus;
 
-        // === Signal 2: Query term density (matches per 100 chars) ===
+        // === Signal 2: Query term density (prevents keyword stuffing via cap) ===
         var matchCount = queryTerms.Sum(t => CountOccurrences(textLower, t));
         var density = text.Length > 0 ? (matchCount * 100.0) / text.Length : 0;
-        score += Math.Min(density, 2.0); // Cap to avoid spam
+        score += Math.Min(density, _config.MaxDensityScore);
 
-        // === Signal 3: Exact phrase match (huge bonus) ===
+        // === Signal 3: Exact phrase match (strongest signal of relevance) ===
         var queryLower = fullQuery.ToLowerInvariant();
-        if (queryLower.Length > 5 && textLower.Contains(queryLower))
+        if (queryLower.Length > _config.MinPhraseLength && textLower.Contains(queryLower))
         {
-            score += 5.0; // Exact phrase match is strong signal
+            score += _config.ExactPhraseBonus;
         }
 
-        // === Signal 4: Structural signals ===
-        // Headings that match query terms are highly relevant
+        // === Signal 4: Structural signals (document structure matters) ===
+        // Headings matching query are highly relevant
         if (segment.Type == SegmentType.Heading && overlapCount > 0)
         {
-            score += 2.0;
+            score += _config.HeadingMatchBonus;
         }
 
-        // Section title matches
+        // Section title matches indicate topical relevance
         if (!string.IsNullOrEmpty(segment.SectionTitle))
         {
             var sectionLower = segment.SectionTitle.ToLowerInvariant();
             var sectionOverlap = queryTerms.Count(t => sectionLower.Contains(t));
-            score += sectionOverlap * 0.5;
+            score += sectionOverlap * _config.SectionTermWeight;
         }
 
-        // === Signal 5: Existing embedding similarity (if available) ===
+        // === Signal 5: Existing embedding similarity (semantic signal) ===
+        // Leverage pre-computed dense retrieval scores
         if (segment.QuerySimilarity > 0)
         {
-            score += segment.QuerySimilarity * 2.0;
+            score += segment.QuerySimilarity * _config.EmbeddingSimilarityWeight;
         }
 
-        // === Signal 6: Position weight (intro/conclusion) ===
-        score += (segment.PositionWeight - 1.0) * 0.5;
+        // === Signal 6: Position weight (intro/conclusion segments) ===
+        // Position weights set by HierarchicalEncoder or SegmentExtractor
+        score += (segment.PositionWeight - 1.0) * _config.PositionWeight;
 
-        // === Signal 7: Length bonus (longer = more context, up to a point) ===
-        var lengthBonus = Math.Min(text.Length / 200.0, 1.0);
-        score += lengthBonus * 0.3;
+        // === Signal 7: Length bonus (longer segments provide more context) ===
+        // Capped to avoid over-weighting very long segments
+        var lengthBonus = Math.Min(text.Length / _config.OptimalLength, 1.0);
+        score += lengthBonus * _config.MaxLengthBonus;
 
         return score;
     }

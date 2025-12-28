@@ -505,35 +505,38 @@ public class BertRagSummarizer : IDisposable, IAsyncDisposable
 
         // Inverse scaling: smaller docs get higher coverage
         // Formula: coverage% = baseMin + (baseMax - baseMin) * (1 - segmentFactor)
-        // segmentFactor = log(segments) / log(maxThreshold)
+        // Thresholds and coverages are configurable via RetrievalConfig
         double coveragePercent;
-        if (totalSegments <= 50)
+        var cfg = _retrievalConfig;
+
+        if (totalSegments <= cfg.VerySmallDocThreshold)
         {
-            // Very small docs: 40-50% coverage
-            coveragePercent = 40.0 + (50.0 - 40.0) * (1 - totalSegments / 50.0);
+            // Very small docs: SmallDocCoverage to MaxCoveragePercent (e.g., 40-50%)
+            var factor = (double)totalSegments / cfg.VerySmallDocThreshold;
+            coveragePercent = cfg.SmallDocCoverage + (cfg.MaxCoveragePercent - cfg.SmallDocCoverage) * (1 - factor);
         }
-        else if (totalSegments <= 150)
+        else if (totalSegments <= cfg.SmallDocThreshold)
         {
-            // Small docs: 20-40% coverage
-            var factor = (totalSegments - 50.0) / 100.0; // 0 to 1
-            coveragePercent = 40.0 - factor * 20.0; // 40 -> 20
+            // Small docs: MediumDocCoverage to SmallDocCoverage (e.g., 20-40%)
+            var factor = (totalSegments - cfg.VerySmallDocThreshold) / (double)(cfg.SmallDocThreshold - cfg.VerySmallDocThreshold);
+            coveragePercent = cfg.SmallDocCoverage - factor * (cfg.SmallDocCoverage - cfg.MediumDocCoverage);
         }
-        else if (totalSegments <= 400)
+        else if (totalSegments <= cfg.MediumDocThreshold)
         {
-            // Medium docs: 10-20% coverage
-            var factor = (totalSegments - 150.0) / 250.0; // 0 to 1
-            coveragePercent = 20.0 - factor * 10.0; // 20 -> 10
+            // Medium docs: LargeDocCoverage to MediumDocCoverage (e.g., 10-20%)
+            var factor = (totalSegments - cfg.SmallDocThreshold) / (double)(cfg.MediumDocThreshold - cfg.SmallDocThreshold);
+            coveragePercent = cfg.MediumDocCoverage - factor * (cfg.MediumDocCoverage - cfg.LargeDocCoverage);
         }
-        else if (totalSegments <= 1000)
+        else if (totalSegments <= cfg.LargeDocThreshold)
         {
-            // Large docs: 5-10% coverage
-            var factor = (totalSegments - 400.0) / 600.0; // 0 to 1
-            coveragePercent = 10.0 - factor * 5.0; // 10 -> 5
+            // Large docs: MinCoveragePercent to LargeDocCoverage (e.g., 5-10%)
+            var factor = (totalSegments - cfg.MediumDocThreshold) / (double)(cfg.LargeDocThreshold - cfg.MediumDocThreshold);
+            coveragePercent = cfg.LargeDocCoverage - factor * (cfg.LargeDocCoverage - cfg.MinCoveragePercent);
         }
         else
         {
             // Very large docs: use configured minimum (typically 5%)
-            coveragePercent = _retrievalConfig.MinCoveragePercent;
+            coveragePercent = cfg.MinCoveragePercent;
         }
 
         // Calculate TopK from coverage percentage
