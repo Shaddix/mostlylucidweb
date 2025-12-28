@@ -16,13 +16,7 @@ const { answer, evidence } = await doc.askFile("report.pdf", "What are the key f
 npm install @mostlylucid/docsummarizer
 ```
 
-Then install the CLI backend:
-
-```bash
-dotnet tool install -g Mostlylucid.DocSummarizer
-```
-
-Verify everything works:
+The CLI binary is automatically downloaded during installation. Verify it works:
 
 ```bash
 npx @mostlylucid/docsummarizer check
@@ -311,11 +305,11 @@ doc.on("stderr", (data: string) => {
 # Run diagnostics
 npx @mostlylucid/docsummarizer doctor
 
-# Install CLI
-dotnet tool install -g Mostlylucid.DocSummarizer
+# Re-run postinstall to download CLI
+node node_modules/@mostlylucid/docsummarizer/scripts/postinstall.js
 
 # Verify
-docsummarizer check
+npx @mostlylucid/docsummarizer check
 ```
 
 ### PDF/DOCX not working
