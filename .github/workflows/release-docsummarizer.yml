@@ -127,15 +127,23 @@ jobs:
       if: runner.os == 'Windows'
       run: |
         cd ./publish/${{ matrix.rid }}
-        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json README.md
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip ${{ matrix.executable }} appsettings.json README.md *.dll
       shell: bash
 
-    - name: Create archive (Unix)
-      if: runner.os != 'Windows'
+    - name: Create archive (Linux)
+      if: runner.os == 'Linux'
       run: |
         cd ./publish/${{ matrix.rid }}
         chmod +x ${{ matrix.executable }}
-        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md *.so 2>/dev/null || tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
+      shell: bash
+
+    - name: Create archive (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        chmod +x ${{ matrix.executable }}
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md *.dylib 2>/dev/null || tar -czvf ../../${{ matrix.artifact_name }}.tar.gz ${{ matrix.executable }} appsettings.json README.md
       shell: bash
 
     - name: Upload artifact
