@@ -198,6 +198,12 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
         
         var docId = ExtractDocIdFromSegment(segment);
         
+        // Ensure no null values that would cause DuckDB parameter binding to fail
+        var segmentId = segment.Id ?? throw new ArgumentNullException(nameof(segment), "Segment.Id cannot be null");
+        var segmentText = segment.Text ?? "";
+        var contentHash = segment.ContentHash ?? "";
+        var sectionTitle = segment.SectionTitle ?? "";
+        
         if (_vssLoaded && segment.Embedding != null)
         {
             // Native FLOAT[] storage for VSS
@@ -229,15 +235,16 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
                     salience = $salience,
                     embedding = $embedding
                 """;
-            cmd.Parameters.Add(new DuckDBParameter("embedding", embeddingJson ?? (object)DBNull.Value));
+            // DuckDB.NET requires explicit DBNull.Value for null strings
+            cmd.Parameters.Add(new DuckDBParameter("embedding", embeddingJson != null ? embeddingJson : DBNull.Value));
         }
         
-        cmd.Parameters.Add(new DuckDBParameter("id", segment.Id));
-        cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
-        cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
-        cmd.Parameters.Add(new DuckDBParameter("hash", segment.ContentHash));
-        cmd.Parameters.Add(new DuckDBParameter("text", segment.Text));
-        cmd.Parameters.Add(new DuckDBParameter("section", segment.SectionTitle ?? ""));
+        cmd.Parameters.Add(new DuckDBParameter("id", segmentId));
+        cmd.Parameters.Add(new DuckDBParameter("collection", collectionName ?? ""));
+        cmd.Parameters.Add(new DuckDBParameter("doc_id", docId ?? ""));
+        cmd.Parameters.Add(new DuckDBParameter("hash", contentHash));
+        cmd.Parameters.Add(new DuckDBParameter("text", segmentText));
+        cmd.Parameters.Add(new DuckDBParameter("section", sectionTitle));
         cmd.Parameters.Add(new DuckDBParameter("type", segment.Type.ToString()));
         cmd.Parameters.Add(new DuckDBParameter("level", segment.HeadingLevel));
         cmd.Parameters.Add(new DuckDBParameter("idx", segment.Index));

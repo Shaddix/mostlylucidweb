@@ -1,4 +1,4 @@
-﻿services:
+services:
   mostlylucid:
     image: scottgal/mostlylucid:latest
     restart: always
@@ -23,6 +23,8 @@
       - Markdown__MarkdownTranslatedPath=${MARKDOWN_MARKDOWNTRANSLATEDPATH}
       - CertPassword=${CERT_PASSWORD}
       - SemanticSearch__Enabled=${SEMANTICSEARCH_ENABLED}
+      - SemanticSearch__Backend=${SEMANTICSEARCH_BACKEND:-DuckDB}
+      - SemanticSearch__DuckDbPath=/app/data/semantic-search.duckdb
       - SemanticSearch__QdrantUrl=http://qdrant:6333
       - SemanticSearch__CollectionName=${SEMANTICSEARCH_COLLECTIONNAME}
       - SemanticSearch__EmbeddingModelPath=${SEMANTICSEARCH_EMBEDDINGMODELPATH}
@@ -39,6 +41,7 @@
       - /mnt/articleimages:/app/wwwroot/articleimages
       - /mnt/mostlylucid/uploads:/app/wwwroot/uploads
       - mlmodels:/app/mlmodels
+      - duckdb-data:/app/data
     networks:
       - app_network
   watchtower:
@@ -223,6 +226,7 @@ volumes:
   caddy_config:
   prometheus-data:
   qdrant-data:
+  duckdb-data:
   mlmodels:
     external: true
     name: mostlylucidweb_mlmodels

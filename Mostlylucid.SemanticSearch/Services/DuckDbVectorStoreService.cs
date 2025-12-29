@@ -229,9 +229,14 @@ public class DuckDbVectorStoreService : IVectorStoreService, IAsyncDisposable, I
     /// </summary>
     private static Segment BlogPostToSegment(BlogPostDocument doc, float[] embedding)
     {
+        // Ensure we have valid values - DuckDB parameter binding fails on nulls
+        var slug = doc.Slug ?? throw new ArgumentNullException(nameof(doc), "BlogPostDocument.Slug cannot be null");
+        var content = doc.Content ?? "";
+        var contentHash = doc.ContentHash ?? "";
+        
         // Use slug as the document ID for consistent lookups
         // Use the constructor overload that accepts contentHashOverride to preserve the original hash
-        var segment = new Segment(doc.Slug, doc.Content, SegmentType.Sentence, 0, 0, doc.Content.Length, doc.ContentHash)
+        var segment = new Segment(slug, content, SegmentType.Sentence, 0, 0, content.Length, contentHash)
         {
             SectionTitle = string.Join(",", doc.Languages ?? Array.Empty<string>()),
             HeadingLevel = 0,
