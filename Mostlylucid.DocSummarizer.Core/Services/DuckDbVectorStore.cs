@@ -181,25 +181,15 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
         var segmentList = segments.ToList();
         if (segmentList.Count == 0) return;
 
-        await using var transaction = _connection.BeginTransaction();
+        // DuckDB has auto-commit by default, so we don't need explicit transactions
+        // for inserts. Just execute the upserts directly.
+        foreach (var segment in segmentList)
+        {
+            await UpsertSegmentInternalAsync(collectionName, segment, ct);
+        }
         
-        try
-        {
-            foreach (var segment in segmentList)
-            {
-                await UpsertSegmentInternalAsync(collectionName, segment, ct);
-            }
-            
-            transaction.Commit();
-            
-            if (_verbose)
-                Console.WriteLine($"[DuckDbVectorStore] Upserted {segmentList.Count} segments to '{collectionName}'");
-        }
-        catch
-        {
-            transaction.Rollback();
-            throw;
-        }
+        if (_verbose)
+            Console.WriteLine($"[DuckDbVectorStore] Upserted {segmentList.Count} segments to '{collectionName}'");
     }
 
     private async Task UpsertSegmentInternalAsync(string collectionName, Segment segment, CancellationToken ct)
@@ -681,12 +671,13 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
         {
             var id = reader.GetString(0);
             var docId = reader.GetString(1);
+            var contentHash = reader.IsDBNull(2) ? "" : reader.GetString(2);
             var text = reader.GetString(3);
             var sectionTitle = reader.IsDBNull(4) ? "" : reader.GetString(4);
             var typeStr = reader.IsDBNull(5) ? "Sentence" : reader.GetString(5);
             var headingLevel = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
             var index = reader.IsDBNull(7) ? 0 : reader.GetInt32(7);
-            var salience = reader.IsDBNull(8) ? 0.0 : reader.GetDouble(8);
+            var salience = reader.IsDBNull(8) ? 0.0 : reader.GetFloat(8);
             
             float[]? embedding = null;
             if (!reader.IsDBNull(9))
@@ -714,14 +705,22 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
             
             var type = Enum.TryParse<SegmentType>(typeStr, out var t) ? t : SegmentType.Sentence;
             
-            return new Segment(docId, text, type, index, 0, text.Length)
+            // Create segment using private constructor to restore all stored values
+            return new Segment(docId, text, type, index, 0, text.Length, contentHash)
             {
+                SectionTitle = sectionTitle,
+                HeadingLevel = headingLevel,
                 SalienceScore = salience,
                 Embedding = embedding
             };
         }
-        catch
+        catch (Exception ex)
         {
+            if (_verbose)
+            {
+                Console.WriteLine($"[DuckDbVectorStore] ReadSegmentFromReader FAILED: {ex.Message}");
+                Console.WriteLine($"[DuckDbVectorStore] Stack: {ex.StackTrace}");
+            }
             return null;
         }
     }

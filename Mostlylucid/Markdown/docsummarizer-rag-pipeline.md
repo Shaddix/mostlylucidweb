@@ -4,7 +4,9 @@
 <datetime class="hidden">2025-12-30T17:00</datetime>
 
 [![NuGet](https://img.shields.io/nuget/v/Mostlylucid.DocSummarizer?label=NuGet)](https://www.nuget.org/packages/Mostlylucid.DocSummarizer)
+[![npm](https://img.shields.io/npm/v/@mostlylucid/docsummarizer?label=npm)](https://www.npmjs.com/package/@mostlylucid/docsummarizer)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933)](https://nodejs.org/)
 
 This is **Part 4** of the DocSummarizer series. See [Part 1](/blog/building-a-document-summarizer-with-rag) for the architecture, [Part 2](/blog/docsummarizer-tool) for the CLI tool, or [Part 3](/blog/docsummarizer-advanced-concepts) for the deep dive on embeddings.
 
@@ -21,7 +23,7 @@ You've probably seen the pattern: split documents into chunks, generate embeddin
 
 That's a lot of infrastructure before you write a single line of application code.
 
-**DocSummarizer.Core handles all of it in a single NuGet package.**
+**DocSummarizer.Core handles all of it in a single package** - available for both .NET and Node.js.
 
 DocSummarizer.Core is essentially a **document intelligence layer**: deterministic structure first, probabilistic retrieval second. It solves the information-engineering problem so you can focus on the reasoning problem.
 
@@ -653,7 +655,7 @@ Docling preserves document structure - headings, tables, lists come through as p
 | Excel | `.xlsx` | Tables extracted |
 | Images | `.png`, `.jpg`, `.tiff` | OCR via Docling |
 
-See [Part 1](/blog/building-a-document-summarizer-with-rag) for more on Docling integration, or [Multi-Format Document Conversion](/blog/multi-format-document-conversion-service) for a deep dive.
+See [Part 1](/blog/building-a-document-summarizer-with-rag) for more on Docling integration, or [Multi-Format Document Conversion](/blog/building-a-lawyer-gpt-for-your-blog-part9) for a deep dive.
 
 ## The Hard Parts You Skip
 

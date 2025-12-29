@@ -127,13 +127,21 @@ public class Segment
     };
 
     public Segment(string docId, string text, SegmentType type, int index, int startChar, int endChar)
+        : this(docId, text, type, index, startChar, endChar, null)
+    {
+    }
+    
+    /// <summary>
+    /// Constructor with optional content hash override (used when restoring from database)
+    /// </summary>
+    public Segment(string docId, string text, SegmentType type, int index, int startChar, int endChar, string? contentHashOverride)
     {
         Text = text;
         Type = type;
         Index = index;
         StartChar = startChar;
         EndChar = endChar;
-        ContentHash = ComputeHash(text);
+        ContentHash = !string.IsNullOrEmpty(contentHashOverride) ? contentHashOverride : ComputeHash(text);
         Id = $"{SanitizeDocId(docId)}_{TypePrefix}_{index}";
     }
     

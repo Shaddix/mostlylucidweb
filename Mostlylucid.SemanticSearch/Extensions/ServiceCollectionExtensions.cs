@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Shared.Config;
@@ -22,9 +23,24 @@ public static class ServiceCollectionExtensions
         services.ConfigurePOCO<SemanticSearchConfig>(
             configuration.GetSection(SemanticSearchConfig.Section));
 
-        // Register services
-        services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
-        services.AddSingleton<IVectorStoreService, QdrantVectorStoreService>();
+        // Get config to determine backend
+        var config = configuration.GetSection(SemanticSearchConfig.Section).Get<SemanticSearchConfig>() 
+            ?? new SemanticSearchConfig();
+
+        // Register services based on configured backend
+        if (config.Backend == VectorStoreBackend.DuckDB)
+        {
+            // DuckDB backend - uses DocSummarizer.Core, zero external dependencies
+            services.AddSingleton<IEmbeddingService, DocSummarizerEmbeddingService>();
+            services.AddSingleton<IVectorStoreService, DuckDbVectorStoreService>();
+        }
+        else
+        {
+            // Qdrant backend - requires external Qdrant server
+            services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
+            services.AddSingleton<IVectorStoreService, QdrantVectorStoreService>();
+        }
+
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
     }
 }

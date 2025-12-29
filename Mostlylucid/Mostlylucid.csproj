@@ -19,7 +19,7 @@
       <PackageReference Include="Htmx" Version="1.8.3" />
       <PackageReference Include="Htmx.TagHelpers" Version="1.8.3" />
       <PackageReference Include="Humanizer" Version="2.14.1" />
-      <PackageReference Include="Markdig" Version="0.43.0" />
+      <PackageReference Include="Markdig" Version="0.44.0" />
       <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.9" />
       <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.9" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
@@ -27,7 +27,7 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.1" />
       <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="9.9.0" />
       <PackageReference Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring" Version="9.9.0" />
       <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="9.0.9" />
@@ -62,7 +62,7 @@
       <PackageReference Include="SixLabors.ImageSharp.Web" Version="3.2.0" />
       <PackageReference Include="Scalar.AspNetCore" Version="1.2.60" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
-      <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
+      <PackageReference Include="System.IO.Hashing" Version="10.0.1" />
       <!-- <PackageReference Include="Umami.Net" Version="1.0.0-preview5" /> -->
       <PackageReference Include="WebEssentials.AspNetCore.PWA" Version="1.0.85" />
     </ItemGroup>

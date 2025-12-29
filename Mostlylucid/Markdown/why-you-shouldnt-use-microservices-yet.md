@@ -48,11 +48,9 @@ Architecture is ultimately about enabling people, not moving boxes around.
 
 ## The Diagram That Should Be a Warning Label
 
-You've seen this diagram.
+You've seen the diagram on LinkedIn advertising a Microservices course with all those 'v4' API gateway, an assemblage od random endpoints etc...
 
-<p>
-![A cautionary microservices architecture diagram](bad_microservices.jpg?format=webp&height=600)
-</p>
+> Note: I had the actual image from that but it was mean for me to use that so it's removed. 
 
 This is not an "example architecture to copy". It's a warning label.
 
