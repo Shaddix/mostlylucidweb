@@ -6,6 +6,8 @@ namespace Mostlylucid.SegmentCommerce.Controllers;
 
 public class HomeController(ProductService productService, ISessionService sessionService) : Controller
 {
+    private bool IsHtmxRequest => Request.Headers.ContainsKey("HX-Request");
+    
     public async Task<IActionResult> Index()
     {
         var signature = sessionService.GetInterestSignature();
@@ -19,6 +21,11 @@ public class HomeController(ProductService productService, ISessionService sessi
             InterestSignature = signature
         };
 
+        if (IsHtmxRequest)
+        {
+            return PartialView("_Index", viewModel);
+        }
+        
         return View(viewModel);
     }
 

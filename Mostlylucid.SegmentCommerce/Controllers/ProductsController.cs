@@ -14,6 +14,8 @@ public class ProductsController(
     IInterestTrackingService interestTrackingService,
     ISearchService searchService) : Controller
 {
+    private bool IsHtmxRequest => Request.Headers.ContainsKey("HX-Request");
+    
     [HttpGet("")]
     [HttpGet("index")]
     public async Task<IActionResult> Index(string? category = null)
@@ -25,7 +27,14 @@ public class ProductsController(
         ViewData["CurrentCategory"] = category;
         ViewData["Categories"] = await productService.GetCategoriesAsync();
 
-        return View(products.ToList());
+        var productList = products.ToList();
+        
+        if (IsHtmxRequest)
+        {
+            return PartialView("_Index", productList);
+        }
+        
+        return View(productList);
     }
 
     [HttpGet("category/{id}")]
@@ -49,6 +58,11 @@ public class ProductsController(
         ViewData["CurrentCategory"] = id;
         ViewData["Categories"] = await productService.GetCategoriesAsync();
 
+        if (IsHtmxRequest)
+        {
+            return PartialView("_Index", productList);
+        }
+        
         return View("Index", productList);
     }
 
@@ -70,6 +84,11 @@ public class ProductsController(
 
         ViewData["RelatedProducts"] = relatedProducts;
 
+        if (IsHtmxRequest)
+        {
+            return PartialView("_Details", product);
+        }
+        
         return View(product);
     }
 
@@ -82,7 +101,7 @@ public class ProductsController(
             await TrackProductViewAsync(product, weight: 0.05);
         }
 
-        return Ok();
+        return NoContent();
     }
 
     [HttpPost("track-interest/{id:int}")]
@@ -100,7 +119,7 @@ public class ProductsController(
             await interestTrackingService.TrackCategoryInterestAsync(product.Category, 0.2);
         }
 
-        return Ok();
+        return NoContent();
     }
 
     [HttpGet("search")]
@@ -136,6 +155,11 @@ public class ProductsController(
         ViewData["Categories"] = await productService.GetCategoriesAsync();
         ViewData["SearchFilters"] = results.Filters;
 
+        if (IsHtmxRequest)
+        {
+            return PartialView("_Search", results);
+        }
+        
         return View("Search", results);
     }
 
