@@ -8,7 +8,14 @@ public class MappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<SellerEntity, SellerDto>();
+        // Map UserEntity (with SellerProfile) to SellerDto
+        config.NewConfig<UserEntity, SellerDto>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.Name, src => src.SellerProfile != null ? src.SellerProfile.BusinessName : src.DisplayName)
+            .Map(dest => dest.Rating, src => src.SellerProfile != null ? src.SellerProfile.Rating : 0)
+            .Map(dest => dest.ReviewCount, src => src.SellerProfile != null ? src.SellerProfile.ReviewCount : 0)
+            .Map(dest => dest.IsVerified, src => src.SellerProfile != null && src.SellerProfile.IsVerified)
+            .Map(dest => dest.LogoUrl, src => src.SellerProfile != null ? src.SellerProfile.LogoUrl : src.AvatarUrl);
 
         config.NewConfig<ProductVariationEntity, ProductVariationDto>();
 

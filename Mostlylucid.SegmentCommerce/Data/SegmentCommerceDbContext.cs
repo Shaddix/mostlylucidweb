@@ -11,11 +11,14 @@ public class SegmentCommerceDbContext : DbContext
     {
     }
 
+    // Users
+    public DbSet<UserEntity> Users => Set<UserEntity>();
+    public DbSet<SellerProfileEntity> SellerProfiles => Set<SellerProfileEntity>();
+
     // Products & Catalog
     public DbSet<ProductEntity> Products => Set<ProductEntity>();
     public DbSet<CategoryEntity> Categories => Set<CategoryEntity>();
     public DbSet<ProductVariationEntity> ProductVariations => Set<ProductVariationEntity>();
-    public DbSet<SellerEntity> Sellers => Set<SellerEntity>();
     public DbSet<TaxonomyNodeEntity> TaxonomyNodes => Set<TaxonomyNodeEntity>();
     public DbSet<ProductTaxonomyEntity> ProductTaxonomy => Set<ProductTaxonomyEntity>();
 
@@ -48,6 +51,9 @@ public class SegmentCommerceDbContext : DbContext
     
     // Demo users for testing/demonstration
     public DbSet<DemoUserEntity> DemoUsers => Set<DemoUserEntity>();
+    
+    // Dynamic segments (LLM-named)
+    public DbSet<SegmentEntity> Segments => Set<SegmentEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +62,42 @@ public class SegmentCommerceDbContext : DbContext
         modelBuilder.HasPostgresExtension("vector");
         modelBuilder.HasPostgresExtension("ltree");
 
+        // ============ USERS ============
+        modelBuilder.Entity<UserEntity>(entity =>
+        {
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CreatedAt);
+
+            // 1:0..1 relationship with SellerProfile (shared PK pattern)
+            entity.HasOne(e => e.SellerProfile)
+                .WithOne(sp => sp.User)
+                .HasForeignKey<SellerProfileEntity>(sp => sp.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Products sold by this user
+            entity.HasMany(e => e.Products)
+                .WithOne(p => p.Seller)
+                .HasForeignKey(p => p.SellerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Store memberships
+            entity.HasMany(e => e.StoreUsers)
+                .WithOne(su => su.User)
+                .HasForeignKey(su => su.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SellerProfileEntity>(entity =>
+        {
+            entity.HasIndex(e => e.BusinessName);
+            entity.HasIndex(e => e.IsVerified);
+            entity.HasIndex(e => e.IsActive);
+            entity.Property(e => e.Rating).HasDefaultValue(0.0);
+            entity.Property(e => e.ReviewCount).HasDefaultValue(0);
+            entity.Property(e => e.IsVerified).HasDefaultValue(false);
+        });
+
         // ============ PRODUCTS ============
         modelBuilder.Entity<ProductEntity>(entity =>
         {
@@ -63,6 +105,7 @@ public class SegmentCommerceDbContext : DbContext
             entity.HasIndex(e => e.IsTrending);
             entity.HasIndex(e => e.IsFeatured);
             entity.HasIndex(e => e.Handle).IsUnique();
+            entity.HasIndex(e => e.SellerId);
             entity.HasIndex(e => e.CategoryPath).HasMethod("gist");
 
             entity.Property(e => e.CategoryPath).HasColumnType("ltree");
@@ -94,20 +137,6 @@ public class SegmentCommerceDbContext : DbContext
             entity.Property(e => e.Color).IsRequired();
             entity.Property(e => e.Size).IsRequired();
             entity.Property(e => e.StockQuantity).HasDefaultValue(0);
-        });
-
-        modelBuilder.Entity<SellerEntity>(entity =>
-        {
-            entity.HasIndex(e => e.Name).IsUnique();
-            entity.HasIndex(e => e.Email).IsUnique();
-            entity.Property(e => e.Rating).HasDefaultValue(0.0);
-            entity.Property(e => e.ReviewCount).HasDefaultValue(0);
-            entity.Property(e => e.IsVerified).HasDefaultValue(false);
-
-            entity.HasMany(e => e.Products)
-                .WithOne(p => p.Seller)
-                .HasForeignKey(p => p.SellerId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<CategoryEntity>(entity =>
@@ -266,6 +295,17 @@ public class SegmentCommerceDbContext : DbContext
             entity.Property(e => e.Interests).HasColumnType("jsonb");
             entity.Property(e => e.BrandAffinities).HasColumnType("jsonb");
             entity.Property(e => e.PreferredTags).HasColumnType("jsonb");
+        });
+
+        // ============ DYNAMIC SEGMENTS ============
+        modelBuilder.Entity<SegmentEntity>(entity =>
+        {
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.SortOrder);
+            entity.Property(e => e.Rules).HasColumnType("jsonb");
+            entity.Property(e => e.Tags).HasColumnType("jsonb");
         });
     }
 }

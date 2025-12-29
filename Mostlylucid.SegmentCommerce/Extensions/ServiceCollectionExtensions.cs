@@ -80,11 +80,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICartService, CartService>();
         services.AddHttpContextAccessor();
         
-        // Segment services
-        services.AddSingleton<ISegmentService, SegmentService>();
+        // Segment services - hybrid: loads from DB if available, else uses defaults
+        services.AddSingleton<ISegmentService>(sp => 
+            new SegmentService(
+                sp.GetRequiredService<ILogger<SegmentService>>(),
+                sp.GetRequiredService<IServiceScopeFactory>()));
         services.AddScoped<ISegmentVisualizationService, SegmentVisualizationService>();
         services.AddScoped<IDemoPersonaService, DemoPersonaService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
+        
+        // Segment generator for dynamic LLM-named segments
+        services.AddHttpClient<ISegmentGeneratorService, SegmentGeneratorService>();
         
         // Search service
         services.AddScoped<ISearchService, SearchService>();

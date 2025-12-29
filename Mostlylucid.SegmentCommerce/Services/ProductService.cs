@@ -20,6 +20,7 @@ public class ProductService
     public async Task<IEnumerable<Product>> GetAllAsync()
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .OrderBy(p => p.Name)
             .ToListAsync();
 
@@ -28,13 +29,16 @@ public class ProductService
 
     public async Task<Product?> GetByIdAsync(int id)
     {
-        var entity = await _context.Products.FindAsync(id);
+        var entity = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
+            .FirstOrDefaultAsync(p => p.Id == id);
         return entity != null ? MapToModel(entity) : null;
     }
 
     public async Task<IEnumerable<Product>> GetByCategoryAsync(string category)
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.Category == category.ToLowerInvariant())
             .OrderBy(p => p.Name)
             .ToListAsync();
@@ -45,6 +49,7 @@ public class ProductService
     public async Task<IEnumerable<Product>> GetTrendingAsync(int count = 10)
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.IsTrending)
             .OrderByDescending(p => p.UpdatedAt)
             .Take(count)
@@ -56,6 +61,7 @@ public class ProductService
     public async Task<IEnumerable<Product>> GetFeaturedAsync(int count = 10)
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.IsFeatured)
             .OrderByDescending(p => p.UpdatedAt)
             .Take(count)
@@ -67,6 +73,7 @@ public class ProductService
     public async Task<IEnumerable<Product>> GetOnSaleAsync(int count = 10)
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.OriginalPrice.HasValue && p.OriginalPrice > p.Price)
             .OrderByDescending(p => p.OriginalPrice - p.Price)
             .Take(count)
@@ -103,6 +110,7 @@ public class ProductService
         
         // Fetch products from database first
         var products = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => categories.Contains(p.Category))
             .OrderByDescending(p => p.IsTrending)
             .Take(count * 3) // Fetch more to allow for scoring/filtering
@@ -123,6 +131,7 @@ public class ProductService
     public async Task<IEnumerable<Product>> SearchAsync(string query, int count = 20)
     {
         var entities = await _context.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => 
                 EF.Functions.ILike(p.Name, $"%{query}%") ||
                 EF.Functions.ILike(p.Description, $"%{query}%") ||
@@ -152,7 +161,16 @@ public class ProductService
             Tags = entity.Tags,
             IsTrending = entity.IsTrending,
             IsRecommended = isRecommended,
-            RelevanceScore = relevanceScore
+            RelevanceScore = relevanceScore,
+            SellerId = entity.SellerId,
+            Seller = entity.Seller?.SellerProfile != null ? new SellerInfo
+            {
+                Id = entity.Seller.Id,
+                Name = entity.Seller.SellerProfile.BusinessName,
+                LogoUrl = entity.Seller.SellerProfile.LogoUrl ?? entity.Seller.AvatarUrl,
+                IsVerified = entity.Seller.SellerProfile.IsVerified,
+                Rating = entity.Seller.SellerProfile.Rating
+            } : null
         };
     }
 }

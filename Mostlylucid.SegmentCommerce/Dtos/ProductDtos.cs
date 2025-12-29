@@ -16,7 +16,7 @@ public enum AvailabilityStatus
 }
 
 public record SellerDto(
-    int Id,
+    Guid Id,
     string Name,
     double Rating,
     int ReviewCount,

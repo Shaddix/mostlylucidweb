@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Mostlylucid.SegmentCommerce.Data;
+using Mostlylucid.SegmentCommerce.Data.Entities;
 using Mostlylucid.SegmentCommerce.Data.Entities.Profiles;
 
 namespace Mostlylucid.SegmentCommerce.Services.Segments;
@@ -6,33 +9,169 @@ namespace Mostlylucid.SegmentCommerce.Services.Segments;
 /// <summary>
 /// Service for computing and managing dynamic segments.
 /// Evaluates profiles against segment rules to determine fuzzy membership.
+/// Supports hybrid mode: loads from database if segments exist, otherwise uses hardcoded defaults.
 /// </summary>
 public class SegmentService : ISegmentService
 {
     private readonly List<SegmentDefinition> _segments = [];
     private readonly ILogger<SegmentService>? _logger;
+    private readonly IServiceScopeFactory? _scopeFactory;
+    private bool _initialized;
+    private readonly object _initLock = new();
 
-    public SegmentService(ILogger<SegmentService>? logger = null)
+    public SegmentService(ILogger<SegmentService>? logger = null, IServiceScopeFactory? scopeFactory = null)
     {
         _logger = logger;
-        InitializeDefaultSegments();
+        _scopeFactory = scopeFactory;
+        // Defer initialization until first access
     }
+
+    private void EnsureInitialized()
+    {
+        if (_initialized) return;
+        
+        lock (_initLock)
+        {
+            if (_initialized) return;
+            
+            // Try to load from database first
+            if (_scopeFactory != null && TryLoadFromDatabase())
+            {
+                _logger?.LogInformation("Loaded {Count} segments from database", _segments.Count);
+            }
+            else
+            {
+                // Fall back to hardcoded defaults
+                InitializeDefaultSegments();
+                _logger?.LogInformation("Using {Count} hardcoded default segments", _segments.Count);
+            }
+            
+            _initialized = true;
+        }
+    }
+
+    private bool TryLoadFromDatabase()
+    {
+        try
+        {
+            using var scope = _scopeFactory!.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<SegmentCommerceDbContext>();
+            
+            var entities = db.Segments
+                .Where(s => s.IsActive)
+                .OrderBy(s => s.SortOrder)
+                .ThenBy(s => s.Name)
+                .AsNoTracking()
+                .ToList();
+
+            if (entities.Count == 0)
+                return false;
+
+            foreach (var entity in entities)
+            {
+                _segments.Add(MapToDefinition(entity));
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load segments from database, falling back to defaults");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Reload segments from the database. Call after segment generation/modification.
+    /// </summary>
+    public void ReloadFromDatabase()
+    {
+        lock (_initLock)
+        {
+            _segments.Clear();
+            _initialized = false;
+        }
+        EnsureInitialized();
+    }
+
+    private static SegmentDefinition MapToDefinition(SegmentEntity entity)
+    {
+        return new SegmentDefinition
+        {
+            Id = entity.Slug,
+            Name = entity.Name,
+            Description = entity.Description ?? string.Empty,
+            Icon = entity.Icon,
+            Color = entity.Color,
+            Rules = entity.Rules.Select(r => new SegmentRule
+            {
+                Type = ParseRuleType(r.RuleType),
+                Field = r.Field,
+                Operator = ParseOperator(r.Operator),
+                Value = r.Value,
+                Weight = r.Weight,
+                Description = r.Description
+            }).ToList(),
+            Combination = (RuleCombination)(int)entity.RuleCombination,
+            MembershipThreshold = entity.MembershipThreshold,
+            IsSystemSegment = entity.IsSystem,
+            CreatedAt = entity.CreatedAt,
+            Tags = entity.Tags
+        };
+    }
+
+    private static RuleType ParseRuleType(string ruleType) => ruleType.ToLowerInvariant() switch
+    {
+        "categoryinterest" => RuleType.CategoryInterest,
+        "brandaffinity" => RuleType.BrandAffinity,
+        "pricerange" => RuleType.PriceRange,
+        "trait" => RuleType.Trait,
+        "statistic" => RuleType.Statistic,
+        "tagaffinity" => RuleType.TagAffinity,
+        "recency" => RuleType.Recency,
+        "expression" => RuleType.Expression,
+        _ => RuleType.Statistic
+    };
+
+    private static RuleOperator ParseOperator(string op) => op.ToLowerInvariant() switch
+    {
+        "gt" or "greaterthan" => RuleOperator.GreaterThan,
+        "gte" or "greaterorequal" => RuleOperator.GreaterOrEqual,
+        "lt" or "lessthan" => RuleOperator.LessThan,
+        "lte" or "lessorequal" => RuleOperator.LessOrEqual,
+        "eq" or "equal" => RuleOperator.Equal,
+        "neq" or "notequal" => RuleOperator.NotEqual,
+        "contains" => RuleOperator.Contains,
+        "between" => RuleOperator.Between,
+        "in" => RuleOperator.In,
+        "notin" => RuleOperator.NotIn,
+        _ => RuleOperator.GreaterOrEqual
+    };
 
     /// <summary>
     /// Get all defined segments.
     /// </summary>
-    public IReadOnlyList<SegmentDefinition> GetSegments() => _segments.AsReadOnly();
+    public IReadOnlyList<SegmentDefinition> GetSegments()
+    {
+        EnsureInitialized();
+        return _segments.AsReadOnly();
+    }
 
     /// <summary>
     /// Get a segment by ID.
     /// </summary>
-    public SegmentDefinition? GetSegment(string id) => _segments.FirstOrDefault(s => s.Id == id);
+    public SegmentDefinition? GetSegment(string id)
+    {
+        EnsureInitialized();
+        return _segments.FirstOrDefault(s => s.Id == id);
+    }
 
     /// <summary>
     /// Add a new segment definition.
     /// </summary>
     public void AddSegment(SegmentDefinition segment)
     {
+        EnsureInitialized();
         _segments.Add(segment);
     }
 
@@ -42,6 +181,7 @@ public class SegmentService : ISegmentService
     /// </summary>
     public List<SegmentMembership> ComputeMemberships(ProfileData profile)
     {
+        EnsureInitialized();
         var memberships = new List<SegmentMembership>();
 
         foreach (var segment in _segments)

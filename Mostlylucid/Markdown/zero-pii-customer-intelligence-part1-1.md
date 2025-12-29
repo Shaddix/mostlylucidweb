@@ -1,11 +1,11 @@
 # Zero PII Customer Intelligence - Part 1.1: Generating Sample Data (and Images) Locally
 
 <!--category-- Product, Privacy, LLM, ComfyUI, C# -->
-<datetime class="hidden">2025-12-24T20:00</datetime>
+<datetime class="hidden">2025-12-31T20:00</datetime>
 
-In [Part 1](/blog/zero-pii-customer-intelligence-part1) I talked about the architecture: sessions, anonymous profiles, decay, and explainable segments.
+In [Part 1](/blog/zero-pii-customer-intelligence-part1) we covered the philosophy: transparent segmentation without PII. [Part 2](/blog/zero-pii-customer-intelligence-part2) covers session profiles, signals, and segment definitions.
 
-Here’s the very practical follow-up: **how do you validate any of this without ever touching real customer data?**
+But first: **how do you validate any of this without ever touching real customer data?**
 
 For this series I generate a complete synthetic ecommerce dataset locally:
 - Product catalog (names, descriptions, tags, prices)
@@ -369,11 +369,12 @@ This local pipeline is powerful because it supports *model validation*, not just
 
 The important subtlety: by generating both the *text* and the *images*, you can validate the entire product experience, not just back-end math.
 
-## Next
+## What's Next
 
-**Next:** [Part 2 - Core Implementation] where we wire session signals, decay, and segments against this dataset.
+**[Part 2](/blog/zero-pii-customer-intelligence-part2)**: Session profiles, signals, and segment definitions—where we wire this sample data into working segmentation.
 
-If you want to explore the generator code as you read this post:
-- `Mostlylucid.SegmentCommerce.SampleData/Commands/GenerateCommand.cs`
-- `Mostlylucid.SegmentCommerce.SampleData/Services/OllamaProductGenerator.cs`
-- `Mostlylucid.SegmentCommerce.SampleData/Services/ComfyUIImageGenerator.cs`
+**Part 3** (coming): Outbox pattern, job queue, and the transparency UI.
+
+---
+
+*Generator code: `Mostlylucid.SegmentCommerce.SampleData/`*

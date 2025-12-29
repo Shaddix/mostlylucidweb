@@ -141,6 +141,54 @@ public class PlaceholderController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Generates a circular SVG avatar placeholder for a seller.
+    /// </summary>
+    [HttpGet("seller/{sellerName}")]
+    [ResponseCache(Duration = 86400)] // Cache for 1 day
+    public IActionResult GetSellerPlaceholder(string sellerName, [FromQuery] int w = 48, [FromQuery] int h = 48)
+    {
+        var name = Uri.UnescapeDataString(sellerName);
+        var initials = GetInitials(name);
+        var hash = GetStableHash(name);
+        
+        // Generate a nice color based on the name hash
+        var colors = new[]
+        {
+            ("#3182ce", "#ebf8ff"), // blue
+            ("#38a169", "#f0fff4"), // green
+            ("#d69e2e", "#fffff0"), // yellow
+            ("#e53e3e", "#fff5f5"), // red
+            ("#805ad5", "#faf5ff"), // purple
+            ("#dd6b20", "#fffaf0"), // orange
+            ("#319795", "#e6fffa"), // teal
+            ("#d53f8c", "#fff5f7")  // pink
+        };
+        var (bg, fg) = colors[hash % colors.Length];
+        
+        var svg = $"""
+            <svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">
+              <circle cx="{w / 2}" cy="{h / 2}" r="{Math.Min(w, h) / 2}" fill="{bg}"/>
+              <text x="50%" y="50%" text-anchor="middle" dy="0.35em" fill="{fg}" font-family="system-ui, sans-serif" font-size="{Math.Min(w, h) / 2.5}" font-weight="600">
+                {System.Security.SecurityElement.Escape(initials)}
+              </text>
+            </svg>
+            """;
+
+        return Content(svg, "image/svg+xml");
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpper();
+        
+        return $"{char.ToUpper(parts[0][0])}{char.ToUpper(parts[^1][0])}";
+    }
+
     private static int GetStableHash(string input)
     {
         unchecked

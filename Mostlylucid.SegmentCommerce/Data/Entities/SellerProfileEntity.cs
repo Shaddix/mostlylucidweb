@@ -3,29 +3,31 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Mostlylucid.SegmentCommerce.Data.Entities;
 
-[Table("sellers")]
-public class SellerEntity
+/// <summary>
+/// Seller profile - extends a User with seller-specific information.
+/// Uses shared primary key pattern (UserId is both PK and FK).
+/// </summary>
+[Table("seller_profiles")]
+public class SellerProfileEntity
 {
+    /// <summary>
+    /// Shared primary key with UserEntity (1:1 relationship).
+    /// </summary>
     [Key]
-    [Column("id")]
-    public int Id { get; set; }
+    [Column("user_id")]
+    public Guid UserId { get; set; }
 
+    /// <summary>
+    /// Business/store name (may differ from user's display name).
+    /// </summary>
     [Required]
     [MaxLength(200)]
-    [Column("name")]
-    public string Name { get; set; } = string.Empty;
+    [Column("business_name")]
+    public string BusinessName { get; set; } = string.Empty;
 
     [MaxLength(500)]
     [Column("description")]
     public string? Description { get; set; }
-
-    [MaxLength(200)]
-    [Column("email")]
-    public string? Email { get; set; }
-
-    [MaxLength(200)]
-    [Column("phone")]
-    public string? Phone { get; set; }
 
     [MaxLength(500)]
     [Column("website")]
@@ -57,6 +59,7 @@ public class SellerEntity
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation property for products
-    public List<ProductEntity> Products { get; set; } = [];
+    // Navigation property back to user
+    [ForeignKey(nameof(UserId))]
+    public UserEntity User { get; set; } = null!;
 }

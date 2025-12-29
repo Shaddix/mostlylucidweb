@@ -1,0 +1,67 @@
+version: '3.8'
+
+# SegmentCommerce - Minimal Configuration
+# Only PostgreSQL required, uses ONNX for embeddings (no Ollama needed)
+
+services:
+  # ============ APPLICATION ============
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: segmentcommerce-app
+    restart: unless-stopped
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=segmentcommerce;Username=postgres;Password=postgres"
+      # Using ONNX for embeddings (no external dependencies)
+      Embeddings__UseOnnx: "true"
+      Onnx__ModelPath: "/app/Models/all-MiniLM-L6-v2.onnx"
+      Onnx__VocabPath: "/app/Models/vocab.txt"
+      # Using template names for segments (no LLM needed)
+      Segments__UseLlmNaming: "false"
+      BackgroundWorkers__Enabled: "true"
+      Cache__UseRedis: "false"
+    volumes:
+      - app-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ============ DATABASE ============
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: segmentcommerce-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: segmentcommerce
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-extensions.sql:/docker-entrypoint-initdb.d/01-init-extensions.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  default:
+    name: segmentcommerce-network

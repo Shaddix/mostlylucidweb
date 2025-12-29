@@ -54,7 +54,7 @@ public static class DbSeeder
             await SeedCategoriesAsync(context);
         }
 
-        if (!await context.Sellers.AnyAsync())
+        if (!await context.SellerProfiles.AnyAsync())
         {
             if (validPath != null)
             {
@@ -84,16 +84,25 @@ public static class DbSeeder
 
         logger?.LogInformation("Found {Count} sellers to import", sellers.Count);
 
-        // First, create all sellers
-        var sellerEntities = new Dictionary<string, SellerEntity>();
+        // First, create all sellers (as UserEntity + SellerProfileEntity)
+        var sellerUserIds = new Dictionary<string, Guid>();
         foreach (var seller in sellers)
         {
-            var entity = new SellerEntity
+            var userId = Guid.NewGuid();
+            var userEntity = new UserEntity
             {
-                Name = seller.Name,
+                Id = userId,
+                Email = seller.Email ?? $"{GenerateHandle(seller.Name)}@seller.local",
+                DisplayName = seller.Name,
+                AvatarUrl = seller.LogoUrl,
+                IsActive = true,
+                EmailVerified = true
+            };
+            var sellerProfile = new SellerProfileEntity
+            {
+                UserId = userId,
+                BusinessName = seller.Name,
                 Description = seller.Description,
-                Email = seller.Email,
-                Phone = seller.Phone,
                 Website = seller.Website,
                 LogoUrl = seller.LogoUrl,
                 Rating = seller.Rating,
@@ -101,8 +110,9 @@ public static class DbSeeder
                 IsVerified = seller.IsVerified,
                 IsActive = true
             };
-            context.Sellers.Add(entity);
-            sellerEntities[seller.Id] = entity;
+            context.Users.Add(userEntity);
+            context.SellerProfiles.Add(sellerProfile);
+            sellerUserIds[seller.Id] = userId;
         }
         await context.SaveChangesAsync();
 
@@ -113,7 +123,7 @@ public static class DbSeeder
 
         foreach (var seller in sellers)
         {
-            var sellerEntity = sellerEntities[seller.Id];
+            var sellerUserId = sellerUserIds[seller.Id];
 
             foreach (var product in seller.Products)
             {
@@ -135,7 +145,7 @@ public static class DbSeeder
                     PublishedAt = DateTime.UtcNow,
                     IsTrending = product.IsTrending,
                     IsFeatured = product.IsFeatured,
-                    SellerId = sellerEntity.Id,
+                    SellerId = sellerUserId,
                     Color = product.ColourVariants?.FirstOrDefault() ?? "Default",
                     Size = "Default"
                 };
@@ -304,65 +314,41 @@ public static class DbSeeder
 
     private static async Task SeedSellersAsync(SegmentCommerceDbContext context)
     {
-        var sellers = new List<SellerEntity>
+        var sellerData = new[]
         {
-            new()
-            {
-                Name = "TechGadgets Pro",
-                Description = "Premium technology and electronics retailer",
-                Email = "hello@techgadgetspro.test",
-                Rating = 4.8,
-                ReviewCount = 1250,
-                IsVerified = true
-            },
-            new()
-            {
-                Name = "Fashion Forward",
-                Description = "Contemporary fashion and accessories",
-                Email = "hello@fashionforward.test",
-                Rating = 4.6,
-                ReviewCount = 890,
-                IsVerified = true
-            },
-            new()
-            {
-                Name = "Home Essentials",
-                Description = "Quality home and garden products",
-                Email = "hello@homeessentials.test",
-                Rating = 4.7,
-                ReviewCount = 560,
-                IsVerified = true
-            },
-            new()
-            {
-                Name = "Active Life Store",
-                Description = "Sports equipment and fitness gear",
-                Email = "hello@activelifestore.test",
-                Rating = 4.5,
-                ReviewCount = 720,
-                IsVerified = true
-            },
-            new()
-            {
-                Name = "Book Haven",
-                Description = "Books for every reader",
-                Email = "hello@bookhaven.test",
-                Rating = 4.9,
-                ReviewCount = 1100,
-                IsVerified = true
-            },
-            new()
-            {
-                Name = "Gourmet Delights",
-                Description = "Premium food and beverages",
-                Email = "hello@gourmetdelights.test",
-                Rating = 4.7,
-                ReviewCount = 430,
-                IsVerified = true
-            }
+            ("TechGadgets Pro", "Premium technology and electronics retailer", "hello@techgadgetspro.test", 4.8, 1250, true),
+            ("Fashion Forward", "Contemporary fashion and accessories", "hello@fashionforward.test", 4.6, 890, true),
+            ("Home Essentials", "Quality home and garden products", "hello@homeessentials.test", 4.7, 560, true),
+            ("Active Life Store", "Sports equipment and fitness gear", "hello@activelifestore.test", 4.5, 720, true),
+            ("Book Haven", "Books for every reader", "hello@bookhaven.test", 4.9, 1100, true),
+            ("Gourmet Delights", "Premium food and beverages", "hello@gourmetdelights.test", 4.7, 430, true)
         };
 
-        await context.Sellers.AddRangeAsync(sellers);
+        foreach (var (name, description, email, rating, reviewCount, isVerified) in sellerData)
+        {
+            var userId = Guid.NewGuid();
+            var user = new UserEntity
+            {
+                Id = userId,
+                Email = email,
+                DisplayName = name,
+                IsActive = true,
+                EmailVerified = true
+            };
+            var sellerProfile = new SellerProfileEntity
+            {
+                UserId = userId,
+                BusinessName = name,
+                Description = description,
+                Rating = rating,
+                ReviewCount = reviewCount,
+                IsVerified = isVerified,
+                IsActive = true
+            };
+            context.Users.Add(user);
+            context.SellerProfiles.Add(sellerProfile);
+        }
+
         await context.SaveChangesAsync();
     }
 
@@ -371,17 +357,17 @@ public static class DbSeeder
     /// </summary>
     private static async Task SeedSampleProductsAsync(SegmentCommerceDbContext context)
     {
-        var sellers = await context.Sellers.ToListAsync();
+        var sellerProfiles = await context.SellerProfiles.ToListAsync();
         var now = DateTime.UtcNow;
 
-        var sellersByCategory = new Dictionary<string, int>
+        var sellersByCategory = new Dictionary<string, Guid>
         {
-            ["tech"] = sellers.First(s => s.Name.Contains("Tech")).Id,
-            ["fashion"] = sellers.First(s => s.Name.Contains("Fashion")).Id,
-            ["home"] = sellers.First(s => s.Name.Contains("Home")).Id,
-            ["sport"] = sellers.First(s => s.Name.Contains("Active")).Id,
-            ["books"] = sellers.First(s => s.Name.Contains("Book")).Id,
-            ["food"] = sellers.First(s => s.Name.Contains("Gourmet")).Id
+            ["tech"] = sellerProfiles.First(s => s.BusinessName.Contains("Tech")).UserId,
+            ["fashion"] = sellerProfiles.First(s => s.BusinessName.Contains("Fashion")).UserId,
+            ["home"] = sellerProfiles.First(s => s.BusinessName.Contains("Home")).UserId,
+            ["sport"] = sellerProfiles.First(s => s.BusinessName.Contains("Active")).UserId,
+            ["books"] = sellerProfiles.First(s => s.BusinessName.Contains("Book")).UserId,
+            ["food"] = sellerProfiles.First(s => s.BusinessName.Contains("Gourmet")).UserId
         };
 
         var products = new List<ProductEntity>
@@ -537,7 +523,7 @@ public static class DbSeeder
         decimal? originalPrice,
         string description,
         List<string> tags,
-        int sellerId,
+        Guid sellerId,
         bool isTrending,
         bool isFeatured,
         DateTime now,

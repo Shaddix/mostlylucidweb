@@ -51,6 +51,11 @@ public class RecommendedProduct
     public string[] Tags { get; set; } = [];
     
     /// <summary>
+    /// Seller information for display.
+    /// </summary>
+    public RecommendedProductSeller? Seller { get; set; }
+    
+    /// <summary>
     /// Relevance score (0-1) based on profile matching.
     /// </summary>
     public double RelevanceScore { get; set; }
@@ -67,6 +72,18 @@ public class RecommendedProduct
     
     public bool IsTrending { get; set; }
     public bool IsOnSale { get; set; }
+}
+
+/// <summary>
+/// Seller info for recommended products.
+/// </summary>
+public class RecommendedProductSeller
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? LogoUrl { get; set; }
+    public bool IsVerified { get; set; }
+    public double Rating { get; set; }
 }
 
 public class RecommendationService : IRecommendationService
@@ -112,6 +129,7 @@ public class RecommendationService : IRecommendationService
         {
             var interestCategories = topInterests.Select(kv => kv.Key).ToList();
             var interestProducts = await _db.Products
+                .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
                 .Where(p => interestCategories.Contains(p.Category))
                 .OrderByDescending(p => p.IsTrending)
                 .ThenByDescending(p => p.UpdatedAt)
@@ -141,6 +159,7 @@ public class RecommendationService : IRecommendationService
         if (topBrands.Any())
         {
             var brandProducts = await _db.Products
+                .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
                 .Where(p => topBrands.Contains(p.Brand ?? ""))
                 .Take(count)
                 .ToListAsync();
@@ -203,6 +222,7 @@ public class RecommendationService : IRecommendationService
         {
             var existingIds = recommendations.Select(r => r.Product.Id).ToHashSet();
             var trendingProducts = await _db.Products
+                .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
                 .Where(p => p.IsTrending && !existingIds.Contains(p.Id))
                 .Take(count - recommendations.Count)
                 .ToListAsync();
@@ -254,6 +274,7 @@ public class RecommendationService : IRecommendationService
 
             var interestCategories = topInterests.Select(kv => kv.Key).ToList();
             var products = await _db.Products
+                .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
                 .Where(p => interestCategories.Contains(p.Category))
                 .OrderByDescending(p => p.IsTrending)
                 .Take(count * 2)
@@ -288,6 +309,7 @@ public class RecommendationService : IRecommendationService
 
         // Find products in same category with similar tags
         var similarProducts = await _db.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.Id != productId)
             .Where(p => p.Category == product.Category || 
                        (p.Subcategory != null && p.Subcategory == product.Subcategory))
@@ -322,6 +344,7 @@ public class RecommendationService : IRecommendationService
 
         // Get cart products to understand what categories/brands are in cart
         var cartProducts = await _db.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => cartProductIds.Contains(p.Id))
             .ToListAsync();
 
@@ -330,6 +353,7 @@ public class RecommendationService : IRecommendationService
 
         // Find complementary products (same category or brand, but not in cart)
         var complementary = await _db.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => !cartProductIds.Contains(p.Id))
             .Where(p => cartCategories.Contains(p.Category) || 
                        (p.Brand != null && cartBrands.Contains(p.Brand)))
@@ -363,6 +387,7 @@ public class RecommendationService : IRecommendationService
     private async Task<List<RecommendedProduct>> GetTrendingRecommendationsAsync(int count)
     {
         var trending = await _db.Products
+            .Include(p => p.Seller).ThenInclude(s => s.SellerProfile)
             .Where(p => p.IsTrending)
             .OrderByDescending(p => p.UpdatedAt)
             .Take(count)
@@ -412,6 +437,14 @@ public class RecommendationService : IRecommendationService
             Subcategory = entity.Subcategory,
             Brand = entity.Brand,
             Tags = entity.Tags?.ToArray() ?? [],
+            Seller = entity.Seller?.SellerProfile != null ? new RecommendedProductSeller
+            {
+                Id = entity.Seller.Id,
+                Name = entity.Seller.SellerProfile.BusinessName,
+                LogoUrl = entity.Seller.SellerProfile.LogoUrl ?? entity.Seller.AvatarUrl,
+                IsVerified = entity.Seller.SellerProfile.IsVerified,
+                Rating = entity.Seller.SellerProfile.Rating
+            } : null,
             RelevanceScore = score,
             RecommendationReason = reason,
             RecommendationType = type,

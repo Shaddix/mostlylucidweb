@@ -1,9 +1,51 @@
 version: '3.8'
 
-# SegmentCommerce Development Dependencies
+# SegmentCommerce - Zero-PII Customer Intelligence Demo
 # PostgreSQL with pgvector for semantic search and queue
+# Uses in-memory cache (no Redis required)
 
 services:
+  # ============ APPLICATION ============
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: segmentcommerce-app
+    restart: unless-stopped
+    ports:
+      - "5080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=segmentcommerce;Username=postgres;Password=postgres"
+      # Ollama for LLM-based segment naming (optional, uses templates if unavailable)
+      Ollama__BaseUrl: "http://ollama:11434"
+      Ollama__Model: "llama3.2"
+      # Set to true to use LLM for segment names (slower startup, requires Ollama)
+      Segments__UseLlmNaming: "false"
+      # Embeddings: true = ONNX (local, no deps), false = Ollama (requires Ollama service)
+      Embeddings__UseOnnx: "true"
+      Onnx__ModelPath: "/app/Models/all-MiniLM-L6-v2.onnx"
+      Onnx__VocabPath: "/app/Models/vocab.txt"
+      BackgroundWorkers__Enabled: "true"
+      # Using in-memory cache - no Redis needed for this demo
+      Cache__UseRedis: "false"
+    volumes:
+      - app-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Note: Ollama is optional when using ONNX embeddings (Embeddings__UseOnnx: "true")
+      # Comment out below if not using LLM segment naming
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ============ INFRASTRUCTURE ============
   postgres:
     image: pgvector/pgvector:pg16
     container_name: segmentcommerce-postgres
@@ -58,6 +100,8 @@ services:
       - postgres
 
 volumes:
+  app-data:
+    driver: local
   postgres-data:
     driver: local
   ollama-data:

@@ -71,10 +71,10 @@ public class ProductEntity
     [Column("is_featured")]
     public bool IsFeatured { get; set; }
 
-    // Seller relationship
+    // Seller relationship - references the User who sells this product
     [Required]
     [Column("seller_id")]
-    public int SellerId { get; set; }
+    public Guid SellerId { get; set; }
 
     // Constrained attributes (default variant shortcut)
     [MaxLength(50)]
@@ -89,8 +89,9 @@ public class ProductEntity
     [Column("subcategory")]
     public string? Subcategory { get; set; }
 
-    // Navigation property for seller
-    public SellerEntity Seller { get; set; } = null!;
+    // Navigation property to the seller (User with SellerProfile)
+    [ForeignKey(nameof(SellerId))]
+    public UserEntity Seller { get; set; } = null!;
 
     // Product variations (for different colors/sizes)
     public List<ProductVariationEntity> Variations { get; set; } = [];

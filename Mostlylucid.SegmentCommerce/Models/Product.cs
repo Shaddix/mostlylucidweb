@@ -13,6 +13,18 @@ public class ProductVariation
     public bool IsActive { get; set; }
 }
 
+/// <summary>
+/// Seller information for display on product cards
+/// </summary>
+public class SellerInfo
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? LogoUrl { get; set; }
+    public bool IsVerified { get; set; }
+    public double Rating { get; set; }
+}
+
 public class Product
 {
     public int Id { get; set; }
@@ -26,7 +38,8 @@ public class Product
     public bool IsRecommended { get; set; }
     public bool IsTrending { get; set; }
     public double RelevanceScore { get; set; }
-    public int SellerId { get; set; }
+    public Guid SellerId { get; set; }
+    public SellerInfo? Seller { get; set; }
     public string? Color { get; set; }
     public string? Size { get; set; }
     public List<ProductVariation> Variations { get; set; } = [];

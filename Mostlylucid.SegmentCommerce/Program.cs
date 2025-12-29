@@ -9,6 +9,7 @@ using Mostlylucid.SegmentCommerce.Services.Attributes;
 using Mostlylucid.SegmentCommerce.Services.Embeddings;
 using Mostlylucid.SegmentCommerce.Services.Profiles;
 using Mostlylucid.SegmentCommerce.Services.Queue;
+using Mostlylucid.SegmentCommerce.Services.Segments;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -49,12 +50,21 @@ builder.Services.RegisterQueueServices();
 // Client fingerprint (zero-cookie session identification)
 builder.Services.AddClientFingerprint(builder.Configuration);
 
-var ollamaUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
-builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client =>
+// Embedding service - prefer ONNX for local inference, fallback to Ollama
+var useOnnxEmbeddings = builder.Configuration.GetValue("Embeddings:UseOnnx", true);
+if (useOnnxEmbeddings)
 {
-    client.BaseAddress = new Uri(ollamaUrl);
-    client.Timeout = TimeSpan.FromSeconds(60);
-});
+    builder.Services.AddScoped<IEmbeddingService, OnnxEmbeddingService>();
+}
+else
+{
+    var ollamaUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
+    builder.Services.AddHttpClient<IEmbeddingService, OllamaEmbeddingService>(client =>
+    {
+        client.BaseAddress = new Uri(ollamaUrl);
+        client.Timeout = TimeSpan.FromSeconds(60);
+    });
+}
 
 if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
 {
@@ -62,22 +72,8 @@ if (builder.Configuration.GetValue<bool>("BackgroundWorkers:Enabled", false))
     builder.Services.AddHostedService<OutboxWorkerService>();
 }
 
-// Distributed cache - Redis in production, in-memory for development
-var useRedis = builder.Configuration.GetValue<bool>("Cache:UseRedis", false);
-var redisConnection = builder.Configuration.GetConnectionString("Redis");
-
-if (useRedis && !string.IsNullOrEmpty(redisConnection))
-{
-    builder.Services.AddStackExchangeRedisCache(options =>
-    {
-        options.Configuration = redisConnection;
-        options.InstanceName = builder.Configuration["Cache:InstanceName"] ?? "SegmentCommerce_";
-    });
-}
-else
-{
-    builder.Services.AddDistributedMemoryCache();
-}
+// In-memory distributed cache (sufficient for single-instance demo)
+builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddSession(options =>
 {
@@ -92,14 +88,18 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<SegmentCommerceDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
     try
     {
         await DbSeeder.SeedAsync(context);
+        
+        // Seed dynamic segments (LLM-named from data patterns)
+        var segmentGenerator = scope.ServiceProvider.GetRequiredService<ISegmentGeneratorService>();
+        await segmentGenerator.SeedDefaultSegmentsAsync();
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while seeding the database");
     }
 }
@@ -117,6 +117,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSession();
 app.UseProfileIdentification();
+
+// Health check endpoint for Docker/Kubernetes
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 app.MapControllerRoute(
     name: "areas",
