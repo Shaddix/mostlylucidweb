@@ -47,7 +47,12 @@ function sessionStore() {
         showTrackingPanel: false,
         privacyFeatures: null,
         
+        // Store the original page URL for reloading (captured at init time)
+        _pageUrl: null,
+        
         async init() {
+            // Capture the current page URL before any HTMX operations can change it
+            this._pageUrl = window.location.origin + window.location.pathname;
             // Wait for TrackingManager to initialize
             if (!window.TrackingManager) {
                 console.error('[SessionStore] TrackingManager not loaded!');
@@ -140,21 +145,67 @@ function sessionStore() {
         async loginDemoUser(user) {
             await TrackingManager.loginDemoUser(user);
             this.syncFromTrackingManager();
-            // Reload page to fetch new profile data
-            window.location.reload();
+            
+            // Close the dropdown
+            this.showTrackingPanel = false;
+            
+            // Force a clean page reload to get new recommendations
+            // Use a hidden form to do a native POST>redirect, bypassing HTMX completely
+            const reloadUrl = this._pageUrl || window.location.origin + window.location.pathname;
+            console.debug('[SessionStore] loginDemoUser - reloading to:', reloadUrl);
+            
+            // Create and submit a hidden form to force native navigation
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = reloadUrl;
+            form.style.display = 'none';
+            // Mark form to not be processed by HTMX
+            form.setAttribute('data-hx-boost', 'false');
+            form.setAttribute('hx-boost', 'false');
+            document.body.appendChild(form);
+            form.submit();
         },
         
-        logoutDemoUser() {
-            TrackingManager.logoutDemoUser();
+        async logoutDemoUser() {
+            await TrackingManager.logoutDemoUser();
             this.syncFromTrackingManager();
-            // Reload page to clear profile data
-            window.location.reload();
+            
+            // Close the dropdown
+            this.showTrackingPanel = false;
+            
+            // Force a clean page reload using same approach as loginDemoUser
+            const reloadUrl = this._pageUrl || window.location.origin + window.location.pathname;
+            console.debug('[SessionStore] logoutDemoUser - reloading to:', reloadUrl);
+            
+            // Create and submit a hidden form to force native navigation
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = reloadUrl;
+            form.style.display = 'none';
+            form.setAttribute('hx-boost', 'false');
+            document.body.appendChild(form);
+            form.submit();
         },
         
         resetTracking() {
             TrackingManager.reset();
             this.syncFromTrackingManager();
-            window.location.reload();
+            
+            // Close the dropdown
+            this.showTrackingPanel = false;
+            
+            // Force a clean page reload using same approach as loginDemoUser
+            const reloadUrl = this._pageUrl || window.location.origin + window.location.pathname;
+            console.debug('[SessionStore] resetTracking - reloading to:', reloadUrl);
+            
+            // Create and submit a hidden form to force native navigation
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = reloadUrl;
+            form.style.display = 'none';
+            form.setAttribute('hx-boost', 'false');
+            document.body.appendChild(form);
+            form.submit();
         },
         
         // ============ UI Helpers ============

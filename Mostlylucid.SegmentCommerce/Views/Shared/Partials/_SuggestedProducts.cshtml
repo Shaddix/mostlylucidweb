@@ -37,9 +37,7 @@
                 {
                     <div class="@itemClass">
                         <div class="product-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative h-full"
-                             hx-post="/products/track-view/@product.Id"
-                             hx-trigger="intersect once"
-                             hx-swap="none">
+                             data-product-id="@product.Id">
                             
                             @* Recommendation badge *@
                             @{

@@ -1,9 +1,7 @@
 @model Product
 
 <div class="product-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative"
-     hx-post="/products/track-view/@Model.Id"
-     hx-trigger="intersect once"
-     hx-swap="none">
+     data-product-id="@Model.Id">
     
     @if (Model.IsRecommended)
     {

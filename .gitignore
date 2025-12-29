@@ -301,3 +301,4 @@ nul
 /test-publish/.playwright/
 /test-publish/playwright.ps1
 /Mostlylucid.SegmentCommerce/*.png
+/Mostlylucid.SegmentCommerce/test-screenshots/

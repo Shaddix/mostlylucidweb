@@ -41,9 +41,7 @@
             @foreach (var item in Model.Items)
             {
                 <div class="product-card bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative"
-                     hx-post="/products/track-view/@item.ProductId"
-                     hx-trigger="intersect once"
-                     hx-swap="none">
+                     data-product-id="@item.ProductId">
                     
                     @* Search type badge *@
                     @{

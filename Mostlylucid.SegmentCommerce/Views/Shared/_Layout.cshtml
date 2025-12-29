@@ -246,6 +246,44 @@
 
     <!-- Fingerprinting is now handled by tracking-manager.js -->
     
+    <!-- Product view tracking via IntersectionObserver (not HTMX to avoid URL issues) -->
+    <script>
+    (function() {
+        const trackedProducts = new Set();
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const productId = entry.target.dataset.productId;
+                    if (productId && !trackedProducts.has(productId)) {
+                        trackedProducts.add(productId);
+                        fetch('/products/track-view/' + productId, { method: 'POST' })
+                            .catch(() => {}); // Silently fail
+                    }
+                }
+            });
+        }, { threshold: 0.1 });
+        
+        function observeProducts() {
+            document.querySelectorAll('[data-product-id]').forEach(el => {
+                if (!el._observed) {
+                    el._observed = true;
+                    observer.observe(el);
+                }
+            });
+        }
+        
+        // Initial observation
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', observeProducts);
+        } else {
+            observeProducts();
+        }
+        
+        // Re-observe after HTMX swaps
+        document.addEventListener('htmx:afterSwap', observeProducts);
+    })();
+    </script>
+    
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
