@@ -406,6 +406,23 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
     {
         await EnsureInitializedAsync(ct);
         
+        // DuckDB's HNSW index has issues with DELETE operations - it can corrupt the index.
+        // Workaround: Drop the HNSW index before deletion, then recreate it after.
+        if (_vssLoaded)
+        {
+            try
+            {
+                await using var dropCmd = _connection.CreateCommand();
+                dropCmd.CommandText = "DROP INDEX IF EXISTS idx_segments_embedding";
+                await dropCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose)
+                    Console.WriteLine($"[DuckDbVectorStore] Warning: Could not drop HNSW index: {ex.Message}");
+            }
+        }
+        
         await using var cmd = _connection.CreateCommand();
         cmd.CommandText = "DELETE FROM segments WHERE collection = $collection";
         cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
@@ -417,6 +434,24 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
         cacheCmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
         await cacheCmd.ExecuteNonQueryAsync(ct);
         
+        // Recreate HNSW index after deletion
+        if (_vssLoaded)
+        {
+            try
+            {
+                await using var idxCmd = _connection.CreateCommand();
+                idxCmd.CommandText = """
+                    CREATE INDEX IF NOT EXISTS idx_segments_embedding ON segments USING HNSW (embedding) WITH (metric = 'cosine')
+                    """;
+                await idxCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose)
+                    Console.WriteLine($"[DuckDbVectorStore] Warning: Could not recreate HNSW index: {ex.Message}");
+            }
+        }
+        
         if (_verbose)
             Console.WriteLine($"[DuckDbVectorStore] Deleted {deleted} segments from '{collectionName}'");
     }
@@ -425,12 +460,47 @@ public sealed class DuckDbVectorStore : IVectorStore, IDisposable
     {
         await EnsureInitializedAsync(ct);
         
+        // DuckDB's HNSW index has issues with DELETE operations - it can corrupt the index.
+        // Workaround: Drop the HNSW index before deletion, then recreate it after.
+        if (_vssLoaded)
+        {
+            try
+            {
+                await using var dropCmd = _connection.CreateCommand();
+                dropCmd.CommandText = "DROP INDEX IF EXISTS idx_segments_embedding";
+                await dropCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose)
+                    Console.WriteLine($"[DuckDbVectorStore] Warning: Could not drop HNSW index: {ex.Message}");
+            }
+        }
+        
         await using var cmd = _connection.CreateCommand();
         cmd.CommandText = "DELETE FROM segments WHERE collection = $collection AND doc_id = $doc_id";
         cmd.Parameters.Add(new DuckDBParameter("collection", collectionName));
         cmd.Parameters.Add(new DuckDBParameter("doc_id", docId));
         
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
+        
+        // Recreate HNSW index after deletion
+        if (_vssLoaded)
+        {
+            try
+            {
+                await using var idxCmd = _connection.CreateCommand();
+                idxCmd.CommandText = """
+                    CREATE INDEX IF NOT EXISTS idx_segments_embedding ON segments USING HNSW (embedding) WITH (metric = 'cosine')
+                    """;
+                await idxCmd.ExecuteNonQueryAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                if (_verbose)
+                    Console.WriteLine($"[DuckDbVectorStore] Warning: Could not recreate HNSW index: {ex.Message}");
+            }
+        }
         
         if (_verbose)
             Console.WriteLine($"[DuckDbVectorStore] Deleted {deleted} segments for doc '{docId}'");
