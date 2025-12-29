@@ -69,6 +69,7 @@ public static class ServiceCollectionExtensions
         // Profile services (Zero PII)
         // Session profiles are stored in-memory only (never in DB)
         services.AddSingleton<ISessionProfileCache, SessionProfileCache>();
+        services.AddSingleton<IEphemeralSessionService, EphemeralSessionService>();
         services.AddHostedService<SessionExpirationHandler>();
         services.AddScoped<IProfileResolver, ProfileResolver>();
         services.AddScoped<ISessionCollector, SessionCollector>();

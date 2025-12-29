@@ -19,6 +19,9 @@ const XSRF_HEADER = 'X-XSRF-TOKEN';
 
 const DARK_MODE_KEY = 'sc_dark_mode';
 
+// Ephemeral session query parameter (cookieless mode)
+const SESSION_QUERY_PARAM = 'sessionid';
+
 /**
  * Get XSRF token from meta tag
  */
@@ -96,40 +99,34 @@ function sessionStore() {
         },
         
         configureHtmx() {
-            // Add tracking headers to all HTMX requests
-            document.body.addEventListener('htmx:configRequest', (event) => {
-                const headers = event.detail.headers;
-                
-                // Get headers from TrackingManager
-                const trackingHeaders = TrackingManager.getHeaders();
-                Object.assign(headers, trackingHeaders);
+            const self = this;
+            
+            // Add tracking headers/params to all HTMX requests
+            window.addEventListener('htmx:configRequest', ({ detail }) => {
+                // In "none" (session only) mode, append sessionid to query params
+                if (self.trackingMode === 'none' && self.sessionId) {
+                    detail.parameters = {
+                        ...(detail.parameters || {}),
+                        [SESSION_QUERY_PARAM]: self.sessionId
+                    };
+                } else {
+                    // For other modes, use headers
+                    const trackingHeaders = TrackingManager.getHeaders();
+                    Object.assign(detail.headers, trackingHeaders);
+                }
                 
                 // Add XSRF token for non-GET requests
-                if (event.detail.verb !== 'get') {
+                if (detail.verb !== 'get') {
                     const xsrfToken = getXsrfToken();
                     if (xsrfToken) {
-                        headers[XSRF_HEADER] = xsrfToken;
-                    }
-                }
-            });
-            
-            // Update session ID from server response if provided
-            document.body.addEventListener('htmx:afterRequest', (event) => {
-                const xhr = event.detail.xhr;
-                if (xhr) {
-                    const serverSessionId = xhr.getResponseHeader(SESSION_HEADER);
-                    if (serverSessionId && serverSessionId !== this.sessionId) {
-                        console.debug('[SessionStore] Server updated session:', serverSessionId);
-                        // Update TrackingManager state
-                        TrackingManager.state.sessionId = serverSessionId;
-                        this.sessionId = serverSessionId;
+                        detail.headers[XSRF_HEADER] = xsrfToken;
                     }
                 }
             });
             
             // Handle HTMX errors
-            document.body.addEventListener('htmx:responseError', (event) => {
-                console.error('[SessionStore] HTMX request failed:', event.detail);
+            window.addEventListener('htmx:responseError', ({ detail }) => {
+                console.error('[SessionStore] HTMX request failed:', detail);
             });
         },
         

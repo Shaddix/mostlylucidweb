@@ -30,6 +30,11 @@
     <!-- XSRF Token for HTMX -->
     @Html.AntiForgeryToken()
     <meta name="xsrf-token" content="@(Context.RequestServices.GetService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>()?.GetTokens(Context).RequestToken)" />
+    
+    <!-- Session Config - enables cookieless session tracking -->
+    <!-- Server embeds session token in page, JS reads and sends in headers -->
+    <!-- Using custom element to avoid Htmx.TagHelpers interference -->
+    <sc-session></sc-session>
 </head>
 <body class="min-h-screen bg-shop-surface dark:bg-shop-surface-dark text-gray-900 dark:text-gray-100 transition-colors duration-300"
       hx-boost="true"
@@ -116,9 +121,47 @@
                 <div class="hidden lg:flex items-center gap-6">
                     <a href="/" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
                     <a href="/products" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Products</a>
-                    <a href="/products/category/tech" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Tech</a>
-                    <a href="/products/category/fashion" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Fashion</a>
-                    <a href="/products/category/home" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Home</a>
+                    
+                    <!-- Categories Dropdown -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @@click="open = !open" 
+                                @@click.outside="open = false"
+                                class="flex items-center gap-1 hover:text-shop-primary dark:hover:text-blue-400 transition-colors">
+                            Categories
+                            <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="open"
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 transform -translate-y-2"
+                             x-transition:enter-end="opacity-100 transform translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100"
+                             x-transition:leave-end="opacity-0"
+                             class="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                            <a href="/products/category/tech" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">💻</span> Tech
+                            </a>
+                            <a href="/products/category/fashion" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">👗</span> Fashion
+                            </a>
+                            <a href="/products/category/home" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">🏠</span> Home
+                            </a>
+                            <a href="/products/category/food" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">🍳</span> Food
+                            </a>
+                            <a href="/products/category/sport" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">⚽</span> Sport
+                            </a>
+                            <a href="/products/category/books" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="mr-2">📚</span> Books
+                            </a>
+                        </div>
+                    </div>
+                    
                     <a href="/segments" preload="mousedown" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">Segments</a>
                 </div>
 

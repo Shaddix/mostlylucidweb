@@ -100,19 +100,17 @@ public class ProductService
         }
 
         var categories = signature.Interests.Keys.ToList();
-        var scored = await _context.Products
+        
+        // Fetch products from database first
+        var products = await _context.Products
             .Where(p => categories.Contains(p.Category))
             .OrderByDescending(p => p.IsTrending)
-            .Select(p => new
-            {
-                Entity = p,
-                Score = GetScore(signature, p.Category)
-            })
-            .OrderByDescending(p => p.Score)
-            .Take(count * 2)
+            .Take(count * 3) // Fetch more to allow for scoring/filtering
             .ToListAsync();
 
-        return scored
+        // Score in memory (cannot be translated to SQL)
+        return products
+            .Select(p => new { Entity = p, Score = GetScore(signature, p.Category) })
             .OrderByDescending(s => s.Score)
             .ThenByDescending(s => s.Entity.IsTrending)
             .Take(count)

@@ -65,26 +65,28 @@ public class DemoPersonaService : IDemoPersonaService
 
     public async Task<List<DemoUserDto>> GetDemoUsersAsync()
     {
-        var users = await _db.DemoUsers
+        // Fetch entities first, then project in memory (LINQ-to-Objects)
+        // The OrderByDescending(kv => kv.Value) cannot be translated to SQL
+        var entities = await _db.DemoUsers
             .OrderBy(u => u.SortOrder)
-            .Select(u => new DemoUserDto(
-                u.Id,
-                u.Name,
-                u.Persona,
-                u.Description,
-                u.AvatarColor,
-                u.Interests,
-                u.Interests.OrderByDescending(kv => kv.Value).Take(3).Select(kv => kv.Key).ToList()
-            ))
             .ToListAsync();
 
         // Return default demo users if none in database
-        if (!users.Any())
+        if (!entities.Any())
         {
             return GetDefaultDemoUsers();
         }
 
-        return users;
+        // Project to DTOs in memory
+        return entities.Select(u => new DemoUserDto(
+            u.Id,
+            u.Name,
+            u.Persona,
+            u.Description,
+            u.AvatarColor,
+            u.Interests,
+            u.Interests.OrderByDescending(kv => kv.Value).Take(3).Select(kv => kv.Key).ToList()
+        )).ToList();
     }
 
     public async Task<DemoUserEntity?> GetDemoUserAsync(string demoUserId)

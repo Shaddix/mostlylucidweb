@@ -6,6 +6,7 @@ using Mostlylucid.SegmentCommerce.Services.Search;
 
 namespace Mostlylucid.SegmentCommerce.Controllers;
 
+[Route("[controller]")]
 public class ProductsController(
     ProductService productService,
     InteractionService interactionService,
@@ -13,6 +14,8 @@ public class ProductsController(
     IInterestTrackingService interestTrackingService,
     ISearchService searchService) : Controller
 {
+    [HttpGet("")]
+    [HttpGet("index")]
     public async Task<IActionResult> Index(string? category = null)
     {
         var products = string.IsNullOrEmpty(category)
@@ -25,6 +28,7 @@ public class ProductsController(
         return View(products.ToList());
     }
 
+    [HttpGet("category/{id}")]
     public async Task<IActionResult> Category(string id)
     {
         var products = await productService.GetByCategoryAsync(id);
@@ -48,6 +52,7 @@ public class ProductsController(
         return View("Index", productList);
     }
 
+    [HttpGet("details/{id:int}")]
     public async Task<IActionResult> Details(int id)
     {
         var product = await productService.GetByIdAsync(id);
@@ -68,7 +73,7 @@ public class ProductsController(
         return View(product);
     }
 
-    [HttpPost]
+    [HttpPost("track-view/{id:int}")]
     public async Task<IActionResult> TrackView(int id)
     {
         var product = await productService.GetByIdAsync(id);
@@ -80,7 +85,7 @@ public class ProductsController(
         return Ok();
     }
 
-    [HttpPost]
+    [HttpPost("track-interest/{id:int}")]
     public async Task<IActionResult> TrackInterest(int id)
     {
         var product = await productService.GetByIdAsync(id);
@@ -98,7 +103,7 @@ public class ProductsController(
         return Ok();
     }
 
-    [HttpGet]
+    [HttpGet("search")]
     public async Task<IActionResult> Search(
         string q,
         string? category = null,

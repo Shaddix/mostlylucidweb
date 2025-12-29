@@ -283,8 +283,29 @@ const TrackingManager = (() => {
         sessionId: null,
         fingerprint: null,
         demoUser: null,
-        initialized: false
+        initialized: false,
+        serverSession: null  // Session from server meta tag (for cookieless mode)
     };
+
+    /**
+     * Read session config from server-rendered script tag.
+     * This enables truly cookieless "Session Only" mode.
+     * Uses a JSON script tag to avoid Htmx.TagHelpers meta tag interference.
+     */
+    function readServerSession() {
+        const script = document.getElementById('sc-session');
+        if (!script) return null;
+        
+        const content = script.textContent || script.innerText;
+        if (!content || !content.trim()) return null;
+        
+        try {
+            return JSON.parse(content);
+        } catch (e) {
+            console.warn('[TrackingManager] Failed to parse server session:', e);
+            return null;
+        }
+    }
 
     /**
      * Initialize tracking based on saved preferences or detection
@@ -294,16 +315,59 @@ const TrackingManager = (() => {
         
         const features = detectPrivacyFeatures();
         
+        // Read server-provided session (always available in page)
+        state.serverSession = readServerSession();
+        
+        // Check for sessionid in URL (indicates session-only mode, survives refresh)
+        const urlSessionId = getSessionIdFromUrl();
+        
         // Load saved mode or use recommended
         let savedMode = storage(KEYS.MODE);
-        if (!savedMode || !Object.values(MODES).includes(savedMode)) {
+        
+        // If sessionid is in URL, force session-only mode
+        if (urlSessionId) {
+            savedMode = MODES.NONE;
+        } else if (!savedMode || !Object.values(MODES).includes(savedMode)) {
             savedMode = features.recommendedMode;
         }
         
-        // Always have a session ID
+        // SESSION ONLY MODE (none): Use URL sessionid or server-provided session
+        if (savedMode === MODES.NONE) {
+            // Priority: URL sessionid > server session > generate new
+            if (urlSessionId) {
+                state.sessionId = urlSessionId;
+                console.debug('[TrackingManager] Session Only mode - using URL sessionid:', state.sessionId);
+            } else if (state.serverSession?.sessionId) {
+                state.sessionId = state.serverSession.sessionId;
+                // Also add to URL so it survives refresh
+                updateUrlWithSessionId(state.sessionId);
+                console.debug('[TrackingManager] Session Only mode - using server session:', state.sessionId);
+            } else {
+                // Fallback: generate ephemeral key
+                state.sessionId = generateEphemeralKey();
+                updateUrlWithSessionId(state.sessionId);
+                console.debug('[TrackingManager] Session Only mode - generated ephemeral key:', state.sessionId);
+            }
+            
+            // Don't save anything to localStorage or cookies
+            state.mode = MODES.NONE;
+            state.fingerprint = null;
+            state.demoUser = null;
+            state.initialized = true;
+            
+            // Do NOT sync to cookies in none mode
+            console.debug('[TrackingManager] Initialized (Session Only - no cookies):', state);
+            window.dispatchEvent(new CustomEvent('tracking:initialized', { detail: state }));
+            return state;
+        }
+        
+        // PERSISTENT MODES (fingerprint, cookie, identity): Use client storage
+        
+        // Get session ID from storage or generate new one
         state.sessionId = storage(KEYS.SESSION_ID);
         if (!state.sessionId) {
-            state.sessionId = generateSessionId();
+            // Prefer server session if available, else generate
+            state.sessionId = state.serverSession?.sessionId || generateSessionId();
             storage(KEYS.SESSION_ID, state.sessionId);
         }
         
@@ -330,7 +394,7 @@ const TrackingManager = (() => {
         state.mode = savedMode;
         state.initialized = true;
         
-        // Sync to cookies for server-side reading
+        // Sync to cookies for server-side reading (only in persistent modes)
         syncToCookies();
         
         console.debug('[TrackingManager] Initialized:', state);
@@ -342,12 +406,22 @@ const TrackingManager = (() => {
     }
 
     /**
-     * Sync current state to cookies for server-side reading
+     * Sync current state to cookies for server-side reading.
+     * IMPORTANT: In "none" mode, NO cookies are set - session is passed via headers only.
      */
     function syncToCookies() {
-        const features = detectPrivacyFeatures();
+        // Session Only mode: NO cookies at all
+        if (state.mode === MODES.NONE) {
+            // Clear any existing cookies from previous modes
+            deleteCookie(COOKIES.SESSION);
+            deleteCookie(COOKIES.TRACKING);
+            deleteCookie(COOKIES.FINGERPRINT);
+            deleteCookie(COOKIES.DEMO_USER);
+            console.debug('[TrackingManager] Session Only mode - cleared all cookies');
+            return;
+        }
         
-        // Always set session cookie
+        // Persistent modes: set cookies for server-side reading
         setCookie(COOKIES.SESSION, state.sessionId, 1); // 1 day for session
         
         // Set tracking mode cookie
@@ -381,24 +455,53 @@ const TrackingManager = (() => {
         
         const oldMode = state.mode;
         state.mode = newMode;
-        storage(KEYS.MODE, newMode);
         
-        // Generate fingerprint if needed
-        if ((newMode === MODES.FINGERPRINT || newMode === MODES.COOKIE) && !state.fingerprint) {
-            state.fingerprint = await generateFingerprint();
-            storage(KEYS.FINGERPRINT, state.fingerprint);
-        }
-        
-        // Clear fingerprint if going to session-only
+        // Session Only mode: Clear all client storage, add sessionid to URL
         if (newMode === MODES.NONE) {
             state.fingerprint = null;
-            storage(KEYS.FINGERPRINT, null);
-        }
-        
-        // If downgrading from identity, clear demo user
-        if (oldMode === MODES.IDENTITY && newMode !== MODES.IDENTITY) {
             state.demoUser = null;
+            
+            // Clear localStorage
+            storage(KEYS.MODE, null);
+            storage(KEYS.SESSION_ID, null);
+            storage(KEYS.FINGERPRINT, null);
             storage(KEYS.DEMO_USER, null);
+            
+            // Get fresh session from server or generate ephemeral key
+            if (state.serverSession?.sessionId) {
+                state.sessionId = state.serverSession.sessionId;
+            } else {
+                // Generate a simple ephemeral key client-side as fallback
+                state.sessionId = generateEphemeralKey();
+            }
+            
+            // Add sessionid to URL (survives refresh)
+            updateUrlWithSessionId(state.sessionId);
+            
+            console.debug('[TrackingManager] Switched to Session Only - sessionid in URL:', state.sessionId);
+        } else {
+            // Persistent modes: save to localStorage, remove sessionid from URL
+            storage(KEYS.MODE, newMode);
+            
+            // Remove sessionid from URL when leaving session-only mode
+            removeSessionIdFromUrl();
+            
+            // Ensure we have a session ID in storage
+            if (!storage(KEYS.SESSION_ID)) {
+                storage(KEYS.SESSION_ID, state.sessionId);
+            }
+            
+            // Generate fingerprint if needed
+            if ((newMode === MODES.FINGERPRINT || newMode === MODES.COOKIE) && !state.fingerprint) {
+                state.fingerprint = await generateFingerprint();
+                storage(KEYS.FINGERPRINT, state.fingerprint);
+            }
+            
+            // If downgrading from identity, clear demo user
+            if (oldMode === MODES.IDENTITY && newMode !== MODES.IDENTITY) {
+                state.demoUser = null;
+                storage(KEYS.DEMO_USER, null);
+            }
         }
         
         syncToCookies();
@@ -410,6 +513,54 @@ const TrackingManager = (() => {
         
         console.debug('[TrackingManager] Mode changed:', oldMode, '->', newMode);
         return true;
+    }
+    
+    /**
+     * Generate a short ephemeral key (client-side fallback)
+     */
+    function generateEphemeralKey() {
+        // Simple base62 encoding of random bytes
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const bytes = new Uint8Array(8);
+        crypto.getRandomValues(bytes);
+        let key = '';
+        for (const byte of bytes) {
+            key += chars[byte % 62];
+        }
+        return key;
+    }
+    
+    /**
+     * Get sessionid from current URL query string
+     */
+    function getSessionIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('sessionid');
+        // Validate format: 8-16 alphanumeric characters
+        if (sessionId && /^[0-9A-Za-z]{8,16}$/.test(sessionId)) {
+            return sessionId;
+        }
+        return null;
+    }
+    
+    /**
+     * Add sessionid to current URL
+     */
+    function updateUrlWithSessionId(sessionId) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('sessionid', sessionId);
+        window.history.replaceState({}, '', url.toString());
+    }
+    
+    /**
+     * Remove sessionid from current URL
+     */
+    function removeSessionIdFromUrl() {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('sessionid')) {
+            url.searchParams.delete('sessionid');
+            window.history.replaceState({}, '', url.toString());
+        }
     }
 
     /**

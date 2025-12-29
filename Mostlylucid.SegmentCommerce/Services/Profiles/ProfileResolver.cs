@@ -32,20 +32,24 @@ public interface IProfileResolver
 public class ProfileResolver : IProfileResolver
 {
     private readonly ISessionProfileCache _sessionCache;
+    private readonly IEphemeralSessionService _ephemeralService;
     private readonly SegmentCommerceDbContext _db;
     private readonly ILogger<ProfileResolver> _logger;
     private readonly int _sessionTimeoutMinutes;
 
     private const string SessionCookieName = ".SegmentCommerce.Session";
     private const string SessionContextKey = "ProfileResolver.Session";
+    private const string EphemeralKeyContextKey = "ProfileResolver.EphemeralKey";
 
     public ProfileResolver(
         ISessionProfileCache sessionCache,
+        IEphemeralSessionService ephemeralService,
         SegmentCommerceDbContext db,
         ILogger<ProfileResolver> logger,
         IConfiguration config)
     {
         _sessionCache = sessionCache;
+        _ephemeralService = ephemeralService;
         _db = db;
         _logger = logger;
         _sessionTimeoutMinutes = config.GetValue("Profiles:SessionTimeoutMinutes", 30);
@@ -57,30 +61,52 @@ public class ProfileResolver : IProfileResolver
         if (context.Items.TryGetValue(SessionContextKey, out var cached) && cached is SessionProfileEntity s)
             return s;
 
-        var sessionKey = GetOrCreateSessionKey(context);
         var now = DateTime.UtcNow;
+        SessionProfileEntity session;
+        string? ephemeralKey = null;
 
-        // Get or create from in-memory cache
-        var session = _sessionCache.GetOrCreate(sessionKey, () => new SessionProfileEntity
+        // 1. Check for ephemeral session via ?sessionid=xxx (cookieless mode)
+        var querySessionId = context.Request.Query[IEphemeralSessionService.QueryParam].FirstOrDefault();
+        if (_ephemeralService.IsValidKeyFormat(querySessionId) && querySessionId is not null)
         {
-            SessionKey = sessionKey,
-            StartedAt = now,
-            LastActivityAt = now,
-            ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes),
-            Context = BuildSessionContext(context)
-        });
-
-        // Check if user is logged in - link immediately if not already linked
-        if (session.IdentificationMode != ProfileIdentificationMode.Identity)
-        {
-            var userId = GetUserId(context);
-            if (!string.IsNullOrEmpty(userId))
+            ephemeralKey = querySessionId;
+            session = _ephemeralService.GetOrCreate(ephemeralKey, () => new SessionProfileEntity
             {
-                var profile = await GetOrCreateIdentityProfileAsync(userId);
-                session.PersistentProfileId = profile.Id;
-                session.IdentificationMode = ProfileIdentificationMode.Identity;
-                _sessionCache.Set(sessionKey, session);
-                _logger.LogDebug("Linked session to identity profile {ProfileId}", profile.Id);
+                SessionKey = ephemeralKey!,
+                StartedAt = now,
+                LastActivityAt = now,
+                ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes),
+                IdentificationMode = ProfileIdentificationMode.None, // Ephemeral = no persistent tracking
+                Context = BuildSessionContext(context)
+            });
+            
+            _logger.LogDebug("Using ephemeral session from query: {Key}", ephemeralKey);
+        }
+        else
+        {
+            // 2. Standard session resolution (cookie/header based)
+            var sessionKey = GetOrCreateSessionKey(context);
+            session = _sessionCache.GetOrCreate(sessionKey, () => new SessionProfileEntity
+            {
+                SessionKey = sessionKey,
+                StartedAt = now,
+                LastActivityAt = now,
+                ExpiresAt = now.AddMinutes(_sessionTimeoutMinutes),
+                Context = BuildSessionContext(context)
+            });
+
+            // Check if user is logged in - link immediately if not already linked
+            if (session.IdentificationMode != ProfileIdentificationMode.Identity)
+            {
+                var userId = GetUserId(context);
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var profile = await GetOrCreateIdentityProfileAsync(userId);
+                    session.PersistentProfileId = profile.Id;
+                    session.IdentificationMode = ProfileIdentificationMode.Identity;
+                    _sessionCache.Set(sessionKey, session);
+                    _logger.LogDebug("Linked session to identity profile {ProfileId}", profile.Id);
+                }
             }
         }
 
@@ -91,6 +117,8 @@ public class ProfileResolver : IProfileResolver
         context.Items[SessionContextKey] = session;
         context.Items["SessionId"] = session.Id;
         context.Items["SessionKey"] = session.SessionKey;
+        if (ephemeralKey != null)
+            context.Items[EphemeralKeyContextKey] = ephemeralKey;
 
         return session;
     }

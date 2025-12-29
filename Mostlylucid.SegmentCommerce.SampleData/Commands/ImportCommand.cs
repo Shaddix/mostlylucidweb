@@ -91,9 +91,13 @@ public class ImportCommand : AsyncCommand<ImportSettings>
             return 1;
         }
 
-        // Create DbContext
+        // Create DbContext with dynamic JSON support for JSONB columns
+        var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.EnableDynamicJson();
+        var dataSource = dataSourceBuilder.Build();
+        
         var optionsBuilder = new DbContextOptionsBuilder<SegmentCommerceDbContext>();
-        optionsBuilder.UseNpgsql(connectionString, o => o.UseVector());
+        optionsBuilder.UseNpgsql(dataSource, o => o.UseVector());
         
         await using var db = new SegmentCommerceDbContext(optionsBuilder.Options);
 
@@ -415,25 +419,31 @@ public class ImportCommand : AsyncCommand<ImportSettings>
         List<GeneratedCustomer> customers,
         ImportSettings settings)
     {
+        // Deduplicate customers by ProfileKey (keep first occurrence)
+        var uniqueCustomers = customers
+            .GroupBy(c => c.ProfileKey)
+            .Select(g => g.First())
+            .ToList();
+        
+        AnsiConsole.MarkupLine($"[dim]Deduplicated to {uniqueCustomers.Count} unique profiles[/]");
+        
+        // Get existing profile keys to skip
+        var existingKeys = await db.PersistentProfiles
+            .Select(p => p.ProfileKey)
+            .ToHashSetAsync();
+        
+        var toImport = uniqueCustomers.Where(c => !existingKeys.Contains(c.ProfileKey)).ToList();
+        AnsiConsole.MarkupLine($"[dim]Importing {toImport.Count} new profiles (skipping {uniqueCustomers.Count - toImport.Count} existing)[/]");
+
         await AnsiConsole.Progress()
             .StartAsync(async ctx =>
             {
-                var task = ctx.AddTask("[green]Importing customer profiles[/]", maxValue: customers.Count);
+                var task = ctx.AddTask("[green]Importing customer profiles[/]", maxValue: toImport.Count);
 
-                foreach (var batch in customers.Chunk(settings.BatchSize))
+                foreach (var batch in toImport.Chunk(settings.BatchSize))
                 {
                     foreach (var customer in batch)
                     {
-                        // Check if profile already exists
-                        var existing = await db.PersistentProfiles
-                            .FirstOrDefaultAsync(p => p.ProfileKey == customer.ProfileKey);
-
-                        if (existing != null)
-                        {
-                            task.Increment(1);
-                            continue;
-                        }
-
                         var profile = new PersistentProfileEntity
                         {
                             ProfileKey = customer.ProfileKey,

@@ -14,7 +14,15 @@
         <span class="badge-trending">Trending</span>
     }
     
-    <!-- Product Image -->
+    @if (Model.OriginalPrice.HasValue && Model.OriginalPrice > Model.Price)
+    {
+        var discount = (int)Math.Round((1 - Model.Price / Model.OriginalPrice.Value) * 100);
+        <span class="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded z-10">
+            -@discount%
+        </span>
+    }
+    
+    <!-- Product Image - Clickable -->
     @{
         var imageUrl = Model.ImageUrl;
         if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
@@ -22,21 +30,23 @@
             imageUrl = $"/api/placeholder/{Uri.EscapeDataString(Model.Category)}/{Uri.EscapeDataString(Model.Name)}?w=400&h=192";
         }
     }
-    <div class="aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700">
+    <a href="/products/details/@Model.Id" class="block aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700 cursor-pointer hover:opacity-90 transition-opacity">
         <img src="@imageUrl" 
              alt="@Model.Name"
              class="object-cover w-full h-48"
              loading="lazy" />
-    </div>
+    </a>
     
     <!-- Product Details -->
     <div class="p-4">
-        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+        <a href="/products/category/@Model.Category" class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1 hover:text-shop-primary dark:hover:text-blue-400 transition-colors">
             @Model.Category
-        </p>
+        </a>
         
         <h3 class="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
-            @Model.Name
+            <a href="/products/details/@Model.Id" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">
+                @Model.Name
+            </a>
         </h3>
         
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">

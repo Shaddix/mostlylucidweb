@@ -1,14 +1,25 @@
 @model (string Title, IEnumerable<Product> Products)
 
+@{
+    var productList = Model.Products.ToList();
+    var productCount = productList.Count;
+}
+
 <section class="mb-8">
-    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">@Model.Title</h2>
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">@Model.Title</h2>
+        @if (productCount > 4)
+        {
+            <span class="text-sm text-gray-500 dark:text-gray-400">@productCount products</span>
+        }
+    </div>
     
     <div class="relative">
         <!-- Carousel Container -->
         <div class="carousel-container flex gap-4 pb-4" 
              x-data="{ scrollContainer: null }"
              x-init="scrollContainer = $el">
-            @foreach (var product in Model.Products)
+            @foreach (var product in productList)
             {
                 <div class="carousel-item w-72 flex-shrink-0">
                     <partial name="Partials/_ProductCard" model="product" />

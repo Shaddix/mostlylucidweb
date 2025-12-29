@@ -147,7 +147,7 @@
                                 </span>
                             }
                             
-                            @* Product Image *@
+                            @* Product Image - Clickable *@
                             @{
                                 var imageUrl = product.ImageUrl;
                                 if (string.IsNullOrEmpty(imageUrl) || imageUrl.Contains("placeholder"))
@@ -155,21 +155,23 @@
                                     imageUrl = $"/api/placeholder/{Uri.EscapeDataString(product.Category)}/{Uri.EscapeDataString(product.Name)}?w=288&h=160";
                                 }
                             }
-                            <div class="aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700">
+                            <a href="/products/details/@product.Id" class="block aspect-w-1 aspect-h-1 bg-gray-100 dark:bg-gray-700 hover:opacity-90 transition-opacity">
                                 <img src="@imageUrl" 
                                      alt="@product.Name"
                                      class="object-cover w-full h-40"
                                      loading="lazy" />
-                            </div>
+                            </a>
                             
                             @* Product Details *@
                             <div class="p-4 flex flex-col flex-grow">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                                <a href="/products/category/@product.Category" class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1 hover:text-shop-primary dark:hover:text-blue-400 transition-colors">
                                     @product.Category
-                                </p>
+                                </a>
                                 
                                 <h3 class="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 text-sm">
-                                    @product.Name
+                                    <a href="/products/details/@product.Id" class="hover:text-shop-primary dark:hover:text-blue-400 transition-colors">
+                                        @product.Name
+                                    </a>
                                 </h3>
                                 
                                 @* Recommendation reason *@

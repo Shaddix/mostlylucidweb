@@ -29,19 +29,46 @@ public class GeneratedSeller
 /// </summary>
 public class GeneratedCustomer
 {
+    [JsonPropertyName("profile_key")]
     public string ProfileKey { get; set; } = string.Empty;
+    
+    [JsonPropertyName("persona")]
     public string Persona { get; set; } = string.Empty;
+    
+    [JsonPropertyName("display_name")]
     public string? DisplayName { get; set; }
+    
+    [JsonPropertyName("bio")]
     public string? Bio { get; set; }
+    
+    [JsonPropertyName("age")]
     public int? Age { get; set; }
+    
+    [JsonPropertyName("gender")]
     public string? Gender { get; set; }
+    
+    [JsonPropertyName("location")]
     public string? Location { get; set; }
+    
+    [JsonPropertyName("interests")]
     public Dictionary<string, double> Interests { get; set; } = new();
+    
+    [JsonPropertyName("brand_affinities")]
     public Dictionary<string, double> BrandAffinities { get; set; } = new();
+    
+    [JsonPropertyName("price_preference")]
     public PricePreference? PricePreference { get; set; }
+    
+    [JsonPropertyName("recent_categories")]
     public List<string> RecentCategories { get; set; } = [];
+    
+    [JsonPropertyName("signals")]
     public List<GeneratedSignal> Signals { get; set; } = [];
+    
+    [JsonPropertyName("embedding")]
     public float[]? Embedding { get; set; }
+    
+    [JsonPropertyName("profile_image_path")]
     public string? ProfileImagePath { get; set; }
 }
 
@@ -50,9 +77,16 @@ public class GeneratedCustomer
 /// </summary>
 public class PricePreference
 {
+    [JsonPropertyName("min")]
     public decimal Min { get; set; }
+    
+    [JsonPropertyName("max")]
     public decimal Max { get; set; }
+    
+    [JsonPropertyName("prefers_deals")]
     public bool PrefersDeals { get; set; }
+    
+    [JsonPropertyName("prefers_luxury")]
     public bool PrefersLuxury { get; set; }
 }
 
