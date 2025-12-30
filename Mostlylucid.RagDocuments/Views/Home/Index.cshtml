@@ -661,7 +661,10 @@ function ragApp() {
             await this.loadExtractionModes();
             this.loadGraphStats();
             if (!this.demoMode) {
-                this.initFilePond();
+                // Wait for Alpine to render the input element after x-if evaluates
+                this.$nextTick(() => {
+                    this.initFilePond();
+                });
             }
         },
 

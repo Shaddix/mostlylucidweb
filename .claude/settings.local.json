@@ -45,7 +45,9 @@
       "Bash(ConvertFrom-Json)",
       "Bash(ConvertTo-Json -Depth 3)",
       "Bash(npm init:*)",
-      "Bash(node puppeteer-screenshot.js:*)"
+      "Bash(node puppeteer-screenshot.js:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

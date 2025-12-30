@@ -32,10 +32,24 @@ This starts the app on `http://localhost:5080` with:
 ### Docker Deployment
 
 ```bash
-docker-compose up -d
+# Full production deployment (PostgreSQL, Qdrant, Docling)
+docker-compose -f docker-compose.production.yml up -d
 ```
 
-See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
+This starts:
+- **LucidRAG** on `http://localhost:5080`
+- **PostgreSQL** for metadata storage
+- **Qdrant** for persistent vector storage
+- **Docling** for PDF/DOCX conversion
+
+**Note:** Ollama is NOT included in the compose file. Install it on your host machine:
+```bash
+# Install from https://ollama.ai, then:
+ollama pull llama3.2:3b
+ollama serve
+```
+
+LucidRAG will connect to Ollama at `host.docker.internal:11434`.
 
 ### Standalone vs Production
 
@@ -316,7 +330,7 @@ Mostlylucid.RagDocuments/
 ├── Program.cs
 ├── appsettings.json
 ├── Dockerfile
-└── docker-compose.yml
+└── docker-compose.production.yml
 ```
 
 ## Dependencies

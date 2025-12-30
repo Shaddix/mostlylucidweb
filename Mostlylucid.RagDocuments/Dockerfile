@@ -3,11 +3,13 @@ WORKDIR /src
 
 # Copy csproj files and restore
 COPY Mostlylucid.DocSummarizer.Core/*.csproj Mostlylucid.DocSummarizer.Core/
+COPY Mostlylucid.GraphRag/*.csproj Mostlylucid.GraphRag/
 COPY Mostlylucid.RagDocuments/*.csproj Mostlylucid.RagDocuments/
 RUN dotnet restore Mostlylucid.RagDocuments/Mostlylucid.RagDocuments.csproj
 
 # Copy source and build
 COPY Mostlylucid.DocSummarizer.Core/ Mostlylucid.DocSummarizer.Core/
+COPY Mostlylucid.GraphRag/ Mostlylucid.GraphRag/
 COPY Mostlylucid.RagDocuments/ Mostlylucid.RagDocuments/
 WORKDIR /src/Mostlylucid.RagDocuments
 RUN dotnet publish -c Release -o /app/publish
