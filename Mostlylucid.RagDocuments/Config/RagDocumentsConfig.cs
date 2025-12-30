@@ -1,3 +1,5 @@
+using Mostlylucid.GraphRag;
+
 namespace Mostlylucid.RagDocuments.Config;
 
 public class RagDocumentsConfig
@@ -9,6 +11,14 @@ public class RagDocumentsConfig
     public string UploadPath { get; set; } = "./uploads";
     public int MaxFileSizeMB { get; set; } = 100;
     public string[] AllowedExtensions { get; set; } = [".pdf", ".docx", ".md", ".txt", ".html"];
+
+    /// <summary>
+    /// Entity extraction mode for GraphRAG.
+    /// - Heuristic: Fast, no LLM calls (default)
+    /// - Hybrid: Heuristic candidates + LLM enhancement per document
+    /// - Llm: Full MSFT GraphRAG style (2 LLM calls per chunk)
+    /// </summary>
+    public ExtractionMode ExtractionMode { get; set; } = ExtractionMode.Heuristic;
 
     /// <summary>
     /// Demo mode configuration for public deployments like lucidrag.com

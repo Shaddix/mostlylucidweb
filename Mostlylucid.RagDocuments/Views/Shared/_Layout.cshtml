@@ -1,5 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+<script>
+    // Apply saved theme immediately to prevent flash
+    (function() {
+        const savedTheme = localStorage.getItem('lucidrag-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+</script>
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -124,6 +131,20 @@
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>
+        // Theme persistence
+        (function() {
+            const savedTheme = localStorage.getItem('lucidrag-theme') || 'light';
+            const themeCheckbox = document.querySelector('.theme-controller');
+            if (themeCheckbox) {
+                themeCheckbox.checked = savedTheme === 'dark';
+                themeCheckbox.addEventListener('change', function() {
+                    const newTheme = this.checked ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('lucidrag-theme', newTheme);
+                });
+            }
+        })();
+
         // Articles dropdown - fetches RAG articles from mostlylucid RSS
         function articlesDropdown() {
             return {

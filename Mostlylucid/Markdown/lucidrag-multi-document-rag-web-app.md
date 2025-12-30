@@ -26,10 +26,18 @@ Upload documents. Ask questions. Get answers with citations and a knowledge grap
 
 **Key features:**
 - **Multi-document upload** with drag-and-drop
-- **Agentic RAG** - Query decomposition and self-correction
+- **Agentic RAG** - Query decomposition and self-correction (bounded, deterministic in structure, single request lifecycle)
 - **Knowledge graph visualization** - See entity relationships
 - **Evidence view** - Sentence-level source citations
 - **Standalone deployment** - Single executable or Docker
+
+**Design constraints:**
+- No cloud dependency for indexing
+- Deterministic preprocessing (chunking, embedding, entity extraction)
+- Rebuildable vector state from source documents
+- LLMs used *only* for answer synthesis over retrieved evidence
+
+> At no point are LLMs used for chunking, embedding, entity extraction, or storage — only for synthesizing answers over retrieved, citation-backed evidence.
 
 ## Why Combine Vector Search + Knowledge Graphs?
 
@@ -41,7 +49,7 @@ Vector search alone breaks down for certain query types:
 | Entity-centric | "What about Docker?" | Graph traversal from entity |
 | Global summaries | "Main themes?" | Community detection |
 
-lucidRAG uses both: vectors for precision, graphs for context.
+lucidRAG uses both: vectors for precision, graphs for context. Graph queries are depth-limited (max 2 hops) and scoped to retrieved documents to prevent unbounded traversal on large corpora.
 
 ## Architecture Overview
 
@@ -300,7 +308,7 @@ function ragApp() {
 
 ## Demo Mode
 
-For public deployments like lucidrag.com, demo mode disables uploads and uses pre-loaded content:
+For public deployments like lucidrag.com, demo mode disables uploads and uses pre-loaded content. Demo mode exists to make public deployments safe, deterministic, and cheap without special-case code paths:
 
 ```csharp
 public class DemoModeConfig
@@ -345,7 +353,7 @@ services:
     depends_on: [postgres, ollama]
 ```
 
-## What We Built
+## What Actually Runs
 
 | Component | Source | Purpose |
 |-----------|--------|---------|

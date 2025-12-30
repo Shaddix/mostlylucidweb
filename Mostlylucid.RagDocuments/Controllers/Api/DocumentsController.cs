@@ -155,6 +155,7 @@ public class DocumentsController(
                 name = d.Name,
                 originalFilename = d.OriginalFilename,
                 status = d.Status.ToString().ToLowerInvariant(),
+                statusMessage = d.StatusMessage, // Include error message for failed docs
                 progress = d.ProcessingProgress,
                 segmentCount = d.SegmentCount,
                 createdAt = d.CreatedAt,

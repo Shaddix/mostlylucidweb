@@ -103,6 +103,35 @@
 
             <!-- View Mode Toggle -->
             <div class="flex items-center gap-4">
+                <!-- Extraction Mode Selector -->
+                <template x-if="extractionModes.length > 1 && !demoMode">
+                    <div class="form-control">
+                        <label class="label py-0">
+                            <span class="label-text text-xs opacity-60">Extraction:</span>
+                        </label>
+                        <select class="select select-xs select-bordered"
+                                x-model="currentExtractionMode"
+                                @@change="setExtractionMode($event.target.value)">
+                            <template x-for="mode in extractionModes" :key="mode.value">
+                                <option :value="mode.value"
+                                        :disabled="!mode.available"
+                                        x-text="mode.label + (mode.available ? '' : ' (unavailable)')">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                </template>
+                <!-- Ollama status indicator (when not available) -->
+                <template x-if="!ollamaAvailable && !demoMode">
+                    <div class="tooltip tooltip-bottom" data-tip="LLM features require Ollama">
+                        <span class="badge badge-warning badge-xs gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            No LLM
+                        </span>
+                    </div>
+                </template>
                 <div class="form-control">
                     <label class="label cursor-pointer gap-2">
                         <span class="label-text text-xs">GraphRAG</span>
@@ -619,14 +648,56 @@ function ragApp() {
             orphans: 0
         },
 
+        // Extraction mode state
+        extractionModes: [],
+        currentExtractionMode: 'heuristic',
+        ollamaAvailable: false,
+
         // Debug state
         debugInfo: null,
 
         async init() {
             await this.checkDemoMode();
+            await this.loadExtractionModes();
             this.loadGraphStats();
             if (!this.demoMode) {
                 this.initFilePond();
+            }
+        },
+
+        async loadExtractionModes() {
+            try {
+                const response = await fetch('/api/config/extraction-modes');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.extractionModes = data.modes;
+                    this.ollamaAvailable = data.ollamaAvailable;
+                    // Set current mode from default
+                    const defaultMode = data.modes.find(m => m.isDefault);
+                    if (defaultMode) {
+                        this.currentExtractionMode = defaultMode.value;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load extraction modes:', e);
+                // Fallback to heuristic only
+                this.extractionModes = [{ value: 'heuristic', label: 'Heuristic (Fast)', available: true, isDefault: true }];
+            }
+        },
+
+        async setExtractionMode(mode) {
+            if (this.demoMode) return;
+            try {
+                const response = await fetch('/api/config/extraction-mode', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+                if (response.ok) {
+                    this.currentExtractionMode = mode;
+                }
+            } catch (e) {
+                console.warn('Could not set extraction mode:', e);
             }
         },
 

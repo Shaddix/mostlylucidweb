@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
 using Mostlylucid.GraphRag;
 using Mostlylucid.GraphRag.Extraction;
 using Mostlylucid.GraphRag.Storage;
+using Mostlylucid.RagDocuments.Config;
 using Mostlylucid.RagDocuments.Data;
 using Mostlylucid.RagDocuments.Entities;
 
@@ -50,6 +52,7 @@ public record EntityInfo(string Name, string Type, string? Description, int Ment
 public class EntityGraphService : IEntityGraphService, IDisposable
 {
     private readonly RagDocumentsDbContext _db;
+    private readonly RagDocumentsConfig _config;
     private readonly ILogger<EntityGraphService> _logger;
     private readonly GraphRagDb _graphDb;
     private readonly GraphRag.Services.EmbeddingService _embedder;
@@ -57,9 +60,11 @@ public class EntityGraphService : IEntityGraphService, IDisposable
 
     public EntityGraphService(
         RagDocumentsDbContext db,
+        IOptions<RagDocumentsConfig> config,
         ILogger<EntityGraphService> logger)
     {
         _db = db;
+        _config = config.Value;
         _logger = logger;
 
         // Initialize GraphRag's DuckDB for entity graph storage
@@ -115,8 +120,11 @@ public class EntityGraphService : IEntityGraphService, IDisposable
                 chunk.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length);
         }
 
-        // Run entity extraction using GraphRag's heuristic extractor
-        var extractor = new EntityExtractor(_graphDb, _embedder, null, ExtractionMode.Heuristic);
+        // Run entity extraction using configured mode
+        var extractionMode = _config.ExtractionMode;
+        _logger.LogInformation("Running entity extraction with mode: {Mode}", extractionMode);
+
+        var extractor = new EntityExtractor(_graphDb, _embedder, null, extractionMode);
         var result = await extractor.ExtractAsync(null, ct);
 
         // Sync extracted entities to PostgreSQL for relational queries

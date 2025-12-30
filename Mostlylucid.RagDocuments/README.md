@@ -98,15 +98,24 @@ See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
 | GET | `/api/documents/{id}` | Get document details |
 | GET | `/api/documents/{id}/status` | SSE stream of processing progress |
 | DELETE | `/api/documents/{id}` | Delete a document (with vector cleanup) |
+| GET | `/api/documents/demo-status` | Check if demo mode is enabled |
 
-### Chat
+### Search (Standalone)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/search` | Hybrid search (BM25 + BERT), returns segments |
+| POST | `/api/search/answer` | Search with LLM-synthesized answer (stateless) |
+
+### Chat (Conversational)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/chat` | Send a message (creates new conversation) |
-| POST | `/api/chat/{conversationId}` | Continue existing conversation |
+| POST | `/api/chat/stream` | Stream response via SSE |
 | GET | `/api/chat/conversations` | List all conversations |
 | GET | `/api/chat/conversations/{id}` | Get conversation history |
+| DELETE | `/api/chat/conversations/{id}` | Delete conversation |
 
 ### Graph
 
@@ -114,19 +123,35 @@ See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
 |--------|----------|-------------|
 | GET | `/api/graph` | Get full graph data (D3.js format) |
 | GET | `/api/graph/stats` | Get graph statistics |
-| GET | `/api/graph/subgraph/{entityId}` | Get entity-centered subgraph |
-| GET | `/api/graph/entities` | Search entities |
+| GET | `/api/graph/subgraph/{entityId}` | Get entity-centered subgraph (max 2 hops) |
+| GET | `/api/graph/entities` | Search entities by name/type |
 | GET | `/api/graph/entities/{id}` | Get entity details with relationships |
-| GET | `/api/graph/paths` | Find paths between entities |
+| GET | `/api/graph/paths` | Find paths between two entities |
 
 ### Collections
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/collections` | List collections |
+| GET | `/api/collections` | List collections with stats |
 | POST | `/api/collections` | Create collection |
-| GET | `/api/collections/{id}` | Get collection details |
-| DELETE | `/api/collections/{id}` | Delete collection |
+| GET | `/api/collections/{id}` | Get collection with documents |
+| PUT | `/api/collections/{id}` | Update collection name/description/settings |
+| DELETE | `/api/collections/{id}` | Delete collection (cascades to documents) |
+| POST | `/api/collections/{id}/documents` | Add documents to collection |
+| DELETE | `/api/collections/{id}/documents` | Remove documents from collection |
+
+### Config (Capabilities & Modes)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/config/capabilities` | Get detected services and available features |
+| GET | `/api/config/extraction-modes` | Get available extraction modes for UI dropdown |
+| PUT | `/api/config/extraction-mode` | Set extraction mode (Heuristic/Hybrid/LLM) |
+
+**Extraction Modes:**
+- **Heuristic** (default): Fast, no LLM calls - uses IDF + structural signals
+- **Hybrid**: Heuristic candidates + LLM enhancement per document
+- **LLM**: Full MSFT GraphRAG style - 2 LLM calls per chunk (requires Ollama)
 
 ## Configuration
 
@@ -137,7 +162,8 @@ See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
   "RagDocuments": {
     "UploadPath": "./uploads",
     "MaxFileSizeMB": 100,
-    "AllowedExtensions": [".pdf", ".docx", ".md", ".txt", ".html"]
+    "AllowedExtensions": [".pdf", ".docx", ".md", ".txt", ".html"],
+    "ExtractionMode": "Heuristic"  // Heuristic, Hybrid, or Llm
   },
   "DocSummarizer": {
     "EmbeddingBackend": "Onnx",
