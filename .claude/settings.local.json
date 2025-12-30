@@ -49,7 +49,10 @@
       "Bash(docker ps:*)",
       "Bash(docker exec:*)",
       "Bash(dotnet package search:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []
