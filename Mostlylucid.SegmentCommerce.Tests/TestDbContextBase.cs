@@ -69,5 +69,16 @@ public class TestDbContextBase : SegmentCommerceDbContext
             .Ignore(e => e.Signals)
             .Ignore(e => e.ViewedProducts)
             .Ignore(e => e.Context);
+        
+        // DemoUserEntity - has JSONB properties
+        modelBuilder.Entity<DemoUserEntity>()
+            .Ignore(e => e.Interests)
+            .Ignore(e => e.BrandAffinities)
+            .Ignore(e => e.PreferredTags);
+        
+        // SegmentEntity - has JSONB properties
+        modelBuilder.Entity<SegmentEntity>()
+            .Ignore(e => e.Rules)
+            .Ignore(e => e.Tags);
     }
 }

@@ -1,10 +1,13 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Text;
 using System.Threading.Channels;
+using DocumentFormat.OpenXml.Packaging;
 using Microsoft.Extensions.Options;
 using Mostlylucid.DocSummarizer.Config;
 using Mostlylucid.DocSummarizer.Models;
 using Mostlylucid.DocSummarizer.Services.Onnx;
+using UglyToad.PdfPig;
 
 namespace Mostlylucid.DocSummarizer.Services;
 

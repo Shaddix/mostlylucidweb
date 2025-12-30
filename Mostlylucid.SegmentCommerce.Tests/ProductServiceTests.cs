@@ -14,17 +14,24 @@ public class ProductServiceTests
 
     private static async Task SeedProducts(SegmentCommerceDbContext context)
     {
-        var seller = new SellerEntity { Name = "Test Seller", Email = "test@test.com" };
-        context.Sellers.Add(seller);
+        // Create a user with seller profile
+        var sellerUser = new UserEntity
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@test.com",
+            DisplayName = "Test Seller",
+            SellerProfile = new SellerProfileEntity { BusinessName = "Test Business" }
+        };
+        context.Users.Add(sellerUser);
         await context.SaveChangesAsync();
 
         var products = new[]
         {
-            new ProductEntity { Name = "Tech Product 1", Category = "tech", Price = 100, IsTrending = true, IsFeatured = false, SellerId = seller.Id, Handle = "tech-1", Tags = ["gadget"] },
-            new ProductEntity { Name = "Tech Product 2", Category = "tech", Price = 200, OriginalPrice = 250, IsTrending = false, IsFeatured = true, SellerId = seller.Id, Handle = "tech-2", Tags = ["laptop"] },
-            new ProductEntity { Name = "Fashion Item 1", Category = "fashion", Price = 50, IsTrending = true, IsFeatured = false, SellerId = seller.Id, Handle = "fashion-1", Tags = ["shirt"] },
-            new ProductEntity { Name = "Fashion Item 2", Category = "fashion", Price = 75, IsTrending = false, IsFeatured = true, SellerId = seller.Id, Handle = "fashion-2", Tags = ["pants"] },
-            new ProductEntity { Name = "Home Product", Category = "home", Price = 150, OriginalPrice = 200, IsTrending = false, IsFeatured = false, SellerId = seller.Id, Handle = "home-1", Tags = ["decor"] },
+            new ProductEntity { Name = "Tech Product 1", Category = "tech", Price = 100, IsTrending = true, IsFeatured = false, SellerId = sellerUser.Id, Handle = "tech-1", Tags = ["gadget"] },
+            new ProductEntity { Name = "Tech Product 2", Category = "tech", Price = 200, OriginalPrice = 250, IsTrending = false, IsFeatured = true, SellerId = sellerUser.Id, Handle = "tech-2", Tags = ["laptop"] },
+            new ProductEntity { Name = "Fashion Item 1", Category = "fashion", Price = 50, IsTrending = true, IsFeatured = false, SellerId = sellerUser.Id, Handle = "fashion-1", Tags = ["shirt"] },
+            new ProductEntity { Name = "Fashion Item 2", Category = "fashion", Price = 75, IsTrending = false, IsFeatured = true, SellerId = sellerUser.Id, Handle = "fashion-2", Tags = ["pants"] },
+            new ProductEntity { Name = "Home Product", Category = "home", Price = 150, OriginalPrice = 200, IsTrending = false, IsFeatured = false, SellerId = sellerUser.Id, Handle = "home-1", Tags = ["decor"] },
         };
 
         context.Products.AddRange(products);

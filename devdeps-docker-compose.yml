@@ -144,6 +144,53 @@ services:
       retries: 3
       start_period: 60s
 
+  # Docling - Document conversion service (PDF/DOCX to Markdown)
+  # Optional: Only needed for complex PDF/DOCX conversion
+  # Start with: docker-compose -f devdeps-docker-compose.yml --profile docling up -d
+  docling:
+    image: quay.io/docling-project/docling-serve:latest
+    container_name: docling
+    profiles:
+      - docling
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    environment:
+      # Use pypdfium2 for fast text extraction, falls back to OCR for scanned PDFs
+      - DOCLING_PDF_BACKEND=pypdfium2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Docling with GPU acceleration (requires NVIDIA GPU + nvidia-container-toolkit)
+  # Start with: docker-compose -f devdeps-docker-compose.yml --profile docling-gpu up -d
+  docling-gpu:
+    image: quay.io/docling-project/docling-serve:latest
+    container_name: docling-gpu
+    profiles:
+      - docling-gpu
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - DOCLING_PDF_BACKEND=pypdfium2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
 networks:
   mynetwork:
         driver: bridge

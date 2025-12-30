@@ -1,0 +1,38 @@
+@model List<DocumentEntity>
+
+@if (Model.Count == 0)
+{
+    <div class="text-center text-base-content/50 py-8">
+        <p class="text-sm">No documents uploaded yet.</p>
+        <p class="text-xs mt-1">Click "Upload Files" to get started.</p>
+    </div>
+}
+else
+{
+    @foreach (var doc in Model)
+    {
+        <label class="flex items-center gap-2 p-2 rounded hover:bg-base-200 cursor-pointer group">
+            <input type="checkbox"
+                   class="checkbox checkbox-sm"
+                   checked="@(doc.Status == DocumentStatus.Completed)"
+                   disabled="@(doc.Status != DocumentStatus.Completed)"
+                   x-on:change="toggleDocument('@doc.Id', $event.target.checked)" />
+
+            <span class="truncate flex-1 text-sm" title="@doc.OriginalFilename">
+                @doc.Name
+            </span>
+
+            @await Html.PartialAsync("_DocumentStatusBadge", doc)
+
+            <button class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                    hx-delete="/api/documents/@doc.Id"
+                    hx-confirm="Delete '@doc.Name'?"
+                    hx-swap="none"
+                    hx-on::after-request="htmx.trigger(document.body, 'documentUploaded')">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </label>
+    }
+}

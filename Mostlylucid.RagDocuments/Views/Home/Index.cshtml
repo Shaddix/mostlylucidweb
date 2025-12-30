@@ -1,0 +1,263 @@
+@{
+    ViewBag.Title = "RAG Documents";
+    var documents = ViewBag.Documents as List<DocumentEntity> ?? new List<DocumentEntity>();
+    var totalSegments = ViewBag.TotalSegments as int? ?? 0;
+}
+
+<div class="flex w-full h-full" x-data="ragApp()">
+    <!-- Left Sidebar: Documents -->
+    <aside class="w-80 bg-base-100 border-r border-base-300 flex flex-col">
+        <div class="p-4 border-b border-base-300">
+            <h2 class="font-semibold mb-3 flex items-center gap-2">
+                <span>📁</span> Documents
+            </h2>
+
+            <!-- Upload Button -->
+            <label class="btn btn-primary w-full" for="file-upload">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Upload Files
+            </label>
+            <input type="file" id="file-upload" class="hidden" multiple
+                   accept=".pdf,.docx,.md,.txt,.html"
+                   @@change="uploadFiles($event)" />
+        </div>
+
+        <!-- Document List -->
+        <div id="document-list" class="flex-1 overflow-y-auto p-2 space-y-1"
+             hx-get="/documents" hx-trigger="documentUploaded from:body" hx-swap="innerHTML">
+            @await Html.PartialAsync("_DocumentList", documents)
+        </div>
+
+        <!-- Stats Footer -->
+        <div class="p-3 border-t border-base-300 text-sm text-base-content/60">
+            <span>📊 <span x-text="documentCount">@documents.Count</span> documents</span>
+            <span class="mx-2">•</span>
+            <span>🔢 <span x-text="segmentCount">@totalSegments</span> segments</span>
+        </div>
+    </aside>
+
+    <!-- Main: Chat Area -->
+    <main class="flex-1 flex flex-col bg-base-100">
+        <div class="p-4 border-b border-base-300">
+            <h2 class="font-semibold flex items-center gap-2">
+                <span>💬</span> Chat
+            </h2>
+        </div>
+
+        <!-- Messages -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4" x-ref="chatMessages">
+            <template x-if="messages.length === 0">
+                <div class="text-center text-base-content/50 mt-8">
+                    <p class="text-lg mb-2">👋 Welcome to RAG Documents</p>
+                    <p class="text-sm">Upload documents and ask questions about them.</p>
+                </div>
+            </template>
+
+            <template x-for="msg in messages" :key="msg.id">
+                <div :class="msg.role === 'user' ? 'chat chat-end' : 'chat chat-start'">
+                    <div class="chat-bubble" :class="msg.role === 'user' ? 'chat-bubble-primary' : ''">
+                        <p x-text="msg.content"></p>
+                        <template x-if="msg.sources && msg.sources.length > 0">
+                            <div class="text-xs mt-2 opacity-70 border-t border-base-content/20 pt-2">
+                                <span class="font-semibold">Sources:</span>
+                                <template x-for="source in msg.sources" :key="source.number">
+                                    <span class="ml-1">
+                                        [<span x-text="source.number"></span>] <span x-text="source.documentName"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Typing indicator -->
+            <template x-if="isTyping">
+                <div class="chat chat-start">
+                    <div class="chat-bubble">
+                        <span class="typing-indicator">Thinking</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Input -->
+        <div class="p-4 border-t border-base-300">
+            <form @@submit.prevent="sendMessage" class="flex gap-2">
+                <input type="text"
+                       x-model="currentMessage"
+                       placeholder="Ask a question about your documents..."
+                       class="input input-bordered flex-1"
+                       :disabled="isTyping" />
+                <button type="submit" class="btn btn-primary" :disabled="!currentMessage.trim() || isTyping">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </main>
+</div>
+
+<!-- Upload Progress Modal -->
+<dialog id="upload-modal" class="modal" x-ref="uploadModal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">Uploading Documents</h3>
+        <div class="space-y-3">
+            <template x-for="upload in uploads" :key="upload.filename">
+                <div class="flex items-center gap-3">
+                    <span class="truncate flex-1 text-sm" x-text="upload.filename"></span>
+                    <template x-if="upload.status === 'uploading'">
+                        <span class="loading loading-spinner loading-sm"></span>
+                    </template>
+                    <template x-if="upload.status === 'queued'">
+                        <span class="badge badge-success badge-sm">Queued</span>
+                    </template>
+                    <template x-if="upload.status === 'error'">
+                        <span class="badge badge-error badge-sm" :title="upload.error">Error</span>
+                    </template>
+                </div>
+            </template>
+        </div>
+        <div class="modal-action">
+            <button class="btn" @@click="closeUploadModal">Close</button>
+        </div>
+    </div>
+</dialog>
+
+@section Scripts {
+<script>
+function ragApp() {
+    return {
+        documents: [],
+        documentCount: @documents.Count,
+        segmentCount: @totalSegments,
+        messages: [],
+        currentMessage: '',
+        conversationId: null,
+        isTyping: false,
+        uploads: [],
+        selectedDocIds: new Set(),
+
+        async uploadFiles(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+
+            this.uploads = Array.from(files).map(f => ({
+                filename: f.name,
+                status: 'uploading'
+            }));
+
+            this.$refs.uploadModal.showModal();
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/documents/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        this.uploads[i].status = 'queued';
+                        this.uploads[i].documentId = result.documentId;
+                    } else {
+                        this.uploads[i].status = 'error';
+                        this.uploads[i].error = result.error;
+                    }
+                } catch (e) {
+                    this.uploads[i].status = 'error';
+                    this.uploads[i].error = e.message;
+                }
+            }
+
+            // Trigger HTMX refresh
+            htmx.trigger(document.body, 'documentUploaded');
+            event.target.value = '';
+        },
+
+        closeUploadModal() {
+            this.$refs.uploadModal.close();
+            this.uploads = [];
+        },
+
+        toggleDocument(docId, checked) {
+            if (checked) {
+                this.selectedDocIds.add(docId);
+            } else {
+                this.selectedDocIds.delete(docId);
+            }
+        },
+
+        async sendMessage() {
+            const query = this.currentMessage.trim();
+            if (!query) return;
+
+            // Add user message
+            const userMsg = {
+                id: Date.now(),
+                role: 'user',
+                content: query
+            };
+            this.messages.push(userMsg);
+            this.currentMessage = '';
+            this.isTyping = true;
+
+            // Scroll to bottom
+            this.$nextTick(() => {
+                this.$refs.chatMessages.scrollTop = this.$refs.chatMessages.scrollHeight;
+            });
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query,
+                        conversationId: this.conversationId,
+                        documentIds: this.selectedDocIds.size > 0 ? Array.from(this.selectedDocIds) : null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    this.conversationId = result.conversationId;
+
+                    const assistantMsg = {
+                        id: Date.now() + 1,
+                        role: 'assistant',
+                        content: result.answer,
+                        sources: result.sources
+                    };
+                    this.messages.push(assistantMsg);
+                } else {
+                    this.messages.push({
+                        id: Date.now() + 1,
+                        role: 'assistant',
+                        content: `Error: ${result.error || 'Something went wrong'}`
+                    });
+                }
+            } catch (e) {
+                this.messages.push({
+                    id: Date.now() + 1,
+                    role: 'assistant',
+                    content: `Error: ${e.message}`
+                });
+            } finally {
+                this.isTyping = false;
+                this.$nextTick(() => {
+                    this.$refs.chatMessages.scrollTop = this.$refs.chatMessages.scrollHeight;
+                });
+            }
+        }
+    };
+}
+</script>
+}

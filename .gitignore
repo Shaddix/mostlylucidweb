@@ -302,3 +302,5 @@ nul
 /test-publish/playwright.ps1
 /Mostlylucid.SegmentCommerce/*.png
 /Mostlylucid.SegmentCommerce/test-screenshots/
+vocab.txt
+*.onnx

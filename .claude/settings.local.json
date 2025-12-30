@@ -37,7 +37,8 @@
       "Bash(dotnet run:*)",
       "Bash(dotnet clean:*)",
       "Bash(dotnet new:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dotnet ef migrations add:*)"
     ],
     "deny": [],
     "ask": []
