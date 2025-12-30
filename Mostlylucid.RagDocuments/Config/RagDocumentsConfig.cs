@@ -9,6 +9,37 @@ public class RagDocumentsConfig
     public string UploadPath { get; set; } = "./uploads";
     public int MaxFileSizeMB { get; set; } = 100;
     public string[] AllowedExtensions { get; set; } = [".pdf", ".docx", ".md", ".txt", ".html"];
+
+    /// <summary>
+    /// Demo mode configuration for public deployments like lucidrag.com
+    /// </summary>
+    public DemoModeConfig DemoMode { get; set; } = new();
+}
+
+/// <summary>
+/// Configuration for demo mode - read-only demo with pre-loaded RAG blog articles
+/// </summary>
+public class DemoModeConfig
+{
+    /// <summary>
+    /// Enable demo mode (read-only, pre-loaded content, no uploads)
+    /// </summary>
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>
+    /// Path to demo content directory containing markdown files to pre-load
+    /// </summary>
+    public string ContentPath { get; set; } = "./demo-content";
+
+    /// <summary>
+    /// URLs to fetch blog articles from (RSS or direct markdown URLs)
+    /// </summary>
+    public string[] BlogArticleUrls { get; set; } = [];
+
+    /// <summary>
+    /// Message shown to users in demo mode
+    /// </summary>
+    public string BannerMessage { get; set; } = "Demo Mode: Explore RAG with pre-loaded articles from mostlylucid.net";
 }
 
 public class PromptsConfig

@@ -13,10 +13,12 @@ namespace Mostlylucid.RagDocuments.Services;
 public class DocumentProcessingService(
     RagDocumentsDbContext db,
     DocumentProcessingQueue queue,
+    IVectorStore vectorStore,
     IOptions<RagDocumentsConfig> config,
     ILogger<DocumentProcessingService> logger) : IDocumentProcessingService
 {
     private readonly RagDocumentsConfig _config = config.Value;
+    private const string CollectionName = "ragdocuments";
 
     public async Task<Guid> QueueDocumentAsync(Stream fileStream, string filename, Guid? collectionId, CancellationToken ct = default)
     {
@@ -102,7 +104,24 @@ public class DocumentProcessingService(
         var document = await db.Documents.FindAsync([documentId], ct);
         if (document is null) return;
 
-        // Delete file
+        // Delete vectors from DocSummarizer's vector store
+        try
+        {
+            // The document ID used by DocSummarizer is based on content hash
+            var docIdForVectors = document.ContentHash;
+            if (!string.IsNullOrEmpty(docIdForVectors))
+            {
+                await vectorStore.DeleteDocumentAsync(CollectionName, docIdForVectors, ct);
+                logger.LogInformation("Deleted vectors for document {DocumentId} (hash: {Hash})", documentId, docIdForVectors);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail - vector store cleanup is best effort
+            logger.LogWarning(ex, "Failed to delete vectors for document {DocumentId}", documentId);
+        }
+
+        // Delete file from disk
         if (!string.IsNullOrEmpty(document.FilePath) && File.Exists(document.FilePath))
         {
             var dir = Path.GetDirectoryName(document.FilePath);
@@ -112,6 +131,7 @@ public class DocumentProcessingService(
             }
         }
 
+        // Delete from database (cascades to entity links)
         db.Documents.Remove(document);
         await db.SaveChangesAsync(ct);
 

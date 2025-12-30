@@ -4,6 +4,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Mostlylucid.DocSummarizer;
+using Mostlylucid.DocSummarizer.Config;
+using Mostlylucid.DocSummarizer.Services;
 using Mostlylucid.RagDocuments.Config;
 using Mostlylucid.RagDocuments.Data;
 
@@ -12,11 +14,15 @@ namespace Mostlylucid.RagDocuments.Services;
 public class AgenticSearchService(
     RagDocumentsDbContext db,
     IDocumentSummarizer summarizer,
+    IVectorStore vectorStore,
+    IEmbeddingService embeddingService,
     IConversationService conversationService,
     IOptions<PromptsConfig> promptsConfig,
+    IOptions<DocSummarizerConfig> docSummarizerConfig,
     ILogger<AgenticSearchService> logger) : IAgenticSearchService
 {
     private readonly PromptsConfig _prompts = promptsConfig.Value;
+    private readonly DocSummarizerConfig _docSummarizerConfig = docSummarizerConfig.Value;
 
     public async Task<SearchResult> SearchAsync(SearchRequest request, CancellationToken ct = default)
     {
@@ -39,21 +45,30 @@ public class AgenticSearchService(
             return new SearchResult([], 0, sw.ElapsedMilliseconds);
         }
 
-        // Use DocSummarizer's built-in search
-        var queryAnswer = await summarizer.QueryAsync(
-            markdown: "", // Empty since we're searching indexed docs
-            question: request.Query,
-            cancellationToken: ct);
+        // Generate query embedding
+        var queryEmbedding = await embeddingService.EmbedAsync(request.Query, ct);
 
-        var results = queryAnswer.Evidence
-            .Take(request.TopK)
-            .Select((e, i) => new SearchResultItem(
-                DocumentId: Guid.Empty, // Would need to track this
-                DocumentName: e.SectionTitle ?? "Unknown",
-                SegmentId: e.SegmentId,
-                Text: e.Text,
-                Score: e.Similarity,
-                SectionTitle: e.SectionTitle))
+        // Search vector store directly
+        var collectionName = _docSummarizerConfig.BertRag.CollectionName;
+        logger.LogInformation("Searching collection '{Collection}' with query: {Query}", collectionName, request.Query);
+
+        var segments = await vectorStore.SearchAsync(
+            collectionName,
+            queryEmbedding,
+            request.TopK,
+            docId: null, // Search all documents
+            ct);
+
+        logger.LogInformation("Found {Count} segments", segments.Count);
+
+        var results = segments
+            .Select((s, i) => new SearchResultItem(
+                DocumentId: Guid.Empty, // Would need to track this via segment metadata
+                DocumentName: s.SectionTitle ?? s.HeadingPath ?? "Unknown",
+                SegmentId: s.Id,
+                Text: s.Text,
+                Score: s.RetrievalScore,
+                SectionTitle: s.SectionTitle))
             .ToList();
 
         return new SearchResult(results, results.Count, sw.ElapsedMilliseconds);

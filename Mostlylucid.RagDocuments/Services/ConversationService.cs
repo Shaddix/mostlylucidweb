@@ -15,7 +15,7 @@ public class ConversationService(
         {
             Id = Guid.NewGuid(),
             CollectionId = collectionId,
-            Title = title ?? $"Conversation {DateTime.UtcNow:yyyy-MM-dd HH:mm}"
+            Title = title // Keep null if not provided - will be set from first message
         };
 
         db.Conversations.Add(conversation);

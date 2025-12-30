@@ -6,15 +6,33 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>Mostlylucid.RagDocuments</RootNamespace>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+
+        <!-- Application metadata -->
+        <AssemblyName>RagDocuments</AssemblyName>
+        <Product>RAG Documents</Product>
+        <Description>Multi-document RAG web application with GraphRAG support</Description>
+    </PropertyGroup>
+
+    <!-- Single EXE publishing configuration - only applies during publish -->
+    <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+        <SelfContained>true</SelfContained>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    </PropertyGroup>
+
+    <!-- Runtime identifiers for single-file publishing -->
+    <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+        <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;osx-arm64</RuntimeIdentifiers>
     </PropertyGroup>
 
     <!-- Core ASP.NET packages -->
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.4.1" />
+        <PackageReference Include="System.ServiceModel.Syndication" Version="10.0.1" />
     </ItemGroup>
 
-    <!-- Entity Framework Core + PostgreSQL -->
+    <!-- Entity Framework Core + PostgreSQL + SQLite (for standalone) -->
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
@@ -22,6 +40,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
     </ItemGroup>
 
     <!-- Logging -->
@@ -45,6 +64,36 @@
     <!-- Project references -->
     <ItemGroup>
         <ProjectReference Include="..\Mostlylucid.DocSummarizer.Core\Mostlylucid.DocSummarizer.Core.csproj" />
+        <ProjectReference Include="..\Mostlylucid.GraphRag\Mostlylucid.GraphRag.csproj" />
+    </ItemGroup>
+
+    <!-- Ensure static files and config are published -->
+    <ItemGroup>
+        <Content Update="appsettings*.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </Content>
+    </ItemGroup>
+
+    <!-- Exclude npm/node artifacts and generated data from project -->
+    <ItemGroup>
+        <None Remove="node_modules\**" />
+        <Content Remove="node_modules\**" />
+        <Compile Remove="node_modules\**" />
+        <EmbeddedResource Remove="node_modules\**" />
+        <None Remove="package*.json" />
+        <Content Remove="package*.json" />
+        <None Remove="package-lock.json" />
+        <Content Remove="package-lock.json" />
+        <None Remove="screenshots\**" />
+        <Content Remove="screenshots\**" />
+        <None Remove="data\**" />
+        <Content Remove="data\**" />
+        <None Remove="uploads\**" />
+        <Content Remove="uploads\**" />
+        <None Remove="*.duckdb*" />
+        <Content Remove="*.duckdb*" />
     </ItemGroup>
 
 </Project>

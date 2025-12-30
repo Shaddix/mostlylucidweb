@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.DocSummarizer.Extensions;
 using Mostlylucid.RagDocuments.Config;
@@ -7,7 +9,23 @@ using Mostlylucid.RagDocuments.Services.Background;
 using Scalar.AspNetCore;
 using Serilog;
 
+// Parse command line arguments for standalone mode
+var standaloneMode = args.Contains("--standalone") || args.Contains("-s");
+var port = 5080;
+var portArg = args.FirstOrDefault(a => a.StartsWith("--port="));
+if (portArg != null && int.TryParse(portArg.Split('=')[1], out var parsedPort))
+    port = parsedPort;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Kestrel for standalone mode
+if (standaloneMode)
+{
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenLocalhost(port);
+    });
+}
 
 // Serilog
 builder.Host.UseSerilog((context, config) =>
@@ -25,9 +43,22 @@ var ragConfig = builder.Configuration
     .GetSection(RagDocumentsConfig.SectionName)
     .Get<RagDocumentsConfig>() ?? new();
 
-// Database
-builder.Services.AddDbContext<RagDocumentsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Database - use SQLite in standalone mode if no connection string
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString) && standaloneMode)
+{
+    // Use SQLite for standalone mode (portable)
+    var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+    Directory.CreateDirectory(dataDir);
+    connectionString = $"Data Source={Path.Combine(dataDir, "ragdocs.db")}";
+    builder.Services.AddDbContext<RagDocumentsDbContext>(options =>
+        options.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<RagDocumentsDbContext>(options =>
+        options.UseNpgsql(connectionString));
+}
 
 // DocSummarizer.Core
 builder.Services.AddDocSummarizer(builder.Configuration.GetSection("DocSummarizer"));
@@ -36,8 +67,13 @@ builder.Services.AddDocSummarizer(builder.Configuration.GetSection("DocSummarize
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IAgenticSearchService, AgenticSearchService>();
+builder.Services.AddScoped<IEntityGraphService, EntityGraphService>();
 builder.Services.AddSingleton<DocumentProcessingQueue>();
 builder.Services.AddHostedService<DocumentQueueProcessor>();
+builder.Services.AddHostedService<DemoContentSeeder>();
+
+// HttpClient for external API calls (RSS feeds, etc.)
+builder.Services.AddHttpClient();
 
 // MVC + Razor
 builder.Services.AddControllersWithViews();
@@ -46,20 +82,24 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddOpenApi();
 
 // Health checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+if (!string.IsNullOrEmpty(connectionString) && !connectionString.StartsWith("Data Source="))
+{
+    builder.Services.AddHealthChecks()
+        .AddNpgSql(connectionString);
+}
+else
+{
+    builder.Services.AddHealthChecks();
+}
 
 var app = builder.Build();
 
 // Serilog request logging
 app.UseSerilogRequestLogging();
 
-// Development tools
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-}
+// API documentation always available
+app.MapOpenApi();
+app.MapScalarApiReference();
 
 // Static files
 app.UseStaticFiles();
@@ -78,14 +118,70 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Ensure database is created
+// Ensure database is created/migrated
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<RagDocumentsDbContext>();
-    await db.Database.MigrateAsync();
+    if (standaloneMode && (connectionString?.StartsWith("Data Source=") ?? false))
+    {
+        // SQLite - just ensure created
+        await db.Database.EnsureCreatedAsync();
+    }
+    else
+    {
+        await db.Database.MigrateAsync();
+    }
 }
 
 // Ensure upload directory exists
-Directory.CreateDirectory(ragConfig.UploadPath);
+var uploadPath = standaloneMode
+    ? Path.Combine(AppContext.BaseDirectory, "uploads")
+    : ragConfig.UploadPath;
+Directory.CreateDirectory(uploadPath);
+
+// Open browser in standalone mode
+if (standaloneMode)
+{
+    var url = $"http://localhost:{port}";
+    Log.Information("LucidRAG starting in standalone mode at {Url}", url);
+    Console.WriteLine();
+    Console.WriteLine("╔════════════════════════════════════════════════════════╗");
+    Console.WriteLine("║             lucidRAG - Standalone Mode                 ║");
+    Console.WriteLine("╠════════════════════════════════════════════════════════╣");
+    Console.WriteLine($"║  URL: {url,-49}║");
+    Console.WriteLine("║  Press Ctrl+C to stop                                  ║");
+    Console.WriteLine("╚════════════════════════════════════════════════════════╝");
+    Console.WriteLine();
+
+    // Open browser
+    try
+    {
+        OpenBrowser(url);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Could not open browser automatically");
+    }
+}
 
 app.Run();
+
+// Helper to open browser cross-platform
+static void OpenBrowser(string url)
+{
+    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+    {
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+    }
+    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+    {
+        Process.Start("xdg-open", url);
+    }
+    else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+    {
+        Process.Start("open", url);
+    }
+}
+
+// Make Program accessible for WebApplicationFactory in tests
+public partial class Program { }

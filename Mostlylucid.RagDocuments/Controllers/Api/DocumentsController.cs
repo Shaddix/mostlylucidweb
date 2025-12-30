@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Mostlylucid.RagDocuments.Config;
 using Mostlylucid.RagDocuments.Services;
 
 namespace Mostlylucid.RagDocuments.Controllers.Api;
@@ -7,8 +9,25 @@ namespace Mostlylucid.RagDocuments.Controllers.Api;
 [Route("api/documents")]
 public class DocumentsController(
     IDocumentProcessingService documentService,
+    IOptions<RagDocumentsConfig> config,
     ILogger<DocumentsController> logger) : ControllerBase
 {
+    private readonly RagDocumentsConfig _config = config.Value;
+
+    /// <summary>
+    /// Get demo mode status for UI
+    /// </summary>
+    [HttpGet("demo-status")]
+    public IActionResult GetDemoStatus()
+    {
+        return Ok(new
+        {
+            demoMode = _config.DemoMode.Enabled,
+            message = _config.DemoMode.Enabled ? _config.DemoMode.BannerMessage : null,
+            uploadsEnabled = !_config.DemoMode.Enabled
+        });
+    }
+
     [HttpPost("upload")]
     [RequestSizeLimit(100 * 1024 * 1024)] // 100MB
     public async Task<IActionResult> Upload(
@@ -16,6 +35,16 @@ public class DocumentsController(
         [FromForm] Guid? collectionId = null,
         CancellationToken ct = default)
     {
+        // Block uploads in demo mode
+        if (_config.DemoMode.Enabled)
+        {
+            return StatusCode(403, new
+            {
+                error = "Uploads disabled in demo mode",
+                message = _config.DemoMode.BannerMessage
+            });
+        }
+
         if (file.Length == 0)
         {
             return BadRequest(new { error = "No file provided" });
@@ -52,6 +81,16 @@ public class DocumentsController(
         [FromForm] Guid? collectionId = null,
         CancellationToken ct = default)
     {
+        // Block uploads in demo mode
+        if (_config.DemoMode.Enabled)
+        {
+            return StatusCode(403, new
+            {
+                error = "Uploads disabled in demo mode",
+                message = _config.DemoMode.BannerMessage
+            });
+        }
+
         if (files.Count == 0)
         {
             return BadRequest(new { error = "No files provided" });

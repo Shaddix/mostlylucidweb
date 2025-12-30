@@ -9,7 +9,8 @@ namespace Mostlylucid.RagDocuments.Tests.Integration;
 /// <summary>
 /// Integration tests for the Documents API
 /// </summary>
-public class DocumentsApiTests : IClassFixture<TestWebApplicationFactory>, IAsyncLifetime
+[Collection("Integration")]
+public class DocumentsApiTests : IAsyncLifetime
 {
     private readonly TestWebApplicationFactory _factory;
     private readonly HttpClient _client;
@@ -163,7 +164,7 @@ public class DocumentsApiTests : IClassFixture<TestWebApplicationFactory>, IAsyn
 
         var result = await response.Content.ReadFromJsonAsync<JsonElement>();
         var documents = result.GetProperty("documents");
-        documents.GetArrayLength().Should().BeGreaterOrEqualTo(3);
+        documents.GetArrayLength().Should().BeGreaterThanOrEqualTo(3);
     }
 
     [Fact]

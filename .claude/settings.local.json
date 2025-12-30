@@ -38,7 +38,14 @@
       "Bash(dotnet clean:*)",
       "Bash(dotnet new:*)",
       "Bash(ls:*)",
-      "Bash(dotnet ef migrations add:*)"
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet publish:*)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(ConvertFrom-Json)",
+      "Bash(ConvertTo-Json -Depth 3)",
+      "Bash(npm init:*)",
+      "Bash(node puppeteer-screenshot.js:*)"
     ],
     "deny": [],
     "ask": []

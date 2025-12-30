@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Mostlylucid.RagDocuments.Data;
 
@@ -48,6 +49,10 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureAppConfiguration((context, config) =>
         {
+            // Use existing models directory from main project to avoid re-downloading
+            var modelsPath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory, "..", "..", "..", "..", "Mostlylucid", "bin", "Debug", "net9.0", "models"));
+
             // Override configuration for testing
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -55,6 +60,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 ["DocSummarizer:Ollama:BaseUrl"] = OllamaBaseUrl,
                 ["DocSummarizer:BertRag:VectorStore"] = "DuckDB",
                 ["DocSummarizer:BertRag:ReindexOnStartup"] = "false",
+                ["DocSummarizer:Onnx:ModelsPath"] = modelsPath,
                 ["RagDocuments:RequireApiKey"] = "false",
                 ["RagDocuments:UploadPath"] = "./test-uploads"
             });
