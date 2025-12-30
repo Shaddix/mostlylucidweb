@@ -10,7 +10,7 @@
     <aside class="w-80 bg-base-100 border-r border-base-300 flex flex-col">
         <div class="p-4 border-b border-base-300">
             <h2 class="font-semibold mb-3 flex items-center gap-2">
-                <span>📁</span> Documents
+                <span>📁</span> Add Content
             </h2>
 
             <!-- Demo Mode Banner -->
@@ -23,12 +23,135 @@
                 </div>
             </template>
 
-            <!-- FilePond Upload (hidden in demo mode) -->
+            <!-- Tabs for Upload / Crawl (hidden in demo mode) -->
             <template x-if="!demoMode">
-                <input type="file" id="filepond-input" name="files" multiple />
+                <div>
+                    <!-- Tab Buttons -->
+                    <div class="tabs tabs-boxed mb-3">
+                        <button class="tab tab-sm" :class="contentTab === 'upload' ? 'tab-active' : ''" @@click="contentTab = 'upload'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Upload
+                        </button>
+                        <button class="tab tab-sm" :class="contentTab === 'crawl' ? 'tab-active' : ''" @@click="contentTab = 'crawl'">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                            Crawl
+                        </button>
+                    </div>
+
+                    <!-- Upload Tab Content -->
+                    <template x-if="contentTab === 'upload'">
+                        <input type="file" id="filepond-input" name="files" multiple />
+                    </template>
+
+                    <!-- Crawl Tab Content -->
+                    <template x-if="contentTab === 'crawl'">
+                        <div class="space-y-3">
+                            <!-- URL Input -->
+                            <div class="form-control">
+                                <label class="label py-1">
+                                    <span class="label-text text-xs">Website URL</span>
+                                </label>
+                                <input type="url"
+                                       x-model="crawlUrl"
+                                       placeholder="https://example.com"
+                                       class="input input-sm input-bordered w-full" />
+                            </div>
+
+                            <!-- CSS Selector -->
+                            <div class="form-control">
+                                <label class="label py-1">
+                                    <span class="label-text text-xs">Content Selector</span>
+                                    <span class="label-text-alt text-xs opacity-60">optional</span>
+                                </label>
+                                <input type="text"
+                                       x-model="crawlSelector"
+                                       placeholder="article, .post-content, #main"
+                                       class="input input-sm input-bordered w-full" />
+                            </div>
+
+                            <!-- Advanced Options (collapsed) -->
+                            <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                                <input type="checkbox" class="min-h-0" />
+                                <div class="collapse-title text-xs font-medium min-h-0 py-2 px-3">
+                                    Advanced Options
+                                </div>
+                                <div class="collapse-content px-3 space-y-2">
+                                    <div class="form-control">
+                                        <label class="label py-1">
+                                            <span class="label-text text-xs">Max Pages</span>
+                                        </label>
+                                        <input type="number"
+                                               x-model.number="crawlMaxPages"
+                                               min="1" max="500"
+                                               class="input input-xs input-bordered w-full" />
+                                    </div>
+                                    <div class="form-control">
+                                        <label class="label py-1">
+                                            <span class="label-text text-xs">Max Depth</span>
+                                        </label>
+                                        <input type="number"
+                                               x-model.number="crawlMaxDepth"
+                                               min="1" max="10"
+                                               class="input input-xs input-bordered w-full" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Start Crawl Button -->
+                            <button class="btn btn-primary btn-sm w-full"
+                                    @@click="startCrawl()"
+                                    :disabled="!crawlUrl || crawlInProgress">
+                                <template x-if="!crawlInProgress">
+                                    <span class="flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                        </svg>
+                                        Start Crawl
+                                    </span>
+                                </template>
+                                <template x-if="crawlInProgress">
+                                    <span class="flex items-center gap-2">
+                                        <span class="loading loading-spinner loading-xs"></span>
+                                        Crawling...
+                                    </span>
+                                </template>
+                            </button>
+
+                            <!-- Crawl Progress -->
+                            <template x-if="crawlInProgress || crawlProgress">
+                                <div class="bg-base-200 rounded-lg p-3 text-xs space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="opacity-60">Status:</span>
+                                        <span class="badge badge-xs"
+                                              :class="crawlProgress?.status === 'completed' ? 'badge-success' :
+                                                      crawlProgress?.status === 'failed' ? 'badge-error' : 'badge-info'"
+                                              x-text="crawlProgress?.status || 'starting'"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="opacity-60">Pages:</span>
+                                        <span x-text="(crawlProgress?.pagesProcessed || 0) + '/' + (crawlProgress?.pagesDiscovered || 0)"></span>
+                                    </div>
+                                    <template x-if="crawlProgress?.currentUrl">
+                                        <div class="truncate opacity-60" x-text="crawlProgress.currentUrl"></div>
+                                    </template>
+                                    <template x-if="crawlProgress?.status === 'completed'">
+                                        <div class="text-success">Crawl complete!</div>
+                                    </template>
+                                    <template x-if="crawlProgress?.errorMessage">
+                                        <div class="text-error" x-text="crawlProgress.errorMessage"></div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
             </template>
 
-            <!-- Disabled upload message in demo mode -->
+            <!-- Disabled message in demo mode -->
             <template x-if="demoMode">
                 <div class="text-center py-3 px-4 bg-base-200 rounded-lg border border-dashed border-base-300 opacity-75">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -620,6 +743,18 @@ function ragApp() {
         demoMode: false,
         demoBannerMessage: '',
 
+        // Content tab state (Upload / Crawl)
+        contentTab: 'upload',
+
+        // Crawl state
+        crawlUrl: '',
+        crawlSelector: '',
+        crawlMaxPages: 50,
+        crawlMaxDepth: 3,
+        crawlInProgress: false,
+        crawlProgress: null,
+        crawlEventSource: null,
+
         // View state
         viewMode: 'answer', // 'answer', 'evidence', 'graph'
         graphRagEnabled: true,
@@ -1026,6 +1161,66 @@ function ragApp() {
                 'default': 'badge-ghost'
             };
             return classes[type?.toLowerCase()] || classes.default;
+        },
+
+        async startCrawl() {
+            if (!this.crawlUrl || this.crawlInProgress) return;
+
+            this.crawlInProgress = true;
+            this.crawlProgress = null;
+
+            try {
+                const response = await fetch('/api/crawl', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        seedUrls: [this.crawlUrl],
+                        contentSelector: this.crawlSelector || null,
+                        maxPages: this.crawlMaxPages,
+                        maxDepth: this.crawlMaxDepth
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    this.crawlProgress = { status: 'failed', errorMessage: error.error || 'Failed to start crawl' };
+                    this.crawlInProgress = false;
+                    return;
+                }
+
+                const result = await response.json();
+                const crawlId = result.crawlId;
+
+                // Connect to SSE for progress updates
+                this.crawlEventSource = new EventSource(`/api/crawl/${crawlId}/status`);
+
+                this.crawlEventSource.onmessage = (event) => {
+                    const progress = JSON.parse(event.data);
+                    this.crawlProgress = progress;
+
+                    if (progress.status === 'completed' || progress.status === 'failed') {
+                        this.crawlEventSource.close();
+                        this.crawlEventSource = null;
+                        this.crawlInProgress = false;
+
+                        // Refresh document list
+                        htmx.trigger(document.body, 'documentUploaded');
+                        this.loadGraphStats();
+                    }
+                };
+
+                this.crawlEventSource.onerror = () => {
+                    this.crawlEventSource.close();
+                    this.crawlEventSource = null;
+                    this.crawlInProgress = false;
+                    if (!this.crawlProgress || this.crawlProgress.status === 'crawling') {
+                        this.crawlProgress = { status: 'failed', errorMessage: 'Connection lost' };
+                    }
+                };
+            } catch (e) {
+                this.crawlProgress = { status: 'failed', errorMessage: e.message };
+                this.crawlInProgress = false;
+            }
         }
     };
 }

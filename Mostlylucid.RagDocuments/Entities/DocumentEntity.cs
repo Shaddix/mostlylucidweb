@@ -19,6 +19,11 @@ public class DocumentEntity
     public DateTimeOffset? ProcessedAt { get; set; }
     public string? Metadata { get; set; }
 
+    /// <summary>
+    /// Source URL for crawled web pages. Null for uploaded files.
+    /// </summary>
+    public string? SourceUrl { get; set; }
+
     // Navigation
     public CollectionEntity? Collection { get; set; }
     public ICollection<DocumentEntityLink> EntityLinks { get; set; } = [];

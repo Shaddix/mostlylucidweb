@@ -48,7 +48,8 @@
       "Bash(node puppeteer-screenshot.js:*)",
       "Bash(docker ps:*)",
       "Bash(docker exec:*)",
-      "Bash(dotnet package search:*)"
+      "Bash(dotnet package search:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

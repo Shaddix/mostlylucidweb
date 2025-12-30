@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Mostlylucid.DocSummarizer.Extensions;
 using Mostlylucid.RagDocuments.Config;
@@ -71,6 +72,7 @@ builder.Services.AddScoped<IEntityGraphService, EntityGraphService>();
 builder.Services.AddSingleton<DocumentProcessingQueue>();
 builder.Services.AddHostedService<DocumentQueueProcessor>();
 builder.Services.AddHostedService<DemoContentSeeder>();
+builder.Services.AddSingleton<IWebCrawlerService, WebCrawlerService>();
 
 // HttpClient for external API calls (RSS feeds, etc.)
 builder.Services.AddHttpClient();
@@ -92,6 +94,23 @@ else
     builder.Services.AddHealthChecks();
 }
 
+// Data Protection - persist keys for antiforgery tokens to survive restarts
+var keysDir = standaloneMode
+    ? Path.Combine(AppContext.BaseDirectory, "data", "keys")
+    : "/app/data/keys";
+Directory.CreateDirectory(keysDir);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysDir))
+    .SetApplicationName("LucidRAG");
+
+// Antiforgery for HTMX
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-XSRF-TOKEN";
+    options.Cookie.Name = "XSRF-TOKEN";
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
+
 var app = builder.Build();
 
 // Serilog request logging
@@ -106,6 +125,9 @@ app.UseStaticFiles();
 
 // Routing
 app.UseRouting();
+
+// Antiforgery
+app.UseAntiforgery();
 
 // Health check
 app.MapHealthChecks("/healthz");

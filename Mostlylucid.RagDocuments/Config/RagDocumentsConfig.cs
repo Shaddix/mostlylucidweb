@@ -13,6 +13,11 @@ public class RagDocumentsConfig
     public string[] AllowedExtensions { get; set; } = [".pdf", ".docx", ".md", ".txt", ".html"];
 
     /// <summary>
+    /// Web crawler configuration
+    /// </summary>
+    public CrawlerConfig Crawler { get; set; } = new();
+
+    /// <summary>
     /// Entity extraction mode for GraphRAG.
     /// - Heuristic: Fast, no LLM calls (default)
     /// - Hybrid: Heuristic candidates + LLM enhancement per document
@@ -63,6 +68,32 @@ public class DemoModeConfig
     /// Message returned when user asks off-topic questions in demo mode
     /// </summary>
     public string OffTopicMessage { get; set; } = "This demo answers questions about the indexed documents. Try asking about topics covered in the available content.";
+}
+
+/// <summary>
+/// Configuration for web crawler
+/// </summary>
+public class CrawlerConfig
+{
+    /// <summary>
+    /// User-Agent string for HTTP requests. Include contact info for politeness.
+    /// </summary>
+    public string UserAgent { get; set; } = "LucidRAG/1.0 (+https://github.com/scottgal/mostlylucidweb)";
+
+    /// <summary>
+    /// Delay between requests to the same host (milliseconds)
+    /// </summary>
+    public int RequestDelayMs { get; set; } = 1000;
+
+    /// <summary>
+    /// Request timeout (seconds)
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Whether to respect robots.txt
+    /// </summary>
+    public bool RespectRobotsTxt { get; set; } = true;
 }
 
 public class PromptsConfig

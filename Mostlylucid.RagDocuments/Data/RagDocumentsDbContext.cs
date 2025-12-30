@@ -40,9 +40,12 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.Metadata).HasColumnType("jsonb");
 
+            entity.Property(e => e.SourceUrl).HasMaxLength(2000);
+
             entity.HasIndex(e => e.CollectionId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.ContentHash);
+            entity.HasIndex(e => e.SourceUrl);
 
             entity.HasOne(e => e.Collection)
                 .WithMany(c => c.Documents)

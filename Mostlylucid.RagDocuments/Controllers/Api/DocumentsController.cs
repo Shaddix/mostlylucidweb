@@ -120,7 +120,8 @@ public class DocumentsController(
             createdAt = document.CreatedAt,
             processedAt = document.ProcessedAt,
             collectionId = document.CollectionId,
-            collectionName = document.Collection?.Name
+            collectionName = document.Collection?.Name,
+            sourceUrl = document.SourceUrl
         });
     }
 
@@ -142,7 +143,8 @@ public class DocumentsController(
                 segmentCount = d.SegmentCount,
                 createdAt = d.CreatedAt,
                 collectionId = d.CollectionId,
-                collectionName = d.Collection?.Name
+                collectionName = d.Collection?.Name,
+                sourceUrl = d.SourceUrl
             })
         });
     }

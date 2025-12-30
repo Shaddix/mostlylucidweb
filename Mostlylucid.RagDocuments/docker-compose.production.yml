@@ -27,7 +27,8 @@ services:
       # Optional: Docling for PDF/DOCX conversion
       - DocSummarizer__Docling__BaseUrl=http://docling:5001
       # Optional: Qdrant for persistent vector storage
-      - DocSummarizer__BertRag__QdrantUrl=http://qdrant:6334
+      - DocSummarizer__BertRag__Qdrant__Host=qdrant
+      - DocSummarizer__BertRag__Qdrant__Port=6333
     volumes:
       - lucidrag_uploads:/app/uploads
       - lucidrag_data:/app/data
