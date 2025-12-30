@@ -47,7 +47,8 @@
       "Bash(npm init:*)",
       "Bash(node puppeteer-screenshot.js:*)",
       "Bash(docker ps:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(dotnet package search:*)"
     ],
     "deny": [],
     "ask": []
