@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Mostlylucid.RagDocuments.Filters;
 using Mostlylucid.RagDocuments.Services;
 
 namespace Mostlylucid.RagDocuments.Controllers.Api;
@@ -42,7 +43,8 @@ public class ChatController(
                 }),
                 conversationId = response.ConversationId,
                 askedForClarification = response.AskedForClarification,
-                clarificationQuestion = response.ClarificationQuestion
+                clarificationQuestion = response.ClarificationQuestion,
+                isOffTopic = response.IsOffTopic
             });
         }
         catch (Exception ex)
@@ -124,6 +126,7 @@ public class ChatController(
     }
 
     [HttpDelete("conversations/{id:guid}")]
+    [DemoModeWriteBlock(Operation = "Conversation deletion")]
     public async Task<IActionResult> DeleteConversation(Guid id, CancellationToken ct = default)
     {
         await conversationService.DeleteConversationAsync(id, ct);

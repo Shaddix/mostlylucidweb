@@ -1,26 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Mostlylucid.RagDocuments.Config;
 using Mostlylucid.RagDocuments.Data;
 using Mostlylucid.RagDocuments.Entities;
+using Mostlylucid.RagDocuments.Filters;
 using Mostlylucid.RagDocuments.Models;
 
 namespace Mostlylucid.RagDocuments.Controllers.Api;
 
 [ApiController]
 [Route("api/collections")]
+[DemoModeWriteBlock] // Blocks POST/PUT/DELETE when demo mode is enabled
 public class CollectionsController(
     RagDocumentsDbContext db,
-    IOptions<RagDocumentsConfig> config,
     ILogger<CollectionsController> logger) : ControllerBase
 {
-    private readonly RagDocumentsConfig _config = config.Value;
-
-    private IActionResult? DemoModeGuard(string operation) =>
-        _config.DemoMode.Enabled
-            ? StatusCode(403, new { error = $"{operation} disabled in demo mode", message = _config.DemoMode.BannerMessage })
-            : null;
 
     /// <summary>
     /// List all collections with document counts
@@ -91,9 +84,6 @@ public class CollectionsController(
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCollectionRequest request, CancellationToken ct = default)
     {
-        if (DemoModeGuard("Collection creation") is { } demoBlock)
-            return demoBlock;
-
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return BadRequest(new { error = "Name is required" });
@@ -134,9 +124,6 @@ public class CollectionsController(
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCollectionRequest request, CancellationToken ct = default)
     {
-        if (DemoModeGuard("Collection updates") is { } demoBlock)
-            return demoBlock;
-
         var collection = await db.Collections.FindAsync([id], ct);
         if (collection is null)
         {
@@ -185,9 +172,6 @@ public class CollectionsController(
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        if (DemoModeGuard("Collection deletion") is { } demoBlock)
-            return demoBlock;
-
         var collection = await db.Collections
             .Include(c => c.Documents)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -217,9 +201,6 @@ public class CollectionsController(
     [HttpPost("{id:guid}/documents")]
     public async Task<IActionResult> AddDocuments(Guid id, [FromBody] AddDocumentsRequest request, CancellationToken ct = default)
     {
-        if (DemoModeGuard("Document assignment") is { } demoBlock)
-            return demoBlock;
-
         var collection = await db.Collections.FindAsync([id], ct);
         if (collection is null)
         {
@@ -259,9 +240,6 @@ public class CollectionsController(
     [HttpDelete("{id:guid}/documents")]
     public async Task<IActionResult> RemoveDocuments(Guid id, [FromBody] RemoveDocumentsRequest request, CancellationToken ct = default)
     {
-        if (DemoModeGuard("Document removal") is { } demoBlock)
-            return demoBlock;
-
         var documents = await db.Documents
             .Where(d => d.CollectionId == id && request.DocumentIds.Contains(d.Id))
             .ToListAsync(ct);

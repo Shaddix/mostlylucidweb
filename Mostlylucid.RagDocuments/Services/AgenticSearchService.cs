@@ -19,10 +19,12 @@ public class AgenticSearchService(
     IConversationService conversationService,
     IOptions<PromptsConfig> promptsConfig,
     IOptions<DocSummarizerConfig> docSummarizerConfig,
+    IOptions<RagDocumentsConfig> ragDocumentsConfig,
     ILogger<AgenticSearchService> logger) : IAgenticSearchService
 {
     private readonly PromptsConfig _prompts = promptsConfig.Value;
     private readonly DocSummarizerConfig _docSummarizerConfig = docSummarizerConfig.Value;
+    private readonly RagDocumentsConfig _ragConfig = ragDocumentsConfig.Value;
 
     public async Task<SearchResult> SearchAsync(SearchRequest request, CancellationToken ct = default)
     {
@@ -99,6 +101,21 @@ public class AgenticSearchService(
             request.Query,
             request.CollectionId,
             request.DocumentIds), ct);
+
+        // In demo mode, check if query is relevant to indexed documents
+        if (_ragConfig.DemoMode.Enabled)
+        {
+            var hasRelevantResults = searchResult.Results.Any(r => r.Score >= _ragConfig.DemoMode.MinRelevanceScore);
+            if (!hasRelevantResults)
+            {
+                logger.LogInformation("Demo mode: Query '{Query}' appears off-topic (no results above {Threshold} threshold)",
+                    request.Query, _ragConfig.DemoMode.MinRelevanceScore);
+
+                var offTopicAnswer = _ragConfig.DemoMode.OffTopicMessage;
+                await conversationService.AddMessageAsync(conversationId.Value, "assistant", offTopicAnswer, ct: ct);
+                return new ChatResponse(offTopicAnswer, [], conversationId.Value, IsOffTopic: true);
+            }
+        }
 
         // Build sources for response
         var sources = searchResult.Results

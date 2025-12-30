@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Mostlylucid.RagDocuments.Config;
+using Mostlylucid.RagDocuments.Filters;
 using Mostlylucid.RagDocuments.Services;
 
 namespace Mostlylucid.RagDocuments.Controllers.Api;
 
 [ApiController]
 [Route("api/documents")]
+[DemoModeWriteBlock] // Blocks POST/PUT/DELETE when demo mode is enabled
 public class DocumentsController(
     IDocumentProcessingService documentService,
     IOptions<RagDocumentsConfig> config,
@@ -35,16 +37,6 @@ public class DocumentsController(
         [FromForm] Guid? collectionId = null,
         CancellationToken ct = default)
     {
-        // Block uploads in demo mode
-        if (_config.DemoMode.Enabled)
-        {
-            return StatusCode(403, new
-            {
-                error = "Uploads disabled in demo mode",
-                message = _config.DemoMode.BannerMessage
-            });
-        }
-
         if (file.Length == 0)
         {
             return BadRequest(new { error = "No file provided" });
@@ -81,16 +73,6 @@ public class DocumentsController(
         [FromForm] Guid? collectionId = null,
         CancellationToken ct = default)
     {
-        // Block uploads in demo mode
-        if (_config.DemoMode.Enabled)
-        {
-            return StatusCode(403, new
-            {
-                error = "Uploads disabled in demo mode",
-                message = _config.DemoMode.BannerMessage
-            });
-        }
-
         if (files.Count == 0)
         {
             return BadRequest(new { error = "No files provided" });

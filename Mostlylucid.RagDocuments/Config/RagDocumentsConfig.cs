@@ -50,6 +50,19 @@ public class DemoModeConfig
     /// Message shown to users in demo mode
     /// </summary>
     public string BannerMessage { get; set; } = "Demo Mode: Explore RAG with pre-loaded articles from mostlylucid.net";
+
+    /// <summary>
+    /// Minimum relevance score (0-1) required for search results.
+    /// If no results exceed this threshold, return an off-topic response.
+    /// Lower values are more permissive, higher values are stricter.
+    /// Only enforced when demo mode is enabled.
+    /// </summary>
+    public float MinRelevanceScore { get; set; } = 0.3f;
+
+    /// <summary>
+    /// Message returned when user asks off-topic questions in demo mode
+    /// </summary>
+    public string OffTopicMessage { get; set; } = "This demo answers questions about the indexed documents. Try asking about topics covered in the available content.";
 }
 
 public class PromptsConfig

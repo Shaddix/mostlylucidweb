@@ -39,7 +39,8 @@ public record ChatResponse(
     List<SourceCitation> Sources,
     Guid ConversationId,
     bool AskedForClarification = false,
-    string? ClarificationQuestion = null);
+    string? ClarificationQuestion = null,
+    bool IsOffTopic = false);
 
 public record SourceCitation(
     int Number,

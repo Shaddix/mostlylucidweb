@@ -45,13 +45,13 @@ services:
       timeout: 5s
       retries: 5
 
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - ollama-models:/root/.ollama
-    networks:
-      - ragdocs-network
+#  ollama:
+#    image: ollama/ollama:latest
+#    restart: unless-stopped
+#    volumes:
+#      - ollama-models:/root/.ollama
+#    networks:
+#      - ragdocs-network
     # Uncomment for GPU support:
     # deploy:
     #   resources:

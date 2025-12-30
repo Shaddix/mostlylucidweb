@@ -2,7 +2,8 @@
 # Full installation with all dependencies (except Ollama - install on host machine)
 #
 # Usage:
-#   docker-compose -f docker-compose.production.yml up -d
+#   1. Create a .env file with POSTGRES_PASSWORD=your-secure-password
+#   2. docker-compose -f docker-compose.production.yml up -d
 #
 # Then open: http://localhost:5080
 
@@ -15,9 +16,12 @@ services:
       - "5080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ragdocs;Username=postgres;Password=postgres
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ragdocs;Username=postgres;Password=${POSTGRES_PASSWORD:-changeme}
       - RagDocuments__UploadPath=/app/uploads
+      # Demo mode: Set to true for public demos (blocks uploads/deletes, enforces topic relevance)
       - RagDocuments__DemoMode__Enabled=false
+      - RagDocuments__DemoMode__MinRelevanceScore=0.3
+      - RagDocuments__DemoMode__OffTopicMessage=This demo answers questions about the indexed documents. Try asking about topics covered in the available content.
       # Ollama runs on host machine - use host.docker.internal or your machine IP
       - DocSummarizer__Ollama__BaseUrl=http://host.docker.internal:11434
       # Optional: Docling for PDF/DOCX conversion
@@ -28,6 +32,8 @@ services:
       - lucidrag_uploads:/app/uploads
       - lucidrag_data:/app/data
       - lucidrag_logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,18 +45,16 @@ services:
       retries: 3
       start_period: 30s
 
-  # PostgreSQL Database
+  # PostgreSQL Database (internal only - no external port exposure)
   postgres:
     image: postgres:16-alpine
     container_name: lucidrag-postgres
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
       - POSTGRES_DB=ragdocs
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -82,13 +86,13 @@ services:
       - "5001:5001"
     restart: unless-stopped
     # GPU support (uncomment if you have NVIDIA GPU)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   postgres_data:
