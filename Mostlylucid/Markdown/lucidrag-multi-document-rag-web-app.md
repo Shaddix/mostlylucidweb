@@ -5,6 +5,8 @@
 
 This is **Part 5** of the DocSummarizer series, and it's also the culmination of the [GraphRAG series](/blog/graphrag-minimum-viable-implementation) and [Semantic Search series](/blog/semantic-search-with-onnx-and-qdrant). We're combining everything into a deployable web application.
 
+> 🚨🚨 PREVIEW ARTICLE 🚨🚨 Still working out some kinks and adding features. But the core is done and working well. Expect updates over the next few weeks. It WILL be at lucidRAG.com. I'll add screenshots here once I bottom out the design.
+
 > **The whole point of building RAG infrastructure is to use it for something real.**
 
 Over the past few weeks, we've built:
