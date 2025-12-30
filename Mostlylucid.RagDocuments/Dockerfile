@@ -1,8 +1,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy csproj files and restore
+# Copy csproj files and supporting files needed for restore
 COPY Mostlylucid.DocSummarizer.Core/*.csproj Mostlylucid.DocSummarizer.Core/
+COPY Mostlylucid.DocSummarizer.Core/release-notes.txt Mostlylucid.DocSummarizer.Core/
 COPY Mostlylucid.GraphRag/*.csproj Mostlylucid.GraphRag/
 COPY Mostlylucid.RagDocuments/*.csproj Mostlylucid.RagDocuments/
 RUN dotnet restore Mostlylucid.RagDocuments/Mostlylucid.RagDocuments.csproj
