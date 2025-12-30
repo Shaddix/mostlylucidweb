@@ -97,7 +97,9 @@ else
 // Data Protection - persist keys for antiforgery tokens to survive restarts
 var keysDir = standaloneMode
     ? Path.Combine(AppContext.BaseDirectory, "data", "keys")
-    : "/app/data/keys";
+    : Directory.Exists("/app")
+        ? "/app/data/keys"
+        : Path.Combine(Path.GetTempPath(), "lucidrag", "keys");
 Directory.CreateDirectory(keysDir);
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keysDir))
