@@ -249,17 +249,42 @@ public class DocumentsApiTests : IAsyncLifetime
     [Fact]
     public async Task Upload_WithCollectionId_AssociatesWithCollection()
     {
-        // This test would require creating a collection first
-        // For now, just verify the parameter is accepted
+        // Arrange - Create a collection first
+        var collectionResponse = await _client.PostAsJsonAsync("/api/collections", new { name = "Upload Test Collection" });
+        collectionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var collectionResult = await collectionResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var collectionId = collectionResult.GetProperty("id").GetString();
 
         var content = new MultipartFormDataContent();
         content.Add(new StringContent("# Collection Test\n\nContent.", Encoding.UTF8), "file", "collection-test.md");
-        content.Add(new StringContent(Guid.NewGuid().ToString()), "collectionId");
+        content.Add(new StringContent(collectionId!), "collectionId");
 
-        // Act - Should still work even with non-existent collection (nullable FK)
+        // Act
         var response = await _client.PostAsync("/api/documents/upload", content);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var documentId = result.GetProperty("documentId").GetString();
+
+        // Verify document is associated with collection
+        var docResponse = await _client.GetAsync($"/api/documents/{documentId}");
+        var docResult = await docResponse.Content.ReadFromJsonAsync<JsonElement>();
+        docResult.GetProperty("collectionId").GetString().Should().Be(collectionId);
+    }
+
+    [Fact]
+    public async Task Upload_WithInvalidCollectionId_ReturnsError()
+    {
+        // Arrange - Use a non-existent collection ID
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent("# Invalid Collection Test\n\nContent.", Encoding.UTF8), "file", "invalid-collection-test.md");
+        content.Add(new StringContent(Guid.NewGuid().ToString()), "collectionId");
+
+        // Act
+        var response = await _client.PostAsync("/api/documents/upload", content);
+
+        // Assert - Should fail because FK constraint requires valid collection
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
     }
 }

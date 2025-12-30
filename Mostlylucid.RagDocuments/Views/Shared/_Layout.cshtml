@@ -69,6 +69,28 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        /* FilePond dark mode support */
+        [data-theme="dark"] .filepond--panel-root {
+            background-color: oklch(var(--b2));
+        }
+        [data-theme="dark"] .filepond--drop-label {
+            color: oklch(var(--bc));
+        }
+        [data-theme="dark"] .filepond--label-action {
+            color: oklch(var(--p));
+        }
+        [data-theme="dark"] .filepond--drip-blob {
+            background-color: oklch(var(--p));
+        }
+        [data-theme="dark"] .filepond--item-panel {
+            background-color: oklch(var(--b3));
+        }
+        [data-theme="dark"] .filepond--file-action-button {
+            background-color: oklch(var(--b1));
+        }
+        [data-theme="dark"] .filepond--file {
+            color: oklch(var(--bc));
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-base-200">
