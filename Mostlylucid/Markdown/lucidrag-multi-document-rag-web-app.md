@@ -5,9 +5,6 @@
 
 This is **Part 5** of the DocSummarizer series, and it's also the culmination of the [GraphRAG series](/blog/graphrag-minimum-viable-implementation) and [Semantic Search series](/blog/semantic-search-with-onnx-and-qdrant). We're combining everything into a deployable web application.
 
-> 🚨🚨 PREVIEW ARTICLE 🚨🚨 As you'd imagine this is pretty tricky! 
-> Still working out some kinks and adding features. But the core is done and working well. Expect updates over the next few weeks. It WILL be at lucidRAG.com. I'll add screenshots here once I bottom out the design.
-
 > **The whole point of building RAG infrastructure is to use it for something real.**
 
 Over the past few weeks, we've built:
@@ -23,855 +20,347 @@ Now we wire them together into **lucidRAG** - a standalone web application for m
 
 ## What lucidRAG Does
 
-```mermaid
-flowchart TB
-    subgraph INPUT["Upload Documents"]
-        PDF[PDF]
-        DOCX[DOCX]
-        MD[Markdown]
-        TXT[Text]
-        HTML[HTML]
-    end
-
-    subgraph PROCESSING["DocSummarizer.Core"]
-        PARSE[Parse & Structure]
-        CHUNK[Semantic Chunking]
-        EMBED[ONNX Embeddings]
-        CITE[Citation Tracking]
-    end
-
-    subgraph GRAPHRAG["GraphRAG"]
-        ENT[Entity Extraction]
-        REL[Relationship Detection]
-        COM[Community Detection]
-    end
-
-    subgraph STORAGE["DuckDB + PostgreSQL"]
-        VEC[(Vectors)]
-        GRAPH[(Entity Graph)]
-        META[(Metadata)]
-    end
-
-    subgraph QUERY["Question Answering"]
-        CHAT[Chat Interface]
-        HYBRID[Hybrid Search]
-        SYNTH[LLM Synthesis]
-        EVID[Evidence View]
-        GRAPHVIZ[Graph View]
-    end
-
-    PDF --> PARSE
-    DOCX --> PARSE
-    MD --> PARSE
-    TXT --> PARSE
-    HTML --> PARSE
-
-    PARSE --> CHUNK
-    CHUNK --> EMBED
-    EMBED --> CITE
-
-    CITE --> VEC
-    CITE --> ENT
-    ENT --> REL
-    REL --> COM
-
-    ENT --> GRAPH
-    REL --> GRAPH
-    COM --> GRAPH
-
-    CHAT --> HYBRID
-    HYBRID --> VEC
-    HYBRID --> GRAPH
-    HYBRID --> SYNTH
-    SYNTH --> EVID
-    SYNTH --> GRAPHVIZ
-
-    style PROCESSING stroke:#22c55e,stroke-width:2px
-    style GRAPHRAG stroke:#3b82f6,stroke-width:2px
-    style QUERY stroke:#a855f7,stroke-width:2px
-```
+Upload documents. Ask questions. Get answers with citations and a knowledge graph showing how concepts connect.
 
 **Key features:**
-- **Multi-document upload** with drag-and-drop (FilePond)
-- **Agentic RAG** - Query decomposition, self-correction, clarification
-- **Knowledge graph visualization** - D3.js force-directed graphs
-- **Evidence view** - Sentence-level grounding with source citations
-- **Conversation memory** - Context preserved across questions
-- **Standalone deployment** - Single executable with SQLite, or Docker with PostgreSQL
+- **Multi-document upload** with drag-and-drop
+- **Agentic RAG** - Query decomposition and self-correction
+- **Knowledge graph visualization** - See entity relationships
+- **Evidence view** - Sentence-level source citations
+- **Standalone deployment** - Single executable or Docker
 
-## Why Combine DocSummarizer + GraphRAG?
+## Why Combine Vector Search + Knowledge Graphs?
 
-Vector search alone breaks down when you need:
-- **Cross-document reasoning** - "How does X in Document A relate to Y in Document B?"
-- **Entity-centric queries** - "What do all these documents say about Docker?"
-- **Global summaries** - "What are the main themes across this corpus?"
+Vector search alone breaks down for certain query types:
 
-lucidRAG uses both:
+| Query Type | Vector Search Problem | Graph Solution |
+|------------|----------------------|----------------|
+| Cross-document | "How does X relate to Y?" | Entity linking across docs |
+| Entity-centric | "What about Docker?" | Graph traversal from entity |
+| Global summaries | "Main themes?" | Community detection |
 
-| Query Type | Method | Example |
-|------------|--------|---------|
-| Specific facts | Vector search | "What port does Redis use?" |
-| Entity information | Graph traversal | "What technologies use Docker?" |
-| Cross-document | Entity linking | "Which documents discuss authentication?" |
-| Thematic | Community summaries | "What are the main topics?" |
+lucidRAG uses both: vectors for precision, graphs for context.
 
-## Architecture
+## Architecture Overview
 
-The application layers the projects we've built:
+The app layers three projects we've already built:
 
 ```
-lucidRAG (Mostlylucid.RagDocuments)
-├── Controllers/
-│   ├── Api/
-│   │   ├── DocumentsController.cs    # Upload, status, delete
-│   │   ├── ChatController.cs         # Question answering
-│   │   ├── GraphController.cs        # Knowledge graph data
-│   │   └── ArticlesController.cs     # RSS feed from blog
-│   └── UI/
-│       └── HomeController.cs         # Main interface
-├── Services/
-│   ├── DocumentProcessingService.cs  # Wraps IDocumentSummarizer
-│   ├── EntityGraphService.cs         # Wraps GraphRAG
-│   ├── AgenticSearchService.cs       # Multi-step RAG
-│   ├── ConversationService.cs        # Chat memory
-│   └── Background/
-│       └── DocumentQueueProcessor.cs # Async processing
-└── Views/                            # HTMX + Alpine.js UI
+lucidRAG
+├── Controllers/Api/    # REST endpoints
+├── Services/           # Business logic
+│   ├── DocumentProcessingService   # Wraps DocSummarizer
+│   ├── EntityGraphService          # Wraps GraphRAG
+│   └── Background/                 # Async queue processing
+└── Views/              # HTMX + Alpine.js UI
 ```
 
-### The Processing Pipeline
+## The Processing Pipeline
 
-When you upload a document:
+When you upload a document, it flows through three stages:
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant API as Documents API
-    participant Queue as Background Queue
-    participant DS as DocSummarizer
-    participant GR as GraphRAG
-    participant DB as DuckDB
+### Stage 1: Upload and Queue
 
-    User->>API: POST /api/documents/upload
-    API->>API: Validate file
-    API->>API: Compute content hash
-    API->>Queue: Enqueue document
-    API-->>User: 202 Accepted (documentId)
-
-    Note over Queue,DB: Background Processing
-
-    Queue->>DS: ExtractSegmentsAsync(content)
-    DS->>DS: Parse structure
-    DS->>DS: Chunk by semantics
-    DS->>DS: Generate embeddings (ONNX)
-    DS-->>Queue: ExtractionResult
-
-    Queue->>DB: Store segments + vectors
-
-    Queue->>GR: ExtractEntitiesAsync(segments)
-    GR->>GR: IDF + structural signals
-    GR->>GR: BERT deduplication
-    GR->>GR: Co-occurrence relationships
-    GR-->>Queue: Entities + Relationships
-
-    Queue->>DB: Store entity graph
-    Queue->>API: Update status: Completed
-```
-
-### Robust Async Processing
-
-Document processing is handled by a background service with bounded channels, timeouts, and automatic cleanup:
+The upload endpoint validates the file, computes a content hash for deduplication, and queues it for background processing:
 
 ```csharp
-public class DocumentProcessingQueue
+public async Task<Guid> QueueDocumentAsync(Stream fileStream, string fileName)
 {
-    // Bounded queue prevents unbounded memory growth
-    private readonly Channel<DocumentProcessingJob> _queue =
-        Channel.CreateBounded<DocumentProcessingJob>(new BoundedChannelOptions(100)
-        {
-            FullMode = BoundedChannelFullMode.Wait,  // Backpressure when full
-            SingleReader = true,                      // One processor
-            SingleWriter = false                      // Multiple uploads
-        });
+    // Compute hash to detect duplicates
+    var contentHash = ComputeHash(fileStream);
 
-    // Track progress channels with creation time for cleanup
-    private readonly ConcurrentDictionary<Guid, ProgressChannelEntry> _progressChannels = new();
-    private static readonly TimeSpan ProgressChannelMaxAge = TimeSpan.FromHours(1);
+    var existing = await _db.Documents
+        .FirstOrDefaultAsync(d => d.ContentHash == contentHash);
+    if (existing != null)
+        return existing.Id; // Already processed
+```
 
-    public async ValueTask EnqueueAsync(DocumentProcessingJob job, CancellationToken ct)
+The key insight: we hash first, save later. This prevents wasting processing time on duplicate uploads.
+
+```csharp
+    // Save to disk, create DB record
+    var docId = Guid.NewGuid();
+    await SaveFileToDiskAsync(fileStream, docId, fileName);
+
+    // Queue for background processing
+    await _queue.EnqueueAsync(new DocumentProcessingJob(docId, filePath));
+
+    return docId;
+}
+```
+
+### Stage 2: Chunking and Embedding
+
+The background processor picks up queued documents and runs them through DocSummarizer:
+
+```csharp
+var result = await _summarizer.SummarizeFileAsync(job.FilePath, progressChannel);
+```
+
+This single line does a lot of work (see [DocSummarizer Part 1](/blog/building-a-document-summarizer-with-rag)):
+- Parse the document structure (PDF, DOCX, Markdown)
+- Split into semantic chunks respecting headings
+- Generate ONNX embeddings for each chunk
+- Store vectors in DuckDB with HNSW indexing
+
+### Stage 3: Entity Extraction
+
+After chunking, we extract entities using GraphRAG's heuristic approach:
+
+```csharp
+var segments = await _vectorStore.GetDocumentSegmentsAsync(documentId);
+var entityResult = await _entityGraph.ExtractAndStoreEntitiesAsync(documentId, segments);
+```
+
+This uses IDF scoring and structural signals rather than per-chunk LLM calls - see [GraphRAG Part 2](/blog/graphrag-minimum-viable-implementation) for details.
+
+## Bounded Channels for Backpressure
+
+A naive implementation would use unbounded queues, risking out-of-memory crashes during upload floods. We use bounded channels with explicit capacity limits:
+
+```csharp
+private readonly Channel<DocumentProcessingJob> _queue =
+    Channel.CreateBounded<DocumentProcessingJob>(new BoundedChannelOptions(100)
     {
-        // 5-minute timeout prevents indefinite blocking
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromMinutes(5));
+        FullMode = BoundedChannelFullMode.Wait
+    });
+```
 
-        try
-        {
-            await _queue.Writer.WriteAsync(job, timeoutCts.Token);
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            throw new InvalidOperationException("Queue full. Try again later.");
-        }
-    }
+When the queue fills up, `Wait` mode blocks new writes until space opens. We add a timeout so users get a clear error instead of hanging:
 
-    public Channel<ProgressUpdate> GetOrCreateProgressChannel(Guid documentId)
-    {
-        return _progressChannels.GetOrAdd(documentId, _ => new ProgressChannelEntry(
-            // Bounded progress channel with DropOldest for slow consumers
-            Channel.CreateBounded<ProgressUpdate>(new BoundedChannelOptions(500)
-            {
-                FullMode = BoundedChannelFullMode.DropOldest
-            }),
-            DateTimeOffset.UtcNow)).Channel;
-    }
+```csharp
+using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+timeoutCts.CancelAfter(TimeSpan.FromMinutes(5));
 
-    // Called periodically to remove orphaned channels
-    public int CleanupAbandonedProgressChannels()
-    {
-        var cutoff = DateTimeOffset.UtcNow - ProgressChannelMaxAge;
-        var cleaned = 0;
-        foreach (var kvp in _progressChannels.Where(x => x.Value.CreatedAt < cutoff))
-        {
-            if (_progressChannels.TryRemove(kvp.Key, out var entry))
-            {
-                entry.Channel.Writer.TryComplete();
-                cleaned++;
-            }
-        }
-        return cleaned;
+try {
+    await _queue.Writer.WriteAsync(job, timeoutCts.Token);
+} catch (OperationCanceledException) when (!ct.IsCancellationRequested) {
+    throw new InvalidOperationException("Queue full. Try again later.");
+}
+```
+
+## Per-Document Timeouts
+
+Large documents can take minutes to process. But a stuck document shouldn't block the entire queue. Each document gets its own timeout:
+
+```csharp
+while (!stoppingToken.IsCancellationRequested)
+{
+    var job = await _queue.DequeueAsync(stoppingToken);
+
+    // 30-minute timeout per document
+    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+    timeoutCts.CancelAfter(TimeSpan.FromMinutes(30));
+
+    try {
+        await ProcessDocumentAsync(job, timeoutCts.Token);
+    } catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested) {
+        await MarkDocumentFailedAsync(job.DocumentId, "Processing timed out");
     }
 }
 ```
 
-The `DocumentQueueProcessor` adds timeout protection and periodic cleanup:
+The linked token ensures we still respect application shutdown while adding the per-document limit.
+
+## Progress Channel Cleanup
+
+Each processing document gets a progress channel for SSE updates. But if a user closes their browser mid-upload, that channel becomes orphaned. We track creation times and clean up periodically:
 
 ```csharp
-public class DocumentQueueProcessor : BackgroundService
+private readonly ConcurrentDictionary<Guid, ProgressChannelEntry> _progressChannels = new();
+
+public int CleanupAbandonedChannels()
 {
-    private static readonly TimeSpan DocumentProcessingTimeout = TimeSpan.FromMinutes(30);
-    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(15);
+    var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromHours(1);
+    var cleaned = 0;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    foreach (var kvp in _progressChannels.Where(x => x.Value.CreatedAt < cutoff))
     {
-        // Start cleanup timer
-        var cleanupTimer = new PeriodicTimer(CleanupInterval);
-        _ = RunCleanupLoopAsync(cleanupTimer, stoppingToken);
-
-        while (!stoppingToken.IsCancellationRequested)
+        if (_progressChannels.TryRemove(kvp.Key, out var entry))
         {
-            var job = await _queue.DequeueAsync(stoppingToken);
-
-            // Per-document timeout prevents hanging
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            timeoutCts.CancelAfter(DocumentProcessingTimeout);
-
-            try
-            {
-                await ProcessDocumentAsync(job, timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogWarning("Document {Id} timed out", job.DocumentId);
-                await MarkDocumentFailedAsync(job.DocumentId, "Processing timed out");
-            }
+            entry.Channel.Writer.TryComplete();
+            cleaned++;
         }
     }
+    return cleaned;
 }
 ```
 
-**Key design decisions:**
+A `PeriodicTimer` calls this every 15 minutes in the background processor.
 
-| Feature | Implementation | Benefit |
-|---------|---------------|---------|
-| Bounded queue (100 docs) | `BoundedChannelFullMode.Wait` | Prevents OOM from upload floods |
-| Enqueue timeout (5 min) | Linked `CancellationTokenSource` | User gets error instead of hanging |
-| Processing timeout (30 min) | Per-document timeout | Stuck docs don't block queue |
-| Progress cleanup (1 hour) | `PeriodicTimer` every 15 min | No memory leaks from abandoned SSE |
-| DropOldest for progress | `BoundedChannelOptions` | Slow consumers get recent updates |
+## Storage: DuckDB + PostgreSQL/SQLite
 
-### Storage Strategy
+We use two databases for different purposes:
 
-lucidRAG uses **DuckDB for vectors and graphs**, **PostgreSQL/SQLite for metadata**:
+**PostgreSQL/SQLite (EF Core)** stores document metadata - what exists, processing status, relationships. This data is durable and queryable.
+
+**DuckDB** stores vectors and the entity graph. It's ephemeral - you can rebuild it from source documents. This separation means vector store corruption doesn't lose your document inventory.
 
 ```csharp
-// Document metadata in PostgreSQL/SQLite (EF Core)
+// Metadata in PostgreSQL
 public class DocumentEntity
 {
     public Guid Id { get; set; }
     public string Name { get; set; }
     public string ContentHash { get; set; }
     public DocumentStatus Status { get; set; }
-    public int SegmentCount { get; set; }
-    public int EntityCount { get; set; }
 }
 
-// Vectors and graph in DuckDB (via DocSummarizer + GraphRag)
-// - Segments with HNSW-indexed embeddings
-// - Entities with mention counts
-// - Relationships with provenance
-// - Communities with summaries
+// Vectors in DuckDB (managed by DocSummarizer)
+// Entities in DuckDB (managed by GraphRAG)
 ```
 
-Why separate? **DuckDB is ephemeral and fast** - you can rebuild it from source documents. **PostgreSQL is durable** - it tracks what documents exist and their processing status.
+## The Chat API
 
-## Document Processing Service
-
-The `DocumentProcessingService` wraps `IDocumentSummarizer` and adds:
-- Hash-based duplicate detection
-- Queue-based async processing
-- Progress tracking
-- Vector store cleanup on delete
+Questions flow through the agentic search pipeline:
 
 ```csharp
-public class DocumentProcessingService : IDocumentProcessingService
+[HttpPost]
+public async Task<IActionResult> ChatAsync([FromBody] ChatRequest request)
 {
-    private readonly RagDocumentsDbContext _db;
-    private readonly DocumentProcessingQueue _queue;
-    private readonly IVectorStore _vectorStore;
-    private const string CollectionName = "ragdocuments";
+    // 1. Get or create conversation for memory
+    var conversation = await GetOrCreateConversationAsync(request.ConversationId);
 
-    public async Task<Guid> UploadDocumentAsync(
-        Stream fileStream,
-        string fileName,
-        CancellationToken ct = default)
+    // 2. Search with hybrid retrieval
+    var searchResult = await _search.SearchAsync(request.Query, new SearchOptions
     {
-        // 1. Read and hash content
-        using var ms = new MemoryStream();
-        await fileStream.CopyToAsync(ms, ct);
-        var content = ms.ToArray();
-        var contentHash = ComputeHash(content);
-
-        // 2. Check for duplicates
-        var existing = await _db.Documents
-            .FirstOrDefaultAsync(d => d.ContentHash == contentHash, ct);
-        if (existing != null)
-            return existing.Id; // Already processed
-
-        // 3. Save file and create record
-        var docId = Guid.NewGuid();
-        var filePath = Path.Combine(_uploadPath, $"{docId}{extension}");
-        await File.WriteAllBytesAsync(filePath, content, ct);
-
-        var document = new DocumentEntity
-        {
-            Id = docId,
-            Name = Path.GetFileNameWithoutExtension(fileName),
-            OriginalFilename = fileName,
-            ContentHash = contentHash,
-            FilePath = filePath,
-            Status = DocumentStatus.Pending
-        };
-
-        _db.Documents.Add(document);
-        await _db.SaveChangesAsync(ct);
-
-        // 4. Queue for background processing
-        await _queue.EnqueueAsync(docId, ct);
-
-        return docId;
-    }
-
-    public async Task DeleteDocumentAsync(Guid documentId, CancellationToken ct = default)
-    {
-        var document = await _db.Documents.FindAsync([documentId], ct);
-        if (document == null) return;
-
-        // Clean up vectors from DuckDB
-        try
-        {
-            await _vectorStore.DeleteDocumentAsync(
-                CollectionName,
-                document.ContentHash,
-                ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to delete vectors for {DocumentId}", documentId);
-        }
-
-        // Delete file and metadata
-        if (File.Exists(document.FilePath))
-            File.Delete(document.FilePath);
-
-        _db.Documents.Remove(document);
-        await _db.SaveChangesAsync(ct);
-    }
-}
+        TopK = 10,
+        IncludeGraphData = request.IncludeGraphData
+    });
 ```
 
-## Entity Graph Service
-
-The `EntityGraphService` integrates with `Mostlylucid.GraphRag` for entity extraction. We reuse the existing infrastructure rather than reimplementing:
+The search service handles query decomposition if needed, then synthesizes an answer:
 
 ```csharp
-public class EntityGraphService : IEntityGraphService, IDisposable
-{
-    private readonly GraphRagDb _graphDb;
-    private readonly GraphRag.Services.EmbeddingService _embedder;
-    private readonly EntityExtractor _extractor;
+    // 3. Generate answer with LLM
+    var answer = await _summarizer.SummarizeAsync(
+        request.Query,
+        searchResult.Segments,
+        new SummarizeOptions { IncludeCitations = true });
 
-    public EntityGraphService(IConfiguration configuration)
+    // 4. Save to conversation history
+    await SaveToConversationAsync(conversation.Id, request.Query, answer);
+
+    return Ok(new ChatResponse
     {
-        var dbPath = configuration["GraphRag:DatabasePath"] ?? "data/graphrag.duckdb";
-        var embeddingDim = 384; // all-MiniLM-L6-v2
-
-        _graphDb = new GraphRagDb(dbPath, embeddingDim);
-        _embedder = new GraphRag.Services.EmbeddingService();
-        _extractor = new EntityExtractor(_embedder, _graphDb);
-    }
-
-    public async Task ExtractEntitiesAsync(
-        Guid documentId,
-        IEnumerable<Segment> segments,
-        CancellationToken ct = default)
-    {
-        // Convert DocSummarizer segments to GraphRag chunks
-        var chunks = segments.Select(s => new GraphRag.Models.Chunk
-        {
-            Id = s.Id,
-            DocumentId = documentId.ToString(),
-            Text = s.Text,
-            ChunkIndex = s.Index
-        }).ToList();
-
-        // Use GraphRag's entity extractor (heuristic mode)
-        var result = await _extractor.ExtractAsync(
-            chunks,
-            ExtractionMode.Heuristic,
-            ct);
-
-        // Store in GraphRag's DuckDB
-        foreach (var entity in result.Entities)
-        {
-            await _graphDb.UpsertEntityAsync(entity, ct);
-        }
-
-        foreach (var rel in result.Relationships)
-        {
-            await _graphDb.InsertRelationshipAsync(rel, ct);
-        }
-    }
-
-    public async Task<GraphData> GetGraphDataAsync(CancellationToken ct = default)
-    {
-        // Fetch for D3.js visualization
-        var entities = await _graphDb.GetAllEntitiesAsync(ct);
-        var relationships = await _graphDb.GetAllRelationshipsAsync(ct);
-
-        return new GraphData
-        {
-            Nodes = entities.Select(e => new GraphNode
-            {
-                Id = e.Id,
-                Name = e.Name,
-                Type = e.Type,
-                MentionCount = e.MentionCount
-            }),
-            Links = relationships.Select(r => new GraphLink
-            {
-                Source = r.SourceId,
-                Target = r.TargetId,
-                Type = r.Type,
-                Strength = r.Strength
-            })
-        };
-    }
-}
-```
-
-### Reusing GraphRAG's IDF-Based Extraction
-
-GraphRAG's entity extraction uses statistical signals rather than per-chunk LLM calls:
-
-1. **IDF scoring** - Rare terms across the corpus are likely entities
-2. **Structural signals** - Headings, inline code, links
-3. **BERT deduplication** - Merge "Docker Compose" and "docker-compose"
-4. **Co-occurrence relationships** - Entities in the same chunk are related
-
-See [GraphRAG Part 2](/blog/graphrag-minimum-viable-implementation) for the full implementation.
-
-## Agentic Search Service
-
-The `AgenticSearchService` implements multi-step RAG with:
-- Query decomposition (split complex questions)
-- Self-correction (re-query if results are poor)
-- Query clarification (rewrite ambiguous queries)
-
-```csharp
-public class AgenticSearchService : IAgenticSearchService
-{
-    private readonly IDocumentSummarizer _summarizer;
-    private readonly IEntityGraphService _graphService;
-
-    public async Task<SearchResult> SearchAsync(
-        string query,
-        SearchOptions options,
-        CancellationToken ct = default)
-    {
-        // 1. Analyze query complexity
-        var analysis = AnalyzeQuery(query);
-
-        if (analysis.NeedsDecomposition)
-        {
-            // Split into sub-queries, execute in parallel
-            var subResults = await ExecuteSubQueriesAsync(
-                analysis.SubQueries, options, ct);
-            return SynthesizeResults(query, subResults);
-        }
-
-        // 2. Embed query
-        var queryEmbedding = await _summarizer.EmbedAsync(query);
-
-        // 3. Hybrid search: vector + BM25
-        var vectorResults = await _summarizer.SearchAsync(
-            query,
-            topK: options.TopK);
-
-        // 4. Entity enrichment from graph
-        var queryEntities = await _graphService.ExtractQueryEntitiesAsync(query, ct);
-        var graphContext = await _graphService.GetEntityContextAsync(queryEntities, ct);
-
-        // 5. Check result quality
-        if (vectorResults.AverageScore < 0.3 && options.AllowSelfCorrection)
-        {
-            // Results poor - try query rewriting
-            var rewrittenQuery = await RewriteQueryAsync(query, ct);
-            return await SearchAsync(rewrittenQuery, options with
-            {
-                AllowSelfCorrection = false
-            }, ct);
-        }
-
-        return new SearchResult
-        {
-            Query = query,
-            Segments = vectorResults.Segments,
-            Entities = queryEntities,
-            GraphContext = graphContext
-        };
-    }
-}
-```
-
-## Chat Controller
-
-The chat API handles question answering with conversation memory:
-
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class ChatController : ControllerBase
-{
-    private readonly IAgenticSearchService _search;
-    private readonly IConversationService _conversations;
-    private readonly IDocumentSummarizer _summarizer;
-
-    [HttpPost]
-    public async Task<IActionResult> ChatAsync(
-        [FromBody] ChatRequest request,
-        CancellationToken ct)
-    {
-        // Get or create conversation
-        var conversation = request.ConversationId.HasValue
-            ? await _conversations.GetAsync(request.ConversationId.Value, ct)
-            : await _conversations.CreateAsync(ct);
-
-        // Build context from conversation history
-        var context = _conversations.BuildContext(conversation);
-
-        // Search with agentic pipeline
-        var searchResult = await _search.SearchAsync(
-            request.Query,
-            new SearchOptions
-            {
-                TopK = 10,
-                IncludeGraphData = request.IncludeGraphData,
-                DocumentIds = request.DocumentIds,
-                ConversationContext = context
-            },
-            ct);
-
-        // Generate answer with LLM
-        var answer = await _summarizer.SummarizeAsync(
-            request.Query,
-            searchResult.Segments,
-            new SummarizeOptions
-            {
-                SystemPrompt = GetSystemPrompt(conversation),
-                IncludeCitations = true
-            });
-
-        // Save to conversation history
-        await _conversations.AddMessageAsync(
-            conversation.Id,
-            "user",
-            request.Query,
-            ct);
-        await _conversations.AddMessageAsync(
-            conversation.Id,
-            "assistant",
-            answer.Text,
-            new { sources = answer.Citations },
-            ct);
-
-        return Ok(new ChatResponse
-        {
-            ConversationId = conversation.Id,
-            Answer = answer.Text,
-            Sources = answer.Citations.Select(c => new SourceDto
-            {
-                Number = c.Index,
-                DocumentName = c.DocumentName,
-                Text = c.Text,
-                PageOrSection = c.Section
-            }),
-            GraphData = request.IncludeGraphData
-                ? searchResult.GraphData
-                : null,
-            QueryEntities = searchResult.Entities.Select(e => e.Name),
-            DebugInfo = request.IncludeDebugInfo
-                ? BuildDebugInfo(searchResult)
-                : null
-        });
-    }
+        Answer = answer.Text,
+        Sources = answer.Citations,
+        GraphData = searchResult.GraphData
+    });
 }
 ```
 
 ## The UI: HTMX + Alpine.js
 
-The UI is a single page with three views:
+The UI is a single page with documents on the left, chat on the right:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  lucidRAG                        [Articles ▾] [API Docs] [☀/🌙] │
-├──────────────────────┬──────────────────────────────────────────┤
-│                      │                                          │
-│  📁 Documents        │   [Answer] [Evidence] [Graph]            │
-│  ─────────────       │                                          │
-│                      │   User: How does Docker work?            │
-│  [+ Upload Files]    │                                          │
-│                      │   Assistant: Docker uses containerization │
-│  📄 api-docs.pdf     │   to package applications... [1][2]      │
-│  📝 readme.md        │                                          │
-│  📝 notes.txt        │   Sources:                               │
-│                      │   [1] docker-guide.md (§Setup)           │
-│  ─────────────       │   [2] architecture.pdf (p.12)            │
-│  🕸️ Graph Health     │                                          │
-│  Nodes: 168          │   ┌──────────────────────────────────┐   │
-│  Edges: 312          │   │ Ask about your documents...   [→]│   │
-│                      │   └──────────────────────────────────┘   │
-└──────────────────────┴──────────────────────────────────────────┘
+┌──────────────────┬─────────────────────────────────────┐
+│  📁 Documents    │  💬 Chat                            │
+│  ─────────────   │  [Answer] [Evidence] [Graph]       │
+│  [+ Upload]      │                                     │
+│  📄 api-docs.pdf │  Q: How does auth work?            │
+│  📝 readme.md    │  A: JWT tokens stored... [1][2]    │
+│  ─────────────   │                                     │
+│  🕸️ Graph: 168   │  ┌─────────────────────────────┐   │
+│                  │  │ Ask about your documents... │   │
+└──────────────────┴──┴─────────────────────────────┴───┘
 ```
 
-### Alpine.js State Management
+Alpine.js manages state; HTMX handles document list updates:
 
 ```javascript
 function ragApp() {
     return {
-        // Core state
-        documents: [],
         messages: [],
-        currentMessage: '',
-        conversationId: null,
         isTyping: false,
-
-        // View state
-        viewMode: 'answer', // 'answer', 'evidence', 'graph'
-        graphRagEnabled: true,
-
-        // Evidence view
-        lastAnswer: null,
-        selectedSentence: null,
-        selectedEvidence: [],
-
-        // Graph view
-        graphData: null,
-        selectedEntity: null,
 
         async sendMessage() {
             const query = this.currentMessage.trim();
-            if (!query) return;
-
             this.messages.push({ role: 'user', content: query });
-            this.currentMessage = '';
             this.isTyping = true;
 
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query,
-                        conversationId: this.conversationId,
-                        includeGraphData: this.graphRagEnabled,
-                        includeDebugInfo: true
-                    })
-                });
+            const result = await fetch('/api/chat', {
+                method: 'POST',
+                body: JSON.stringify({ query })
+            }).then(r => r.json());
 
-                const result = await response.json();
-                this.conversationId = result.conversationId;
-
-                this.messages.push({
-                    role: 'assistant',
-                    content: result.answer,
-                    sources: result.sources
-                });
-
-                if (result.graphData) {
-                    this.graphData = result.graphData;
-                }
-
-                this.lastAnswer = this.parseForEvidence(result);
-
-            } finally {
-                this.isTyping = false;
-            }
+            this.messages.push({
+                role: 'assistant',
+                content: result.answer,
+                sources: result.sources
+            });
+            this.isTyping = false;
         }
     };
 }
 ```
 
-### FilePond for Uploads
+## Demo Mode
 
-```javascript
-initFilePond() {
-    pond = FilePond.create(input, {
-        allowMultiple: true,
-        maxFileSize: '100MB',
-        acceptedFileTypes: [
-            'application/pdf',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'text/markdown',
-            'text/plain',
-            'text/html'
-        ],
-        server: {
-            process: {
-                url: '/api/documents/upload',
-                method: 'POST',
-                onload: (response) => {
-                    htmx.trigger(document.body, 'documentUploaded');
-                    this.loadGraphStats();
-                    return JSON.parse(response).documentId;
-                }
-            }
-        }
-    });
+For public deployments like lucidrag.com, demo mode disables uploads and uses pre-loaded content:
+
+```csharp
+public class DemoModeConfig
+{
+    public bool Enabled { get; set; } = false;
+    public string ContentPath { get; set; } = "./demo-content";
+    public string BannerMessage { get; set; } = "Demo Mode: Pre-loaded RAG articles";
 }
 ```
 
+A `DemoContentSeeder` background service watches the content directory and processes any dropped files:
+
+```csharp
+protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+{
+    if (!_config.DemoMode.Enabled) return;
+
+    await SeedExistingContentAsync();
+    StartFileWatcher(_config.DemoMode.ContentPath);
+}
+```
+
+This lets you update demo content by simply copying files - no restart needed.
+
 ## Running lucidRAG
 
-### Standalone Mode (No Dependencies)
+### Standalone (No Dependencies)
 
 ```bash
 dotnet run --project Mostlylucid.RagDocuments -- --standalone
 ```
 
-This starts the app on `http://localhost:5080` with:
-- SQLite database (stored in `data/ragdocs.db`)
-- DuckDB vector store (stored in `data/`)
-- Local file uploads (stored in `uploads/`)
-- ONNX embeddings (no API keys needed)
+Uses SQLite + DuckDB locally. Open `http://localhost:5080`.
 
-### Docker Deployment
+### Docker
 
 ```yaml
-# docker-compose.yml
 services:
   lucidrag:
     build: .
-    ports:
-      - "5080:8080"
-    environment:
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=ragdocs;...
-      - DocSummarizer__Ollama__BaseUrl=http://ollama:11434
-    volumes:
-      - uploads:/app/uploads
-      - vectors:/app/data
-    depends_on:
-      - postgres
-      - ollama
-
-  postgres:
-    image: postgres:16-alpine
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ollama:/root/.ollama
-    # Add deploy.resources for GPU support
-```
-
-### Configuration
-
-```json
-{
-  "RagDocuments": {
-    "UploadPath": "./uploads",
-    "MaxFileSizeMB": 100,
-    "AllowedExtensions": [".pdf", ".docx", ".md", ".txt", ".html"]
-  },
-  "DocSummarizer": {
-    "EmbeddingBackend": "Onnx",
-    "BertRag": {
-      "VectorStore": "DuckDB",
-      "PersistVectors": true
-    },
-    "Ollama": {
-      "BaseUrl": "http://localhost:11434",
-      "Model": "llama3.2:3b"
-    }
-  }
-}
+    ports: ["5080:8080"]
+    depends_on: [postgres, ollama]
 ```
 
 ## What We Built
 
-lucidRAG combines months of infrastructure work:
-
-| Component | From | Purpose |
-|-----------|------|---------|
-| Document parsing | DocSummarizer | PDF, DOCX, Markdown, HTML, TXT |
-| Semantic chunking | DocSummarizer | Heading-aware segmentation |
+| Component | Source | Purpose |
+|-----------|--------|---------|
+| Document parsing | DocSummarizer | PDF, DOCX, Markdown |
 | ONNX embeddings | DocSummarizer | Local, no API keys |
 | Entity extraction | GraphRAG | IDF + structural signals |
-| Knowledge graph | GraphRAG | Entity relationships |
 | Hybrid search | Both | BM25 + BERT with RRF |
-| Vector storage | DuckDB | HNSW-indexed embeddings |
-| Async processing | New | Bounded channels, timeouts, cleanup |
-| Conversation memory | New | Context across questions |
-| Web UI | New | HTMX + Alpine.js + DaisyUI |
+| Async processing | New | Bounded channels, timeouts |
+| Web UI | New | HTMX + Alpine.js |
 
 ### Cost
 
-**Zero API costs** for indexing. Embeddings are ONNX, entity extraction is heuristic. You only pay for LLM synthesis at query time - and that works with local Ollama.
-
-For 100 documents:
-- Indexing: $0 (all local)
-- Queries: ~$0 with Ollama, or ~$0.01/query with GPT-4o-mini
+**Zero API costs** for indexing - embeddings are ONNX, entities are heuristic. You only pay for LLM synthesis at query time, and that works with local Ollama.
 
 ## Related Articles
 
-### DocSummarizer Series
-- [Part 1 - Architecture](/blog/building-a-document-summarizer-with-rag)
-- [Part 2 - CLI Tool](/blog/docsummarizer-tool)
-- [Part 3 - Advanced Concepts](/blog/docsummarizer-advanced-concepts)
-- [Part 4 - RAG Pipelines](/blog/docsummarizer-rag-pipeline)
-
-### GraphRAG Series
-- [Part 1 - Knowledge Graphs for RAG](/blog/graphrag-knowledge-graphs-for-rag)
-- [Part 2 - Minimum Viable GraphRAG](/blog/graphrag-minimum-viable-implementation)
-
-### Semantic Search Series
-- [RAG Primer](/blog/rag-primer)
-- [Semantic Search with ONNX and Qdrant](/blog/semantic-search-with-onnx-and-qdrant)
-- [Hybrid Search and Indexing](/blog/rag-hybrid-search-and-indexing)
-
-## Links
-
-- **Website:** [lucidrag.com](https://lucidrag.com)
-- **Source:** [GitHub](https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.RagDocuments)
-- **DocSummarizer NuGet:** [Mostlylucid.DocSummarizer](https://www.nuget.org/packages/Mostlylucid.DocSummarizer)
+- [DocSummarizer Part 1 - Architecture](/blog/building-a-document-summarizer-with-rag)
+- [DocSummarizer Part 4 - RAG Pipelines](/blog/docsummarizer-rag-pipeline)
+- [GraphRAG Part 2 - Implementation](/blog/graphrag-minimum-viable-implementation)
+- [Semantic Search with ONNX](/blog/semantic-search-with-onnx-and-qdrant)

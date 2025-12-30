@@ -7,12 +7,14 @@ A standalone multi-document RAG (Retrieval-Augmented Generation) web application
 ## Features
 
 - **Multi-Document Upload**: Support for PDF, DOCX, Markdown, TXT, and HTML files
-- **Agentic RAG**: Multi-step query decomposition, self-correction, and query clarification
+- **Agentic RAG**: Deterministic query planning with bounded LLM steps (decomposition → retrieval → synthesis), including clarification loops when confidence is low
 - **GraphRAG Entity Extraction**: Automatic extraction of entities and relationships using IDF-based heuristics and BERT embeddings
-- **Knowledge Graph Visualization**: D3.js force-directed graph showing entities and relationships
+- **Knowledge Graph Visualization**: Interactive exploration with depth-limited subgraphs (max 2 hops, entity-type filtering) to prevent visual overload on large corpora
 - **Evidence View**: Sentence-level grounding showing exactly which parts of source documents support each answer
 - **Conversation Memory**: Chat sessions maintain context across multiple questions
 - **Standalone Deployment**: Single executable with SQLite for portable use, or PostgreSQL for production
+
+**What the LLM does NOT do**: The LLM is never used for entity extraction, indexing, or storage — only for reasoning over retrieved, evidence-backed context. All preprocessing is deterministic and inspectable.
 
 ## Quick Start
 
@@ -35,6 +37,25 @@ docker-compose up -d
 
 See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
 
+### Standalone vs Production
+
+| Mode | Intended Use |
+|------|--------------|
+| Standalone | Local research, audits, air-gapped environments, single-user |
+| PostgreSQL | Multi-user, long-lived corpora, production workloads |
+
+## Design Principles
+
+1. **Deterministic preprocessing** — Chunking, embedding, and entity extraction use fixed algorithms, not LLM calls. Results are reproducible.
+
+2. **Evidence-first** — Every answer cites specific source segments. No hallucinated claims.
+
+3. **Inspectable pipelines** — All intermediate state (chunks, embeddings, entities, relationships) is queryable and debuggable.
+
+4. **Local-first execution** — ONNX embeddings, DuckDB storage, optional Ollama. No mandatory cloud dependencies.
+
+5. **Bounded LLM usage** — The LLM synthesizes answers from retrieved context. It doesn't index, extract, or store anything.
+
 ## Architecture
 
 ```
@@ -52,6 +73,8 @@ See `docker-compose.yml` for full configuration with PostgreSQL and Ollama.
 │   (Vectors)     │   (Entity Graph)  │   (Metadata)             │
 └─────────────────┴───────────────────┴───────────────────────────┘
 ```
+
+**Why DuckDB?** DuckDB is used for vector storage to keep indexing local, fast, and inspectable without introducing an external vector database dependency. It's ephemeral by design — you can always rebuild it from source documents.
 
 ### Key Components
 
