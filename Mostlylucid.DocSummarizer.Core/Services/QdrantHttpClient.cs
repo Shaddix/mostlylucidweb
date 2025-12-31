@@ -9,6 +9,8 @@ namespace Mostlylucid.DocSummarizer.Services;
 /// <summary>
 ///     Simple HTTP-based Qdrant client for AOT compatibility.
 ///     The official Qdrant.Client uses gRPC which has AOT issues with System.Single marshalling.
+///     Note: Qdrant exposes REST API on port 6333 and gRPC on port 6334.
+///     If a gRPC port (6334) is passed, we automatically use REST port (6333).
 /// </summary>
 public class QdrantHttpClient
 {
@@ -19,7 +21,11 @@ public class QdrantHttpClient
     {
         // Use 127.0.0.1 if localhost to avoid DNS resolution issues
         var resolvedHost = host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ? "127.0.0.1" : host;
-        _baseUrl = $"http://{resolvedHost}:{port}";
+
+        // If gRPC port (6334) is passed, use REST port (6333) instead
+        // Qdrant exposes: REST on 6333, gRPC on 6334
+        var restPort = port == 6334 ? 6333 : port;
+        _baseUrl = $"http://{resolvedHost}:{restPort}";
 
         // Force IPv4 and configure socket handler explicitly
         var handler = new SocketsHttpHandler

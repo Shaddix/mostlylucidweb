@@ -157,7 +157,9 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=ragdocs;Username=postgres;Password=${POSTGRES_PASSWORD}
       - DocSummarizer__Ollama__BaseUrl=http://host.docker.internal:11434
       - DocSummarizer__Docling__BaseUrl=http://docling:5001
-      - DocSummarizer__BertRag__QdrantUrl=http://qdrant:6334
+      - DocSummarizer__Qdrant__Host=qdrant
+      - DocSummarizer__Qdrant__Port=6334
+      - DocSummarizer__BertRag__VectorStore=Qdrant
       - RagDocuments__RequireApiKey=true
       - RagDocuments__ApiKey=${LUCIDRAG_API_KEY}
     extra_hosts:
@@ -442,7 +444,9 @@ LucidRAG will connect to Ollama at `host.docker.internal:11434`.
 | `DocSummarizer__Ollama__BaseUrl` | Ollama API URL |
 | `DocSummarizer__Ollama__Model` | LLM model to use |
 | `DocSummarizer__Docling__BaseUrl` | Docling API URL for PDF/DOCX |
-| `DocSummarizer__BertRag__QdrantUrl` | Qdrant URL for persistent vectors |
+| `DocSummarizer__Qdrant__Host` | Qdrant hostname |
+| `DocSummarizer__Qdrant__Port` | Qdrant gRPC port (default: 6334) |
+| `DocSummarizer__BertRag__VectorStore` | Vector store backend: `Qdrant`, `DuckDB`, or `InMemory` |
 | `RagDocuments__RequireApiKey` | Enable API key authentication |
 | `RagDocuments__ApiKey` | The API key (if required) |
 | `RagDocuments__Crawler__UserAgent` | Custom User-Agent for web crawling |

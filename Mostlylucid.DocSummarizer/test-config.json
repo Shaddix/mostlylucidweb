@@ -41,7 +41,7 @@
   },
   "Qdrant": {
     "Host": "localhost",
-    "Port": 6333,
+    "Port": 6334,
     "CollectionName": "documents",
     "VectorSize": 384,
     "DeleteCollectionAfterSummarization": true

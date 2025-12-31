@@ -282,9 +282,9 @@ public class QdrantConfig
     public string Host { get; set; } = "localhost";
 
     /// <summary>
-    ///     Qdrant REST port
+    ///     Qdrant gRPC port (6334 is gRPC, 6333 is REST - we use gRPC client)
     /// </summary>
-    public int Port { get; set; } = 6333;
+    public int Port { get; set; } = 6334;
 
     /// <summary>
     ///     Qdrant API key (optional)
