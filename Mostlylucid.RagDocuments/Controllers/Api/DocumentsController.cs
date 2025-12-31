@@ -33,19 +33,30 @@ public class DocumentsController(
     [HttpPost("upload")]
     [RequestSizeLimit(100 * 1024 * 1024)] // 100MB
     public async Task<IActionResult> Upload(
-        IFormFile file,
+        IFormFile? file,
         [FromForm] Guid? collectionId = null,
         CancellationToken ct = default)
     {
-        if (file.Length == 0)
+        // Log all form data for debugging
+        logger.LogInformation("Upload request - File: {FileName}, Size: {Size}, ContentType: {ContentType}, CollectionId: {CollectionId}",
+            file?.FileName ?? "NULL",
+            file?.Length ?? 0,
+            file?.ContentType ?? "NULL",
+            collectionId);
+
+        if (file == null || file.Length == 0)
         {
-            return BadRequest(new { error = "No file provided" });
+            logger.LogWarning("Upload failed: No file provided or file is empty. Request ContentType: {ContentType}",
+                Request.ContentType);
+            return BadRequest(new { error = "No file provided", details = $"File was {(file == null ? "null" : "empty")}" });
         }
 
         try
         {
             await using var stream = file.OpenReadStream();
             var documentId = await documentService.QueueDocumentAsync(stream, file.FileName, collectionId, ct);
+
+            logger.LogInformation("Document queued successfully: {DocumentId} ({FileName})", documentId, file.FileName);
 
             return Ok(new
             {
@@ -57,6 +68,7 @@ public class DocumentsController(
         }
         catch (ArgumentException ex)
         {
+            logger.LogWarning(ex, "Upload validation failed for {FileName}: {Message}", file.FileName, ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)

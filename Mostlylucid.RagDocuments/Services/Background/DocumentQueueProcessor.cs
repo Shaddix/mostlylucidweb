@@ -23,6 +23,9 @@ public class DocumentQueueProcessor(
     {
         logger.LogInformation("Document queue processor started");
 
+        // Clean up failed documents from previous runs
+        await CleanupFailedDocumentsAsync(stoppingToken);
+
         // Start cleanup timer
         var cleanupTimer = new PeriodicTimer(CleanupInterval);
         _ = RunCleanupLoopAsync(cleanupTimer, stoppingToken);
@@ -105,6 +108,63 @@ public class DocumentQueueProcessor(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to mark document {DocumentId} as failed", documentId);
+        }
+    }
+
+    /// <summary>
+    /// Clean up failed and stuck documents on startup
+    /// </summary>
+    private async Task CleanupFailedDocumentsAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<RagDocumentsDbContext>();
+
+            // Find all failed documents and documents stuck in processing
+            var failedDocs = await db.Documents
+                .Where(d => d.Status == DocumentStatus.Failed ||
+                           (d.Status == DocumentStatus.Processing && d.CreatedAt < DateTimeOffset.UtcNow.AddHours(-1)))
+                .ToListAsync(ct);
+
+            if (failedDocs.Count == 0)
+            {
+                logger.LogInformation("No failed documents to clean up");
+                return;
+            }
+
+            logger.LogInformation("Cleaning up {Count} failed/stuck documents on startup", failedDocs.Count);
+
+            foreach (var doc in failedDocs)
+            {
+                try
+                {
+                    // Delete the uploaded file if it exists
+                    if (!string.IsNullOrEmpty(doc.FilePath) && File.Exists(doc.FilePath))
+                    {
+                        var directory = Path.GetDirectoryName(doc.FilePath);
+                        if (!string.IsNullOrEmpty(directory) && Directory.Exists(directory))
+                        {
+                            Directory.Delete(directory, recursive: true);
+                            logger.LogDebug("Deleted upload directory for document {DocumentId}", doc.Id);
+                        }
+                    }
+
+                    // Remove from database
+                    db.Documents.Remove(doc);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to clean up document {DocumentId}", doc.Id);
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Cleaned up {Count} failed documents", failedDocs.Count);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error during failed document cleanup");
         }
     }
 
