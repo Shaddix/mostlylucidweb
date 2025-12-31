@@ -23,7 +23,8 @@ public partial class WebCrawlerService : IWebCrawlerService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly DocumentProcessingQueue _queue;
     private readonly ILogger<WebCrawlerService> _logger;
-    private readonly CrawlerConfig _config;
+    private readonly CrawlerConfig _crawlerConfig;
+    private readonly string _uploadPath;
 
     private readonly ConcurrentDictionary<Guid, CrawlJob> _crawlJobs = new();
     private readonly ConcurrentDictionary<Guid, Channel<CrawlProgress>> _progressChannels = new();
@@ -39,7 +40,8 @@ public partial class WebCrawlerService : IWebCrawlerService
         _httpClientFactory = httpClientFactory;
         _scopeFactory = scopeFactory;
         _queue = queue;
-        _config = config.Value.Crawler;
+        _crawlerConfig = config.Value.Crawler;
+        _uploadPath = config.Value.UploadPath;
         _logger = logger;
     }
 
@@ -92,8 +94,8 @@ public partial class WebCrawlerService : IWebCrawlerService
         try
         {
             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(_config.UserAgent);
-            client.Timeout = TimeSpan.FromSeconds(_config.TimeoutSeconds);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(_crawlerConfig.UserAgent);
+            client.Timeout = TimeSpan.FromSeconds(_crawlerConfig.TimeoutSeconds);
 
             // Parse seed URLs and determine base hosts
             var baseHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -168,7 +170,7 @@ public partial class WebCrawlerService : IWebCrawlerService
                     await ReportProgressAsync(crawlId, job);
 
                     // Rate limiting between downloads
-                    await Task.Delay(_config.RequestDelayMs, ct);
+                    await Task.Delay(_crawlerConfig.RequestDelayMs, ct);
                 }
                 catch (Exception ex)
                 {
@@ -229,7 +231,7 @@ public partial class WebCrawlerService : IWebCrawlerService
             visited.Add(url);
 
             // Check robots.txt
-            if (_config.RespectRobotsTxt && !await IsAllowedByRobotsTxtAsync(client, url, ct))
+            if (_crawlerConfig.RespectRobotsTxt && !await IsAllowedByRobotsTxtAsync(client, url, ct))
             {
                 _logger.LogDebug("Blocked by robots.txt: {Url}", url);
                 continue;
@@ -394,7 +396,7 @@ public partial class WebCrawlerService : IWebCrawlerService
         var filename = SanitizeFilename(title) + ".md";
 
         // Save markdown to disk
-        var uploadDir = Path.Combine("./uploads", documentId.ToString());
+        var uploadDir = Path.Combine(_uploadPath, documentId.ToString());
         Directory.CreateDirectory(uploadDir);
         var filePath = Path.Combine(uploadDir, filename);
         await File.WriteAllTextAsync(filePath, markdown, ct);
