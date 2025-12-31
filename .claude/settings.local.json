@@ -53,7 +53,8 @@
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
-      "WebFetch(domain:192.168.0.84)"
+      "WebFetch(domain:192.168.0.84)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
