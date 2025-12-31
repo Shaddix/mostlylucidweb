@@ -52,7 +52,8 @@
       "Bash(grep:*)",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "WebFetch(domain:192.168.0.84)"
     ],
     "deny": [],
     "ask": []

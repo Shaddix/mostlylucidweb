@@ -859,6 +859,7 @@ function ragApp() {
             pond = FilePond.create(input, {
                 allowMultiple: true,
                 maxFileSize: '100MB',
+                name: 'file', // Must match controller parameter name
                 acceptedFileTypes: [
                     'application/pdf',
                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

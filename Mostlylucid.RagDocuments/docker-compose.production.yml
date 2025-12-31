@@ -26,7 +26,7 @@ services:
       # IMPORTANT: Set OLLAMA_HOST=0.0.0.0 on host for Ollama to accept external connections
       # Option 1: Use host.docker.internal (works on Docker Desktop, may need extra_hosts on Linux)
       # Option 2: Use your machine's IP address directly (e.g., http://192.168.0.84:11434)
-      - DocSummarizer__Ollama__BaseUrl=http://host.docker.internal:11434
+      - DocSummarizer__Ollama__BaseUrl=http://192.168.0.84:11434
       # Optional: Docling for PDF/DOCX conversion
       - DocSummarizer__Docling__BaseUrl=http://docling:5001
       # Optional: Qdrant for persistent vector storage (port 6334 = gRPC)
