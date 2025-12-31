@@ -125,7 +125,8 @@ public static class ServeCommand
                 if (collectionId.HasValue)
                     query = query.Where(d => d.CollectionId == collectionId);
 
-                var docs = await query.OrderByDescending(d => d.CreatedAt).ToListAsync(ct);
+                // SQLite doesn't support DateTimeOffset in ORDER BY - do it client-side
+                var docs = (await query.ToListAsync(ct)).OrderByDescending(d => d.CreatedAt).ToList();
                 return Results.Ok(docs.Select(d => new
                 {
                     d.Id,
@@ -511,11 +512,13 @@ public static class ServeCommand
 
     private static async Task ListDocumentsAsync(RagDocumentsDbContext db, CancellationToken ct)
     {
-        var docs = await db.Documents
+        // SQLite doesn't support DateTimeOffset in ORDER BY - do it client-side
+        var docs = (await db.Documents
             .Include(d => d.Collection)
+            .ToListAsync(ct))
             .OrderByDescending(d => d.CreatedAt)
             .Take(20)
-            .ToListAsync(ct);
+            .ToList();
 
         if (docs.Count == 0)
         {
