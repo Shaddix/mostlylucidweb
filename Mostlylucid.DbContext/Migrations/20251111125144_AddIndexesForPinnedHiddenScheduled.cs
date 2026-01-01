@@ -11,28 +11,28 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateIndex(
-                name: "IX_BlogPosts_IsHidden_ScheduledPublishDate",
+                name: "IX_BlogPosts_is_hidden_scheduled_publish_date",
                 schema: "mostlylucid",
                 table: "BlogPosts",
-                columns: new[] { "IsHidden", "ScheduledPublishDate" });
+                columns: new[] { "is_hidden", "scheduled_publish_date" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlogPosts_IsPinned_PublishedDate",
+                name: "IX_BlogPosts_is_pinned_published_date",
                 schema: "mostlylucid",
                 table: "BlogPosts",
-                columns: new[] { "IsPinned", "PublishedDate" });
+                columns: new[] { "is_pinned", "published_date" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
-                name: "IX_BlogPosts_IsHidden_ScheduledPublishDate",
+                name: "IX_BlogPosts_is_hidden_scheduled_publish_date",
                 schema: "mostlylucid",
                 table: "BlogPosts");
 
             migrationBuilder.DropIndex(
-                name: "IX_BlogPosts_IsPinned_PublishedDate",
+                name: "IX_BlogPosts_is_pinned_published_date",
                 schema: "mostlylucid",
                 table: "BlogPosts");
         }

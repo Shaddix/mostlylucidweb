@@ -49,20 +49,16 @@ try
     {
         options.ListenAnyIP(8080); // HTTP endpoint
 
-        // HTTPS endpoint using SSL certificate
-        options.ListenAnyIP(7240, listenOptions =>
+        // HTTPS endpoint using SSL certificate (only if cert exists)
+        if (certExists)
         {
-            if (certExists)
+            options.ListenAnyIP(7240, listenOptions =>
             {
                 var certificate = new X509Certificate2("mostlylucid.pfx", certPassword);
-                listenOptions.UseHttps(options => options.ServerCertificate = certificate);
-            }
-            else
-            //Local development without certificate.
-                listenOptions.UseHttps();
-            
-        });
-    });;
+                listenOptions.UseHttps(o => o.ServerCertificate = certificate);
+            });
+        }
+    });
 
     using var listener = new ActivityListenerConfiguration()
         .Instrument.HttpClientRequests().Instrument

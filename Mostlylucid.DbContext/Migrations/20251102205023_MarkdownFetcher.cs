@@ -40,7 +40,7 @@ namespace Mostlylucid.DbContext.Migrations
                         column: x => x.BlogPostId,
                         principalSchema: "mostlylucid",
                         principalTable: "BlogPosts",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 

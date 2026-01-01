@@ -114,6 +114,26 @@ public class MostlylucidDbContext : Microsoft.EntityFrameworkCore.DbContext, IMo
 
     modelBuilder.Entity<BlogPostEntity>(entity =>
         {
+            // Explicit column names to match existing database schema (snake_case)
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Title).HasColumnName("title");
+            entity.Property(x => x.Slug).HasColumnName("slug");
+            entity.Property(x => x.UpdatedDate).HasColumnName("updated_date");
+            entity.Property(x => x.Markdown).HasColumnName("markdown");
+            entity.Property(x => x.HtmlContent).HasColumnName("html_content");
+            entity.Property(x => x.PlainTextContent).HasColumnName("plain_text_content");
+            entity.Property(x => x.ContentHash).HasColumnName("content_hash");
+            entity.Property(x => x.WordCount).HasColumnName("word_count");
+            entity.Property(x => x.LanguageId).HasColumnName("language_id");
+            entity.Property(x => x.PublishedDate).HasColumnName("published_date");
+            entity.Property(x => x.SearchVector).HasColumnName("search_vector");
+            entity.Property(x => x.IsHidden).HasColumnName("is_hidden");
+            entity.Property(x => x.IsPinned).HasColumnName("is_pinned");
+            entity.Property(x => x.ScheduledPublishDate).HasColumnName("scheduled_publish_date");
+            entity.Property(x => x.ShowUpdatedDate).HasColumnName("show_updated_date");
+            entity.Property(x => x.UpdatedTemplate).HasColumnName("updated_template");
+            entity.Property(x => x.SentimentMetadata).HasColumnName("sentiment_metadata");
+
             entity.HasIndex(x => new { x.Slug, x.LanguageId });
             entity.HasIndex(x => new { x.ContentHash, x.LanguageId }).IsUnique();
             entity.HasIndex(x => x.PublishedDate);

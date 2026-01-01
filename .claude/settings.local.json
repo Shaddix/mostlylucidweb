@@ -61,7 +61,14 @@
       "Bash(dotnet:*)",
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net9.0\\\\data\\\\semantic-search.duckdb*\")",
       "Bash(git status:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(dotnet ef migrations remove:*)",
+      "Bash(docker network rm:*)"
     ],
     "deny": [],
     "ask": []
