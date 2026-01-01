@@ -1,0 +1,965 @@
+@{
+    ViewData["Title"] = "Software";
+    ViewBag.Title = "Software - Open Source Projects by Scott Galloway";
+    ViewBag.Description = "CLI tools, NuGet packages, and open source projects for document summarization, data profiling, RAG pipelines, analytics, and more.";
+}
+
+<div class="pb-4">
+    <h1 class="font-body text-3xl font-semibold text-blue-dark dark:text-white mb-2">Software</h1>
+    <p class="font-body text-base text-black dark:text-white mb-6">
+        Open source tools and packages I've built. Most are available on GitHub with pre-built releases.
+        All run locally without cloud dependencies.
+    </p>
+</div>
+
+<!-- CLI Tools -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        CLI Tools
+    </h2>
+
+    <!-- DocSummarizer -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-primary badge-sm">CLI</span>
+            <span class="text-gray-900 dark:text-white font-semibold">DocSummarizer</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Turn documents into evidence-grounded summaries</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Transform documents or URLs into summaries with citation grounding. Every claim is traceable to its source.
+                Supports PDF, DOCX, PPTX, XLSX, Markdown, HTML, and images. Runs entirely on your machine using ONNX embeddings.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">PDF/DOCX</span>
+                <span class="badge badge-outline badge-sm">Markdown</span>
+                <span class="badge badge-outline badge-sm">ONNX</span>
+                <span class="badge badge-outline badge-sm">Ollama</span>
+                <span class="badge badge-outline badge-sm">.NET 10</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/Mostlylucid.DocSummarizer?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+                <img src="https://img.shields.io/github/downloads/scottgal/mostlylucidweb/total?label=GitHub%20downloads&style=flat-square" alt="GitHub Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/releases" target="_blank" class="btn btn-sm btn-primary">Download</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/docsummarizer-tool" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">DocSummarizer Tool</a>
+                    <a href="/blog/docsummarizer-rag-pipeline" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">RAG Pipeline</a>
+                    <a href="/blog/docsummarizer-advanced-concepts" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Advanced Concepts</a>
+                    <a href="/blog/building-a-document-summarizer-with-rag" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Building with RAG</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DataSummarizer -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-primary badge-sm">CLI</span>
+            <span class="text-gray-900 dark:text-white font-semibold">DataSummarizer</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Fast local data profiling with DuckDB</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Deterministic data profiling for CSV, Excel, Parquet, JSON, SQLite, and log files.
+                52K+ rows in ~1 second. Privacy-safe PII detection, drift detection, constraint validation.
+                Optional LLM narration for plain English Q&A like "what drives churn?".
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">CSV/Excel</span>
+                <span class="badge badge-outline badge-sm">Parquet</span>
+                <span class="badge badge-outline badge-sm">DuckDB</span>
+                <span class="badge badge-outline badge-sm">305 tests</span>
+                <span class="badge badge-outline badge-sm">.NET 10</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/releases" target="_blank" class="btn btn-sm btn-primary">Download</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DataSummarizer" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/datasummarizer-how-it-works" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">How It Works</a>
+                    <a href="/blog/analysing-large-csv-files-with-local-llms" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Analyzing CSV with LLMs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LucidRAG CLI -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-primary badge-sm">CLI</span>
+            <span class="text-gray-900 dark:text-white font-semibold">LucidRAG</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Multi-document RAG with GraphRAG</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Index multiple documents, search with semantic similarity, and chat with your knowledge base.
+                Uses SQLite + DuckDB for zero-config storage, ONNX for embeddings. Optional GraphRAG entity extraction.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">SQLite</span>
+                <span class="badge badge-outline badge-sm">DuckDB VSS</span>
+                <span class="badge badge-outline badge-sm">ONNX</span>
+                <span class="badge badge-outline badge-sm">GraphRAG</span>
+                <span class="badge badge-outline badge-sm">.NET 10</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/releases" target="_blank" class="btn btn-sm btn-primary">Download</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.RagDocuments.Cli" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/lucidrag-multi-document-rag-web-app" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">LucidRAG Web App</a>
+                    <a href="/blog/graphrag-knowledge-graphs-for-rag" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">GraphRAG Knowledge Graphs</a>
+                    <a href="/blog/graphrag-minimum-viable-implementation" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">GraphRAG MVP</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- NuGet Packages -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0L1.75 6v12L12 24l10.25-6V6L12 0zm-1.775 18l-3.4-3.4 1.275-1.275 2.125 2.125 5.4-5.4L17 11.5 10.225 18z"/></svg>
+        NuGet Packages
+    </h2>
+
+    <!-- Umami.Net -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Umami.Net</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">.NET client for Umami Analytics</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Production-ready .NET client for privacy-focused Umami Web Analytics.
+                Non-blocking background sender, automatic retries, bot detection, token refresh.
+                Supports custom events, page views, and the full Data API.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Analytics</span>
+                <span class="badge badge-outline badge-sm">Privacy-First</span>
+                <span class="badge badge-outline badge-sm">Background Queue</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/Umami.Net?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/Umami.Net" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Umami.Net" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/umamiproductionready" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Production Ready</a>
+                    <a href="/blog/umaminetbotdetection" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Bot Detection</a>
+                    <a href="/blog/usingumamidataforwebsitestats" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Website Stats</a>
+                    <a href="/blog/unittestingumaminet" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Unit Testing</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MinimalBlog -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.MinimalBlog</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">~500 line file-based markdown blog</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Drop-in markdown blog for ASP.NET Core. Memory and output caching, MetaWeblog API support.
+                Just add markdown files and go. No database required.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Markdown</span>
+                <span class="badge badge-outline badge-sm">Caching</span>
+                <span class="badge badge-outline badge-sm">MetaWeblog</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/Mostlylucid.MinimalBlog?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/Mostlylucid.MinimalBlog" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MinimalBlog" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Markdig Fetch Extension -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.Markdig.FetchExtension</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Remote markdown fetching with caching</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Fetch and cache remote markdown content in Markdig pipelines.
+                Multiple storage backends: PostgreSQL, SQLite, SQL Server, or in-memory.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Markdig</span>
+                <span class="badge badge-outline badge-sm">Caching</span>
+                <span class="badge badge-outline badge-sm">Multiple Backends</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/Mostlylucid.Markdig.FetchExtension?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/Mostlylucid.Markdig.FetchExtension" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Markdig.FetchExtension" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/markdigfetchextension" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Markdig Fetch Extension</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paging Tag Helper -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.PagingTagHelper</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">HTMX-enabled paging tag helpers</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                ASP.NET Core Tag Helpers for pagination with built-in HTMX support.
+                Drop-in paging for your views. 6,600+ downloads.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Tag Helpers</span>
+                <span class="badge badge-outline badge-sm">HTMX</span>
+                <span class="badge badge-outline badge-sm">Pagination</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/mostlylucid.pagingtaghelper?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/mostlylucid.pagingtaghelper" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid.pagingtaghelper" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/addpagingwithhtmx" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Adding Paging with HTMX</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ephemeral Framework -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="badge badge-success badge-xs">12K+ downloads</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.Ephemeral</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Composable pipeline framework</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                A modular framework for building composable processing pipelines. Includes 40+ packages
+                for batching, caching, rate limiting, retry, telemetry, and data persistence.
+                Atoms (primitives), Patterns (compositions), and complete solutions.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Pipelines</span>
+                <span class="badge badge-outline badge-sm">Batching</span>
+                <span class="badge badge-outline badge-sm">Caching</span>
+                <span class="badge badge-outline badge-sm">Rate Limiting</span>
+                <span class="badge badge-outline badge-sm">Retry</span>
+                <span class="badge badge-outline badge-sm">Telemetry</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/mostlylucid.ephemeral?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/mostlylucid.ephemeral" target="_blank" class="btn btn-sm btn-secondary">NuGet (Core)</a>
+                <a href="https://www.nuget.org/packages/mostlylucid.ephemeral.complete" target="_blank" class="btn btn-sm btn-secondary">Complete</a>
+                <a href="https://www.nuget.org/packages?q=mostlylucid.ephemeral" target="_blank" class="btn btn-sm btn-outline">All Packages</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/ephemeral-signals" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Ephemeral Signals</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bot Detection -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="badge badge-success badge-xs">8K+ downloads</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.BotDetection</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">User-agent based bot detection</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Simple, efficient bot detection for ASP.NET Core. Identifies crawlers, scrapers, and
+                automated traffic from user-agent strings. Useful for analytics filtering.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Bot Detection</span>
+                <span class="badge badge-outline badge-sm">Analytics</span>
+                <span class="badge badge-outline badge-sm">Middleware</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/mostlylucid.botdetection?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/mostlylucid.botdetection" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Alt Text -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="badge badge-warning badge-xs">Preview</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.LlmAltText</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">AI-generated alt text for images</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Automatically generate alt text for images using local LLMs. Improves accessibility
+                by describing images for screen readers.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Accessibility</span>
+                <span class="badge badge-outline badge-sm">LLM</span>
+                <span class="badge badge-outline badge-sm">Images</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/mostlylucid.llmalttext?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/mostlylucid.llmalttext" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- DocSummarizer Library -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.DocSummarizer</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Document summarization library</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                The DocSummarizer library for embedding in your own applications.
+                Programmatic access to document parsing, embedding, and summarization.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Library</span>
+                <span class="badge badge-outline badge-sm">RAG</span>
+                <span class="badge badge-outline badge-sm">Summarization</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/Mostlylucid.DocSummarizer?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/Mostlylucid.DocSummarizer" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MockLlmApi -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Mostlylucid.MockLlmApi</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Mock LLM API for testing</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Lightweight middleware for generating realistic mock API responses using local LLMs.
+                Perfect for testing LLM integrations without hitting real endpoints. Add intelligent mock endpoints with 2 lines of code.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Testing</span>
+                <span class="badge badge-outline badge-sm">Mocking</span>
+                <span class="badge badge-outline badge-sm">Middleware</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/mostlylucid.mockllmapi?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/Mostlylucid.MockLlmApi" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.MockLlmApi" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/llmapi" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Creating an LLM Mock API</a>
+                    <a href="/blog/building-a-frontend-before-the-api-is-ready-mostlylucid-mockllmapi" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Frontend Before API</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EufySecurity -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-secondary badge-sm">NuGet</span>
+            <span class="badge badge-warning badge-xs">Experimental</span>
+            <span class="text-gray-900 dark:text-white font-semibold">MostlyLucid.EufySecurity</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Eufy Security device control</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                <strong>HIGHLY EXPERIMENTAL</strong> .NET client library for controlling Eufy Security devices
+                via cloud and P2P connections. Control cameras, doorbells, and security devices programmatically.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">IoT</span>
+                <span class="badge badge-outline badge-sm">Security</span>
+                <span class="badge badge-outline badge-sm">P2P</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/nuget/dt/MostlyLucid.EufySecurity?label=downloads&style=flat-square" alt="NuGet Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.nuget.org/packages/MostlyLucid.EufySecurity" target="_blank" class="btn btn-sm btn-secondary">NuGet</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/MostlyLucid.EufySecurity" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop Applications -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+        Desktop Applications
+    </h2>
+
+    <!-- TinyLLM -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-success badge-sm">Windows</span>
+            <span class="text-gray-900 dark:text-white font-semibold">TinyLLM</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Local AI chat with RAG memory</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Windows WPF application that runs tiny LLMs locally with RAG-based conversation memory.
+                Supports Ollama integration and direct GGUF model loading. Perfect for privacy-focused, offline AI assistance.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">WPF</span>
+                <span class="badge badge-outline badge-sm">Ollama</span>
+                <span class="badge badge-outline badge-sm">GGUF</span>
+                <span class="badge badge-outline badge-sm">RAG Memory</span>
+                <span class="badge badge-outline badge-sm">GPU/CPU</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/TinyLLM" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- npm Packages -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M0 7.334v8h6.666v1.332H12v-1.332h12v-8H0zm6.666 6.664H5.334v-4H3.999v4H1.335V8.667h5.331v5.331zm4 0v1.336H8.001V8.667h5.334v5.332h-2.669v-.001zm12.001 0h-1.33v-4h-1.336v4h-1.335v-4h-1.33v4h-2.671V8.667h8.002v5.331z"/></svg>
+        npm Packages
+    </h2>
+
+    <!-- Mermaid Enhancements -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-accent badge-sm">npm</span>
+            <span class="text-gray-900 dark:text-white font-semibold">@@mostlylucid/mermaid-enhancements</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Enhanced Mermaid diagrams</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Enhances Mermaid diagrams with export (PNG/SVG), panning, zoom, expanding lightbox, and theme switching.
+                Drop-in enhancement for any Mermaid-enabled site.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Mermaid</span>
+                <span class="badge badge-outline badge-sm">Export</span>
+                <span class="badge badge-outline badge-sm">Pan/Zoom</span>
+                <span class="badge badge-outline badge-sm">Lightbox</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <img src="https://img.shields.io/npm/dt/@@mostlylucid/mermaid-enhancements?label=downloads&style=flat-square" alt="npm Downloads" class="h-5" />
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://www.npmjs.com/package/@@mostlylucid/mermaid-enhancements" target="_blank" class="btn btn-sm btn-accent">npm</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid/src/js/mermaid" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/enhancingmermaiddiagramswithpanzoomandexport" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Pan, Zoom & Export</a>
+                    <a href="/blog/switchingthemesformermaid" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Theme Switching</a>
+                    <a href="/blog/publishingmermaidenhancementsnpm" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Publishing to npm</a>
+                    <a href="/blog/mermaidandhtmx" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Mermaid & HTMX</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat System -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        Chat System
+    </h2>
+
+    <!-- Chat Server -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-primary badge-sm">Server</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Chat.Server</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">SignalR hub for real-time chat</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Minimal .NET SignalR server for managing real-time chat conversations between website visitors
+                and administrators. In-memory storage (easily replaceable with database), typing indicators, read receipts.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">SignalR</span>
+                <span class="badge badge-outline badge-sm">Real-Time</span>
+                <span class="badge badge-outline badge-sm">CORS</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Chat.Server" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-accent badge-sm">JavaScript</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Chat.Widget</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Embeddable chat widget</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Lightweight, embeddable chat widget for real-time communication. Add with a single script tag.
+                Built with Alpine.js, mobile-friendly, browser notifications, conversation history.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Alpine.js</span>
+                <span class="badge badge-outline badge-sm">Embeddable</span>
+                <span class="badge badge-outline badge-sm">Notifications</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Chat.Widget" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat TrayApp -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-success badge-sm">Windows</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Chat.TrayApp</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Windows tray app for chat management</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Windows system tray application for administrators to manage chat conversations.
+                Desktop notifications, quick replies from the tray.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Windows</span>
+                <span class="badge badge-outline badge-sm">System Tray</span>
+                <span class="badge badge-outline badge-sm">Notifications</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Chat.TrayApp" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Docker Images -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.186.186 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.186.186 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.186.186 0 00-.185.185v1.887c0 .102.082.186.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.186.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.186.186 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.186.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.186.186 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.185-.186h-2.12a.186.186 0 00-.185.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288z"/></svg>
+        Docker Images
+    </h2>
+
+    <!-- LucidRAG Web -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-info badge-sm">Docker</span>
+            <span class="text-gray-900 dark:text-white font-semibold">scottgal/lucidrag</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Multi-document RAG web application</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Web-based multi-document RAG with GraphRAG entity extraction, knowledge graph visualization,
+                web crawling, and conversation memory. Scales from Raspberry Pi to enterprise GPU clusters.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">RAG</span>
+                <span class="badge badge-outline badge-sm">GraphRAG</span>
+                <span class="badge badge-outline badge-sm">Knowledge Graph</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://hub.docker.com/r/scottgal/lucidrag" target="_blank" class="btn btn-sm btn-info">Docker Hub</a>
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.RagDocuments" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/lucidrag-multi-document-rag-web-app" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">LucidRAG Introduction</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- mostlylucid -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-info badge-sm">Docker</span>
+            <span class="text-gray-900 dark:text-white font-semibold">scottgal/mostlylucid</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">This blog platform</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                The full mostlylucid.net blog platform. ASP.NET Core with PostgreSQL, full-text search,
+                multilingual support, automated translation, and comprehensive observability.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">ASP.NET Core</span>
+                <span class="badge badge-outline badge-sm">PostgreSQL</span>
+                <span class="badge badge-outline badge-sm">HTMX</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://hub.docker.com/r/scottgal/mostlylucid" target="_blank" class="btn btn-sm btn-info">Docker Hub</a>
+                <a href="https://github.com/scottgal/mostlylucidweb" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- mostlylucid-nmt -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-info badge-sm">Docker</span>
+            <span class="text-gray-900 dark:text-white font-semibold">scottgal/mostlylucid-nmt</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Neural machine translation service</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                EasyNMT-based translation service for automatic blog post translation.
+                Supports 12+ languages with local inference.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Translation</span>
+                <span class="badge badge-outline badge-sm">EasyNMT</span>
+                <span class="badge badge-outline badge-sm">Multilingual</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://hub.docker.com/r/scottgal/mostlylucid-nmt" target="_blank" class="btn btn-sm btn-info">Docker Hub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/autotranslatingmarkdownfiles" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Auto-Translating Markdown</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- yarpgateway -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-info badge-sm">Docker</span>
+            <span class="text-gray-900 dark:text-white font-semibold">scottgal/mostlylucid.yarpgateway</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">YARP reverse proxy gateway</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                YARP-based reverse proxy gateway for routing and load balancing.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">YARP</span>
+                <span class="badge badge-outline badge-sm">Reverse Proxy</span>
+                <span class="badge badge-outline badge-sm">Gateway</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway" target="_blank" class="btn btn-sm btn-info">Docker Hub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stylobot -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-info badge-sm">Docker</span>
+            <span class="text-gray-900 dark:text-white font-semibold">scottgal/stylobot-site</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Bot detection demo service</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Bot detection demonstration service. An offshoot of mostlylucid.botdetection showing
+                real-time bot identification and traffic analysis capabilities.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Bot Detection</span>
+                <span class="badge badge-outline badge-sm">Analytics</span>
+                <span class="badge badge-outline badge-sm">Demo</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://hub.docker.com/r/scottgal/stylobot-site" target="_blank" class="btn btn-sm btn-info">Docker Hub</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Libraries & Core -->
+<div class="mb-8">
+    <h2 class="font-body text-xl font-semibold text-blue-dark dark:text-white mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+        Core Libraries
+    </h2>
+
+    <!-- DocSummarizer.Core -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">DocSummarizer.Core</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">RAG pipeline and embedding utilities</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                The core RAG pipeline used by DocSummarizer, DataSummarizer, and LucidRAG.
+                ONNX embeddings, DuckDB vector store, segment extraction, and summarization.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">ONNX</span>
+                <span class="badge badge-outline badge-sm">DuckDB VSS</span>
+                <span class="badge badge-outline badge-sm">Embeddings</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.DocSummarizer.Core" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- GraphRag -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">GraphRag</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Entity extraction and knowledge graphs</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                GraphRAG implementation for extracting entities and relationships from documents.
+                Builds knowledge graphs that enhance RAG with structured understanding.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Entity Extraction</span>
+                <span class="badge badge-outline badge-sm">Knowledge Graph</span>
+                <span class="badge badge-outline badge-sm">LLM-Powered</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.GraphRag" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/graphrag-knowledge-graphs-for-rag" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Knowledge Graphs for RAG</a>
+                    <a href="/blog/graphrag-minimum-viable-implementation" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Minimum Viable Implementation</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SemanticSearch -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">SemanticSearch</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">CPU-friendly semantic search</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Semantic search using ONNX embeddings and Qdrant vector database.
+                Designed to run on CPU without GPU requirements.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">ONNX</span>
+                <span class="badge badge-outline badge-sm">Qdrant</span>
+                <span class="badge badge-outline badge-sm">CPU-Only</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.SemanticSearch" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/semantic-search-in-action" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Semantic Search in Action</a>
+                    <a href="/blog/semantic-search-with-onnx-and-qdrant" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">ONNX & Qdrant</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BlogLLM -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">BlogLLM</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">RAG knowledge base for markdown</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Build a RAG knowledge base from your markdown documents.
+                Index, search, and query your content with semantic understanding.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">RAG</span>
+                <span class="badge badge-outline badge-sm">Markdown</span>
+                <span class="badge badge-outline badge-sm">Knowledge Base</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/mostlylucid.blogllm" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- SentimentAnalysis -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">SentimentAnalysis</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Local sentiment and emotion analysis</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Lexicon-based sentiment analysis for blog posts. Multi-dimensional analysis including
+                sentiment, emotion (8 categories), formality, subjectivity, and readability. CPU-friendly.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Sentiment</span>
+                <span class="badge badge-outline badge-sm">Emotion</span>
+                <span class="badge badge-outline badge-sm">CPU-Only</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.SentimentAnalysis" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Engine -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">Workflow.Engine</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Simple workflow execution engine</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                A lightweight workflow execution engine for building step-by-step processing pipelines.
+                Define workflows as steps with dependencies and execute them in order.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Workflow</span>
+                <span class="badge badge-outline badge-sm">Pipeline</span>
+                <span class="badge badge-outline badge-sm">Steps</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.Workflow.Engine" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- LlmWebFetcher -->
+    <div class="collapse collapse-arrow !bg-gradient-to-r !from-slate-50 !to-blue-50 dark:!from-slate-800 dark:!to-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow mb-2">
+        <input type="checkbox" />
+        <div class="collapse-title font-body font-medium flex items-center gap-3">
+            <span class="badge badge-ghost badge-sm">Library</span>
+            <span class="text-gray-900 dark:text-white font-semibold">LlmWebFetcher</span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Secure web content fetching for LLMs</span>
+        </div>
+        <div class="collapse-content">
+            <p class="font-body text-sm text-black dark:text-white mb-3">
+                Security-hardened web content fetching for LLM processing.
+                Sanitizes and extracts text content from web pages safely.
+            </p>
+            <div class="flex flex-wrap gap-2 mb-3">
+                <span class="badge badge-outline badge-sm">Web Fetching</span>
+                <span class="badge badge-outline badge-sm">Security</span>
+                <span class="badge badge-outline badge-sm">LLM</span>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <a href="https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.LlmWebFetcher" target="_blank" class="btn btn-sm btn-outline">GitHub</a>
+            </div>
+            <div class="border-t border-gray-300 dark:border-gray-600 pt-3">
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Related articles:</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="/blog/fetching-and-analysing-web-content-with-llms" hx-boost="true" hx-target="#contentcontainer" class="link link-hover text-sm text-blue-600 dark:text-blue-400 underline">Web Content with LLMs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-8 pt-4 border-t border-grey-lighter">
+    <p class="font-body text-sm text-gray-500 dark:text-gray-400">
+        All projects are open source and available on <a href="https://github.com/scottgal" class="link link-primary">GitHub</a>.
+        Pre-built binaries are available in <a href="https://github.com/scottgal/mostlylucidweb/releases" class="link link-primary">Releases</a>.
+    </p>
+</div>

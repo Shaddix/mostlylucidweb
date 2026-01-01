@@ -73,4 +73,11 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
+
+    [OutputCache(Duration = 86400)] // Cache for 24 hours
+    [HttpGet("software")]
+    public IActionResult Software()
+    {
+        return View();
+    }
 }

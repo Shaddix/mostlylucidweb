@@ -15,7 +15,13 @@ public class ImageConfig : IConfigSection
     /// <summary>
     /// Default quality for images (can be overridden by querystring)
     /// </summary>
-    public int DefaultQuality { get; set; } = 50;
+    public int DefaultQuality { get; set; } = 80;
+
+    /// <summary>
+    /// When false (default), images are served as-is unless they have processing params.
+    /// When true, all images get format/quality params added automatically.
+    /// </summary>
+    public bool AutoProcess { get; set; } = false;
 
     /// <summary>
     /// Primary folder for images (relative to wwwroot)

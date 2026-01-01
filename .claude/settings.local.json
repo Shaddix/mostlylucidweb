@@ -54,7 +54,13 @@
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
       "WebFetch(domain:192.168.0.84)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(xargs:*)",
+      "Bash(dotnet user-secrets:*)",
+      "Bash(curl.exe:*)",
+      "Bash(dotnet:*)",
+      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net9.0\\\\data\\\\semantic-search.duckdb*\")",
+      "Bash(git status:*)"
     ],
     "deny": [],
     "ask": []

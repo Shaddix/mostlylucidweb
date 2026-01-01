@@ -12,6 +12,7 @@ import flatpickr from "flatpickr";
 import 'flatpickr/dist/flatpickr.min.css';
 import '../css/flatpickr-overrides.css';
 import "./blog-index";
+import { renderMath } from './katex-render';
 
 
 window.EasyMDE = EasyMDE;
@@ -233,6 +234,14 @@ function registerHTMXListener() {
             console.error('Failed to handle broken images:', err);
         }
 
+        // Render math expressions in swapped content
+        try {
+            renderMath(evt.detail.target);
+            console.log('KaTeX applied after HTMX swap');
+        } catch (err) {
+            console.error('Failed to render math after HTMX swap:', err);
+        }
+
         console.log('HTMX afterSettle complete for:', targetId);
     }, { once: false }); // Don't use once - we need this for all HTMX swaps
 
@@ -321,6 +330,14 @@ async function initializePage() {
         initBrokenImages();
     } catch (err) {
         console.error('Failed to initialize broken images:', err);
+    }
+
+    // Render math expressions on page load
+    try {
+        renderMath();
+        console.log('KaTeX initialized on page load');
+    } catch (err) {
+        console.error('Failed to render math:', err);
     }
 
     console.log('Document is ready - all initializations complete');

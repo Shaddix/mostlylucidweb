@@ -34,7 +34,7 @@ public class DuckDbVectorStoreService : IVectorStoreService, IAsyncDisposable, I
             Directory.CreateDirectory(directory);
         }
         
-        _store = new DuckDbStore(dbPath, _config.VectorSize, verbose: false);
+        _store = new DuckDbStore(dbPath, _config.VectorSize, verbose: true);
         _logger.LogInformation("DuckDB vector store initialized at {Path}", dbPath);
     }
 

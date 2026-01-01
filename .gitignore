@@ -305,3 +305,6 @@ nul
 vocab.txt
 *.onnx
 /Mostlylucid.RagDocuments/uploads/*
+
+# Test screenshots in Mostlylucid root
+/Mostlylucid/*.png

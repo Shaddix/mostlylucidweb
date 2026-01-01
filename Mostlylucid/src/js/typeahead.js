@@ -64,12 +64,17 @@
         },
 
         selectResult(selectedIndex) {
-       let links = document.querySelectorAll('#searchresults a');
-       links[selectedIndex].click();
-                this.results = []; // Clear the results
-                this.highlightedIndex = -1; // Reset the highlighted index
-                this.query = ''; // Clear the query
-            
+            let links = document.querySelectorAll('#searchresults a');
+            links[selectedIndex].click();
+            this.results = []; // Clear the results
+            this.highlightedIndex = -1; // Reset the highlighted index
+            this.query = ''; // Clear the query
+        },
+
+        goToSearch() {
+            if (this.query.length > 0) {
+                window.location.href = `/search?query=${encodeURIComponent(this.query)}`;
+            }
         }
     }
 }

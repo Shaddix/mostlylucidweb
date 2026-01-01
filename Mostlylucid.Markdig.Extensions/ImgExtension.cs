@@ -83,14 +83,30 @@ public class ImgExtension : IMarkdownExtension
     }
 
     /// <summary>
-    /// Applies default ImageSharp options if not specified in querystring
+    /// Applies default ImageSharp options only if:
+    /// - AutoProcess is enabled in config, OR
+    /// - The URL already has processing params (opt-in)
     /// </summary>
     private string ApplyDefaultOptions(string existingQueryString)
     {
+        // If no existing query string and auto-process is disabled, serve as-is
+        var autoProcess = _imageConfig?.AutoProcess ?? false;
+        if (string.IsNullOrEmpty(existingQueryString) && !autoProcess)
+        {
+            return existingQueryString;
+        }
+
         var hasFormat = existingQueryString.Contains(FormatParam, StringComparison.OrdinalIgnoreCase);
         var hasQuality = existingQueryString.Contains(QualityParam, StringComparison.OrdinalIgnoreCase);
 
+        // If already fully specified, return as-is
         if (hasFormat && hasQuality) return existingQueryString;
+
+        // Only add defaults if there's already some query params (opt-in) or auto-process is on
+        if (string.IsNullOrEmpty(existingQueryString) && !autoProcess)
+        {
+            return existingQueryString;
+        }
 
         var separator = string.IsNullOrEmpty(existingQueryString) ? QuerySeparator : ParamSeparator;
         var additions = new List<string>();
@@ -155,7 +171,7 @@ public class ImgExtension : IMarkdownExtension
 
             if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
             {
-                return true;
+                Directory.CreateDirectory(targetDir);
             }
 
             if (!File.Exists(targetPath))

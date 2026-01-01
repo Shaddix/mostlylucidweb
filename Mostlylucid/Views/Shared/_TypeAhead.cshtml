@@ -1,17 +1,21 @@
 @* Typeahead search component - expands to fill available space *@
 <div x-data="window.mostlylucid.typeahead()" class="relative w-full" id="searchelement" x-on:click.outside="results = []">
-    <label class="input input-sm bg-neutral-500 bg-opacity-10 input-bordered flex items-center gap-2 w-full">
-        <input
-            type="text"
-            x-model="query"
-            x-on:input.debounce.200ms="search"
-            x-on:keydown.down.prevent="moveDown"
-            x-on:keydown.up.prevent="moveUp"
-            x-on:keydown.enter.prevent="selectHighlighted"
-            placeholder="Search..."
-            class="border-0 grow input-sm text-black dark:text-white bg-transparent w-full"/>
-        <i class="bx bx-search"></i>
-    </label>
+    <form x-on:submit.prevent="goToSearch" class="flex items-center gap-1 w-full">
+        <label class="input input-sm bg-neutral-500 bg-opacity-10 input-bordered flex items-center gap-2 flex-1">
+            <input
+                type="text"
+                x-model="query"
+                x-on:input.debounce.200ms="search"
+                x-on:keydown.down.prevent="moveDown"
+                x-on:keydown.up.prevent="moveUp"
+                x-on:keydown.enter.prevent="query.length > 0 && results.length === 0 ? goToSearch() : selectHighlighted()"
+                placeholder="Search..."
+                class="border-0 grow input-sm text-black dark:text-white bg-transparent w-full"/>
+        </label>
+        <button type="submit" class="btn btn-sm btn-primary" title="Search">
+            <i class="bx bx-search text-lg"></i>
+        </button>
+    </form>
     <!-- Dropdown - matches width of search box -->
     <ul :class="{
         'hidden': !(results && results.length > 0 && query.length > 2),
