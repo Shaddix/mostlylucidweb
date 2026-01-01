@@ -13,8 +13,6 @@
       <ProjectReference Include="..\Mostlylucid.SemanticSearch\Mostlylucid.SemanticSearch.csproj" />
       <ProjectReference Include="..\Mostlylucid.Markdig.FetchExtension\Mostlylucid.Markdig.FetchExtension.csproj" />
       <ProjectReference Include="..\Mostlylucid.Markdig.Extensions\Mostlylucid.Markdig.Extensions.csproj" />
-      <ProjectReference Include="..\Mostlylucid.Workflow.Engine\Mostlylucid.Workflow.Engine.csproj" />
-      <ProjectReference Include="..\Mostlylucid.Workflow.Shared\Mostlylucid.Workflow.Shared.csproj" />
       <ProjectReference Include="..\Umami.Net\Umami.Net.csproj" />
     </ItemGroup>
 
