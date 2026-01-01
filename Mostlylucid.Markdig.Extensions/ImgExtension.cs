@@ -3,7 +3,9 @@ using Markdig.Renderers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 using Mostlylucid.Shared.Config.Markdown;
+using SixLabors.ImageSharp;
 
 namespace Mostlylucid.Markdig.Extensions;
 
@@ -21,6 +23,7 @@ public class ImgExtension : IMarkdownExtension
 
     private readonly IWebHostEnvironment? _env;
     private readonly ImageConfig? _imageConfig;
+    private readonly ILogger<ImgExtension>? _logger;
 
     /// <summary>
     /// Parameterless constructor for backward compatibility (fallback mode)
@@ -30,12 +33,14 @@ public class ImgExtension : IMarkdownExtension
     {
         _env = null;
         _imageConfig = null;
+        _logger = null;
     }
 
-    public ImgExtension(IWebHostEnvironment env, ImageConfig imageConfig)
+    public ImgExtension(IWebHostEnvironment env, ImageConfig imageConfig, ILogger<ImgExtension>? logger = null)
     {
         _env = env;
         _imageConfig = imageConfig;
+        _logger = logger;
     }
 
     public void Setup(MarkdownPipelineBuilder pipeline)
@@ -166,6 +171,13 @@ public class ImgExtension : IMarkdownExtension
             var fallbackPath = Path.Combine(_env.ContentRootPath, fallbackFolder, imageName);
             if (!File.Exists(fallbackPath)) continue;
 
+            // Validate image before copying
+            if (!IsValidImage(fallbackPath))
+            {
+                _logger?.LogWarning("Skipping invalid/corrupt image: {ImagePath}", fallbackPath);
+                continue;
+            }
+
             var targetPath = Path.Combine(_env.WebRootPath, primaryFolder, imageName);
             var targetDir = Path.GetDirectoryName(targetPath);
 
@@ -183,6 +195,54 @@ public class ImgExtension : IMarkdownExtension
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Validates that a file is a valid image that ImageSharp can process
+    /// </summary>
+    private bool IsValidImage(string filePath)
+    {
+        try
+        {
+            // Try to identify the image format - this is fast and doesn't load the full image
+            using var stream = File.OpenRead(filePath);
+            var format = Image.DetectFormat(stream);
+
+            if (format == null)
+            {
+                _logger?.LogDebug("Could not detect image format for: {FilePath}", filePath);
+                return false;
+            }
+
+            // Reset stream position and try to load the image to verify it's not corrupt
+            stream.Position = 0;
+            using var image = Image.Load(stream);
+
+            // Additional sanity checks
+            if (image.Width <= 0 || image.Height <= 0)
+            {
+                _logger?.LogDebug("Image has invalid dimensions: {FilePath} ({Width}x{Height})",
+                    filePath, image.Width, image.Height);
+                return false;
+            }
+
+            return true;
+        }
+        catch (UnknownImageFormatException ex)
+        {
+            _logger?.LogWarning("Unknown image format for {FilePath}: {Message}", filePath, ex.Message);
+            return false;
+        }
+        catch (InvalidImageContentException ex)
+        {
+            _logger?.LogWarning("Invalid image content for {FilePath}: {Message}", filePath, ex.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to validate image: {FilePath}", filePath);
+            return false;
+        }
     }
 
     private static string BuildImageUrl(string folder, string imageName) =>

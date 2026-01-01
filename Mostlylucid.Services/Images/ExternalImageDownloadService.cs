@@ -184,21 +184,47 @@ public partial class ExternalImageDownloadService
                 counter++;
             }
 
-            // Get image dimensions using ImageSharp
+            // Validate image before saving - ensure ImageSharp can process it
             int? width = null;
             int? height = null;
             try
             {
-                using var image = Image.Load(imageBytes);
+                using var memoryStream = new MemoryStream(imageBytes);
+                var format = Image.DetectFormat(memoryStream);
+                if (format == null)
+                {
+                    _logger.LogWarning("Could not detect image format for {Url} - skipping", url);
+                    return null;
+                }
+
+                memoryStream.Position = 0;
+                using var image = Image.Load(memoryStream);
                 width = image.Width;
                 height = image.Height;
+
+                if (width <= 0 || height <= 0)
+                {
+                    _logger.LogWarning("Image has invalid dimensions for {Url}: {Width}x{Height} - skipping", url, width, height);
+                    return null;
+                }
+            }
+            catch (UnknownImageFormatException ex)
+            {
+                _logger.LogWarning("Unknown image format for {Url}: {Message} - skipping", url, ex.Message);
+                return null;
+            }
+            catch (InvalidImageContentException ex)
+            {
+                _logger.LogWarning("Invalid/corrupt image content for {Url}: {Message} - skipping", url, ex.Message);
+                return null;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not read image dimensions for {Url}", url);
+                _logger.LogWarning(ex, "Could not validate image for {Url} - skipping", url);
+                return null;
             }
 
-            // Save file
+            // Save file (only if validation passed)
             await File.WriteAllBytesAsync(fullPath, imageBytes, cancellationToken);
             _logger.LogInformation("Saved image to {Path} ({Size} bytes)", fullPath, imageBytes.Length);
 

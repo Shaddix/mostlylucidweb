@@ -1,11 +1,11 @@
 # Base image for running the app
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 7240
 
 # Build image with SDK for building the application
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 
 # Install Node.js v20.x
@@ -26,6 +26,7 @@ COPY ["Mostlylucid.Shared/Mostlylucid.Shared.csproj", "Mostlylucid.Shared/"]
 COPY ["Mostlylucid.DbContext/Mostlylucid.DbContext.csproj", "Mostlylucid.DbContext/"]
 COPY ["Mostlylucid.Services/Mostlylucid.Services.csproj", "Mostlylucid.Services/"]
 COPY ["Mostlylucid.SemanticSearch/Mostlylucid.SemanticSearch.csproj", "Mostlylucid.SemanticSearch/"]
+COPY ["Mostlylucid.DocSummarizer.Core/Mostlylucid.DocSummarizer.Core.csproj", "Mostlylucid.DocSummarizer.Core/"]
 COPY ["Mostlylucid.Markdig.FetchExtension/Mostlylucid.Markdig.FetchExtension.csproj", "Mostlylucid.Markdig.FetchExtension/"]
 COPY ["Mostlylucid.Markdig.Extensions/Mostlylucid.Markdig.Extensions.csproj", "Mostlylucid.Markdig.Extensions/"]
 COPY ["Mostlylucid.Workflow.Engine/Mostlylucid.Workflow.Engine.csproj", "Mostlylucid.Workflow.Engine/"]
@@ -39,6 +40,7 @@ COPY ["Mostlylucid.Markdig.FetchExtension/icon.png", "Mostlylucid.Markdig.FetchE
 COPY ["Umami.Net/ReleaseNotes.txt", "Umami.Net/"]
 COPY ["Umami.Net/README.md", "Umami.Net/"]
 COPY ["Umami.Net/icon.png", "Umami.Net/"]
+COPY ["Mostlylucid.DocSummarizer.Core/release-notes.txt", "Mostlylucid.DocSummarizer.Core/"]
 
 # Restore .NET dependencies
 RUN dotnet restore "./Mostlylucid/Mostlylucid.csproj"
@@ -49,6 +51,7 @@ COPY ./Mostlylucid.Test/ ./Mostlylucid.Test/
 COPY ./Mostlylucid.Shared/ ./Mostlylucid.Shared/
 COPY ./Mostlylucid.Services/ ./Mostlylucid.Services/
 COPY ./Mostlylucid.SemanticSearch/ ./Mostlylucid.SemanticSearch/
+COPY ./Mostlylucid.DocSummarizer.Core/ ./Mostlylucid.DocSummarizer.Core/
 COPY ./Mostlylucid.DbContext/ ./Mostlylucid.DbContext/
 COPY ./Mostlylucid.Markdig.FetchExtension/ ./Mostlylucid.Markdig.FetchExtension/
 COPY ./Mostlylucid.Markdig.Extensions/ ./Mostlylucid.Markdig.Extensions/

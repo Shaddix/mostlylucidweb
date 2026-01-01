@@ -60,7 +60,8 @@
       "Bash(curl.exe:*)",
       "Bash(dotnet:*)",
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net9.0\\\\data\\\\semantic-search.duckdb*\")",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(docker build:*)"
     ],
     "deny": [],
     "ask": []
