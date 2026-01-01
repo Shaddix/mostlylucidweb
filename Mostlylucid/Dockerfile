@@ -56,8 +56,8 @@ COPY ./Mostlylucid.Workflow.Engine/ ./Mostlylucid.Workflow.Engine/
 COPY ./Mostlylucid.Workflow.Shared/ ./Mostlylucid.Workflow.Shared/
 COPY ./Umami.Net/ ./Umami.Net/
 # Install NPM dependencies (do this before the build step)
+# Note: package.json already copied with ./Mostlylucid/ above
 WORKDIR "/src/Mostlylucid"
-COPY package*.json ./
 RUN npm install
 
 # Build static assets (CSS/JS) using npm only once
