@@ -1,0 +1,162 @@
+<div class="form-summary">
+    <div class="summary-header">
+        <div class="success-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div>
+            <h2>Form Completed!</h2>
+            <span class="completion-time">
+                Completed in @GetDuration()
+            </span>
+        </div>
+    </div>
+
+    <div class="summary-values">
+        @foreach (var field in Session.Form.Fields)
+        {
+            var state = Session.GetFieldState(field.Id);
+            <div class="summary-field">
+                <span class="field-label">@field.Label</span>
+                <span class="field-value @(state.Status == FieldStatus.Skipped ? "skipped" : "")">
+                    @(state.Status == FieldStatus.Skipped ? "(skipped)" : state.Value ?? "-")
+                </span>
+            </div>
+        }
+    </div>
+
+    <div class="summary-actions">
+        <a href="/" class="btn-done">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Return Home
+        </a>
+    </div>
+</div>
+
+<style>
+    .form-summary {
+        padding: 2rem;
+        background: var(--accent-green-bg);
+        border: 2px solid var(--accent-green);
+        border-radius: 1rem;
+        margin: 1rem 0;
+    }
+
+    .summary-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--accent-green);
+    }
+
+    .success-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--accent-green);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .success-icon svg {
+        width: 28px;
+        height: 28px;
+        color: white;
+    }
+
+    .summary-header h2 {
+        margin: 0;
+        color: var(--accent-green-dark);
+        font-size: 1.5rem;
+    }
+
+    .completion-time {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+    }
+
+    .summary-values {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .summary-field {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.875rem 1rem;
+        background: var(--bg-secondary);
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .field-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .field-value {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .field-value.skipped {
+        color: var(--text-faint);
+        font-style: italic;
+        font-weight: normal;
+    }
+
+    .summary-actions {
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+
+    .btn-done {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.875rem 2rem;
+        background: var(--accent-green);
+        color: white;
+        text-decoration: none;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .btn-done svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .btn-done:hover {
+        filter: brightness(0.9);
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public FormSession Session { get; set; } = null!;
+
+    private string GetDuration()
+    {
+        if (Session.CompletedAt == null) return "-";
+
+        var duration = Session.CompletedAt.Value - Session.StartedAt;
+
+        if (duration.TotalMinutes >= 1)
+        {
+            return $"{duration.TotalMinutes:F0} min {duration.Seconds} sec";
+        }
+
+        return $"{duration.TotalSeconds:F0} seconds";
+    }
+}

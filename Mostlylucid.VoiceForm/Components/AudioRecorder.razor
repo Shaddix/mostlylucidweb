@@ -1,0 +1,237 @@
+@inject IJSRuntime JS
+
+<div class="audio-recorder">
+    <button class="@ButtonClass"
+            @onclick="ToggleRecording"
+            disabled="@IsDisabled">
+        @if (IsRecording)
+        {
+            <span class="recording-indicator"></span>
+            <span>Stop Recording</span>
+        }
+        else if (IsProcessing)
+        {
+            <span class="spinner"></span>
+            <span>Processing...</span>
+        }
+        else
+        {
+            <svg class="mic-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            <span>Start Recording</span>
+        }
+    </button>
+
+    @if (IsRecording)
+    {
+        <div class="recording-status">
+            <span class="recording-dot"></span>
+            Recording... @_recordingSeconds.ToString("F1")s
+        </div>
+    }
+
+    <p class="recorder-hint">
+        @if (IsRecording)
+        {
+            <span>Click the button again when you're done speaking</span>
+        }
+        else if (!IsProcessing)
+        {
+            <span>Click the button and speak your answer</span>
+        }
+    </p>
+</div>
+
+<style>
+    .audio-recorder {
+        margin: 2rem 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .record-btn {
+        padding: 1.25rem 2.5rem;
+        font-size: 1.1rem;
+        border: none;
+        border-radius: 9999px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .record-btn.idle {
+        background-color: var(--accent-blue);
+        color: white;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+    }
+
+    .record-btn.idle:hover:not(:disabled) {
+        background-color: var(--accent-blue-hover);
+        transform: scale(1.02);
+    }
+
+    .record-btn.recording {
+        background-color: var(--accent-red);
+        color: white;
+        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+        animation: pulse-shadow 1.5s infinite;
+    }
+
+    .record-btn.processing {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+        cursor: wait;
+    }
+
+    .record-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .mic-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .recording-indicator {
+        width: 14px;
+        height: 14px;
+        background-color: white;
+        border-radius: 50%;
+        animation: pulse 1s infinite;
+    }
+
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border-color);
+        border-top-color: var(--accent-blue);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.9); }
+    }
+
+    @@keyframes pulse-shadow {
+        0%, 100% { box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4); }
+        50% { box-shadow: 0 4px 24px rgba(239, 68, 68, 0.6); }
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .recording-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--accent-red);
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .recording-dot {
+        width: 10px;
+        height: 10px;
+        background-color: var(--accent-red);
+        border-radius: 50%;
+        animation: pulse 1s infinite;
+    }
+
+    .recorder-hint {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public EventCallback<byte[]> OnAudioCaptured { get; set; }
+
+    [Parameter]
+    public bool IsRecording { get; set; }
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    private double _recordingSeconds;
+    private System.Timers.Timer? _timer;
+    private DotNetObjectReference<AudioRecorder>? _dotNetRef;
+
+    private string ButtonClass => IsRecording ? "record-btn recording"
+                                : IsProcessing ? "record-btn processing"
+                                : "record-btn idle";
+
+    private bool IsDisabled => IsProcessing;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("voiceFormAudio.initialize", _dotNetRef);
+        }
+    }
+
+    private async Task ToggleRecording()
+    {
+        if (IsRecording)
+        {
+            await StopRecording();
+        }
+        else
+        {
+            await StartRecording();
+        }
+    }
+
+    private async Task StartRecording()
+    {
+        IsRecording = true;
+        _recordingSeconds = 0;
+
+        // Start timer for UI feedback
+        _timer = new System.Timers.Timer(100);
+        _timer.Elapsed += (s, e) =>
+        {
+            _recordingSeconds += 0.1;
+            InvokeAsync(StateHasChanged);
+        };
+        _timer.Start();
+
+        await JS.InvokeVoidAsync("voiceFormAudio.startRecording");
+    }
+
+    private async Task StopRecording()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+        _timer = null;
+
+        IsRecording = false;
+
+        await JS.InvokeVoidAsync("voiceFormAudio.stopRecording");
+    }
+
+    [JSInvokable]
+    public async Task OnRecordingComplete(byte[] audioData)
+    {
+        await OnAudioCaptured.InvokeAsync(audioData);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _dotNetRef?.Dispose();
+    }
+}

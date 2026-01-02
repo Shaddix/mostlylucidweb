@@ -1,0 +1,131 @@
+<div class="form-progress">
+    <div class="progress-header">
+        <span class="form-name">@Session.Form.Name</span>
+        <span class="progress-text">@CompletedCount / @TotalCount fields</span>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" style="width: @ProgressPercent%"></div>
+    </div>
+
+    <div class="field-indicators">
+        @foreach (var field in Session.Form.Fields)
+        {
+            var state = Session.GetFieldState(field.Id);
+            <div class="field-indicator @GetIndicatorClass(state)" title="@field.Label">
+                @GetIndicatorContent(state)
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .form-progress {
+        padding: 1rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .progress-text {
+        font-size: 0.875rem;
+        color: #64748b;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 0.75rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: #22c55e;
+        transition: width 0.3s ease;
+    }
+
+    .field-indicators {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .field-indicator {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .field-indicator.pending {
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
+    .field-indicator.inprogress {
+        background: #dbeafe;
+        color: #2563eb;
+        animation: pulse-ring 1.5s infinite;
+    }
+
+    .field-indicator.awaitingconfirmation {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .field-indicator.confirmed {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .field-indicator.skipped {
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
+    @@keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+        70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public FormSession Session { get; set; } = null!;
+
+    private int TotalCount => Session.Form.Fields.Count;
+
+    private int CompletedCount => Session.FieldStates
+        .Count(f => f.Value.Status == FieldStatus.Confirmed || f.Value.Status == FieldStatus.Skipped);
+
+    private double ProgressPercent => TotalCount > 0 ? (double)CompletedCount / TotalCount * 100 : 0;
+
+    private string GetIndicatorClass(FieldState state) => state.Status.ToString().ToLower();
+
+    private string GetIndicatorContent(FieldState state) => state.Status switch
+    {
+        FieldStatus.Confirmed => "\u2713",   // Checkmark
+        FieldStatus.Skipped => "-",
+        FieldStatus.InProgress => "\u25CF",  // Filled circle
+        FieldStatus.AwaitingConfirmation => "?",
+        _ => "\u25CB"                        // Empty circle
+    };
+}

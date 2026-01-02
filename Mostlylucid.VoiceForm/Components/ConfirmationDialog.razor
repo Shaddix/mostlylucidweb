@@ -1,0 +1,134 @@
+<div class="confirmation-dialog" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3>Please Confirm</h3>
+    </div>
+
+    <div class="extracted-value">
+        <span class="label">Is this correct?</span>
+        <span class="value">@ExtractedValue</span>
+    </div>
+
+    <div class="dialog-actions">
+        <button class="btn-confirm" @onclick="OnConfirm">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Yes, that's correct
+        </button>
+        <button class="btn-reject" @onclick="OnReject">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            No, try again
+        </button>
+    </div>
+</div>
+
+<style>
+    .confirmation-dialog {
+        padding: 1.5rem;
+        background: var(--accent-yellow-bg);
+        border: 2px solid var(--accent-yellow);
+        border-radius: 0.75rem;
+        margin: 1.5rem 0;
+    }
+
+    .dialog-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .dialog-header svg {
+        width: 24px;
+        height: 24px;
+        color: var(--accent-yellow-text);
+    }
+
+    .confirmation-dialog h3 {
+        margin: 0;
+        color: var(--accent-yellow-text);
+        font-size: 1.1rem;
+    }
+
+    .extracted-value {
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .extracted-value .label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .extracted-value .value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .dialog-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .dialog-actions button {
+        flex: 1;
+        padding: 0.875rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-weight: 500;
+    }
+
+    .dialog-actions button svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .btn-confirm {
+        background: var(--accent-green);
+        color: white;
+    }
+
+    .btn-confirm:hover {
+        filter: brightness(0.9);
+        transform: translateY(-1px);
+    }
+
+    .btn-reject {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-reject:hover {
+        background: var(--bg-hover);
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired]
+    public string ExtractedValue { get; set; } = "";
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnReject { get; set; }
+}

@@ -1,0 +1,94 @@
+{
+  "id": "customer-intake",
+  "name": "Customer Intake Form",
+  "description": "Basic customer information collection for demo purposes",
+  "version": 1,
+  "defaultConfirmationPolicy": {
+    "alwaysConfirm": false,
+    "confidenceThreshold": 0.85,
+    "confirmNaturalLanguageParsing": true
+  },
+  "fields": [
+    {
+      "id": "fullName",
+      "label": "Full Name",
+      "prompt": "Please say your full name.",
+      "reprompt": "I didn't catch that. Could you please say your full name again?",
+      "type": "Text",
+      "required": true,
+      "constraints": {
+        "minLength": 2,
+        "maxLength": 100
+      },
+      "examples": ["John Smith", "Mary Jane Watson", "Robert Johnson Junior"]
+    },
+    {
+      "id": "dateOfBirth",
+      "label": "Date of Birth",
+      "prompt": "What is your date of birth?",
+      "reprompt": "Please say your date of birth, for example, January 15th, 1990.",
+      "type": "Date",
+      "required": true,
+      "constraints": {
+        "dateMin": "1900-01-01",
+        "dateMax": "2010-01-01"
+      },
+      "confirmationPolicy": {
+        "alwaysConfirm": true,
+        "confirmNaturalLanguageParsing": true
+      },
+      "examples": [
+        "January 15, 1985",
+        "March 22nd, 1990",
+        "the fifth of May, nineteen eighty-four",
+        "12/25/1975"
+      ]
+    },
+    {
+      "id": "email",
+      "label": "Email Address",
+      "prompt": "What is your email address? You can spell it out.",
+      "reprompt": "Please spell out your email address, letter by letter.",
+      "type": "Email",
+      "required": true,
+      "confirmationPolicy": {
+        "alwaysConfirm": true
+      },
+      "examples": [
+        "john dot smith at gmail dot com",
+        "jane underscore doe at example dot com",
+        "j-a-n-e at company dot org"
+      ]
+    },
+    {
+      "id": "phoneNumber",
+      "label": "Phone Number",
+      "prompt": "What is your phone number?",
+      "reprompt": "Please say your phone number, including area code.",
+      "type": "Phone",
+      "required": false,
+      "examples": [
+        "555-123-4567",
+        "area code 206, 555, 1234",
+        "one eight hundred five five five one two three four"
+      ]
+    },
+    {
+      "id": "consent",
+      "label": "Data Consent",
+      "prompt": "Do you consent to us storing this information? Please say yes or no.",
+      "reprompt": "Please confirm: do you consent to data storage? Say yes or no.",
+      "type": "Boolean",
+      "required": true,
+      "confirmationPolicy": {
+        "alwaysConfirm": true
+      },
+      "examples": [
+        "yes",
+        "no",
+        "I agree",
+        "I do not consent"
+      ]
+    }
+  ]
+}

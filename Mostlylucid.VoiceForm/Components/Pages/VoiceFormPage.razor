@@ -1,0 +1,275 @@
+@page "/voiceform/{FormId}"
+@inject IFormOrchestrator Orchestrator
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="top-bar">
+    <h1>Voice Form</h1>
+    <button class="theme-toggle" onclick="voiceFormTheme.toggle()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <span>Dark Mode</span>
+    </button>
+</div>
+
+<main>
+    @if (_error != null)
+    {
+        <div class="error">@_error</div>
+    }
+
+    @if (_session == null)
+    {
+        <div class="loading">Starting form session...</div>
+    }
+    else
+    {
+        <div class="voice-form-layout">
+            <!-- Left Column - Active Field Panel -->
+            <div class="active-field-panel">
+                @if (_session.Status == FormStatus.Completed)
+                {
+                    <FormSummary Session="_session" />
+                }
+                else if (_currentField != null)
+                {
+                    <!-- Current field prompt - large and prominent -->
+                    <div class="current-prompt">
+                        <h2>@_currentField.Label</h2>
+                        <p class="prompt-text">@_message</p>
+                        <span class="field-type-badge">@_currentField.Type.ToString()</span>
+                        @if (!_currentField.Required)
+                        {
+                            <span class="field-type-badge" style="margin-left: 0.5rem;">Optional</span>
+                        }
+                    </div>
+
+                    <!-- Audio Recorder -->
+                    <AudioRecorder OnAudioCaptured="HandleAudioCaptured"
+                                   IsRecording="_isRecording"
+                                   IsProcessing="_isProcessing" />
+
+                    <!-- Transcript display when we have one -->
+                    @if (!string.IsNullOrEmpty(_transcript))
+                    {
+                        <TranscriptDisplay Transcript="_transcript"
+                                           Confidence="_transcriptConfidence" />
+                    }
+
+                    <!-- Confirmation dialog when needed -->
+                    @if (_showConfirmation && _pendingValue != null)
+                    {
+                        <ConfirmationDialog ExtractedValue="_pendingValue"
+                                            OnConfirm="HandleConfirm"
+                                            OnReject="HandleReject" />
+                    }
+                }
+            </div>
+
+            <!-- Right Column - Form Overview Sidebar -->
+            <div class="form-sidebar">
+                <h3>@_session.Form.Name</h3>
+
+                <!-- Progress summary -->
+                <div class="progress-summary">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: @ProgressPercent%"></div>
+                    </div>
+                    <span class="progress-text">@CompletedCount / @TotalCount</span>
+                </div>
+
+                <!-- All form fields list -->
+                <div class="form-fields-list">
+                    @foreach (var field in _session.Form.Fields)
+                    {
+                        var state = _session.GetFieldState(field.Id);
+                        var isActive = _currentField?.Id == field.Id;
+                        var isCompleted = state.Status == FieldStatus.Confirmed;
+                        var isAwaiting = state.Status == FieldStatus.AwaitingConfirmation;
+
+                        <div class="form-field-item @(isActive ? "active" : "") @(isCompleted ? "completed" : "") @(isAwaiting ? "awaiting" : "")">
+                            <div class="field-status-icon @state.Status.ToString().ToLower()">
+                                @GetStatusIcon(state.Status)
+                            </div>
+                            <div class="field-info">
+                                <div class="field-name">
+                                    @field.Label
+                                    @if (!field.Required)
+                                    {
+                                        <span style="font-weight: normal; color: var(--text-faint); font-size: 0.75rem;">(optional)</span>
+                                    }
+                                </div>
+                                <div class="field-value @(state.Value != null ? "has-value" : "")">
+                                    @if (state.Status == FieldStatus.Confirmed && state.Value != null)
+                                    {
+                                        @state.Value
+                                    }
+                                    else if (state.Status == FieldStatus.AwaitingConfirmation && state.PendingValue != null)
+                                    {
+                                        <span style="color: var(--accent-yellow);">Pending: @state.PendingValue</span>
+                                    }
+                                    else if (state.Status == FieldStatus.Skipped)
+                                    {
+                                        <span style="font-style: italic;">Skipped</span>
+                                    }
+                                    else if (state.Status == FieldStatus.InProgress)
+                                    {
+                                        <span style="color: var(--accent-blue);">Listening...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Waiting</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</main>
+
+@code {
+    [Parameter]
+    public string FormId { get; set; } = "";
+
+    private FormSession? _session;
+    private FieldDefinition? _currentField;
+    private FieldState? _currentFieldState;
+    private string? _message;
+    private string? _error;
+    private string? _transcript;
+    private double _transcriptConfidence;
+    private bool _isRecording;
+    private bool _isProcessing;
+    private bool _showConfirmation;
+    private string? _pendingValue;
+
+    private int TotalCount => _session?.Form.Fields.Count ?? 0;
+    private int CompletedCount => _session?.FieldStates
+        .Count(f => f.Value.Status == FieldStatus.Confirmed || f.Value.Status == FieldStatus.Skipped) ?? 0;
+    private double ProgressPercent => TotalCount > 0 ? (double)CompletedCount / TotalCount * 100 : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await StartSession();
+    }
+
+    private async Task StartSession()
+    {
+        var result = await Orchestrator.StartSessionAsync(FormId);
+
+        if (!result.Success)
+        {
+            _error = result.Message;
+            return;
+        }
+
+        _session = result.Session;
+        _currentField = _session?.GetCurrentField();
+        _currentFieldState = _currentField != null ? _session?.GetFieldState(_currentField.Id) : null;
+        _message = result.Message;
+    }
+
+    private async Task HandleAudioCaptured(byte[] audioData)
+    {
+        if (_isProcessing) return;
+
+        _isProcessing = true;
+        _showConfirmation = false;
+        _transcript = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Orchestrator.ProcessAudioAsync(audioData);
+
+            _session = result.Session;
+            _currentField = _session?.GetCurrentField();
+            _currentFieldState = _currentField != null ? _session?.GetFieldState(_currentField.Id) : null;
+            _message = result.Message;
+
+            // Show transcript if we have it
+            if (_currentFieldState?.LastTranscript != null)
+            {
+                _transcript = _currentFieldState.LastTranscript;
+                _transcriptConfidence = _currentFieldState.PendingConfidence ?? 0;
+            }
+
+            // Show confirmation dialog if needed
+            if (result.RequiresConfirmation)
+            {
+                _showConfirmation = true;
+                _pendingValue = result.PendingValue;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error processing audio: {ex.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleConfirm()
+    {
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Orchestrator.ConfirmValueAsync();
+
+            _session = result.Session;
+            _currentField = _session?.GetCurrentField();
+            _currentFieldState = _currentField != null ? _session?.GetFieldState(_currentField.Id) : null;
+            _message = result.Message;
+            _showConfirmation = false;
+            _pendingValue = null;
+            _transcript = null;
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleReject()
+    {
+        _isProcessing = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await Orchestrator.RejectValueAsync();
+
+            _session = result.Session;
+            _currentField = _session?.GetCurrentField();
+            _currentFieldState = _currentField != null ? _session?.GetFieldState(_currentField.Id) : null;
+            _message = result.Message;
+            _showConfirmation = false;
+            _pendingValue = null;
+            _transcript = null;
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetStatusIcon(FieldStatus status) => status switch
+    {
+        FieldStatus.Confirmed => "\u2713",   // Checkmark
+        FieldStatus.Skipped => "-",
+        FieldStatus.InProgress => "\u25CF",  // Filled circle
+        FieldStatus.AwaitingConfirmation => "?",
+        _ => "\u25CB"                        // Empty circle
+    };
+}
