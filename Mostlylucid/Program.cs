@@ -44,19 +44,27 @@ try
     });
     var certExists = File.Exists("mostlylucid.pfx");
     var certPassword = config["CertPassword"];
- 
+    var httpsEnabled = certExists && !string.IsNullOrEmpty(certPassword);
+
     builder.WebHost.ConfigureKestrel(options =>
     {
         options.ListenAnyIP(8080); // HTTP endpoint
 
-        // HTTPS endpoint using SSL certificate (only if cert exists)
-        if (certExists)
+        // HTTPS endpoint using SSL certificate (only if cert exists and password is set)
+        if (httpsEnabled)
         {
-            options.ListenAnyIP(7240, listenOptions =>
+            try
             {
                 var certificate = new X509Certificate2("mostlylucid.pfx", certPassword);
-                listenOptions.UseHttps(o => o.ServerCertificate = certificate);
-            });
+                options.ListenAnyIP(7240, listenOptions =>
+                {
+                    listenOptions.UseHttps(o => o.ServerCertificate = certificate);
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to load HTTPS certificate, continuing with HTTP only");
+            }
         }
     });
 

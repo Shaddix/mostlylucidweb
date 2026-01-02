@@ -308,3 +308,4 @@ vocab.txt
 
 # Test screenshots in Mostlylucid root
 /Mostlylucid/*.png
+/*.dump

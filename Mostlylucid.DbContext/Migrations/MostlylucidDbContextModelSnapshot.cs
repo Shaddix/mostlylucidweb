@@ -103,89 +103,71 @@ namespace Mostlylucid.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
+                        .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ContentHash")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content_hash");
+                        .HasColumnType("text");
 
                     b.Property<string>("HtmlContent")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("html_content");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsHidden")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_hidden");
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsPinned")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_pinned");
+                        .HasColumnType("boolean");
 
                     b.Property<int>("LanguageId")
-                        .HasColumnType("integer")
-                        .HasColumnName("language_id");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Markdown")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("markdown");
+                        .HasColumnType("text");
 
                     b.Property<string>("PlainTextContent")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("plain_text_content");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("PublishedDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_date");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset?>("ScheduledPublishDate")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("scheduled_publish_date");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<NpgsqlTsVector>("SearchVector")
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("tsvector")
-                        .HasColumnName("search_vector")
                         .HasComputedColumnSql("to_tsvector('english', coalesce(\"Title\", '') || ' ' || coalesce(\"PlainTextContent\", ''))", true);
 
                     b.Property<string>("SentimentMetadata")
-                        .HasColumnType("text")
-                        .HasColumnName("sentiment_metadata");
+                        .HasColumnType("text");
 
                     b.Property<bool>("ShowUpdatedDate")
-                        .HasColumnType("boolean")
-                        .HasColumnName("show_updated_date");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("slug");
+                        .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset?>("UpdatedDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_date")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<string>("UpdatedTemplate")
-                        .HasColumnType("text")
-                        .HasColumnName("updated_template");
+                        .HasColumnType("text");
 
                     b.Property<int>("WordCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("word_count");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

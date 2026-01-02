@@ -1,23 +1,23 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Mostlylucid.DbContext.Migrations
 {
     /// <inheritdoc />
-    public partial class FixBlogPostColumnNames : Migration
+    public partial class UpdateModelSnapshot : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // No-op: Database already has snake_case column names.
-            // This migration just updates the model snapshot to match the existing database schema.
+            // No-op migration - just updates the model snapshot
+            // Live database already uses PascalCase column names
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // No-op
+            // No-op migration
         }
     }
 }

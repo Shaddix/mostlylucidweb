@@ -71,7 +71,19 @@
       "Bash(docker network rm:*)",
       "Bash(MSYS_NO_PATHCONV=1 docker run --rm -e PGPASSWORD=sdfksdoii8980 -v \"C:/Blog/mostlylucidweb:/backup\" postgres:16-alpine pg_dump -h 65.109.95.231 -p 5432 -U postgres -d mostlylucid -F c -f /backup/mostlylucid_live_backup.dump)",
       "Bash(MSYS_NO_PATHCONV=1 docker run --rm -e PGPASSWORD=sdfksdoii8980 -v \"C:/Blog/mostlylucidweb:/backup\" postgres:16-alpine pg_dump -h 65.109.95.231 -p 5266 -U postgres -d mostlylucid -F c -f /backup/mostlylucid_live_backup.dump)",
-      "Bash(MSYS_NO_PATHCONV=1 docker run:*)"
+      "Bash(MSYS_NO_PATHCONV=1 docker run:*)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development dotnet run:*)",
+      "Bash(timeout 30 dotnet run:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill //F //PID 41888)",
+      "Bash(timeout 20 dotnet run:*)",
+      "Bash(timeout 25 dotnet run:*)",
+      "Bash(PGPASSWORD=sdfksdoii8980 pg_dump:*)",
+      "Bash(docker cp:*)",
+      "Bash(MSYS_NO_PATHCONV=1 docker cp:*)",
+      "Bash(docker inspect:*)"
     ],
     "deny": [],
     "ask": []

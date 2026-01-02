@@ -17,10 +17,10 @@ namespace Mostlylucid.DbContext.Migrations
                 columns: new[] { "is_hidden", "scheduled_publish_date" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BlogPosts_is_pinned_published_date",
+                name: "IX_BlogPosts_is_pinned_PublishedDate",
                 schema: "mostlylucid",
                 table: "BlogPosts",
-                columns: new[] { "is_pinned", "published_date" });
+                columns: new[] { "is_pinned", "PublishedDate" });
         }
 
         /// <inheritdoc />
@@ -32,7 +32,7 @@ namespace Mostlylucid.DbContext.Migrations
                 table: "BlogPosts");
 
             migrationBuilder.DropIndex(
-                name: "IX_BlogPosts_is_pinned_published_date",
+                name: "IX_BlogPosts_is_pinned_PublishedDate",
                 schema: "mostlylucid",
                 table: "BlogPosts");
         }
