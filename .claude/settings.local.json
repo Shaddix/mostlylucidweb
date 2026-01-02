@@ -61,7 +61,12 @@
       "Bash(dotnet:*)",
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net9.0\\\\data\\\\semantic-search.duckdb*\")",
       "Bash(git status:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(docker logs:*)",
+      "Bash(PGPASSWORD=sdfksdoii8980 psql:*)",
+      "Bash(git -C \"C:/Blog/mostlylucidweb\" status)",
+      "Bash(git -C \"C:/Blog/mostlylucidweb\" diff Mostlylucid/Program.cs)"
     ],
     "deny": [],
     "ask": []

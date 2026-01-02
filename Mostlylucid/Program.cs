@@ -44,25 +44,29 @@ try
     });
     var certExists = File.Exists("mostlylucid.pfx");
     var certPassword = config["CertPassword"];
- 
+    var httpsEnabled = certExists && !string.IsNullOrEmpty(certPassword);
+
     builder.WebHost.ConfigureKestrel(options =>
     {
         options.ListenAnyIP(8080); // HTTP endpoint
 
-        // HTTPS endpoint using SSL certificate
-        options.ListenAnyIP(7240, listenOptions =>
+        // HTTPS endpoint only if cert exists and password is set
+        if (httpsEnabled)
         {
-            if (certExists)
+            try
             {
                 var certificate = new X509Certificate2("mostlylucid.pfx", certPassword);
-                listenOptions.UseHttps(options => options.ServerCertificate = certificate);
+                options.ListenAnyIP(7240, listenOptions =>
+                {
+                    listenOptions.UseHttps(o => o.ServerCertificate = certificate);
+                });
             }
-            else
-            //Local development without certificate.
-                listenOptions.UseHttps();
-            
-        });
-    });;
+            catch
+            {
+                // Skip HTTPS if cert loading fails
+            }
+        }
+    });
 
     using var listener = new ActivityListenerConfiguration()
         .Instrument.HttpClientRequests().Instrument
