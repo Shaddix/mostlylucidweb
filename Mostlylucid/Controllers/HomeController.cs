@@ -74,10 +74,14 @@ public class HomeController(BaseControllerService baseControllerService, ILogger
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 
-    [OutputCache(Duration = 86400)] // Cache for 24 hours
+    [OutputCache(Duration = 86400, VaryByHeaderNames = new[] { "hx-request" })] // Cache for 24 hours
     [HttpGet("software")]
     public IActionResult Software()
     {
+        if (Request.IsHtmx())
+        {
+            return PartialView("Software");
+        }
         return View();
     }
 }
