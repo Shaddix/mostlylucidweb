@@ -12,7 +12,7 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsHidden",
+                name: "is_hidden",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "boolean",
@@ -20,7 +20,7 @@ namespace Mostlylucid.DbContext.Migrations
                 defaultValue: false);
 
             migrationBuilder.AddColumn<bool>(
-                name: "IsPinned",
+                name: "is_pinned",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "boolean",
@@ -28,7 +28,7 @@ namespace Mostlylucid.DbContext.Migrations
                 defaultValue: false);
 
             migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "ScheduledPublishDate",
+                name: "scheduled_publish_date",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "timestamp with time zone",
@@ -39,17 +39,17 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsHidden",
+                name: "is_hidden",
                 schema: "mostlylucid",
                 table: "BlogPosts");
 
             migrationBuilder.DropColumn(
-                name: "IsPinned",
+                name: "is_pinned",
                 schema: "mostlylucid",
                 table: "BlogPosts");
 
             migrationBuilder.DropColumn(
-                name: "ScheduledPublishDate",
+                name: "scheduled_publish_date",
                 schema: "mostlylucid",
                 table: "BlogPosts");
         }

@@ -13,7 +13,7 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "SentimentMetadata",
+                name: "sentiment_metadata",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "text",
@@ -101,7 +101,7 @@ namespace Mostlylucid.DbContext.Migrations
                 schema: "mostlylucid");
 
             migrationBuilder.DropColumn(
-                name: "SentimentMetadata",
+                name: "sentiment_metadata",
                 schema: "mostlylucid",
                 table: "BlogPosts");
         }

@@ -11,7 +11,7 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "ShowUpdatedDate",
+                name: "show_updated_date",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "boolean",
@@ -19,7 +19,7 @@ namespace Mostlylucid.DbContext.Migrations
                 defaultValue: false);
 
             migrationBuilder.AddColumn<string>(
-                name: "UpdatedTemplate",
+                name: "updated_template",
                 schema: "mostlylucid",
                 table: "BlogPosts",
                 type: "text",
@@ -30,12 +30,12 @@ namespace Mostlylucid.DbContext.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "ShowUpdatedDate",
+                name: "show_updated_date",
                 schema: "mostlylucid",
                 table: "BlogPosts");
 
             migrationBuilder.DropColumn(
-                name: "UpdatedTemplate",
+                name: "updated_template",
                 schema: "mostlylucid",
                 table: "BlogPosts");
         }
