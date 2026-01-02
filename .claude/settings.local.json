@@ -66,7 +66,8 @@
       "Bash(docker logs:*)",
       "Bash(PGPASSWORD=sdfksdoii8980 psql:*)",
       "Bash(git -C \"C:/Blog/mostlylucidweb\" status)",
-      "Bash(git -C \"C:/Blog/mostlylucidweb\" diff Mostlylucid/Program.cs)"
+      "Bash(git -C \"C:/Blog/mostlylucidweb\" diff Mostlylucid/Program.cs)",
+      "Bash(git -C \"C:/Blog/mostlylucidweb\" diff HEAD~3 Mostlylucid/Program.cs)"
     ],
     "deny": [],
     "ask": []
