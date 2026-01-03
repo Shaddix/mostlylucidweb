@@ -51,6 +51,7 @@ jobs:
           node-version: '20'
 
       - name: Build Tailwind CSS
+        shell: bash
         run: |
           cd Mostlylucid.RagDocuments
           npm ci
@@ -60,6 +61,7 @@ jobs:
         run: dotnet restore Mostlylucid.RagDocuments.Cli/Mostlylucid.RagDocuments.Cli.csproj
 
       - name: Publish
+        shell: bash
         run: |
           dotnet publish Mostlylucid.RagDocuments.Cli/Mostlylucid.RagDocuments.Cli.csproj \
             -c Release \
