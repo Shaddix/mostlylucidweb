@@ -22,6 +22,9 @@
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <!-- SelfContained is set during publish only via CLI args -->
+
+        <!-- Allow duplicate content files - CLI's appsettings.json takes precedence -->
+        <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
     </PropertyGroup>
 
     <!-- Core library references -->
