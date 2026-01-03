@@ -57,6 +57,7 @@ jobs:
       run: |
         dotnet test Mostlylucid.RagDocuments.Tests/Mostlylucid.RagDocuments.Tests.csproj \
           --configuration Release \
+          --filter "Category!=Browser" \
           --logger "console;verbosity=normal" \
           -- xunit.parallelizeAssembly=true xunit.parallelizeTestCollections=true
 

@@ -10,8 +10,12 @@ namespace Mostlylucid.RagDocuments.Tests.Integration;
 ///
 /// Requires the RagDocuments app to be running on localhost:5080.
 /// Start with: dotnet run --project Mostlylucid.RagDocuments --standalone
+///
+/// These tests are skipped in CI (no running server available).
+/// Run locally only.
 /// </summary>
 [Collection("Browser")]
+[Trait("Category", "Browser")]
 public class BrowserUploadTests : IAsyncLifetime
 {
     private IBrowser? _browser;
