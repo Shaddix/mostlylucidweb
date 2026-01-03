@@ -180,26 +180,26 @@
             </a>
         </li>
 
-        <!-- NuGet - Hide on small/medium (md+) -->
-        <li class="group relative mb-1 hidden md:block">
-            <a href="https://www.nuget.org/profiles/mostlylucid" target="_blank" rel="noopener noreferrer" class="relative z-30 block px-1 lg:px-2 font-body text-base lg:text-xl font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary">
-                <span class="hidden lg:inline">NuGet</span>
-                <i class="bx bxl-nuget text-xl lg:hidden"></i>
+        <!-- NuGet - Icon always visible, text on lg+ -->
+        <li class="group relative mb-1">
+            <a href="https://www.nuget.org/profiles/mostlylucid" target="_blank" rel="noopener noreferrer" class="flex items-center px-1 lg:px-2 font-body text-base font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary" data-umami-event="NuGet Click">
+                <i class="bx bxl-nuget text-xl"></i>
+                <span class="ml-0.5 hidden lg:inline">NuGet</span>
             </a>
         </li>
 
-        <!-- Software - Hide on small screens (sm+) -->
-        <li class="group relative mb-1 hidden sm:block">
-            <a href="/software" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="flex items-center text-l lg:text-xl font-medium text-primary group-hover:text-green dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors" data-umami-event="Software Click">
-                <i class="text-xl lg:text-2xl bx bx-code-block"></i>
+        <!-- Software - Icon always visible, text on lg+ -->
+        <li class="group relative mb-1">
+            <a href="/software" hx-boost="true" hx-target="#contentcontainer" hx-swap="show:window:top" class="flex items-center px-1 lg:px-2 font-body text-base font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary" data-umami-event="Software Click">
+                <i class="bx bx-code-block text-xl"></i>
                 <span class="ml-0.5 hidden lg:inline">Software</span>
             </a>
         </li>
 
-        <!-- Contact - Always show icon, hide text on small -->
-        <li class="group relative mb-0.5">
-            <a asp-action="Index" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-controller="Contact" class="flex items-center text-l lg:text-xl text-primary dark:text-white hover:text-secondary dark:hover:text-secondary transition-colors" data-umami-event="Contact Click">
-                <i class='bx bx-mail-send text-xl lg:text-2xl'></i>
+        <!-- Contact - Icon always visible, text on lg+ -->
+        <li class="group relative mb-1">
+            <a asp-action="Index" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" asp-controller="Contact" class="flex items-center px-1 lg:px-2 font-body text-base font-medium text-primary transition-colors group-hover:text-green dark:text-white dark:group-hover:text-secondary" data-umami-event="Contact Click">
+                <i class="bx bx-mail-send text-xl"></i>
                 <span class="ml-0.5 hidden lg:inline">Contact</span>
             </a>
         </li>
