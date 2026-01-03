@@ -14,13 +14,20 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     /// <summary>
     /// Connection string for existing dev PostgreSQL.
-    /// Password is read from POSTGRES_PASSWORD environment variable or .env file.
+    /// Reads from ConnectionStrings__DefaultConnection env var (CI), POSTGRES_PASSWORD env var, or .env file.
     /// </summary>
     public string PostgresConnectionString { get; set; } = GetConnectionString();
 
     private static string GetConnectionString()
     {
-        // Try environment variable first
+        // First check for full connection string (set by CI workflow)
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+        if (!string.IsNullOrEmpty(connectionString))
+        {
+            return connectionString;
+        }
+
+        // Try POSTGRES_PASSWORD environment variable
         var password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
         // Fall back to .env file if not set
@@ -44,7 +51,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         if (string.IsNullOrEmpty(password))
         {
             throw new InvalidOperationException(
-                "POSTGRES_PASSWORD not found. Set the environment variable or ensure .env file exists in solution root.");
+                "POSTGRES_PASSWORD not found. Set ConnectionStrings__DefaultConnection, POSTGRES_PASSWORD environment variable, or ensure .env file exists in solution root.");
         }
 
         return $"Host=localhost;Port=5432;Database=ragdocs_test;Username=postgres;Password={password}";
