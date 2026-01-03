@@ -136,25 +136,32 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
 
             if (semanticResults.Count > 0)
             {
-                // Get slugs from semantic search, look up titles from PostgreSQL
-                var slugs = semanticResults.Select(r => r.Slug).ToList();
+                // Deduplicate semantic results by slug (keep highest score)
+                var uniqueResults = semanticResults
+                    .GroupBy(r => r.Slug)
+                    .Select(g => g.OrderByDescending(r => r.Score).First())
+                    .ToList();
+
+                // Get slugs from semantic search, look up English titles from PostgreSQL
+                var slugs = uniqueResults.Select(r => r.Slug).ToList();
                 var posts = await context.BlogPosts
-                    .Where(p => slugs.Contains(p.Slug))
+                    .Include(p => p.LanguageEntity)
+                    .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == "en")
                     .Select(p => new { p.Slug, p.Title })
                     .ToListAsync();
 
                 // Match back with semantic scores, preserving order
-                return semanticResults
+                // Only return results that have an English version in the database
+                return uniqueResults
                     .Select(r =>
                     {
                         var post = posts.FirstOrDefault(p => p.Slug == r.Slug);
-                        return new SearchResults(
-                            post?.Title ?? r.Slug,
-                            r.Slug,
-                            $"/blog/{r.Slug}",
-                            r.Score
-                        );
+                        return post != null
+                            ? new SearchResults(post.Title, r.Slug, $"/blog/{r.Slug}", r.Score)
+                            : null;
                     })
+                    .Where(r => r != null)
+                    .Cast<SearchResults>()
                     .ToList();
             }
         }

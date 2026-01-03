@@ -76,7 +76,8 @@
       "Bash(Select-String -Pattern \"error|failed|pass|No password\")",
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
-      "Bash(docker rmi:*)"
+      "Bash(docker rmi:*)",
+      "Bash(Select-String -Pattern \"error|Error|Build succeeded|Build FAILED\")"
     ],
     "deny": [],
     "ask": []

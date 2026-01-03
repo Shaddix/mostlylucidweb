@@ -155,20 +155,22 @@ public class DuckDbVectorStoreService : IVectorStoreService, IAsyncDisposable, I
         if (existingSegment != null)
         {
             // Create a new segment with updated SectionTitle (init-only property)
+            // IMPORTANT: Preserve the ContentHash to avoid constant reindexing
             var updatedSegment = new Segment(
-                slug, 
-                existingSegment.Text, 
-                existingSegment.Type, 
-                existingSegment.Index, 
-                existingSegment.StartChar, 
-                existingSegment.EndChar)
+                slug,
+                existingSegment.Text,
+                existingSegment.Type,
+                existingSegment.Index,
+                existingSegment.StartChar,
+                existingSegment.EndChar,
+                existingSegment.ContentHash)  // Preserve original hash
             {
                 SectionTitle = string.Join(",", languages),
                 HeadingLevel = existingSegment.HeadingLevel,
                 SalienceScore = existingSegment.SalienceScore,
                 Embedding = existingSegment.Embedding
             };
-            
+
             await _store.UpsertSegmentsAsync(_config.CollectionName, new[] { updatedSegment }, cancellationToken);
         }
     }
@@ -188,22 +190,24 @@ public class DuckDbVectorStoreService : IVectorStoreService, IAsyncDisposable, I
             if (!existingLanguages.Contains(language, StringComparer.OrdinalIgnoreCase))
             {
                 var newLanguages = existingLanguages.Append(language).ToArray();
-                
+
                 // Create a new segment with updated SectionTitle (init-only property)
+                // IMPORTANT: Preserve the ContentHash to avoid constant reindexing
                 var updatedSegment = new Segment(
-                    slug, 
-                    existingSegment.Text, 
-                    existingSegment.Type, 
-                    existingSegment.Index, 
-                    existingSegment.StartChar, 
-                    existingSegment.EndChar)
+                    slug,
+                    existingSegment.Text,
+                    existingSegment.Type,
+                    existingSegment.Index,
+                    existingSegment.StartChar,
+                    existingSegment.EndChar,
+                    existingSegment.ContentHash)  // Preserve original hash
                 {
                     SectionTitle = string.Join(",", newLanguages),
                     HeadingLevel = existingSegment.HeadingLevel,
                     SalienceScore = existingSegment.SalienceScore,
                     Embedding = existingSegment.Embedding
                 };
-                
+
                 await _store.UpsertSegmentsAsync(_config.CollectionName, new[] { updatedSegment }, cancellationToken);
             }
         }

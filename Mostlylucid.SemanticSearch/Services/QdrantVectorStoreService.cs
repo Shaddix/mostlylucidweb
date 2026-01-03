@@ -315,6 +315,7 @@ public class QdrantVectorStoreService : IVectorStoreService
 
         try
         {
+            // Note: 'id' parameter is actually the slug (see SemanticSearchService.DeletePostAsync)
             await _client.DeleteAsync(
                 collectionName: _config.CollectionName,
                 filter: new Filter
@@ -325,7 +326,7 @@ public class QdrantVectorStoreService : IVectorStoreService
                         {
                             Field = new FieldCondition
                             {
-                                Key = "id",
+                                Key = "slug",
                                 Match = new Match { Keyword = id }
                             }
                         }
@@ -334,11 +335,11 @@ public class QdrantVectorStoreService : IVectorStoreService
                 cancellationToken: cancellationToken
             );
 
-            _logger.LogDebug("Deleted document {Id}", id);
+            _logger.LogDebug("Deleted document {Slug}", id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete document {Id}", id);
+            _logger.LogError(ex, "Failed to delete document {Slug}", id);
         }
     }
 
@@ -349,6 +350,7 @@ public class QdrantVectorStoreService : IVectorStoreService
 
         try
         {
+            // Note: 'id' parameter is actually the slug (see SemanticSearchService.NeedsReindexingAsync)
             var scrollResults = await _client.ScrollAsync(
                 collectionName: _config.CollectionName,
                 filter: new Filter
@@ -359,7 +361,7 @@ public class QdrantVectorStoreService : IVectorStoreService
                         {
                             Field = new FieldCondition
                             {
-                                Key = "id",
+                                Key = "slug",
                                 Match = new Match { Keyword = id }
                             }
                         }
@@ -376,7 +378,7 @@ public class QdrantVectorStoreService : IVectorStoreService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get document hash for {Id}", id);
+            _logger.LogError(ex, "Failed to get document hash for {Slug}", id);
             return null;
         }
     }
