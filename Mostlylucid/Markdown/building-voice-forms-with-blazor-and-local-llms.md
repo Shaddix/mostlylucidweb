@@ -1,11 +1,9 @@
-# Building Deterministic Voice Forms with Blazor and Local LLMs
-## The Ten Commandments Way
+# Deterministic Voice Forms with Blazor and Local LLMs
+## A Ten Commandments–Compliant Architecture
 
 <datetime class="hidden">2026-01-05T14:30</datetime>
 
 <!--category-- ASP.NET, Blazor, AI, LLM, Whisper, Ollama -->
-
-## Introduction
 
 **In which we build a voice-to-form system that doesn't hand the keys to the AI kingdom**
 
@@ -15,26 +13,34 @@ Most voice forms fail the moment the model mishears a date or decides to "helpfu
 
 The moment you let an LLM "control" your form flow, you've introduced a non-deterministic black box into what should be a predictable user experience.
 
+This isn't hypothetical. [McDonald's ran AI-powered drive-thru ordering](/blog/tencommandments#mcdonalds-ibm-drive-thru-ai) across 100+ US locations. It routinely failed to understand basic modifications. They ended the partnership in 2024. The lesson: order-taking is a structured data problem-a finite menu, known modifiers, clear pricing. It's a form with speech recognition, not a reasoning task.
+
 But what if we could have our cake and eat it too? Voice input for convenience, LLM for translation, but *deterministic code* for everything that actually matters?
 
 That's what we're building today-a "Ten Commandments compliant" voice form system using Blazor Server, local Whisper for speech-to-text, and local Ollama for field extraction. No cloud dependencies. No unpredictable AI overlords. Just clean architecture.
 
 [TOC]
 
-## The Ten Commandments of Voice-Enabled Forms
+## Applying the Ten Commandments
 
-Before we write any code, let's establish the rules:
+This project follows [The Ten Commandments of LLM Use](/blog/tencommandments). If you haven't read that yet, the short version: LLMs are probability engines, not decision-makers. They translate and classify; they don't control.
 
-1. **Speech is lossy input** - It's never the source of truth, just one way to populate fields
-2. **LLM is a translator** - It extracts structured data from messy speech, nothing more
-3. **The state machine owns form flow** - Deterministic code decides what field is next
-4. **Confirmation is policy-driven** - Thresholds are declarative and enforced by code, not LLM judgment
-5. **The user can always override** - Voice is convenience, not compulsion
-6. **Everything runs locally** - No external API dependencies for core functionality
-7. **Every interaction is logged** - Full audit trail for debugging, compliance, and replay when things go wrong
-8. **Validation is type-based** - Standard validators, not LLM interpretation
-9. **The form schema is declarative** - JSON defines the form structure, code interprets it
-10. **Failure is graceful** - When speech recognition fails, the form still works
+For voice forms, the relevant commandments are:
+
+- **I. Don't let the LLM own state** - The state machine tracks form progress, not the model
+- **II. Don't let the LLM cause side-effects** - It recommends extractions; code commits them
+- **III. Separate causality from narration** - The LLM explains what it heard; validators decide if it's correct
+- **IV. Use LLMs where probability is acceptable** - Extracting "May 12th" from speech is fuzzy; field ordering is not
+
+### Voice Form Design Goals
+
+Beyond the commandments, this system follows specific principles:
+
+- **Speech is lossy input** - One way to populate fields, never the source of truth
+- **Confirmation is policy-driven** - Thresholds in config, not LLM judgment
+- **The user can always override** - Voice is convenience, not compulsion
+- **Everything runs locally** - Whisper and Ollama, no cloud dependencies
+- **Failure is graceful** - When voice fails, typing still works
 
 Here's how this looks in practice:
 
@@ -60,8 +66,6 @@ flowchart LR
     style G stroke:#ff9,stroke-width:2px
 ```
 
-Notice what the LLM does: it translates. That's it. The state machine decides flow. Validation decides correctness. The policy check-not the LLM-decides whether to auto-confirm or ask the user.
-
 ## What This Doesn't Do
 
 Let's be clear about scope:
@@ -72,6 +76,8 @@ Let's be clear about scope:
 - **No context across fields** - Each extraction is independent. The LLM doesn't remember your name when asking for email.
 
 These constraints are features, not bugs. They make the system predictable, testable, and trustworthy.
+
+If you want a conversational agent, build a conversational agent. If you want correct data, don't pretend conversation helps.
 
 ## Project Structure
 
@@ -97,7 +103,7 @@ Mostlylucid.VoiceForm/
     └── audio-recorder.js          # Web Audio API capture
 ```
 
-**Architectural note:** No service depends on another "downwards." The extractor doesn't know about the state machine. The validator doesn't know about the orchestrator. This makes each piece independently testable.
+**Dependency rule:** Services depend only on abstractions below them. Nothing upstream knows what happens downstream.
 
 ## Setting Up the Infrastructure
 
@@ -137,7 +143,7 @@ After spinning up, pull a model for Ollama:
 docker exec -it ollama ollama pull llama3.2:3b
 ```
 
-> **Why local?** Running everything locally isn't about cost-it's about testability, determinism, and data locality. Your CI pipeline can spin up the same containers. Your tests hit the same endpoints. No API rate limits, no network variability, no data leaving your machine.
+> **Why local?** Testability + determinism + data locality. CI spins up the same containers. Tests hit the same endpoints. No rate limits, no network variability.
 
 **Note:** The `base.en` Whisper model is fast and accurate for English. For production, consider `small.en` or `medium.en` for better accuracy.
 
@@ -226,7 +232,9 @@ Because the schema is declarative, **adding fields never requires touching the s
 
 ## The State Machine: Deterministic Form Flow
 
-Here's the core insight: **the state machine doesn't use AI**. It's pure C# logic that determines transitions based on explicit rules.
+The anti-pattern we're avoiding is "LLM-driven navigation": advancing form state based on model output. This state machine explicitly forbids that.
+
+**The state machine doesn't use AI.** It's pure C# logic that determines transitions based on explicit rules.
 
 ```csharp
 public class FormStateMachine : IFormStateMachine
@@ -317,9 +325,11 @@ public StateTransitionResult ProcessExtraction(
 
 Notice the confirmation logic: it's a simple policy check, not LLM reasoning. High confidence + no `alwaysConfirm` = auto-confirm. Low confidence or sensitive field = ask the user.
 
-## The LLM's Job: Translation Only
+## The LLM's Contract: Translation Only
 
-The Ollama extractor has one job: turn messy human speech into structured field values. Here's the contract:
+The Ollama extractor has one job: turn messy human speech into structured field values.
+
+If you can't write this interface without embarrassment, the LLM is doing too much:
 
 ```csharp
 public interface IFieldExtractor
@@ -467,13 +477,13 @@ window.voiceFormAudio = (function () {
 })();
 ```
 
-**Why convert to WAV?** Whisper accepts various formats, but 16kHz mono WAV is optimal-it's exactly what the model was trained on. No transcoding overhead on the server, consistent results, and the conversion is deterministic (same audio in = same bytes out).
+> **Why WAV?** Whisper is trained on 16kHz mono WAV. Same audio in → same bytes out → same transcript.
 
-The `convertToWav` function resamples to 16kHz-I'll spare you the WAV header bit-twiddling, but it's in the repo.
+The `convertToWav` function handles resampling-I'll spare you the WAV header bit-twiddling, but it's in the repo.
 
 ## The Blazor UI: Two-Column Layout
 
-The UI shows the current field prominently on the left, with all fields visible in a sidebar on the right. **The sidebar matters for trust**: users can see where they are in the form, what they've already answered, and what's coming next. No surprises.
+The UI shows the current field prominently on the left, with all fields visible in a sidebar on the right. **The sidebar is not cosmetic-it's a trust boundary.** Users can see progress, state, and intent at all times.
 
 ```mermaid
 graph LR
@@ -772,6 +782,8 @@ public async Task VoiceFormPage_Sidebar_ShouldShowAllFields()
 
 The full test suite runs 98 tests-76 unit tests for the business logic, 22 browser integration tests for the UI.
 
+The important thing is not the tests themselves-it's that the architecture makes them possible.
+
 ## Why This Architecture Matters
 
 Let's revisit why we built it this way:
@@ -806,11 +818,13 @@ graph TD
     style F2 stroke:#6f6,stroke-width:2px
 ```
 
-In the traditional approach, **everything is the LLM**. Every decision is non-deterministic. Every test is probabilistic. Every bug is "it just sometimes does that"-unreproducible and unexplainable.
+In the traditional approach, **everything is the LLM**. Every decision is non-deterministic. Every test is probabilistic.
 
-In our approach, the LLM does **one thing**: translate speech to structured values. Everything else is deterministic C# that you can debug, test, and reason about. When something goes wrong, you can trace exactly why.
+> Every bug is "it just sometimes does that"-unreproducible and unexplainable.
 
-This is Commandments 2, 3, and 4 in action: LLM translates, state machine controls flow, policy decides confirmation.
+In our approach, the LLM does **one thing**: translate speech to structured values. Everything else is deterministic C# you can debug, test, and trace.
+
+This is Commandments II, III, and IV in action: LLM translates (no side-effects), state machine controls flow (causality in code), policy decides confirmation (probability where acceptable).
 
 ## Running It Yourself
 
@@ -842,6 +856,8 @@ Voice interfaces don't have to be black boxes. By treating speech as just anothe
 
 The "Ten Commandments" aren't about being anti-AI. They're about **putting AI in its proper place**: a powerful tool that translates between human messiness and computer precision, not an oracle that makes decisions for us.
 
+AI earns its place when it reduces ambiguity-not when it replaces responsibility.
+
 Now go build something where you-not the model-decide what happens next.
 
 ## Coming in Part 2: Voice Feedback (IVR)
@@ -855,12 +871,23 @@ Right now, the user reads prompts and speaks responses. But what if the system c
 
 The architecture is already prepared: the state machine emits events, the orchestrator coordinates services. Adding voice output is just another service that listens to those events.
 
-*Coming soon.*
+## Coming in Part 3: Policy Enforcement
+
+The current validation is type-based: emails look like emails, dates parse as dates. But what about business rules? "Date of birth must be at least 18 years ago." "Phone number must match the region selected." "Notes field cannot contain profanity."
+
+Part 3 will add:
+
+- **Rule-based validation** - Declarative policies in the schema
+- **Cross-field constraints** - "If country is US, phone must be 10 digits"
+- **LLM-assisted policy checking** - Using the model to flag potential issues, with deterministic code making the final call
+- **Audit trails** - Which policy triggered, why it failed, what the user did next
+
+Same principle: the LLM advises, the code decides.
 
 ## Further Reading
 
+- [The Ten Commandments of LLM Use](/blog/tencommandments) - The philosophy behind this architecture
 - [Using Docker Compose for Development Dependencies](/blog/dockercomposedevdeps) - Setting up local services
 - [HTMX with ASP.NET Core](/blog/htmxwithaspnetcore) - Server-driven UI patterns
-- [The DiSE Cooker: Untrustworthy Gods](/blog/blog-article-cooking-dise-part3-untrustworthy-gods) - Why LLMs need verification
 
 The full source code is in the `Mostlylucid.VoiceForm` project in the repo.

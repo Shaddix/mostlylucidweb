@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Mostlylucid.RagDocuments.Entities;
 
 namespace Mostlylucid.RagDocuments.Data;
@@ -17,13 +18,21 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
     {
         base.OnModelCreating(modelBuilder);
 
+        // Apply DateTimeOffset converters for SQLite compatibility
+        if (Database.IsSqlite())
+        {
+            ApplySqliteDateTimeOffsetConverters(modelBuilder);
+        }
+
+        var isSqlite = Database.IsSqlite();
+
         // Collection
         modelBuilder.Entity<CollectionEntity>(entity =>
         {
             entity.ToTable("collections");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.Settings).HasColumnType("jsonb");
+            if (!isSqlite) entity.Property(e => e.Settings).HasColumnType("jsonb");
             entity.HasIndex(e => e.Name);
         });
 
@@ -38,7 +47,7 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
             entity.Property(e => e.FilePath).HasMaxLength(1000);
             entity.Property(e => e.MimeType).HasMaxLength(100);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(50);
-            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            if (!isSqlite) entity.Property(e => e.Metadata).HasColumnType("jsonb");
 
             entity.Property(e => e.SourceUrl).HasMaxLength(2000);
 
@@ -60,7 +69,7 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
             entity.HasKey(e => e.Id);
             entity.Property(e => e.CanonicalName).HasMaxLength(500).IsRequired();
             entity.Property(e => e.EntityType).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Aliases).HasColumnType("text[]");
+            if (!isSqlite) entity.Property(e => e.Aliases).HasColumnType("text[]");
 
             entity.HasIndex(e => e.EntityType);
             entity.HasIndex(e => new { e.CanonicalName, e.EntityType }).IsUnique();
@@ -71,7 +80,7 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
         {
             entity.ToTable("document_entities");
             entity.HasKey(e => new { e.DocumentId, e.EntityId });
-            entity.Property(e => e.SegmentIds).HasColumnType("text[]");
+            if (!isSqlite) entity.Property(e => e.SegmentIds).HasColumnType("text[]");
 
             entity.HasOne(e => e.Document)
                 .WithMany(d => d.EntityLinks)
@@ -90,7 +99,7 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
             entity.ToTable("entity_relationships");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.RelationshipType).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.SourceDocuments).HasColumnType("uuid[]");
+            if (!isSqlite) entity.Property(e => e.SourceDocuments).HasColumnType("uuid[]");
 
             entity.HasIndex(e => e.SourceEntityId);
             entity.HasIndex(e => e.TargetEntityId);
@@ -127,12 +136,40 @@ public class RagDocumentsDbContext(DbContextOptions<RagDocumentsDbContext> optio
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Role).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Content).IsRequired();
-            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            if (!isSqlite) entity.Property(e => e.Metadata).HasColumnType("jsonb");
 
             entity.HasOne(e => e.Conversation)
                 .WithMany(c => c.Messages)
                 .HasForeignKey(e => e.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+    }
+
+    private static void ApplySqliteDateTimeOffsetConverters(ModelBuilder modelBuilder)
+    {
+        // SQLite doesn't support DateTimeOffset in ORDER BY clauses
+        // Convert DateTimeOffset to/from ticks (long) for sorting compatibility
+        var dateTimeOffsetConverter = new ValueConverter<DateTimeOffset, long>(
+            v => v.ToUnixTimeMilliseconds(),
+            v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+
+        var nullableDateTimeOffsetConverter = new ValueConverter<DateTimeOffset?, long?>(
+            v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : null,
+            v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTimeOffset))
+                {
+                    property.SetValueConverter(dateTimeOffsetConverter);
+                }
+                else if (property.ClrType == typeof(DateTimeOffset?))
+                {
+                    property.SetValueConverter(nullableDateTimeOffsetConverter);
+                }
+            }
+        }
     }
 }

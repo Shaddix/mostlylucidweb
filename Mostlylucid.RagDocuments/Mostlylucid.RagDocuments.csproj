@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -11,7 +11,8 @@
         <AssemblyName>RagDocuments</AssemblyName>
         <Product>RAG Documents</Product>
         <Description>Multi-document RAG web application with GraphRAG support</Description>
-    </PropertyGroup>
+      <UserSecretsId>84efb9dc-f8d5-4359-b732-b9c3236a98d1</UserSecretsId>
+  </PropertyGroup>
 
     <!-- Single EXE publishing configuration - only applies during publish -->
     <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">

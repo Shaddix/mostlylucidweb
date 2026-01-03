@@ -59,7 +59,6 @@
       "Bash(dotnet user-secrets:*)",
       "Bash(curl.exe:*)",
       "Bash(dotnet:*)",
-      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net9.0\\\\data\\\\semantic-search.duckdb*\")",
       "Bash(git status:*)",
       "Bash(docker build:*)",
       "Bash(docker run:*)",
@@ -69,7 +68,15 @@
       "Bash(git -C \"C:/Blog/mostlylucidweb\" diff Mostlylucid/Program.cs)",
       "Bash(git -C \"C:/Blog/mostlylucidweb\" diff HEAD~3 Mostlylucid/Program.cs)",
       "Bash(git -C \"C:/Blog/mostlylucidweb\" log --oneline -5)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(docker compose:*)",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(npm install)",
+      "Bash(npm run build:css:*)",
+      "Bash(Select-String -Pattern \"error|failed|pass|No password\")",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker rmi:*)"
     ],
     "deny": [],
     "ask": []

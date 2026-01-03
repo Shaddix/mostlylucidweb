@@ -1,3 +1,13 @@
+# Build Tailwind CSS
+FROM node:20-slim AS frontend
+WORKDIR /src
+COPY Mostlylucid.RagDocuments/package*.json ./
+RUN npm ci
+COPY Mostlylucid.RagDocuments/tailwind.config.js ./
+COPY Mostlylucid.RagDocuments/src/ ./src/
+COPY Mostlylucid.RagDocuments/Views/ ./Views/
+RUN npm run build:css
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
@@ -12,6 +22,10 @@ RUN dotnet restore Mostlylucid.RagDocuments/Mostlylucid.RagDocuments.csproj
 COPY Mostlylucid.DocSummarizer.Core/ Mostlylucid.DocSummarizer.Core/
 COPY Mostlylucid.GraphRag/ Mostlylucid.GraphRag/
 COPY Mostlylucid.RagDocuments/ Mostlylucid.RagDocuments/
+
+# Copy built CSS from frontend stage
+COPY --from=frontend /src/wwwroot/css/dist/ Mostlylucid.RagDocuments/wwwroot/css/dist/
+
 WORKDIR /src/Mostlylucid.RagDocuments
 RUN dotnet publish -c Release -o /app/publish --no-restore
 

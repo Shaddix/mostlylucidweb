@@ -44,16 +44,17 @@ var ragConfig = builder.Configuration
     .GetSection(RagDocumentsConfig.SectionName)
     .Get<RagDocumentsConfig>() ?? new();
 
-// Database - use SQLite in standalone mode if no connection string
+// Database - use SQLite in standalone mode, PostgreSQL otherwise
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString) && standaloneMode)
+if (standaloneMode)
 {
     // Use SQLite for standalone mode (portable)
     var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
     Directory.CreateDirectory(dataDir);
-    connectionString = $"Data Source={Path.Combine(dataDir, "ragdocs.db")}";
+    var sqliteConnectionString = $"Data Source={Path.Combine(dataDir, "ragdocs.db")}";
     builder.Services.AddDbContext<RagDocumentsDbContext>(options =>
-        options.UseSqlite(connectionString));
+        options.UseSqlite(sqliteConnectionString));
+    connectionString = sqliteConnectionString; // Update for later checks
 }
 else
 {

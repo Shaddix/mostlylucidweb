@@ -13,10 +13,56 @@ namespace Mostlylucid.RagDocuments.Tests.Integration;
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     /// <summary>
-    /// Connection string for existing dev PostgreSQL
+    /// Connection string for existing dev PostgreSQL.
+    /// Password is read from POSTGRES_PASSWORD environment variable or .env file.
     /// </summary>
-    public string PostgresConnectionString { get; set; } =
-        "Host=localhost;Port=5432;Database=ragdocs_test;Username=postgres;Password=postgres";
+    public string PostgresConnectionString { get; set; } = GetConnectionString();
+
+    private static string GetConnectionString()
+    {
+        // Try environment variable first
+        var password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+
+        // Fall back to .env file if not set
+        if (string.IsNullOrEmpty(password))
+        {
+            var envPath = FindEnvFile();
+            if (envPath != null && File.Exists(envPath))
+            {
+                var lines = File.ReadAllLines(envPath);
+                foreach (var line in lines)
+                {
+                    if (line.StartsWith("POSTGRES_PASSWORD="))
+                    {
+                        password = line.Substring("POSTGRES_PASSWORD=".Length).Trim();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new InvalidOperationException(
+                "POSTGRES_PASSWORD not found. Set the environment variable or ensure .env file exists in solution root.");
+        }
+
+        return $"Host=localhost;Port=5432;Database=ragdocs_test;Username=postgres;Password={password}";
+    }
+
+    private static string? FindEnvFile()
+    {
+        // Search upwards from test bin directory to find .env in solution root
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            var envPath = Path.Combine(dir.FullName, ".env");
+            if (File.Exists(envPath))
+                return envPath;
+            dir = dir.Parent;
+        }
+        return null;
+    }
 
     /// <summary>
     /// Ollama base URL
