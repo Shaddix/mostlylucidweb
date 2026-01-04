@@ -86,7 +86,15 @@
                             hx-include="#languageSelect@(!isSearchPage ? ", #categorySelect" : ", #searchQuery")"
                             hx-vals='{"page": "1"}'
                             class="select select-bordered select-sm bg-white text-gray-800 border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 transition-colors cursor-pointer">
-                        <option value="date_desc">Newest</option>
+                        @if (isSearchPage)
+                        {
+                            <option value="relevance" selected>Best Match</option>
+                            <option value="date_desc">Newest</option>
+                        }
+                        else
+                        {
+                            <option value="date_desc" selected>Newest</option>
+                        }
                         <option value="date_asc">Oldest</option>
                         <option value="title_asc">A–Z</option>
                         <option value="title_desc">Z–A</option>

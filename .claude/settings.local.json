@@ -77,7 +77,13 @@
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
       "Bash(docker rmi:*)",
-      "Bash(Select-String -Pattern \"error|Error|Build succeeded|Build FAILED\")"
+      "Bash(Select-String -Pattern \"error|Error|Build succeeded|Build FAILED\")",
+      "Bash(del \"E:\\\\source\\\\lucidrag\\\\src\\\\LucidRAG.Cli\\\\Mostlylucid.RagDocuments.Cli.csproj\")",
+      "Bash(robocopy:*)",
+      "Bash(Select-Object -First 30)",
+      "Bash(git log:*)",
+      "Bash(Select-String -Pattern \"error|Build succeeded|Build FAILED\")",
+      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net10.0\\\\data\\\\semantic-search.duckdb\")"
     ],
     "deny": [],
     "ask": []

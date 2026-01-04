@@ -50,6 +50,8 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
     private IQueryable<BlogPostEntity> QueryForSpaces(string processedQuery)
     {
         var now = DateTimeOffset.UtcNow;
+        // Lowercase the query for PostgreSQL full-text search (case-insensitive)
+        var lowerQuery = processedQuery.ToLower();
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -61,20 +63,22 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
                 // Search using the precomputed SearchVector
                 && (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english",
-                     processedQuery)) // Use precomputed SearchVector for title and content
+                     lowerQuery)) // Use precomputed SearchVector for title and content
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.WebSearchToTsQuery("english", processedQuery)))) // Search in categories
+                         .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery)))) // Search in categories
                 && x.LanguageEntity.Name == "en") // Filter by language
             .OrderByDescending(x =>
                 // Rank based on the precomputed SearchVector
                 x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english",
-                    processedQuery)));
+                    lowerQuery)));
     }
 
     private IQueryable<BlogPostEntity> QueryForWildCard(string query)
     {
         var now = DateTimeOffset.UtcNow;
+        // Lowercase the query for PostgreSQL full-text search (case-insensitive)
+        var lowerQuery = query.ToLower();
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -86,15 +90,15 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
                 // Search using the precomputed SearchVector
                 && (x.SearchVector.Matches(EF.Functions.ToTsQuery("english",
-                     query + ":*")) // Use precomputed SearchVector for title and content
+                     lowerQuery + ":*")) // Use precomputed SearchVector for title and content
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.ToTsQuery("english", query + ":*")))) // Search in categories
+                         .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))) // Search in categories
                 && x.LanguageEntity.Name == "en") // Filter by language
             .OrderByDescending(x =>
                 // Rank based on the precomputed SearchVector
                 x.SearchVector.Rank(EF.Functions.ToTsQuery("english",
-                    query + ":*"))); // Use precomputed SearchVector for ranking
+                    lowerQuery + ":*"))); // Use precomputed SearchVector for ranking
     }
     
     public async Task<List<(string Title, string Slug)>> GetSearchResultForQuery(string query)
@@ -274,13 +278,22 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                 // Only use semantic results if we actually found matching posts
                 if (posts.Count > 0)
                 {
-                    // Apply ordering
+                    // Deduplicate semantic results by slug (keep highest score)
+                    var uniqueSemanticResults = semanticResults
+                        .GroupBy(r => r.Slug)
+                        .Select(g => g.OrderByDescending(r => r.Score).First())
+                        .ToDictionary(r => r.Slug, r => r.Score);
+
+                    // Apply ordering - relevance preserves semantic score order
                     IEnumerable<BlogPostEntity> orderedPosts = order switch
                     {
                         "date_asc" => posts.OrderBy(p => p.PublishedDate),
+                        "date_desc" => posts.OrderByDescending(p => p.PublishedDate),
                         "title_asc" => posts.OrderBy(p => p.Title),
                         "title_desc" => posts.OrderByDescending(p => p.Title),
-                        _ => posts.OrderByDescending(p => p.PublishedDate) // date_desc default
+                        // relevance (default): order by semantic score
+                        _ => posts.OrderByDescending(p =>
+                            uniqueSemanticResults.TryGetValue(p.Slug, out var score) ? score : 0f)
                     };
 
                     var pagedPosts = orderedPosts
@@ -329,6 +342,8 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         string order = "date_desc")
     {
         var now = DateTimeOffset.UtcNow;
+        // Lowercase the query for PostgreSQL full-text search (case-insensitive)
+        var lowerQuery = query.ToLower();
         var baseQuery = context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -349,28 +364,50 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         if (query.Contains(" "))
         {
             searchQuery = baseQuery.Where(x =>
-                x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", query))
+                x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
                 || x.Categories.Any(c =>
                     EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.WebSearchToTsQuery("english", query))));
+                        .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))));
         }
         else
         {
             searchQuery = baseQuery.Where(x =>
-                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", query + ":*"))
+                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))
                 || x.Categories.Any(c =>
                     EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.ToTsQuery("english", query + ":*"))));
+                        .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))));
         }
 
-        // Apply ordering
-        IOrderedQueryable<BlogPostEntity> orderedQuery = order switch
+        // Apply ordering - relevance uses ts_rank, others use column values
+        IOrderedQueryable<BlogPostEntity> orderedQuery;
+        if (order == "relevance" || order == "relevance_desc")
         {
-            "date_asc" => searchQuery.OrderBy(x => x.PublishedDate),
-            "title_asc" => searchQuery.OrderBy(x => x.Title),
-            "title_desc" => searchQuery.OrderByDescending(x => x.Title),
-            _ => searchQuery.OrderByDescending(x => x.PublishedDate) // date_desc default
-        };
+            // Order by full-text search rank (how well the query matches)
+            if (query.Contains(" "))
+            {
+                orderedQuery = searchQuery.OrderByDescending(x =>
+                    x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", lowerQuery)));
+            }
+            else
+            {
+                orderedQuery = searchQuery.OrderByDescending(x =>
+                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", lowerQuery + ":*")));
+            }
+        }
+        else
+        {
+            orderedQuery = order switch
+            {
+                "date_asc" => searchQuery.OrderBy(x => x.PublishedDate),
+                "date_desc" => searchQuery.OrderByDescending(x => x.PublishedDate),
+                "title_asc" => searchQuery.OrderBy(x => x.Title),
+                "title_desc" => searchQuery.OrderByDescending(x => x.Title),
+                _ => searchQuery.OrderByDescending(x =>
+                    query.Contains(" ")
+                        ? x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
+                        : x.SearchVector.Rank(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))
+            };
+        }
 
         var totalPosts = await searchQuery.CountAsync();
         var results = await orderedQuery

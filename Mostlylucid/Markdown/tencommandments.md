@@ -303,6 +303,16 @@ The [bot detection engine](/blog/botdetection-introduction) demonstrates *Comman
 
 This is the pattern: use the LLM's strength (pattern recognition, hypothesis generation) while keeping the boring machinery (state, transitions, side effects) in deterministic code.
 
+### Constrained Fuzziness: The Control System Pattern
+
+The [Constrained Fuzziness Pattern](/blog/constrained-fuzziness-pattern) formalises the relationship between probabilistic and deterministic components:
+
+- **Substrate** (facts) feeds the **Proposer** (LLM), which feeds the **Constrainer** (validate, rewrite, budget)
+- The LLM never owns state or side effects
+- Every output is bounded by hard constraints
+
+[Part 2: The Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) extends this to multi-agent systems where multiple LLMs communicate through typed signals, not natural language. The substrate becomes shared. The constrainer becomes a coordinator. The commandments still apply.
+
 ### Zero-PII Customer Intelligence
 
 [Semantic understanding without storing identities](/blog/zero-pii-customer-intelligence-part1) shows how to use embeddings and LLMs for customer insight while keeping the dangerous parts (PII, preferences, behaviour) in structured, controllable systems.

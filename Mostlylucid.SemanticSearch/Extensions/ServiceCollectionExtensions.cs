@@ -13,7 +13,7 @@ namespace Mostlylucid.SemanticSearch.Extensions;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Add semantic search services to the DI container
+    /// Add semantic search services to the DI container (using Qdrant vector database)
     /// </summary>
     public static void AddSemanticSearch(
         this IServiceCollection services,
@@ -23,24 +23,9 @@ public static class ServiceCollectionExtensions
         services.ConfigurePOCO<SemanticSearchConfig>(
             configuration.GetSection(SemanticSearchConfig.Section));
 
-        // Get config to determine backend
-        var config = configuration.GetSection(SemanticSearchConfig.Section).Get<SemanticSearchConfig>() 
-            ?? new SemanticSearchConfig();
-
-        // Register services based on configured backend
-        if (config.Backend == VectorStoreBackend.DuckDB)
-        {
-            // DuckDB backend - uses DocSummarizer.Core, zero external dependencies
-            services.AddSingleton<IEmbeddingService, DocSummarizerEmbeddingService>();
-            services.AddSingleton<IVectorStoreService, DuckDbVectorStoreService>();
-        }
-        else
-        {
-            // Qdrant backend - requires external Qdrant server
-            services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
-            services.AddSingleton<IVectorStoreService, QdrantVectorStoreService>();
-        }
-
+        // Register Qdrant-based services
+        services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
+        services.AddSingleton<IVectorStoreService, QdrantVectorStoreService>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
     }
 }

@@ -34,7 +34,7 @@ public class SearchController(
         DateRangeOption dateRange = DateRangeOption.AllTime,
         DateTime? startDate = null,
         DateTime? endDate = null,
-        string order = "date_desc",
+        string order = "relevance",
         [FromHeader] bool pagerequest = false)
     {
         try

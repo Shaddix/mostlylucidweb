@@ -295,7 +295,7 @@ try
         Console.WriteLine("[SEMANTIC] Starting semantic search initialization...");
         using var scope = app.Services.CreateScope();
         var semanticConfig = scope.ServiceProvider.GetRequiredService<SemanticSearchConfig>();
-        Console.WriteLine($"[SEMANTIC] Config loaded - Enabled: {semanticConfig.Enabled}, Backend: {semanticConfig.Backend}");
+        Console.WriteLine($"[SEMANTIC] Config loaded - Enabled: {semanticConfig.Enabled}, Qdrant URL: {semanticConfig.QdrantUrl}");
         if (semanticConfig.Enabled)
         {
             Console.WriteLine("[SEMANTIC] Resolving ISemanticSearchService...");

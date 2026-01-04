@@ -1072,6 +1072,51 @@ For a 500-page document (2,000+ segments), embedding everything would work but i
 
 The multi-anchor sampling gives you the best of both: broad topic coverage with tractable compute.
 
+### Context Dragging: Why Retrieval Isn't Just Search
+
+What I've described above isn't just "retrieval" - it's a specific pattern I call **Constrained Fuzzy Context Dragging** ([CFCD](/blog/constrained-fuzzy-context-dragging)). The insight:
+
+> Most summarizers keep adding context. DocSummarizer *drags forward* only what survives deterministic selection, then lets the model write fluently inside those bounds.
+
+Here's how the DocSummarizer pipeline maps to CFCD:
+
+| CFCD Concept | DocSummarizer Implementation |
+|--------------|------------------------------|
+| **Salience detection** (fuzzy) | Embeddings, centroid similarity, TF-IDF centrality |
+| **Deterministic promotion** | MMR, BM25, RRF fusion, top-K selection |
+| **Anchor ledger** | The retrieved segment set with citation IDs |
+| **Constrained generation** | Synthesis prompt bounded by retrieved evidence |
+
+**Why this matters**: The model doesn't decide what's relevant - the retrieval pipeline does. The model only generates fluently within the bounds we've set. This is why small local models work: the anchors do the heavy lifting.
+
+The "anchor ledger" in practice looks like this (conceptually):
+
+```json
+{
+  "coverage": "3.2% semantic sample",
+  "anchors": [
+    { "id": "chunk-12", "text": "Reset requires holding button 10s", "salience": 0.92 },
+    { "id": "chunk-45", "text": "Factory reset clears all settings", "salience": 0.88 }
+  ],
+  "constraints": {
+    "terms": { "factory reset": "restore factory settings" },
+    "hedging": "sampled 3% - avoid definitive conclusions"
+  }
+}
+```
+
+Then in the synthesis prompt:
+- "Every claim must cite an included chunk ID"
+- "If coverage < 5%, hedge language"
+- "Use these terms consistently"
+
+This is why:
+- **Longer context windows are a red herring** - the problem isn't fitting more text, it's deciding what deserves to survive
+- **Recursive summarisation fails** - it treats intermediate output as text, not constrained structure
+- **The LLM can't "forget" promoted constraints** - they're structure, not prose it can drift from
+
+CFCD is the same philosophical split as [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) and [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) - probability proposes, determinism persists - applied along the time/memory axis.
+
 ### Quantization
 
 ONNX models can be quantized (reduced precision) for smaller size and faster inference. The trade-off is minimal quality loss:
