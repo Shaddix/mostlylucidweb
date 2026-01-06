@@ -297,3 +297,5 @@ The LLM never invents facts. It reacts to them.
 
 * [Analysing large CSV files with local LLMs](/blog/analysing-large-csv-files-with-local-llms)
 * [DocSummarizer](/blog/building-a-document-summarizer-with-rag)
+* [Constrained Fuzziness Pattern](/blog/constrained-fuzziness-pattern) - The underlying philosophy: determinism computes, probability proposes
+* [Image Summarizer](/blog/constrained-fuzzy-image-intelligence) - The same pattern applied to image understanding

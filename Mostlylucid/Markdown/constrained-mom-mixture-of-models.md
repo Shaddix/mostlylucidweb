@@ -858,8 +858,11 @@ That is the Constrained Fuzzy MoM.
 | 1 | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) | Single component |
 | 2 | Constrained Fuzzy MoM (this article) | Multiple components |
 | 3 | [Constrained Fuzzy Context Dragging](/blog/constrained-fuzzy-context-dragging) | Time / memory |
+| 4 | [Image Summarizer](/blog/constrained-fuzzy-image-intelligence) | Practical implementation |
 
 **Part 1** constrains a single probabilistic component with deterministic boundaries.
 
 **Part 3** extends this architecture along the time axis. Models may notice, but engineering decides what persists. The constraint becomes memory itself.
+
+**Part 4** shows all three patterns implemented in [ImageSummarizer](https://github.com/scottgal/lucidrag)—a wave-based image analysis pipeline where multiple waves publish signals to a shared substrate and deterministic selection constrains the output.
 

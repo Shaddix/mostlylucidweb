@@ -768,11 +768,12 @@ CFCD is how you do that without lying to yourself.
 |------|---------|------|
 | 1 | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) | Single component |
 | 2 | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) | Multiple components |
-| 3 | Constrained Fuzzy Context Dragging | Time / memory |
+| 3 | Constrained Fuzzy Context Dragging (this article) | Time / memory |
+| 4 | [Image Summarizer](/blog/constrained-fuzzy-image-intelligence) | Practical implementation |
 
 All three patterns share the same invariant: **probabilistic components propose; deterministic systems persist**.
 
-The [Ten Commandments of LLM Use](/blog/tencommandments) codify these rules. The [DiSE architecture](/blog/dise-architecture-overview) implements them for code evolution. [Bot Detection](/blog/botdetection-introduction) implements them for request classification. [DocSummarizer](/blog/docsummarizer-advanced-concepts) implements them for document retrieval.
+The [Ten Commandments of LLM Use](/blog/tencommandments) codify these rules. The [DiSE architecture](/blog/dise-architecture-overview) implements them for code evolution. [Bot Detection](/blog/botdetection-introduction) implements them for request classification. [DocSummarizer](/blog/docsummarizer-advanced-concepts) implements them for document retrieval. [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) implements them for image analysis.
 
 Different domains. Same pattern. Same rule.
 
@@ -780,4 +781,4 @@ Different domains. Same pattern. Same rule.
 
 ## Next: Practical Implementation
 
-Part 4 will be a runnable reference implementation: a CLI + sample documents demonstrating a translation pipeline with a real term ledger, vote decay, and Ephemeral integration. Code you can clone and run, not just read.
+**Part 4** is now available: [Image Summarizer : A Constrained Fuzzy Image RAG Engine](/blog/constrained-fuzzy-image-intelligence). It implements all three patterns in a wave-based image analysis pipeline—ColorWave computes facts, VisionLlmWave proposes, ImageLedger accumulates salient features, and deterministic selection constrains the output. Clone it from [github.com/scottgal/lucidrag](https://github.com/scottgal/lucidrag).

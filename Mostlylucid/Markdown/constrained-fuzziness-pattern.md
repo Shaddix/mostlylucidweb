@@ -635,7 +635,10 @@ Hard boundaries beat soft suggestions. Every time.
 | 1 | Constrained Fuzziness (this article) | Single component |
 | 2 | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) | Multiple components |
 | 3 | [Constrained Fuzzy Context Dragging](/blog/constrained-fuzzy-context-dragging) | Time / memory |
+| 4 | [Image Summarizer](/blog/constrained-fuzzy-image-intelligence) | Practical implementation |
 
 **Part 2** extends this architecture to multi-agent systems. Models do not talk to each other. They publish typed signals to a shared substrate. The constraint becomes the communication itself.
 
 **Part 3** extends it along the time axis. Models may notice, but engineering decides what persists. The constraint becomes memory itself.
+
+**Part 4** shows all three patterns implemented in [ImageSummarizer](https://github.com/scottgal/lucidrag)—a wave-based image analysis pipeline where ColorWave computes facts, VisionLlmWave proposes, and deterministic selection constrains the output.

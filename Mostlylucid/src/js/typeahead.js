@@ -3,16 +3,59 @@
         query: '',
         results: [],
         highlightedIndex: -1, // Tracks the currently highlighted index
+        popularPosts: null, // Cached popular posts (null = not loaded yet)
+        showingPopular: false, // Whether we're showing popular posts vs search results
+
+        // Load popular posts on first focus (cached after first load)
+        async loadPopularPosts() {
+            if (this.popularPosts !== null) return; // Already loaded
+
+            try {
+                const response = await fetch('/api/popular', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    this.popularPosts = await response.json();
+                } else {
+                    this.popularPosts = []; // Mark as loaded but empty
+                }
+            } catch (e) {
+                console.log("Error fetching popular posts");
+                this.popularPosts = []; // Mark as loaded but empty
+            }
+        },
+
+        // Show popular posts when input is focused and empty
+        async onFocus() {
+            await this.loadPopularPosts();
+            if (this.query.length < 2 && this.popularPosts && this.popularPosts.length > 0) {
+                this.results = this.popularPosts;
+                this.showingPopular = true;
+                this.highlightedIndex = -1;
+                this.$nextTick(() => {
+                    htmx.process(document.getElementById('searchresults'));
+                });
+            }
+        },
 
         search() {
             if (this.query.length < 2) {
-                this.results = [];
+                // Show popular posts if available, otherwise clear
+                if (this.popularPosts && this.popularPosts.length > 0) {
+                    this.results = this.popularPosts;
+                    this.showingPopular = true;
+                } else {
+                    this.results = [];
+                    this.showingPopular = false;
+                }
                 this.highlightedIndex = -1;
                 return;
             }
-            
-            fetch(`/api/search/${encodeURIComponent(this.query)}`, { // Fixed the backtick and closing bracket
-                method: 'GET', // or 'POST' depending on your needs
+
+            this.showingPopular = false;
+            fetch(`/api/search/${encodeURIComponent(this.query)}`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }

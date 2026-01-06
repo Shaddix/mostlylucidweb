@@ -1115,7 +1115,7 @@ This is why:
 - **Recursive summarisation fails** - it treats intermediate output as text, not constrained structure
 - **The LLM can't "forget" promoted constraints** - they're structure, not prose it can drift from
 
-CFCD is the same philosophical split as [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) and [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) - probability proposes, determinism persists - applied along the time/memory axis.
+CFCD is the same philosophical split as [Constrained Fuzziness](/blog/constrained-fuzziness-pattern), [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models), and [Image Summarizer](/blog/constrained-fuzzy-image-intelligence) - probability proposes, determinism persists - applied along the time/memory axis.
 
 ### Quantization
 

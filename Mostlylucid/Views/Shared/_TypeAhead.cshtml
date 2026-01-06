@@ -1,11 +1,12 @@
 @* Typeahead search component - expands to fill available space *@
-<div x-data="window.mostlylucid.typeahead()" class="relative w-full" id="searchelement" x-on:click.outside="results = []">
+<div x-data="window.mostlylucid.typeahead()" class="relative w-full" id="searchelement" x-on:click.outside="results = []; showingPopular = false">
     <form x-on:submit.prevent="goToSearch" class="flex items-center gap-1 w-full">
         <label class="input input-sm bg-neutral-500 bg-opacity-10 input-bordered flex items-center gap-2 flex-1">
             <input
                 type="text"
                 x-model="query"
                 x-on:input.debounce.200ms="search"
+                x-on:focus="onFocus"
                 x-on:keydown.down.prevent="moveDown"
                 x-on:keydown.up.prevent="moveUp"
                 x-on:keydown.enter.prevent="query.length > 0 && results.length === 0 ? goToSearch() : selectHighlighted()"
@@ -18,11 +19,15 @@
     </form>
     <!-- Dropdown - matches width of search box -->
     <ul :class="{
-        'hidden': !(results && results.length > 0 && query.length > 2),
-        'block': results && results.length > 0 && query.length > 2
+        'hidden': !(results && results.length > 0 && (query.length > 1 || showingPopular)),
+        'block': results && results.length > 0 && (query.length > 1 || showingPopular)
     }"
         id="searchresults"
         class="absolute z-100 my-2 left-0 right-0 w-full min-w-[280px] bg-white dark:bg-custom-dark-bg border border-1 text-black dark:text-white border-neutral-600 rounded-lg shadow-lg overflow-hidden">
+        <!-- Header for popular posts -->
+        <li x-show="showingPopular" class="text-xs text-neutral-500 dark:text-neutral-400 px-2 pt-2 pb-1 font-semibold flex items-center gap-1">
+            <i class="bx bx-trending-up"></i> Popular
+        </li>
         <template x-for="(result, index) in results" :key="result.slug">
             <li x-on:click.prevent="selectResult(index)" hx-boost="true" hx-swap="show:window:top" hx-target="#contentcontainer" :class="{
                 'dark:bg-blue-dark bg-blue-light': index === highlightedIndex,

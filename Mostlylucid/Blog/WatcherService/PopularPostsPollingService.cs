@@ -44,14 +44,16 @@ public class PopularPostsPollingService(
             using var scope = serviceScopeFactory.CreateScope();
             var popularPostsService = scope.ServiceProvider.GetRequiredService<IPopularPostsService>();
 
-            var popularPost = await popularPostsService.GetMostPopularPostAsync();
+            // Get top 5 posts (this also caches the most popular single post)
+            var topPosts = await popularPostsService.GetTopPopularPostsAsync(5);
 
-            if (popularPost != null)
+            if (topPosts.Count > 0)
             {
                 logger.LogInformation(
-                    "Updated popular post: {Title} with {Views} views",
-                    popularPost.Title,
-                    popularPost.Views);
+                    "Updated {Count} popular posts. Top: {Title} with {Views} views",
+                    topPosts.Count,
+                    topPosts[0].Title,
+                    topPosts[0].Views);
             }
             else
             {
@@ -60,7 +62,7 @@ public class PopularPostsPollingService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error updating popular post");
+            logger.LogError(ex, "Error updating popular posts");
         }
     }
 }

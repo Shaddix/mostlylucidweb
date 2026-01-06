@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.OutputCaching;
 using Mostlylucid.SemanticSearch.Config;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Markdown;
+using Mostlylucid.Services.Umami;
 using Serilog.Events;
 using Umami.Net.Models;
 
@@ -16,7 +17,8 @@ public class SearchApi(
     BlogSearchService searchService,
     UmamiBackgroundSender umamiBackgroundSender,
     SearchService indexService,
-    SemanticSearchConfig semanticSearchConfig) : ControllerBase
+    SemanticSearchConfig semanticSearchConfig,
+    IPopularPostsService popularPostsService) : ControllerBase
 {
 
     [HttpGet]
@@ -97,5 +99,30 @@ public class SearchApi(
             Url.ActionLink("Show", "Blog", new { slug = r.Slug }, "https", host),
             r.Score
         )).ToList();
+    }
+
+    /// <summary>
+    /// Get the top 5 popular posts from cached Umami data.
+    /// Used by the search typeahead to show popular posts on focus.
+    /// </summary>
+    [HttpGet]
+    [Route("popular")]
+    public JsonHttpResult<List<BlogSearchService.SearchResults>> GetPopularPosts()
+    {
+        var host = Request.Host.Value;
+        var cachedPosts = popularPostsService.GetCachedTopPopularPosts(5);
+
+        var output = cachedPosts.Select(p =>
+        {
+            // Extract slug from URL (remove /blog/ prefix)
+            var slug = p.Url.StartsWith("/blog/") ? p.Url.Substring(6) : p.Url;
+            return new BlogSearchService.SearchResults(
+                p.Title,
+                slug,
+                Url.ActionLink("Show", "Blog", new { slug }, "https", host) ?? p.Url
+            );
+        }).ToList();
+
+        return TypedResults.Json(output);
     }
 }

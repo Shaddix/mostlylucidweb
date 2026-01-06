@@ -11,6 +11,8 @@ public interface IPopularPostsService
 {
     Task<PopularPost?> GetMostPopularPostAsync();
     Task<PopularPost?> GetCachedPopularPost();
+    Task<List<PopularPost>> GetTopPopularPostsAsync(int count = 5);
+    List<PopularPost> GetCachedTopPopularPosts(int count = 5);
 }
 
 public class PopularPost
@@ -26,6 +28,7 @@ public class PopularPostsService(
     ILogger<PopularPostsService> logger) : IPopularPostsService
 {
     private PopularPost? _cachedPopularPost;
+    private List<PopularPost> _cachedTopPosts = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public async Task<PopularPost?> GetMostPopularPostAsync()
@@ -152,5 +155,105 @@ public class PopularPostsService(
     public async Task<PopularPost?> GetCachedPopularPost()
     {
         return _cachedPopularPost ?? await GetMostPopularPostAsync();
+    }
+
+    public List<PopularPost> GetCachedTopPopularPosts(int count = 5)
+    {
+        return _cachedTopPosts.Take(count).ToList();
+    }
+
+    public async Task<List<PopularPost>> GetTopPopularPostsAsync(int count = 5)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var umamiDataService = scope.ServiceProvider.GetRequiredService<UmamiDataService>();
+            var blogService = scope.ServiceProvider.GetRequiredService<IBlogService>();
+
+            var endDate = DateTime.UtcNow;
+            var startDate = endDate.AddHours(-24);
+
+            var metricsRequest = new MetricsRequest
+            {
+                StartAtDate = startDate,
+                EndAtDate = endDate,
+                Type = MetricType.path,
+                Unit = Unit.hour,
+                Timezone = "UTC",
+                Limit = 100
+            };
+
+            var result = await umamiDataService.GetMetrics(metricsRequest);
+
+            if (result?.Status != System.Net.HttpStatusCode.OK || result.Data == null || result.Data.Length == 0)
+            {
+                logger.LogWarning("Failed to get metrics from Umami for top posts");
+                return _cachedTopPosts.Take(count).ToList();
+            }
+
+            // Filter for blog posts
+            var blogPosts = result.Data
+                .Where(m => m.x.StartsWith("/blog/", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (blogPosts.Count == 0)
+            {
+                return _cachedTopPosts.Take(count).ToList();
+            }
+
+            // Aggregate all language variants of the same post
+            var aggregatedPosts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var post in blogPosts)
+            {
+                var slug = post.x.Substring(6).Trim('/');
+                var baseSlug = slug.Contains('.') ? slug.Substring(0, slug.LastIndexOf('.')) : slug;
+
+                if (aggregatedPosts.ContainsKey(baseSlug))
+                    aggregatedPosts[baseSlug] += post.y;
+                else
+                    aggregatedPosts[baseSlug] = post.y;
+            }
+
+            // Get top posts
+            var topSlugs = aggregatedPosts
+                .OrderByDescending(kvp => kvp.Value)
+                .Take(count)
+                .ToList();
+
+            var topPosts = new List<PopularPost>();
+            foreach (var item in topSlugs)
+            {
+                var queryModel = new BlogPostQueryModel(item.Key, "en");
+                var blogPost = await blogService.GetPost(queryModel);
+
+                topPosts.Add(new PopularPost
+                {
+                    Url = $"/blog/{item.Key}",
+                    Title = blogPost?.Title ?? item.Key.Replace("-", " "),
+                    Views = item.Value,
+                    LastUpdated = DateTime.UtcNow
+                });
+            }
+
+            _cachedTopPosts = topPosts;
+
+            // Also update the single most popular post cache
+            if (topPosts.Count > 0)
+                _cachedPopularPost = topPosts[0];
+
+            logger.LogInformation("Cached {Count} top popular posts", topPosts.Count);
+            return topPosts;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting top popular posts from Umami");
+            return _cachedTopPosts.Take(count).ToList();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 }

@@ -488,8 +488,7 @@ AGILE IS NEVER DOING WHATEVER THE FUCK YOU WANT AND CALLING IT AGILE.
 
 It's a dynamic process that has the SOLE GOAL of building the best stuff as quickly as possible.  As the [Agile Manifesto ](https://agilemanifesto.org/principles.html) says as it's first principle. 
 
-> "Our highest priority is to satisfy the customer
-through early and continuous delivery
+> "Our highest priority is to satisfy the customer through early and continuous delivery
 of valuable software."
 
 It's not to faff around spunking out code because you like the feeling.
