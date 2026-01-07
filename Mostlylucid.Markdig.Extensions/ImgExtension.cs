@@ -3,9 +3,7 @@ using Markdig.Renderers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Logging;
 using Mostlylucid.Shared.Config.Markdown;
-using SixLabors.ImageSharp;
 
 namespace Mostlylucid.Markdig.Extensions;
 
@@ -13,6 +11,9 @@ public class ImgExtension : IMarkdownExtension
 {
     private const string HttpProtocol = "http:";
     private const string HttpsProtocol = "https:";
+    private const string ProtocolRelative = "//";
+    private const string DataProtocol = "data:";
+    private const string BlobProtocol = "blob:";
     private const string FormatParam = "format=";
     private const string QualityParam = "quality=";
     private const string QuerySeparator = "?";
@@ -23,7 +24,6 @@ public class ImgExtension : IMarkdownExtension
 
     private readonly IWebHostEnvironment? _env;
     private readonly ImageConfig? _imageConfig;
-    private readonly ILogger<ImgExtension>? _logger;
 
     /// <summary>
     /// Parameterless constructor for backward compatibility (fallback mode)
@@ -33,14 +33,12 @@ public class ImgExtension : IMarkdownExtension
     {
         _env = null;
         _imageConfig = null;
-        _logger = null;
     }
 
-    public ImgExtension(IWebHostEnvironment env, ImageConfig imageConfig, ILogger<ImgExtension>? logger = null)
+    public ImgExtension(IWebHostEnvironment env, ImageConfig imageConfig)
     {
         _env = env;
         _imageConfig = imageConfig;
-        _logger = logger;
     }
 
     public void Setup(MarkdownPipelineBuilder pipeline)
@@ -63,16 +61,37 @@ public class ImgExtension : IMarkdownExtension
             if (IsExternalUrl(url)) continue;
 
             var (path, queryString) = ParseUrl(url);
-            var imagePath = FindImagePath(path);
             var finalQueryString = ApplyDefaultOptions(queryString);
 
+            if (IsRootedPath(path))
+            {
+                link.Url = NormalizeRootedPath(path) + finalQueryString;
+                continue;
+            }
+
+            if (TryNormalizePrimaryFolderPath(path, out var primaryRelativePath))
+            {
+                var primaryFolder = _imageConfig?.PrimaryImageFolder ?? DefaultImageFolder;
+                link.Url = BuildImageUrl(primaryFolder, primaryRelativePath) + finalQueryString;
+                continue;
+            }
+
+            var imagePath = FindImagePath(path);
             link.Url = imagePath + finalQueryString;
         }
     }
 
     private static bool IsExternalUrl(string url) =>
         url.StartsWith(HttpProtocol, StringComparison.OrdinalIgnoreCase) ||
-        url.StartsWith(HttpsProtocol, StringComparison.OrdinalIgnoreCase);
+        url.StartsWith(HttpsProtocol, StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith(ProtocolRelative, StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith(DataProtocol, StringComparison.OrdinalIgnoreCase) ||
+        url.StartsWith(BlobProtocol, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRootedPath(string path) =>
+        path.StartsWith("/", StringComparison.Ordinal) ||
+        path.StartsWith("\\", StringComparison.Ordinal) ||
+        path.StartsWith("~/", StringComparison.Ordinal);
 
     /// <summary>
     /// Splits URL into path and querystring
@@ -139,7 +158,7 @@ public class ImgExtension : IMarkdownExtension
     /// </summary>
     private string FindImagePath(string imageName)
     {
-        imageName = imageName.TrimStart('/');
+        imageName = NormalizeRelativePath(imageName);
 
         if (_env == null || _imageConfig == null)
         {
@@ -166,17 +185,15 @@ public class ImgExtension : IMarkdownExtension
     {
         if (_env == null || _imageConfig == null) return false;
 
+        imageName = NormalizeRelativePath(imageName);
         foreach (var fallbackFolder in _imageConfig.FallbackFolders)
         {
             var fallbackPath = Path.Combine(_env.ContentRootPath, fallbackFolder, imageName);
-            if (!File.Exists(fallbackPath)) continue;
+            var resolvedPath = File.Exists(fallbackPath)
+                ? fallbackPath
+                : ResolveFallbackPath(fallbackFolder, imageName);
 
-            // Validate image before copying
-            if (!IsValidImage(fallbackPath))
-            {
-                _logger?.LogWarning("Skipping invalid/corrupt image: {ImagePath}", fallbackPath);
-                continue;
-            }
+            if (resolvedPath == null) continue;
 
             var targetPath = Path.Combine(_env.WebRootPath, primaryFolder, imageName);
             var targetDir = Path.GetDirectoryName(targetPath);
@@ -188,7 +205,7 @@ public class ImgExtension : IMarkdownExtension
 
             if (!File.Exists(targetPath))
             {
-                File.Copy(fallbackPath, targetPath, false);
+                File.Copy(resolvedPath, targetPath, false);
             }
 
             return true;
@@ -197,52 +214,79 @@ public class ImgExtension : IMarkdownExtension
         return false;
     }
 
-    /// <summary>
-    /// Validates that a file is a valid image that ImageSharp can process
-    /// </summary>
-    private bool IsValidImage(string filePath)
+    private static string NormalizeRelativePath(string path)
     {
-        try
-        {
-            // Try to identify the image format - this is fast and doesn't load the full image
-            using var stream = File.OpenRead(filePath);
-            var format = Image.DetectFormat(stream);
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
 
-            if (format == null)
+        var normalized = path.Replace('\\', '/');
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized.Substring(2);
+        }
+
+        normalized = normalized.TrimStart('/');
+
+        var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var safeParts = new List<string>();
+        foreach (var part in parts)
+        {
+            if (part == ".") continue;
+            if (part == "..")
             {
-                _logger?.LogDebug("Could not detect image format for: {FilePath}", filePath);
-                return false;
+                if (safeParts.Count > 0) safeParts.RemoveAt(safeParts.Count - 1);
+                continue;
             }
+            safeParts.Add(part);
+        }
 
-            // Reset stream position and try to load the image to verify it's not corrupt
-            stream.Position = 0;
-            using var image = Image.Load(stream);
+        return string.Join("/", safeParts);
+    }
 
-            // Additional sanity checks
-            if (image.Width <= 0 || image.Height <= 0)
+    private static string NormalizeRootedPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return path;
+        var normalized = path.Replace('\\', '/');
+        if (normalized.StartsWith("~/", StringComparison.Ordinal))
+        {
+            normalized = normalized.Substring(1);
+        }
+        return normalized.StartsWith("/", StringComparison.Ordinal) ? normalized : "/" + normalized.TrimStart('/');
+    }
+
+    private bool TryNormalizePrimaryFolderPath(string path, out string primaryRelativePath)
+    {
+        primaryRelativePath = string.Empty;
+        var primaryFolder = _imageConfig?.PrimaryImageFolder;
+        if (string.IsNullOrEmpty(primaryFolder)) return false;
+
+        var normalized = path.Replace('\\', '/').TrimStart('/');
+        var prefix = primaryFolder.Trim('/').Trim('\\') + "/";
+        if (!normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return false;
+
+        primaryRelativePath = NormalizeRelativePath(normalized.Substring(prefix.Length));
+        return !string.IsNullOrEmpty(primaryRelativePath);
+    }
+
+    private string? ResolveFallbackPath(string fallbackFolder, string imageName)
+    {
+        if (_env == null) return null;
+
+        var normalizedFallback = fallbackFolder.Replace('\\', '/').TrimEnd('/');
+        var fallbackRoot = Path.Combine(_env.ContentRootPath, normalizedFallback);
+        var fallbackTail = normalizedFallback.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+        if (!string.IsNullOrEmpty(fallbackTail) &&
+            imageName.StartsWith(fallbackTail + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            var trimmed = imageName.Substring(fallbackTail.Length + 1);
+            var trimmedPath = Path.Combine(fallbackRoot, trimmed);
+            if (File.Exists(trimmedPath))
             {
-                _logger?.LogDebug("Image has invalid dimensions: {FilePath} ({Width}x{Height})",
-                    filePath, image.Width, image.Height);
-                return false;
+                return trimmedPath;
             }
+        }
 
-            return true;
-        }
-        catch (UnknownImageFormatException ex)
-        {
-            _logger?.LogWarning("Unknown image format for {FilePath}: {Message}", filePath, ex.Message);
-            return false;
-        }
-        catch (InvalidImageContentException ex)
-        {
-            _logger?.LogWarning("Invalid image content for {FilePath}: {Message}", filePath, ex.Message);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to validate image: {FilePath}", filePath);
-            return false;
-        }
+        return null;
     }
 
     private static string BuildImageUrl(string folder, string imageName) =>
