@@ -609,6 +609,7 @@ If you're ready to build this:
 - [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag) - Practical implementation walkthrough
 - [DocSummarizer RAG Pipeline](/blog/docsummarizer-rag-pipeline) - Complete ingestion pipeline
 - [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) - Full web app with hybrid search
+- [StyloFlow: Signal-Driven Workflows](/blog/styloflow-signal-driven-workflows) - Orchestration engine for multi-stage RAG pipelines with conditional execution and escalation
 - [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) - The underlying pattern
 
 The infrastructure is already there. You just have to stop treating the context window like a database.

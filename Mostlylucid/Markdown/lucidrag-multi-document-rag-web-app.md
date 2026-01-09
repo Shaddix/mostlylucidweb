@@ -53,7 +53,7 @@ lucidRAG uses both: vectors for precision, graphs for context. Graph queries are
 
 ## Architecture Overview
 
-The app layers three projects we've already built:
+The app layers three projects we've already built, orchestrated via **[StyloFlow](/blog/styloflow-signal-driven-workflows)** - a signal-driven workflow engine:
 
 ```
 lucidRAG
@@ -61,9 +61,11 @@ lucidRAG
 ├── Services/           # Business logic
 │   ├── DocumentProcessingService   # Wraps DocSummarizer
 │   ├── EntityGraphService          # Wraps GraphRAG
-│   └── Background/                 # Async queue processing
+│   └── Background/                 # Async queue processing (StyloFlow waves)
 └── Views/              # HTMX + Alpine.js UI
 ```
+
+**Why StyloFlow?** Instead of hardcoded pipelines, each processing stage is a "wave" that emits signals. Waves run when their trigger conditions match, enabling parallel execution (embedding + entity extraction), conditional branching (escalation only when needed), and automatic concurrency management. See [StyloFlow: Signal-Driven Workflow Orchestration](/blog/styloflow-signal-driven-workflows) for implementation details.
 
 ## The Processing Pipeline
 
