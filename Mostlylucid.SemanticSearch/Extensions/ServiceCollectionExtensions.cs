@@ -27,5 +27,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IEmbeddingService, OnnxEmbeddingService>();
         services.AddSingleton<IVectorStoreService, QdrantVectorStoreService>();
         services.AddSingleton<ISemanticSearchService, SemanticSearchService>();
+
+        // Register RRF-based search ranker (from LucidRAG GraphRag)
+        services.AddSingleton<SearchRanker>();
     }
 }

@@ -7,7 +7,7 @@ If you're brand new to RAG, start with [RAG Explained](/blog/rag-primer) and [RA
 
 **What this covers:** The architectural pattern behind production RAG. For hands-on implementation, see [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag).
 
-**Where it comes from:** I built [DocSummarizer](/blog/building-a-document-summarizer-with-rag) (Document RAG engine), [DataSummarizer](/blog/datasummarizer-how-it-works) (Data RAG engine), [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) (Image RAG engine), and [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) (multi-document Q&A). The same pattern kept emerging across documents, data, and images.
+**Where it comes from:** I built [DocSummarizer](/blog/building-a-document-summarizer-with-rag) (Document RAG engine), [DataSummarizer](/blog/datasummarizer-how-it-works) (Data RAG engine), [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) (Image RAG engine), [AudioSummarizer](/blog/audiosummarizer-forensic-audio-characterization) (Audio RAG engine), and [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) (multi-document Q&A). The same pattern kept emerging across documents, data, images, and audio.
 
 > NOTE: You may have rightly noticed the semantic search on this site is broken...and yeah it's a config issue I haven't had time to fix yet. NOT bad theory 🤓
 
@@ -608,6 +608,7 @@ If you're ready to build this:
 **Reference implementations:**
 - [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag) - Practical implementation walkthrough
 - [DocSummarizer RAG Pipeline](/blog/docsummarizer-rag-pipeline) - Complete ingestion pipeline
+- [AudioSummarizer](/blog/audiosummarizer-forensic-audio-characterization) - Audio forensic characterization with speaker diarization
 - [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) - Full web app with hybrid search
 - [StyloFlow: Signal-Driven Workflows](/blog/styloflow-signal-driven-workflows) - Orchestration engine for multi-stage RAG pipelines with conditional execution and escalation
 - [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) - The underlying pattern

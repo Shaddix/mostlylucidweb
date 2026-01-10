@@ -9,8 +9,13 @@ using SerilogTracing;
 
 namespace Mostlylucid.Services.Blog;
 
-public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchService semanticSearchService)
+public class BlogSearchService(
+    MostlylucidDbContext context,
+    ISemanticSearchService semanticSearchService,
+    SearchRanker? searchRanker = null)
 {
+    private readonly SearchRanker _ranker = searchRanker ?? new SearchRanker();
+
     public async Task<List<string>> GetAvailableLanguagesAsync()
     {
         return await context.Languages
@@ -284,17 +289,64 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
                         .Select(g => g.OrderByDescending(r => r.Score).First())
                         .ToDictionary(r => r.Slug, r => r.Score);
 
-                    // Apply ordering - relevance preserves semantic score order
-                    IEnumerable<BlogPostEntity> orderedPosts = order switch
+                    IEnumerable<BlogPostEntity> orderedPosts;
+
+                    // Use RRF fusion for relevance ordering
+                    if (order == "relevance" || order == "relevance_desc" || string.IsNullOrEmpty(order))
                     {
-                        "date_asc" => posts.OrderBy(p => p.PublishedDate),
-                        "date_desc" => posts.OrderByDescending(p => p.PublishedDate),
-                        "title_asc" => posts.OrderBy(p => p.Title),
-                        "title_desc" => posts.OrderByDescending(p => p.Title),
-                        // relevance (default): order by semantic score
-                        _ => posts.OrderByDescending(p =>
-                            uniqueSemanticResults.TryGetValue(p.Slug, out var score) ? score : 0f)
-                    };
+                        // Get PostgreSQL BM25 results for RRF fusion
+                        try
+                        {
+                            var pgResults = await GetPostsWithFiltersInternal(query, targetLanguage, startDate, endDate, pageSize * 2);
+
+                            // Prepare vector results (from semantic search) with scores
+                            var vectorResults = posts
+                                .Select(p => (
+                                    Post: p.ToDto(),
+                                    Score: uniqueSemanticResults.TryGetValue(p.Slug, out var score) ? score : 0f
+                                ))
+                                .ToList();
+
+                            // Prepare BM25 results
+                            var bm25Results = pgResults.Select(p => p.ToDto()).ToList();
+
+                            // Fuse using RRF with category/freshness boosts
+                            var fusedDtos = _ranker.FuseResults(bm25Results, vectorResults, query);
+
+                            var pagedDtos = fusedDtos
+                                .Skip((page - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToList();
+
+                            return new BasePagingModel<BlogPostDto>
+                            {
+                                Data = pagedDtos,
+                                TotalItems = fusedDtos.Count,
+                                Page = page,
+                                PageSize = pageSize
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            // Fall back to simple semantic ordering if RRF fusion fails
+                            Log.Logger.Warning(ex, "RRF fusion failed, falling back to simple semantic ranking");
+                            orderedPosts = posts.OrderByDescending(p =>
+                                uniqueSemanticResults.TryGetValue(p.Slug, out var score) ? score : 0f);
+                        }
+                    }
+                    else
+                    {
+                        // Non-relevance orderings use simple sorting
+                        orderedPosts = order switch
+                        {
+                            "date_asc" => posts.OrderBy(p => p.PublishedDate),
+                            "date_desc" => posts.OrderByDescending(p => p.PublishedDate),
+                            "title_asc" => posts.OrderBy(p => p.Title),
+                            "title_desc" => posts.OrderByDescending(p => p.Title),
+                            _ => posts.OrderByDescending(p =>
+                                uniqueSemanticResults.TryGetValue(p.Slug, out var score) ? score : 0f)
+                        };
+                    }
 
                     var pagedPosts = orderedPosts
                         .Skip((page - 1) * pageSize)
@@ -332,6 +384,20 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         }
     }
 
+    /// <summary>
+    /// Internal method to get filtered posts without paging (for RRF fusion).
+    /// </summary>
+    private async Task<List<BlogPostEntity>> GetPostsWithFiltersInternal(
+        string query,
+        string language,
+        DateTime? startDate,
+        DateTime? endDate,
+        int limit = 50)
+    {
+        var orderedQuery = BuildSearchQuery(query, language, startDate, endDate, "relevance");
+        return await orderedQuery.Take(limit).ToListAsync();
+    }
+
     private async Task<BasePagingModel<BlogPostDto>> GetPostsWithFilters(
         string query,
         string language,
@@ -340,6 +406,33 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
         int page,
         int pageSize,
         string order = "date_desc")
+    {
+        var orderedQuery = BuildSearchQuery(query, language, startDate, endDate, order);
+
+        var totalPosts = await orderedQuery.CountAsync();
+        var results = await orderedQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new BasePagingModel<BlogPostDto>
+        {
+            Data = results.Select(x => x.ToDto()).ToList(),
+            TotalItems = totalPosts,
+            Page = page,
+            PageSize = pageSize
+        };
+    }
+
+    /// <summary>
+    /// Build the PostgreSQL full-text search query with filters and ordering.
+    /// </summary>
+    private IOrderedQueryable<BlogPostEntity> BuildSearchQuery(
+        string query,
+        string language,
+        DateTime? startDate,
+        DateTime? endDate,
+        string order)
     {
         var now = DateTimeOffset.UtcNow;
         // Lowercase the query for PostgreSQL full-text search (case-insensitive)
@@ -409,18 +502,6 @@ public class BlogSearchService(MostlylucidDbContext context, ISemanticSearchServ
             };
         }
 
-        var totalPosts = await searchQuery.CountAsync();
-        var results = await orderedQuery
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return new BasePagingModel<BlogPostDto>
-        {
-            Data = results.Select(x => x.ToDto()).ToList(),
-            TotalItems = totalPosts,
-            Page = page,
-            PageSize = pageSize
-        };
+        return orderedQuery;
     }
 }
