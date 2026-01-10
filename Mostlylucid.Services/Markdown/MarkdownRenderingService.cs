@@ -143,10 +143,26 @@ public partial class MarkdownRenderingService : MarkdownBaseService
         restOfTheLines = UpdatedRegex().Replace(restOfTheLines, "");
 
         // Process the rest of the lines as either HTML or plain text
-        var processed = global::Markdig.Markdown.ToHtml(restOfTheLines, pipeline);
-        // Post-process HTML to rewrite local Windows file paths in <img src> to web-served paths
-        processed = RewriteLocalImageSources(processed);
-        var plainText = global::Markdig.Markdown.ToPlainText(restOfTheLines, pipeline);
+        string processed;
+        string plainText;
+        try
+        {
+            processed = global::Markdig.Markdown.ToHtml(restOfTheLines, pipeline);
+            // Post-process HTML to rewrite local Windows file paths in <img src> to web-served paths
+            processed = RewriteLocalImageSources(processed);
+            plainText = global::Markdig.Markdown.ToPlainText(restOfTheLines, pipeline);
+        }
+        catch (ArgumentException ex) when (ex.Message.Contains("depth limit exceeded"))
+        {
+            _logger?.LogWarning("Markdown file {FilePath} has excessive nesting depth and cannot be parsed. Skipping. Error: {Error}",
+                filePath, ex.Message);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to parse markdown file {FilePath}. Skipping.", filePath);
+            return null;
+        }
 
         // Generate the slug from the page filename
         var slug = GetSlug(filePath);

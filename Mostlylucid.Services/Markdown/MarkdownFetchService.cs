@@ -41,7 +41,7 @@ public class MarkdownFetchService : IMarkdownFetchService
                 sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 onRetry: (outcome, timespan, retryCount, context) =>
                 {
-                    _logger.LogWarning(
+                    _logger.LogDebug(
                         "Retry {RetryCount} for URL {Url} after {Delay}s. Reason: {Reason}",
                         retryCount,
                         context.GetValueOrDefault("url"),

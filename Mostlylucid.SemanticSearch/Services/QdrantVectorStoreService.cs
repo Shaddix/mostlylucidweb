@@ -281,6 +281,13 @@ public class QdrantVectorStoreService : IVectorStoreService
                 return new List<SearchResult>();
             }
 
+            // Check if the point has valid vector data
+            if (point.Vectors?.Vector?.Data == null)
+            {
+                _logger.LogWarning("Post {Slug} found in vector store but has no vector data", slug);
+                return new List<SearchResult>();
+            }
+
             // Use the document's vector to find similar posts
             var searchResults = await _client.SearchAsync(
                 collectionName: _config.CollectionName,

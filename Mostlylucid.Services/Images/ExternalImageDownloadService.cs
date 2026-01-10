@@ -149,7 +149,7 @@ public partial class ExternalImageDownloadService
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
             if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning("URL {Url} is not an image: {ContentType}", url, contentType);
+                _logger.LogDebug("URL {Url} is not an image: {ContentType}", url, contentType);
                 return null;
             }
 

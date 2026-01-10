@@ -14,7 +14,6 @@ using Serilog.Debugging;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.Seq(Environment.GetEnvironmentVariable("SEQ_URL") ?? "http://localhost:5341")
     .CreateBootstrapLogger();
 var builder = WebApplication.CreateBuilder(args);
 
