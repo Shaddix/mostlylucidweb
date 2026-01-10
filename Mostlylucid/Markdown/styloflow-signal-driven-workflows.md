@@ -1,9 +1,9 @@
-# StyloFlow: Signal-Driven Workflow Orchestration
+# StyloFlow: Constrained Fuzzy Signal-Driven Workflows
 
 <!--category-- Architecture, AI, Workflows, C#, Signals, RAG -->
 <datetime class="hidden">2026-01-11T14:00</datetime>
 
-I built StyloFlow because I kept writing the same pattern over and over: components that react to what happened before, emit confidence scores, and sometimes need to escalate to more expensive analysis. Existing workflow engines wanted me to think in terms of DAGs or state machines. I wanted to think in signals.
+I built StyloFlow because I kept writing [the same pattern over and over](https://www.mostlylucid.net/blog/reduced-rag): components that react to what happened before, emit confidence scores, and sometimes need to escalate to more expensive analysis. Existing workflow engines wanted me to think in terms of DAGs or state machines. I wanted to think in signals.
 
 **StyloFlow is a signal-driven orchestration library that matches [how I think](https://www.mostlylucid.net/blog/thinking-in-systems) about[ AI pipelines](https://www.mostlylucid.net/blog/tencommandments):** components declare what they produce and what they need, confidence scores guide execution, and cheap operations run first with escalation to expensive ones only when needed.
 
@@ -154,9 +154,9 @@ public record Signal
 }
 ```
 
-**Critical architectural point: SignalSink is NOT an event bus.**
+**Critical architectural point: Signals are owned by atoms, coordinated via SignalSink.**
 
-A SignalSink is a **read-only view** across atoms in one or more coordinators. It doesn't publish or broadcast - it's a query interface. Components don't "subscribe" to signals; they READ signals from operations to decide if they should run.
+Each operation/atom owns its signals - they're externally immutable. **SignalSink is a read-only view** across atoms that provides BOTH push and pull coordination patterns.
 
 ```csharp
 // Each operation owns its signals
@@ -173,24 +173,65 @@ operation.EmitEcho("final.state", value);
 // Nothing can modify operation.GetSignals() from outside
 ```
 
+**SignalSink provides TWO coordination patterns:**
+
+**1. Push-based (Subscribe to the SINK, not atoms):**
+
+```csharp
+var sink = new SignalSink();
+
+// Subscribe to the sink for push notifications
+sink.Subscribe(signal => {
+    if (signal.Is("document.chunked"))
+    {
+        // React to signal, but query atom for authoritative state
+        var operation = coordinator.GetOperation(signal.OperationId);
+        var chunkCount = operation.State["ChunkCount"];
+    }
+});
+
+// Or use the SignalRaised event
+sink.SignalRaised += (sender, signal) => {
+    // Handle signal from any atom using this sink
+};
+```
+
+**2. Pull-based (Query the SINK):**
+
+```csharp
+// Query for specific signals
+var documentSignals = sink.Sense("document.chunked");
+
+// Check if signal exists
+if (sink.Detect("embeddings.generated"))
+{
+    // Proceed
+}
+
+// Get all signals for an operation
+var opSignals = sink.GetOpSignals(operationId);
+```
+
 **Why this matters:**
 
 - **Ownership is clear** - Each atom owns its signals, period
+- **Subscribe to the sink, not atoms** - Push notifications come from the sink view, not individual operations
+- **Atoms hold truth** - Signals are notifications; query atoms for authoritative state
 - **No action at a distance** - Components can't modify each other's signals
 - **Escalation is explicit** - When signals need to move, it's a deliberate copy
-- **Observability without mutation** - You can read all signals without affecting them
+- **Both push and pull** - Use Subscribe() for reactive patterns, or query for polling
 
-Example coordination:
+Example coordination patterns:
 
 ```csharp
-// Wave checks if it should run by READING signals
+// Pull pattern: Wave queries sink to decide if it should run
 public bool ShouldRun(string path, AnalysisContext ctx)
 {
     var chunkSignal = ctx.GetSignal("document.chunked");
     return chunkSignal != null && (int)chunkSignal.Value > 0;
 }
 
-// It emits its own signals (adds to its owned list)
+// Atom emits signals (adds to its owned list)
 public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
 {
     return new[]
@@ -203,9 +244,17 @@ public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
         }
     };
 }
+
+// Push pattern: UI subscribes to sink for reactive updates
+sink.Subscribe(signal => {
+    if (signal.Key.StartsWith("document."))
+    {
+        UpdateProgressUI(signal);
+    }
+});
 ```
 
-This structure exists because AI components naturally produce probabilistic outputs - the signal model makes confidence first-class while maintaining clear ownership boundaries.
+This structure exists because AI components naturally produce probabilistic outputs - the signal model makes confidence first-class while maintaining clear ownership boundaries. You can use Subscribe() for reactive patterns or query methods for polling, but either way, atoms own the signals and the sink provides a read-only view.
 
 For the theory behind this, see [Constrained Fuzzy Context Dragging](/blog/constrained-fuzzy-context-dragging).
 
@@ -638,141 +687,9 @@ This is the [Reduced RAG](/blog/reduced-rag) pattern in action: deterministic ex
 
 ---
 
-## Use Case: Stylobot Chat Pipeline
+## Use Case: Stylobot Bot Detection
 
-Stylobot (the chatbot on this site) uses StyloFlow for message processing:
-
-**Stage 1: Intent Detection**
-
-```csharp
-// Fast pattern matching - no LLM
-public class IntentDetectorWave : IContentAnalysisWave
-{
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var message = await File.ReadAllTextAsync(path);
-
-        var intents = new List<string>();
-
-        if (ContainsCodeRequest(message))
-            intents.Add("code_example");
-
-        if (ContainsSearchTerms(message))
-            intents.Add("search");
-
-        if (IsGreeting(message))
-            intents.Add("greeting");
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "intent.detected",
-                Value = intents,
-                Confidence = intents.Any() ? 0.8 : 0.3,
-                Source = Name
-            }
-        };
-    }
-}
-```
-
-**Stage 2: Document Retrieval (triggered by "search" intent)**
-
-```csharp
-// Manifest configures this to run only if intent includes "search"
-public class DocumentRetrievalWave : ConfiguredComponentBase, IContentAnalysisWave
-{
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var message = await File.ReadAllTextAsync(path);
-
-        // Hybrid search: BM25 + vector similarity
-        var results = await _searchService.SearchAsync(message, topK: 10);
-
-        ctx.SetCached("search_results", results);
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "documents.retrieved",
-                Value = results.Count,
-                Confidence = results.Any() ? 0.9 : 0.1,
-                Source = Name
-            }
-        };
-    }
-}
-```
-
-**Stage 3: Response Generation**
-
-```csharp
-public class ResponseGenerationWave : ConfiguredComponentBase, IContentAnalysisWave
-{
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var message = await File.ReadAllTextAsync(path);
-        var intents = ctx.GetSignal("intent.detected")?.Value as List<string>;
-        var searchResults = ctx.GetCached<List<SearchResult>>("search_results");
-
-        string response;
-
-        if (intents?.Contains("greeting") == true)
-        {
-            // No LLM needed for greetings
-            response = GetGreetingResponse();
-        }
-        else if (searchResults?.Any() == true)
-        {
-            // LLM synthesis over retrieved docs
-            response = await GenerateResponseAsync(message, searchResults);
-        }
-        else
-        {
-            response = "I don't have enough information to answer that.";
-        }
-
-        await File.WriteAllTextAsync(
-            Path.Combine(Path.GetDirectoryName(path), "response.txt"),
-            response);
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "response.generated",
-                Value = response.Length,
-                Source = Name
-            }
-        };
-    }
-}
-```
-
-**Escalation pattern:**
-
-If initial response has low confidence, escalate to a better model:
-
-```yaml
-# In ResponseGenerationWave manifest:
-emits:
-  conditional:
-    - key: escalation.needed
-      when: confidence < 0.7
-
-escalation:
-  targets:
-    better_model:
-      when:
-        - signal: escalation.needed
-          condition: exists
-      skip_when:
-        - signal: budget.exhausted
-```
-
-This implements the wave escalation pattern from [Semantic Intelligence](/blog/semanticintelligence-part10).
+[Stylobot](https://www.stylobot.net) is an advanced bot detection system that uses StyloFlow for multi-stage threat analysis. See the complete escalation example in the "Escalation: From Fast to Thorough" section for detailed code.
 
 ---
 
@@ -1530,6 +1447,117 @@ This diagram was generated programmatically from the YAML manifests - no manual 
 
 ---
 
+## Aside: Using Code LLMs — The StyloFlow Way
+
+One unexpected property of StyloFlow is that it creates a system **LLMs can reason about safely**.
+
+Most attempts to use LLMs for debugging or orchestration fail because the system they're dropped into is opaque:
+
+* State is implicit
+* Control flow is buried in code
+* Decisions are encoded as side effects
+* Logs are narrative, not causal
+
+StyloFlow does the opposite. It exposes **explicit, immutable facts** about what happened, when, and with what confidence.
+
+That makes Code LLMs genuinely useful — not as actors, but as **analysts**.
+
+### LLMs reason *about* the system, not *inside* it
+
+In StyloFlow, an LLM never:
+
+* Triggers execution
+* Emits signals
+* Mutates state
+* Owns decisions
+
+Instead, it is given a **SignalSink view** and asked questions like:
+
+* "Why did this wave escalate?"
+* "Which signal caused this path to run?"
+* "Where is confidence lowest?"
+* "Which upstream signal contradicts this outcome?"
+* "What would happen if this threshold were raised?"
+
+Example input to a Code LLM:
+
+```json
+{
+  "operation": "doc-123",
+  "signals": [
+    { "key": "document.chunked", "value": 12, "confidence": 1.0, "source": "ChunkingWave" },
+    { "key": "entities.extracted", "value": 4, "confidence": 0.42, "source": "EntityWave" },
+    { "key": "quality.score", "value": 0.39, "source": "QualityCheckWave" },
+    { "key": "escalation.needed", "source": "QualityCheckWave" }
+  ]
+}
+```
+
+That's not a log stream. That's a **reasoning substrate**.
+
+A Code LLM can now:
+
+* Explain causality ("escalation triggered because quality < threshold")
+* Identify weak links ("entity extraction confidence dominates failure")
+* Suggest mitigations ("run a different extractor before escalating")
+* Propose configuration changes ("lower entity min-IDF for PDFs")
+
+All without being trusted to *do* anything.
+
+### Debugging becomes inspection, not reenactment
+
+Traditional "LLM debugging" tries to replay the world:
+
+> "Here's the code and some logs, what went wrong?"
+
+StyloFlow debugging is simpler:
+
+> "Here is the exact state the system observed."
+
+Because signals are immutable and owned, you don't need to re-run anything. You don't need to reconstruct intent. You don't need the LLM to guess.
+
+The LLM reasons over facts you already trust.
+
+### Why this doesn't turn into agent theatre
+
+This only works because of strict boundaries:
+
+* LLMs can **analyze** signals
+* Deterministic code **acts** on signals
+* Only manifests and code change behavior
+
+There is no feedback loop where the LLM "decides" the next step. At most, it proposes explanations or configuration suggestions that a human (or deterministic policy) may apply later.
+
+That asymmetry is deliberate.
+
+### A side-effect: future self-tuning without autonomy
+
+Once signals, confidence, and outcomes are explicit, you *can* later:
+
+* Mine historical signal traces
+* Evaluate which escalations helped
+* Tune thresholds offline
+* Promote or demote waves between lanes
+
+None of that requires letting an LLM run the system.
+
+The LLM becomes a **diagnostic lens**, not a control surface.
+
+### Why this matters
+
+StyloFlow doesn't just make probabilistic systems safe.
+
+It makes them **legible** — to humans, to tests, and to LLMs — without surrendering control.
+
+That's the difference between:
+
+* "LLMs running your system"
+* and "LLMs understanding your system"
+
+Only one of those scales.
+
+---
+
 ## Emergent Properties
 
 **1. Declarative composition**
@@ -1605,68 +1633,66 @@ Here's the complete [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) pipeli
 8. **EscalationWave** (conditional if quality < 0.7) → `escalation.complete` signal
 9. **StorageWave** persists to Qdrant + PostgreSQL → `storage.complete` signal
 
-The UI polls the SignalSink view for progress updates (SignalSink provides a read-only view across all document operations):
+The UI subscribes to the SignalSink for real-time progress updates (push pattern):
 
 ```csharp
-// Background service polls for document progress
-var documentOps = coordinator.GetOperations()
-    .Where(op => op.State.ContainsKey("documentId"));
-
-foreach (var op in documentOps)
-{
-    var signals = op.GetSignals()
-        .Where(s => s.Key.StartsWith("document."));
-
-    foreach (var signal in signals)
+// Subscribe to sink for push notifications
+signalSink.Subscribe(signal => {
+    if (signal.Key.StartsWith("document."))
     {
         await _hub.Clients.User(userId)
             .SendAsync("DocumentProgress", new
             {
                 stage = signal.Key,
-                progress = CalculateProgress(signal)
+                progress = CalculateProgress(signal),
+                operationId = signal.OperationId
             });
     }
-}
+});
 ```
 
-Or using the SignalSink view directly:
+Or use the pull pattern if you prefer polling:
 
 ```csharp
-// SignalSink is a view across all operations
+// Query SignalSink for document progress (pull pattern)
 var documentSignals = signalSink.GetSignals()
     .Where(s => s.Key.StartsWith("document.") &&
                 s.Timestamp > lastCheck);
 
-// Read signals, don't subscribe - signals are owned by operations
+foreach (var signal in documentSignals)
+{
+    UpdateProgressUI(signal);
+}
 ```
+
+**Key point:** You subscribe to the SINK (which views all atoms), not to individual operations. Atoms own signals; the sink provides push (Subscribe) and pull (query) access to them.
 
 This is how [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) processes documents, data, and images through a unified signal-driven pipeline - combining [DocSummarizer](/blog/building-a-document-summarizer-with-rag), [DataSummarizer](/blog/datasummarizer-how-it-works), and [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) under one orchestration layer.
 
 ---
 
-## Complete Pipeline: Stylobot Message Routing
+## Complete Pipeline: Stylobot Bot Detection
 
-Here's the complete Stylobot pipeline at a glance (see the detailed code examples in the "Use Case: Stylobot Chat Pipeline" section above):
+Here's the complete [Stylobot](https://www.stylobot.net) pipeline at a glance (see detailed code in "Escalation: From Fast to Thorough"):
 
-1. **IntentWave** detects user intent (fast pattern matching) → `intent.detected` signal
-2. **SearchWave** (conditional if intent includes "search") → `documents.retrieved` signal
-3. **ResponseWave** generates answer → `response.generated` signal
-4. **EscalationWave** (conditional if confidence < 0.7) → `response.improved` signal
+1. **IpReputationWave** checks IP against known bot lists (< 10ms) → `bot.detected` signal with confidence
+2. **BehaviorAnalysisWave** (conditional if 0.4 < confidence < 0.7) analyzes user agent and click patterns → refined `bot.detected` signal
+3. **LlmBotAnalysisWave** (conditional if still ambiguous) uses LLM for conversation analysis → final `bot.detected` signal
 
-The key benefit: conditional execution based on signals.
+The key benefit: escalation based on confidence.
 
 ```csharp
-// ❌ Traditional: Every message goes through everything
-var intent = await DetectIntentAsync(message);
-var docs = await SearchAsync(message);  // Even if not needed
-var response = await GenerateAsync(message, docs);
+// ❌ Traditional: Every request gets expensive analysis
+var reputation = await CheckIpAsync(ip);
+var behavior = await AnalyzeBehaviorAsync(session);  // Even if IP is known bad
+var llmScore = await LlmAnalysisAsync(conversation);  // Always expensive
 
-// ✅ StyloFlow: Waves run conditionally based on signals
-// SearchWave only runs if IntentWave emits "search" intent
-// EscalationWave only runs if ResponseWave confidence < 0.7
+// ✅ StyloFlow: Waves run based on confidence signals
+// BehaviorAnalysis only runs if confidence is ambiguous (0.4-0.7)
+// LLM analysis only runs if still unsure after behavior check
 ```
 
-Simple greetings skip search and LLM generation entirely. Complex questions trigger the full pipeline with escalation. This saves ~90% of LLM costs on typical chat traffic.
+**Cost breakdown:** IP check costs $0 and runs 100% of the time. Behavioral analysis runs 30% (ambiguous cases). LLM analysis runs 5% (still ambiguous). Total cost per request: **$0.0001** vs naive "LLM everything" at **$0.002** (20x savings).
 
 ---
 
@@ -1791,7 +1817,7 @@ This is why StyloFlow works well for [Reduced RAG](/blog/reduced-rag) - every ex
 **Working implementations:**
 
 - [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) - Cross-modal document Q&A with conditional entity extraction
-- Stylobot - Message routing with intent-based search triggering
+- [Stylobot](https://www.stylobot.net) - Bot detection with confidence-driven escalation (IP → behavior → LLM)
 - [Reduced RAG](/blog/reduced-rag) - Deterministic extraction + bounded LLM synthesis
 
 **Related articles:**
@@ -1823,4 +1849,4 @@ If you're building AI/ML pipelines where:
 
 The [ephemeral library](/blog/ephemeral-execution-library) is the stable foundation. StyloFlow adds the signal-driven orchestration layer on top. Both are evolving through real use in lucidRAG and Stylobot.
 
-For questions or feedback, see the [GitHub repository](https://github.com/scottgal/styloflow) or reach out via the chatbot on this site (which uses these patterns).
+For questions or feedback, see the [GitHub repository](https://github.com/scottgal/styloflow).
