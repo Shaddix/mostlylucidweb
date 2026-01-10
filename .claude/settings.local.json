@@ -85,7 +85,8 @@
       "Bash(Select-String -Pattern \"error|Build succeeded|Build FAILED\")",
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net10.0\\\\data\\\\semantic-search.duckdb\")",
       "Bash(ping:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(test -f:*)"
     ],
     "deny": [],
     "ask": []

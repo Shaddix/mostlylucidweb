@@ -18,13 +18,39 @@ public class BlogSearchService(
     private readonly SearchRanker _ranker = searchRanker ?? new SearchRanker();
     private readonly SearchQueryParser _queryParser = queryParser ?? new SearchQueryParser();
 
+    // Cache for available languages (rarely changes)
+    private static readonly TimeSpan LanguageCacheDuration = TimeSpan.FromHours(1);
+    private static List<string>? _cachedLanguages;
+    private static DateTime _languageCacheExpiry = DateTime.MinValue;
+    private static readonly SemaphoreSlim _cacheLock = new(1, 1);
+
     public async Task<List<string>> GetAvailableLanguagesAsync()
     {
-        return await context.Languages
-            .AsNoTracking()
-            .OrderBy(x => x.Name)
-            .Select(x => x.Name)
-            .ToListAsync();
+        // Check cache first without lock
+        if (_cachedLanguages != null && DateTime.UtcNow < _languageCacheExpiry)
+            return _cachedLanguages;
+
+        // Acquire lock for cache refresh
+        await _cacheLock.WaitAsync();
+        try
+        {
+            // Double-check after acquiring lock
+            if (_cachedLanguages != null && DateTime.UtcNow < _languageCacheExpiry)
+                return _cachedLanguages;
+
+            _cachedLanguages = await context.Languages
+                .AsNoTracking()
+                .OrderBy(x => x.Name)
+                .Select(x => x.Name)
+                .ToListAsync();
+
+            _languageCacheExpiry = DateTime.UtcNow.Add(LanguageCacheDuration);
+            return _cachedLanguages;
+        }
+        finally
+        {
+            _cacheLock.Release();
+        }
     }
 
     public async Task<BasePagingModel<BlogPostDto>> GetPosts(string? query, int page = 1, int pageSize = 10)
@@ -63,22 +89,16 @@ public class BlogSearchService(
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
             .AsNoTracking()
-            //.AsSplitQuery()
             .Where(x =>
-                // Filter out hidden and scheduled posts
                 !x.IsHidden
                 && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
-                // Search using the precomputed SearchVector
-                && (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english",
-                     lowerQuery)) // Use precomputed SearchVector for title and content
+                && (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery)))) // Search in categories
-                && x.LanguageEntity.Name == "en") // Filter by language
+                         .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))))
+                && x.LanguageEntity.Name == "en")
             .OrderByDescending(x =>
-                // Rank based on the precomputed SearchVector using cover density (ts_rank_cd)
-                x.SearchVector.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english",
-                    lowerQuery)));
+                x.SearchVector.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english", lowerQuery)));
     }
 
     private IQueryable<BlogPostEntity> QueryForWildCard(string query)
@@ -90,22 +110,16 @@ public class BlogSearchService(
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
             .AsNoTracking()
-            //.AsSplitQuery()
             .Where(x =>
-                // Filter out hidden and scheduled posts
                 !x.IsHidden
                 && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
-                // Search using the precomputed SearchVector
-                && (x.SearchVector.Matches(EF.Functions.ToTsQuery("english",
-                     lowerQuery + ":*")) // Use precomputed SearchVector for title and content
+                && (x.SearchVector.Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))) // Search in categories
-                && x.LanguageEntity.Name == "en") // Filter by language
+                         .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))))
+                && x.LanguageEntity.Name == "en")
             .OrderByDescending(x =>
-                // Rank based on the precomputed SearchVector using cover density (ts_rank_cd)
-                x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english",
-                    lowerQuery + ":*"))); // Use precomputed SearchVector for ranking
+                x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", lowerQuery + ":*")));
     }
     
     public async Task<List<(string Title, string Slug)>> GetSearchResultForQuery(string query)
@@ -156,7 +170,6 @@ public class BlogSearchService(
                 // Get slugs from semantic search, look up English titles from PostgreSQL
                 var slugs = uniqueResults.Select(r => r.Slug).ToList();
                 var posts = await context.BlogPosts
-                    .Include(p => p.LanguageEntity)
                     .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == "en")
                     .Select(p => new { p.Slug, p.Title })
                     .ToListAsync();
@@ -269,7 +282,6 @@ public class BlogSearchService(
 
                 var postsQuery = context.BlogPosts
                     .Include(x => x.Categories)
-                    .Include(x => x.LanguageEntity)
                     .AsNoTracking()
                     .Where(x => slugs.Contains(x.Slug)
                                 && !x.IsHidden
@@ -298,7 +310,7 @@ public class BlogSearchService(
                     // Use RRF fusion for relevance ordering
                     if (order == "relevance" || order == "relevance_desc" || string.IsNullOrEmpty(order))
                     {
-                        // Get PostgreSQL BM25 results for RRF fusion
+                        // Run PostgreSQL BM25 search in parallel with semantic (which already completed)
                         try
                         {
                             var pgResults = await GetPostsWithFiltersInternal(query, targetLanguage, startDate, endDate, pageSize * 2);
@@ -480,14 +492,14 @@ public class BlogSearchService(
         // Build the search query based on parsed components
         IQueryable<BlogPostEntity> searchQuery = baseQuery;
 
-        // Handle phrases (exact substring matching)
-        foreach (var phrase in parsed.Phrases)
+        // Handle phrases (exact substring matching) - batched into single query
+        if (parsed.Phrases.Count > 0)
         {
-            var lowerPhrase = phrase.ToLower();
             searchQuery = searchQuery.Where(x =>
-                EF.Functions.ILike(x.Title, $"%{phrase}%")
-                || EF.Functions.ILike(x.PlainTextContent, $"%{phrase}%")
-                || x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{phrase}%")));
+                parsed.Phrases.All(phrase =>
+                    EF.Functions.ILike(x.Title, $"%{phrase}%")
+                    || EF.Functions.ILike(x.PlainTextContent, $"%{phrase}%")
+                    || x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{phrase}%"))));
         }
 
         // Build tsquery for include terms and wildcards
@@ -503,26 +515,28 @@ public class BlogSearchService(
                         .Matches(EF.Functions.ToTsQuery("english", tsQuery))));
         }
 
-        // Handle acronyms with case-insensitive substring search
+        // Handle acronyms with case-insensitive substring search (batched into single query)
         var acronymTerms = parsed.IncludeTerms
             .Concat(parsed.WildcardTerms)
             .Where(t => _queryParser.IsAcronymLike(t))
             .ToList();
 
-        foreach (var acronym in acronymTerms)
+        if (acronymTerms.Count > 0)
         {
             searchQuery = searchQuery.Where(x =>
-                EF.Functions.ILike(x.Title, $"%{acronym}%")
-                || EF.Functions.ILike(x.PlainTextContent, $"%{acronym}%"));
+                acronymTerms.Any(acronym =>
+                    EF.Functions.ILike(x.Title, $"%{acronym}%")
+                    || EF.Functions.ILike(x.PlainTextContent, $"%{acronym}%")));
         }
 
-        // Handle excluded terms (must NOT contain these)
-        foreach (var excludeTerm in parsed.ExcludeTerms)
+        // Handle excluded terms (must NOT contain these) - batched into single query
+        if (parsed.ExcludeTerms.Count > 0)
         {
             searchQuery = searchQuery.Where(x =>
-                !EF.Functions.ILike(x.Title, $"%{excludeTerm}%")
-                && !EF.Functions.ILike(x.PlainTextContent, $"%{excludeTerm}%")
-                && !x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{excludeTerm}%")));
+                !parsed.ExcludeTerms.Any(excludeTerm =>
+                    EF.Functions.ILike(x.Title, $"%{excludeTerm}%")
+                    || EF.Functions.ILike(x.PlainTextContent, $"%{excludeTerm}%")
+                    || x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{excludeTerm}%"))));
         }
 
         // Apply ordering - relevance uses ts_rank_cd (cover density), others use column values
