@@ -5,6 +5,8 @@
 
 I built StyloFlow because I kept writing [the same pattern over and over](https://www.mostlylucid.net/blog/reduced-rag): components that react to what happened before, emit confidence scores, and sometimes need to escalate to more expensive analysis. Existing workflow engines wanted me to think in terms of DAGs or state machines. I wanted to think in signals.
 
+> NOTE: StyloFlow is not YET a finished product; as I build lucidRAG and StyloBot I'm adding missing features and polishing the API on BOTH StyloFllow and ephemeral. It's still in active development, but you can try it out and provide feedback. I will update here later (the SignalSink stuff for example will change for ephemeral v3.0 to be 'read only')
+
 **StyloFlow is a signal-driven orchestration library that matches [how I think](https://www.mostlylucid.net/blog/thinking-in-systems) about[ AI pipelines](https://www.mostlylucid.net/blog/tencommandments):** components declare what they produce and what they need, confidence scores guide execution, and cheap operations run first with escalation to expensive ones only when needed.
 
 This is the infrastructure powering **[*lucid*RAG](https://www.mostlylucid.net/blog/lucidrag-multi-document-rag-web-app)** - a cross-modal graph RAG tool that combines [DocSummarizer](/blog/building-a-document-summarizer-with-rag) (documents), [DataSummarizer](/blog/datasummarizer-how-it-works) (structured data), and [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) (images) into a unified question-answering system with knowledge graph visualization. It also powers [Stylobot](https://www.stylobot.net) (an advanced bot protection system) and implements the [Reduced RAG](/blog/reduced-rag) pattern.
@@ -13,7 +15,7 @@ This is the infrastructure powering **[*lucid*RAG](https://www.mostlylucid.net/b
 
 **Source:** [GitHub - StyloFlow](https://github.com/scottgal/styloflow)
 
-> NOTE: StyloFlow is not YET a finished product; as I build lucidRAG and StyloBot I'm adding missing features and polishing the API. It's still in active development, but you can try it out and provide feedback.
+
 
 [TOC]
 
@@ -154,109 +156,185 @@ public record Signal
 }
 ```
 
-**Critical architectural point: Signals are owned by atoms, coordinated via SignalSink.**
+**Critical architectural point: SignalSink is a persistent historical view.**
 
-Each operation/atom owns its signals - they're externally immutable. **SignalSink is a read-only view** across atoms that provides BOTH push and pull coordination patterns.
+**SignalSink** provides a queryable view across all operations on all coordinators that share it. Signals persist across coordinator lifecycles - when an operation evicts from its coordinator, the signals remain in the sink until manually cleared.
 
 ```csharp
-// Each operation owns its signals
-var operation = coordinator.GetOperation(opId);
-var signals = operation.GetSignals();  // Read-only view
+// Create a shared signal sink (no parameters, signals persist)
+var sink = new SignalSink();
 
-// Signals can be escalated (copied to another operation)
-operation.EscalateSignal("quality.low", targetOperationId);
+// Coordinators manage operation lifetime, NOT signal lifetime
+var coordinator = new EphemeralWorkCoordinator<string>(
+    ProcessAsync,
+    new EphemeralOptions
+    {
+        MaxConcurrency = 8,
+        MaxTrackedOperations = 100,         // Operations evict after this
+        MaxOperationLifetime = TimeSpan.FromMinutes(5),  // Or after this time
+        Signals = sink                      // Share the persistent view
+    });
 
-// Or echoed (preserved when operation evicts)
-operation.EmitEcho("final.state", value);
+// Operations emit via their emitter
+public async Task ProcessAsync(string docId, SignalEmitter emitter, CancellationToken ct)
+{
+    // Store actual data externally (cache, database, blob storage)
+    await cache.SetAsync($"doc-{docId}", documentData);
 
-// But the original signal list is externally immutable
-// Nothing can modify operation.GetSignals() from outside
+    // Signal carries a REFERENCE, not the data
+    emitter.Emit("document.chunked", key: docId); // Key references external data
+}
+
+// SignalSink is readonly - it cannot alter signals
+// Signals persist until their operation evicts from the coordinator
 ```
 
 **SignalSink provides TWO coordination patterns:**
 
-**1. Push-based (Subscribe to the SINK, not atoms):**
+**1. Push-based (Subscribe):**
 
 ```csharp
-var sink = new SignalSink();
-
 // Subscribe to the sink for push notifications
 sink.Subscribe(signal => {
     if (signal.Is("document.chunked"))
     {
-        // React to signal, but query atom for authoritative state
-        var operation = coordinator.GetOperation(signal.OperationId);
-        var chunkCount = operation.State["ChunkCount"];
+        // React immediately - signal includes OperationId
+        Console.WriteLine($"Op {signal.OperationId} chunked doc at {signal.Timestamp}");
     }
 });
 
-// Or use the SignalRaised event
-sink.SignalRaised += (sender, signal) => {
-    // Handle signal from any atom using this sink
-};
+// Returns IDisposable for cleanup
+using var subscription = sink.Subscribe(HandleSignal);
 ```
 
-**2. Pull-based (Query the SINK):**
+**2. Pull-based (Query):**
 
 ```csharp
-// Query for specific signals
-var documentSignals = sink.Sense("document.chunked");
+// Get all signals for a specific operation
+var opSignals = sink.GetOpSignals(operationId);
 
-// Check if signal exists
+// Detect if any operation has emitted a signal
 if (sink.Detect("embeddings.generated"))
 {
-    // Proceed
+    // At least one operation has generated embeddings
 }
 
-// Get all signals for an operation
-var opSignals = sink.GetOpSignals(operationId);
+// Sense all signals matching a condition
+var recentErrors = sink.Sense(s =>
+    s.Signal.StartsWith("error.") &&
+    s.Timestamp > DateTimeOffset.UtcNow.AddMinutes(-5)
+);
+
+// Get operation summary from its signal history
+var summary = sink.GetOp(operationId);
+Console.WriteLine($"Operation ran for {summary?.Duration}");
 ```
 
 **Why this matters:**
 
-- **Ownership is clear** - Each atom owns its signals, period
-- **Subscribe to the sink, not atoms** - Push notifications come from the sink view, not individual operations
-- **Atoms hold truth** - Signals are notifications; query atoms for authoritative state
-- **No action at a distance** - Components can't modify each other's signals
-- **Escalation is explicit** - When signals need to move, it's a deliberate copy
-- **Both push and pull** - Use Subscribe() for reactive patterns, or query for polling
+- **Readonly view** - SignalSink cannot alter signals; it only provides query access
+- **Signals persist** - Signals remain in the view until their operation evicts from the coordinator
+- **Signals are coordination, not transport** - Signals carry keys/references to external data, NOT the data itself
+- **Coordinator independence** - Multiple coordinators can share one sink; signal history spans all of them
+- **Thread-safe** - Lock-free reads for query operations
+- **Both push and pull** - Subscribe() for reactive, Sense()/Detect() for polling
+- **Operation correlation** - Every signal includes OperationId for tracing across coordinators
+- **Pattern matching** - Query by exact match, prefix, or custom predicate
 
-Example coordination patterns:
+**Key design principle:** Store large data (documents, images, vectors) in caches or databases. Signals only carry references like `"cache://doc-123"` or operation keys.
+
+Example coordination:
 
 ```csharp
-// Pull pattern: Wave queries sink to decide if it should run
+// Operation emits signal via ISignalEmitter interface
+public async Task ProcessAsync(Item item, ISignalEmitter emitter, CancellationToken ct)
+{
+    // Emit to the sink
+    emitter.Emit("processing.started");
+
+    await DoWorkAsync(item, ct);
+
+    emitter.Emit("processing.completed");
+}
+
+// Wave checks if it should run by querying sink
 public bool ShouldRun(string path, AnalysisContext ctx)
 {
-    var chunkSignal = ctx.GetSignal("document.chunked");
-    return chunkSignal != null && (int)chunkSignal.Value > 0;
+    // Pull pattern: query the sink via context
+    return ctx.Detect("document.chunked");
 }
 
-// Atom emits signals (adds to its owned list)
-public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-{
-    return new[]
-    {
-        new Signal
-        {
-            Key = "embeddings.generated",
-            Confidence = 1.0,
-            Source = Name
-        }
-    };
-}
-
-// Push pattern: UI subscribes to sink for reactive updates
+// UI subscribes to sink for reactive updates
 sink.Subscribe(signal => {
-    if (signal.Key.StartsWith("document."))
+    if (signal.Signal.StartsWith("document."))
     {
+        // Push pattern: react immediately
         UpdateProgressUI(signal);
     }
 });
 ```
 
-This structure exists because AI components naturally produce probabilistic outputs - the signal model makes confidence first-class while maintaining clear ownership boundaries. You can use Subscribe() for reactive patterns or query methods for polling, but either way, atoms own the signals and the sink provides a read-only view.
+**Escalation happens at two levels:**
+
+1. **Within a coordinator** - Waves check signal confidence and conditionally run expensive analysis
+2. **Between coordinators** - EscalatorAtom routes signals from fast coordinator → expensive coordinator based on signal criteria
+
+```csharp
+// Pattern 1: Intra-coordinator escalation (wave checks signals)
+public bool ShouldRun(string path, AnalysisContext ctx)
+{
+    var quality = ctx.GetSignal("quality.score");
+    return quality?.Confidence < 0.7; // Only run if quality is low
+}
+
+// Pattern 2: Inter-coordinator escalation (atom routes to another coordinator)
+// Option A: Explicit escalation signal
+typed.Raise("escalate.to.expensive", payload, key: "doc-123");
+
+// Option B: EscalatorAtom examines signals and decides
+new EscalatorAtomOptions<T> {
+    ShouldEscalate = evt => evt.Payload.Confidence < 0.7
+}
+```
+
+Multiple coordinators run independently. EscalatorAtom watches signals from one coordinator and forwards work to another when needed.
 
 For the theory behind this, see [Constrained Fuzzy Context Dragging](/blog/constrained-fuzzy-context-dragging).
+
+### Signals Carry References, Not Data
+
+**Critical:** Signals are coordination events, not data transport. Large data (documents, images, embeddings) should live in external storage.
+
+```csharp
+// ❌ BAD: Carrying data in signals (memory pressure, boxing)
+var imageBytes = await ProcessImageAsync(input);
+emitter.Emit("image.processed", metadata: new { Data = imageBytes });
+
+// ✅ GOOD: Store externally, signal the reference
+var imageBytes = await ProcessImageAsync(input);
+var cacheKey = $"processed/{docId}";
+await cache.SetAsync(cacheKey, imageBytes);
+emitter.Emit("image.processed", key: cacheKey);
+
+// Later: Retrieve when needed
+if (sink.Detect("image.processed"))
+{
+    var signals = sink.GetOpSignals(operationId);
+    var imageKey = signals.FirstOrDefault(s => s.Signal == "image.processed")?.Key;
+    if (imageKey != null)
+    {
+        var bytes = await cache.GetAsync<byte[]>(imageKey);
+    }
+}
+```
+
+**Best practices:**
+
+- Use caches (in-memory or distributed) for ephemeral data
+- Use databases for durable data
+- Use blob storage for large files
+- Signal URIs: `"cache://key"`, `"blob://container/file"`, `"db://table/id"`
+- Keep signals lightweight - just keys, confidence scores, timestamps
 
 ---
 
@@ -791,154 +869,14 @@ graph LR
 
 ---
 
-## Escalation: From Fast to Thorough
+## Escalation Patterns
 
-The key innovation is **bounded escalation** - cheap detectors run first, expensive analysis only when needed.
+StyloFlow supports escalation at two levels:
 
-**Example: Bot detection**
+1. **Intra-coordinator**: Waves check signal confidence and conditionally run expensive steps
+2. **Inter-coordinator**: EscalatorAtom routes signals from fast coordinator → expensive coordinator
 
-```csharp
-// Stage 1: Fast IP check (< 10ms)
-public class IpReputationWave : IContentAnalysisWave
-{
-    public int Priority => 100;
-
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var ip = ctx.GetCached<string>("client_ip");
-        var reputation = await _ipService.CheckAsync(ip);
-
-        double confidence;
-
-        if (reputation == IpReputation.KnownBot)
-            confidence = 0.95;
-        else if (reputation == IpReputation.Suspicious)
-            confidence = 0.5;
-        else
-            confidence = 0.1;
-
-        var signals = new List<Signal>
-        {
-            new Signal
-            {
-                Key = "bot.detected",
-                Value = reputation != IpReputation.Clean,
-                Confidence = confidence,
-                Source = Name
-            }
-        };
-
-        // Trigger escalation if unsure
-        if (confidence > 0.4 && confidence < 0.7)
-        {
-            signals.Add(new Signal
-            {
-                Key = "bot.escalation.needed",
-                Source = Name
-            });
-        }
-
-        return signals;
-    }
-}
-```
-
-**Stage 2: Behavioral analysis (triggered by escalation, ~100ms)**
-
-```csharp
-// Only runs if bot.escalation.needed signal exists
-public class BehaviorAnalysisWave : ConfiguredComponentBase, IContentAnalysisWave
-{
-    public int Priority => 80;
-
-    public bool ShouldRun(string path, AnalysisContext ctx)
-    {
-        // Skip if already confident
-        var botSignal = ctx.GetBestSignal("bot.detected");
-        if (botSignal?.Confidence > 0.7 || botSignal?.Confidence < 0.4)
-            return false;
-
-        // Only run if escalation requested
-        return ctx.GetSignal("bot.escalation.needed") != null;
-    }
-
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var userAgent = ctx.GetCached<string>("user_agent");
-        var clickPattern = ctx.GetCached<List<Click>>("clicks");
-
-        var behaviorScore = AnalyzeBehavior(userAgent, clickPattern);
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "bot.detected",
-                Value = behaviorScore > 0.6,
-                Confidence = behaviorScore,
-                Source = Name
-            }
-        };
-    }
-}
-```
-
-**Stage 3: LLM analysis (only if still unsure, ~2s)**
-
-```csharp
-public class LlmBotAnalysisWave : ConfiguredComponentBase, IContentAnalysisWave
-{
-    public int Priority => 60;
-
-    public bool ShouldRun(string path, AnalysisContext ctx)
-    {
-        var botSignal = ctx.GetBestSignal("bot.detected");
-
-        // Only use LLM if still in ambiguous range
-        return botSignal?.Confidence > 0.4 &&
-               botSignal?.Confidence < 0.7;
-    }
-
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(...)
-    {
-        var messages = ctx.GetCached<List<Message>>("conversation");
-
-        var prompt = $@"Analyze if this conversation is from a bot:
-{string.Join("\n", messages.Select(m => m.Text))}
-
-Reply with JSON: {{""is_bot"": bool, ""confidence"": 0.0-1.0, ""reasoning"": string}}";
-
-        var response = await _llm.CompleteAsync(prompt);
-        var result = JsonSerializer.Deserialize<BotAnalysisResult>(response);
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "bot.detected",
-                Value = result.IsBot,
-                Confidence = result.Confidence,
-                Source = Name,
-                Metadata = new() { ["reasoning"] = result.Reasoning }
-            }
-        };
-    }
-}
-```
-
-**Cost breakdown:**
-
-| Stage | Latency | Cost | Hit Rate |
-|-------|---------|------|----------|
-| IP check | 5ms | $0 | 100% of requests |
-| Behavioral | 100ms | $0 | 30% (ambiguous cases) |
-| LLM | 2s | $0.002 | 5% (still ambiguous) |
-
-**Total cost:** $0.002 * 0.05 = **$0.0001 per request**
-
-Compare to naive "LLM everything" approach: $0.002 * 100% = **$0.002 per request** (20x more expensive)
-
-This is the power of wave-based escalation.
+Example from lucidRAG: Fast entity extraction runs first. If quality < 0.7, EscalatorAtom routes the document to an expensive LLM refinement coordinator. This saves 20x on cost by avoiding expensive LLM calls for high-quality extractions.
 
 ---
 
@@ -1031,93 +969,29 @@ For complete examples, see the [StyloFlow GitHub repository](https://github.com/
 
 ## Workflow Discoverability: YAML Manifests
 
-One of StyloFlow's key features is **workflow discoverability** - you can understand the entire pipeline just by reading the manifests. No code diving required.
+Manifests declare what triggers a wave, what it emits, resource limits, and costs - making workflows self-documenting.
 
-### Complete lucidRAG Document Pipeline
-
-Here's the actual manifest directory structure for lucidRAG:
-
-```
-manifests/
-├── 01-file-type-detector.yaml
-├── 02-chunking.yaml
-├── 03-embedding.yaml
-├── 04-entity-extraction.yaml
-├── 05-quality-check.yaml
-└── 06-escalation.yaml
-```
-
-**01-file-type-detector.yaml:**
-
-```yaml
-name: FileTypeDetector
-priority: 100
-enabled: true
-description: Detects file type from extension
-
-taxonomy:
-  kind: sensor
-  determinism: deterministic
-  persistence: ephemeral
-
-triggers:
-  requires:
-    - signal: document.uploaded
-      condition: exists
-
-emits:
-  on_start:
-    - file.detection.started
-  on_complete:
-    - key: file.extension
-      type: string
-      confidence_range: [1.0, 1.0]
-    - key: file.mime_type
-      type: string
-      confidence_range: [1.0, 1.0]
-
-lane:
-  name: fast
-  max_concurrency: 16
-
-budget:
-  max_duration: 10ms
-```
-
-**02-chunking.yaml:**
+**Example: Deterministic wave**
 
 ```yaml
 name: ChunkingWave
 priority: 80
-enabled: true
 description: Splits documents into semantic chunks
 
 taxonomy:
   kind: extractor
   determinism: deterministic
-  persistence: ephemeral
-
-input:
-  accepts:
-    - document.pdf
-    - document.docx
-    - document.markdown
-  required_signals:
-    - file.extension
 
 triggers:
   requires:
     - signal: file.extension
       condition: in
-      value: [".pdf", ".docx", ".md", ".txt"]
+      value: [".pdf", ".docx", ".md"]
 
 emits:
   on_complete:
     - key: document.chunked
       type: integer
-      confidence_range: [1.0, 1.0]
-    - key: chunks.cached
-      type: boolean
 
 lane:
   name: normal
@@ -1130,431 +1004,39 @@ defaults:
   chunking:
     max_chunk_size: 512
     overlap: 50
-    respect_boundaries: true
 ```
 
-**03-embedding.yaml:**
-
-```yaml
-name: EmbeddingWave
-priority: 60
-enabled: true
-description: Generates ONNX embeddings for chunks
-
-taxonomy:
-  kind: embedder
-  determinism: deterministic
-  persistence: cached
-
-input:
-  required_signals:
-    - document.chunked
-    - chunks.cached
-
-triggers:
-  requires:
-    - signal: document.chunked
-      condition: ">"
-      value: 0
-
-emits:
-  on_complete:
-    - key: embeddings.generated
-      type: integer
-      confidence_range: [1.0, 1.0]
-
-lane:
-  name: normal
-  max_concurrency: 4
-
-budget:
-  max_duration: 2m
-  max_cost: 0.0  # Local ONNX model
-
-defaults:
-  embedding:
-    model: all-MiniLM-L6-v2
-    batch_size: 32
-```
-
-**04-entity-extraction.yaml:**
-
-```yaml
-name: EntityExtractionWave
-priority: 60  # Same as embedding - runs in parallel
-enabled: true
-description: Extracts entities using IDF scoring
-
-taxonomy:
-  kind: extractor
-  determinism: deterministic
-  persistence: persisted
-
-input:
-  required_signals:
-    - document.chunked
-
-triggers:
-  requires:
-    - signal: document.chunked
-      condition: ">"
-      value: 0
-
-emits:
-  on_complete:
-    - key: entities.extracted
-      type: integer
-      confidence_range: [0.0, 1.0]  # Confidence varies
-
-lane:
-  name: normal
-  max_concurrency: 8
-
-budget:
-  max_duration: 1m
-
-defaults:
-  entity:
-    min_idf_score: 2.5
-    min_frequency: 2
-    max_entities: 100
-```
-
-**05-quality-check.yaml:**
+**Example: Conditional escalation**
 
 ```yaml
 name: QualityCheckWave
 priority: 40
-enabled: true
 description: Validates extraction quality
-
-taxonomy:
-  kind: gatekeeper
-  determinism: deterministic
-  persistence: ephemeral
-
-input:
-  required_signals:
-    - embeddings.generated
-    - entities.extracted
 
 triggers:
   requires:
     - signal: embeddings.generated
-      condition: ">"
-      value: 0
     - signal: entities.extracted
-      condition: exists
 
 emits:
   on_complete:
     - key: quality.score
-      type: double
       confidence_range: [0.0, 1.0]
 
   conditional:
     - key: escalation.needed
-      when: quality.score < 0.7
+      when: quality.score < 0.7  # Trigger LLM refinement
 
 lane:
   name: fast
   max_concurrency: 16
-
-defaults:
-  quality:
-    min_embeddings: 5
-    min_entity_confidence: 0.5
-    threshold: 0.7
-```
-
-**06-escalation.yaml:**
-
-```yaml
-name: EscalationWave
-priority: 20
-enabled: true
-description: Improves low-quality extractions using LLM
-
-taxonomy:
-  kind: proposer
-  determinism: probabilistic
-  persistence: persisted
-
-input:
-  required_signals:
-    - escalation.needed
-
-triggers:
-  requires:
-    - signal: escalation.needed
-      condition: exists
-  skip_when:
-    - signal: budget.exhausted
-
-emits:
-  on_complete:
-    - key: escalation.complete
-      type: boolean
-    - key: entities.improved
-      type: integer
-      confidence_range: [0.7, 1.0]
-
-lane:
-  name: llm
-  max_concurrency: 2  # Expensive
-
-budget:
-  max_duration: 30s
-  max_tokens: 4000
-  max_cost: 0.05
-
-defaults:
-  llm:
-    model: gpt-4o-mini
-    temperature: 0.1
-    prompt_template: entity_extraction
-```
-
-### Benefits of Declarative Manifests
-
-Looking at these files, you immediately know:
-
-1. **Execution order** - Priority numbers (100 → 80 → 60 → 40 → 20)
-2. **Dependencies** - What signals each wave needs to run
-3. **Parallelism** - Embedding (60) and EntityExtraction (60) run together
-4. **Resource limits** - Different lanes and concurrency per wave
-5. **Conditional logic** - Escalation only runs if quality < 0.7
-6. **Cost boundaries** - Escalation has token and cost limits
-
-**No code reading required.** The workflow is self-documenting.
-
-### Code-Based Atoms Referenced in Manifests
-
-While the examples above show fully declarative YAML, waves can also be **code-based atoms** referenced in manifests:
-
-```yaml
-name: CustomAnalyzer
-priority: 50
-enabled: true
-description: Custom analysis logic
-
-# Reference a code-based atom implementation
-implementation:
-  assembly: MyProject.Analyzers
-  type: MyProject.Analyzers.CustomAnalyzerWave
-  method: AnalyzeAsync
-
-# The manifest still declares the contract
-taxonomy:
-  kind: analyzer
-  determinism: probabilistic
-
-triggers:
-  requires:
-    - signal: data.ready
-
-emits:
-  on_complete:
-    - key: analysis.complete
-      confidence_range: [0.0, 1.0]
-
-lane:
-  name: normal
-  max_concurrency: 4
-
-# Configuration values passed to the atom
-defaults:
-  threshold: 0.75
-  max_iterations: 10
-```
-
-The C# implementation:
-
-```csharp
-public class CustomAnalyzerWave : ConfiguredComponentBase, IContentAnalysisWave
-{
-    public async Task<IEnumerable<Signal>> AnalyzeAsync(
-        string path,
-        AnalysisContext ctx,
-        CancellationToken ct)
-    {
-        // Access manifest config
-        var threshold = GetParam<double>("threshold", 0.75);
-        var maxIterations = GetParam<int>("max_iterations", 10);
-
-        // Custom logic here
-        var result = await PerformComplexAnalysis(path, threshold, maxIterations);
-
-        return new[]
-        {
-            new Signal
-            {
-                Key = "analysis.complete",
-                Value = result.Score,
-                Confidence = result.Confidence,
-                Source = Name
-            }
-        };
-    }
-}
 ```
 
 **Benefits:**
-- **Manifest declares the contract** - triggers, signals, budget, lanes
-- **Code provides implementation** - complex logic, external dependencies
-- **Configuration flows through** - manifest defaults override code defaults
-- **Testing independence** - Test code without manifests, validate manifests without running code
-
-This hybrid approach gives you declarative workflow discovery while keeping complex logic in maintainable C#.
-
-### Pipeline Visualization from Manifests
-
-The manifest structure makes it trivial to generate visualizations:
-
-```mermaid
-graph TD
-    DOC[document.uploaded] --> FT[FileTypeDetector<br/>Priority: 100<br/>Lane: fast]
-    FT --> EXT[file.extension]
-
-    EXT --> CH[ChunkingWave<br/>Priority: 80<br/>Lane: normal]
-    CH --> CHUNKED[document.chunked]
-
-    CHUNKED --> EMB[EmbeddingWave<br/>Priority: 60<br/>Lane: normal]
-    CHUNKED --> ENT[EntityExtractionWave<br/>Priority: 60<br/>Lane: normal]
-
-    EMB --> EMBGEN[embeddings.generated]
-    ENT --> ENTEX[entities.extracted]
-
-    EMBGEN --> QC[QualityCheckWave<br/>Priority: 40<br/>Lane: fast]
-    ENTEX --> QC
-
-    QC --> QSCORE[quality.score]
-    QC -.conditional.-> ESC_NEED[escalation.needed]
-
-    ESC_NEED -.-> ESC[EscalationWave<br/>Priority: 20<br/>Lane: llm]
-    ESC --> ESC_DONE[escalation.complete]
-
-    style DOC stroke:#339af0
-    style FT stroke:#51cf66
-    style CH stroke:#51cf66
-    style EMB stroke:#51cf66
-    style ENT stroke:#51cf66
-    style QC stroke:#ffd43b
-    style ESC stroke:#ff922b
-```
-
-This diagram was generated programmatically from the YAML manifests - no manual drawing.
-
----
-
-## Aside: Using Code LLMs — The StyloFlow Way
-
-One unexpected property of StyloFlow is that it creates a system **LLMs can reason about safely**.
-
-Most attempts to use LLMs for debugging or orchestration fail because the system they're dropped into is opaque:
-
-* State is implicit
-* Control flow is buried in code
-* Decisions are encoded as side effects
-* Logs are narrative, not causal
-
-StyloFlow does the opposite. It exposes **explicit, immutable facts** about what happened, when, and with what confidence.
-
-That makes Code LLMs genuinely useful — not as actors, but as **analysts**.
-
-### LLMs reason *about* the system, not *inside* it
-
-In StyloFlow, an LLM never:
-
-* Triggers execution
-* Emits signals
-* Mutates state
-* Owns decisions
-
-Instead, it is given a **SignalSink view** and asked questions like:
-
-* "Why did this wave escalate?"
-* "Which signal caused this path to run?"
-* "Where is confidence lowest?"
-* "Which upstream signal contradicts this outcome?"
-* "What would happen if this threshold were raised?"
-
-Example input to a Code LLM:
-
-```json
-{
-  "operation": "doc-123",
-  "signals": [
-    { "key": "document.chunked", "value": 12, "confidence": 1.0, "source": "ChunkingWave" },
-    { "key": "entities.extracted", "value": 4, "confidence": 0.42, "source": "EntityWave" },
-    { "key": "quality.score", "value": 0.39, "source": "QualityCheckWave" },
-    { "key": "escalation.needed", "source": "QualityCheckWave" }
-  ]
-}
-```
-
-That's not a log stream. That's a **reasoning substrate**.
-
-A Code LLM can now:
-
-* Explain causality ("escalation triggered because quality < threshold")
-* Identify weak links ("entity extraction confidence dominates failure")
-* Suggest mitigations ("run a different extractor before escalating")
-* Propose configuration changes ("lower entity min-IDF for PDFs")
-
-All without being trusted to *do* anything.
-
-### Debugging becomes inspection, not reenactment
-
-Traditional "LLM debugging" tries to replay the world:
-
-> "Here's the code and some logs, what went wrong?"
-
-StyloFlow debugging is simpler:
-
-> "Here is the exact state the system observed."
-
-Because signals are immutable and owned, you don't need to re-run anything. You don't need to reconstruct intent. You don't need the LLM to guess.
-
-The LLM reasons over facts you already trust.
-
-### Why this doesn't turn into agent theatre
-
-This only works because of strict boundaries:
-
-* LLMs can **analyze** signals
-* Deterministic code **acts** on signals
-* Only manifests and code change behavior
-
-There is no feedback loop where the LLM "decides" the next step. At most, it proposes explanations or configuration suggestions that a human (or deterministic policy) may apply later.
-
-That asymmetry is deliberate.
-
-### A side-effect: future self-tuning without autonomy
-
-Once signals, confidence, and outcomes are explicit, you *can* later:
-
-* Mine historical signal traces
-* Evaluate which escalations helped
-* Tune thresholds offline
-* Promote or demote waves between lanes
-
-None of that requires letting an LLM run the system.
-
-The LLM becomes a **diagnostic lens**, not a control surface.
-
-### Why this matters
-
-StyloFlow doesn't just make probabilistic systems safe.
-
-It makes them **legible** — to humans, to tests, and to LLMs — without surrendering control.
-
-That's the difference between:
-
-* "LLMs running your system"
-* and "LLMs understanding your system"
-
-Only one of those scales.
+- Execution order visible from priority numbers
+- Dependencies clear from required signals
+- Resource limits explicit (lanes, budgets)
+- Conditional logic declarative
 
 ---
 
@@ -1616,83 +1098,6 @@ name: MyWave
 triggers: [...]
 emits: [...]
 ```
-
----
-
-## Complete Pipeline: lucidRAG Document Ingestion
-
-Here's the complete [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) pipeline at a glance (see the detailed code examples in the "Use Case: lucidRAG Document Processing" section above):
-
-1. **Upload** → `document.uploaded` signal
-2. **FileTypeWave** detects PDF/DOCX/Markdown → `file.extension` signal
-3. **ExtractionWave** pulls text and structure → `text.extracted` signal
-4. **ChunkingWave** splits semantically → `document.chunked` signal
-5. **EmbeddingWave** generates vectors (parallel) → `embeddings.generated` signal
-6. **EntityWave** extracts entities (parallel) → `entities.extracted` signal
-7. **QualityWave** checks completeness → `quality.score` signal
-8. **EscalationWave** (conditional if quality < 0.7) → `escalation.complete` signal
-9. **StorageWave** persists to Qdrant + PostgreSQL → `storage.complete` signal
-
-The UI subscribes to the SignalSink for real-time progress updates (push pattern):
-
-```csharp
-// Subscribe to sink for push notifications
-signalSink.Subscribe(signal => {
-    if (signal.Key.StartsWith("document."))
-    {
-        await _hub.Clients.User(userId)
-            .SendAsync("DocumentProgress", new
-            {
-                stage = signal.Key,
-                progress = CalculateProgress(signal),
-                operationId = signal.OperationId
-            });
-    }
-});
-```
-
-Or use the pull pattern if you prefer polling:
-
-```csharp
-// Query SignalSink for document progress (pull pattern)
-var documentSignals = signalSink.GetSignals()
-    .Where(s => s.Key.StartsWith("document.") &&
-                s.Timestamp > lastCheck);
-
-foreach (var signal in documentSignals)
-{
-    UpdateProgressUI(signal);
-}
-```
-
-**Key point:** You subscribe to the SINK (which views all atoms), not to individual operations. Atoms own signals; the sink provides push (Subscribe) and pull (query) access to them.
-
-This is how [lucidRAG](/blog/lucidrag-multi-document-rag-web-app) processes documents, data, and images through a unified signal-driven pipeline - combining [DocSummarizer](/blog/building-a-document-summarizer-with-rag), [DataSummarizer](/blog/datasummarizer-how-it-works), and [ImageSummarizer](/blog/constrained-fuzzy-image-intelligence) under one orchestration layer.
-
----
-
-## Complete Pipeline: Stylobot Bot Detection
-
-Here's the complete [Stylobot](https://www.stylobot.net) pipeline at a glance (see detailed code in "Escalation: From Fast to Thorough"):
-
-1. **IpReputationWave** checks IP against known bot lists (< 10ms) → `bot.detected` signal with confidence
-2. **BehaviorAnalysisWave** (conditional if 0.4 < confidence < 0.7) analyzes user agent and click patterns → refined `bot.detected` signal
-3. **LlmBotAnalysisWave** (conditional if still ambiguous) uses LLM for conversation analysis → final `bot.detected` signal
-
-The key benefit: escalation based on confidence.
-
-```csharp
-// ❌ Traditional: Every request gets expensive analysis
-var reputation = await CheckIpAsync(ip);
-var behavior = await AnalyzeBehaviorAsync(session);  // Even if IP is known bad
-var llmScore = await LlmAnalysisAsync(conversation);  // Always expensive
-
-// ✅ StyloFlow: Waves run based on confidence signals
-// BehaviorAnalysis only runs if confidence is ambiguous (0.4-0.7)
-// LLM analysis only runs if still unsure after behavior check
-```
-
-**Cost breakdown:** IP check costs $0 and runs 100% of the time. Behavioral analysis runs 30% (ambiguous cases). LLM analysis runs 5% (still ambiguous). Total cost per request: **$0.0001** vs naive "LLM everything" at **$0.002** (20x savings).
 
 ---
 
