@@ -12,9 +12,11 @@ namespace Mostlylucid.Services.Blog;
 public class BlogSearchService(
     MostlylucidDbContext context,
     ISemanticSearchService semanticSearchService,
-    SearchRanker? searchRanker = null)
+    SearchRanker? searchRanker = null,
+    SearchQueryParser? queryParser = null)
 {
     private readonly SearchRanker _ranker = searchRanker ?? new SearchRanker();
+    private readonly SearchQueryParser _queryParser = queryParser ?? new SearchQueryParser();
 
     public async Task<List<string>> GetAvailableLanguagesAsync()
     {
@@ -230,6 +232,7 @@ public class BlogSearchService(
 
     /// <summary>
     /// Hybrid search with paging and filters: tries semantic search first, falls back to PostgreSQL
+    /// If no results found, returns recent posts as suggestions
     /// </summary>
     public async Task<BasePagingModel<BlogPostDto>> HybridSearchWithPagingAsync(
         string? query,
@@ -251,6 +254,7 @@ public class BlogSearchService(
         activity.AddProperty("Order", order);
 
         var targetLanguage = string.IsNullOrEmpty(language) ? "en" : language;
+        var noMatchFound = false;
 
         // Try semantic search first (with fallback to PostgreSQL on any failure)
         try
@@ -375,13 +379,32 @@ public class BlogSearchService(
         // Fall back to PostgreSQL full-text search with filters
         try
         {
-            return await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize, order);
+            var pgResults = await GetPostsWithFilters(query, targetLanguage, startDate, endDate, page, pageSize, order);
+
+            // If no results found, mark it so we can return recent posts as suggestions
+            if (pgResults.TotalItems == 0)
+            {
+                noMatchFound = true;
+            }
+            else
+            {
+                return pgResults;
+            }
         }
         catch (Exception ex)
         {
             Log.Logger.Error(ex, "PostgreSQL full-text search failed for query '{Query}'", query);
-            return new BasePagingModel<BlogPostDto>();
+            noMatchFound = true;
         }
+
+        // No match found - return recent posts as suggestions
+        if (noMatchFound)
+        {
+            Log.Logger.Information("No search results for '{Query}', returning recent posts as suggestions", query);
+            return await GetRecentPostsAsSuggestions(targetLanguage, startDate, endDate, page, pageSize);
+        }
+
+        return new BasePagingModel<BlogPostDto>();
     }
 
     /// <summary>
@@ -426,6 +449,7 @@ public class BlogSearchService(
 
     /// <summary>
     /// Build the PostgreSQL full-text search query with filters and ordering.
+    /// Supports Google-style search operators: quoted phrases, -excluded terms, wildcards
     /// </summary>
     private IOrderedQueryable<BlogPostEntity> BuildSearchQuery(
         string query,
@@ -435,8 +459,6 @@ public class BlogSearchService(
         string order)
     {
         var now = DateTimeOffset.UtcNow;
-        // Lowercase the query for PostgreSQL full-text search (case-insensitive)
-        var lowerQuery = query.ToLower();
         var baseQuery = context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -452,23 +474,55 @@ public class BlogSearchService(
         if (endDate.HasValue)
             baseQuery = baseQuery.Where(x => x.PublishedDate <= endDate.Value);
 
-        // Apply text search filter
-        IQueryable<BlogPostEntity> searchQuery;
-        if (query.Contains(" "))
+        // Parse the query for special operators
+        var parsed = _queryParser.Parse(query);
+
+        // Build the search query based on parsed components
+        IQueryable<BlogPostEntity> searchQuery = baseQuery;
+
+        // Handle phrases (exact substring matching)
+        foreach (var phrase in parsed.Phrases)
         {
-            searchQuery = baseQuery.Where(x =>
-                x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
-                || x.Categories.Any(c =>
-                    EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))));
+            var lowerPhrase = phrase.ToLower();
+            searchQuery = searchQuery.Where(x =>
+                EF.Functions.ILike(x.Title, $"%{phrase}%")
+                || EF.Functions.ILike(x.PlainTextContent, $"%{phrase}%")
+                || x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{phrase}%")));
         }
-        else
+
+        // Build tsquery for include terms and wildcards
+        var tsQuery = _queryParser.BuildTsQuery(parsed);
+
+        // Apply full-text search if we have terms
+        if (!string.IsNullOrWhiteSpace(tsQuery))
         {
-            searchQuery = baseQuery.Where(x =>
-                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))
+            searchQuery = searchQuery.Where(x =>
+                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", tsQuery))
                 || x.Categories.Any(c =>
                     EF.Functions.ToTsVector("english", c.Name)
-                        .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))));
+                        .Matches(EF.Functions.ToTsQuery("english", tsQuery))));
+        }
+
+        // Handle acronyms with case-insensitive substring search
+        var acronymTerms = parsed.IncludeTerms
+            .Concat(parsed.WildcardTerms)
+            .Where(t => _queryParser.IsAcronymLike(t))
+            .ToList();
+
+        foreach (var acronym in acronymTerms)
+        {
+            searchQuery = searchQuery.Where(x =>
+                EF.Functions.ILike(x.Title, $"%{acronym}%")
+                || EF.Functions.ILike(x.PlainTextContent, $"%{acronym}%"));
+        }
+
+        // Handle excluded terms (must NOT contain these)
+        foreach (var excludeTerm in parsed.ExcludeTerms)
+        {
+            searchQuery = searchQuery.Where(x =>
+                !EF.Functions.ILike(x.Title, $"%{excludeTerm}%")
+                && !EF.Functions.ILike(x.PlainTextContent, $"%{excludeTerm}%")
+                && !x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{excludeTerm}%")));
         }
 
         // Apply ordering - relevance uses ts_rank, others use column values
@@ -476,15 +530,16 @@ public class BlogSearchService(
         if (order == "relevance" || order == "relevance_desc")
         {
             // Order by full-text search rank (how well the query matches)
-            if (query.Contains(" "))
+            // Only rank if we have a tsquery, otherwise use date
+            if (!string.IsNullOrWhiteSpace(tsQuery))
             {
                 orderedQuery = searchQuery.OrderByDescending(x =>
-                    x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", lowerQuery)));
+                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", tsQuery)));
             }
             else
             {
-                orderedQuery = searchQuery.OrderByDescending(x =>
-                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", lowerQuery + ":*")));
+                // No ts_rank available (only phrases/excluded terms), sort by date
+                orderedQuery = searchQuery.OrderByDescending(x => x.PublishedDate);
             }
         }
         else
@@ -495,13 +550,56 @@ public class BlogSearchService(
                 "date_desc" => searchQuery.OrderByDescending(x => x.PublishedDate),
                 "title_asc" => searchQuery.OrderBy(x => x.Title),
                 "title_desc" => searchQuery.OrderByDescending(x => x.Title),
-                _ => searchQuery.OrderByDescending(x =>
-                    query.Contains(" ")
-                        ? x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
-                        : x.SearchVector.Rank(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))
+                _ => !string.IsNullOrWhiteSpace(tsQuery)
+                    ? searchQuery.OrderByDescending(x => x.SearchVector.Rank(EF.Functions.ToTsQuery("english", tsQuery)))
+                    : searchQuery.OrderByDescending(x => x.PublishedDate)
             };
         }
 
         return orderedQuery;
+    }
+
+    /// <summary>
+    /// Get recent posts as suggestions when search returns no results.
+    /// Returns posts ordered by date descending (most recent first).
+    /// </summary>
+    private async Task<BasePagingModel<BlogPostDto>> GetRecentPostsAsSuggestions(
+        string language,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var query = context.BlogPosts
+            .Include(x => x.Categories)
+            .Include(x => x.LanguageEntity)
+            .AsNoTracking()
+            .Where(x =>
+                !x.IsHidden
+                && (x.ScheduledPublishDate == null || x.ScheduledPublishDate <= now)
+                && x.LanguageEntity.Name == language);
+
+        // Apply date filters
+        if (startDate.HasValue)
+            query = query.Where(x => x.PublishedDate >= startDate.Value);
+        if (endDate.HasValue)
+            query = query.Where(x => x.PublishedDate <= endDate.Value);
+
+        var totalPosts = await query.CountAsync();
+        var results = await query
+            .OrderByDescending(x => x.PublishedDate)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new BasePagingModel<BlogPostDto>
+        {
+            Data = results.Select(x => x.ToDto()).ToList(),
+            TotalItems = totalPosts,
+            Page = page,
+            PageSize = pageSize,
+            NoMatchFound = true
+        };
     }
 }

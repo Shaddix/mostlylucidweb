@@ -39,7 +39,8 @@ try
         configuration.ReadFrom.Configuration(context.Configuration);
 #if DEBUG
         // Don't override MinimumLevel - let appsettings.json control it
-        SelfLog.Enable(Console.Error);
+        // SelfLog disabled to prevent Seq connection errors from appearing in console
+        // SelfLog.Enable(Console.Error);
 #endif
     });
     var certExists = File.Exists("mostlylucid.pfx");

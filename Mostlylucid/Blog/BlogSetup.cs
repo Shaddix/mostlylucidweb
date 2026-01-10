@@ -5,6 +5,7 @@ using Mostlylucid.Blog.ValidationService;
 using Mostlylucid.DbContext;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.SemanticSearch.Config;
+using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
@@ -47,6 +48,8 @@ public static class BlogSetup
                 services.AddScoped<IBlogViewService, BlogPostViewService>();
                 services.AddScoped<ICommentService, CommentService>();
                 services.AddScoped<IBlogPopulator, BlogPopulator>();
+                services.AddSingleton<SearchQueryParser>();
+                services.AddSingleton<SearchRanker>();
                 services.AddScoped<BlogSearchService>();
                 services.AddScoped<CommentViewService>();
                 services.AddSingleton<BlogUpdater>();
@@ -78,6 +81,8 @@ public static class BlogSetup
                 if (semanticConfig?.Enabled == true)
                 {
                     services.AddHostedService<SemanticIndexingBackgroundService>();
+                    // Smart semantic indexing - automatically reindex if Qdrant is empty (on deployment)
+                    services.AddHostedService<SmartSemanticIndexService>();
                 }
                 break;
         }

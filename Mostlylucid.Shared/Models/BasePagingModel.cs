@@ -10,4 +10,9 @@ public class BasePagingModel<T> : Interfaces.IPagingModel<T> where T : class
     public ViewType ViewType { get; set; } = ViewType.TailwindAndDaisy;
     public string LinkUrl { get; set; }
     public List<T> Data { get; set; }
+
+    /// <summary>
+    /// Indicates that no search match was found and these are suggested recent posts instead
+    /// </summary>
+    public bool NoMatchFound { get; set; } = false;
 }

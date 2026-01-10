@@ -282,13 +282,15 @@ public class QdrantVectorStoreService : IVectorStoreService
             }
 
             // Check if the point has valid vector data
-            if (point.Vectors?.Vector?.Data == null)
+            if (point.Vectors?.Vector == null)
             {
                 _logger.LogWarning("Post {Slug} found in vector store but has no vector data", slug);
                 return new List<SearchResult>();
             }
 
             // Use the document's vector to find similar posts
+            // Note: .Data is obsolete but still works - the vector is accessed directly
+#pragma warning disable CS0612 // Type or member is obsolete
             var searchResults = await _client.SearchAsync(
                 collectionName: _config.CollectionName,
                 vector: point.Vectors.Vector.Data.ToArray(),
@@ -296,6 +298,7 @@ public class QdrantVectorStoreService : IVectorStoreService
                 scoreThreshold: _config.MinimumSimilarityScore,
                 cancellationToken: cancellationToken
             );
+#pragma warning restore CS0612 // Type or member is obsolete
 
             // Filter out the original post and return top N similar posts
             return searchResults

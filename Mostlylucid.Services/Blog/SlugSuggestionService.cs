@@ -397,18 +397,55 @@ public class SlugSuggestionService : ISlugSuggestionService
         }
 
         var normalizedSlug = NormalizeSlug(requestedSlug);
-        var searchTerm = normalizedSlug.Replace("-", " ");
 
-        _logger.LogInformation("Finding suggestions with scores for slug: {RequestedSlug} (search term: {SearchTerm})",
-            requestedSlug, searchTerm);
+        // First, try to extract a canonical slug from the URL
+        // E.g., /archive/blog-slug.aspx -> blog-slug
+        // E.g., /blog/my-post-slug -> my-post-slug
+        var extractedSlug = ExtractSlugFromUrl(requestedSlug);
+
+        _logger.LogInformation("Finding suggestions for slug: {RequestedSlug} (extracted slug: {ExtractedSlug})",
+            requestedSlug, extractedSlug);
 
         var results = new List<SlugSuggestionWithScore>();
 
-        // Try semantic search first if available
+        // Try exact slug match first (canonical match)
+        if (!string.IsNullOrWhiteSpace(extractedSlug))
+        {
+            var exactMatch = await _context.BlogPosts
+                .AsNoTracking()
+                .Where(p => p.Slug == extractedSlug && p.LanguageEntity.Name == language && !p.IsHidden)
+                .Select(p => new PostListModel
+                {
+                    Id = p.Id.ToString(),
+                    Slug = p.Slug,
+                    Title = p.Title,
+                    Language = p.LanguageEntity.Name,
+                    PublishedDate = p.PublishedDate.DateTime,
+                    Categories = p.Categories.Select(c => c.Name).ToArray()
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (exactMatch != null)
+            {
+                _logger.LogInformation("Found exact canonical slug match for: {ExtractedSlug}", extractedSlug);
+                return new List<SlugSuggestionWithScore>
+                {
+                    new SlugSuggestionWithScore(exactMatch, 1.0)
+                };
+            }
+        }
+
+        // No exact match - prepare search term for semantic/fuzzy search
+        var searchTerm = ExtractSearchTermFromUrl(requestedSlug);
+
+        _logger.LogInformation("No exact match found, searching semantically for: {SearchTerm}", searchTerm);
+
+        // Try semantic search next if available - searches for similar URL patterns
         if (_semanticSearchService != null)
         {
             try
             {
+                // Search using the URL-derived term to find semantically similar slugs/URLs
                 var semanticResults = await _semanticSearchService.SearchAsync(searchTerm, maxSuggestions, cancellationToken);
 
                 if (semanticResults.Count > 0)
@@ -711,6 +748,114 @@ public class SlugSuggestionService : ISlugSuggestionService
         }
 
         return numbers;
+    }
+
+    /// <summary>
+    /// Extract a canonical slug from a URL path
+    /// E.g., /archive/blog-slug.aspx -> blog-slug
+    /// E.g., /blog/my-post-slug -> my-post-slug
+    /// E.g., /archive/2003/06/06/old-post.html -> old-post
+    /// </summary>
+    private string ExtractSlugFromUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
+        // Remove query string
+        var path = url.Split('?')[0];
+
+        // Remove file extensions (.html, .aspx, etc.)
+        path = System.Text.RegularExpressions.Regex.Replace(path, @"\.(html|aspx|md|htm)$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Split path into segments
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        // Find the last meaningful segment (skip dates, common prefixes)
+        for (int i = segments.Length - 1; i >= 0; i--)
+        {
+            var segment = segments[i];
+
+            // Skip if it's a date pattern or common prefix
+            if (System.Text.RegularExpressions.Regex.IsMatch(segment, @"^\d{4}$") || // Year
+                System.Text.RegularExpressions.Regex.IsMatch(segment, @"^\d{1,2}$") || // Month/day
+                segment.Equals("blog", StringComparison.OrdinalIgnoreCase) ||
+                segment.Equals("archive", StringComparison.OrdinalIgnoreCase) ||
+                segment.Equals("archite", StringComparison.OrdinalIgnoreCase) ||
+                segment.Equals("post", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // This is likely the slug
+            return segment.ToLowerInvariant();
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Extract search terms from a URL path and query string
+    /// Splits on common delimiters and filters out noise (dates, numbers, file extensions)
+    /// </summary>
+    private string ExtractSearchTermFromUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return string.Empty;
+        }
+
+        // Split on query string first
+        var parts = url.Split('?');
+        var path = parts[0];
+        var query = parts.Length > 1 ? parts[1] : string.Empty;
+
+        // Remove file extensions (.html, .aspx, etc.)
+        path = System.Text.RegularExpressions.Regex.Replace(path, @"\.(html|aspx|md|htm)$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Split path into segments
+        var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        // Filter out common noise:
+        // - Date patterns (YYYY, MM, DD)
+        // - Pure numbers
+        // - Single characters
+        // - Common path prefixes (blog, archive, post, etc.)
+        var meaningfulSegments = pathSegments
+            .Where(seg =>
+                seg.Length > 1 &&
+                !System.Text.RegularExpressions.Regex.IsMatch(seg, @"^\d{4}$") && // Not a year
+                !System.Text.RegularExpressions.Regex.IsMatch(seg, @"^\d{1,2}$") && // Not a month/day
+                !seg.Equals("blog", StringComparison.OrdinalIgnoreCase) &&
+                !seg.Equals("archive", StringComparison.OrdinalIgnoreCase) &&
+                !seg.Equals("archite", StringComparison.OrdinalIgnoreCase) &&
+                !seg.Equals("post", StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
+
+        // Convert remaining segments to words (replace hyphens/underscores with spaces)
+        var searchWords = meaningfulSegments
+            .SelectMany(seg => seg.Replace("-", " ").Replace("_", " ").Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToList();
+
+        // Also extract query parameters (key=value pairs might have useful terms)
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var queryParams = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var param in queryParams)
+            {
+                var keyValue = param.Split('=');
+                if (keyValue.Length == 2 && !string.IsNullOrWhiteSpace(keyValue[1]))
+                {
+                    // Add both key and value as search terms
+                    searchWords.Add(keyValue[0].Replace("-", " ").Replace("_", " "));
+                    searchWords.Add(System.Net.WebUtility.UrlDecode(keyValue[1]).Replace("-", " ").Replace("_", " "));
+                }
+            }
+        }
+
+        return string.Join(" ", searchWords.Distinct()).Trim();
     }
 
     /// <summary>

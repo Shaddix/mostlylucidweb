@@ -26,7 +26,8 @@ builder.Host.UseSerilog((context, configuration) =>
 #if DEBUG
     configuration.MinimumLevel.Debug();
     configuration.WriteTo.Console();
-    SelfLog.Enable(Console.Error);
+    // SelfLog disabled to prevent Seq connection errors from appearing in console
+    // SelfLog.Enable(Console.Error);
 #endif
 });
 var configuration = builder.Configuration;

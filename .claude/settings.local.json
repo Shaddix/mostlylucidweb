@@ -83,7 +83,9 @@
       "Bash(Select-Object -First 30)",
       "Bash(git log:*)",
       "Bash(Select-String -Pattern \"error|Build succeeded|Build FAILED\")",
-      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net10.0\\\\data\\\\semantic-search.duckdb\")"
+      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net10.0\\\\data\\\\semantic-search.duckdb\")",
+      "Bash(ping:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

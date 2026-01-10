@@ -146,26 +146,60 @@ public partial class ExternalImageDownloadService
                 _logger.LogInformation("Successfully retrieved image from archive.org for {Url}", url);
             }
 
+            // Check Content-Type header first
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
-            if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+
+            // Reject HTML pages immediately
+            if (contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase) ||
+                contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase) ||
+                contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase) ||
+                contentType.Contains("application/xml", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogDebug("URL {Url} is not an image: {ContentType}", url, contentType);
+                _logger.LogWarning("URL {Url} returned non-image content type: {ContentType} - likely a 404 or error page", url, contentType);
                 return null;
+            }
+
+            // Check content length - reject files over 10MB
+            if (response.Content.Headers.ContentLength.HasValue)
+            {
+                var sizeInMB = response.Content.Headers.ContentLength.Value / (1024.0 * 1024.0);
+                if (sizeInMB > 10)
+                {
+                    _logger.LogWarning("Image {Url} is too large: {Size:F2}MB - skipping", url, sizeInMB);
+                    return null;
+                }
             }
 
             var imageBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
 
+            // Early validation: Check for HTML content by looking at first 512 bytes
+            if (IsHtmlContent(imageBytes))
+            {
+                _logger.LogWarning("URL {Url} contains HTML content (404/error page) - skipping", url);
+                return null;
+            }
+
+            // Validate image magic bytes BEFORE trying to load with ImageSharp
+            if (!HasValidImageMagicBytes(imageBytes, out var detectedFormat))
+            {
+                _logger.LogWarning("URL {Url} does not have valid image magic bytes - likely not an image file", url);
+                return null;
+            }
+
             // Generate local filename: slug-originalname.ext
             var originalFileName = Path.GetFileName(new Uri(url).LocalPath);
             var extension = Path.GetExtension(originalFileName);
-            if (string.IsNullOrEmpty(extension))
+            if (string.IsNullOrEmpty(extension) || extension.Length > 5)
             {
-                extension = contentType switch
+                // Use detected format from magic bytes
+                extension = detectedFormat switch
                 {
-                    "image/jpeg" => ".jpg",
-                    "image/png" => ".png",
-                    "image/gif" => ".gif",
-                    "image/webp" => ".webp",
+                    "jpeg" or "jpg" => ".jpg",
+                    "png" => ".png",
+                    "gif" => ".gif",
+                    "webp" => ".webp",
+                    "bmp" => ".bmp",
+                    "tiff" => ".tiff",
                     _ => ".jpg"
                 };
             }
@@ -427,5 +461,97 @@ public partial class ExternalImageDownloadService
             .CountAsync(cancellationToken);
 
         return (totalImages, totalSize, postsWithImages);
+    }
+
+    /// <summary>
+    /// Check if content is HTML by looking for HTML markers in first 512 bytes
+    /// </summary>
+    private static bool IsHtmlContent(byte[] content)
+    {
+        if (content.Length < 10) return false;
+
+        // Check first 512 bytes for HTML markers
+        var checkLength = Math.Min(512, content.Length);
+        var textContent = System.Text.Encoding.UTF8.GetString(content, 0, checkLength).ToLowerInvariant();
+
+        // Look for common HTML indicators
+        return textContent.Contains("<!doctype") ||
+               textContent.Contains("<html") ||
+               textContent.Contains("<head") ||
+               textContent.Contains("<body") ||
+               textContent.Contains("<div") ||
+               textContent.Contains("<?xml") ||
+               (textContent.Contains("<") && textContent.Contains("</") && textContent.Contains(">"));
+    }
+
+    /// <summary>
+    /// Validate image format by checking magic bytes (file signatures)
+    /// Returns true if valid image format detected
+    /// </summary>
+    private static bool HasValidImageMagicBytes(byte[] data, out string format)
+    {
+        format = string.Empty;
+
+        if (data.Length < 4) return false;
+
+        // JPEG: FF D8 FF
+        if (data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF)
+        {
+            format = "jpeg";
+            return true;
+        }
+
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (data.Length >= 8 &&
+            data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 &&
+            data[4] == 0x0D && data[5] == 0x0A && data[6] == 0x1A && data[7] == 0x0A)
+        {
+            format = "png";
+            return true;
+        }
+
+        // GIF: GIF87a or GIF89a
+        if (data.Length >= 6 &&
+            data[0] == 0x47 && data[1] == 0x49 && data[2] == 0x46 &&
+            data[3] == 0x38 && (data[4] == 0x37 || data[4] == 0x39) && data[5] == 0x61)
+        {
+            format = "gif";
+            return true;
+        }
+
+        // WebP: RIFF....WEBP
+        if (data.Length >= 12 &&
+            data[0] == 0x52 && data[1] == 0x49 && data[2] == 0x46 && data[3] == 0x46 &&
+            data[8] == 0x57 && data[9] == 0x45 && data[10] == 0x42 && data[11] == 0x50)
+        {
+            format = "webp";
+            return true;
+        }
+
+        // BMP: BM
+        if (data[0] == 0x42 && data[1] == 0x4D)
+        {
+            format = "bmp";
+            return true;
+        }
+
+        // TIFF: II or MM
+        if (data.Length >= 4 &&
+            ((data[0] == 0x49 && data[1] == 0x49 && data[2] == 0x2A && data[3] == 0x00) ||
+             (data[0] == 0x4D && data[1] == 0x4D && data[2] == 0x00 && data[3] == 0x2A)))
+        {
+            format = "tiff";
+            return true;
+        }
+
+        // ICO: 00 00 01 00
+        if (data.Length >= 4 &&
+            data[0] == 0x00 && data[1] == 0x00 && data[2] == 0x01 && data[3] == 0x00)
+        {
+            format = "ico";
+            return true;
+        }
+
+        return false;
     }
 }
