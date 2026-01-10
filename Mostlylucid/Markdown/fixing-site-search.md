@@ -3,14 +3,16 @@
 <!--category-- ASP.NET, PostgreSQL, Search, RRF -->
 <datetime class="hidden">2026-01-14T12:00</datetime>
 
-Search is one of those features everyone underestimates. It looks trivial until real users start typing real queries -acronyms, half-remembered technical terms, punctuation-heavy names like “ASP.NET”, or searches that are *conceptually* right but textually wrong. When search fails in those cases, users don’t think “edge case” -they think the site is broken.
+Search is one of those features everyone underestimates. It looks trivial until real users start typing real queries -acronyms, half-remembered technical terms, punctuation-heavy names like "ASP.NET", or searches that are *conceptually* right but textually wrong. When search fails in those cases, users don't think "edge case" -they think the site is broken.
 
-It's also somethign that's plagued this site since it's inception. I looked at [OpenSearch](/blog/textsearchingpt2), have worked on PostgreSQL full text searching with it's fancy vector stuff but was never REALLY happy with it. Not that it's heavily used (almost nobody does here) but it **bugged** me asn especially now I'm building a search tool in [***lucid*RAG**](https://www.lucidrag.com) well I thought I should FINALLY fix it. 
+It's also somethign that's plagued this site since it's inception. I looked at [OpenSearch](/blog/textsearchingpt2), have worked on PostgreSQL full text searching with it's fancy vector stuff but was never REALLY happy with it. Not that it's heavily used (almost nobody does here) but it **bugged** me asn especially now I'm building a search tool in [***lucid*RAG**](https://www.lucidrag.com) well I thought I should FINALLY fix it.
 Whether it IS or not is another matter.
 
-This article isn’t about building a search engine from scratch. It’s about fixing the sharp edges of PostgreSQL full-text search in a real production system. I’ll walk through the specific failures I hit, why they happened, and the pragmatic fixes required to make search behave the way users already expect -including acronym handling, technical term parsing, phrase search, exclusions, and Google-style operators.
+This article isn't about building a search engine from scratch. It's about fixing the sharp edges of PostgreSQL full-text search in a real production system. I'll walk through the specific failures I hit, why they happened, and the pragmatic fixes required to make search behave the way users already expect -including acronym handling, technical term parsing, phrase search, exclusions, and Google-style operators.
 
-The system also integrates semantic vector search using Qdrant and Reciprocal Rank Fusion (RRF) to combine keyword relevance with conceptual similarity. That same semantic infrastructure pulls double duty: it powers the site’s user-facing search *and* serves as the retrieval layer for the [Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) RAG system -a writing assistant that drafts new posts using the site’s existing content as a knowledge base. For a deeper dive into embeddings and vector search, see [Building a “Lawyer GPT” – Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3).
+**Building on Earlier Work**: This article extends the [semantic search implementation](/blog/semantic-search-in-action) that added hybrid search with Reciprocal Rank Fusion (RRF). That earlier article covered the foundation -combining PostgreSQL full-text search with Qdrant vector search. This article fixes the edge cases that implementation missed: acronyms that don't match, technical terms with special characters, and natural queries that PostgreSQL's parser breaks.
+
+The semantic search infrastructure serves dual purposes: it powers the site's user-facing search *and* provides the retrieval layer for the [Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) RAG system -a writing assistant that drafts new posts using the site's existing content as a knowledge base. For deeper dives into the underlying technology, see [Building a "Lawyer GPT" – Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3) on embeddings and vector search.
 
 
 ## The Problems
@@ -272,7 +274,7 @@ ASP*
 
 ## RRF Ranking Integration
 
-The search integrates with Reciprocal Rank Fusion (RRF) from the lucidRAG implementation. RRF here is used for *ranking*, not recall - it combines already-retrieved results from BM25 full-text search and vector semantic search:
+The search integrates with Reciprocal Rank Fusion (RRF) as implemented in the [earlier semantic search article](/blog/semantic-search-in-action#hybrid-search-with-reciprocal-rank-fusion). RRF here is used for *ranking*, not recall - it combines already-retrieved results from BM25 full-text search and vector semantic search:
 
 ```csharp
 // Fuse using RRF with category/freshness boosts
@@ -284,7 +286,7 @@ The RRF algorithm uses `1/(k+rank)` where k=60 to combine results from multiple 
 - **Title match**: +1.0
 - **Freshness**: Exponential decay over 1 year (+1.5 max)
 
-For details on how semantic search works with embeddings and vector similarity, see [Building a "Lawyer GPT" - Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3). The same infrastructure powers both user-facing search and the RAG retrieval for AI-assisted writing.
+For the complete RRF implementation and how hybrid search works, see [Semantic Search in Action](/blog/semantic-search-in-action). For deeper dives into embeddings and vector similarity, see [Building a "Lawyer GPT" - Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3). The same infrastructure powers both user-facing search and the RAG retrieval for AI-assisted writing.
 
 ## Technical Architecture
 
@@ -343,6 +345,32 @@ While `ILIKE` (case-insensitive LIKE) is slower than full-text search, it's nece
 
 This approach would not scale to arbitrary substring search across millions of rows -but for targeted acronym fallback it's appropriate.
 
+### PostgreSQL Cover Density Ranking (`ts_rank_cd`)
+
+PostgreSQL offers two ranking functions for full-text search:
+- `ts_rank`: Basic term frequency (how many times terms appear)
+- `ts_rank_cd`: Cover density ranking (how close terms appear together)
+
+We use `ts_rank_cd` because it provides **BM25-like relevance** by considering term proximity:
+
+```csharp
+// Order by cover density ranking - rewards term proximity
+orderedQuery = searchQuery.OrderByDescending(x =>
+    x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", tsQuery)));
+```
+
+**Why `ts_rank_cd` is superior:**
+
+| Metric | `ts_rank` | `ts_rank_cd` |
+|--------|-----------|--------------|
+| **Algorithm** | Term frequency | Cover density (proximity) |
+| **Multi-word queries** | Counts terms separately | Rewards terms appearing together |
+| **Example: "docker containers"** | Article with "docker" 50 times scores high | Article with "docker containers" together scores higher |
+| **Performance** | Fast | Marginally slower, still leverages GIN index |
+| **Behavior** | Simple counting | Approximates BM25 |
+
+This is a **quick win optimization** - better relevance ranking with zero application-level computation. All ranking happens in PostgreSQL using the existing GIN index on `SearchVector`.
+
 ### Query Optimization
 
 The search builds WHERE clauses incrementally, allowing PostgreSQL's query planner to optimize:
@@ -370,6 +398,8 @@ This generates a single optimized SQL query rather than multiple round trips.
 
 5. **Parse, don't hack**: A proper query parser is cleaner and more maintainable than a series of string manipulations.
 
+6. **Leverage PostgreSQL's built-in ranking**: Use `ts_rank_cd` instead of `ts_rank` for BM25-like relevance. Cover density ranking considers term proximity - a quick win that improves result quality with zero application-level code.
+
 ## Future Enhancements
 
 Possible improvements for the future, categorized by concern:
@@ -391,16 +421,17 @@ Possible improvements for the future, categorized by concern:
 
 ## Conclusion
 
-Building good search is an iterative process. This implementation combines PostgreSQL full-text search with semantic vector search, custom parsing for technical terms, and intelligent fallbacks.
+Building good search is an iterative process. This article showed how to fix edge cases in PostgreSQL full-text search -acronyms, technical terms with special characters, and Google-style operators -building on the [semantic search foundation](/blog/semantic-search-in-action) implemented earlier.
 
 The key insight: no single approach handles all cases. PostgreSQL FTS excels at keyword matching, semantic search handles conceptual queries, and targeted fallbacks catch edge cases. The clean parsing layer ties it together, handling operators and technical terms before they reach the search engines.
 
-The semantic search infrastructure detailed here serves dual purposes:
+The semantic search infrastructure serves dual purposes:
 - **User-facing search**: Combines keyword and semantic matching for better results
 - **RAG retrieval**: Powers the [Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) writing assistant
 
-For deeper dives into the underlying technology:
-- [Part 3: Embeddings & Vector Databases](/blog/building-a-lawyer-gpt-for-your-blog-part3) - How semantic search works
-- [Part 4: Ingestion Pipeline](/blog/building-a-lawyer-gpt-for-your-blog-part4) - Processing and indexing content
+**Related articles:**
+- [Semantic Search in Action](/blog/semantic-search-in-action) - Foundation: hybrid search with RRF
+- [Building a "Lawyer GPT" - Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3) - Embeddings & vector databases
+- [Building a "Lawyer GPT" - Part 4](/blog/building-a-lawyer-gpt-for-your-blog-part4) - Ingestion pipeline
 
 All the code for this implementation is available in the [blog's GitHub repository](https://github.com/scottgal/mostlylucidweb).

@@ -76,8 +76,8 @@ public class BlogSearchService(
                          .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery)))) // Search in categories
                 && x.LanguageEntity.Name == "en") // Filter by language
             .OrderByDescending(x =>
-                // Rank based on the precomputed SearchVector
-                x.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english",
+                // Rank based on the precomputed SearchVector using cover density (ts_rank_cd)
+                x.SearchVector.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english",
                     lowerQuery)));
     }
 
@@ -103,8 +103,8 @@ public class BlogSearchService(
                          .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))) // Search in categories
                 && x.LanguageEntity.Name == "en") // Filter by language
             .OrderByDescending(x =>
-                // Rank based on the precomputed SearchVector
-                x.SearchVector.Rank(EF.Functions.ToTsQuery("english",
+                // Rank based on the precomputed SearchVector using cover density (ts_rank_cd)
+                x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english",
                     lowerQuery + ":*"))); // Use precomputed SearchVector for ranking
     }
     
@@ -525,20 +525,20 @@ public class BlogSearchService(
                 && !x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{excludeTerm}%")));
         }
 
-        // Apply ordering - relevance uses ts_rank, others use column values
+        // Apply ordering - relevance uses ts_rank_cd (cover density), others use column values
         IOrderedQueryable<BlogPostEntity> orderedQuery;
         if (order == "relevance" || order == "relevance_desc")
         {
-            // Order by full-text search rank (how well the query matches)
+            // Order by full-text search rank using cover density (considers term proximity)
             // Only rank if we have a tsquery, otherwise use date
             if (!string.IsNullOrWhiteSpace(tsQuery))
             {
                 orderedQuery = searchQuery.OrderByDescending(x =>
-                    x.SearchVector.Rank(EF.Functions.ToTsQuery("english", tsQuery)));
+                    x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", tsQuery)));
             }
             else
             {
-                // No ts_rank available (only phrases/excluded terms), sort by date
+                // No ts_rank_cd available (only phrases/excluded terms), sort by date
                 orderedQuery = searchQuery.OrderByDescending(x => x.PublishedDate);
             }
         }
@@ -551,7 +551,7 @@ public class BlogSearchService(
                 "title_asc" => searchQuery.OrderBy(x => x.Title),
                 "title_desc" => searchQuery.OrderByDescending(x => x.Title),
                 _ => !string.IsNullOrWhiteSpace(tsQuery)
-                    ? searchQuery.OrderByDescending(x => x.SearchVector.Rank(EF.Functions.ToTsQuery("english", tsQuery)))
+                    ? searchQuery.OrderByDescending(x => x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", tsQuery)))
                     : searchQuery.OrderByDescending(x => x.PublishedDate)
             };
         }
