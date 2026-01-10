@@ -53,6 +53,45 @@ public class BlogSearchService(
         }
     }
 
+    // Cache for top categories (rarely changes)
+    private static readonly TimeSpan CategoryCacheDuration = TimeSpan.FromHours(1);
+    private static List<CategoryWithCount>? _cachedCategories;
+    private static DateTime _categoryCacheExpiry = DateTime.MinValue;
+    private static readonly SemaphoreSlim _categoryCacheLock = new(1, 1);
+
+    public async Task<List<CategoryWithCount>> GetTopCategoriesAsync(int limit = 25)
+    {
+        // Check cache first without lock
+        if (_cachedCategories != null && DateTime.UtcNow < _categoryCacheExpiry)
+            return _cachedCategories.Take(limit).ToList();
+
+        // Acquire lock for cache refresh
+        await _categoryCacheLock.WaitAsync();
+        try
+        {
+            // Double-check after acquiring lock
+            if (_cachedCategories != null && DateTime.UtcNow < _categoryCacheExpiry)
+                return _cachedCategories.Take(limit).ToList();
+
+            _cachedCategories = await context.Categories
+                .AsNoTracking()
+                .Select(c => new CategoryWithCount(
+                    c.Name,
+                    c.BlogPosts.Count(p => !p.IsHidden && p.LanguageEntity.Name == "en")
+                ))
+                .Where(c => c.PostCount > 0)
+                .OrderByDescending(c => c.PostCount)
+                .ToListAsync();
+
+            _categoryCacheExpiry = DateTime.UtcNow.Add(CategoryCacheDuration);
+            return _cachedCategories.Take(limit).ToList();
+        }
+        finally
+        {
+            _categoryCacheLock.Release();
+        }
+    }
+
     public async Task<BasePagingModel<BlogPostDto>> GetPosts(string? query, int page = 1, int pageSize = 10)
     {
        using var activity = Log.Logger.StartActivity("GetPosts");
@@ -537,6 +576,26 @@ public class BlogSearchService(
                     EF.Functions.ILike(x.Title, $"%{excludeTerm}%")
                     || EF.Functions.ILike(x.PlainTextContent, $"%{excludeTerm}%")
                     || x.Categories.Any(c => EF.Functions.ILike(c.Name, $"%{excludeTerm}%"))));
+        }
+
+        // Handle category filters (category:ASP.NET)
+        if (parsed.Categories.Count > 0)
+        {
+            searchQuery = searchQuery.Where(x =>
+                x.Categories.Any(c =>
+                    parsed.Categories.Any(category =>
+                        EF.Functions.ILike(c.Name, $"%{category}%"))));
+        }
+
+        // Handle date range filters (after:2025-01-01, before:2025-12-31)
+        if (parsed.AfterDate.HasValue)
+        {
+            searchQuery = searchQuery.Where(x => x.PublishedDate >= parsed.AfterDate.Value);
+        }
+
+        if (parsed.BeforeDate.HasValue)
+        {
+            searchQuery = searchQuery.Where(x => x.PublishedDate <= parsed.BeforeDate.Value);
         }
 
         // Apply ordering - relevance uses ts_rank_cd (cover density), others use column values

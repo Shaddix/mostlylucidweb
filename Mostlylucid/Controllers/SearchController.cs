@@ -25,12 +25,13 @@ public class SearchController(
 {
     [HttpGet]
     [Route("")]
-    [OutputCache(Duration = 3600, Tags = new[] { "blog" }, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "dateRange", "startDate", "endDate", "order" })]
+    [OutputCache(Duration = 3600, Tags = new[] { "blog" }, VaryByHeaderNames = new[] { "hx-request", "pagerequest" }, VaryByQueryKeys = new[] { "query", "page", "pageSize", "language", "category", "dateRange", "startDate", "endDate", "order" })]
     public async Task<IActionResult> Search(
         string? query,
         int page = 1,
         int pageSize = 10,
         string? language = null,
+        string? category = null,
         DateRangeOption dateRange = DateRangeOption.AllTime,
         DateTime? startDate = null,
         DateTime? endDate = null,
@@ -42,8 +43,15 @@ public class SearchController(
             // Calculate date range based on option
             var (calculatedStartDate, calculatedEndDate) = CalculateDateRange(dateRange, startDate, endDate);
 
-            // Get available languages for the filter dropdown
+            // Get available languages and categories for filter dropdowns
             var availableLanguages = await searchService.GetAvailableLanguagesAsync();
+            var topCategories = await searchService.GetTopCategoriesAsync(25);
+
+            // Append category to query if specified
+            if (!string.IsNullOrEmpty(category) && !string.IsNullOrEmpty(query))
+            {
+                query = $"{query} category:{category}".Trim();
+            }
 
             // Check if this is a filter/pagination request targeting just the content area
             var htmxTarget = Request.Headers["HX-Target"].FirstOrDefault();
@@ -56,6 +64,7 @@ public class SearchController(
                     Query = query,
                     SearchResults = new(),
                     AvailableLanguages = availableLanguages,
+                    AllCategories = topCategories,
                     Filters = new SearchFilters
                     {
                         Language = language,
@@ -83,6 +92,7 @@ public class SearchController(
                 Query = query,
                 SearchResults = searchResults.ToPostListViewModel(),
                 AvailableLanguages = availableLanguages,
+                AllCategories = topCategories,
                 Filters = new SearchFilters
                 {
                     Language = language,
@@ -111,6 +121,7 @@ public class SearchController(
                 Query = query,
                 SearchResults = new(),
                 AvailableLanguages = new List<string> { "en" },
+                AllCategories = new(),
                 Filters = new SearchFilters
                 {
                     Language = language,

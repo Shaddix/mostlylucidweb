@@ -13,9 +13,9 @@
                 placeholder="Search..."
                 class="border-0 grow input-sm text-black dark:text-white bg-transparent w-full"/>
         </label>
-        <button type="submit" class="btn btn-sm btn-primary" title="Search">
+        <a :href="'/search?query=' + encodeURIComponent(query)" class="btn btn-sm btn-primary" title="Search">
             <i class="bx bx-search text-lg"></i>
-        </button>
+        </a>
     </form>
     <!-- Dropdown - matches width of search box -->
     <ul :class="{

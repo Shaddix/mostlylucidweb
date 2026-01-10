@@ -1,10 +1,11 @@
+using Mostlylucid.Shared.Interfaces;
 using Mostlylucid.Shared.Models;
 
 namespace Mostlylucid.SemanticSearch.Services;
 
 /// <summary>
 /// Enhanced search ranking using RRF (Reciprocal Rank Fusion) from LucidRAG GraphRag.
-/// Combines BM25 (PostgreSQL FTS) + Vector Search (Qdrant) with category/freshness boosts.
+/// Combines BM25 (PostgreSQL FTS) + Vector Search (Qdrant) with category/freshness/popularity boosts.
 /// </summary>
 public class SearchRanker
 {
@@ -33,13 +34,21 @@ public class SearchRanker
         /// Weight for title match boost.
         /// </summary>
         public double TitleMatchWeight { get; init; } = 1.0;
+
+        /// <summary>
+        /// Weight for popularity boost (from Umami analytics).
+        /// Uses log scaling to prevent mega-popular posts from dominating.
+        /// </summary>
+        public double PopularityWeight { get; init; } = 1.0;
     }
 
     private readonly RankingWeights _weights;
+    private readonly IPopularityProvider? _popularityProvider;
 
-    public SearchRanker(RankingWeights? weights = null)
+    public SearchRanker(RankingWeights? weights = null, IPopularityProvider? popularityProvider = null)
     {
         _weights = weights ?? new RankingWeights();
+        _popularityProvider = popularityProvider;
     }
 
     /// <summary>
@@ -97,7 +106,7 @@ public class SearchRanker
     }
 
     /// <summary>
-    /// Calculate ranking boost based on post metadata (categories, freshness, title match).
+    /// Calculate ranking boost based on post metadata (categories, freshness, title match, popularity).
     /// </summary>
     private double CalculateBoost(BlogPostDto post, string query)
     {
@@ -126,6 +135,19 @@ public class SearchRanker
         var daysSincePublished = (DateTimeOffset.UtcNow - post.PublishedDate).TotalDays;
         var freshnessBoost = Math.Exp(-daysSincePublished / 365.0);
         boost += freshnessBoost * _weights.FreshnessWeight;
+
+        // Popularity boost (from Umami analytics)
+        if (_popularityProvider != null)
+        {
+            var views = _popularityProvider.GetViewCount(post.Slug);
+            if (views > 0)
+            {
+                // Log scaling: log(views + 1) normalized to 0-1 range
+                // Assumes max ~10,000 views for normalization (log10(10001) ≈ 4)
+                var popularityScore = Math.Log10(views + 1) / 4.0;
+                boost += popularityScore * _weights.PopularityWeight;
+            }
+        }
 
         return boost;
     }

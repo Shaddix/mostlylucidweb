@@ -21,11 +21,14 @@ public partial class SearchQueryParser
         public List<string> ExcludeTerms { get; init; } = new();
         public List<string> Phrases { get; init; } = new();
         public List<string> WildcardTerms { get; init; } = new();
+        public List<string> Categories { get; init; } = new();
+        public DateTime? AfterDate { get; init; }
+        public DateTime? BeforeDate { get; init; }
         public string OriginalQuery { get; init; } = string.Empty;
         public bool HasSpecialCharacters { get; init; }
     }
 
-    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)Whi
     {
         "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into", "is", "it",
         "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these",
@@ -53,11 +56,25 @@ public partial class SearchQueryParser
         if (string.IsNullOrWhiteSpace(query))
             return new ParsedQuery { OriginalQuery = query };
 
-        var result = new ParsedQuery { OriginalQuery = query };
+        var categories = new List<string>();
+        DateTime? afterDate = null;
+        DateTime? beforeDate = null;
+
         var hasSpecialChars = query.Any(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c) && c != '"' && c != '-');
 
-        // First, replace known technical terms with their searchable versions
-        var processedQuery = ReplaceTechnicalTerms(query);
+        // Extract special operators (category:, after:, before:) and remove from query
+        var processedQuery = ExtractSpecialOperators(query, ref categories, ref afterDate, ref beforeDate);
+
+        // Then replace known technical terms with their searchable versions
+        processedQuery = ReplaceTechnicalTerms(processedQuery);
+
+        var result = new ParsedQuery
+        {
+            OriginalQuery = query,
+            Categories = categories,
+            AfterDate = afterDate,
+            BeforeDate = beforeDate
+        };
 
         var matches = QueryTokenRegex().Matches(processedQuery);
 
@@ -150,6 +167,49 @@ public partial class SearchQueryParser
         // (using ILIKE for exact substring matching)
 
         return queryParts.Count > 0 ? string.Join(" & ", queryParts) : string.Empty;
+    }
+
+    /// <summary>
+    /// Extract special search operators (category:, after:, before:) from query.
+    /// Returns query with operators removed.
+    /// </summary>
+    private string ExtractSpecialOperators(
+        string query,
+        ref List<string> categories,
+        ref DateTime? afterDate,
+        ref DateTime? beforeDate)
+    {
+        var result = query;
+
+        // Extract category: operators (can be multiple)
+        var categoryPattern = @"category:(\S+)";
+        var categoryMatches = Regex.Matches(result, categoryPattern, RegexOptions.IgnoreCase);
+        foreach (Match match in categoryMatches)
+        {
+            var category = match.Groups[1].Value;
+            categories.Add(category);
+            result = result.Replace(match.Value, ""); // Remove from query
+        }
+
+        // Extract after: operator (date range start)
+        var afterPattern = @"after:(\d{4}-\d{2}-\d{2})";
+        var afterMatch = Regex.Match(result, afterPattern, RegexOptions.IgnoreCase);
+        if (afterMatch.Success && DateTime.TryParse(afterMatch.Groups[1].Value, out var after))
+        {
+            afterDate = after;
+            result = result.Replace(afterMatch.Value, ""); // Remove from query
+        }
+
+        // Extract before: operator (date range end)
+        var beforePattern = @"before:(\d{4}-\d{2}-\d{2})";
+        var beforeMatch = Regex.Match(result, beforePattern, RegexOptions.IgnoreCase);
+        if (beforeMatch.Success && DateTime.TryParse(beforeMatch.Groups[1].Value, out var before))
+        {
+            beforeDate = before;
+            result = result.Replace(beforeMatch.Value, ""); // Remove from query
+        }
+
+        return result.Trim();
     }
 
     /// <summary>

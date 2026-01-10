@@ -81,7 +81,9 @@ I implemented a `SearchQueryParser` class that parses queries with support for:
 1. **Quoted Phrases**: `"exact match"` - searches for the exact phrase
 2. **Excluded Terms**: `-unwanted` - excludes results containing this term
 3. **Wildcards**: `ASP*` - matches "ASP", "ASPNET", "ASPNetCore", etc.
-4. **Technical Terms**: Automatically handles "ASP.NET", "C#", ".NET" etc.
+4. **Category Filtering**: `category:ASP.NET` - filters to specific categories
+5. **Date Ranges**: `after:2025-01-01 before:2025-12-31` - filters by publish date
+6. **Technical Terms**: Automatically handles "ASP.NET", "C#", ".NET" etc.
 
 The parser uses a compiled regex pattern to tokenize the query:
 
@@ -257,6 +259,24 @@ ASP*
 ```
 ✅ Finds articles with exact phrase "full text search" AND mentions of PostgreSQL, but EXCLUDING articles that mention MySQL
 
+### Category Filtering
+```
+category:ASP.NET docker
+```
+✅ Finds articles in "ASP.NET" category containing "docker"
+
+### Date Range Filtering
+```
+after:2025-01-01 before:2025-12-31 semantic search
+```
+✅ Finds articles about "semantic search" published in 2025
+
+### Combined Operators
+```
+category:PostgreSQL after:2024-01-01 "full text" -MySQL
+```
+✅ Finds PostgreSQL articles from 2024+ with phrase "full text", excluding MySQL mentions
+
 ### Before and After Example
 
 **Query**: `ASP.NET and Alpine`
@@ -285,6 +305,41 @@ The RRF algorithm uses `1/(k+rank)` where k=60 to combine results from multiple 
 - **Category match**: +2.0
 - **Title match**: +1.0
 - **Freshness**: Exponential decay over 1 year (+1.5 max)
+- **Popularity**: Log-scaled views from Umami analytics (+1.0 max)
+
+### Umami Popularity Boost
+
+Popular posts are likely more useful, so we integrate view counts from [Umami analytics](https://umami.is) into RRF ranking:
+
+```csharp
+// Popularity boost (from Umami analytics)
+if (_popularityProvider != null)
+{
+    var views = _popularityProvider.GetViewCount(post.Slug);
+    if (views > 0)
+    {
+        // Log scaling: log(views + 1) normalized to 0-1 range
+        // Assumes max ~10,000 views for normalization
+        var popularityScore = Math.Log10(views + 1) / 4.0;
+        boost += popularityScore * _weights.PopularityWeight;
+    }
+}
+```
+
+**Why log scaling?** View counts vary wildly (10 vs 10,000). Logarithmic scaling prevents mega-popular posts from dominating while still rewarding popularity:
+
+| Views | Linear Score | Log Score (normalized) |
+|-------|--------------|----------------------|
+| 10 | 10 | 0.26 |
+| 100 | 100 | 0.50 |
+| 1,000 | 1,000 | 0.75 |
+| 10,000 | 10,000 | 1.00 |
+
+**Implementation notes:**
+- Uses cached Umami data (no API calls during search)
+- Graceful fallback if analytics unavailable (boost = 0)
+- Background polling service updates cache every 15 minutes
+- Aggregates views across all language variants
 
 For the complete RRF implementation and how hybrid search works, see [Semantic Search in Action](/blog/semantic-search-in-action). For deeper dives into embeddings and vector similarity, see [Building a "Lawyer GPT" - Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3). The same infrastructure powers both user-facing search and the RAG retrieval for AI-assisted writing.
 
@@ -466,16 +521,17 @@ This generates a **single optimized SQL query** rather than multiple round trips
 
 Cumulative impact of all optimizations:
 
-| Optimization | Latency Impact | DB Load Impact |
-|-------------|----------------|----------------|
-| Language caching | Minimal | -1 query/request |
-| Remove Include() | -5-10% | Less data transfer |
-| Batch ILIKE | -5-10% | Cleaner SQL |
-| Covering index | -20-30% | Index-only scans |
-| ts_rank_cd | Similar | Better relevance |
-| Cache fix (route params) | N/A | Prevents stale data |
+| Optimization | Latency Impact | DB Load Impact | Quality Impact |
+|-------------|----------------|----------------|----------------|
+| Language caching | Minimal | -1 query/request | N/A |
+| Remove Include() | -5-10% | Less data transfer | N/A |
+| Batch ILIKE | -5-10% | Cleaner SQL | N/A |
+| Covering index | -20-30% | Index-only scans | N/A |
+| ts_rank_cd | Similar | N/A | Better proximity ranking |
+| Umami popularity | Minimal | Uses cached data | Popular posts rank higher |
+| Cache fix (route params) | N/A | Prevents stale data | Fixes wrong results |
 
-**Total expected improvement**: **30-50% faster search** with significantly reduced database load.
+**Total expected improvement**: **30-50% faster search** with significantly reduced database load and better result quality from popularity signals.
 
 ## Lessons Learned
 
@@ -495,24 +551,22 @@ Cumulative impact of all optimizations:
 
 8. **Batch database operations**: Multiple `foreach` loops creating separate WHERE clauses generate suboptimal SQL. Use `Any()` or `All()` to batch into single expressions.
 
+9. **Leverage existing data sources**: We already had Umami analytics running - integrating view counts into search ranking was a quick win. Look for signals you're already collecting before building new infrastructure.
+
 ## Future Enhancements
 
 Possible improvements for the future, categorized by concern:
 
 **Retrieval Improvements**:
-- **Fuzzy matching**: Levenshtein distance for typo tolerance
-- **Synonym expansion**: "blog post" → "article", "tutorial"
-
-**Parsing Enhancements**:
-- **Category filtering**: `category:ASP.NET` operator
-- **Date range**: `after:2025-01-01` operator
+- **Fuzzy matching**: PostgreSQL pg_trgm extension for typo tolerance
+- **Synonym expansion**: "blog post" → "article", "tutorial" (extend technical terms dictionary)
 
 **Ranking Refinements**:
 - **Result highlighting**: Show matched portions of text in results
 - **Click-through tracking**: Learn from user behavior to improve ranking
 
 **Observability**:
-- **Search analytics**: Track popular queries and failed searches to identify gaps
+- **Query analytics logging**: Track popular queries and failed searches to identify gaps
 
 ## Conclusion
 

@@ -10,10 +10,12 @@ using Mostlylucid.Services.Blog;
 using Mostlylucid.Services.Interfaces;
 using Mostlylucid.Services.Markdown;
 using Mostlylucid.Services.SemanticSearch;
+using Mostlylucid.Services.Umami;
 using Mostlylucid.Markdig.FetchExtension;
 using Mostlylucid.Markdig.FetchExtension.Services;
 using Mostlylucid.Shared.Config;
 using Mostlylucid.Shared.Config.Markdown;
+using Mostlylucid.Shared.Interfaces;
 using Mostlylucid.Shared.Services;
 using Npgsql;
 
@@ -49,7 +51,12 @@ public static class BlogSetup
                 services.AddScoped<ICommentService, CommentService>();
                 services.AddScoped<IBlogPopulator, BlogPopulator>();
                 services.AddSingleton<SearchQueryParser>();
-                services.AddSingleton<SearchRanker>();
+                services.AddSingleton<IPopularityProvider, UmamiPopularityProvider>();
+                services.AddSingleton<SearchRanker>(sp =>
+                {
+                    var popularityProvider = sp.GetService<IPopularityProvider>();
+                    return new SearchRanker(popularityProvider: popularityProvider);
+                });
                 services.AddScoped<BlogSearchService>();
                 services.AddScoped<CommentViewService>();
                 services.AddSingleton<BlogUpdater>();

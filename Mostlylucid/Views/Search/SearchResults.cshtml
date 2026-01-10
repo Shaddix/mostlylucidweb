@@ -37,13 +37,13 @@
 
     <!-- Main search bar -->
     <div class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg">
-        <button
-            type="submit"
+        <a
+            :href="'/search?query=' + encodeURIComponent(query)"
             x-ref="searchButton"
             class="btn btn-outline btn-sm flex items-center gap-2 text-black dark:text-white">
             Search
             <i class="bx bx-search text-lg"></i>
-        </button>
+        </a>
         <label class="flex items-center gap-2">
             <input
                 type="checkbox"
