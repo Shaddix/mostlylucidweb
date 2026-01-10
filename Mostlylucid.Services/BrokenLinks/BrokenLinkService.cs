@@ -52,7 +52,9 @@ public class BrokenLinkService : IBrokenLinkService
     public async Task<Dictionary<string, string>> GetBrokenLinkMappingsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.BrokenLinks
+            .AsNoTracking()
             .Where(x => x.IsBroken && x.ArchiveUrl != null)
+            .Select(x => new { x.OriginalUrl, x.ArchiveUrl })
             .ToDictionaryAsync(
                 x => x.OriginalUrl,
                 x => x.ArchiveUrl!,

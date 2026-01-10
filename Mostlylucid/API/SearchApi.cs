@@ -37,7 +37,7 @@ public class SearchApi(
 
     [HttpGet]
     [Route("search/{query}")]
-    [OutputCache(Duration = 3600, VaryByQueryKeys = new[] { "query" })]
+    [OutputCache(Duration = 3600, VaryByRouteValueNames = new[] { "query" })]
     public async Task<Results<JsonHttpResult<List<BlogSearchService.SearchResults>>, BadRequest<string>>>
         Search(string query)
     {

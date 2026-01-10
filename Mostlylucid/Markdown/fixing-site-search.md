@@ -3,13 +3,15 @@
 <!--category-- ASP.NET, PostgreSQL, Search, RRF -->
 <datetime class="hidden">2026-01-14T12:00</datetime>
 
-## Introduction
+Search is one of those features everyone underestimates. It looks trivial until real users start typing real queries -acronyms, half-remembered technical terms, punctuation-heavy names like “ASP.NET”, or searches that are *conceptually* right but textually wrong. When search fails in those cases, users don’t think “edge case” -they think the site is broken.
 
-Search is one of those features that seems simple until you try to build it well. Users expect it to "just work" - but what does "just work" mean? It means handling typos, understanding acronyms, supporting technical terms with special characters (like "ASP.NET"), and providing relevant results even when the exact query doesn't match.
+It's also somethign that's plagued this site since it's inception. I looked at [OpenSearch](/blog/textsearchingpt2), have worked on PostgreSQL full text searching with it's fancy vector stuff but was never REALLY happy with it. Not that it's heavily used (almost nobody does here) but it **bugged** me asn especially now I'm building a search tool in [***lucid*RAG**](https://www.lucidrag.com) well I thought I should FINALLY fix it. 
+Whether it IS or not is another matter.
 
-This article is not about building a search engine from scratch, but about fixing the sharp edges of PostgreSQL full-text search in a real production system - chronicling the journey from identifying issues to implementing solutions that handle edge cases and provide Google-style search operators.
+This article isn’t about building a search engine from scratch. It’s about fixing the sharp edges of PostgreSQL full-text search in a real production system. I’ll walk through the specific failures I hit, why they happened, and the pragmatic fixes required to make search behave the way users already expect -including acronym handling, technical term parsing, phrase search, exclusions, and Google-style operators.
 
-The system also integrates semantic vector search using Qdrant and RRF ranking to combine keyword and conceptual matching. This semantic search infrastructure serves dual purposes: powering the user-facing search experience AND providing the retrieval foundation for the [Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) RAG system (a writing assistant that helps draft new posts using past content as a knowledge base). See [Building a "Lawyer GPT" - Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3) for a deep dive into embeddings and vector databases.
+The system also integrates semantic vector search using Qdrant and Reciprocal Rank Fusion (RRF) to combine keyword relevance with conceptual similarity. That same semantic infrastructure pulls double duty: it powers the site’s user-facing search *and* serves as the retrieval layer for the [Lawyer GPT](/blog/building-a-lawyer-gpt-for-your-blog-part1) RAG system -a writing assistant that drafts new posts using the site’s existing content as a knowledge base. For a deeper dive into embeddings and vector search, see [Building a “Lawyer GPT” – Part 3](/blog/building-a-lawyer-gpt-for-your-blog-part3).
+
 
 ## The Problems
 
@@ -147,7 +149,7 @@ public string BuildTsQuery(ParsedQuery parsed)
 ```
 
 > **Why not just use `websearch_to_tsquery`?**
-> Because it still fails on technical terms, acronyms, and domain-specific syntax — and offers no hooks for hybrid ranking or fallbacks. By parsing ourselves, we can handle these edge cases before they reach PostgreSQL.
+> Because it still fails on technical terms, acronyms, and domain-specific syntax -and offers no hooks for hybrid ranking or fallbacks. By parsing ourselves, we can handle these edge cases before they reach PostgreSQL.
 
 ### Enhanced BuildSearchQuery
 
@@ -339,7 +341,7 @@ While `ILIKE` (case-insensitive LIKE) is slower than full-text search, it's nece
 2. Acronyms are typically short (≤6 characters), limiting the performance impact
 3. The condition is only added when needed (detected acronyms)
 
-This approach would not scale to arbitrary substring search across millions of rows — but for targeted acronym fallback it's appropriate.
+This approach would not scale to arbitrary substring search across millions of rows -but for targeted acronym fallback it's appropriate.
 
 ### Query Optimization
 
