@@ -45,7 +45,16 @@ public class SearchController(
 
             // Get available languages and categories for filter dropdowns
             var availableLanguages = await searchService.GetAvailableLanguagesAsync();
-            var topCategories = await searchService.GetTopCategoriesAsync(25);
+            List<Mostlylucid.Shared.Models.CategoryWithCount> topCategories;
+            try
+            {
+                topCategories = await searchService.GetTopCategoriesAsync(25);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to fetch top categories for search");
+                topCategories = new();
+            }
 
             // Append category to query if specified
             if (!string.IsNullOrEmpty(category) && !string.IsNullOrEmpty(query))

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.SemanticSearch.Services;
 using Mostlylucid.Shared.Entities;
@@ -12,6 +13,7 @@ namespace Mostlylucid.Services.Blog;
 public class BlogSearchService(
     MostlylucidDbContext context,
     ISemanticSearchService semanticSearchService,
+    IMemoryCache memoryCache,
     SearchRanker? searchRanker = null,
     SearchQueryParser? queryParser = null)
 {
@@ -122,8 +124,13 @@ public class BlogSearchService(
     private IQueryable<BlogPostEntity> QueryForSpaces(string processedQuery)
     {
         var now = DateTimeOffset.UtcNow;
+
+        // Apply technical term replacement (ASP → aspnet, C# → csharp, etc.)
+        var query = _queryParser.ReplaceTechnicalTerms(processedQuery);
+
         // Lowercase the query for PostgreSQL full-text search (case-insensitive)
-        var lowerQuery = processedQuery.ToLower();
+        var lowerQuery = query.ToLower();
+
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -136,15 +143,22 @@ public class BlogSearchService(
                      EF.Functions.ToTsVector("english", c.Name)
                          .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))))
                 && x.LanguageEntity.Name == "en")
+            // Order by relevance score * recency boost (posts from last 2 years get boost)
             .OrderByDescending(x =>
-                x.SearchVector.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english", lowerQuery)));
+                x.SearchVector.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
+                * (x.PublishedDate > now.AddYears(-2) ? 2.0 : 1.0));
     }
 
     private IQueryable<BlogPostEntity> QueryForWildCard(string query)
     {
         var now = DateTimeOffset.UtcNow;
+
+        // Apply technical term replacement (ASP → aspnet, C# → csharp, etc.)
+        var processedQuery = _queryParser.ReplaceTechnicalTerms(query);
+
         // Lowercase the query for PostgreSQL full-text search (case-insensitive)
-        var lowerQuery = query.ToLower();
+        var lowerQuery = processedQuery.ToLower();
+
         return context.BlogPosts
             .Include(x => x.Categories)
             .Include(x => x.LanguageEntity)
@@ -157,8 +171,10 @@ public class BlogSearchService(
                      EF.Functions.ToTsVector("english", c.Name)
                          .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))))
                 && x.LanguageEntity.Name == "en")
+            // Order by relevance score * recency boost (posts from last 2 years get boost)
             .OrderByDescending(x =>
-                x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", lowerQuery + ":*")));
+                x.SearchVector.RankCoverDensity(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))
+                * (x.PublishedDate > now.AddYears(-2) ? 2.0 : 1.0));
     }
     
     public async Task<List<(string Title, string Slug)>> GetSearchResultForQuery(string query)
@@ -171,11 +187,11 @@ public class BlogSearchService(
         return posts.Select(x => (x.Title, x.Slug)).ToList();
     }
 
-    
-    
+
+
     public async Task<List<(string Title, string Slug)>> GetSearchResultForComplete(string query)
     {
-        var posts = await QueryForWildCard(query) 
+        var posts = await QueryForWildCard(query)
             .Select(x => new { x.Title, x.Slug, })
             .Take(5)
             .ToListAsync();
@@ -193,9 +209,15 @@ public class BlogSearchService(
         if (string.IsNullOrWhiteSpace(query))
             return new List<SearchResults>();
 
+        // Skip semantic search for very short queries (3-4 chars) - they work better with PostgreSQL FTS
+        // e.g., "ASP", "C#", ".NET" are better handled by technical term replacement in FTS
+        var useSemanticSearch = query.Length >= 5;
+
         // Try semantic search first (with graceful fallback on error)
-        try
+        if (useSemanticSearch)
         {
+            try
+            {
             var semanticResults = await semanticSearchService.SearchAsync(query, limit);
 
             if (semanticResults.Count > 0)
@@ -227,11 +249,12 @@ public class BlogSearchService(
                     .Cast<SearchResults>()
                     .ToList();
             }
-        }
-        catch (Exception ex)
-        {
-            // Log but don't fail - fall back to PostgreSQL
-            Log.Logger.Warning(ex, "Semantic search failed, falling back to PostgreSQL full-text search");
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail - fall back to PostgreSQL
+                Log.Logger.Warning(ex, "Semantic search failed, falling back to PostgreSQL full-text search");
+            }
         }
 
         // Fall back to PostgreSQL full-text search
@@ -674,5 +697,81 @@ public class BlogSearchService(
             PageSize = pageSize,
             NoMatchFound = true
         };
+    }
+
+    /// <summary>
+    /// Get search term suggestions based on actual blog content (categories, title words, etc.)
+    /// Returns terms that start with the given prefix
+    /// Uses memory cache with sliding expiration (acts like LFU - frequently accessed items stay cached)
+    /// </summary>
+    public async Task<List<string>> GetSearchTermSuggestions(string prefix, int limit = 10)
+    {
+        var cacheKey = $"term_suggest_{prefix.ToLower()}_{limit}";
+
+        // Try to get from cache first
+        if (memoryCache.TryGetValue(cacheKey, out List<string>? cachedSuggestions))
+        {
+            return cachedSuggestions!;
+        }
+
+        // Not in cache - compute suggestions
+        var lowerPrefix = prefix.ToLower();
+        var suggestions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // 1. Get matching categories (these are usually good search terms)
+        var categories = await context.Categories
+            .AsNoTracking()
+            .Where(c => EF.Functions.ILike(c.Name, $"{lowerPrefix}%"))
+            .Select(c => c.Name)
+            .Take(limit)
+            .ToListAsync();
+
+        foreach (var cat in categories)
+        {
+            suggestions.Add(cat);
+        }
+
+        // 2. Extract common words from blog post titles that start with prefix
+        var titleWords = await context.BlogPosts
+            .AsNoTracking()
+            .Where(p => !p.IsHidden && p.LanguageEntity.Name == "en")
+            .Select(p => p.Title)
+            .ToListAsync();
+
+        // Split titles into words and find matches
+        var words = titleWords
+            .SelectMany(title => title.Split(new[] { ' ', '-', '.', ':', '/', '(', ')', '[', ']' },
+                StringSplitOptions.RemoveEmptyEntries))
+            .Where(word => word.Length >= 3) // Ignore very short words
+            .Where(word => word.StartsWith(lowerPrefix, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(word => word.ToLower())
+            .OrderByDescending(g => g.Count()) // Most frequent first
+            .Select(g => g.First()) // Keep original casing of first occurrence
+            .Take(limit);
+
+        foreach (var word in words)
+        {
+            suggestions.Add(word);
+        }
+
+        // Return sorted by length (shorter terms first, they're usually more general)
+        var result = suggestions
+            .OrderBy(s => s.Length)
+            .ThenBy(s => s)
+            .Take(limit)
+            .ToList();
+
+        // Cache with sliding expiration (LFU-like: frequently accessed items stay cached longer)
+        var cacheOptions = new MemoryCacheEntryOptions
+        {
+            SlidingExpiration = TimeSpan.FromMinutes(30), // Refreshes on each access
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2), // Max 2 hours
+            Priority = CacheItemPriority.Normal,
+            Size = 1 // For LFU eviction when cache is full
+        };
+
+        memoryCache.Set(cacheKey, result, cacheOptions);
+
+        return result;
     }
 }

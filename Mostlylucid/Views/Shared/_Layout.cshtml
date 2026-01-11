@@ -140,8 +140,8 @@
         </li>
 
         <!-- Search Typeahead - Expands to fill available space -->
-        <li class="group relative mb-1 hidden lg:flex flex-1 mx-4 max-w-xl" id="typeaheadelement">
-            <div class="w-full" hx-trigger="load" hx-get="/typeahead" hx-target="#typeaheadelement" hx-swap="innerHTML"></div>
+        <li class="group relative mb-1 hidden lg:flex flex-1 mx-4 max-w-xl">
+            @await Html.PartialAsync("_TypeAhead")
         </li>
 
         <li class="ml-auto lg:hidden"></li>

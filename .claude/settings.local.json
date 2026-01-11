@@ -86,7 +86,18 @@
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\bin\\\\Debug\\\\net10.0\\\\data\\\\semantic-search.duckdb\")",
       "Bash(ping:*)",
       "Bash(psql:*)",
-      "Bash(test -f:*)"
+      "Bash(test -f:*)",
+      "Bash(node test-search.mjs:*)",
+      "Bash(npm run dev:*)",
+      "Bash(pg_isready:*)",
+      "Bash(docker-compose:*)",
+      "Bash(netstat:*)",
+      "Bash(ps:*)",
+      "Bash(node /c/Blog/mostlylucidweb/test-search.mjs:*)",
+      "Bash(npm run:*)",
+      "Bash(node -e:*)",
+      "Bash(dos2unix:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

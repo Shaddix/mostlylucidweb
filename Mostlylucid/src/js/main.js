@@ -48,6 +48,11 @@ window.mostlylucid.comments = comments();
 
 // Attach imported modules to the mostlylucid namespace
 window.mostlylucid.typeahead = typeahead;
+
+// Also register with Alpine.data() for better compatibility
+if (typeof Alpine !== 'undefined' && Alpine.data) {
+    Alpine.data('typeahead', typeahead);
+}
 window.mostlylucid.translations = {
     submitTranslation: submitTranslation,
     viewTranslation: viewTranslation

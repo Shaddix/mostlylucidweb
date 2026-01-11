@@ -1,89 +1,34 @@
-﻿export  function typeahead() {
+export  function typeahead() {
     return {
         query: '',
-        results: [],
-        highlightedIndex: -1, // Tracks the currently highlighted index
-        popularPosts: null, // Cached popular posts (null = not loaded yet)
-        showingPopular: false, // Whether we're showing popular posts vs search results
-
-        // Load popular posts on first focus (cached after first load)
-        async loadPopularPosts() {
-            if (this.popularPosts !== null) return; // Already loaded
-
-            try {
-                const response = await fetch('/api/popular', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    this.popularPosts = await response.json();
-                } else {
-                    this.popularPosts = []; // Mark as loaded but empty
-                }
-            } catch (e) {
-                console.log("Error fetching popular posts");
-                this.popularPosts = []; // Mark as loaded but empty
-            }
-        },
-
-        // Show popular posts when input is focused and empty
-        async onFocus() {
-            await this.loadPopularPosts();
-            if (this.query.length < 2 && this.popularPosts && this.popularPosts.length > 0) {
-                this.results = this.popularPosts;
-                this.showingPopular = true;
-                this.highlightedIndex = -1;
-                this.$nextTick(() => {
-                    htmx.process(document.getElementById('searchresults'));
-                });
-            }
-        },
+        results: [], // Array of term strings (not objects)
+        highlightedIndex: -1,
 
         search() {
             if (this.query.length < 2) {
-                // Show popular posts if available, otherwise clear
-                if (this.popularPosts && this.popularPosts.length > 0) {
-                    this.results = this.popularPosts;
-                    this.showingPopular = true;
-                } else {
-                    this.results = [];
-                    this.showingPopular = false;
-                }
+                this.results = [];
                 this.highlightedIndex = -1;
                 return;
             }
 
-            this.showingPopular = false;
-            fetch(`/api/search/${encodeURIComponent(this.query)}`, {
+            // Get term suggestions (not article titles)
+            fetch(`/api/suggest/${encodeURIComponent(this.query)}`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             })
                 .then(response => {
                     if(response.ok){
-                        return  response.json();
+                        return response.json();
                     }
                     return Promise.reject(response);
                 })
-                .then(data => {
-                    this.results = data;
-                    this.highlightedIndex = -1; // Reset index on new search
-                    this.$nextTick(() => {
-                        htmx.process(document.getElementById('searchresults'));
-                    });
+                .then(terms => {
+                    this.results = terms; // Simple array of strings
+                    this.highlightedIndex = -1;
                 })
-                .catch((response) => {
-                    console.log(response.status, response.statusText);
-                    if(response.status === 400)
-                    {
-                        console.log('Bad request, reloading page to try to fix it.');
-                        window.location.reload();
-                    }
-                    response.json().then((json) => {
-                        console.log(json);
-                    })
-                    console.log("Error fetching search results");
+                .catch((error) => {
+                    console.error("Autocomplete failed:", error);
+                    this.results = [];
                 });
         },
 
@@ -99,21 +44,40 @@
             }
         },
 
-        selectHighlighted() {
+        // Complete the input with the highlighted term (used by Tab key)
+        completeWithHighlighted() {
             if (this.highlightedIndex >= 0 && this.highlightedIndex < this.results.length) {
-                this.selectResult(this.highlightedIndex);
-                
+                // Replace query with the selected term
+                this.query = this.results[this.highlightedIndex];
+                this.results = []; // Clear suggestions
+                this.highlightedIndex = -1;
+                // Focus stays in input so user can continue typing or press Enter to search
+            } else if (this.results.length > 0) {
+                // If nothing highlighted, use first result
+                this.query = this.results[0];
+                this.results = [];
+                this.highlightedIndex = -1;
             }
         },
 
-        selectResult(selectedIndex) {
-            let links = document.querySelectorAll('#searchresults a');
-            links[selectedIndex].click();
-            this.results = []; // Clear the results
-            this.highlightedIndex = -1; // Reset the highlighted index
-            this.query = ''; // Clear the query
+        // Complete and immediately search (used by Enter key when item is highlighted)
+        completeAndSearch() {
+            if (this.highlightedIndex >= 0 && this.highlightedIndex < this.results.length) {
+                this.query = this.results[this.highlightedIndex];
+                this.results = [];
+                this.highlightedIndex = -1;
+                this.goToSearch();
+            } else if (this.results.length > 0) {
+                this.query = this.results[0];
+                this.results = [];
+                this.highlightedIndex = -1;
+                this.goToSearch();
+            } else {
+                this.goToSearch();
+            }
         },
 
+        // Navigate to search page with current query
         goToSearch() {
             if (this.query.length > 0) {
                 window.location.href = `/search?query=${encodeURIComponent(this.query)}`;

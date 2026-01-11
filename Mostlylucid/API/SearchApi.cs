@@ -36,7 +36,7 @@ public class SearchApi(
     }
 
     [HttpGet]
-    [Route("search/{query}")]
+    [Route("typeahead/{query}")]
     [OutputCache(Duration = 3600, VaryByRouteValueNames = new[] { "query" })]
     public async Task<Results<JsonHttpResult<List<BlogSearchService.SearchResults>>, BadRequest<string>>>
         Search(string query)
@@ -124,5 +124,23 @@ public class SearchApi(
         }).ToList();
 
         return TypedResults.Json(output);
+    }
+
+    /// <summary>
+    /// Get search term suggestions for autocomplete (not article titles - just search terms)
+    /// Returns terms extracted from actual blog content: categories, common title words, etc.
+    /// </summary>
+    [HttpGet]
+    [Route("suggest/{prefix}")]
+    [OutputCache(Duration = 3600, VaryByRouteValueNames = new[] { "prefix" })]
+    public async Task<JsonHttpResult<List<string>>> GetSearchSuggestions(string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix) || prefix.Length < 2)
+        {
+            return TypedResults.Json(new List<string>());
+        }
+
+        var suggestions = await searchService.GetSearchTermSuggestions(prefix, 10);
+        return TypedResults.Json(suggestions);
     }
 }

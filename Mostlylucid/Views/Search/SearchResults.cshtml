@@ -37,13 +37,13 @@
 
     <!-- Main search bar -->
     <div class="flex items-center gap-2 bg-neutral-500 bg-opacity-10 p-2 rounded-lg">
-        <a
-            :href="'/search?query=' + encodeURIComponent(query)"
+        <button
+            type="submit"
             x-ref="searchButton"
             class="btn btn-outline btn-sm flex items-center gap-2 text-black dark:text-white">
             Search
             <i class="bx bx-search text-lg"></i>
-        </a>
+        </button>
         <label class="flex items-center gap-2">
             <input
                 type="checkbox"
@@ -68,7 +68,7 @@
 
 <!-- Filter Bar - below search, always visible -->
 <div class="flex justify-center my-4 print:!hidden">
-    <partial name="_FilterBar" model="Model.SearchResults"/>
+    <partial name="_FilterBar" model="Model"/>
 </div>
 
 @if(Model.Query?.Length > 0)

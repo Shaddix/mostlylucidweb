@@ -28,7 +28,7 @@ public partial class SearchQueryParser
         public bool HasSpecialCharacters { get; init; }
     }
 
-    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)Whi
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "if", "in", "into", "is", "it",
         "no", "not", "of", "on", "or", "such", "that", "the", "their", "then", "there", "these",
@@ -40,15 +40,16 @@ public partial class SearchQueryParser
     /// </summary>
     private static readonly Dictionary<string, string> TechnicalTerms = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["asp.net core"] = "aspnetcore", // Match longest first
         ["asp.net"] = "aspnet",
+        ["asp"] = "aspnet", // Match standalone ASP to ASP.NET content
         ["c#"] = "csharp",
         [".net"] = "dotnet",
         ["f#"] = "fsharp",
         ["node.js"] = "nodejs",
         ["vue.js"] = "vuejs",
         ["react.js"] = "reactjs",
-        ["next.js"] = "nextjs",
-        ["asp.net core"] = "aspnetcore"
+        ["next.js"] = "nextjs"
     };
 
     public ParsedQuery Parse(string query)
@@ -129,7 +130,7 @@ public partial class SearchQueryParser
     /// <summary>
     /// Replace technical terms with searchable versions while preserving original for phrase matching
     /// </summary>
-    private string ReplaceTechnicalTerms(string query)
+    public string ReplaceTechnicalTerms(string query)
     {
         var result = query;
 
