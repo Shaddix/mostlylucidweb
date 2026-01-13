@@ -427,7 +427,7 @@ orderedQuery = searchQuery.OrderByDescending(x =>
 This is a **quick win optimization** - better relevance ranking with zero application-level computation. All ranking happens in PostgreSQL using the existing GIN index on `SearchVector`.
 
 **References:**
-- [PostgreSQL ts_rank_cd documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING)
+(s- [PostgreSQL ts_rank_cd documentation](https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-RANKING)
 - [EF Core RankCoverDensity](https://learn.microsoft.com/en-us/ef/core/providers/postgres/misc#full-text-search)
 
 ### Additional Performance Optimizations
