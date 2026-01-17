@@ -1,12 +1,16 @@
-# Simple OCR and NER Feature Extraction
+# Simple OCR and NER Feature Extraction in C# with ONNX
 
 <!-- category -- AI,OCR,NER,ONNX,Docker,CSharp,Tutorial -->
 
 <datetime class="hidden">2026-01-21T12:00</datetime>
 
-You have images with text. You want to extract that text, then find the useful structure inside it—names, companies, places—without calling an LLM, shipping data to the cloud, or paying per token.
+As I've been building [***lucid*RAG**](https://www.lucidrag.com) I'm reading social media where people keep asking the same thing. 'How you you get features from scanned text?' the category error is always 'just use an LLM'...which WORKS but is very expensive. SO as I'm already [deep in the OCR space](/blog/constrained-fuzzy-image-ocr-pipeline) I thought I'd write a 'beginner friendly' approach to the NON-LLM (or LLM optional) way to do this.
 
-This article shows the **simplest possible** pipeline: **EasyOCR** (in Docker) for text extraction, then **BERT NER** (via ONNX) for entity recognition. All local. All deterministic. All in C#.
+You have images with text. You want to extract that text, then find the useful structure inside it (names, companies, places) without calling an LLM, shipping data to the cloud, or paying per token.
+
+This article shows the **simplest possible** pipeline: **Tesseract** for text extraction, then **BERT NER** (via ONNX) for entity recognition. All local. All deterministic. All in C#.
+
+Deterministic here means fixed versions, fixed language data, and no adaptive learning at runtime.
 
 > **NuGet coming shortly** - I'm packaging this into a simple `mostlylucid.ocrner` library. For now, the code below is copy-paste ready.
 
@@ -20,7 +24,7 @@ This article shows the **simplest possible** pipeline: **EasyOCR** (in Docker) f
 flowchart LR
     subgraph OCR["Part 1: OCR"]
         IMG[Image]
-        EOCR[EasyOCR<br/>Docker]
+        TESS[Tesseract]
         TXT[Raw Text]
     end
 
@@ -30,13 +34,13 @@ flowchart LR
         ENT[Entities]
     end
 
-    IMG --> EOCR
-    EOCR --> TXT
+    IMG --> TESS
+    TESS --> TXT
     TXT --> TOK
     TOK --> BERT
     BERT --> ENT
 
-    style EOCR stroke:#f60,stroke-width:3px
+    style TESS stroke:#f60,stroke-width:3px
     style BERT stroke:#f60,stroke-width:3px
     style ENT stroke:#090,stroke-width:3px
 ```
@@ -45,133 +49,49 @@ Two steps, two models, both running locally. Let's build each part.
 
 ---
 
-# Part 1: OCR with EasyOCR
+# Part 1: OCR with Tesseract
 
-[EasyOCR](https://github.com/JaidedAI/EasyOCR) is a Python library that handles stylized fonts, multiple languages, and curved text better than Tesseract. We'll run it in Docker so you don't need Python installed.
-
-## Running EasyOCR in Docker
-
-The simplest approach—use the pre-built image:
+[Tesseract](https://github.com/tesseract-ocr/tesseract) is the standard open-source OCR engine. We'll use [Tesseract.NET](https://github.com/charlesw/tesseract), a C# wrapper.
 
 ```bash
-docker run -d -p 8000:8000 --name easyocr ghcr.io/scottgal/easyocr-api:latest
+dotnet add package Tesseract
 ```
 
-Or build your own. Create a folder with these two files:
-
-**Dockerfile**:
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx libglib2.0-0 curl \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install --no-cache-dir easyocr==1.7.1 fastapi==0.109.0 uvicorn==0.27.0 python-multipart==0.0.6
-
-COPY main.py .
-
-# Pre-download models at build time
-RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
-
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-**main.py**:
-```python
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-import easyocr
-import tempfile
-import os
-
-app = FastAPI()
-reader = easyocr.Reader(['en'], gpu=False)
-
-@app.post("/ocr")
-async def extract_text(file: UploadFile = File(...)):
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
-
-    try:
-        results = reader.readtext(tmp_path)
-        if not results:
-            return {"success": True, "text": "", "confidence": 0}
-
-        texts = [r[1] for r in results]
-        avg_conf = sum(r[2] for r in results) / len(results)
-
-        return {
-            "success": True,
-            "text": " ".join(texts),
-            "confidence": round(avg_conf, 3),
-            "regions": [{"text": r[1], "confidence": round(r[2], 3)} for r in results]
-        }
-    finally:
-        os.unlink(tmp_path)
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-```
-
-Build and run:
-```bash
-docker build -t easyocr-api .
-docker run -d -p 8000:8000 --name easyocr easyocr-api
-```
-
-## Calling EasyOCR from C#
+You also need the trained data files. Download `eng.traineddata` from [tessdata](https://github.com/tesseract-ocr/tessdata) and place it in a `tessdata` folder.
 
 ```csharp
-public class EasyOcrClient
+using Tesseract;
+
+public static string ExtractText(string imagePath)
 {
-    private readonly HttpClient _http;
-    private readonly string _baseUrl;
+    using var engine = new TesseractEngine("./tessdata", "eng", EngineMode.Default);
+    using var img = Pix.LoadFromFile(imagePath);
+    using var page = engine.Process(img);
 
-    public EasyOcrClient(string baseUrl = "http://localhost:8000")
-    {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        _baseUrl = baseUrl;
-    }
-
-    public async Task<OcrResult> ExtractTextAsync(string imagePath, CancellationToken ct = default)
-    {
-        using var content = new MultipartFormDataContent();
-        await using var stream = File.OpenRead(imagePath);
-        content.Add(new StreamContent(stream), "file", Path.GetFileName(imagePath));
-
-        var response = await _http.PostAsync($"{_baseUrl}/ocr", content, ct);
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<OcrResult>(ct)
-               ?? throw new InvalidOperationException("Empty OCR response");
-    }
+    return page.GetText();
 }
-
-public record OcrResult(bool Success, string Text, double Confidence);
 ```
 
-Usage:
-```csharp
-var ocr = new EasyOcrClient();
-var result = await ocr.ExtractTextAsync("./invoice.png");
+That's it. Call `ExtractText("invoice.png")` and you get a string.
 
-Console.WriteLine($"Text: {result.Text}");
-Console.WriteLine($"Confidence: {result.Confidence:P0}");
-// Text: Invoice #12345 From: Acme Corp To: John Smith Date: 2024-01-15...
-// Confidence: 94%
-```
+> **Important**: `TesseractEngine` is expensive to create. In real applications, create it once and reuse it.
 
-That's it for OCR. Simple, works for most cases.
+### Limitations
 
-> **When it gets tricky**: EasyOCR handles clean images well, but struggles with stylized fonts, animated GIFs, or low-quality scans. For production systems that need to handle the weird stuff, see [The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)—which adds Florence-2 ONNX as a middle tier and Vision LLM escalation for the hard cases.
+Tesseract works well for **clean, high-contrast text in standard fonts**. It struggles with:
 
-Now we have raw text. Let's extract the entities.
+- Stylized or decorative fonts
+- Low-quality scans or photos
+- Rotated or curved text
+- Text on complex backgrounds
+- Animated GIFs with subtitles
+- Hyphenated line breaks (`inter-\nnational`) may need post-processing before NER
+
+For production systems that need to handle the weird stuff, see [The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)-which adds Florence-2 ONNX as a middle tier and Vision LLM escalation for hard cases.
+
+For this tutorial, we'll assume you have clean images or text from another source (PDF parsing, copy-paste, etc.).
+
+> In practice, you will usually want to normalize OCR output (trim whitespace, collapse repeated newlines, fix obvious hyphenation) before passing it to NER.
 
 ---
 
@@ -190,7 +110,7 @@ Before diving into code, let's understand what we're actually doing. If you're a
 - **LOC** - Locations ("London", "Mount Everest")
 - **MISC** - Other entities ("COVID-19", "iPhone 15")
 
-The model doesn't "understand" the text—it's learned statistical patterns from millions of labelled examples. **NER is feature extraction, not reasoning.** It's pattern matching on steroids.
+The model doesn't "understand" the text-it's learned statistical patterns from millions of labelled examples. **NER is feature extraction, not reasoning.** It's pattern matching on steroids.
 
 ### Why ONNX?
 
@@ -229,10 +149,11 @@ The key insight: **someone else did the hard work** (training the model in Pytho
 
 You could send text to GPT-4 and ask "find the people and companies in this text". It works! But:
 
-| Approach | Speed | Cost per 1000 docs | Privacy | Consistency |
-|----------|-------|-------------------|---------|-------------|
-| **ONNX NER** | ~50ms | $0 | Local | High |
-| **LLM API** | 1-5s | $20-50 | Data sent externally | Variable |
+| Approach          | Speed | Cost per 1000 docs | Privacy               | Consistency |
+|-------------------|-------|--------------|-----------------------|-------------|
+| **ONNX NER**      | ~50ms | $0 | Local                 | High |
+| **Local LLM API** | 4-30s | $0 | Small Models can be flaky | Variable |
+| **LLM API**       | 1-5s  | $20-50 | Data sent externally  | Variable |
 
 LLMs are great for complex reasoning. For pattern extraction at scale, a dedicated model is 40x faster and free.
 
@@ -386,7 +307,7 @@ using var stream = File.OpenRead(vocabPath);
 var tokenizer = BertTokenizer.Create(stream, options);
 ```
 
-Why `LowerCaseBeforeTokenization = false`? This model was trained on cased text. "John" and "john" have different meanings—one's likely a name, one's likely not.
+Why `LowerCaseBeforeTokenization = false`? This model was trained on cased text. "John" and "john" have different meanings-one's likely a name, one's likely not.
 
 > **Important**: The tokenizer *must* match the model exactly. Using a different vocab, casing option, or special token IDs will silently degrade results. Always use the `vocab.txt` that ships with the model.
 
@@ -421,7 +342,7 @@ After this, we have:
 
 ## Step 4: Running the Model
 
-Now we feed those numbers into the ONNX model. The model returns "logits"—raw scores for each possible label at each position.
+Now we feed those numbers into the ONNX model. The model returns "logits"-raw scores for each possible label at each position.
 
 ```mermaid
 flowchart LR
@@ -462,7 +383,7 @@ var sessionOptions = new SessionOptions
 var session = new InferenceSession("./models/ner/model.onnx", sessionOptions);
 ```
 
-> **Important**: Create the tokenizer and inference session once (singleton/service) and reuse them. Don't reload per document—`InferenceSession` is expensive to create.
+> **Important**: Create the tokenizer and inference session once (singleton/service) and reuse them. Don't reload per document-`InferenceSession` is expensive to create.
 
 ### Preparing Inputs
 
@@ -514,7 +435,7 @@ var output = results.First(r => r.Name == "logits");
 var logits = output.AsTensor<float>();
 ```
 
-The output `logits` has shape `[1, sequence_length, 9]`—9 possible labels for each token position.
+The output `logits` has shape `[1, sequence_length, 9]`-9 possible labels for each token position.
 
 ---
 
@@ -680,7 +601,7 @@ static string MergeWordPieces(IEnumerable<string> tokens)
 }
 ```
 
-Now the entity extraction. Entity confidence is the **minimum token confidence** across the span—conservative, so a single weak token isn't hidden by averaging:
+Now the entity extraction. Entity confidence is the **minimum token confidence** across the span-conservative, so a single weak token isn't hidden by averaging:
 
 ```csharp
 public sealed class Entity
@@ -744,7 +665,7 @@ static List<Entity> ExtractEntities(
 }
 ```
 
-Note: WordPiece is handled entirely by `MergeWordPieces`—no special control flow needed.
+Note: WordPiece is handled entirely by `MergeWordPieces`-no special control flow needed.
 
 ---
 
@@ -995,97 +916,26 @@ Both approaches work. They solve **different problems**. NER extracts structure;
 
 ## The Bigger Picture
 
-This pattern—**deterministic extraction with frozen models, followed by optional synthesis later**—scales far better than pushing raw text into an LLM and hoping it behaves.
+This pattern-**deterministic extraction with frozen models, followed by optional synthesis later**-scales far better than pushing raw text into an LLM and hoping it behaves.
 
 NER is not something you "agentify". It's infrastructure. You run it on ingestion, store the entities, and use them downstream for filtering, linking, or feeding into more sophisticated pipelines.
 
 The same approach applies to other feature extraction tasks: embeddings, classification, sentiment. Train once (or use pretrained), export to ONNX, run everywhere, deterministically.
 
----
-
-## Putting It Together: OCR → NER
-
-Here's the full pipeline—image in, entities out:
-
-```csharp
-public class OcrNerPipeline
-{
-    private readonly EasyOcrClient _ocr;
-    private readonly NerService _ner;
-
-    public OcrNerPipeline(string ocrUrl = "http://localhost:8000", string modelPath = "./models/ner")
-    {
-        _ocr = new EasyOcrClient(ocrUrl);
-        _ner = new NerService(modelPath);
-    }
-
-    public async Task<ExtractionResult> ProcessImageAsync(string imagePath, CancellationToken ct = default)
-    {
-        // Step 1: OCR
-        var ocrResult = await _ocr.ExtractTextAsync(imagePath, ct);
-
-        if (!ocrResult.Success || string.IsNullOrWhiteSpace(ocrResult.Text))
-        {
-            return new ExtractionResult
-            {
-                Success = false,
-                Error = "OCR failed or no text found"
-            };
-        }
-
-        // Step 2: NER
-        var entities = await _ner.ExtractEntitiesAsync(ocrResult.Text, ct);
-
-        return new ExtractionResult
-        {
-            Success = true,
-            Text = ocrResult.Text,
-            OcrConfidence = ocrResult.Confidence,
-            Entities = entities,
-            Persons = entities.Where(e => e.Type == "PER").Select(e => e.Text).ToList(),
-            Organizations = entities.Where(e => e.Type == "ORG").Select(e => e.Text).ToList(),
-            Locations = entities.Where(e => e.Type == "LOC").Select(e => e.Text).ToList()
-        };
-    }
-}
-
-public record ExtractionResult
-{
-    public bool Success { get; init; }
-    public string? Error { get; init; }
-    public string Text { get; init; } = "";
-    public double OcrConfidence { get; init; }
-    public List<Entity> Entities { get; init; } = [];
-    public List<string> Persons { get; init; } = [];
-    public List<string> Organizations { get; init; } = [];
-    public List<string> Locations { get; init; } = [];
-}
-```
-
-Usage:
-```csharp
-var pipeline = new OcrNerPipeline();
-var result = await pipeline.ProcessImageAsync("./invoice.png");
-
-Console.WriteLine($"Text: {result.Text}");
-Console.WriteLine($"People: {string.Join(", ", result.Persons)}");
-Console.WriteLine($"Companies: {string.Join(", ", result.Organizations)}");
-Console.WriteLine($"Places: {string.Join(", ", result.Locations)}");
-
-// Text: Invoice #12345 From: Acme Corporation To: John Smith...
-// People: John Smith
-// Companies: Acme Corporation
-// Places: London
-```
-
-That's the whole pipeline: image → OCR → NER → structured data. No cloud. No LLM. ~1-2 seconds per image.
+> **Where this fits**: This OCR + NER pipeline is one building block. For the full picture-how extracted entities feed into graph construction, deduplication, and retrieval-see [Reduced RAG](/blog/reduced-rag-concept) and the [LucidRAG documentation](https://github.com/scottgal/lucidrag). The entities you extract here become nodes; the documents become edges; the LLM only sees what it needs to.
 
 ---
 
 ## Resources
 
-- **[EasyOCR](https://github.com/JaidedAI/EasyOCR)** - The OCR library (runs in Docker)
-- **[Model Download](https://huggingface.co/protectai/bert-base-NER-onnx)** - The ONNX model we use
-- **[ONNX Runtime Docs](https://onnxruntime.ai/docs/)** - Official documentation
+**Libraries & Models**:
+- **[Tesseract.NET](https://github.com/charlesw/tesseract)** - C# wrapper for Tesseract OCR
+- **[tessdata](https://github.com/tesseract-ocr/tessdata)** - Trained data files for Tesseract
+- **[BERT-base-NER ONNX](https://huggingface.co/protectai/bert-base-NER-onnx)** - The NER model we use
+- **[ONNX Runtime](https://onnxruntime.ai/docs/)** - Official documentation
 - **[ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers)** - Microsoft's tokenizer library
-- **[LucidRAG](https://github.com/scottgal/lucidrag)** - Full implementation with additional features
+
+**Related Articles**:
+- **[The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)** - When simple OCR isn't enough
+- **[Reduced RAG](/blog/reduced-rag-concept)** - Where extracted entities fit in the bigger picture
+- **[LucidRAG](https://github.com/scottgal/lucidrag)** - Full implementation with entity deduplication and graph construction
