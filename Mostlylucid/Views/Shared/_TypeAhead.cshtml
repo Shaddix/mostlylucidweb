@@ -1,4 +1,4 @@
-@* Typeahead search component - term autocomplete *@
+@* Typeahead search component - article search *@
 <div x-data="typeahead()" class="relative w-full" id="searchelement" x-on:click.outside="results = []">
     <form x-on:submit.prevent="goToSearch" class="flex items-center gap-1 w-full">
         <label class="input input-sm bg-neutral-500 bg-opacity-10 input-bordered flex items-center gap-2 flex-1">
@@ -17,18 +17,18 @@
             <i class="bx bx-search text-lg"></i>
         </button>
     </form>
-    <!-- Dropdown showing search term suggestions -->
+    <!-- Dropdown showing matching articles -->
     <ul x-show="results.length > 0"
         id="searchresults"
         class="absolute z-100 my-2 left-0 right-0 w-full min-w-[280px] bg-white dark:bg-custom-dark-bg border border-1 text-black dark:text-white border-neutral-600 rounded-lg shadow-lg overflow-hidden">
-        <template x-for="(term, index) in results" :key="term">
-            <li x-on:click="query = term; results = []; highlightedIndex = -1; goToSearch();"
+        <template x-for="(article, index) in results" :key="article.slug">
+            <li x-on:click="window.location.href = '/blog/' + article.slug"
                 x-on:mouseenter="highlightedIndex = index"
                 :class="{
                     'dark:bg-blue-dark bg-blue-light': index === highlightedIndex,
                     'dark:hover:bg-blue-dark hover:bg-blue-light': true
                 }"
-                class="cursor-pointer text-sm p-2 m-2"><span x-text="term" class="block"></span></li>
+                class="cursor-pointer text-sm p-2 m-2"><span x-text="article.title" class="block"></span></li>
         </template>
     </ul>
 </div>

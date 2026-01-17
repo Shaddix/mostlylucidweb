@@ -1,7 +1,7 @@
 export  function typeahead() {
     return {
         query: '',
-        results: [], // Array of term strings (not objects)
+        results: [], // Array of article objects {title, slug, url, score}
         highlightedIndex: -1,
 
         search() {
@@ -11,8 +11,8 @@ export  function typeahead() {
                 return;
             }
 
-            // Get term suggestions (not article titles)
-            fetch(`/api/suggest/${encodeURIComponent(this.query)}`, {
+            // Get matching articles (not just term suggestions)
+            fetch(`/api/typeahead/${encodeURIComponent(this.query)}`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -22,8 +22,8 @@ export  function typeahead() {
                     }
                     return Promise.reject(response);
                 })
-                .then(terms => {
-                    this.results = terms; // Simple array of strings
+                .then(articles => {
+                    this.results = articles; // Array of {title, slug, url, score}
                     this.highlightedIndex = -1;
                 })
                 .catch((error) => {
@@ -44,35 +44,27 @@ export  function typeahead() {
             }
         },
 
-        // Complete the input with the highlighted term (used by Tab key)
+        // Navigate directly to the highlighted article (used by Tab key)
         completeWithHighlighted() {
             if (this.highlightedIndex >= 0 && this.highlightedIndex < this.results.length) {
-                // Replace query with the selected term
-                this.query = this.results[this.highlightedIndex];
-                this.results = []; // Clear suggestions
-                this.highlightedIndex = -1;
-                // Focus stays in input so user can continue typing or press Enter to search
+                // Navigate to the article
+                window.location.href = `/blog/${this.results[this.highlightedIndex].slug}`;
             } else if (this.results.length > 0) {
-                // If nothing highlighted, use first result
-                this.query = this.results[0];
-                this.results = [];
-                this.highlightedIndex = -1;
+                // If nothing highlighted, go to first result
+                window.location.href = `/blog/${this.results[0].slug}`;
             }
         },
 
-        // Complete and immediately search (used by Enter key when item is highlighted)
+        // Navigate to article or search (used by Enter key)
         completeAndSearch() {
             if (this.highlightedIndex >= 0 && this.highlightedIndex < this.results.length) {
-                this.query = this.results[this.highlightedIndex];
-                this.results = [];
-                this.highlightedIndex = -1;
-                this.goToSearch();
+                // Navigate directly to the highlighted article
+                window.location.href = `/blog/${this.results[this.highlightedIndex].slug}`;
             } else if (this.results.length > 0) {
-                this.query = this.results[0];
-                this.results = [];
-                this.highlightedIndex = -1;
-                this.goToSearch();
+                // Go to first result
+                window.location.href = `/blog/${this.results[0].slug}`;
             } else {
+                // No results, go to search page
                 this.goToSearch();
             }
         },

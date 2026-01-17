@@ -141,7 +141,10 @@ public class BlogSearchService(
                 && (x.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery))))
+                         .Matches(EF.Functions.WebSearchToTsQuery("english", lowerQuery)))
+                 // ILIKE fallback for compound words that the English stemmer mangles
+                 || EF.Functions.ILike(x.Title, $"%{lowerQuery}%")
+                 || EF.Functions.ILike(x.PlainTextContent, $"%{lowerQuery}%"))
                 && x.LanguageEntity.Name == "en")
             // Order by relevance score * recency boost (posts from last 2 years get boost)
             .OrderByDescending(x =>
@@ -169,7 +172,10 @@ public class BlogSearchService(
                 && (x.SearchVector.Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))
                  || x.Categories.Any(c =>
                      EF.Functions.ToTsVector("english", c.Name)
-                         .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*"))))
+                         .Matches(EF.Functions.ToTsQuery("english", lowerQuery + ":*")))
+                 // ILIKE fallback for compound words that the English stemmer mangles
+                 || EF.Functions.ILike(x.Title, $"%{lowerQuery}%")
+                 || EF.Functions.ILike(x.PlainTextContent, $"%{lowerQuery}%"))
                 && x.LanguageEntity.Name == "en")
             // Order by relevance score * recency boost (posts from last 2 years get boost)
             .OrderByDescending(x =>
@@ -201,7 +207,8 @@ public class BlogSearchService(
     public record SearchResults(string Title, string Slug, string Url, float Score = 1.0f);
 
     /// <summary>
-    /// Hybrid search: tries semantic search first, falls back to PostgreSQL full-text search
+    /// Hybrid search: tries PostgreSQL first for typeahead (better for partial matches),
+    /// falls back to semantic search for longer/complete queries.
     /// Results are ordered by match quality (score)
     /// </summary>
     public async Task<List<SearchResults>> HybridSearchAsync(string query, int limit = 10)
@@ -209,74 +216,76 @@ public class BlogSearchService(
         if (string.IsNullOrWhiteSpace(query))
             return new List<SearchResults>();
 
-        // Skip semantic search for very short queries (3-4 chars) - they work better with PostgreSQL FTS
-        // e.g., "ASP", "C#", ".NET" are better handled by technical term replacement in FTS
-        var useSemanticSearch = query.Length >= 5;
-
-        // Try semantic search first (with graceful fallback on error)
-        if (useSemanticSearch)
-        {
-            try
-            {
-            var semanticResults = await semanticSearchService.SearchAsync(query, limit);
-
-            if (semanticResults.Count > 0)
-            {
-                // Deduplicate semantic results by slug (keep highest score)
-                var uniqueResults = semanticResults
-                    .GroupBy(r => r.Slug)
-                    .Select(g => g.OrderByDescending(r => r.Score).First())
-                    .ToList();
-
-                // Get slugs from semantic search, look up English titles from PostgreSQL
-                var slugs = uniqueResults.Select(r => r.Slug).ToList();
-                var posts = await context.BlogPosts
-                    .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == "en")
-                    .Select(p => new { p.Slug, p.Title })
-                    .ToListAsync();
-
-                // Match back with semantic scores, preserving order
-                // Only return results that have an English version in the database
-                return uniqueResults
-                    .Select(r =>
-                    {
-                        var post = posts.FirstOrDefault(p => p.Slug == r.Slug);
-                        return post != null
-                            ? new SearchResults(post.Title, r.Slug, $"/blog/{r.Slug}", r.Score)
-                            : null;
-                    })
-                    .Where(r => r != null)
-                    .Cast<SearchResults>()
-                    .ToList();
-            }
-            }
-            catch (Exception ex)
-            {
-                // Log but don't fail - fall back to PostgreSQL
-                Log.Logger.Warning(ex, "Semantic search failed, falling back to PostgreSQL full-text search");
-            }
-        }
-
-        // Fall back to PostgreSQL full-text search
+        // For typeahead, PostgreSQL FTS with ILIKE is more reliable for partial terms
+        // Try PostgreSQL first
         try
         {
             var pgResults = query.Contains(" ")
                 ? await GetSearchResultForQueryWithLimit(query, limit)
                 : await GetSearchResultForCompleteWithLimit(query, limit);
 
-            // PostgreSQL results are already ranked by ts_rank
-            return pgResults.Select((r, index) => new SearchResults(
-                r.Title,
-                r.Slug,
-                $"/blog/{r.Slug}",
-                1.0f - (index * 0.05f) // Approximate score based on ranking
-            )).ToList();
+            if (pgResults.Count > 0)
+            {
+                // PostgreSQL results are already ranked by ts_rank
+                return pgResults.Select((r, index) => new SearchResults(
+                    r.Title,
+                    r.Slug,
+                    $"/blog/{r.Slug}",
+                    1.0f - (index * 0.05f) // Approximate score based on ranking
+                )).ToList();
+            }
         }
         catch (Exception ex)
         {
-            Log.Logger.Error(ex, "PostgreSQL full-text search failed for query '{Query}'", query);
-            return new List<SearchResults>();
+            Log.Logger.Warning(ex, "PostgreSQL full-text search failed for query '{Query}', trying semantic search", query);
         }
+
+        // Fall back to semantic search for queries that PostgreSQL couldn't match
+        // (e.g., natural language questions, conceptual queries)
+        if (query.Length >= 5)
+        {
+            try
+            {
+                var semanticResults = await semanticSearchService.SearchAsync(query, limit);
+
+                if (semanticResults.Count > 0)
+                {
+                    // Deduplicate semantic results by slug (keep highest score)
+                    var uniqueResults = semanticResults
+                        .GroupBy(r => r.Slug)
+                        .Select(g => g.OrderByDescending(r => r.Score).First())
+                        .ToList();
+
+                    // Get slugs from semantic search, look up English titles from PostgreSQL
+                    var slugs = uniqueResults.Select(r => r.Slug).ToList();
+                    var posts = await context.BlogPosts
+                        .Where(p => slugs.Contains(p.Slug) && p.LanguageEntity.Name == "en")
+                        .Select(p => new { p.Slug, p.Title })
+                        .ToListAsync();
+
+                    // Match back with semantic scores, preserving order
+                    // Only return results that have an English version in the database
+                    return uniqueResults
+                        .Select(r =>
+                        {
+                            var post = posts.FirstOrDefault(p => p.Slug == r.Slug);
+                            return post != null
+                                ? new SearchResults(post.Title, r.Slug, $"/blog/{r.Slug}", r.Score)
+                                : null;
+                        })
+                        .Where(r => r != null)
+                        .Cast<SearchResults>()
+                        .ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail
+                Log.Logger.Warning(ex, "Semantic search also failed for query '{Query}'", query);
+            }
+        }
+
+        return new List<SearchResults>();
     }
 
     private async Task<List<(string Title, string Slug)>> GetSearchResultForQueryWithLimit(string query, int limit)
@@ -358,9 +367,24 @@ public class BlogSearchService(
 
                 var posts = await postsQuery.ToListAsync();
 
-                // Only use semantic results if we actually found matching posts
+                // Verify semantic results are actually relevant by checking if PostgreSQL also finds them
+                // This prevents returning unrelated articles for gibberish queries
                 if (posts.Count > 0)
                 {
+                    // Quick check: does PostgreSQL FTS find ANY results for this query?
+                    var pgVerification = await GetPostsWithFiltersInternal(query, targetLanguage, startDate, endDate, limit: 5);
+
+                    // If PostgreSQL finds nothing, the semantic results are likely false positives
+                    // Fall through to PostgreSQL-only search
+                    if (pgVerification.Count == 0)
+                    {
+                        Log.Logger.Information(
+                            "Semantic search returned {Count} results but PostgreSQL found none for '{Query}', falling back to PostgreSQL",
+                            posts.Count, query);
+                        // Don't use semantic results - fall through to PostgreSQL fallback below
+                    }
+                    else
+                    {
                     // Deduplicate semantic results by slug (keep highest score)
                     var uniqueSemanticResults = semanticResults
                         .GroupBy(r => r.Slug)
@@ -438,6 +462,7 @@ public class BlogSearchService(
                         Page = page,
                         PageSize = pageSize
                     };
+                    } // Close the else block (pgVerification.Count > 0)
                 }
 
                 // Semantic search returned results but none matched DB filters - fall through to PostgreSQL
@@ -471,11 +496,10 @@ public class BlogSearchService(
             noMatchFound = true;
         }
 
-        // No match found - return recent posts as suggestions
+        // No match found - return empty result (UI will show "No results found")
         if (noMatchFound)
         {
-            Log.Logger.Information("No search results for '{Query}', returning recent posts as suggestions", query);
-            return await GetRecentPostsAsSuggestions(targetLanguage, startDate, endDate, page, pageSize);
+            Log.Logger.Information("No search results for '{Query}'", query);
         }
 
         return new BasePagingModel<BlogPostDto>();
@@ -567,8 +591,32 @@ public class BlogSearchService(
         // Build tsquery for include terms and wildcards
         var tsQuery = _queryParser.BuildTsQuery(parsed);
 
-        // Apply full-text search if we have terms
-        if (!string.IsNullOrWhiteSpace(tsQuery))
+        // Build ILIKE pattern for fallback (catches compound words the English stemmer mangles)
+        // For "docsummarizer", this creates "%docsummarizer%"
+        var allSearchTerms = parsed.IncludeTerms
+            .Concat(parsed.WildcardTerms)
+            .ToList();
+
+        var likePattern = allSearchTerms.Count > 0
+            ? $"%{string.Join("%", allSearchTerms.Select(t => t.ToLowerInvariant()))}%"
+            : null;
+
+        // Apply full-text search OR ILIKE fallback
+        // ILIKE handles terms like "docsummarizer" that PostgreSQL FTS might not find due to stemming
+        if (!string.IsNullOrWhiteSpace(tsQuery) && likePattern != null)
+        {
+            searchQuery = searchQuery.Where(x =>
+                // Full-text search on content
+                x.SearchVector.Matches(EF.Functions.ToTsQuery("english", tsQuery))
+                // Full-text search on categories
+                || x.Categories.Any(c =>
+                    EF.Functions.ToTsVector("english", c.Name)
+                        .Matches(EF.Functions.ToTsQuery("english", tsQuery)))
+                // ILIKE fallback on title and content
+                || EF.Functions.ILike(x.Title, likePattern)
+                || EF.Functions.ILike(x.PlainTextContent, likePattern));
+        }
+        else if (!string.IsNullOrWhiteSpace(tsQuery))
         {
             searchQuery = searchQuery.Where(x =>
                 x.SearchVector.Matches(EF.Functions.ToTsQuery("english", tsQuery))
@@ -576,19 +624,11 @@ public class BlogSearchService(
                     EF.Functions.ToTsVector("english", c.Name)
                         .Matches(EF.Functions.ToTsQuery("english", tsQuery))));
         }
-
-        // Handle acronyms with case-insensitive substring search (batched into single query)
-        var acronymTerms = parsed.IncludeTerms
-            .Concat(parsed.WildcardTerms)
-            .Where(t => _queryParser.IsAcronymLike(t))
-            .ToList();
-
-        if (acronymTerms.Count > 0)
+        else if (likePattern != null)
         {
             searchQuery = searchQuery.Where(x =>
-                acronymTerms.Any(acronym =>
-                    EF.Functions.ILike(x.Title, $"%{acronym}%")
-                    || EF.Functions.ILike(x.PlainTextContent, $"%{acronym}%")));
+                EF.Functions.ILike(x.Title, likePattern)
+                || EF.Functions.ILike(x.PlainTextContent, likePattern));
         }
 
         // Handle excluded terms (must NOT contain these) - batched into single query
