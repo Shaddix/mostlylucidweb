@@ -1,0 +1,86 @@
+<header class="sticky top-0 z-50 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-sm shadow-sm">
+    <nav class="container mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+            <!-- Logo -->
+            <a href="/" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top" class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-ai-gradient rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-xl">AI</span>
+                </div>
+                <span class="font-body text-xl font-bold text-primary dark:text-white">
+                    Mostlylucid<span class="text-secondary">.AI</span>
+                </span>
+            </a>
+
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex items-center gap-6">
+                <a href="/" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Home
+                </a>
+                <a href="/about" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    About
+                </a>
+                <a href="/services" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Services
+                </a>
+                <a href="/articles" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Articles
+                </a>
+                <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="btn btn-primary btn-sm">
+                    Get in Touch
+                </a>
+
+                <!-- Theme Toggle -->
+                <button x-on:click="themeSwitch()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Toggle theme">
+                    <i class="bx text-xl text-primary dark:text-white" :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Menu Button -->
+            <button x-on:click="toggleMobileMenu()" class="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <i class="bx bx-menu text-2xl text-primary dark:text-white" x-show="!isMobileMenuOpen"></i>
+                <i class="bx bx-x text-2xl text-primary dark:text-white" x-show="isMobileMenuOpen" x-cloak></i>
+            </button>
+        </div>
+
+        <!-- Mobile Navigation -->
+        <div x-show="isMobileMenuOpen" x-cloak x-transition
+             class="md:hidden mt-4 pb-4 border-t border-light-border dark:border-dark-border pt-4">
+            <div class="flex flex-col gap-4">
+                <a href="/" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   x-on:click="isMobileMenuOpen = false"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Home
+                </a>
+                <a href="/about" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   x-on:click="isMobileMenuOpen = false"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    About
+                </a>
+                <a href="/services" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   x-on:click="isMobileMenuOpen = false"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Services
+                </a>
+                <a href="/articles" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   x-on:click="isMobileMenuOpen = false"
+                   class="font-body text-primary dark:text-slate-200 hover:text-secondary transition-colors">
+                    Articles
+                </a>
+                <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   x-on:click="isMobileMenuOpen = false"
+                   class="btn btn-primary btn-sm w-fit">
+                    Get in Touch
+                </a>
+                <button x-on:click="themeSwitch()" class="flex items-center gap-2 text-primary dark:text-slate-200">
+                    <i class="bx text-xl" :class="isDarkMode ? 'bxs-sun' : 'bxs-moon'"></i>
+                    <span x-text="isDarkMode ? 'Light Mode' : 'Dark Mode'"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+</header>

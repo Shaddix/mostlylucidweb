@@ -1,0 +1,189 @@
+@model HomeViewModel
+@{
+    ViewBag.Title = "AI Consultancy";
+}
+
+<!-- Hero Section -->
+<section class="bg-ai-hero text-white py-20 lg:py-32">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl lg:text-6xl font-bold mb-6">
+                AI Solutions That <span class="text-indigo-200">Actually Work</span>
+            </h1>
+            <p class="text-xl lg:text-2xl text-indigo-100 mb-8 max-w-2xl mx-auto">
+                Practical AI implementation for businesses. RAG systems, document intelligence,
+                and LLM integration that delivers real results.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="btn-ai-primary">
+                    Start a Conversation
+                </a>
+                <a href="/services" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="btn-ai-secondary">
+                    View Services
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Credentials Bar -->
+<section class="bg-white dark:bg-dark-surface py-8 border-b border-light-border dark:border-dark-border">
+    <div class="container mx-auto px-4">
+        <div class="flex flex-wrap justify-center gap-8 lg:gap-16 items-center text-center">
+            <div>
+                <div class="text-2xl font-bold text-secondary">15+ Years</div>
+                <div class="text-sm text-slate-600 dark:text-slate-400">Enterprise Experience</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-secondary">Microsoft</div>
+                <div class="text-sm text-slate-600 dark:text-slate-400">Former Senior Developer</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-secondary">Open Source</div>
+                <div class="text-sm text-slate-600 dark:text-slate-400">Active Contributor</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-secondary">Production AI</div>
+                <div class="text-sm text-slate-600 dark:text-slate-400">Real-World Deployments</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Services -->
+<section class="py-16 lg:py-24 bg-light-bg dark:bg-dark-bg">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl lg:text-4xl font-bold text-primary dark:text-white mb-4">
+                How I Can Help
+            </h2>
+            <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                Practical AI solutions tailored to your business needs
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- RAG Systems -->
+            <div class="service-card bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
+                    <i class="bx bx-data text-2xl text-secondary"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-primary dark:text-white mb-2">RAG Development</h3>
+                <p class="text-slate-600 dark:text-slate-400 text-sm">
+                    Build intelligent document retrieval systems that provide accurate, context-aware answers.
+                </p>
+            </div>
+
+            <!-- Local LLM -->
+            <div class="service-card bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
+                    <i class="bx bx-server text-2xl text-secondary"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-primary dark:text-white mb-2">Local LLM Setup</h3>
+                <p class="text-slate-600 dark:text-slate-400 text-sm">
+                    Deploy AI models on your infrastructure for privacy, control, and reduced costs.
+                </p>
+            </div>
+
+            <!-- Document Intelligence -->
+            <div class="service-card bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
+                    <i class="bx bx-file-find text-2xl text-secondary"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-primary dark:text-white mb-2">Document Intelligence</h3>
+                <p class="text-slate-600 dark:text-slate-400 text-sm">
+                    Extract insights, summarize content, and automate document workflows.
+                </p>
+            </div>
+
+            <!-- AI Strategy -->
+            <div class="service-card bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
+                    <i class="bx bx-target-lock text-2xl text-secondary"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-primary dark:text-white mb-2">AI Strategy</h3>
+                <p class="text-slate-600 dark:text-slate-400 text-sm">
+                    Identify opportunities and create a practical roadmap for AI adoption.
+                </p>
+            </div>
+        </div>
+
+        <div class="text-center mt-10">
+            <a href="/services" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+               class="btn btn-secondary btn-lg">
+                View All Services <i class="bx bx-right-arrow-alt ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Recent Articles -->
+@if (Model.RecentArticles.Any())
+{
+    <section class="py-16 lg:py-24 bg-white dark:bg-dark-surface">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl lg:text-4xl font-bold text-primary dark:text-white mb-4">
+                    Latest AI Insights
+                </h2>
+                <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                    Deep dives into practical AI implementation
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                @foreach (var article in Model.RecentArticles)
+                {
+                    <article class="article-card">
+                        <div class="p-6">
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                @foreach (var category in article.Categories?.Take(2) ?? [])
+                                {
+                                    <span class="badge badge-secondary badge-sm">@category</span>
+                                }
+                            </div>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white mb-2 line-clamp-2">
+                                <a href="/articles/@article.Slug" hx-boost="true" hx-target="#contentcontainer"
+                                   hx-swap="innerHTML show:window:top" class="hover:text-secondary transition-colors">
+                                    @article.Title
+                                </a>
+                            </h3>
+                            <p class="text-slate-600 dark:text-slate-400 text-sm line-clamp-3 mb-4">
+                                @(article.Summary?.Length > 150 ? article.Summary.Substring(0, 150) + "..." : article.Summary)
+                            </p>
+                            <div class="flex items-center justify-between text-xs text-slate-500">
+                                <span>@article.PublishedDate.ToString("MMM d, yyyy")</span>
+                                <span>@article.ReadingTime</span>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            <div class="text-center mt-10">
+                <a href="/articles" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="btn btn-outline btn-secondary">
+                    View All Articles <i class="bx bx-right-arrow-alt ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+}
+
+<!-- CTA Section -->
+<section class="py-16 lg:py-24 bg-ai-gradient text-white">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl lg:text-4xl font-bold mb-4">
+            Ready to Explore AI for Your Business?
+        </h2>
+        <p class="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">
+            Let's discuss how practical AI solutions can help you solve real problems.
+        </p>
+        <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+           class="inline-flex items-center bg-white text-secondary font-semibold py-3 px-8 rounded-lg hover:bg-indigo-50 transition-colors">
+            Get in Touch <i class="bx bx-right-arrow-alt ml-2"></i>
+        </a>
+    </div>
+</section>

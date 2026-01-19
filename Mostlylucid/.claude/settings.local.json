@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 30 dotnet run:*)",
+      "Bash(taskkill:*)",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(dotnet run:*)",
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(tasklist /FI \"PID eq 276632\")",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "Bash(npm run build:*)",
+      "Bash(tasklist:*)",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(dotnet sln:*)"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "mostlylucid-ai",
+  "version": "1.0.0",
+  "description": "AI Consultancy Website Frontend",
+  "scripts": {
+    "clean": "rimraf ./.tmp ./wwwroot/css/dist ./wwwroot/js/dist",
+    "tw:dev": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css",
+    "tw:prod": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --no-map --verbose",
+    "tw:watch": "postcss ./src/css/main.css -o ./wwwroot/css/dist/main.css --watch",
+    "js:dev": "webpack --env development",
+    "js:prod": "webpack --mode production",
+    "js:watch": "webpack watch --mode development",
+    "dev": "npm-run-all clean --parallel tw:dev js:dev",
+    "watch": "npm-run-all clean --parallel tw:watch js:watch",
+    "build": "npm-run-all clean --parallel tw:prod js:prod"
+  },
+  "devDependencies": {
+    "@babel/core": "7.26.9",
+    "@babel/preset-env": "7.26.9",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.12",
+    "autoprefixer": "10.4.21",
+    "babel-loader": "10.0.0",
+    "css-loader": "7.1.2",
+    "cssnano": "7.0.6",
+    "daisyui": "^4.12.10",
+    "npm-run-all": "4.1.5",
+    "postcss": "8.5.3",
+    "postcss-cli": "11.0.1",
+    "postcss-import": "^16.1.0",
+    "rimraf": "6.0.1",
+    "style-loader": "4.0.0",
+    "tailwindcss": "3.4.17",
+    "terser-webpack-plugin": "^5.3.10",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.1",
+    "core-js": "^3.39.0",
+    "htmx.org": "^2.0.8",
+    "regenerator-runtime": "^0.14.1"
+  }
+}

@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AI-themed custom styles */
+
+[x-cloak] { display: none !important; }
+
+html {
+    @apply font-body antialiased;
+}
+
+/* Hero gradient backgrounds */
+.bg-ai-hero {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #8b5cf6 100%);
+}
+
+.dark .bg-ai-hero {
+    background: linear-gradient(135deg, #3730a3 0%, #5b21b6 50%, #6d28d9 100%);
+}
+
+/* Animated gradient background for hero */
+.bg-ai-animated {
+    background: linear-gradient(-45deg, #4f46e5, #7c3aed, #8b5cf6, #6366f1);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+}
+
+@keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Card hover effects */
+.service-card {
+    @apply transition-all duration-300 ease-in-out;
+}
+
+.service-card:hover {
+    @apply shadow-xl -translate-y-1;
+}
+
+/* Button styles */
+.btn-ai-primary {
+    @apply bg-secondary text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300;
+}
+
+.btn-ai-primary:hover {
+    @apply bg-accent shadow-lg -translate-y-0.5;
+}
+
+.btn-ai-secondary {
+    @apply bg-transparent border-2 border-white text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300;
+}
+
+.btn-ai-secondary:hover {
+    @apply bg-white/10;
+}
+
+/* Collapse styling for services */
+.collapse-arrow .collapse-title:after {
+    top: 50% !important;
+    transform: translateY(-60%) rotate(45deg) !important;
+    right: 1.5rem !important;
+}
+
+.collapse-arrow > input:checked ~ .collapse-title:after {
+    transform: translateY(-60%) rotate(225deg) !important;
+}
+
+/* Form styling */
+.form-input-ai {
+    @apply w-full px-4 py-3 rounded-lg border border-light-border bg-white;
+    @apply focus:ring-2 focus:ring-secondary focus:border-transparent;
+    @apply dark:bg-dark-surface dark:border-dark-border dark:text-white;
+}
+
+.form-label-ai {
+    @apply block text-sm font-medium text-primary mb-2;
+    @apply dark:text-slate-200;
+}
+
+/* Article card */
+.article-card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300;
+    @apply hover:shadow-xl hover:-translate-y-1;
+    @apply dark:bg-dark-surface;
+}
+
+/* Navigation active state */
+.nav-link-active {
+    @apply text-secondary border-b-2 border-secondary;
+}
+
+/* Feature list checkmarks */
+.feature-check::before {
+    content: "✓";
+    @apply text-secondary font-bold mr-2;
+}
+
+/* Prose dark mode */
+.dark .prose {
+    color: theme('colors.slate.200');
+}
+
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose h5,
+.dark .prose h6 {
+    color: theme('colors.white');
+}
+
+.dark .prose a {
+    color: theme('colors.indigo.400');
+}
+
+.dark .prose a:hover {
+    color: theme('colors.purple.400');
+}
+
+.dark .prose strong {
+    color: theme('colors.white');
+}
+
+.dark .prose code {
+    color: theme('colors.indigo.300');
+    background-color: theme('colors.slate.800');
+}
+
+.dark .prose pre {
+    background-color: theme('colors.slate.800');
+    border: 1px solid theme('colors.slate.700');
+}
+
+/* Toast notifications */
+.toast-ai {
+    @apply fixed bottom-4 right-4 px-6 py-4 rounded-lg shadow-lg z-50;
+    @apply bg-dark-surface text-white;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .hero-text {
+        @apply text-3xl;
+    }
+}

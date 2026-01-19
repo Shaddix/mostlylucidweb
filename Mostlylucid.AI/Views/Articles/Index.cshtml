@@ -1,0 +1,99 @@
+@model AIArticleListViewModel
+@{
+    ViewBag.Title = "AI Articles";
+}
+
+<!-- Hero Section -->
+<section class="bg-ai-gradient text-white py-16 lg:py-20">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl lg:text-5xl font-bold mb-4">AI Articles</h1>
+            <p class="text-xl text-indigo-100">
+                Deep dives into practical AI implementation, RAG systems, and LLM integration
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Articles List -->
+<section class="py-16 lg:py-24 bg-light-bg dark:bg-dark-bg">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            @if (Model.Data.Any())
+            {
+                <div class="space-y-6">
+                    @foreach (var article in Model.Data)
+                    {
+                        <article class="article-card">
+                            <div class="p-6">
+                                <div class="flex flex-wrap gap-2 mb-3">
+                                    @foreach (var category in article.Categories?.Take(3) ?? [])
+                                    {
+                                        <span class="badge badge-secondary badge-sm">@category</span>
+                                    }
+                                </div>
+                                <h2 class="text-xl font-semibold text-primary dark:text-white mb-2">
+                                    <a href="/articles/@article.Slug" hx-boost="true" hx-target="#contentcontainer"
+                                       hx-swap="innerHTML show:window:top" class="hover:text-secondary transition-colors">
+                                        @article.Title
+                                    </a>
+                                </h2>
+                                <p class="text-slate-600 dark:text-slate-400 mb-4 line-clamp-3">
+                                    @(article.Summary?.Length > 200 ? article.Summary.Substring(0, 200) + "..." : article.Summary)
+                                </p>
+                                <div class="flex items-center justify-between text-sm text-slate-500">
+                                    <div class="flex items-center gap-4">
+                                        <span>@article.PublishedDate.ToString("MMM d, yyyy")</span>
+                                        <span>@article.ReadingTime</span>
+                                    </div>
+                                    <a href="/articles/@article.Slug" hx-boost="true" hx-target="#contentcontainer"
+                                       hx-swap="innerHTML show:window:top" class="text-secondary hover:text-accent transition-colors">
+                                        Read more <i class="bx bx-right-arrow-alt"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <!-- Pagination -->
+                @if (Model.TotalItems > Model.PageSize)
+                {
+                    <div class="mt-10">
+                        <paging-link
+                            paging-action="Index"
+                            paging-controller="Articles"
+                            page-size="@Model.PageSize"
+                            total-items="@Model.TotalItems"
+                            current-page="@Model.Page"
+                            paging-model="Model"
+                            hx-boost="true"
+                            hx-target="#contentcontainer"
+                            hx-swap="innerHTML show:window:top">
+                        </paging-link>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-12">
+                    <i class="bx bx-file-blank text-6xl text-slate-300 dark:text-slate-600 mb-4"></i>
+                    <p class="text-slate-600 dark:text-slate-400">No articles found.</p>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-12 bg-white dark:bg-dark-surface border-t border-light-border dark:border-dark-border">
+    <div class="container mx-auto px-4 text-center">
+        <p class="text-slate-600 dark:text-slate-400 mb-4">
+            Looking for more content? Check out the full blog at
+        </p>
+        <a href="https://mostlylucid.net" target="_blank" rel="noopener noreferrer"
+           class="text-secondary hover:text-accent transition-colors font-semibold">
+            mostlylucid.net <i class="bx bx-link-external"></i>
+        </a>
+    </div>
+</section>

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <TargetFramework>net10.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FluentEmail.Razor" Version="3.0.2" />
+        <PackageReference Include="FluentEmail.Smtp" Version="3.0.2" />
+        <PackageReference Include="Htmx" Version="1.8.3" />
+        <PackageReference Include="Htmx.TagHelpers" Version="1.8.3" />
+        <PackageReference Include="Markdig" Version="0.44.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.9.0-beta.2" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.12.0" />
+        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+        <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+        <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+        <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+        <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.2" />
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+        <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
+        <PackageReference Include="SerilogTracing.Expressions" Version="2.3.1" />
+        <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" Version="2.3.1" />
+        <PackageReference Include="mostlylucid.pagingtaghelper" Version="1.0.0-rc4" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Mostlylucid\Mostlylucid.csproj" />
+    </ItemGroup>
+
+</Project>

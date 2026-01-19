@@ -1,0 +1,336 @@
+@model AIBaseViewModel
+@{
+    ViewBag.Title = "Services";
+}
+
+<!-- Hero Section -->
+<section class="bg-ai-gradient text-white py-16 lg:py-24">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl lg:text-5xl font-bold mb-4">Services</h1>
+            <p class="text-xl text-indigo-100">
+                Practical AI solutions tailored to your business needs
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section -->
+<section class="py-16 lg:py-24 bg-light-bg dark:bg-dark-bg">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto space-y-6">
+
+            <!-- AI Strategy Consulting -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" checked />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-target-lock text-xl text-secondary"></i>
+                    </div>
+                    AI Strategy Consulting
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Not sure where to start with AI? I'll help you identify the highest-impact opportunities
+                            and create a practical roadmap for implementation.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Assessment of current processes and pain points
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Identification of AI opportunities with realistic ROI estimates
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Technology recommendations and architecture guidance
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Implementation roadmap with prioritized phases
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> Organizations exploring AI adoption or looking to optimize existing initiatives.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG Development -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-data text-xl text-secondary"></i>
+                    </div>
+                    RAG System Development
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Build intelligent question-answering systems that combine the power of large language models
+                            with your organization's knowledge base for accurate, contextual responses.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Document ingestion pipeline (PDFs, Word, web content, etc.)
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Vector database setup and optimization (Qdrant, PostgreSQL pgvector)
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Embedding model selection and fine-tuning
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Query processing and response generation
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                API integration for your applications
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> Knowledge bases, documentation systems, customer support, internal Q&A.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Local LLM Setup -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-server text-xl text-secondary"></i>
+                    </div>
+                    Local LLM Deployment
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Deploy AI models on your own infrastructure for complete data privacy, regulatory compliance,
+                            and predictable costs without relying on external API providers.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Hardware assessment and recommendations
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Ollama or similar platform setup and configuration
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Model selection based on your use case (Llama, Mistral, Phi, etc.)
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Performance optimization for your workload
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Docker/Kubernetes deployment and scaling
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> Organizations with privacy requirements, high-volume use cases, or air-gapped environments.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document Intelligence -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-file-find text-xl text-secondary"></i>
+                    </div>
+                    Document Intelligence
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Automate document processing workflows with AI-powered extraction, classification,
+                            and summarization to reduce manual effort and improve accuracy.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                OCR and text extraction from various formats
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Named entity recognition (NER) for key information
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Document classification and routing
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Automated summarization and key point extraction
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Integration with existing document management systems
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> Legal, finance, healthcare, and any document-heavy workflows.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Semantic Search Enhancement -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-search-alt text-xl text-secondary"></i>
+                    </div>
+                    Semantic Search Enhancement
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Upgrade your search functionality from keyword matching to understanding user intent,
+                            delivering relevant results even when the exact words don't match.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Vector embedding integration with existing search
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Hybrid search (semantic + keyword) implementation
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Query understanding and expansion
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Relevance ranking optimization
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Performance tuning for low-latency responses
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> E-commerce, content platforms, documentation sites, enterprise portals.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom AI Tools -->
+            <div class="collapse collapse-arrow bg-white dark:bg-dark-surface rounded-xl shadow-md">
+                <input type="checkbox" class="peer" />
+                <div class="collapse-title text-xl font-semibold text-primary dark:text-white flex items-center gap-3">
+                    <div class="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="bx bx-cog text-xl text-secondary"></i>
+                    </div>
+                    Custom AI Tools & Integration
+                </div>
+                <div class="collapse-content">
+                    <div class="pt-2 pl-13">
+                        <p class="text-slate-600 dark:text-slate-400 mb-4">
+                            Build custom AI-powered tools and integrate AI capabilities into your existing
+                            applications and workflows for specific business needs.
+                        </p>
+                        <h4 class="font-semibold text-primary dark:text-white mb-2">What's Included:</h4>
+                        <ul class="space-y-2 text-slate-600 dark:text-slate-400 text-sm mb-4">
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Requirements analysis and solution design
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                API development for AI capabilities
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Prompt engineering and optimization
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Integration with existing systems (CRM, ERP, etc.)
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="bx bx-check text-secondary mt-0.5"></i>
+                                Testing, deployment, and documentation
+                            </li>
+                        </ul>
+                        <p class="text-sm text-slate-500 dark:text-slate-500">
+                            <strong>Ideal for:</strong> Unique use cases that require tailored solutions.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- How I Work Section -->
+<section class="py-16 bg-white dark:bg-dark-surface">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-primary dark:text-white mb-8 text-center">How I Work</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">1</div>
+                    <h3 class="font-semibold text-primary dark:text-white mb-2">Discover</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Understand your goals, constraints, and existing systems</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">2</div>
+                    <h3 class="font-semibold text-primary dark:text-white mb-2">Prototype</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Build a quick proof of concept to validate the approach</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">3</div>
+                    <h3 class="font-semibold text-primary dark:text-white mb-2">Build</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Develop the production solution with proper architecture</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mx-auto mb-3 text-white font-bold">4</div>
+                    <h3 class="font-semibold text-primary dark:text-white mb-2">Support</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Deploy, document, and provide ongoing guidance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-16 bg-ai-gradient text-white">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-2xl lg:text-3xl font-bold mb-4">Ready to Get Started?</h2>
+        <p class="text-indigo-100 mb-6 max-w-xl mx-auto">
+            Let's discuss your project and find the right solution for your needs.
+        </p>
+        <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+           class="inline-flex items-center bg-white text-secondary font-semibold py-3 px-8 rounded-lg hover:bg-indigo-50 transition-colors">
+            Start a Conversation <i class="bx bx-right-arrow-alt ml-2"></i>
+        </a>
+    </div>
+</section>

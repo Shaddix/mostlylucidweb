@@ -47,3 +47,14 @@ http://grafana.mostlyucid.net
    redir https://{host}{uri}
 }
 
+mostlylucid.ai, www.mostlylucid.ai
+{
+   encode zstd gzip
+   reverse_proxy mostlylucid-ai:8080
+}
+
+http://mostlylucid.ai, http://www.mostlylucid.ai
+{
+   redir https://{host}{uri}
+}
+

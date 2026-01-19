@@ -1,0 +1,86 @@
+@model ArticleViewModel
+@{
+    ViewBag.Title = Model.Title;
+}
+
+<!-- Article Header -->
+<section class="bg-ai-gradient text-white py-12 lg:py-16">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Breadcrumb -->
+            <nav class="text-sm mb-6">
+                <a href="/" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="text-indigo-200 hover:text-white transition-colors">Home</a>
+                <span class="text-indigo-300 mx-2">/</span>
+                <a href="/articles" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="text-indigo-200 hover:text-white transition-colors">Articles</a>
+                <span class="text-indigo-300 mx-2">/</span>
+                <span class="text-white">Article</span>
+            </nav>
+
+            <!-- Categories -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                @foreach (var category in Model.Categories?.Take(4) ?? [])
+                {
+                    <span class="badge bg-white/20 text-white border-none">@category</span>
+                }
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-3xl lg:text-4xl font-bold mb-4">@Model.Title</h1>
+
+            <!-- Meta -->
+            <div class="flex flex-wrap items-center gap-4 text-indigo-200 text-sm">
+                <span>
+                    <i class="bx bx-calendar mr-1"></i>
+                    @Model.PublishedDate.ToString("MMMM d, yyyy")
+                </span>
+                @if (Model.UpdatedDate.HasValue && Model.UpdatedDate.Value > Model.PublishedDate)
+                {
+                    <span>
+                        <i class="bx bx-edit mr-1"></i>
+                        Updated @Model.UpdatedDate.Value.ToString("MMM d, yyyy")
+                    </span>
+                }
+                <span>
+                    <i class="bx bx-time-five mr-1"></i>
+                    @Model.ReadingTime
+                </span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Article Content -->
+<section class="py-12 lg:py-16 bg-light-bg dark:bg-dark-bg">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            <article class="bg-white dark:bg-dark-surface rounded-xl shadow-md p-6 lg:p-10">
+                <div class="prose prose-lg dark:prose-dark max-w-none">
+                    @Html.Raw(Model.HtmlContent)
+                </div>
+            </article>
+
+            <!-- Back to Articles -->
+            <div class="mt-8 text-center">
+                <a href="/articles" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+                   class="inline-flex items-center text-secondary hover:text-accent transition-colors">
+                    <i class="bx bx-left-arrow-alt mr-2"></i> Back to Articles
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Related Link -->
+<section class="py-8 bg-white dark:bg-dark-surface border-t border-light-border dark:border-dark-border">
+    <div class="container mx-auto px-4 text-center">
+        <p class="text-slate-600 dark:text-slate-400 mb-2">
+            This article is from the mostlylucid.net blog.
+        </p>
+        <a href="https://mostlylucid.net/@Model.Slug" target="_blank" rel="noopener noreferrer"
+           class="text-secondary hover:text-accent transition-colors">
+            View original with comments <i class="bx bx-link-external ml-1"></i>
+        </a>
+    </div>
+</section>

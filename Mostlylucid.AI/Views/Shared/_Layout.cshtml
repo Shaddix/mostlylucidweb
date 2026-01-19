@@ -1,0 +1,77 @@
+@using Mostlylucid.AI.Models.ViewModels
+@model AIBaseViewModel
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible" />
+    <meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport" />
+    <title>@ViewBag.Title - Mostlylucid AI</title>
+
+    @{
+        var currentUrl = $"https://{Context.Request.Host}{Context.Request.Path}";
+        var defaultDescription = "AI Consultancy specializing in RAG, LLM integration, and practical AI solutions for businesses.";
+        var pageDescription = ViewBag.Description as string ?? defaultDescription;
+        var defaultImage = "https://mostlylucid.ai/img/social.png";
+        var pageImage = ViewBag.OgImage as string ?? defaultImage;
+    }
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="@currentUrl" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:url" content="@currentUrl">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="@ViewBag.Title - Mostlylucid AI">
+    <meta property="og:description" content="@pageDescription">
+    <meta property="og:image" content="@pageImage">
+    <meta property="og:site_name" content="Mostlylucid AI" />
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@ViewBag.Title - Mostlylucid AI">
+    <meta name="twitter:description" content="@pageDescription">
+    <meta name="twitter:image" content="@pageImage">
+
+    <!-- Meta Description -->
+    <meta name="description" content="@pageDescription" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/img/logo-ai.svg" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" />
+
+    <!-- Stylesheet -->
+    <link href="/css/dist/main.css" asp-append-version="true" rel="stylesheet" />
+</head>
+<body
+    x-data="globalSetup()"
+    x-init="themeInit()"
+    class="bg-light-bg dark:bg-dark-bg min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <partial name="_Header" />
+
+    <!-- Main Content -->
+    <main class="flex-1" id="contentcontainer" hx-history-elt>
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <partial name="_Footer" />
+
+    <!-- Scripts -->
+    <script src="~/js/dist/main.js" asp-append-version="true"></script>
+    @if (Model?.UmamiPath != null && Model?.UmamiWebsiteId != null)
+    {
+        <script src="@(Model.UmamiPath + "/" + Model.UmamiScript)" data-website-id="@Model.UmamiWebsiteId"></script>
+    }
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
