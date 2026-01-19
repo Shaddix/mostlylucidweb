@@ -21,7 +21,8 @@
       "mcp__plugin_playwright_playwright__browser_snapshot",
       "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Bash(npm install)"
     ]
   }
 }

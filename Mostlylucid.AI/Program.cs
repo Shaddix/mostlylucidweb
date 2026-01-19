@@ -2,7 +2,7 @@ using Mostlylucid.AI.Services;
 using Mostlylucid.Blog;
 using Mostlylucid.DbContext.EntityFramework;
 using Mostlylucid.Services.Email;
-using Mostlylucid.Services.Umami;
+using Umami.Net;
 using Mostlylucid.Shared.Config;
 using OpenTelemetry.Metrics;
 using Serilog.Debugging;
