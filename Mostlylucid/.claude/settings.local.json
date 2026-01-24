@@ -22,7 +22,17 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(dotnet sln:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(dir:*)",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''F:\\\\Gifs'' -Filter *.gif | Select-Object -First 20 Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\source\\\\vectorascii\\\\ConsoleImage'' -Recurse -Filter ''consoleimage.exe'' | Select-Object FullName\")",
+      "Bash(powershell.exe:*)",
+      "Bash(consoleimage:*)",
+      "Bash(where:*)",
+      "Bash(where.exe:*)",
+      "Bash(dotnet tool list:*)",
+      "Bash(powershell -Command \"Get-Command consoleimage -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }
