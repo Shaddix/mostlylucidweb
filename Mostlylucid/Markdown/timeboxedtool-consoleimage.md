@@ -8,7 +8,7 @@
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](https://unlicense.org)
 [![GitHub Releases](https://img.shields.io/github/v/release/scottgal/mostlylucid.consoleimage)](https://github.com/scottgal/mostlylucid.consoleimage/releases)
 
-> **A glyph-based terminal renderer using shape-matching algorithms. Supports images, animated GIFs, and videos with multiple render modes including Braille for maximum detail.**
+> **A glyph-based terminal renderer using shape-matching algorithms. Supports images, animated GIFs, videos, YouTube playback, and live subtitles with multiple render modes including Braille for maximum detail.**
 
 *The goal is not pixel accuracy; it is watchability under extreme bandwidth constraints.*
 
@@ -16,7 +16,7 @@
 
 This is one of my "time boxed" tools - small projects I build as a limited time exercise, typically over a couple of days. The idea is to scratch an itch, learn something new, and ship something useful without getting bogged down in endless feature creep.
 
-This particular project started when I came across [Alex Harri's excellent article on ASCII rendering](https://alexharri.com/blog/ascii-rendering). His approach to shape-matching rather than simple brightness mapping was fascinating, and I thought "I could build that in C#". What began as a simple ASCII image viewer evolved into a comprehensive terminal graphics framework with multiple rendering modes, video support, and even an AI integration layer.
+This particular project started when I came across [Alex Harri's excellent article on ASCII rendering](https://alexharri.com/blog/ascii-rendering). His approach to shape-matching rather than simple brightness mapping was fascinating, and I thought "I could build that in C#". What began as a simple ASCII image viewer grew into a terminal graphics system with multiple rendering modes, video support, and even an AI integration layer.
 
 The full source code is available on GitHub: [https://github.com/scottgal/mostlylucid.consoleimage](https://github.com/scottgal/mostlylucid.consoleimage)
 
@@ -25,36 +25,64 @@ The full source code is available on GitHub: [https://github.com/scottgal/mostly
 **NuGet Packages:**
 - [`mostlylucid.consoleimage`](https://www.nuget.org/packages/mostlylucid.consoleimage/) - Core rendering library
 - [`mostlylucid.consoleimage.video`](https://www.nuget.org/packages/mostlylucid.consoleimage.video/) - Video support (FFmpeg)
+- [`mostlylucid.consoleimage.transcription`](https://www.nuget.org/packages/mostlylucid.consoleimage.transcription/) - Whisper transcription + subtitle generation
 - [`mostlylucid.consoleimage.player`](https://www.nuget.org/packages/mostlylucid.consoleimage.player/) - Document playback
+- [`mostlylucid.consoleimage.player.spectre`](https://www.nuget.org/packages/mostlylucid.consoleimage.player.spectre/) - Spectre.Console playback renderables
 - [`mostlylucid.consoleimage.spectre`](https://www.nuget.org/packages/mostlylucid.consoleimage.spectre/) - Spectre.Console integration
 
 ## Quick Start
 
+ConsoleImage is a single CLI that turns media into glyph-driven terminal video. The point is not exact pixels; it's watchability under brutal constraints.
+
 ```bash
-# Render an image to your terminal (Braille mode by default)
 consoleimage photo.jpg
-
-# Play a video (FFmpeg auto-downloads on first use)
-consoleimage movie.mp4
-
-# Play an animated GIF
-consoleimage animation.gif
-
-# The full superpower: stream any direct MP4 URL, extract 10 seconds, render as Braille, save as GIF
-consoleimage https://example.com/trailer.mp4 -ss 30 -t 10 -w 80 -o clip.gif
+consoleimage "https://youtu.be/dQw4w9WgXcQ" --subs whisper
 ```
 
-![Braille Mode Demo](/articleimages/consoleimage_futurama_braille.gif)
-
-### Still Images Too
-
-ConsoleImage handles static images just as well as video. Here is a landscape photograph rendered in full-colour braille:
-
-![Landscape in Braille](/articleimages/consoleimage_landscape_braille.gif)
+![Braille Mode Demo](/articleimages/consoleimage_wiggum_braille.gif)
 
 [TOC]
 
-## From Simple Viewer to Full Framework
+## New in v4.0: YouTube + Live Subtitles
+
+ConsoleImage has quietly grown into a full terminal media player. Version 4.0 adds YouTube playback, auto-downloaded dependencies, and live AI subtitles powered by Whisper, all wrapped in the same "one command and it just works" flow.
+
+### Zero-Setup Auto Downloads
+
+Dependencies are pulled down on first use and cached locally, so new features work without manual installs:
+
+| Component | First Download Trigger | Cache Location |
+|-----------|------------------------|----------------|
+| FFmpeg | First video playback | `~/.local/share/consoleimage/ffmpeg/` |
+| yt-dlp | First YouTube URL | `~/.local/share/consoleimage/ytdlp/` |
+| Whisper Runtime | First `--subs whisper` | `~/.local/share/consoleimage/whisper/runtimes/` |
+| Whisper Models | First transcription | `~/.local/share/consoleimage/whisper/` |
+
+On Windows, caches live under `%LOCALAPPDATA%\consoleimage\`.
+
+Use `-y` / `--yes` to auto-confirm all downloads.
+
+### YouTube Playback
+
+YouTube URLs play directly in the terminal via yt-dlp, running through the same render pipeline as local files. This
+means the same modes, widths, and output formats apply whether you are watching live or saving a clip. If you already
+have a custom yt-dlp install, ConsoleImage can point at it.
+
+### Subtitles and Live Transcription
+
+Subtitles come from three sources: existing files, YouTube captions, or live Whisper transcription. Whisper runs in
+the background in 15-second chunks, stays ahead of playback, and caches `.vtt` files so replays are instant. It supports
+multiple model sizes, language selection, and hosted endpoints so you can trade speed for accuracy or offload the work.
+
+Transcript-only output is supported too, which turns ConsoleImage into a subtitle generator that can feed other tools
+without rendering video.
+
+### Slideshow Mode
+
+Point it at a folder and it becomes an image slideshow with keyboard controls, optional shuffle, and manual or timed
+advance.
+
+## From Simple Viewer to Terminal Graphics
 
 What started as a weekend project to implement Alex Harri's algorithm became something more ambitious. The evolution went roughly like this:
 
@@ -95,25 +123,42 @@ flowchart LR
 | **ASCII** | `consoleimage photo.jpg -a` | 1× (shape-matched) | Widest compatibility |
 | **Blocks** | `consoleimage photo.jpg -b` | 2× vertical (half-blocks) | Photos, high fidelity |
 
+### Terminal Protocol Modes
+
+Some terminals support inline graphics protocols (iTerm2, Kitty, Sixel). ConsoleImage can target those modes for
+pixel-accurate rendering while keeping the same pipeline and tooling.
+
 ### Mode Comparison
 
-Here is the same Futurama scene rendered in each mode. Notice how the monochrome ASCII output shows the actual shape-matched characters:
+Here is the same animated GIF rendered in each mode:
 
-| ASCII (Monochrome) | ASCII (Colour) | Braille | ColorBlocks |
-|--------------------|----------------|---------|-------------|
-| ![ASCII Mono](/articleimages/consoleimage_futurama_ascii_mono.gif) | ![ASCII Colour](/articleimages/consoleimage_futurama_ascii.gif) | ![Braille](/articleimages/consoleimage_futurama_braille.gif) | ![Blocks](/articleimages/consoleimage_futurama_blocks.gif) |
-| Shape-matched characters | With ANSI colours | 2×4 dot patterns | Unicode half-blocks (▀▄) |
+| ASCII | Braille | Braille (Mono) | ColorBlocks |
+|-------|---------|----------------|-------------|
+| ![ASCII](/articleimages/consoleimage_wiggum_ascii.gif) | ![Braille](/articleimages/consoleimage_wiggum_braille.gif) | ![Braille Mono](/articleimages/consoleimage_wiggum_mono.gif) | ![Blocks](/articleimages/consoleimage_wiggum_blocks.gif) |
+| Shape-matched characters | 2×4 dot patterns | Compact, no colour | Unicode half-blocks (▀▄) |
 
-The monochrome ASCII output really shows the shape-matching at work. You can see how diagonal edges use `/` and `\`, curves use `(` and `)`, and different densities use characters like `@`, `#`, `*`, and `.`.
+The ASCII output shows shape-matching at work - diagonal edges use `/` and `\`, curves use `(` and `)`, and different densities use characters like `@`, `#`, `*`, and `.`. The monochrome braille version is 3× smaller than colour modes while retaining full dot resolution.
 
-### Braille vs ASCII: Resolution Difference
+### Braille Resolution: The Amiga Boingball
 
-The difference becomes especially clear with the classic Amiga bouncing ball:
+The resolution advantage becomes clear with the classic Amiga bouncing ball - an animation that demands smooth curves and clean diagonals:
 
-| ASCII (Monochrome) | Braille (Colour) |
-|--------------------|------------------|
-| ![Boingball ASCII](/articleimages/consoleimage_boingball_ascii_mono.gif) | ![Boingball Braille](/articleimages/consoleimage_boingball_braille.gif) |
-| Standard resolution | 8× pixels per cell (2×4 dots) |
+| Braille (Monochrome) | Braille (Colour) |
+|----------------------|------------------|
+| ![Boingball Mono](/articleimages/consoleimage_boingball_mono.gif) | ![Boingball Braille](/articleimages/consoleimage_boingball_braille.gif) |
+| 8× resolution, no colour | 8× resolution, full colour |
+
+Both use the same 2×4 dot grid (8 pixels per character cell). The monochrome version omits ANSI colour codes entirely, producing much smaller output.
+
+### Monochrome Braille: Compact & Fast
+
+For quick previews, SSH sessions, or bandwidth-constrained environments, monochrome braille (`--mono`) drops colour entirely:
+
+```bash
+consoleimage animation.gif --mono -w 120
+```
+
+The results are **3-5x smaller** than colour modes while retaining full resolution. That boingball animation above? The monochrome version is 259 KB versus 863 KB for colour braille. For text-heavy content or line art, monochrome often looks *better* because there's no colour noise competing with the shape information.
 
 ## How ASCII Shape-Matching Works
 
@@ -134,12 +179,12 @@ Each character is analysed using a **6-point sampling grid** in a 3×2 staggered
 
 The left circles are lowered and right circles are raised to minimise gaps whilst avoiding overlap. Each sampling circle measures "ink coverage" at that position, creating a 6-dimensional shape vector.
 
-You can see this in action in the monochrome output below. Notice how diagonal edges get `/` and `\` characters, curves get `(` and `)`, and high-density areas get characters like `@` and `#`:
+You can see this in action in the ASCII output below. Notice how diagonal edges get `/` and `\` characters, curves get `(` and `)`, and high-density areas get characters like `@` and `#`:
 
-![Shape Matching in Action](/articleimages/consoleimage_futurama_ascii_mono.gif)
+![Shape Matching in Action](/articleimages/consoleimage_wiggum_ascii.gif)
 
 ```csharp
-// Same staggered sampling positions as CharacterMap (3x2 grid per article)
+// Staggered sampling positions (3x2 grid as per Harri's article)
 private static readonly (float X, float Y)[] InternalSamplingPositions =
 [
     (0.17f, 0.30f), // Top-left (lowered)
@@ -239,7 +284,7 @@ private static readonly (float Cos, float Sin)[] OuterRingAngles = PrecomputeAng
 
 ## Braille Rendering: 8x Resolution
 
-The braille mode was the biggest technical leap. Traditional ASCII gives you one "pixel" per character cell. Unicode braille characters pack **8 pixels** into each cell.
+The braille mode was the biggest technical leap. Traditional ASCII gives you one "pixel" per character cell. Unicode braille characters pack **8 pixels** into each cell, and ConsoleImage treats those dots as a *temporal* signal, not just a static bitmap. The result is a kind of glyph-level "superresolution" where motion and frame-to-frame stability make the perceived detail noticeably higher than the raw grid would suggest.
 
 ### The Unicode Braille Block
 
@@ -367,7 +412,7 @@ private static void ApplyAtkinsonDithering(Span<short> buffer, int width, int he
 
 Terminal colours present a challenge: we can only set **one foreground colour** per character, but braille represents **8 different source pixels**.
 
-Averaging all 8 pixel colours produces a "solarised" look - colours mix into muddy greys. Instead, we **only sample colours from pixels where dots are lit**:
+Averaging all 8 pixel colours produces a "solarized" look - colours mix into muddy greys. Instead, we **only sample colours from pixels where dots are lit**:
 
 ```mermaid
 flowchart TD
@@ -389,7 +434,7 @@ This ensures the displayed colour matches what the user actually sees - the lit 
 
 ### Perceptual Colour Compensation for Sparse Glyphs
 
-Braille characters are inherently sparse - a character with only 2-3 dots lit appears dimmer than a solid block. Without compensation, braille output looks objectively "correct" but perceptually dull.
+Braille characters are inherently sparse - a character with only 2-3 dots lit appears dimmer than a solid block. Without compensation, braille output looks objectively "correct" but visually dull.
 
 To restore perceived chroma rather than exaggerate colour:
 
@@ -414,15 +459,15 @@ For a 100×50 character output:
 
 Braille provides **8x the resolution** of ASCII and **4x the resolution** of colour blocks.
 
-### Braille in Action: The Spinning Earth
+### Braille in Action: Landscape Detail
 
-The best demonstration of braille's resolution advantage is with smooth, curved shapes. This spinning Earth animation shows how braille captures the curvature of continents and cloud formations that would be lost in ASCII:
+The best demonstration of braille's resolution advantage is with smooth gradients and fine detail. This landscape photograph shows how braille captures subtle tonal variations that would be lost in ASCII:
 
-![Earth in Braille](/articleimages/consoleimage_earth_braille.gif)
+![Landscape in Braille](/articleimages/consoleimage_landscape_braille.gif)
 
-At this point I realised I was not looking at "ASCII art" anymore - it was simply watchable video.
+At this point I realized I wasn't looking at "ASCII art" anymore - it was recognisable imagery.
 
-Notice how the coastlines and cloud patterns remain recognisable even at terminal resolution. With standard ASCII, these would become blocky and lose their organic curves.
+Notice how the sky gradients and terrain details remain visible even at terminal resolution. With standard ASCII, these would become blocky and lose their smooth transitions. The 2×4 dot grid provides enough spatial resolution that the eye integrates the pattern as continuous imagery rather than discrete characters.
 
 ## Matrix Mode
 
@@ -489,126 +534,59 @@ public (string output, CellData[,] cells) RenderWithDelta(
 
 This typically reduces output by **70-90%** for video content where most of the frame is static.
 
+### Temporal Stability (Dejitter)
+
+For moving content, small per-frame colour changes can shimmer. ConsoleImage includes a dejitter pass that smooths
+colour changes across frames, improving perceived stability, especially in braille and colour-block modes.
+
 ### Video Support
 
-Video files are handled via FFmpeg (auto-downloaded on first use):
+Video files and YouTube URLs are handled via FFmpeg and yt-dlp (auto-downloaded on first use). You can start at offsets,
+trim durations, switch render modes, add subtitles, and export to GIF or document formats using the same rendering core.
 
-```bash
-consoleimage movie.mp4                    # Play as braille
-consoleimage movie.mp4 -a -w 120          # ASCII mode, wider
-consoleimage movie.mp4 --ss 60 -t 30      # Start at 60s, play 30s
-consoleimage movie.mp4 -o movie.cidz      # Save as document
-```
+**Video Playback Controls:**
 
-FFmpeg is downloaded automatically on first use, so there is no manual setup required.
+| Key | Action |
+|-----|--------|
+| `Space` | Pause/Resume |
+| `Q` / `Esc` | Quit |
 
 ## Document Format
 
-ConsoleImage can save rendered output to self-contained documents that play back without the original source:
+ConsoleImage can save rendered output to self-contained documents that play back without the original source. The `.cidz`
+format uses GZip compression with delta encoding (often ~7:1 versus raw JSON), and long videos can be streamed as NDJSON
+so frames are written incrementally instead of buffered in memory.
 
-```bash
-# Save to compressed document (.cidz)
-consoleimage animation.gif -o output.cidz
+There is also a lightweight player package (`ConsoleImage.Player`) that can replay documents without ImageSharp or FFmpeg,
+which makes animated CLI logos feasible without bundling heavy dependencies.
 
-# Play back later
-consoleimage output.cidz --speed 2.0
+## API & Integrations
 
-# Convert to GIF
-consoleimage movie.cidz -o movie.gif
-```
+There is a full C# API for rendering images, GIFs, video, and documents with fine-grained render options. The same
+renderers back the CLI, so you can embed the algorithms in your own tools without re-implementing the pipeline.
 
-The `.cidz` format uses GZip compression with delta encoding, typically achieving around 7:1 compression versus uncompressed JSON (varies by content).
+Spectre.Console integration is available for both live renders and document playback, which lets you treat images as
+renderables inside layouts. The README and NuGet package pages cover the API surface in detail.
 
-### Embedding in Applications
+## Readmes & Deep Dives
 
-Use the lightweight `ConsoleImage.Player` package to play documents without ImageSharp or FFmpeg dependencies:
+If you want the full technical detail, these are the canonical docs:
 
-```csharp
-// Play on startup (no ImageSharp, no FFmpeg - just JSON parsing)
-var player = await ConsolePlayer.FromFileAsync("logo.cidz");
-await player.PlayAsync(loopCount: 1);
-```
-
-This is ideal for animated startup logos in CLI tools where you want the visual impact without bundling heavy dependencies.
-
-## Library API
-
-### Simple Usage
-
-```csharp
-using ConsoleImage.Core;
-
-// Basic - just works
-Console.WriteLine(AsciiArt.Render("photo.jpg"));
-
-// With width
-Console.WriteLine(AsciiArt.Render("photo.jpg", 80));
-
-// Coloured output
-Console.WriteLine(AsciiArt.RenderColored("photo.jpg"));
-
-// For light terminal backgrounds
-Console.WriteLine(AsciiArt.RenderForLightBackground("photo.jpg"));
-
-// Play animated GIF
-await AsciiArt.PlayGif("animation.gif");
-```
-
-### Full Options
-
-```csharp
-var options = new RenderOptions
-{
-    MaxWidth = 100,
-    MaxHeight = 50,
-    UseColor = true,
-    Invert = true,                    // Dark terminals (default)
-    ContrastPower = 3.0f,
-    DirectionalContrastStrength = 0.3f,
-    CharacterSetPreset = "extended",
-    UseParallelProcessing = true
-};
-
-using var renderer = new AsciiRenderer(options);
-var frame = renderer.RenderFile("photo.jpg");
-Console.WriteLine(frame.ToAnsiString()); // Coloured
-```
-
-### Braille Rendering
-
-```csharp
-using var renderer = new BrailleRenderer(options);
-var cells = renderer.RenderToCells(image);
-
-// Delta rendering for video
-var (output, cells) = renderer.RenderWithDelta(image, previousCells);
-Console.Write(output);
-```
-
-### Spectre.Console Integration
-
-```bash
-dotnet add package mostlylucid.consoleimage.spectre
-```
-
-```csharp
-using ConsoleImage.Spectre;
-using Spectre.Console;
-
-// Native Spectre renderables
-AnsiConsole.Write(new AsciiImage("photo.png"));
-AnsiConsole.Write(new ColorBlockImage("photo.png"));
-AnsiConsole.Write(new BrailleImage("photo.png"));
-
-// In panels and layouts
-AnsiConsole.Write(new Panel(new BrailleImage("photo.png"))
-    .Header("My Image")
-    .Border(BoxBorder.Rounded));
-```
+- [ConsoleImage CLI README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage/README.md)
+- [Core Library README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Core/README.md)
+- [Video Core README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Video.Core/README.md)
+- [Transcription README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Transcription/README.nuget.md)
+- [Player README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Player/README.md)
+- [Spectre Integration README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Spectre/README.nuget.md)
+- [Player.Spectre README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Player.Spectre/README.md)
+- [MCP Server README](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/ConsoleImage.Mcp/README.md)
+- [Braille Rendering Notes](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/docs/BRAILLE-RENDERING.md)
+- [JSON/CIDZ Format Spec](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/docs/JSON-FORMAT.md)
+- [Changelog](https://github.com/scottgal/mostlylucid.consoleimage/blob/master/CHANGELOG.md)
 
 ## MCP Server for AI Integration
 
-ConsoleImage includes an MCP (Model Context Protocol) server that turns it into a "visual probe" for AI workflows. Rather than just being "AI integration because trend", this is genuinely useful: the model can ask for reduced views of media, measure simple signals (colour, motion, change), and only then decide what to keep.
+ConsoleImage includes an MCP (Model Context Protocol) server that turns it into a "visual probe" for AI workflows. Rather than just being "AI integration because trend", it's actually useful: the model can ask for reduced views of media, measure simple signals (colour, motion, change), and only then decide what to keep.
 
 Because ConsoleImage can render perceptually meaningful previews, an AI can reason about video content iteratively: sampling, comparing, and refining rather than consuming entire videos blindly.
 
@@ -617,13 +595,13 @@ Because ConsoleImage can render perceptually meaningful previews, an AI can reas
 With MCP integration, an AI can:
 
 - **Find colourful segments**: Scan a video at low resolution, identify the most vibrant or highest-contrast frames, and export a short GIF
-- **Detect scene changes**: Measure frame-to-frame delta energy to identify "important moments"
+- **Detect scene changes**: Measure frame-to-frame delta energy to identify important moments
 - **Locate content of interest**: Use heuristics to find frames that appear to contain people or human figures (unless running an actual detector)
 - **Generate storyboards**: Create a contact sheet of N key frames as a single rendered document
 
 ### Real Example: Building This Article
 
-While writing this very article, I used ConsoleImage as an MCP tool to find good example clips from a Futurama episode. The conceptual workflow looked like this:
+While writing this article, I used ConsoleImage as an MCP tool to find good example clips. The workflow:
 
 ```
 → extract_frames (low-res preview at various timestamps)
@@ -631,7 +609,7 @@ While writing this very article, I used ConsoleImage as an MCP tool to find good
 → render_to_gif (final export of selected clips)
 ```
 
-Here is me scanning timestamps at super low resolution to preview what is where:
+Here's a tiny braille preview at 30 characters wide - enough to spot composition and movement:
 
 ```
 ⣿⣿⣿⣿⣿⣿⣿⣿⡿⢃⠌⡱⢈⠱⣈⠱⣈⠱⢈⠛⢿⠿⠟⢛⠛⢛⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿
@@ -639,21 +617,12 @@ Here is me scanning timestamps at super low resolution to preview what is where:
 ⣿⣿⣿⣿⣿⣿⣿⣿⠐⡈⢅⠢⡁⣾⣿⡏⠤⠑⡂⢅⠢⣕⢨⣔⠡⠌⣂⠱⠘⠯⠿⣾⣽⣳⠯⣝⡗⢿⣞⣿
 ```
 
-This let me quickly identify which timestamps had interesting colourful character scenes rather than dark or static content - then render only those for the final article.
+This let me quickly scan content to identify interesting frames rather than rendering everything at full resolution.
 
 ### Configuration
 
-```json
-{
-  "mcpServers": {
-    "consoleimage": {
-      "command": "path/to/consoleimage-mcp"
-    }
-  }
-}
-```
-
-Key tools include `render_image`, `render_to_gif`, `extract_frames`, and `compare_render_modes`. See the [MCP README](https://github.com/scottgal/mostlylucid.consoleimage/tree/master/ConsoleImage.Mcp) for the current list.
+Setup is a single MCP server entry; see the [MCP README](https://github.com/scottgal/mostlylucid.consoleimage/tree/master/ConsoleImage.Mcp) for details.
+Key tools include `render_image`, `render_to_gif`, `extract_frames`, and `compare_render_modes`.
 
 ## Architecture
 
@@ -693,7 +662,7 @@ flowchart TB
 
 ## Conclusion
 
-What started as a quick implementation of Alex Harri's ASCII rendering algorithm turned into a comprehensive terminal graphics framework. The time-boxing approach meant shipping something useful quickly, then iterating when inspiration struck.
+What started as a quick implementation of Alex Harri's ASCII rendering algorithm turned into a terminal graphics system. The time-boxing approach meant shipping something useful quickly, then iterating when inspiration struck.
 
 Key learnings:
 - **Shape-matching beats brightness mapping** for character selection quality
