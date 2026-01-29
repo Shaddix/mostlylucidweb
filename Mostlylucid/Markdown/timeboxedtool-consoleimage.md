@@ -4,17 +4,18 @@
 
 <datetime class="hidden">2026-01-24T12:00</datetime>
 
-[![NuGet](https://img.shields.io/nuget/v/mostlylucid.consoleimage.svg)](https://www.nuget.org/packages/mostlylucid.consoleimage/)
+> **A glyph-based terminal renderer using shape-matching algorithms. Supports images, animated GIFs, videos, YouTube playback, and live subtitles with multiple render modes including Braille for maximum detail.**
+ 
+> [![NuGet](https://img.shields.io/nuget/v/mostlylucid.consoleimage.svg)](https://www.nuget.org/packages/mostlylucid.consoleimage/)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](https://unlicense.org)
 [![GitHub Releases](https://img.shields.io/github/v/release/scottgal/mostlylucid.consoleimage)](https://github.com/scottgal/mostlylucid.consoleimage/releases)
 
-> **A glyph-based terminal renderer using shape-matching algorithms. Supports images, animated GIFs, videos, YouTube playback, and live subtitles with multiple render modes including Braille for maximum detail.**
 
 *The goal is not pixel accuracy; it is watchability under extreme bandwidth constraints.*
 
 ## Introduction
 
-This is one of my "time boxed" tools - small projects I build as a limited time exercise, typically over a couple of days. The idea is to scratch an itch, learn something new, and ship something useful without getting bogged down in endless feature creep.
+This is one of my "time-boxed" tools - small projects I build as a limited time exercise, typically over a couple of days. The idea is to scratch an itch, learn something new, and ship something useful without getting bogged down in endless feature creep.
 
 This particular project started when I came across [Alex Harri's excellent article on ASCII rendering](https://alexharri.com/blog/ascii-rendering). His approach to shape-matching rather than simple brightness mapping was fascinating, and I thought "I could build that in C#". What began as a simple ASCII image viewer grew into a terminal graphics system with multiple rendering modes, video support, and even an AI integration layer.
 
@@ -33,6 +34,10 @@ The full source code is available on GitHub: [https://github.com/scottgal/mostly
 ## Quick Start
 
 ConsoleImage is a single CLI that turns media into glyph-driven terminal video. The point is not exact pixels; it's watchability under brutal constraints.
+
+### Install
+
+The easiest way to get started is to download the latest release binary from [GitHub Releases](https://github.com/scottgal/mostlylucid.consoleimage/releases) and make sure `consoleimage` is on your `PATH`.
 
 ```bash
 consoleimage photo.jpg
@@ -59,6 +64,8 @@ Dependencies are pulled down on first use and cached locally, so new features wo
 | Whisper Models | First transcription | `~/.local/share/consoleimage/whisper/` |
 
 On Windows, caches live under `%LOCALAPPDATA%\consoleimage\`.
+
+On macOS, caches live under your user-local app data folder (typically `~/Library/Application Support/consoleimage/`).
 
 Use `-y` / `--yes` to auto-confirm all downloads.
 
@@ -121,7 +128,9 @@ flowchart LR
 |------|---------|------------|----------|
 | **Braille** | `consoleimage photo.jpg` | 8× pixels per cell (2×4 dots) | **DEFAULT** - Maximum detail |
 | **ASCII** | `consoleimage photo.jpg -a` | 1× (shape-matched) | Widest compatibility |
-| **Blocks** | `consoleimage photo.jpg -b` | 2× vertical (half-blocks) | Photos, high fidelity |
+| **ColorBlocks** | `consoleimage photo.jpg -b` | 2× vertical (half-blocks) | Photos, high fidelity |
+
+Braille is the default. Use `-a` for ASCII or `-b` for ColorBlocks.
 
 ### Terminal Protocol Modes
 
@@ -179,7 +188,7 @@ Each character is analysed using a **6-point sampling grid** in a 3×2 staggered
 
 The left circles are lowered and right circles are raised to minimise gaps whilst avoiding overlap. Each sampling circle measures "ink coverage" at that position, creating a 6-dimensional shape vector.
 
-You can see this in action in the ASCII output below. Notice how diagonal edges get `/` and `\` characters, curves get `(` and `)`, and high-density areas get characters like `@` and `#`:
+Here's the ASCII output again as a reference while we talk about the sampling grid:
 
 ![Shape Matching in Action](/articleimages/consoleimage_wiggum_ascii.gif)
 
@@ -311,6 +320,7 @@ Each dot corresponds to a bit:
 //           2 5
 //           3 6
 //           7 8
+// Listed in 2×4 scan order: 1,4,2,5,3,6,7,8.
 private static readonly int[] DotBits = { 0x01, 0x08, 0x02, 0x10, 0x04, 0x20, 0x40, 0x80 };
 ```
 
@@ -333,6 +343,8 @@ flowchart LR
     style E stroke:#ff6600
     style G stroke:#00aa00
 ```
+
+Because each braille cell encodes a 2×4 dot grid, the renderer operates on an internal image that is 2× wider and 4× taller than the target character dimensions.
 
 ### Otsu's Method: Automatic Thresholding
 
@@ -479,7 +491,7 @@ There is also a `-M` flag for a Matrix digital rain overlay effect, because why 
 
 Animation in terminals is tricky - naive approaches cause visible flicker. ConsoleImage uses several techniques:
 
-**[DECSET 2026 Synchronised Output](https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036)** - a terminal feature that lets you "commit" a whole frame at once, preventing tearing (widely supported in modern terminals, silently ignored elsewhere):
+**[DECSET 2026 Synchronised Output](https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036)** - a terminal feature that lets you "commit" a whole frame at once, preventing tearing (supported in several modern terminals, silently ignored elsewhere):
 
 ```csharp
 // Start synchronised output
