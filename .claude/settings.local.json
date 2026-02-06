@@ -97,7 +97,8 @@
       "Bash(npm run:*)",
       "Bash(node -e:*)",
       "Bash(dos2unix:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []

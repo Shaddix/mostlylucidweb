@@ -691,6 +691,7 @@ The plumbing is done. Build your RAG app.
 - [Part 1 - Architecture & Patterns](/blog/building-a-document-summarizer-with-rag) - Why the pipeline approach works
 - [Part 2 - Using the Tool](/blog/docsummarizer-tool) - CLI installation, modes, templates
 - [Part 3 - Advanced Concepts](/blog/docsummarizer-advanced-concepts) - BERT embeddings, ONNX, hybrid search
+- [Part 5 - DoomSummarizer: Deep Research](/blog/doomsummarizer-deep-research) - Multi-source retrieval, entity profiles, semantic graph discovery, and parallel long-form synthesis
 
 ### RAG Deep Dives
 

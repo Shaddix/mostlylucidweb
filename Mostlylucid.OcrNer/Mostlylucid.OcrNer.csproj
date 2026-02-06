@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+
+        <!-- NuGet Package Metadata -->
+        <IsPackable>true</IsPackable>
+        <PackageId>Mostlylucid.OcrNer</PackageId>
+        <Authors>Scott Galloway</Authors>
+        <Company>Mostlylucid</Company>
+        <Description>Local-first OCR, Named Entity Recognition, and Vision captioning library. Uses Tesseract OCR, BERT NER (ONNX), Florence-2 vision, and ImageSharp preprocessing. Auto-downloads all models on first use - zero manual setup required.</Description>
+        <PackageTags>ocr;ner;named-entity-recognition;tesseract;bert;onnx;local-first;nlp;florence2;vision;image-captioning</PackageTags>
+        <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.OcrNer</RepositoryUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+        <!-- Symbols -->
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Documentation -->
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+
+        <!-- Enable deterministic builds for NuGet -->
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+    <!-- MinVer for automatic versioning -->
+    <PropertyGroup>
+        <MinVerTagPrefix>ocrnerv</MinVerTagPrefix>
+    </PropertyGroup>
+    <PropertyGroup>
+        <MinVerSkip Condition="'$(Configuration)' == 'Debug'">true</MinVerSkip>
+    </PropertyGroup>
+
+    <!-- Package dependencies -->
+    <ItemGroup>
+        <!-- MinVer -->
+        <PackageReference Include="MinVer" Version="6.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+
+        <!-- Core dependencies -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+
+        <!-- ONNX Runtime for BERT NER -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
+
+        <!-- Tesseract OCR .NET wrapper -->
+        <PackageReference Include="Tesseract" Version="5.2.0" />
+
+        <!-- Florence-2 vision model (captioning + OCR) -->
+        <PackageReference Include="Florence2" Version="25.12.63049" />
+
+        <!-- ImageSharp for image preprocessing (grayscale, contrast, sharpen) -->
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    </ItemGroup>
+
+</Project>

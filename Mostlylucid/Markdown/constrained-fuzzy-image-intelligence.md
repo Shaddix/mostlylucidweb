@@ -1,6 +1,7 @@
 # Image Summarizer: A Constrained Fuzzy Image RAG Engine
 
 <!-- category -- AI,Patterns,Architecture,LLM,DiSE -->
+
 <datetime class="hidden">2026-01-06T17:00</datetime>
 
 **Parts 1-3** described Constrained Fuzziness as an abstract pattern. This article applies those patterns to a working image analysis pipeline that demonstrates the principles in action.
@@ -25,6 +26,7 @@ This article serves multiple purposes. Navigate to what interests you:
 ImageSummarizer is a RAG ingestion pipeline for images that extracts structured metadata, text, captions, and visual signals using a **wave-based architecture**. The system escalates from fast local analysis (Florence-2 ONNX) to Vision LLMs only when needed.
 
 **Key principles:**
+
 - No autonomy (models never decide execution paths)
 - No natural-language state (signals are typed, not prose)
 - Models propose signals; deterministic policy decides what persists
@@ -32,18 +34,18 @@ ImageSummarizer is a RAG ingestion pipeline for images that extracts structured 
 ImageSummarizer demonstrates that multimodal LLMs can be used without surrendering determinism. The core rule: **probability proposes, determinism persists**.
 
 > **Design rules**
+>
 > - Models never consume other models' prose
 > - Natural language is never state
 > - Escalation is deterministic thresholds
 > - Every output carries confidence + provenance
-
 
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 [![Release](https://img.shields.io/github/v/release/scottgal/lucidrag?label=release)](https://github.com/scottgal/lucidrag/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/scottgal/lucidrag/release-imagesummarizer.yml?label=build)](https://github.com/scottgal/lucidrag/actions)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple)](https://dotnet.microsoft.com/)
 
-[TOC]
+[toc]
 
 ---
 
@@ -67,18 +69,19 @@ The key word is **structured**. Every output has confidence scores, source attri
 
 The system uses a three-tier escalation strategy for text extraction:
 
-| Tier | Method | Speed | Cost | Best For |
-|------|--------|-------|------|----------|
-| **1** | **Tesseract** | ~50ms | Free | Clean, high-contrast text |
-| **2** | **Florence-2 ONNX** | ~200ms | Free | Stylized fonts, no API costs |
-| **3** | **Vision LLM** | ~1-5s | $0.001-0.01 | Complex/garbled text |
+
+| Tier  | Method              | Speed  | Cost        | Best For                     |
+| ----- | ------------------- | ------ | ----------- | ---------------------------- |
+| **1** | **Tesseract**       | ~50ms  | Free        | Clean, high-contrast text    |
+| **2** | **Florence-2 ONNX** | ~200ms | Free        | Stylized fonts, no API costs |
+| **3** | **Vision LLM**      | ~1-5s  | $0.001-0.01 | Complex/garbled text         |
 
 ### Intelligent Routing
 
 **ONNX text detection** ([EAST](https://github.com/argman/EAST), [CRAFT](https://github.com/clovaai/CRAFT-pytorch), ~20-30ms) determines the optimal path:
 
 - **FAST route**: Florence-2 only (~100ms)
-- **BALANCED route**: Florence-2 + Tesseract voting (~300ms)  
+- **BALANCED route**: Florence-2 + Tesseract voting (~300ms)
 - **QUALITY route**: Multi-frame analysis + Vision LLM (~1-5s)
 
 ### Supporting ONNX Models
@@ -138,11 +141,12 @@ Saved text-only strip to: anchorman-not-even-mad_textonly_strip.png
   Dimensions: 253×105 (83% token reduction)
 ```
 
-| Approach | Dimensions | Tokens | Cost |
-|----------|------------|--------|------|
-| Full frames (10) | 3000×185 | ~1500 | High |
-| OCR strip (2 frames) | 600×185 | ~300 | Medium |
-| **Text-only strip** | **253×105** | **~50** | **Low** |
+
+| Approach             | Dimensions   | Tokens  | Cost    |
+| -------------------- | ------------ | ------- | ------- |
+| Full frames (10)     | 3000×185    | ~1500   | High    |
+| OCR strip (2 frames) | 600×185     | ~300    | Medium  |
+| **Text-only strip**  | **253×105** | **~50** | **Low** |
 
 **How it works**: OpenCV detects subtitle regions (bottom 30%), thresholds bright pixels (white/yellow text), extracts tight bounding boxes, and deduplicates based on text changes. The Vision LLM receives only the text regions, preserving all subtitle content while eliminating background pixels.
 
@@ -279,21 +283,23 @@ Confidence here means *reliability for downstream use*, not mathematical certain
 
 To avoid confusion, here's the canonical OCR signal namespace used throughout the system:
 
-| Signal Key | Source | Description |
-|------------|--------|-------------|
-| `ocr.text` | Tesseract (Tier 1) | Raw single-frame OCR |
-| `ocr.confidence` | Tesseract | Tesseract confidence score |
-| `ocr.ml.text` | Florence-2 (Tier 2) | ML OCR single-frame |
-| `ocr.ml.multiframe_text` | Florence-2 (Tier 2) | Multi-frame GIF OCR (preferred for animations) |
-| `ocr.ml.confidence` | Florence-2 | Florence-2 confidence score |
-| `ocr.quality.spell_check_score` | OcrQualityWave | Deterministic spell-check ratio |
-| `ocr.quality.is_garbled` | OcrQualityWave | Boolean escalation signal |
-| `ocr.vision.text` | VisionLlmWave (Tier 3) | Vision LLM OCR extraction |
-| `caption.text` | VisionLlmWave | Descriptive caption (separate from OCR) |
+
+| Signal Key                      | Source                 | Description                                    |
+| ------------------------------- | ---------------------- | ---------------------------------------------- |
+| `ocr.text`                      | Tesseract (Tier 1)     | Raw single-frame OCR                           |
+| `ocr.confidence`                | Tesseract              | Tesseract confidence score                     |
+| `ocr.ml.text`                   | Florence-2 (Tier 2)    | ML OCR single-frame                            |
+| `ocr.ml.multiframe_text`        | Florence-2 (Tier 2)    | Multi-frame GIF OCR (preferred for animations) |
+| `ocr.ml.confidence`             | Florence-2             | Florence-2 confidence score                    |
+| `ocr.quality.spell_check_score` | OcrQualityWave         | Deterministic spell-check ratio                |
+| `ocr.quality.is_garbled`        | OcrQualityWave         | Boolean escalation signal                      |
+| `ocr.vision.text`               | VisionLlmWave (Tier 3) | Vision LLM OCR extraction                      |
+| `caption.text`                  | VisionLlmWave          | Descriptive caption (separate from OCR)        |
 
 **Important distinction**: `ocr.vision.text` is **text extraction** (OCR), while `caption.text` is **scene description** (captioning). Both may come from the same Vision LLM call, but serve different purposes.
 
 **Final text selection priority** (highest to lowest):
+
 1. `ocr.vision.text` (Vision LLM OCR, if escalated)
 2. `ocr.ml.multiframe_text` (Florence-2 GIF)
 3. `ocr.ml.text` (Florence-2 single-frame)
@@ -772,6 +778,7 @@ static string? GetExtractedText(DynamicImageProfile profile)
 **Note**: This selects ONE source, but the ledger exposes ALL sources with provenance. Downstream consumers can inspect `profile.Ledger.Signals` to see all OCR attempts and their confidence scores.
 
 Each source has known reliability:
+
 - **Vision LLM**: Best for complex scenes, charts, diagrams (confidence 0.95, high cost)
 - **Florence-2**: Good for stylized fonts, runs locally (confidence 0.85-0.90, no cost)
 - **Tesseract voting**: Reliable for clean text (confidence varies, deterministic)
@@ -925,12 +932,13 @@ Image Analysis (OpenCV ~5-20ms)
 
 ### Route Performance
 
-| Route | Triggers When | Processing | Time | Cost |
-|-------|---------------|------------|------|------|
-| FAST | Simple text, high contrast, standard fonts | Florence-2 only | ~100ms | Low (local) |
-| BALANCED | Normal text, moderate confidence | Florence-2 + Tesseract voting | ~300ms | Low (local) |
-| QUALITY | Charts, diagrams, stylized fonts, low confidence | Multi-frame + Vision LLM | ~1-5s | Medium (API) |
-| ANIMATED | GIFs with subtitles | Text-only strip + filmstrip | ~2-3s | Medium (API) |
+
+| Route    | Triggers When                                    | Processing                    | Time   | Cost         |
+| -------- | ------------------------------------------------ | ----------------------------- | ------ | ------------ |
+| FAST     | Simple text, high contrast, standard fonts       | Florence-2 only               | ~100ms | Low (local)  |
+| BALANCED | Normal text, moderate confidence                 | Florence-2 + Tesseract voting | ~300ms | Low (local)  |
+| QUALITY  | Charts, diagrams, stylized fonts, low confidence | Multi-frame + Vision LLM      | ~1-5s  | Medium (API) |
+| ANIMATED | GIFs with subtitles                              | Text-only strip + filmstrip   | ~2-3s  | Medium (API) |
 
 ### Real Example: Auto Route Selection
 
@@ -1015,13 +1023,14 @@ imagesummarizer image.png --signals "@full"
 imagesummarizer image.png --signals "color.dominant*, ocr.text, motion.*"
 ```
 
-| Collection | Signals | Use Case |
-|------------|---------|----------|
-| `@minimal` | identity.*, quality.sharpness | Fast profile only |
-| `@alttext` | caption.text, ocr.text, color.dominant* | Accessibility |
-| `@motion` | motion.*, identity.frame_count | Animation analysis |
-| `@full` | All signals | Complete analysis |
-| `@tool` | Optimized subset | MCP/automation |
+
+| Collection | Signals                                 | Use Case           |
+| ---------- | --------------------------------------- | ------------------ |
+| `@minimal` | identity.*, quality.sharpness           | Fast profile only  |
+| `@alttext` | caption.text, ocr.text, color.dominant* | Accessibility      |
+| `@motion`  | motion.*, identity.frame_count          | Animation analysis |
+| `@full`    | All signals                             | Complete analysis  |
+| `@tool`    | Optimized subset                        | MCP/automation     |
 
 ### Real JSON Output
 
@@ -1106,11 +1115,12 @@ The CLI exposes all the complexity as simple options. You can switch pipelines, 
 
 ## Where the Patterns Appear
 
-| Part | Pattern | ImageSummarizer Implementation |
-|------|---------|-------------------------------|
-| 1 | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) | ColorWave computes facts; VisionLlmWave respects them |
-| 2 | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) | Multiple waves publish to AnalysisContext; WaveOrchestrator coordinates |
-| 3 | [Context Dragging](/blog/constrained-fuzzy-context-dragging) | ImageLedger accumulates salient features; SignalDatabase caches results |
+
+| Part | Pattern                                                          | ImageSummarizer Implementation                                          |
+| ---- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1    | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern)     | ColorWave computes facts; VisionLlmWave respects them                   |
+| 2    | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) | Multiple waves publish to AnalysisContext; WaveOrchestrator coordinates |
+| 3    | [Context Dragging](/blog/constrained-fuzzy-context-dragging)     | ImageLedger accumulates salient features; SignalDatabase caches results |
 
 Same patterns. Different domain. Same rule: **probability proposes, determinism persists**.
 
@@ -1143,14 +1153,15 @@ This is not the fast path. It's the reliable path. Worth it if you need auditabl
 
 ## Failure Modes and How This Handles Them
 
-| Failure Mode | What Happens | How It's Handled |
-|--------------|--------------|------------------|
-| **Noisy GIF** | Frame jitter, compression artifacts | Temporal stabilisation + SSIM deduplication + voting consensus + text-only strip extraction |
-| **OCR returns garbage** | Tesseract fails on stylized fonts | Spell-check gate detects < 50% correct → escalates to Florence-2 → Vision LLM if still poor |
-| **High API costs** | Too many cloud Vision LLM calls | Florence-2 ONNX handles 80%+ locally (~200ms), text-only strips reduce tokens 30× for GIFs |
-| **Vision hallucinates** | LLM claims text that isn't there | Signals enable contradiction detection (pattern shown above); downstream consumers can compare `vision.llm.text` vs `content.text_likeliness` |
-| **Pipeline changes over time** | New waves added, thresholds adjusted | Content-hash caching + full provenance in every signal + version tracking |
-| **Model returns nothing** | Vision LLM timeout or empty response | Fallback chain: Vision LLM → Florence-2 → Tesseract voting → Raw OCR; priority order ensures graceful degradation |
+
+| Failure Mode                   | What Happens                         | How It's Handled                                                                                                                             |
+| ------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Noisy GIF**                  | Frame jitter, compression artifacts  | Temporal stabilisation + SSIM deduplication + voting consensus + text-only strip extraction                                                  |
+| **OCR returns garbage**        | Tesseract fails on stylized fonts    | Spell-check gate detects < 50% correct → escalates to Florence-2 → Vision LLM if still poor                                                |
+| **High API costs**             | Too many cloud Vision LLM calls      | Florence-2 ONNX handles 80%+ locally (~200ms), text-only strips reduce tokens 30× for GIFs                                                  |
+| **Vision hallucinates**        | LLM claims text that isn't there     | Signals enable contradiction detection (pattern shown above); downstream consumers can compare`vision.llm.text` vs `content.text_likeliness` |
+| **Pipeline changes over time** | New waves added, thresholds adjusted | Content-hash caching + full provenance in every signal + version tracking                                                                    |
+| **Model returns nothing**      | Vision LLM timeout or empty response | Fallback chain: Vision LLM → Florence-2 → Tesseract voting → Raw OCR; priority order ensures graceful degradation                         |
 
 Every failure mode has a deterministic response. No silent degradation.
 
@@ -1187,6 +1198,8 @@ Query → Multi-modal retrieval + constrained generation
 The pattern scales: if you can extract structured signals from images (this article), documents ([DocSummarizer](/blog/building-a-document-summarizer-with-rag)), and data ([DataSummarizer](/blog/datasummarizer-how-it-works)), you can build a knowledge graph where every node carries provenance and every edge has confidence scores.
 
 **Coming soon**: Full LucidRAG integration showing how these pipelines compose into multi-modal graph RAG queries. Same architectural principles, unified signal substrate.
+
+
 
 ---
 
@@ -1241,13 +1254,14 @@ That's Constrained Fuzziness in practice. Not an abstract pattern. Working code.
 
 ## The Series
 
-| Part | Pattern | Axis |
-|------|---------|------|
-| 1 | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern) | Single component |
-| 2 | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models) | Multiple components |
-| 3 | [Context Dragging](/blog/constrained-fuzzy-context-dragging) | Time / memory |
-| 4 | **Image Intelligence (this article)** | **Wave architecture, patterns** |
-| 4.1 | [The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline) | OCR, ONNX models, filmstrips |
+
+| Part | Pattern                                                                   | Axis                            |
+| ---- | ------------------------------------------------------------------------- | ------------------------------- |
+| 1    | [Constrained Fuzziness](/blog/constrained-fuzziness-pattern)              | Single component                |
+| 2    | [Constrained Fuzzy MoM](/blog/constrained-mom-mixture-of-models)          | Multiple components             |
+| 3    | [Context Dragging](/blog/constrained-fuzzy-context-dragging)              | Time / memory                   |
+| 4    | **Image Intelligence (this article)**                                     | **Wave architecture, patterns** |
+| 4.1  | [The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline) | OCR, ONNX models, filmstrips    |
 
 **Next**: Part 5 will show how ImageSummarizer, [DocSummarizer](/blog/building-a-document-summarizer-with-rag), and [DataSummarizer](/blog/datasummarizer-how-it-works) compose into multi-modal graph RAG with LucidRAG.
 
