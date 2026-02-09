@@ -98,7 +98,8 @@
       "Bash(node -e:*)",
       "Bash(dos2unix:*)",
       "Bash(node:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(python -c:*)"
     ],
     "deny": [],
     "ask": []

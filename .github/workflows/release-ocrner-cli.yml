@@ -1,0 +1,225 @@
+name: Release OcrNer CLI
+
+on:
+  push:
+    tags:
+      - 'ocrner-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_PATH: Mostlylucid.OcrNer.CLI/Mostlylucid.OcrNer.CLI.csproj
+  PROJECT_NAME: Mostlylucid.OcrNer.CLI
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            rid: win-x64
+            artifact_name: ocrner-win-x64
+            executable: ocrner.exe
+          # Windows ARM64 - cross-compile from x64
+          - os: windows-latest
+            rid: win-arm64
+            artifact_name: ocrner-win-arm64
+            executable: ocrner.exe
+          # Linux x64
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact_name: ocrner-linux-x64
+            executable: ocrner
+          # Linux ARM64 - use ARM64 runner
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            artifact_name: ocrner-linux-arm64
+            executable: ocrner
+          # macOS x64 (Intel) - use macos-15-intel
+          - os: macos-15-intel
+            rid: osx-x64
+            artifact_name: ocrner-osx-x64
+            executable: ocrner
+          # macOS ARM64 (Apple Silicon) - macos-latest is ARM64
+          - os: macos-latest
+            rid: osx-arm64
+            artifact_name: ocrner-osx-arm64
+            executable: ocrner
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+        dotnet-quality: 'preview'
+
+    - name: Extract version from tag
+      id: get_version
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/ocrner-v}
+        fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+
+    - name: Clear NuGet cache (avoid stale GPU packages)
+      run: dotnet nuget locals all --clear
+      shell: bash
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.PROJECT_PATH }} --force
+      shell: bash
+
+    - name: Build and Publish (self-contained)
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} \
+          -c Release \
+          -f net10.0 \
+          -r ${{ matrix.rid }} \
+          --self-contained \
+          -p:Version=${{ steps.get_version.outputs.VERSION }} \
+          -o ./publish/${{ matrix.rid }}
+      shell: bash
+
+    - name: List published files
+      run: ls -la ./publish/${{ matrix.rid }}/
+      shell: bash
+
+    - name: Create archive (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        # Include all files - self-contained publish includes everything needed
+        7z a -tzip ../../${{ matrix.artifact_name }}.zip .
+      shell: bash
+
+    - name: Create archive (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        chmod +x ${{ matrix.executable }}
+        # Include all files - self-contained publish includes everything needed
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz .
+      shell: bash
+
+    - name: Create archive (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cd ./publish/${{ matrix.rid }}
+        chmod +x ${{ matrix.executable }}
+        # Include all files - self-contained publish includes everything needed
+        tar -czvf ../../${{ matrix.artifact_name }}.tar.gz .
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.artifact_name }}.zip
+          ${{ matrix.artifact_name }}.tar.gz
+        if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/ocrner-v}
+        fi
+        # Strip leading 'v' if present (dotnet version strings can't have 'v' prefix)
+        VERSION=${VERSION#v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+        merge-multiple: true
+
+    - name: List artifacts
+      run: |
+        echo "=== Artifacts directory structure ==="
+        find ./artifacts -type f -name "*.zip" -o -name "*.tar.gz" | head -20
+        echo "=== All files ==="
+        ls -laR ./artifacts/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        name: OcrNer CLI v${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ github.event_name == 'workflow_dispatch' && format('ocrner-v{0}', github.event.inputs.version) || github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## OcrNer CLI v${{ steps.get_version.outputs.VERSION }}
+
+          > **Local-first OCR, Named Entity Recognition, and Vision captioning — no cloud APIs required.**
+
+          **[Full Documentation](https://github.com/${{ github.repository }}/blob/main/Mostlylucid.OcrNer/README.md)**
+
+          ### Key Features
+
+          - **Tesseract OCR** - Extract text from images with preprocessing (grayscale, contrast, sharpen)
+          - **BERT NER (ONNX)** - Named entity recognition running locally via ONNX Runtime
+          - **Florence-2 Vision** - Image captioning and vision-based OCR
+          - **ImageSharp Preprocessing** - Automatic image enhancement for better OCR accuracy
+          - **Auto-downloads models** - Zero manual setup, models download on first use
+
+          ### Downloads
+
+          | Platform | Architecture | Download |
+          |----------|--------------|----------|
+          | Windows | x64 | `ocrner-win-x64.zip` |
+          | Windows | ARM64 | `ocrner-win-arm64.zip` |
+          | Linux | x64 | `ocrner-linux-x64.tar.gz` |
+          | Linux | ARM64 | `ocrner-linux-arm64.tar.gz` |
+          | macOS | x64 (Intel) | `ocrner-osx-x64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon) | `ocrner-osx-arm64.tar.gz` |
+
+          ### Quick Start
+
+          ```bash
+          # Extract and run
+          ./ocrner --help
+
+          # OCR an image
+          ./ocrner ocr -f image.png
+
+          # Named entity recognition
+          ./ocrner ner -f document.png
+          ```
+
+        files: |
+          ./artifacts/**/*.zip
+          ./artifacts/**/*.tar.gz
