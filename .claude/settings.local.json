@@ -103,7 +103,9 @@
       "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\test-ner-output.json\")",
       "Bash(del C:Blogmostlylucidwebtest-ner.json)",
       "Bash(copy:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(gh release list:*)",
+      "Bash(del C:Blogmostlylucidwebtest_output.json)"
     ],
     "deny": [],
     "ask": []

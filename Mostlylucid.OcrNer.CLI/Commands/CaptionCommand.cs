@@ -19,6 +19,7 @@ namespace Mostlylucid.OcrNer.CLI.Commands;
 ///   ocrner caption "photos/*.jpg" --ocr -o captions.json
 ///   ocrner caption photo.jpg --brief
 ///   ocrner caption photo.jpg --ner -o analysis.json
+///   ocrner caption photo.jpg --json
 /// </summary>
 public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
 {
@@ -28,12 +29,18 @@ public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
 
         if (files.Count == 0)
         {
+            if (settings.Json)
+            {
+                OutputWriter.WriteJsonError("caption", $"No image files found matching: {settings.Path}");
+                return 1;
+            }
+
             AnsiConsole.MarkupLine($"[red]No image files found matching:[/] {Markup.Escape(settings.Path)}");
             AnsiConsole.MarkupLine("[dim]Supported formats: .png, .jpg, .jpeg, .bmp, .tiff, .gif, .webp[/]");
             return 1;
         }
 
-        if (!settings.Quiet)
+        if (!settings.EffectiveQuiet)
         {
             AnsiConsole.Write(new FigletText("OcrNer").Color(Color.Cyan1));
             AnsiConsole.MarkupLine($"[dim]Florence-2 Vision — {files.Count} file(s)[/]");
@@ -78,7 +85,7 @@ public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
             return tempPath;
         }
 
-        if (settings.Quiet)
+        if (settings.EffectiveQuiet)
         {
             foreach (var file in files)
             {
@@ -134,7 +141,15 @@ public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
             });
         }
 
-        await OutputWriter.WriteCaptionResultsAsync(results, settings.Output, settings.Quiet);
+        if (settings.Json)
+        {
+            OutputWriter.WriteCaptionJsonToStdout(results);
+        }
+        else
+        {
+            await OutputWriter.WriteCaptionResultsAsync(results, settings.Output, settings.Quiet);
+        }
+
         return 0;
     }
 

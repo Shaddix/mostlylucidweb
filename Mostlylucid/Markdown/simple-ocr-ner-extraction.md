@@ -4,6 +4,8 @@
 
 <datetime class="hidden">2026-01-21T12:00</datetime>
 
+[![NuGet](https://img.shields.io/nuget/v/Mostlylucid.OcrNer)](https://www.nuget.org/packages/Mostlylucid.OcrNer/) [![NuGet Downloads](https://img.shields.io/nuget/dt/Mostlylucid.OcrNer)](https://www.nuget.org/packages/Mostlylucid.OcrNer/) [![GitHub Release (CLI)](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=ocrner-*&label=CLI)](https://github.com/scottgal/mostlylucidweb/releases?q=ocrner)
+
 As I've been building [***lucid*RAG**](https://www.lucidrag.com) I'm reading social media where people keep asking the same thing. 'How do you get features from scanned text?' the category error is always 'just use an LLM'...which WORKS but is very expensive. SO as I'm already [deep in the OCR space](/blog/constrained-fuzzy-image-ocr-pipeline) I thought I'd write a 'beginner friendly' approach to the NON-LLM (or LLM optional) way to do this.
 
 You have images with text. You want to extract that text, then find the useful structure inside it (names, companies, places) without calling an LLM, shipping data to the cloud, or paying per token.

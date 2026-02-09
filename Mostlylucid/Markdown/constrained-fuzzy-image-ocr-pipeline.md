@@ -5,6 +5,7 @@
 
 [Part 4: Image Intelligence](/blog/constrained-fuzzy-image-intelligence) introduced the ImageSummarizer wave architecture and the broader patterns. This article deep-dives into the **OCR subsystem**—three tiers of text extraction, intelligent routing, and the filmstrip optimization that achieves 30× token reduction for animated GIFs.
 
+
 **Why a separate article?** The OCR pipeline evolved from "Tesseract with Vision LLM fallback" to a sophisticated three-tier system with ML-based OCR, multi-frame voting, text-only strip extraction, and cost-aware routing. It's complex enough to warrant its own detailed breakdown.
 
 **Related articles**:

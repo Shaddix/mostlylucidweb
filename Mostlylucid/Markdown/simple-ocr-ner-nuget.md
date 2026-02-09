@@ -4,7 +4,8 @@
 
 <datetime class="hidden">2026-02-12T12:00</datetime>
 
-> **NOTE** The nuget package is still being tested. It will be released on the publication date (12th Feb), source code is already in this repo.
+[![NuGet](https://img.shields.io/nuget/v/Mostlylucid.OcrNer)](https://www.nuget.org/packages/Mostlylucid.OcrNer/) [![NuGet Downloads](https://img.shields.io/nuget/dt/Mostlylucid.OcrNer)](https://www.nuget.org/packages/Mostlylucid.OcrNer/) [![GitHub Release (CLI)](https://img.shields.io/github/v/release/scottgal/mostlylucidweb?filter=ocrner-*&label=CLI)](https://github.com/scottgal/mostlylucidweb/releases?q=ocrner)
+
 
 In [Part 1](/blog/simple-ocr-ner-extraction) I showed the raw pipeline: manually downloading models, writing a tokenizer, wiring up ONNX inference, and decoding BIO tags by hand. Educational, but a lot of plumbing to get right.
 

@@ -13,6 +13,15 @@ public abstract class CommonSettings : CommandSettings
     [Description("Minimal output — no banners or progress bars")]
     public bool Quiet { get; init; }
 
+    [CommandOption("--json")]
+    [Description("Output structured JSON to stdout (implies --quiet, suppresses all logging)")]
+    public bool Json { get; init; }
+
+    /// <summary>
+    /// Effective quiet mode — true when either --quiet or --json is set.
+    /// </summary>
+    public bool EffectiveQuiet => Quiet || Json;
+
     [CommandOption("-o|--output")]
     [Description("Output file path (.txt, .md, .json). Omit for console output")]
     public string? Output { get; init; }

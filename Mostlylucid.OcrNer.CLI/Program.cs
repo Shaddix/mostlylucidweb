@@ -16,10 +16,24 @@ using Spectre.Console.Cli;
 
 var args2 = args;
 
+// ─── Stdin support ──────────────────────────────────────────
+// When stdin is piped (e.g. echo "text" | ocrner ner --json),
+// read it and inject as the text argument for the ner command.
+string? stdinText = null;
+if (Console.IsInputRedirected)
+{
+    stdinText = Console.In.ReadToEnd().TrimEnd('\r', '\n');
+}
+
 // Smart routing: detect what the user likely wants
-if (args2.Length == 0)
+if (args2.Length == 0 && stdinText == null)
 {
     args2 = ["--help"];
+}
+else if (args2.Length == 0 && stdinText != null)
+{
+    // Bare stdin with no command → ner
+    args2 = ["ner", stdinText];
 }
 else if (!args2[0].StartsWith('-') && !IsKnownCommand(args2[0]))
 {
@@ -32,6 +46,21 @@ else if (!args2[0].StartsWith('-') && !IsKnownCommand(args2[0]))
     {
         // Assume it's text → ner command
         args2 = ["ner", .. args2];
+    }
+}
+else if (stdinText != null && args2.Length >= 1 && args2[0] == "ner")
+{
+    // ner command with stdin: inject stdin text if no text argument provided
+    // Check if there's a positional argument (non-flag after "ner")
+    var hasTextArg = args2.Skip(1).Any(a => !a.StartsWith('-') && a != "-");
+    var hasDashArg = args2.Skip(1).Any(a => a == "-");
+    if (!hasTextArg || hasDashArg)
+    {
+        // Remove the "-" placeholder if present, inject stdin text
+        var filtered = args2.Where(a => a != "-").ToList();
+        // Insert stdin text after "ner" command
+        filtered.Insert(1, stdinText);
+        args2 = filtered.ToArray();
     }
 }
 

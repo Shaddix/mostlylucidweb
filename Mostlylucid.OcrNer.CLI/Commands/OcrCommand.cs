@@ -16,6 +16,7 @@ namespace Mostlylucid.OcrNer.CLI.Commands;
 ///   ocrner ocr invoice.png
 ///   ocrner ocr "scans/*.png"
 ///   ocrner ocr ./documents/ -o results.json
+///   ocrner ocr invoice.png --json
 /// </summary>
 public sealed class OcrCommand : AsyncCommand<OcrCommand.Settings>
 {
@@ -25,12 +26,18 @@ public sealed class OcrCommand : AsyncCommand<OcrCommand.Settings>
 
         if (files.Count == 0)
         {
+            if (settings.Json)
+            {
+                OutputWriter.WriteJsonError("ocr", $"No image files found matching: {settings.Path}");
+                return 1;
+            }
+
             AnsiConsole.MarkupLine($"[red]No image files found matching:[/] {Markup.Escape(settings.Path)}");
             AnsiConsole.MarkupLine("[dim]Supported formats: .png, .jpg, .jpeg, .bmp, .tiff, .gif, .webp[/]");
             return 1;
         }
 
-        if (!settings.Quiet)
+        if (!settings.EffectiveQuiet)
         {
             AnsiConsole.Write(new FigletText("OcrNer").Color(Color.Cyan1));
             AnsiConsole.MarkupLine($"[dim]OCR + NER Pipeline — {files.Count} file(s)[/]");
@@ -42,7 +49,7 @@ public sealed class OcrCommand : AsyncCommand<OcrCommand.Settings>
 
         var results = new List<(string File, OcrNerResult Result)>();
 
-        if (settings.Quiet)
+        if (settings.EffectiveQuiet)
         {
             foreach (var file in files)
             {
@@ -68,7 +75,15 @@ public sealed class OcrCommand : AsyncCommand<OcrCommand.Settings>
             });
         }
 
-        await OutputWriter.WriteOcrResultsAsync(results, settings.Output, settings.Quiet);
+        if (settings.Json)
+        {
+            OutputWriter.WriteOcrJsonToStdout(results);
+        }
+        else
+        {
+            await OutputWriter.WriteOcrResultsAsync(results, settings.Output, settings.Quiet);
+        }
+
         return 0;
     }
 

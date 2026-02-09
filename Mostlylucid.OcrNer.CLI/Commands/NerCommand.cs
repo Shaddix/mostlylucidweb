@@ -17,6 +17,7 @@ namespace Mostlylucid.OcrNer.CLI.Commands;
 ///   ocrner ner "John Smith works at Microsoft in Seattle"
 ///   ocrner ner "Marie Curie won the Nobel Prize" -o entities.json
 ///   ocrner ner ./test.png -o test.txt
+///   echo "John works at Microsoft" | ocrner ner --json
 /// </summary>
 public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
 {
@@ -26,7 +27,7 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
         var files = OutputWriter.ResolveImageFiles(settings.Text);
         if (files.Count > 0)
         {
-            if (!settings.Quiet)
+            if (!settings.EffectiveQuiet)
             {
                 AnsiConsole.Write(new FigletText("OcrNer").Color(Color.Cyan1));
                 AnsiConsole.MarkupLine($"[dim]NER command detected image input — running OCR + NER on {files.Count} file(s)[/]");
@@ -37,7 +38,7 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
             var pipeline = imageServices.GetRequiredService<IOcrNerPipeline>();
             var ocrResults = new List<(string File, OcrNerResult Result)>();
 
-            if (settings.Quiet)
+            if (settings.EffectiveQuiet)
             {
                 foreach (var file in files)
                 {
@@ -62,11 +63,19 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
                 });
             }
 
-            await OutputWriter.WriteOcrResultsAsync(ocrResults, settings.Output, settings.Quiet);
+            if (settings.Json)
+            {
+                OutputWriter.WriteOcrJsonToStdout(ocrResults);
+            }
+            else
+            {
+                await OutputWriter.WriteOcrResultsAsync(ocrResults, settings.Output, settings.Quiet);
+            }
+
             return 0;
         }
 
-        if (!settings.Quiet)
+        if (!settings.EffectiveQuiet)
         {
             AnsiConsole.Write(new FigletText("OcrNer").Color(Color.Cyan1));
             AnsiConsole.MarkupLine("[dim]Named Entity Recognition[/]");
@@ -80,7 +89,7 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
         NerResult? result = null;
         RecognizedSignals? signals = null;
 
-        if (settings.Quiet)
+        if (settings.EffectiveQuiet)
         {
             result = await nerService.ExtractEntitiesAsync(settings.Text);
             if (config.EnableRecognizers)
@@ -106,7 +115,16 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
         }
 
         if (result != null)
-            await OutputWriter.WriteNerResultAsync(result, settings.Output, settings.Quiet, signals);
+        {
+            if (settings.Json)
+            {
+                OutputWriter.WriteNerJsonToStdout(result, signals);
+            }
+            else
+            {
+                await OutputWriter.WriteNerResultAsync(result, settings.Output, settings.Quiet, signals);
+            }
+        }
 
         return 0;
     }

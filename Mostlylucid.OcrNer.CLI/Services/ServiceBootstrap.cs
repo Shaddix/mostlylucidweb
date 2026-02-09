@@ -15,15 +15,25 @@ internal static class ServiceBootstrap
 {
     public static ServiceProvider CreateServices(CommonSettings settings)
     {
-        var logLevel = settings.Quiet
-            ? Serilog.Events.LogEventLevel.Warning
-            : Serilog.Events.LogEventLevel.Information;
+        // In --json mode, suppress all logging so stdout is pure JSON.
+        // In --quiet mode, only show warnings+. Otherwise, show info+.
+        var logLevel = settings.Json
+            ? Serilog.Events.LogEventLevel.Fatal
+            : settings.Quiet
+                ? Serilog.Events.LogEventLevel.Warning
+                : Serilog.Events.LogEventLevel.Information;
 
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Is(logLevel)
-            .WriteTo.Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
+        var logConfig = new LoggerConfiguration()
+            .MinimumLevel.Is(logLevel);
+
+        // In JSON mode, don't even attach the console sink
+        if (!settings.Json)
+        {
+            logConfig = logConfig.WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}");
+        }
+
+        Log.Logger = logConfig.CreateLogger();
 
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddSerilog(dispose: true));

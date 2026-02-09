@@ -127,6 +127,131 @@ internal static class OutputWriter
         return [];
     }
 
+    // ─── Stdout JSON writers (for --json mode) ─────────────────
+
+    /// <summary>
+    /// Write NER results as structured JSON to stdout.
+    /// Uses Console.Out directly to avoid ANSI escape contamination.
+    /// </summary>
+    public static void WriteNerJsonToStdout(NerResult result, RecognizedSignals? signals = null)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            command = "ner",
+            success = true,
+            sourceText = result.SourceText,
+            entityCount = result.Entities.Count,
+            entities = result.Entities.Select(e => new
+            {
+                type = e.Label,
+                text = e.Text,
+                confidence = Math.Round(e.Confidence, 4),
+                startOffset = e.StartOffset,
+                endOffset = e.EndOffset
+            }),
+            signals = signals is { HasAnySignals: true } ? FormatSignalsObject(signals) : null
+        }, JsonOptions);
+        Console.Out.Write(json);
+    }
+
+    /// <summary>
+    /// Write OCR+NER results as structured JSON to stdout.
+    /// </summary>
+    public static void WriteOcrJsonToStdout(List<(string File, OcrNerResult Result)> results)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            command = "ocr",
+            success = true,
+            fileCount = results.Count,
+            results = results.Select(r => new
+            {
+                file = r.File,
+                ocr = new
+                {
+                    text = r.Result.OcrResult.Text,
+                    confidence = Math.Round(r.Result.OcrResult.Confidence, 4)
+                },
+                entities = r.Result.NerResult.Entities.Select(e => new
+                {
+                    type = e.Label,
+                    text = e.Text,
+                    confidence = Math.Round(e.Confidence, 4),
+                    startOffset = e.StartOffset,
+                    endOffset = e.EndOffset
+                }),
+                signals = r.Result.Signals is { HasAnySignals: true }
+                    ? FormatSignalsObject(r.Result.Signals)
+                    : null
+            })
+        }, JsonOptions);
+        Console.Out.Write(json);
+    }
+
+    /// <summary>
+    /// Write caption results as structured JSON to stdout.
+    /// </summary>
+    public static void WriteCaptionJsonToStdout(
+        List<(string File, VisionCaptionResult Caption, VisionOcrResult? Ocr, NerResult? Ner)> results)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            command = "caption",
+            success = true,
+            fileCount = results.Count,
+            results = results.Select(r => new
+            {
+                file = r.File,
+                caption = r.Caption.Success ? r.Caption.Caption : null,
+                error = r.Caption.Success ? null : r.Caption.Error,
+                durationMs = r.Caption.DurationMs,
+                visionOcr = r.Ocr is { Success: true }
+                    ? new { text = r.Ocr.Text, durationMs = r.Ocr.DurationMs }
+                    : null,
+                ner = r.Ner != null
+                    ? new
+                    {
+                        entityCount = r.Ner.Entities.Count,
+                        entities = r.Ner.Entities.Select(e => new
+                        {
+                            type = e.Label,
+                            text = e.Text,
+                            confidence = Math.Round(e.Confidence, 4),
+                            startOffset = e.StartOffset,
+                            endOffset = e.EndOffset
+                        })
+                    }
+                    : null
+            })
+        }, JsonOptions);
+        Console.Out.Write(json);
+    }
+
+    /// <summary>
+    /// Write a structured JSON error to stderr.
+    /// </summary>
+    public static void WriteJsonError(string command, string error)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            command,
+            success = false,
+            error
+        }, JsonOptions);
+        Console.Error.Write(json);
+    }
+
+    private static object FormatSignalsObject(RecognizedSignals signals) => new
+    {
+        culture = signals.Culture,
+        dateTimes = signals.DateTimes.Select(dt => new { dt.Text, dt.Start, dt.End, dt.TypeName }),
+        numbers = signals.Numbers.Select(n => new { n.Text, n.Start, n.Value, n.TypeName }),
+        urls = signals.Urls.Select(u => new { u.Text, u.Start }),
+        phoneNumbers = signals.PhoneNumbers.Select(p => new { p.Text, p.Start }),
+        emails = signals.Emails.Select(e => new { e.Text, e.Start }),
+        ipAddresses = signals.IpAddresses.Select(ip => new { ip.Text, ip.Start })
+    };
+
     // ─── Console formatters ──────────────────────────────────
 
     private static void WriteNerToConsole(NerResult result, bool quiet)
