@@ -4,7 +4,7 @@
 
 <datetime class="hidden">2026-01-21T12:00</datetime>
 
-As I've been building [***lucid*RAG**](https://www.lucidrag.com) I'm reading social media where people keep asking the same thing. 'How you you get features from scanned text?' the category error is always 'just use an LLM'...which WORKS but is very expensive. SO as I'm already [deep in the OCR space](/blog/constrained-fuzzy-image-ocr-pipeline) I thought I'd write a 'beginner friendly' approach to the NON-LLM (or LLM optional) way to do this.
+As I've been building [***lucid*RAG**](https://www.lucidrag.com) I'm reading social media where people keep asking the same thing. 'How do you get features from scanned text?' the category error is always 'just use an LLM'...which WORKS but is very expensive. SO as I'm already [deep in the OCR space](/blog/constrained-fuzzy-image-ocr-pipeline) I thought I'd write a 'beginner friendly' approach to the NON-LLM (or LLM optional) way to do this.
 
 You have images with text. You want to extract that text, then find the useful structure inside it (names, companies, places) without calling an LLM, shipping data to the cloud, or paying per token.
 
@@ -12,7 +12,7 @@ This article shows the **simplest possible** pipeline: **Tesseract** for text ex
 
 Deterministic here means fixed versions, fixed language data, and no adaptive learning at runtime.
 
-> **NuGet coming shortly** - I'm packaging this into a simple `mostlylucid.ocrner` library. For now, the code below is copy-paste ready.
+> **Want the packaged version?** This pipeline is now a NuGet package with auto-downloading models, OpenCV preprocessing, Florence-2 vision, and a CLI tool. See **[Part 2: The NuGet Package](/blog/simple-ocr-ner-nuget)** for the ready-to-use version.
 
 [TOC]
 
@@ -488,18 +488,18 @@ This lets the model handle multi-word entities like "John Smith" or "United King
 ### The Label Mapping
 
 ```csharp
-// These are the 9 labels the model was trained on (CoNLL-2003 dataset)
+// These are the 9 labels from the protectai/bert-base-NER-onnx config.json (id2label field)
 string[] labels =
 {
     "O",       // 0: Outside any entity
-    "B-PER",   // 1: Beginning of Person
-    "I-PER",   // 2: Inside Person
-    "B-ORG",   // 3: Beginning of Organization
-    "I-ORG",   // 4: Inside Organization
-    "B-LOC",   // 5: Beginning of Location
-    "I-LOC",   // 6: Inside Location
-    "B-MISC",  // 7: Beginning of Miscellaneous
-    "I-MISC"   // 8: Inside Miscellaneous
+    "B-MISC",  // 1: Beginning of Miscellaneous
+    "I-MISC",  // 2: Inside Miscellaneous
+    "B-PER",   // 3: Beginning of Person
+    "I-PER",   // 4: Inside Person
+    "B-ORG",   // 5: Beginning of Organization
+    "I-ORG",   // 6: Inside Organization
+    "B-LOC",   // 7: Beginning of Location
+    "I-LOC"    // 8: Inside Location
 };
 ```
 
@@ -741,7 +741,7 @@ using var results = session.Run(inputs);
 var logits = results.First().AsTensor<float>();
 
 // === Decode predictions ===
-string[] labels = ["O", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "B-MISC", "I-MISC"];
+string[] labels = ["O", "B-MISC", "I-MISC", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"];
 
 // WordPiece merge helper
 static string MergeWordPieces(List<string> tokens)
@@ -922,7 +922,7 @@ NER is not something you "agentify". It's infrastructure. You run it on ingestio
 
 The same approach applies to other feature extraction tasks: embeddings, classification, sentiment. Train once (or use pretrained), export to ONNX, run everywhere, deterministically.
 
-> **Where this fits**: This OCR + NER pipeline is one building block. For the full picture-how extracted entities feed into graph construction, deduplication, and retrieval-see [Reduced RAG](/blog/reduced-rag-concept) and the [LucidRAG documentation](https://github.com/scottgal/lucidrag). The entities you extract here become nodes; the documents become edges; the LLM only sees what it needs to.
+> **Where this fits**: This OCR + NER pipeline is one building block. For the full picture-how extracted entities feed into graph construction, deduplication, and retrieval-see [Reduced RAG](/blog/reduced-rag-concept) and the [***lucid*RAG** documentation](https://github.com/scottgal/lucidrag). The entities you extract here become nodes; the documents become edges; the LLM only sees what it needs to.
 
 ---
 
@@ -935,7 +935,10 @@ The same approach applies to other feature extraction tasks: embeddings, classif
 - **[ONNX Runtime](https://onnxruntime.ai/docs/)** - Official documentation
 - **[ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers)** - Microsoft's tokenizer library
 
+**Next Step**:
+- **[Part 2: The NuGet Package](/blog/simple-ocr-ner-nuget)** - This pipeline as a one-line NuGet install with OpenCV preprocessing, Florence-2 vision, Microsoft.Recognizers, and a CLI tool
+
 **Related Articles**:
 - **[The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)** - When simple OCR isn't enough
 - **[Reduced RAG](/blog/reduced-rag-concept)** - Where extracted entities fit in the bigger picture
-- **[LucidRAG](https://github.com/scottgal/lucidrag)** - Full implementation with entity deduplication and graph construction
+- **[*lucid*RAG](https://github.com/scottgal/lucidrag)** - Full implementation with entity deduplication and graph construction

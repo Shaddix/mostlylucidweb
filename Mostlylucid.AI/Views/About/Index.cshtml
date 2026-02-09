@@ -1,0 +1,196 @@
+@model AIBaseViewModel
+@{
+    ViewBag.Title = "About";
+}
+
+<!-- Hero Section -->
+<section class="bg-ai-gradient text-white py-16 lg:py-24">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-4xl lg:text-5xl font-bold mb-4">About Me</h1>
+            <p class="text-xl text-indigo-100">
+                Turning complex AI concepts into practical business solutions
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<section class="py-16 lg:py-24 bg-light-bg dark:bg-dark-bg">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Bio Section -->
+            <div class="bg-white dark:bg-dark-surface rounded-xl p-8 shadow-md mb-12">
+                <div class="flex flex-col md:flex-row gap-8 items-start">
+                    <div class="w-32 h-32 bg-ai-gradient rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="text-4xl font-bold text-white">SG</span>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-primary dark:text-white mb-4">Scott Galloway</h2>
+                        <div class="prose dark:prose-dark max-w-none">
+                            <p class="text-slate-600 dark:text-slate-300">
+                                I'm a software engineer with over 15 years of experience building enterprise applications,
+                                including several years at Microsoft. My journey into AI started with a simple question:
+                                how can we make these powerful tools actually useful for real businesses?
+                            </p>
+                            <p class="text-slate-600 dark:text-slate-300">
+                                Today, I help organizations navigate the AI landscape, focusing on practical implementations
+                                that deliver measurable value. I believe in starting small, proving concepts quickly,
+                                and scaling what works.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expertise Areas -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-bold text-primary dark:text-white mb-6 text-center">Areas of Expertise</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="bx bx-search-alt text-2xl text-secondary"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white">RAG & Vector Search</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            Building retrieval-augmented generation systems that combine the power of LLMs
+                            with your organization's knowledge base for accurate, contextual answers.
+                        </p>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="bx bx-file-find text-2xl text-secondary"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white">Document Processing</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            Automated extraction, summarization, and analysis of documents using modern
+                            AI techniques including OCR, NLP, and language models.
+                        </p>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="bx bx-server text-2xl text-secondary"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white">Local LLM Deployment</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            Setting up on-premises AI models using Ollama and similar tools for privacy,
+                            compliance, and cost control without sacrificing capability.
+                        </p>
+                    </div>
+
+                    <div class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i class="bx bx-code-block text-2xl text-secondary"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white">LLM Integration</h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            Integrating AI capabilities into existing applications and workflows,
+                            including API design, prompt engineering, and response handling.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Open Source Projects -->
+            <div class="mb-12">
+                <h2 class="text-2xl font-bold text-primary dark:text-white mb-6 text-center">Open Source Projects</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <a href="https://github.com/scottgal/LucidRAG" target="_blank" rel="noopener noreferrer"
+                       class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow group">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="bx bxl-github text-2xl text-primary dark:text-white"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white group-hover:text-secondary transition-colors">
+                                LucidRAG
+                            </h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            A lightweight RAG implementation using .NET, designed for simplicity and local deployment.
+                        </p>
+                    </a>
+
+                    <a href="https://github.com/scottgal/DocSummarizer" target="_blank" rel="noopener noreferrer"
+                       class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow group">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="bx bxl-github text-2xl text-primary dark:text-white"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white group-hover:text-secondary transition-colors">
+                                DocSummarizer
+                            </h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            Document summarization tool that processes various file formats and extracts key information.
+                        </p>
+                    </a>
+
+                    <a href="https://github.com/scottgal/Umami.Net" target="_blank" rel="noopener noreferrer"
+                       class="bg-white dark:bg-dark-surface rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow group">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="bx bxl-github text-2xl text-primary dark:text-white"></i>
+                            <h3 class="text-lg font-semibold text-primary dark:text-white group-hover:text-secondary transition-colors">
+                                Umami.Net
+                            </h3>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm">
+                            .NET client library for Umami analytics, enabling privacy-focused web analytics.
+                        </p>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Background -->
+            <div class="bg-white dark:bg-dark-surface rounded-xl p-8 shadow-md">
+                <h2 class="text-2xl font-bold text-primary dark:text-white mb-6">Background</h2>
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="bx bx-buildings text-xl text-secondary"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-primary dark:text-white">Microsoft</h3>
+                            <p class="text-slate-600 dark:text-slate-400 text-sm">
+                                Senior software engineer working on enterprise applications and developer tools.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="bx bx-code-alt text-xl text-secondary"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-primary dark:text-white">Technical Stack</h3>
+                            <p class="text-slate-600 dark:text-slate-400 text-sm">
+                                .NET, Python, PostgreSQL, Docker, Kubernetes, Azure, and modern AI frameworks.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="bx bx-globe text-xl text-secondary"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-primary dark:text-white">Location</h3>
+                            <p class="text-slate-600 dark:text-slate-400 text-sm">
+                                Based in Europe, working with clients globally.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-16 bg-primary dark:bg-dark-surface">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-2xl font-bold text-white mb-4">Let's Work Together</h2>
+        <p class="text-slate-300 mb-6">
+            Have a project in mind? I'd love to hear about it.
+        </p>
+        <a href="/contact" hx-boost="true" hx-target="#contentcontainer" hx-swap="innerHTML show:window:top"
+           class="btn btn-secondary">
+            Get in Touch
+        </a>
+    </div>
+</section>

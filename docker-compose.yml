@@ -44,6 +44,29 @@ services:
       - duckdb-data:/app/data
     networks:
       - app_network
+  mostlylucid-ai:
+    image: scottgal/mostlylucid-ai:latest
+    restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__DefaultConnection=${POSTGRES_CONNECTIONSTRING}
+      - Analytics__UmamiPath=${ANALYTICS_UMAMIPATH}
+      - Analytics__WebsiteId=${ANALYTICS_AI_WEBSITEID}
+      - Analytics__UmamiScript=getinfo
+      - Serilog__WriteTo__0__Args__apiKey=${SEQ_API_KEY}
+      - SmtpSettings__UserName=${SMTPSETTINGS_USERNAME}
+      - SmtpSettings__Password=${SMTPSETTINGS_PASSWORD}
+      - SmtpSettings__Server=${SMTPSETTINGS_SERVER}
+      - SmtpSettings__Port=${SMTPSETTINGS_PORT}
+      - SmtpSettings__SenderEmail=ai@mostlylucid.ai
+      - SmtpSettings__SenderName=Mostlylucid AI
+    volumes:
+      - /mnt/logs-ai:/app/logs
+    networks:
+      - app_network
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower

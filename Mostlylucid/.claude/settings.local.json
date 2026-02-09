@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 30 dotnet run:*)",
+      "Bash(taskkill:*)",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(dotnet run:*)",
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(curl:*)",
+      "Bash(tasklist /FI \"PID eq 276632\")",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "Bash(npm run build:*)",
+      "Bash(tasklist:*)",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(dotnet sln:*)",
+      "Bash(npm install)",
+      "Bash(dir:*)",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''F:\\\\Gifs'' -Filter *.gif | Select-Object -First 20 Name\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\source\\\\vectorascii\\\\ConsoleImage'' -Recurse -Filter ''consoleimage.exe'' | Select-Object FullName\")",
+      "Bash(powershell.exe:*)",
+      "Bash(consoleimage:*)",
+      "Bash(where:*)",
+      "Bash(where.exe:*)",
+      "Bash(dotnet tool list:*)",
+      "Bash(powershell -Command \"Get-Command consoleimage -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command:*)"
+    ]
+  }
+}

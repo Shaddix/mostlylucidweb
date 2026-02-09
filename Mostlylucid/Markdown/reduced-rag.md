@@ -606,6 +606,7 @@ If you're ready to build this:
 4. **Build incrementally:** Don't refactor everything at once
 
 **Reference implementations:**
+- [DoomSummarizer: Deep Research](/blog/doomsummarizer-deep-research) - Reduced RAG in practice: 6-signal RRF fusion, entity profiles, semantic graph discovery, and parallel long-form synthesis — all from a single binary
 - [Building a Document Summarizer with RAG](/blog/building-a-document-summarizer-with-rag) - Practical implementation walkthrough
 - [DocSummarizer RAG Pipeline](/blog/docsummarizer-rag-pipeline) - Complete ingestion pipeline
 - [AudioSummarizer](/blog/audiosummarizer-forensic-audio-characterization) - Audio forensic characterization with speaker diarization

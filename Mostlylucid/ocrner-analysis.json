@@ -1,0 +1,19 @@
+{
+  "fileCount": 1,
+  "results": [
+    {
+      "file": ".\\software-light-mode.png",
+      "caption": "In this image we can see a screenshot of a page with some text.",
+      "durationMs": 37998,
+      "visionOcr": {
+        "text": "SoftwareSearch0In n n NUCat |Software Q Search \u0026 Contact *Open ToolsTun documents have built on Giftub with pro-bultelowers. All run feosily without cloud DEpantiesCLI ToolsDrammarner Turn documents into experience-enjoyedummariesDu CiT ToolsDu Duitomarner |documents |dossed documents |dodmerts |dolmert |doumerti |doomert |e dolmanti |eDagIACADAGIACACADagIacADagiNUCet AGiCAGiNacadagi |Duitomert |DagiCagiT |NET |DET |DUamert |Et |eet |e-leed mabstom |bock |e.com |e_leed_mabstoom |bogiMoltylucid |DegiTegiCd |eTeglucad |DgTegt |Dapert |ed |e:ed makt |enol |e|e|enol|e |e |enal |e]ed mibstom bock | eeeti | eaetiTgTeng |eIp |e1e | eiTengi |Ee |tet | ef |e iTeg |e3t | e ef|e1t |Ef | eo |e4t |eg | e1t|e3e |a|e4e |ee |e2t |ee|e2e |f|a| ef1t1t2t|a |e6t |a | e3t|s |e5t |t|t| ee |et |f |t |f1e| e1e1s | e2t1e3f |a1t] |e0t |s |t1s|e:e |s|t |et|e.e1.e|t1.t|f|t.e | t1t.t |m|e5f |f3t1|e0s |f2t.f|s|s1t3t]|e6f |s1e2f|f1s1s3t3f|m|s:e1:1t:e|s3f1:3t.p|eIt|l|e 3t |l|s.t1:e3s|f3f3s |s:1:0t||e-t|m |e 3f||s] |f:1.f |m |s.f1.s||t]",
+        "durationMs": 20220
+      },
+      "ner": {
+        "sourceText": "SoftwareSearch0In n n NUCat |Software Q Search \u0026 Contact *Open ToolsTun documents have built on Giftub with pro-bultelowers. All run feosily without cloud DEpantiesCLI ToolsDrammarner Turn documents into experience-enjoyedummariesDu CiT ToolsDu Duitomarner |documents |dossed documents |dodmerts |dolmert |doumerti |doomert |e dolmanti |eDagIACADAGIACACADagIacADagiNUCet AGiCAGiNacadagi |Duitomert |DagiCagiT |NET |DET |DUamert |Et |eet |e-leed mabstom |bock |e.com |e_leed_mabstoom |bogiMoltylucid |DegiTegiCd |eTeglucad |DgTegt |Dapert |ed |e:ed makt |enol |e|e|enol|e |e |enal |e]ed mibstom bock | eeeti | eaetiTgTeng |eIp |e1e | eiTengi |Ee |tet | ef |e iTeg |e3t | e ef|e1t |Ef | eo |e4t |eg | e1t|e3e |a|e4e |ee |e2t |ee|e2e |f|a| ef1t1t2t|a |e6t |a | e3t|s |e5t |t|t| ee |et |f |t |f1e| e1e1s | e2t1e3f |a1t] |e0t |s |t1s|e:e |s|t |et|e.e1.e|t1.t|f|t.e | t1t.t |m|e5f |f3t1|e0s |f2t.f|s|s1t3t]|e6f |s1e2f|f1s1s3t3f|m|s:e1:1t:e|s3f1:3t.p|eIt|l|e 3t |l|s.t1:e3s|f3f3s |s:1:0t||e-t|m |e 3f||s] |f:1.f |m |s.f1.s||t]",
+        "entityCount": 0,
+        "entities": []
+      }
+    }
+  ]
+}

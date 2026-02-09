@@ -1,0 +1,66 @@
+{
+  "sourceText": "John Smith joined Microsoft on January 15, 2024 and his phone is 555-1234",
+  "entityCount": 2,
+  "entities": [
+    {
+      "type": "PER",
+      "text": "John Smith",
+      "confidence": 0.9997,
+      "startOffset": 0,
+      "endOffset": 10
+    },
+    {
+      "type": "ORG",
+      "text": "Microsoft",
+      "confidence": 0.999,
+      "startOffset": 18,
+      "endOffset": 27
+    }
+  ],
+  "signals": {
+    "culture": "en-us",
+    "dateTimes": [
+      {
+        "text": "january 15, 2024",
+        "start": 31,
+        "end": 46,
+        "typeName": "datetimeV2.date"
+      }
+    ],
+    "numbers": [
+      {
+        "text": "15",
+        "start": 39,
+        "value": "15",
+        "typeName": "number"
+      },
+      {
+        "text": "2024",
+        "start": 43,
+        "value": "2024",
+        "typeName": "number"
+      },
+      {
+        "text": "555",
+        "start": 65,
+        "value": "555",
+        "typeName": "number"
+      },
+      {
+        "text": "1234",
+        "start": 69,
+        "value": "1234",
+        "typeName": "number"
+      }
+    ],
+    "urls": [],
+    "phoneNumbers": [
+      {
+        "text": "555-1234",
+        "start": 65
+      }
+    ],
+    "emails": [],
+    "ipAddresses": []
+  }
+}

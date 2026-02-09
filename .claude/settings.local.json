@@ -97,7 +97,13 @@
       "Bash(npm run:*)",
       "Bash(node -e:*)",
       "Bash(dos2unix:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(where:*)",
+      "Bash(python -c:*)",
+      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\test-ner-output.json\")",
+      "Bash(del C:Blogmostlylucidwebtest-ner.json)",
+      "Bash(copy:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

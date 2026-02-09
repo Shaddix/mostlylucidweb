@@ -1,4 +1,4 @@
-# Stop Shoving Documents Into LLMs: Build a Local Summarizer with Docling + RAG
+e the # Stop Shoving Documents Into LLMs: Build a Local Summarizer with Docling + RAG
 
 <!--category-- AI, LLM, RAG, C#, Docling, Ollama, Qdrant -->
 <datetime class="hidden">2025-12-21T10:00</datetime>
