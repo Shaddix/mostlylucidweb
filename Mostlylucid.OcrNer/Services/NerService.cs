@@ -25,6 +25,7 @@ namespace Mostlylucid.OcrNer.Services;
 public class NerService : INerService, IDisposable
 {
     private readonly ILogger<NerService> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly OcrNerConfig _config;
     private readonly ModelDownloader _downloader;
     private readonly SemaphoreSlim _initLock = new(1, 1);
@@ -43,10 +44,12 @@ public class NerService : INerService, IDisposable
 
     public NerService(
         ILogger<NerService> logger,
+        ILoggerFactory loggerFactory,
         IOptions<OcrNerConfig> config,
         ModelDownloader downloader)
     {
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _config = config.Value;
         _downloader = downloader;
     }
@@ -88,10 +91,11 @@ public class NerService : INerService, IDisposable
             _id2Label = LoadLabels(paths.ConfigPath);
 
             // Create tokenizer
-            _tokenizer = new BertNerTokenizer(paths.VocabPath, _config.MaxSequenceLength, _logger as ILogger<BertNerTokenizer>);
+            _tokenizer = new BertNerTokenizer(paths.VocabPath, _config.MaxSequenceLength,
+                _loggerFactory.CreateLogger<BertNerTokenizer>());
 
             // Create ONNX inference session
-            var sessionOptions = new SessionOptions();
+            using var sessionOptions = new SessionOptions();
             sessionOptions.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
             _session = new InferenceSession(paths.ModelPath, sessionOptions);
 
@@ -118,6 +122,7 @@ public class NerService : INerService, IDisposable
             if (doc.RootElement.TryGetProperty("id2label", out var id2LabelProp))
             {
                 var labels = new string[id2LabelProp.EnumerateObject().Count()];
+                Array.Fill(labels, "O");
                 foreach (var prop in id2LabelProp.EnumerateObject())
                 {
                     if (int.TryParse(prop.Name, out var idx) && idx < labels.Length)

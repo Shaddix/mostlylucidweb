@@ -83,16 +83,22 @@ public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
             foreach (var file in files)
             {
                 var processedFile = await MaybePreprocess(file);
-                var caption = await vision.CaptionAsync(processedFile, detailed: !settings.Brief);
-                VisionOcrResult? ocr = includeOcr
-                    ? await vision.ExtractTextAsync(processedFile)
-                    : null;
-                NerResult? ner = null;
-                if (settings.IncludeNer && ocr is { Success: true } && !string.IsNullOrWhiteSpace(ocr.Text))
-                    ner = await nerService!.ExtractEntitiesAsync(ocr.Text);
+                try
+                {
+                    var caption = await vision.CaptionAsync(processedFile, detailed: !settings.Brief);
+                    VisionOcrResult? ocr = includeOcr
+                        ? await vision.ExtractTextAsync(processedFile)
+                        : null;
+                    NerResult? ner = null;
+                    if (settings.IncludeNer && ocr is { Success: true } && !string.IsNullOrWhiteSpace(ocr.Text))
+                        ner = await nerService!.ExtractEntitiesAsync(ocr.Text);
 
-                results.Add((file, caption, ocr, ner));
-                if (processedFile != file) File.Delete(processedFile);
+                    results.Add((file, caption, ocr, ner));
+                }
+                finally
+                {
+                    if (processedFile != file) File.Delete(processedFile);
+                }
             }
         }
         else
@@ -105,16 +111,22 @@ public sealed class CaptionCommand : AsyncCommand<CaptionCommand.Settings>
                 {
                     task.Description = $"[cyan]{Markup.Escape(Path.GetFileName(file))}[/]";
                     var processedFile = await MaybePreprocess(file);
-                    var caption = await vision.CaptionAsync(processedFile, detailed: !settings.Brief);
-                    VisionOcrResult? ocr = includeOcr
-                        ? await vision.ExtractTextAsync(processedFile)
-                        : null;
-                    NerResult? ner = null;
-                    if (settings.IncludeNer && ocr is { Success: true } && !string.IsNullOrWhiteSpace(ocr.Text))
-                        ner = await nerService!.ExtractEntitiesAsync(ocr.Text);
+                    try
+                    {
+                        var caption = await vision.CaptionAsync(processedFile, detailed: !settings.Brief);
+                        VisionOcrResult? ocr = includeOcr
+                            ? await vision.ExtractTextAsync(processedFile)
+                            : null;
+                        NerResult? ner = null;
+                        if (settings.IncludeNer && ocr is { Success: true } && !string.IsNullOrWhiteSpace(ocr.Text))
+                            ner = await nerService!.ExtractEntitiesAsync(ocr.Text);
 
-                    results.Add((file, caption, ocr, ner));
-                    if (processedFile != file) File.Delete(processedFile);
+                        results.Add((file, caption, ocr, ner));
+                    }
+                    finally
+                    {
+                        if (processedFile != file) File.Delete(processedFile);
+                    }
                     task.Increment(1);
                 }
 

@@ -172,22 +172,25 @@ The `Preprocessing` option controls image enhancement before OCR:
 
 ## The Four Services
 
-The package registers four services, each usable independently. Pick the one that fits your use case - there's no need to load Florence-2 if all you need is NER from text.
+The package registers five services, each usable independently. Pick the one that fits your use case - there's no need to load Florence-2 if all you need is NER from text.
 
 ```mermaid
 flowchart TD
     subgraph Services
         NER["INerService<br>Text → Entities"]
         OCR["IOcrService<br>Image → Text"]
-        PIPE["IOcrNerPipeline<br>Image → Entities"]
+        REC["ITextRecognizerService<br>Text → Signals"]
+        PIPE["IOcrNerPipeline<br>Image → Entities + Signals"]
         VIS["IVisionService<br>Image → Caption"]
     end
 
     OCR --> PIPE
     NER --> PIPE
+    REC -.-> PIPE
 
     style PIPE stroke:#090,stroke-width:3px
     style VIS stroke:#f60,stroke-width:3px
+    style REC stroke:#f60,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
 ### Choosing the Right Service for Your Use Case
@@ -900,6 +903,7 @@ dotnet run -- caption "photos/*.jpg" --ocr -o captions.md
 | `-a`, `--advanced-preprocess` | `ocr`, `caption` | Use OpenCV preprocessing (deskew, denoise, binarize) |
 | `-r`, `--recognizers` | `ner`, `ocr` | Enable rule-based extraction (dates, numbers, URLs, phones, emails, IPs) |
 | `--culture` | `ner`, `ocr` | Recognizer culture, e.g. `en-us`, `de-de` (default: `en-us`) |
+| `--brief` | `caption` | Generate a shorter, less detailed caption |
 | `-q`, `--quiet` | `ner`, `ocr`, `caption` | Quiet mode (reduced console output) |
 | `-o` | `ner`, `ocr`, `caption` | Output file path (`.txt`, `.md`, `.json`) |
 | `--ocr` | `caption` | Also run OCR during caption command |
@@ -929,7 +933,7 @@ The architecture is designed for this - swap the model, keep the same API.
 
 This package is a **single-stage pipeline**: one OCR engine, one NER model, one optional vision model. It's designed to be simple and efficient for the common case.
 
-For more complex scenarios - reading text from *anything* (handwritten notes, photos of whiteboards, low-quality camera captures), with multi-engine OCR consensus, fuzzy matching, and structured extraction - check out the full pipeline at [LucidRAG](https://www.lucidrag.com). That's where the production-grade, multi-phase version of this work lives.
+For more complex scenarios - reading text from *anything* (handwritten notes, photos of whiteboards, low-quality camera captures), with multi-engine OCR consensus, fuzzy matching, and structured extraction - check out the full pipeline at [***lucid*RAG**](https://www.lucidrag.com). That's where the production-grade, multi-phase version of this work lives.
 
 ### What's Next: Multimodal LLMs
 
@@ -977,7 +981,7 @@ flowchart LR
     style T4 stroke:#999,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
-Each tier adds capability at the cost of size and latency. The package currently covers tiers 1-3. Tier 4 is where multimodal LLMs come in - and where [LucidRAG](https://www.lucidrag.com) is heading.
+Each tier adds capability at the cost of size and latency. The package currently covers tiers 1-3. Tier 4 is where multimodal LLMs come in - and where [***lucid*RAG**](https://www.lucidrag.com) is heading.
 
 ---
 
@@ -995,9 +999,11 @@ Each tier adds capability at the cost of size and latency. The package currently
 - **[BERT-base-NER ONNX](https://huggingface.co/protectai/bert-base-NER-onnx)** - The NER model
 - **[Florence-2](https://www.nuget.org/packages/Florence2)** - Vision model NuGet package
 - **[ImageSharp](https://sixlabors.com/products/imagesharp/)** - Cross-platform image processing
+- **[OpenCvSharp4](https://github.com/shimat/opencvsharp)** - OpenCV wrapper for advanced preprocessing
+- **[Microsoft.Recognizers.Text](https://github.com/microsoft/Recognizers-Text)** - Rule-based entity extraction
 - **[ONNX Runtime](https://onnxruntime.ai/)** - Cross-platform model inference
 
 **Related Articles**:
 - **[The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)** - When you need more than simple OCR
 - **[Reduced RAG](/blog/reduced-rag-concept)** - Where extracted entities fit in the bigger picture
-- **[LucidRAG](https://www.lucidrag.com)** - The full multi-phase production pipeline
+- **[*lucid*RAG](https://www.lucidrag.com)** - The full multi-phase production pipeline

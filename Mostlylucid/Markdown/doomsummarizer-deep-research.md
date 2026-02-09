@@ -16,15 +16,7 @@ Notably, I already possessed many essential building blocks, including multi-sou
 
 The missing component was not a lack of capability, but rather understanding how to effectively apply these existing elements.What “Deep Research” Usually Means
 
-In the commercial tools, “Deep Research” usually means a workfMeaningful
-
-or
-
-Significant
-
-or
-
-Connotativelow that plans a research approach, does multi-step searching/browsing/reading across lots of sources (often web + your uploaded/connected files), then writes a longer report with citations.
+In the commercial tools, “Deep Research” usually means a workflow that plans a research approach, does multi-step searching/browsing/reading across lots of sources (often web + your uploaded/connected files), then writes a longer report with citations.
 
 A big part of the value is improving the input: pull in fresher, higher-signal sources than any model’s training data cut-off date, ground claims in evidence, and reduce the chance of the model making things up.
 

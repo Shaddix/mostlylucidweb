@@ -1,0 +1,13 @@
+1.0.0
+Initial release of Mostlylucid.OcrNer.
+
+Features:
+- Tesseract OCR with ImageSharp preprocessing (grayscale, contrast, sharpen, upscale)
+- BERT NER via ONNX Runtime (PER, ORG, LOC, MISC entities)
+- Florence-2 vision model for image captioning and scene-text OCR
+- OpenCV advanced preprocessing: deskew, denoise, binarization (opt-in via EnableAdvancedPreprocessing)
+- Microsoft.Recognizers.Text: rule-based date, number, URL, phone, email, IP extraction (opt-in via EnableRecognizers)
+- Automatic model download from HuggingFace/GitHub on first use
+- Full DI integration via AddOcrNer() extension method
+- All services registered as thread-safe singletons with lazy initialization
+- Targets net9.0 and net10.0

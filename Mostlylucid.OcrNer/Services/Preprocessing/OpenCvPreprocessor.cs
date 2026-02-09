@@ -1,7 +1,6 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using OpenCvSharp;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 
 namespace Mostlylucid.OcrNer.Services.Preprocessing;
 
@@ -30,6 +29,11 @@ public class OpenCvPreprocessor
     /// </summary>
     public byte[] Preprocess(byte[] imageBytes)
     {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            throw new PlatformNotSupportedException(
+                "Advanced OpenCV preprocessing is currently only supported on Windows. " +
+                "Set EnableAdvancedPreprocessing = false to use the ImageSharp-based preprocessor instead.");
+
         using var mat = Mat.FromImageData(imageBytes, ImreadModes.Color);
         if (mat.Empty())
         {
@@ -67,39 +71,30 @@ public class OpenCvPreprocessor
                 : current.CvtColor(ColorConversionCodes.BGR2GRAY);
 
             // Step 3: Denoise if needed
-            Mat denoised;
+            using var denoised = report.NoiseLevel > 15
+                ? _noiseReducer.Denoise(gray, NoiseReducer.DenoiseMethod.Bilateral)
+                : report.NoiseLevel > 8
+                    ? _noiseReducer.Denoise(gray, NoiseReducer.DenoiseMethod.Gaussian)
+                    : gray.Clone();
+
             if (report.NoiseLevel > 15)
-            {
-                denoised = _noiseReducer.Denoise(gray, NoiseReducer.DenoiseMethod.Bilateral);
                 _logger.LogDebug("Applied bilateral denoising");
-            }
             else if (report.NoiseLevel > 8)
-            {
-                denoised = _noiseReducer.Denoise(gray, NoiseReducer.DenoiseMethod.Gaussian);
                 _logger.LogDebug("Applied gaussian denoising");
-            }
-            else
-            {
-                denoised = gray.Clone();
-            }
 
             // Step 4: Binarize - choose method based on quality
-            Mat binarized;
+            using var binarized = report.ContrastScore < 0.3
+                ? _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.ClaheOtsu)
+                : report.BrightnessUniformity > 0.25
+                    ? _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.Adaptive)
+                    : _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.Otsu);
+
             if (report.ContrastScore < 0.3)
-            {
-                binarized = _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.ClaheOtsu);
                 _logger.LogDebug("Applied CLAHE+Otsu binarization for low contrast");
-            }
             else if (report.BrightnessUniformity > 0.25)
-            {
-                binarized = _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.Adaptive);
                 _logger.LogDebug("Applied adaptive binarization for uneven illumination");
-            }
             else
-            {
-                binarized = _inkExtractor.Extract(denoised, InkExtractor.BinarizationMethod.Otsu);
                 _logger.LogDebug("Applied Otsu binarization");
-            }
 
             // Invert back: Tesseract expects black text on white background
             using var output = new Mat();
@@ -107,9 +102,6 @@ public class OpenCvPreprocessor
 
             // Encode as PNG
             Cv2.ImEncode(".png", output, out var pngBytes);
-
-            denoised.Dispose();
-            binarized.Dispose();
 
             _logger.LogDebug("OpenCV preprocessing complete: output {Bytes} bytes", pngBytes.Length);
             return pngBytes;

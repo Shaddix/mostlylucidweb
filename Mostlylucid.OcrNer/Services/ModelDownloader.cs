@@ -11,7 +11,7 @@ public class ModelDownloader
 {
     private readonly ILogger<ModelDownloader> _logger;
     private readonly OcrNerConfig _config;
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public ModelDownloader(
         ILogger<ModelDownloader> logger,
@@ -20,7 +20,7 @@ public class ModelDownloader
     {
         _logger = logger;
         _config = config.Value;
-        _httpClient = httpClientFactory.CreateClient("OcrNerModelDownloader");
+        _httpClientFactory = httpClientFactory;
     }
 
     /// <summary>
@@ -93,7 +93,8 @@ public class ModelDownloader
         {
             _logger.LogDebug("Downloading {Description} from {Url}", description, url);
 
-            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var httpClient = _httpClientFactory.CreateClient("OcrNerModelDownloader");
+            using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength;
@@ -125,7 +126,7 @@ public class ModelDownloader
             File.Move(tempPath, localPath, overwrite: true);
             _logger.LogDebug("Downloaded {Description} ({Bytes:N0} bytes)", description, downloadedBytes);
         }
-        catch
+        catch (Exception)
         {
             if (File.Exists(tempPath))
                 File.Delete(tempPath);

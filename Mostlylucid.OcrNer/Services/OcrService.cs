@@ -32,6 +32,7 @@ public class OcrService : IOcrService, IDisposable
     private readonly ImagePreprocessor _preprocessor;
     private readonly OpenCvPreprocessor _openCvPreprocessor;
     private readonly SemaphoreSlim _initLock = new(1, 1);
+    private readonly SemaphoreSlim _processLock = new(1, 1);
 
     private TesseractEngine? _engine;
     private bool _initialized;
@@ -87,23 +88,35 @@ public class OcrService : IOcrService, IDisposable
             });
         }
 
-        return await Task.Run(() =>
+        // TesseractEngine.Process() is not thread-safe - serialize access
+        await _processLock.WaitAsync(ct);
+        try
         {
-            using var pix = Pix.LoadFromMemory(preprocessed);
-            using var page = _engine!.Process(pix);
-
-            var text = page.GetText();
-            var confidence = page.GetMeanConfidence();
-
-            _logger.LogDebug("OCR extracted {Chars} chars with {Conf:P0} confidence",
-                text.Length, confidence);
-
-            return new OcrResult
+            return await Task.Run(() =>
             {
-                Text = text,
-                Confidence = confidence
-            };
-        }, ct);
+                if (_engine is null)
+                    throw new InvalidOperationException("Tesseract engine not initialized.");
+
+                using var pix = Pix.LoadFromMemory(preprocessed);
+                using var page = _engine.Process(pix);
+
+                var text = page.GetText();
+                var confidence = page.GetMeanConfidence();
+
+                _logger.LogDebug("OCR extracted {Chars} chars with {Conf:P0} confidence",
+                    text.Length, confidence);
+
+                return new OcrResult
+                {
+                    Text = text,
+                    Confidence = confidence
+                };
+            }, ct);
+        }
+        finally
+        {
+            _processLock.Release();
+        }
     }
 
     /// <summary>
@@ -139,5 +152,6 @@ public class OcrService : IOcrService, IDisposable
     {
         _engine?.Dispose();
         _initLock.Dispose();
+        _processLock.Dispose();
     }
 }

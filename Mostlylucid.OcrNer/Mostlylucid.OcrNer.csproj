@@ -15,6 +15,10 @@
         <PackageTags>ocr;ner;named-entity-recognition;tesseract;bert;onnx;local-first;nlp;florence2;vision;image-captioning</PackageTags>
         <RepositoryUrl>https://github.com/scottgal/mostlylucidweb/tree/main/Mostlylucid.OcrNer</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/ReleaseNotes.txt"))</PackageReleaseNotes>
+        <PackageProjectUrl>https://www.mostlylucid.net/blog/simple-ocr-ner-nuget</PackageProjectUrl>
 
         <!-- Symbols -->
         <IncludeSymbols>true</IncludeSymbols>
@@ -40,21 +44,13 @@
         <MinVerSkip Condition="'$(Configuration)' == 'Debug'">true</MinVerSkip>
     </PropertyGroup>
 
-    <!-- Package dependencies -->
+    <!-- Package dependencies (shared) -->
     <ItemGroup>
         <!-- MinVer -->
         <PackageReference Include="MinVer" Version="6.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-
-        <!-- Core dependencies -->
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
 
         <!-- ONNX Runtime for BERT NER -->
         <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
@@ -76,6 +72,30 @@
         <PackageReference Include="Microsoft.Recognizers.Text.DateTime" Version="1.8.10" />
         <PackageReference Include="Microsoft.Recognizers.Text.Number" Version="1.8.10" />
         <PackageReference Include="Microsoft.Recognizers.Text.Sequence" Version="1.8.10" />
+    </ItemGroup>
+
+    <!-- Microsoft.Extensions: 10.x required by Florence2 transitive dependency -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.1" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+    </ItemGroup>
+
+    <!-- Pack icon, README, and release notes into the NuGet package -->
+    <ItemGroup>
+        <None Include=".\icon.png" Pack="true" PackagePath="">
+            <Link>Properties\icon.png</Link>
+        </None>
+        <None Include=".\README.md" Pack="true" PackagePath="">
+            <Link>Properties\README.md</Link>
+        </None>
+        <None Remove="ReleaseNotes.txt" />
+        <Content Include="ReleaseNotes.txt">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>

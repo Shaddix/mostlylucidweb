@@ -80,4 +80,4 @@ static bool IsImageFile(string arg) =>
         arg.EndsWith(".webp", StringComparison.OrdinalIgnoreCase));
 
 static bool IsGlobPattern(string arg) =>
-    !arg.StartsWith('-') && (arg.Contains('*') || arg.Contains('?'));
+    !arg.StartsWith('-') && arg.Contains('*');
