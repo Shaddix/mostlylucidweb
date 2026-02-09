@@ -14,4 +14,10 @@ public class OcrNerResult
     /// The NER extraction result (entities found in OCR text)
     /// </summary>
     public NerResult NerResult { get; init; } = new();
+
+    /// <summary>
+    /// Rule-based recognized signals (dates, numbers, URLs, phones, emails, IPs).
+    /// Only populated when EnableRecognizers is true in config.
+    /// </summary>
+    public RecognizedSignals? Signals { get; init; }
 }

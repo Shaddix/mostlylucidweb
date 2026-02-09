@@ -72,4 +72,26 @@ public class OcrNerConfig
     /// Default is recommended for most images.
     /// </summary>
     public PreprocessingLevel Preprocessing { get; set; } = PreprocessingLevel.Default;
+
+    /// <summary>
+    /// Enable advanced OpenCV-based preprocessing (deskew, denoise, binarization).
+    /// When true, uses OpenCvPreprocessor instead of the basic ImageSharp preprocessor.
+    /// Requires OpenCvSharp4 runtime libraries.
+    /// Default: false
+    /// </summary>
+    public bool EnableAdvancedPreprocessing { get; set; } = false;
+
+    /// <summary>
+    /// Enable rule-based entity extraction using Microsoft.Recognizers.Text.
+    /// Extracts dates, numbers, URLs, phone numbers, emails, and IP addresses.
+    /// Default: false
+    /// </summary>
+    public bool EnableRecognizers { get; set; } = false;
+
+    /// <summary>
+    /// Culture/language for Microsoft.Recognizers.Text extraction.
+    /// Supported: en-us, en-gb, es-es, fr-fr, de-de, pt-br, zh-cn, ja-jp, etc.
+    /// Default: "en-us"
+    /// </summary>
+    public string RecognizerCulture { get; set; } = "en-us";
 }

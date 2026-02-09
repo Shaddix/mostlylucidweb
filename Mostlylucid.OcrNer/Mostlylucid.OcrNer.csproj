@@ -67,6 +67,15 @@
 
         <!-- ImageSharp for image preprocessing (grayscale, contrast, sharpen) -->
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+
+        <!-- OpenCV for advanced preprocessing (deskew, denoise, binarization) -->
+        <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108" />
+
+        <!-- Microsoft Recognizers for rule-based entity extraction -->
+        <PackageReference Include="Microsoft.Recognizers.Text.DateTime" Version="1.8.10" />
+        <PackageReference Include="Microsoft.Recognizers.Text.Number" Version="1.8.10" />
+        <PackageReference Include="Microsoft.Recognizers.Text.Sequence" Version="1.8.10" />
     </ItemGroup>
 
 </Project>

@@ -30,6 +30,7 @@ public class OcrService : IOcrService, IDisposable
     private readonly OcrNerConfig _config;
     private readonly ModelDownloader _downloader;
     private readonly ImagePreprocessor _preprocessor;
+    private readonly OpenCvPreprocessor _openCvPreprocessor;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
     private TesseractEngine? _engine;
@@ -39,12 +40,14 @@ public class OcrService : IOcrService, IDisposable
         ILogger<OcrService> logger,
         IOptions<OcrNerConfig> config,
         ModelDownloader downloader,
-        ImagePreprocessor preprocessor)
+        ImagePreprocessor preprocessor,
+        OpenCvPreprocessor openCvPreprocessor)
     {
         _logger = logger;
         _config = config.Value;
         _downloader = downloader;
         _preprocessor = preprocessor;
+        _openCvPreprocessor = openCvPreprocessor;
     }
 
     /// <inheritdoc />
@@ -62,15 +65,27 @@ public class OcrService : IOcrService, IDisposable
     {
         await EnsureInitializedAsync(ct);
 
-        // Preprocess for better OCR (configurable level)
-        var preprocessed = _config.Preprocessing == Config.PreprocessingLevel.None
-            ? imageBytes
-            : _preprocessor.Preprocess(imageBytes, _config.Preprocessing switch
+        // Preprocess for better OCR
+        byte[] preprocessed;
+        if (_config.EnableAdvancedPreprocessing)
+        {
+            // OpenCV pipeline: quality assess → deskew → denoise → binarize
+            _logger.LogDebug("Using advanced OpenCV preprocessing");
+            preprocessed = _openCvPreprocessor.Preprocess(imageBytes);
+        }
+        else if (_config.Preprocessing == Config.PreprocessingLevel.None)
+        {
+            preprocessed = imageBytes;
+        }
+        else
+        {
+            preprocessed = _preprocessor.Preprocess(imageBytes, _config.Preprocessing switch
             {
                 Config.PreprocessingLevel.Minimal => PreprocessingOptions.Minimal,
                 Config.PreprocessingLevel.Aggressive => PreprocessingOptions.Aggressive,
                 _ => PreprocessingOptions.Default
             });
+        }
 
         return await Task.Run(() =>
         {

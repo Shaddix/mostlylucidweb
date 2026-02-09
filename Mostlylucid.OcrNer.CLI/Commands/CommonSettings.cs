@@ -36,4 +36,16 @@ public abstract class CommonSettings : CommandSettings
     [CommandOption("-p|--preprocess")]
     [Description("Image preprocessing: none, minimal, default, aggressive (default: default)")]
     public string? Preprocess { get; init; }
+
+    [CommandOption("-a|--advanced-preprocess")]
+    [Description("Use advanced OpenCV preprocessing (deskew, denoise, binarize)")]
+    public bool AdvancedPreprocess { get; init; }
+
+    [CommandOption("-r|--recognizers")]
+    [Description("Enable rule-based entity extraction (dates, numbers, URLs, phones, emails, IPs)")]
+    public bool Recognizers { get; init; }
+
+    [CommandOption("--culture")]
+    [Description("Culture for recognizers, e.g. en-us, de-de (default: en-us)")]
+    public string? Culture { get; init; }
 }

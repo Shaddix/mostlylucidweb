@@ -2,20 +2,45 @@
 
 <!-- category -- AI,OCR,NER,ONNX,CSharp,Tutorial,NuGet -->
 
-<datetime class="hidden">2026-02-06T12:00</datetime>
+<datetime class="hidden">2026-02-12T12:00</datetime>
 
-In [Part 1](/blog/simple-ocr-ner-extraction) I showed the raw pipeline: Tesseract for OCR, BERT NER via ONNX for entity extraction. Copy-paste code, manual model downloads, wiring everything up yourself.
+> **NOTE** The nuget package is still being tested. It will be released on the publication date (12th Feb), source code is already in this repo.
+
+In [Part 1](/blog/simple-ocr-ner-extraction) I showed the raw pipeline: manually downloading models, writing a tokenizer, wiring up ONNX inference, and decoding BIO tags by hand. Educational, but a lot of plumbing to get right.
 
 Now it's a NuGet package. **One line of setup, zero model downloads** - everything auto-downloads on first use.
 
-This part also adds four things the original didn't have:
-
-1. **ImageSharp preprocessing** - grayscale, contrast boost, sharpening tuned for OCR (both Tesseract and Florence-2)
-2. **Florence-2 vision** - local image captioning and OCR via ONNX (no cloud API)
-3. **Proper DI integration** - `AddOcrNer()` and you're done
-4. **CLI tool** - A Spectre.Console command-line app that just works out of the box
+> **Note:** This package is a simplified, focused tool for extracting text and entities from images. If you need a full multi-phase pipeline that can read text from *anything* (photos, documents, screenshots, handwriting, animated gifs and even videos) with fuzzy matching, OCR consensus, and structured extraction, check out [***lucid*RAG**](https://www.lucidrag.com) where the production-grade version of this pipeline lives.
 
 [TOC]
+
+---
+
+## Quick Glossary (If You're New to This)
+
+Before we dive in, here's what the key terms mean:
+
+- **OCR** (Optical Character Recognition) - converting an image of text into actual text characters your code can work with. Think: photo of a receipt turns into a string of text.
+- **NER** (Named Entity Recognition) - scanning text to find and classify names of things. "John Smith works at Microsoft in Seattle" becomes: John Smith = Person, Microsoft = Organization, Seattle = Location.
+- **ONNX Runtime** - a way to run machine learning models (like the BERT model we use for NER) on your machine without needing Python, TensorFlow, or a GPU. It runs the model as a portable `.onnx` file, locally, using just your CPU.
+- **BERT** - a pre-trained language model from Google that understands context in text. The NER variant has been fine-tuned on the [CoNLL-2003](https://www.clips.uantwerpen.be/conll2003/ner/) dataset to recognize people, organizations, locations, and miscellaneous entities.
+- **Florence-2** - a small vision model from Microsoft that can describe what it *sees* in an image (captions, objects, text). Different from Tesseract in that it understands the whole scene, not just characters.
+
+---
+
+## Why More Than Plain Tesseract?
+
+Tesseract is strong for clean document text, but it falls down on noisy photos, low-contrast scans, and mixed "scene + text" images. It also stops at raw text - you still need extra code to turn that text into structured entities you can actually use.
+
+This package closes those gaps:
+
+1. **[ImageSharp](https://sixlabors.com/products/imagesharp/) preprocessing** - grayscale, contrast boost, sharpening tuned for OCR
+2. **[OpenCV](https://opencv.org/) advanced preprocessing** - deskew, denoise, and binarization for damaged/skewed documents (opt-in)
+3. **[Florence-2](https://huggingface.co/microsoft/Florence-2-base)** vision - local image captioning and OCR via ONNX (no cloud API)
+4. **BERT NER on top of OCR text** - convert extracted text into typed entities (PER/ORG/LOC/MISC) you can act on
+5. **[Microsoft.Recognizers.Text](https://github.com/microsoft/Recognizers-Text)** - rule-based extraction of dates, numbers, URLs, phones, emails, and IPs (opt-in)
+6. **Proper DI integration** - `AddOcrNer()` and you're done
+7. **CLI tool** - A [Spectre.Console](https://spectreconsole.net/) command-line app that just works out of the box
 
 ---
 
@@ -33,9 +58,10 @@ flowchart LR
     subgraph Part2["Part 2: NuGet Package"]
         N1["AddOcrNer()"]
         N2[Auto-download]
-        N3[Preprocessing]
+        N3[ImageSharp + OpenCV]
         N4[Florence-2]
-        N5[CLI Tool]
+        N5[Recognizers]
+        N6[CLI Tool]
     end
 
     Part1 -->|"packaged into"| Part2
@@ -45,6 +71,7 @@ flowchart LR
     style N3 stroke:#f60,stroke-width:3px
     style N4 stroke:#f60,stroke-width:3px
     style N5 stroke:#f60,stroke-width:3px
+    style N6 stroke:#f60,stroke-width:3px
 ```
 
 Part 1 was educational - understanding what each piece does. Part 2 is practical - using it without thinking about the internals.
@@ -61,14 +88,15 @@ dotnet add package Mostlylucid.OcrNer
 
 ### Register Services
 
+The `AddOcrNer()` extension method registers everything: OCR, NER, the combined pipeline, Florence-2 vision, the model downloader, and the image preprocessor. All as singletons, all lazy-initialized.
+
+Here's the actual registration code from `ServiceCollectionExtensions.cs`:
+
 ```csharp
-// In Program.cs
+// Option 1: From appsettings.json (reads the "OcrNer" section)
 builder.Services.AddOcrNer(builder.Configuration);
-```
 
-Or configure inline:
-
-```csharp
+// Option 2: Inline configuration
 builder.Services.AddOcrNer(config =>
 {
     config.EnableOcr = true;
@@ -77,7 +105,19 @@ builder.Services.AddOcrNer(config =>
 });
 ```
 
-That's it. No model downloads, no file paths, no ONNX wiring.
+That's it. No model downloads, no file paths, no ONNX wiring. Under the hood, `AddOcrNer()` registers these services:
+
+```csharp
+// From ServiceCollectionExtensions.cs - what gets registered
+services.AddSingleton<ModelDownloader>();           // Auto-downloads models on first use
+services.AddSingleton<ImagePreprocessor>();         // ImageSharp-based image enhancement
+services.AddSingleton<OpenCvPreprocessor>();        // OpenCV advanced preprocessing
+services.AddSingleton<INerService, NerService>();   // BERT NER from text
+services.AddSingleton<IOcrService, OcrService>();   // Tesseract OCR from images
+services.AddSingleton<IOcrNerPipeline, OcrNerPipeline>();         // Combined OCR + NER
+services.AddSingleton<ITextRecognizerService, TextRecognizerService>(); // Microsoft.Recognizers
+services.AddSingleton<IVisionService, VisionService>();           // Florence-2 vision
+```
 
 ### Configuration (appsettings.json)
 
@@ -89,12 +129,37 @@ That's it. No model downloads, no file paths, no ONNX wiring.
     "MinConfidence": 0.5,
     "MaxSequenceLength": 512,
     "ModelDirectory": "models/ocrner",
-    "Preprocessing": "Default"
+    "Preprocessing": "Default",
+    "EnableAdvancedPreprocessing": false,
+    "EnableRecognizers": false,
+    "RecognizerCulture": "en-us"
   }
 }
 ```
 
-The `Preprocessing` option controls image enhancement before OCR. It improves results for both Tesseract and Florence-2:
+Here's the actual `OcrNerConfig` class these map to:
+
+```csharp
+// From OcrNerConfig.cs
+public class OcrNerConfig
+{
+    public string ModelDirectory { get; set; } =
+        Path.Combine(AppContext.BaseDirectory, "models", "ocrner");
+    public bool EnableOcr { get; set; } = true;
+    public string TesseractLanguage { get; set; } = "eng";
+    public int MaxSequenceLength { get; set; } = 512;
+    public float MinConfidence { get; set; } = 0.5f;
+    public string NerModelRepo { get; set; } = "protectai/bert-base-NER-onnx";
+    public PreprocessingLevel Preprocessing { get; set; } = PreprocessingLevel.Default;
+    public bool EnableAdvancedPreprocessing { get; set; } = false;  // OpenCV pipeline
+    public bool EnableRecognizers { get; set; } = false;            // Microsoft.Recognizers
+    public string RecognizerCulture { get; set; } = "en-us";       // Recognizer language
+}
+```
+
+All settings have sensible defaults. You can omit the entire section and everything works. The two opt-in features (`EnableAdvancedPreprocessing` and `EnableRecognizers`) default to `false` so the package stays lightweight for users who don't need them.
+
+The `Preprocessing` option controls image enhancement before OCR:
 
 | Value | What it does | When to use |
 |-------|-------------|-------------|
@@ -103,21 +168,19 @@ The `Preprocessing` option controls image enhancement before OCR. It improves re
 | `Default` | Grayscale + contrast + sharpen | Most images (recommended) |
 | `Aggressive` | Strong contrast + sharpen + upscale | Poor quality photos |
 
-All settings have sensible defaults. You can omit the entire section and everything works.
-
 ---
 
 ## The Four Services
 
-The package registers four services, each usable independently:
+The package registers four services, each usable independently. Pick the one that fits your use case - there's no need to load Florence-2 if all you need is NER from text.
 
 ```mermaid
 flowchart TD
     subgraph Services
-        NER["INerService<br/>Text → Entities"]
-        OCR["IOcrService<br/>Image → Text"]
-        PIPE["IOcrNerPipeline<br/>Image → Entities"]
-        VIS["IVisionService<br/>Image → Caption"]
+        NER["INerService<br>Text → Entities"]
+        OCR["IOcrService<br>Image → Text"]
+        PIPE["IOcrNerPipeline<br>Image → Entities"]
+        VIS["IVisionService<br>Image → Caption"]
     end
 
     OCR --> PIPE
@@ -127,18 +190,35 @@ flowchart TD
     style VIS stroke:#f60,stroke-width:3px
 ```
 
-| Service | What it does | Model size |
-|---------|-------------|------------|
-| `INerService` | BERT NER from text | ~430MB (auto-downloaded) |
-| `IOcrService` | Tesseract OCR from images | ~4MB tessdata (auto-downloaded) |
-| `IOcrNerPipeline` | OCR then NER in one call | Both models |
-| `IVisionService` | Florence-2 captioning + OCR | ~450MB (auto-downloaded) |
+### Choosing the Right Service for Your Use Case
+
+The key principle is **efficiency**: pick the lightest tool that does the job. Don't load a 450MB vision model when a 4MB OCR engine will do.
+
+| Service | What it does | Model size | Speed | Use when... |
+|---------|-------------|------------|-------|-------------|
+| `INerService` | BERT NER from text | ~430MB | ~50ms | You already have text (PDFs, databases, user input) |
+| `IOcrService` | Tesseract OCR from images | ~4MB | ~100ms | You need text from document scans, screenshots |
+| `IOcrNerPipeline` | OCR then NER in one call | Both models | ~150ms | You have images and want entities in one step |
+| `ITextRecognizerService` | Rule-based extraction (dates, phones, etc.) | None | ~1ms | You want structured data alongside NER entities |
+| `IVisionService` | Florence-2 captioning + OCR | ~450MB | ~1-3s | You need image understanding, not just text reading |
 
 ---
 
 ## NER from Text (No Images Needed)
 
-If you already have text (from PDFs, databases, user input), you can use NER directly:
+If you already have text (from PDFs, databases, user input), you can use NER directly. This is the fastest path - no OCR, no image processing, just text in, entities out.
+
+The `INerService` interface is simple - one method:
+
+```csharp
+// From INerService.cs
+public interface INerService
+{
+    Task<NerResult> ExtractEntitiesAsync(string text, CancellationToken ct = default);
+}
+```
+
+Here's how to use it in your own service:
 
 ```csharp
 public class MyService
@@ -158,36 +238,81 @@ public class MyService
         {
             // entity.Label: "PER", "ORG", "LOC", or "MISC"
             // entity.Text: "John Smith"
-            // entity.Confidence: 0.95
-            // entity.StartOffset / EndOffset: character positions
-            Console.WriteLine($"[{entity.Label}] {entity.Text} ({entity.Confidence:P0})");
+            // entity.Confidence: 0.9996
+            // entity.StartOffset / EndOffset: character positions in the source
         }
     }
 }
 ```
 
-The first call downloads the BERT NER model (~430MB). Subsequent calls use the cached model.
+The result models are straightforward:
+
+```csharp
+// From NerResult.cs / NerEntity.cs
+public class NerResult
+{
+    public string SourceText { get; init; } = string.Empty;
+    public List<NerEntity> Entities { get; init; } = [];
+}
+
+public class NerEntity
+{
+    public string Text { get; init; } = string.Empty;     // "John Smith"
+    public string Label { get; init; } = string.Empty;    // "PER", "ORG", "LOC", "MISC"
+    public float Confidence { get; init; }                 // 0.0 to 1.0
+    public int StartOffset { get; init; }                  // Where in the source text
+    public int EndOffset { get; init; }                    // End position (exclusive)
+}
+```
+
+The first call downloads the BERT NER model (~430MB) from HuggingFace. Subsequent calls use the cached model - startup is instant.
 
 ---
 
 ## OCR + NER Pipeline
 
-For images, the pipeline handles preprocessing, OCR, and NER in one call:
+For images, the pipeline handles preprocessing, OCR, and NER in one call. The `IOcrNerPipeline` combines `IOcrService` and `INerService`:
 
 ```csharp
-// Resolve from your service provider
+// From OcrNerPipeline.cs - the actual pipeline code
+public async Task<OcrNerResult> ProcessImageAsync(string imagePath, CancellationToken ct = default)
+{
+    // Step 1: OCR (includes preprocessing automatically)
+    var ocrResult = await _ocrService.ExtractTextAsync(imagePath, ct);
+
+    if (string.IsNullOrWhiteSpace(ocrResult.Text))
+        return new OcrNerResult
+        {
+            OcrResult = ocrResult,
+            NerResult = new NerResult { SourceText = string.Empty }
+        };
+
+    // Step 2: NER on extracted text
+    var nerResult = await _nerService.ExtractEntitiesAsync(ocrResult.Text, ct);
+
+    return new OcrNerResult
+    {
+        OcrResult = ocrResult,
+        NerResult = nerResult
+    };
+}
+```
+
+Using it:
+
+```csharp
 var pipeline = serviceProvider.GetRequiredService<IOcrNerPipeline>();
 
 var result = await pipeline.ProcessImageAsync("invoice.png");
 
 // What OCR found
-Console.WriteLine($"OCR text: {result.OcrResult.Text}");
-Console.WriteLine($"OCR confidence: {result.OcrResult.Confidence:P0}");
+var text = result.OcrResult.Text;           // The full extracted text
+var confidence = result.OcrResult.Confidence; // 0.0 to 1.0
 
 // What NER found in that text
 foreach (var entity in result.NerResult.Entities)
 {
-    Console.WriteLine($"[{entity.Label}] {entity.Text}");
+    // [PER] John Smith, [ORG] Microsoft, [LOC] Seattle...
 }
 ```
 
@@ -196,20 +321,23 @@ foreach (var entity in result.NerResult.Entities)
 ```mermaid
 flowchart LR
     IMG[Image bytes]
-    PRE["ImageSharp<br/>Preprocess"]
-    TESS["Tesseract<br/>OCR"]
-    TOK["WordPiece<br/>Tokenize"]
-    BERT["BERT NER<br/>ONNX"]
-    ENT[Entities]
+    PRE["ImageSharp<br>or OpenCV"]
+    TESS["Tesseract<br>OCR"]
+    TOK["WordPiece<br>Tokenize"]
+    BERT["BERT NER<br>ONNX"]
+    REC["Recognizers<br>(optional)"]
+    OUT[Result]
 
     IMG --> PRE
     PRE --> TESS
     TESS --> TOK
     TOK --> BERT
-    BERT --> ENT
+    BERT --> REC
+    REC --> OUT
 
     style PRE stroke:#f60,stroke-width:3px
     style BERT stroke:#f60,stroke-width:3px
+    style REC stroke:#f60,stroke-width:2px,stroke-dasharray: 5 5
 ```
 
 ---
@@ -218,46 +346,69 @@ flowchart LR
 
 Part 1 had raw Tesseract calls. In practice, both Tesseract and Florence-2 work better with preprocessed images. Preprocessing is **on by default** but completely optional - you can disable it with `Preprocessing = "None"` in config or `--preprocess none` on the CLI.
 
-The package includes an `ImagePreprocessor` that uses **ImageSharp** (pure C#, no native dependencies) to prepare images:
-
-1. **Upscale** small images (Tesseract wants 300+ DPI equivalent)
-2. **Grayscale** conversion (single channel = faster, more accurate)
-3. **Contrast boost** (text stands out from background)
-4. **Sharpen** (crisp character edges)
+The `ImagePreprocessor` uses **ImageSharp** (pure C#, no native dependencies):
 
 ```csharp
-// The preprocessor is used automatically by IOcrService.
-// You can also use it directly:
-var preprocessor = serviceProvider.GetRequiredService<ImagePreprocessor>();
+// From ImagePreprocessor.cs - the actual preprocessing steps
+public byte[] Preprocess(byte[] imageBytes, PreprocessingOptions? options = null)
+{
+    options ??= PreprocessingOptions.Default;
+    using var image = Image.Load<Rgba32>(imageBytes);
 
-// Default options: grayscale + 1.5x contrast + light sharpen
-var defaultProcessed = preprocessor.PreprocessFile("scan.png");
+    image.Mutate(ctx =>
+    {
+        // Step 1: Upscale small images (Tesseract wants 300+ DPI equivalent)
+        if (options.EnableUpscale && (image.Width < options.MinWidth || image.Height < options.MinHeight))
+        {
+            var scale = Math.Max(
+                (float)options.MinWidth / image.Width,
+                (float)options.MinHeight / image.Height);
+            scale = Math.Min(scale, options.MaxUpscaleFactor);
+            ctx.Resize((int)(image.Width * scale), (int)(image.Height * scale),
+                KnownResamplers.Lanczos3);
+        }
 
-// For poor quality images:
-var aggressiveProcessed = preprocessor.PreprocessFile("photo.png", PreprocessingOptions.Aggressive);
+        // Step 2: Grayscale (single channel = faster, more accurate)
+        if (options.EnableGrayscale)
+            ctx.Grayscale();
 
-// Minimal (already clean scans):
-var minimalProcessed = preprocessor.PreprocessFile("clean.png", PreprocessingOptions.Minimal);
+        // Step 3: Contrast boost (text stands out from background)
+        if (options.EnableContrast && options.ContrastAmount != 1.0f)
+            ctx.Contrast(options.ContrastAmount);
+
+        // Step 4: Sharpen (crisp character edges)
+        if (options.EnableSharpen)
+            ctx.GaussianSharpen(options.SharpenSigma);
+    });
+
+    using var ms = new MemoryStream();
+    image.SaveAsPng(ms);  // PNG = lossless, no additional artifacts
+    return ms.ToArray();
+}
 ```
 
-### Preprocessing Options
+Three presets are built in. The `PreprocessingOptions` class defines them:
 
 ```csharp
-// Custom options
-var options = new PreprocessingOptions
+// From ImagePreprocessor.cs
+public static PreprocessingOptions Default => new();  // Grayscale + 1.5x contrast + sharpen
+
+public static PreprocessingOptions Minimal => new()   // Grayscale only
 {
-    EnableGrayscale = true,      // Convert to grayscale
-    EnableContrast = true,       // Boost contrast
-    ContrastAmount = 1.5f,       // 1.0 = no change, 1.5 = 50% more
-    EnableSharpen = true,        // Sharpen edges
-    SharpenSigma = 1.0f,         // 0.5 = subtle, 3.0 = aggressive
-    EnableUpscale = true,        // Upscale tiny images
-    MinWidth = 640,              // Upscale trigger threshold
-    MaxUpscaleFactor = 3.0f,     // Maximum 3x upscale
+    EnableContrast = false,
+    EnableSharpen = false,
+    EnableUpscale = false
+};
+
+public static PreprocessingOptions Aggressive => new() // For poor quality images
+{
+    ContrastAmount = 1.8f,
+    SharpenSigma = 1.5f,
+    MinWidth = 1024,
+    MinHeight = 768,
+    MaxUpscaleFactor = 4.0f
 };
 ```
-
-Three presets are built in:
 
 | Preset | When to use | What it does |
 |--------|------------|--------------|
@@ -265,59 +416,244 @@ Three presets are built in:
 | `Minimal` | Clean scans | Grayscale only |
 | `Aggressive` | Poor quality photos | 1.8x contrast + strong sharpen + larger upscale |
 
+### Advanced Preprocessing with OpenCV
+
+For seriously degraded documents - skewed scans, noisy photos, faded historical pages - the ImageSharp pipeline isn't enough. Enable `EnableAdvancedPreprocessing` to switch to a full OpenCV pipeline ported from [ImageSummarizer](https://github.com/scottgal/lucidrag).
+
+The OpenCV preprocessor chains four stages, each driven by an automatic quality assessment:
+
+```mermaid
+flowchart LR
+    IMG[Image]
+    QA["Quality<br>Assess"]
+    SK["Deskew"]
+    DN["Denoise"]
+    BIN["Binarize"]
+    OUT[Clean image]
+
+    IMG --> QA
+    QA --> SK
+    SK --> DN
+    DN --> BIN
+    BIN --> OUT
+
+    style QA stroke:#f60,stroke-width:2px
+```
+
+**Quality Assessment** (`ImageQualityAssessor`) measures blur, skew angle, noise level, contrast, brightness uniformity, and text density. Based on the results, it recommends which stages to apply - so clean images skip unnecessary processing.
+
+**Deskew** (`SkewCorrector`) corrects rotated documents using three methods: Hough line detection (default), minimum area rectangle, or projection profile analysis.
+
+**Denoise** (`NoiseReducer`) offers Gaussian blur (fast), bilateral filter (edge-preserving), non-local means (highest quality), and morphological operations.
+
+**Binarize** (`InkExtractor`) converts to clean black-and-white using Otsu, adaptive thresholding, Sauvola (for degraded historical documents), CLAHE + Otsu (for low contrast), or morphological background removal.
+
+Enable it in config or on the CLI:
+
+```csharp
+config.EnableAdvancedPreprocessing = true;
+```
+
+```bash
+ocrner ocr damaged-scan.png -a
+```
+
+---
+
+## Microsoft.Recognizers: Rule-Based Entity Extraction
+
+BERT NER finds people, organizations, locations, and miscellaneous entities. But some structured data - dates, phone numbers, emails, URLs, IP addresses - is better caught by deterministic rules than by a neural network.
+
+Enable `EnableRecognizers` to add a second extraction pass using [Microsoft.Recognizers.Text](https://github.com/microsoft/Recognizers-Text). This runs **after** NER and extracts:
+
+| Type | Examples |
+|------|----------|
+| DateTime | "January 15, 2024", "next Tuesday", "last week" |
+| Number | "42", "three million", "15%" |
+| URL | "https://example.com", "www.github.com" |
+| Phone | "555-1234", "+1 (555) 123-4567" |
+| Email | "john@microsoft.com" |
+| IP Address | "192.168.1.1" |
+
+The recognizer supports multiple cultures (en-us, en-gb, de-de, fr-fr, etc.) so it handles locale-specific date formats and number conventions.
+
+```csharp
+config.EnableRecognizers = true;
+config.RecognizerCulture = "en-us";
+```
+
+```bash
+ocrner ner "John Smith joined Microsoft on January 15, 2024. Call 555-1234." -r
+```
+
+The two extraction methods complement each other: BERT NER understands context ("Apple" the company vs. "apple" the fruit), while the recognizers reliably catch structured patterns that BERT might miss. The `OcrNerResult` model now includes an optional `Signals` property:
+
+```csharp
+public class OcrNerResult
+{
+    public OcrResult OcrResult { get; init; } = new();
+    public NerResult NerResult { get; init; } = new();
+    public RecognizedSignals? Signals { get; init; }  // Only when EnableRecognizers = true
+}
+```
+
 ---
 
 ## Florence-2 Vision
 
 Florence-2 is a completely different approach from Tesseract. Where Tesseract is a specialized OCR engine that reads text character by character, Florence-2 is a **vision model** that understands the whole image - objects, scenes, people, and text.
 
-Both engines benefit from the ImageSharp preprocessing pipeline (contrast, sharpening, upscaling). The preprocessing is applied automatically for Tesseract; for Florence-2 you can enable it via the `--preprocess` flag or in code.
+```csharp
+// From IVisionService.cs
+public interface IVisionService
+{
+    Task<VisionCaptionResult> CaptionAsync(string imagePath, bool detailed = true,
+        CancellationToken ct = default);
+    Task<VisionOcrResult> ExtractTextAsync(string imagePath,
+        CancellationToken ct = default);
+    Task<bool> IsAvailableAsync(CancellationToken ct = default);
+}
+```
+
+Using it:
 
 ```csharp
 var vision = serviceProvider.GetRequiredService<IVisionService>();
 
-// Generate a caption
+// Generate a caption describing the image
 var caption = await vision.CaptionAsync("photo.jpg", detailed: true);
 if (caption.Success)
 {
-    Console.WriteLine($"Caption: {caption.Caption}");
-    // "A man in a blue suit standing at a podium with a Microsoft logo"
+    // caption.Caption: "A man in a blue suit standing at a podium"
+    // caption.DurationMs: how long it took
 }
 
-// Extract visible text (Florence-2's built-in OCR)
+// Extract visible text using Florence-2's built-in OCR
 var ocrResult = await vision.ExtractTextAsync("screenshot.png");
 if (ocrResult.Success)
 {
-    Console.WriteLine($"Text: {ocrResult.Text}");
+    // ocrResult.Text: the visible text Florence-2 detected
 }
 ```
 
 ### When to Use Which
 
-| Use | Tesseract (`IOcrService`) | Florence-2 (`IVisionService`) |
-|-----|--------------------------|-------------------------------|
-| **Document scans** | Best choice | OK but slower |
-| **Photos of signs** | Decent | Better |
+| Use case | Tesseract (`IOcrService`) | Florence-2 (`IVisionService`) |
+|----------|--------------------------|-------------------------------|
+| **Document scans** | Best choice - fast, accurate | OK but overkill |
+| **Photos of signs** | Decent | Better - understands scene context |
 | **Screenshots** | Good | Good |
 | **Image captioning** | Can't do this | Best choice |
 | **Speed** | Fast (~100ms) | Slower (~1-3s) |
 | **Model size** | ~4MB | ~450MB |
 
+The point is **efficiency**: use Tesseract for documents and text extraction (it's 10x faster with a 100x smaller model). Use Florence-2 when you actually need image *understanding*.
+
 Florence-2 auto-downloads its models (~450MB) on first use to `{ModelDirectory}/florence2/`.
+
+---
+
+## How the NER Model Actually Works
+
+If you're curious about what happens between "text in" and "entities out", here's the simplified version. The `NerService` does this in three steps:
+
+### Step 1: WordPiece Tokenization
+
+BERT doesn't read words - it reads **tokens**. The custom `BertNerTokenizer` breaks your text into sub-word pieces that BERT understands. It also tracks where each token came from in the original text (character offsets), which is how we know entity positions later.
+
+```csharp
+// From BertNerTokenizer.cs
+// "John Smith works at Microsoft" becomes tokens like:
+// [CLS] John Smith works at Micro ##soft [SEP] [PAD] [PAD] ...
+//
+// Each token tracks its source offset:
+// "John"     → chars 0-4
+// "Smith"    → chars 5-10
+// "Micro"    → chars 20-29  (WordPiece splits "Microsoft")
+// "##soft"   → chars 20-29  (same source range as "Micro")
+```
+
+The `##` prefix is WordPiece notation meaning "continuation of the previous word". This is how BERT handles words it hasn't seen before - it breaks them into known sub-pieces.
+
+### Step 2: ONNX Inference
+
+The tokenized input goes through the BERT model as three tensors. From `NerService.RunInference()`:
+
+```csharp
+// From NerService.cs
+var inputIdsTensor = new DenseTensor<long>(tokenized.InputIds, [1, seqLen]);
+var attentionMaskTensor = new DenseTensor<long>(tokenized.AttentionMask, [1, seqLen]);
+var tokenTypeIdsTensor = new DenseTensor<long>(tokenized.TokenTypeIds, [1, seqLen]);
+
+var inputs = new List<NamedOnnxValue>
+{
+    NamedOnnxValue.CreateFromTensor("input_ids", inputIdsTensor),
+    NamedOnnxValue.CreateFromTensor("attention_mask", attentionMaskTensor),
+    NamedOnnxValue.CreateFromTensor("token_type_ids", tokenTypeIdsTensor)
+};
+
+using var results = _session!.Run(inputs);
+// Output: logits with shape [1, seqLen, 9] — one of 9 labels per token
+```
+
+The model outputs **logits** (raw scores) for 9 possible labels per token.
+
+### Step 3: BIO Tag Decoding
+
+The 9 labels follow the **BIO scheme** - a standard NER encoding where B = Beginning, I = Inside, O = Outside:
+
+```csharp
+// From NerService.cs
+private static readonly string[] DefaultLabels =
+    ["O", "B-MISC", "I-MISC", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"];
+```
+
+Here's how a sentence gets decoded:
+
+```text
+Token:    John    Smith   works   at   Microsoft   in   Seattle
+Label:    B-PER   I-PER   O       O    B-ORG       O    B-LOC
+Meaning:  Start   Continue Not    Not  Start       Not  Start
+          Person  Person   entity entity Org        entity Location
+```
+
+`B-PER` starts a new person entity. `I-PER` continues it. So "John" + "Smith" merge into one entity: "John Smith" (PER). The `DecodeEntities()` method handles this merging, including confidence filtering:
+
+```csharp
+// From NerService.cs - entity creation with confidence threshold
+private void FlushEntity(
+    List<NerEntity> entities, string text,
+    string type, int start, int end, float confidence)
+{
+    if (confidence < _config.MinConfidence) return;  // Filter low-confidence
+
+    var entityText = text[start..end].Trim();
+    if (string.IsNullOrWhiteSpace(entityText)) return;
+
+    entities.Add(new NerEntity
+    {
+        Text = entityText,
+        Label = type,
+        Confidence = confidence,
+        StartOffset = start,
+        EndOffset = end
+    });
+}
+```
 
 ---
 
 ## Auto-Download: How It Works
 
-All three models download automatically. No manual setup needed.
+All models download automatically on first use. No manual setup needed.
 
 ```mermaid
 flowchart TD
     CALL["First API call"]
-    CHECK{"Files exist?"}
-    YES[Use cached]
-    NO["Download to .tmp"]
-    MOVE["Atomic move"]
+    CHECK{"Files exist<br>in cache?"}
+    YES[Use cached model]
+    NO["Download to .tmp file"]
+    MOVE["Atomic rename<br>.tmp → final"]
 
     CALL --> CHECK
     CHECK -->|Yes| YES
@@ -329,7 +665,18 @@ flowchart TD
     style MOVE stroke:#090,stroke-width:3px
 ```
 
-Downloads use an atomic `.tmp` pattern - if a download is interrupted, no corrupt files are left behind. Just restart and it retries cleanly.
+The `ModelDownloader` downloads from HuggingFace (NER model) and GitHub (tessdata). It uses an atomic `.tmp` pattern - if a download is interrupted, no corrupt files are left behind:
+
+```csharp
+// From ModelDownloader.cs - atomic download pattern
+await using var fileStream = new FileStream(tempPath, FileMode.Create,
+    FileAccess.Write, FileShare.None, 81920, true);
+// ... stream download to .tmp file ...
+await fileStream.FlushAsync(ct);
+fileStream.Close();
+
+File.Move(tempPath, localPath, overwrite: true);  // Atomic rename
+```
 
 Default cache location: `{AppBaseDir}/models/ocrner/`
 
@@ -355,41 +702,47 @@ Everything is a singleton with lazy initialization. Expensive resources (ONNX `I
 flowchart TD
     DI["AddOcrNer()"]
 
-    DI --> MD["ModelDownloader<br/>(singleton)"]
-    DI --> PP["ImagePreprocessor<br/>(singleton)"]
-    DI --> NER["NerService<br/>(singleton)"]
-    DI --> OCR["OcrService<br/>(singleton)"]
-    DI --> PIPE["OcrNerPipeline<br/>(singleton)"]
-    DI --> VIS["VisionService<br/>(singleton)"]
+    DI --> MD["ModelDownloader<br>(singleton)"]
+    DI --> PP["ImagePreprocessor<br>(singleton)"]
+    DI --> CV["OpenCvPreprocessor<br>(singleton)"]
+    DI --> NER["NerService<br>(singleton)"]
+    DI --> OCR["OcrService<br>(singleton)"]
+    DI --> PIPE["OcrNerPipeline<br>(singleton)"]
+    DI --> REC["TextRecognizerService<br>(singleton)"]
+    DI --> VIS["VisionService<br>(singleton)"]
 
     MD --> NER
     MD --> OCR
     PP --> OCR
+    CV --> OCR
     NER --> PIPE
     OCR --> PIPE
+    REC --> PIPE
 
     style DI stroke:#090,stroke-width:3px
 ```
 
-Thread safety: all services use `SemaphoreSlim` for initialization, so multiple threads calling the service simultaneously on first use will only trigger one download/load.
+Thread safety: all services use `SemaphoreSlim` for initialization. Multiple threads calling the service simultaneously on first use will only trigger one download/load:
 
----
+```csharp
+// From NerService.cs - lazy init pattern used by all services
+private async Task EnsureInitializedAsync(CancellationToken ct)
+{
+    if (_initialized) return;           // Fast path: already loaded
 
-## What's Inside (For the Curious)
+    await _initLock.WaitAsync(ct);      // Only one thread enters
+    try
+    {
+        if (_initialized) return;       // Double-check after lock
 
-If you read Part 1, here's how the NuGet package maps to those concepts:
-
-| Part 1 concept | NuGet implementation |
-|---------------|---------------------|
-| Manual model download | `ModelDownloader` - auto-downloads from HuggingFace/GitHub |
-| `BertTokenizer.Create()` | `BertNerTokenizer` - custom WordPiece with offset tracking |
-| `InferenceSession` + tensor setup | `NerService.RunInference()` - handles all the tensor plumbing |
-| BIO tag decoding loop | `NerService.DecodeEntities()` - with confidence filtering |
-| `TesseractEngine` creation | `OcrService` - lazy init with preprocessor |
-| (not in Part 1) | `ImagePreprocessor` - ImageSharp-based image enhancement |
-| (not in Part 1) | `VisionService` - Florence-2 ONNX captioning |
-
-The tokenizer deserves a mention: Part 1 used `Microsoft.ML.Tokenizers.BertTokenizer`. The NuGet package uses a custom `BertNerTokenizer` that tracks character offsets. This means every entity knows exactly where it appeared in the original text (`StartOffset` / `EndOffset`), which is critical for downstream processing like highlighting or linking.
+        var paths = await _downloader.EnsureNerModelAsync(ct);
+        _tokenizer = new BertNerTokenizer(paths.VocabPath, _config.MaxSequenceLength);
+        _session = new InferenceSession(paths.ModelPath, sessionOptions);
+        _initialized = true;
+    }
+    finally { _initLock.Release(); }
+}
+```
 
 ---
 
@@ -414,7 +767,21 @@ dotnet run -- ocr scan.png
 dotnet run -- caption photo.jpg
 ```
 
-Smart routing: if you pass a text string, it runs NER. If you pass an image file, glob, or directory, it runs OCR + NER. No command needed.
+**Smart routing**: the CLI auto-detects your intent. From `Program.cs`:
+
+```csharp
+// From Program.cs - smart routing logic
+if (IsImageFile(args2[0]) || IsGlobPattern(args2[0]) || Directory.Exists(args2[0]))
+{
+    args2 = ["ocr", .. args2];   // Image file → ocr command
+}
+else
+{
+    args2 = ["ner", .. args2];   // Text string → ner command
+}
+```
+
+If you pass a text string, it runs NER. If you pass an image file, glob, or directory, it runs OCR + NER. No command needed.
 
 ### Three Commands
 
@@ -426,25 +793,84 @@ Smart routing: if you pass a text string, it runs NER. If you pass an image file
 
 **Tesseract is the default OCR engine** because it's 5-10x faster and optimized for document text. Florence-2 is for when you need image understanding (captions, scene text, photos of signs).
 
-### Output Formats
+### Real Output
 
-Output to console (default) or save to file:
+Here's actual output from running the CLI:
 
 ```bash
-# Console output with colored tables
-dotnet run -- ner "Apple Inc. hired Jane Doe in London"
+dotnet run -- ner "John Smith works at Microsoft in Seattle, Washington."
+```
 
-# Save as JSON
-dotnet run -- ocr invoice.png -o results.json
+```text
+Input: John Smith works at Microsoft in Seattle, Washington.
 
-# Save as Markdown
-dotnet run -- ocr ./scans/*.png -o report.md
+╭──────┬────────────┬────────────┬──────────╮
+│ Type │ Entity     │ Confidence │ Position │
+├──────┼────────────┼────────────┼──────────┤
+│ PER  │ John Smith │ 100%       │ 0-10     │
+│ ORG  │ Microsoft  │ 100%       │ 20-29    │
+│ LOC  │ Seattle    │ 100%       │ 33-40    │
+│ LOC  │ Washington │ 100%       │ 42-52    │
+╰──────┴────────────┴────────────┴──────────╯
+```
 
-# Save as plain text
-dotnet run -- caption photo.jpg --ocr -o output.txt
+```bash
+dotnet run -- ner "Marie Curie won the Nobel Prize in Stockholm"
+```
 
-# Caption + OCR + NER in one JSON
-dotnet run -- caption photo.jpg --ner -o analysis.json
+```text
+╭──────┬─────────────┬────────────┬──────────╮
+│ Type │ Entity      │ Confidence │ Position │
+├──────┼─────────────┼────────────┼──────────┤
+│ PER  │ Marie Curie │ 100%       │ 0-11     │
+│ MISC │ Nobel Prize │ 100%       │ 20-31    │
+│ LOC  │ Stockholm   │ 100%       │ 35-44    │
+╰──────┴─────────────┴────────────┴──────────╯
+```
+
+### JSON Output
+
+Save to JSON for programmatic use:
+
+```bash
+dotnet run -- ner "John Smith works at Microsoft in Seattle, Washington." -o results.json
+```
+
+```json
+{
+  "sourceText": "John Smith works at Microsoft in Seattle, Washington.",
+  "entityCount": 4,
+  "entities": [
+    {
+      "type": "PER",
+      "text": "John Smith",
+      "confidence": 0.9996,
+      "startOffset": 0,
+      "endOffset": 10
+    },
+    {
+      "type": "ORG",
+      "text": "Microsoft",
+      "confidence": 0.9988,
+      "startOffset": 20,
+      "endOffset": 29
+    },
+    {
+      "type": "LOC",
+      "text": "Seattle",
+      "confidence": 0.9991,
+      "startOffset": 33,
+      "endOffset": 40
+    },
+    {
+      "type": "LOC",
+      "text": "Washington",
+      "confidence": 0.9988,
+      "startOffset": 42,
+      "endOffset": 52
+    }
+  ]
+}
 ```
 
 ### Batch Processing
@@ -462,24 +888,7 @@ dotnet run -- ocr ./documents/
 dotnet run -- caption "photos/*.jpg" --ocr -o captions.md
 ```
 
-### All Options
-
-Common config options are exposed as CLI flags:
-
-```bash
-dotnet run -- ocr invoice.png \
-  -c 0.8               # Min confidence (0.0-1.0)
-  --language fra        # Tesseract language
-  --max-tokens 256      # BERT sequence length
-  --model-dir ./cache   # Model cache directory
-  -p aggressive         # Preprocessing: none/minimal/default/aggressive
-  -q                    # Quiet mode (no banners/progress)
-  -o output.json        # Output file (.txt/.md/.json)
-```
-
-### Option Matrix (NuGet README + GitHub Release)
-
-Use this as the single source of truth for documentation. The NuGet README and GitHub release notes should both include this matrix so users can see exactly which flags apply to which command.
+### All CLI Options
 
 | Flag | Applies to | Description |
 |------|------------|-------------|
@@ -488,51 +897,87 @@ Use this as the single source of truth for documentation. The NuGet README and G
 | `--max-tokens` | `ner`, `ocr` | Maximum BERT sequence length |
 | `--model-dir` | `ner`, `ocr`, `caption` | Model cache directory override |
 | `-p`, `--preprocess` | `ocr`, `caption` | Preprocessing preset: `none`, `minimal`, `default`, `aggressive` |
+| `-a`, `--advanced-preprocess` | `ocr`, `caption` | Use OpenCV preprocessing (deskew, denoise, binarize) |
+| `-r`, `--recognizers` | `ner`, `ocr` | Enable rule-based extraction (dates, numbers, URLs, phones, emails, IPs) |
+| `--culture` | `ner`, `ocr` | Recognizer culture, e.g. `en-us`, `de-de` (default: `en-us`) |
 | `-q`, `--quiet` | `ner`, `ocr`, `caption` | Quiet mode (reduced console output) |
 | `-o` | `ner`, `ocr`, `caption` | Output file path (`.txt`, `.md`, `.json`) |
 | `--ocr` | `caption` | Also run OCR during caption command |
 | `--ner` | `caption` | Extract NER from OCR text (implies `--ocr`) |
 
-### GitHub Release Template (CLI)
+---
 
-When publishing a CLI release, include an options section that mirrors the matrix above.
+## Performance: Quantized Models and What's Next
 
-```markdown
-## Mostlylucid.OcrNer CLI <version>
+The current NER model is the full-precision `protectai/bert-base-NER-onnx` (~430MB). For many use cases - especially on resource-constrained machines or when processing high volumes - a **quantized** (INT8) version of the same model would be significantly faster with minimal accuracy loss.
 
-### Commands
-- `ner <text>`: extract entities from text
-- `ocr <path>`: OCR + NER from images
-- `caption <path>`: image captioning (optional OCR with `--ocr`)
+ONNX Runtime supports INT8 quantization out of the box, which typically reduces model size by ~4x and improves inference speed by 2-3x on CPU. This is on the roadmap. The `NerModelRepo` config option already supports pointing to a different HuggingFace repo, so when a quantized model is published you'd just change:
 
-### Options
-| Flag | Applies to | Description |
-|------|------------|-------------|
-| `-c` | `ner`, `ocr` | Minimum entity confidence threshold (0.0-1.0) |
-| `--language` | `ocr` | Tesseract language (for example `eng`, `fra`) |
-| `--max-tokens` | `ner`, `ocr` | Maximum BERT sequence length |
-| `--model-dir` | `ner`, `ocr`, `caption` | Model cache directory override |
-| `-p`, `--preprocess` | `ocr`, `caption` | Preprocessing preset: `none`, `minimal`, `default`, `aggressive` |
-| `-q`, `--quiet` | `ner`, `ocr`, `caption` | Quiet mode (reduced console output) |
-| `-o` | `ner`, `ocr`, `caption` | Output file path (`.txt`, `.md`, `.json`) |
-| `--ocr` | `caption` | Also run OCR during caption command |
-| `--ner` | `caption` | Extract NER from OCR text (implies `--ocr`) |
+```json
+{
+  "OcrNer": {
+    "NerModelRepo": "protectai/bert-base-NER-onnx-quantized"
+  }
+}
 ```
 
-### Example Output
+The architecture is designed for this - swap the model, keep the same API.
 
-```text
-Input: "John Smith works at Microsoft in Seattle, Washington."
+---
 
-╭──────────────────────────────────────────────────╮
-│ Type   │ Entity     │ Confidence │ Position      │
-├────────┼────────────┼────────────┼───────────────┤
-│ PER    │ John Smith │ 98%        │ 0-10          │
-│ ORG    │ Microsoft  │ 99%        │ 20-29         │
-│ LOC    │ Seattle    │ 97%        │ 33-40         │
-│ LOC    │ Washington │ 95%        │ 42-52         │
-╰──────────────────────────────────────────────────╯
+## The Bigger Picture: Where This Fits
+
+This package is a **single-stage pipeline**: one OCR engine, one NER model, one optional vision model. It's designed to be simple and efficient for the common case.
+
+For more complex scenarios - reading text from *anything* (handwritten notes, photos of whiteboards, low-quality camera captures), with multi-engine OCR consensus, fuzzy matching, and structured extraction - check out the full pipeline at [LucidRAG](https://www.lucidrag.com). That's where the production-grade, multi-phase version of this work lives.
+
+### What's Next: Multimodal LLMs
+
+Florence-2 is the current ceiling for local vision in this package. The next logical step is a **multimodal LLM** - a model that can see an image *and* reason about it in natural language. Instead of separate OCR + NER steps, you'd send the image directly and ask for structured extraction.
+
+Here's roughly what that API could look like:
+
+```csharp
+// Hypothetical future IMultimodalService
+public interface IMultimodalService
+{
+    Task<StructuredExtractionResult> ExtractAsync(
+        string imagePath,
+        string prompt = "Extract all people, organizations, and locations from this image. Return as JSON.",
+        CancellationToken ct = default);
+}
+
+// Usage
+var multimodal = serviceProvider.GetRequiredService<IMultimodalService>();
+var result = await multimodal.ExtractAsync("business-card.jpg");
+
+// result.Entities: [{ "John Smith", PER }, { "Acme Corp", ORG }, { "New York", LOC }]
+// result.RawText: "John Smith, VP Engineering, Acme Corp, New York, NY 10001"
+// result.Summary: "Business card for John Smith at Acme Corp in New York"
 ```
+
+Small local multimodal models (like [Phi-3.5-vision](https://huggingface.co/microsoft/Phi-3.5-vision-instruct) or [LLaVA](https://llava-vl.github.io/)) are getting good enough for this. The trade-off is always the same: bigger model = smarter but slower. The right choice depends on your latency budget and accuracy requirements.
+
+```mermaid
+flowchart LR
+    subgraph Staged["Staged Approach: Pick Your Level"]
+        T1["Tesseract OCR<br>4MB | ~100ms<br>Text extraction"]
+        T2["BERT NER<br>430MB | ~50ms<br>Entity extraction"]
+        T3["Florence-2<br>450MB | ~1-3s<br>Image understanding"]
+        T4["Multimodal LLM<br>2-8GB | ~5-30s<br>Full reasoning"]
+    end
+
+    T1 --> T2
+    T2 --> T3
+    T3 -.->|"future"| T4
+
+    style T1 stroke:#090,stroke-width:2px
+    style T2 stroke:#090,stroke-width:2px
+    style T3 stroke:#f60,stroke-width:2px
+    style T4 stroke:#999,stroke-width:2px,stroke-dasharray: 5 5
+```
+
+Each tier adds capability at the cost of size and latency. The package currently covers tiers 1-3. Tier 4 is where multimodal LLMs come in - and where [LucidRAG](https://www.lucidrag.com) is heading.
 
 ---
 
@@ -550,7 +995,9 @@ Input: "John Smith works at Microsoft in Seattle, Washington."
 - **[BERT-base-NER ONNX](https://huggingface.co/protectai/bert-base-NER-onnx)** - The NER model
 - **[Florence-2](https://www.nuget.org/packages/Florence2)** - Vision model NuGet package
 - **[ImageSharp](https://sixlabors.com/products/imagesharp/)** - Cross-platform image processing
+- **[ONNX Runtime](https://onnxruntime.ai/)** - Cross-platform model inference
 
 **Related Articles**:
 - **[The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)** - When you need more than simple OCR
 - **[Reduced RAG](/blog/reduced-rag-concept)** - Where extracted entities fit in the bigger picture
+- **[LucidRAG](https://www.lucidrag.com)** - The full multi-phase production pipeline

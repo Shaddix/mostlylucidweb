@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Mostlylucid.OcrNer.CLI.Services;
+using Mostlylucid.OcrNer.Config;
 using Mostlylucid.OcrNer.Models;
 using Mostlylucid.OcrNer.Services;
 using Spectre.Console;
@@ -73,12 +75,19 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
 
         await using var services = ServiceBootstrap.CreateServices(settings);
         var nerService = services.GetRequiredService<INerService>();
+        var config = services.GetRequiredService<IOptions<OcrNerConfig>>().Value;
 
         NerResult? result = null;
+        RecognizedSignals? signals = null;
 
         if (settings.Quiet)
         {
             result = await nerService.ExtractEntitiesAsync(settings.Text);
+            if (config.EnableRecognizers)
+            {
+                var recognizer = services.GetRequiredService<ITextRecognizerService>();
+                signals = recognizer.ExtractAll(settings.Text);
+            }
         }
         else
         {
@@ -86,13 +95,18 @@ public sealed class NerCommand : AsyncCommand<NerCommand.Settings>
             {
                 var task = ctx.AddTask("[cyan]Extracting entities...[/]", maxValue: 100);
                 result = await nerService.ExtractEntitiesAsync(settings.Text);
+                if (config.EnableRecognizers)
+                {
+                    var recognizer = services.GetRequiredService<ITextRecognizerService>();
+                    signals = recognizer.ExtractAll(settings.Text);
+                }
                 task.Value = 100;
                 task.Description = $"[green]Found {result.Entities.Count} entities[/]";
             });
         }
 
         if (result != null)
-            await OutputWriter.WriteNerResultAsync(result, settings.Output, settings.Quiet);
+            await OutputWriter.WriteNerResultAsync(result, settings.Output, settings.Quiet, signals);
 
         return 0;
     }

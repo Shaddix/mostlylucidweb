@@ -12,7 +12,7 @@ This article shows the **simplest possible** pipeline: **Tesseract** for text ex
 
 Deterministic here means fixed versions, fixed language data, and no adaptive learning at runtime.
 
-> **NuGet coming shortly** - I'm packaging this into a simple `mostlylucid.ocrner` library. For now, the code below is copy-paste ready.
+> **Want the packaged version?** This pipeline is now a NuGet package with auto-downloading models, OpenCV preprocessing, Florence-2 vision, and a CLI tool. See **[Part 2: The NuGet Package](/blog/simple-ocr-ner-nuget)** for the ready-to-use version.
 
 [TOC]
 
@@ -934,6 +934,9 @@ The same approach applies to other feature extraction tasks: embeddings, classif
 - **[BERT-base-NER ONNX](https://huggingface.co/protectai/bert-base-NER-onnx)** - The NER model we use
 - **[ONNX Runtime](https://onnxruntime.ai/docs/)** - Official documentation
 - **[ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers)** - Microsoft's tokenizer library
+
+**Next Step**:
+- **[Part 2: The NuGet Package](/blog/simple-ocr-ner-nuget)** - This pipeline as a one-line NuGet install with OpenCV preprocessing, Florence-2 vision, Microsoft.Recognizers, and a CLI tool
 
 **Related Articles**:
 - **[The Three-Tier OCR Pipeline](/blog/constrained-fuzzy-image-ocr-pipeline)** - When simple OCR isn't enough

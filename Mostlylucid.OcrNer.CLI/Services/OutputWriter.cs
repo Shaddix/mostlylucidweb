@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Mostlylucid.OcrNer.Models;
+using Mostlylucid.OcrNer.Services;
 using Spectre.Console;
 
 namespace Mostlylucid.OcrNer.CLI.Services;
@@ -27,20 +28,23 @@ internal static class OutputWriter
     /// Write NER results to console or file.
     /// </summary>
     public static async Task WriteNerResultAsync(
-        NerResult result, string? outputPath, bool quiet)
+        NerResult result, string? outputPath, bool quiet,
+        RecognizedSignals? signals = null)
     {
         if (outputPath != null)
         {
             var content = FormatByExtension(outputPath,
-                () => FormatNerText(result),
-                () => FormatNerMarkdown(result),
-                () => FormatNerJson(result));
+                () => FormatNerText(result, signals),
+                () => FormatNerMarkdown(result, signals),
+                () => FormatNerJson(result, signals));
 
             await WriteFileAsync(outputPath, content, quiet);
         }
         else
         {
             WriteNerToConsole(result, quiet);
+            if (signals is { HasAnySignals: true })
+                WriteSignalsToConsole(signals);
         }
     }
 
@@ -205,6 +209,9 @@ internal static class OutputWriter
                 AnsiConsole.MarkupLine("[yellow]No entities found.[/]");
             }
 
+            if (result.Signals is { HasAnySignals: true })
+                WriteSignalsToConsole(result.Signals);
+
             AnsiConsole.WriteLine();
         }
     }
@@ -279,9 +286,38 @@ internal static class OutputWriter
         }
     }
 
+    // ─── Signals console writer ──────────────────────────────
+
+    private static void WriteSignalsToConsole(RecognizedSignals signals)
+    {
+        AnsiConsole.WriteLine();
+        AnsiConsole.Write(new Rule("[cyan]Recognized Signals[/]").LeftJustified());
+
+        var table = new Table()
+            .Border(TableBorder.Simple)
+            .AddColumn("[bold]Type[/]")
+            .AddColumn("[bold]Text[/]")
+            .AddColumn("[bold]Details[/]");
+
+        foreach (var dt in signals.DateTimes)
+            table.AddRow("[cyan]DateTime[/]", Markup.Escape(dt.Text), Markup.Escape(dt.TypeName ?? ""));
+        foreach (var n in signals.Numbers)
+            table.AddRow("[cyan]Number[/]", Markup.Escape(n.Text), Markup.Escape($"value={n.Value}"));
+        foreach (var u in signals.Urls)
+            table.AddRow("[cyan]URL[/]", Markup.Escape(u.Text), "");
+        foreach (var p in signals.PhoneNumbers)
+            table.AddRow("[cyan]Phone[/]", Markup.Escape(p.Text), "");
+        foreach (var e in signals.Emails)
+            table.AddRow("[cyan]Email[/]", Markup.Escape(e.Text), "");
+        foreach (var ip in signals.IpAddresses)
+            table.AddRow("[cyan]IP[/]", Markup.Escape(ip.Text), "");
+
+        AnsiConsole.Write(table);
+    }
+
     // ─── Text formatters ─────────────────────────────────────
 
-    private static string FormatNerText(NerResult result)
+    private static string FormatNerText(NerResult result, RecognizedSignals? signals = null)
     {
         var lines = new List<string>
         {
@@ -293,6 +329,24 @@ internal static class OutputWriter
         foreach (var e in result.Entities)
             lines.Add(
                 $"  [{e.Label}] {e.Text} (confidence: {e.Confidence:P0}, chars {e.StartOffset}-{e.EndOffset})");
+
+        if (signals is { HasAnySignals: true })
+        {
+            lines.Add("");
+            lines.Add("Recognized Signals:");
+            foreach (var dt in signals.DateTimes)
+                lines.Add($"  [DateTime] {dt.Text} ({dt.TypeName})");
+            foreach (var n in signals.Numbers)
+                lines.Add($"  [Number] {n.Text} (value={n.Value})");
+            foreach (var u in signals.Urls)
+                lines.Add($"  [URL] {u.Text}");
+            foreach (var p in signals.PhoneNumbers)
+                lines.Add($"  [Phone] {p.Text}");
+            foreach (var e in signals.Emails)
+                lines.Add($"  [Email] {e.Text}");
+            foreach (var ip in signals.IpAddresses)
+                lines.Add($"  [IP] {ip.Text}");
+        }
 
         return string.Join(Environment.NewLine, lines);
     }
@@ -308,6 +362,24 @@ internal static class OutputWriter
             lines.Add($"Entities: {result.NerResult.Entities.Count}");
             foreach (var e in result.NerResult.Entities)
                 lines.Add($"  [{e.Label}] {e.Text} ({e.Confidence:P0})");
+
+            if (result.Signals is { HasAnySignals: true })
+            {
+                lines.Add("Recognized Signals:");
+                foreach (var dt in result.Signals.DateTimes)
+                    lines.Add($"  [DateTime] {dt.Text} ({dt.TypeName})");
+                foreach (var n in result.Signals.Numbers)
+                    lines.Add($"  [Number] {n.Text} (value={n.Value})");
+                foreach (var u in result.Signals.Urls)
+                    lines.Add($"  [URL] {u.Text}");
+                foreach (var p in result.Signals.PhoneNumbers)
+                    lines.Add($"  [Phone] {p.Text}");
+                foreach (var e in result.Signals.Emails)
+                    lines.Add($"  [Email] {e.Text}");
+                foreach (var ip in result.Signals.IpAddresses)
+                    lines.Add($"  [IP] {ip.Text}");
+            }
+
             lines.Add("");
         }
 
@@ -340,7 +412,7 @@ internal static class OutputWriter
 
     // ─── Markdown formatters ─────────────────────────────────
 
-    private static string FormatNerMarkdown(NerResult result)
+    private static string FormatNerMarkdown(NerResult result, RecognizedSignals? signals = null)
     {
         var lines = new List<string>
         {
@@ -354,6 +426,27 @@ internal static class OutputWriter
 
         foreach (var e in result.Entities)
             lines.Add($"| {e.Label} | {e.Text} | {e.Confidence:P0} | {e.StartOffset}-{e.EndOffset} |");
+
+        if (signals is { HasAnySignals: true })
+        {
+            lines.Add("");
+            lines.Add("## Recognized Signals");
+            lines.Add("");
+            lines.Add("| Type | Text | Details |");
+            lines.Add("|------|------|---------|");
+            foreach (var dt in signals.DateTimes)
+                lines.Add($"| DateTime | {dt.Text} | {dt.TypeName} |");
+            foreach (var n in signals.Numbers)
+                lines.Add($"| Number | {n.Text} | value={n.Value} |");
+            foreach (var u in signals.Urls)
+                lines.Add($"| URL | {u.Text} | |");
+            foreach (var p in signals.PhoneNumbers)
+                lines.Add($"| Phone | {p.Text} | |");
+            foreach (var e in signals.Emails)
+                lines.Add($"| Email | {e.Text} | |");
+            foreach (var ip in signals.IpAddresses)
+                lines.Add($"| IP | {ip.Text} | |");
+        }
 
         return string.Join(Environment.NewLine, lines);
     }
@@ -387,6 +480,27 @@ internal static class OutputWriter
                 lines.Add("|------|--------|------------|");
                 foreach (var e in result.NerResult.Entities)
                     lines.Add($"| {e.Label} | {e.Text} | {e.Confidence:P0} |");
+                lines.Add("");
+            }
+
+            if (result.Signals is { HasAnySignals: true })
+            {
+                lines.Add("### Recognized Signals");
+                lines.Add("");
+                lines.Add("| Type | Text | Details |");
+                lines.Add("|------|------|---------|");
+                foreach (var dt in result.Signals.DateTimes)
+                    lines.Add($"| DateTime | {dt.Text} | {dt.TypeName} |");
+                foreach (var n in result.Signals.Numbers)
+                    lines.Add($"| Number | {n.Text} | value={n.Value} |");
+                foreach (var u in result.Signals.Urls)
+                    lines.Add($"| URL | {u.Text} | |");
+                foreach (var p in result.Signals.PhoneNumbers)
+                    lines.Add($"| Phone | {p.Text} | |");
+                foreach (var e in result.Signals.Emails)
+                    lines.Add($"| Email | {e.Text} | |");
+                foreach (var ip in result.Signals.IpAddresses)
+                    lines.Add($"| IP | {ip.Text} | |");
                 lines.Add("");
             }
         }
@@ -440,7 +554,7 @@ internal static class OutputWriter
 
     // ─── JSON formatters ─────────────────────────────────────
 
-    private static string FormatNerJson(NerResult result) =>
+    private static string FormatNerJson(NerResult result, RecognizedSignals? signals = null) =>
         JsonSerializer.Serialize(new
         {
             sourceText = result.SourceText,
@@ -452,7 +566,17 @@ internal static class OutputWriter
                 confidence = Math.Round(e.Confidence, 4),
                 startOffset = e.StartOffset,
                 endOffset = e.EndOffset
-            })
+            }),
+            signals = signals is { HasAnySignals: true } ? new
+            {
+                culture = signals.Culture,
+                dateTimes = signals.DateTimes.Select(dt => new { dt.Text, dt.Start, dt.End, dt.TypeName }),
+                numbers = signals.Numbers.Select(n => new { n.Text, n.Start, n.Value, n.TypeName }),
+                urls = signals.Urls.Select(u => new { u.Text, u.Start }),
+                phoneNumbers = signals.PhoneNumbers.Select(p => new { p.Text, p.Start }),
+                emails = signals.Emails.Select(e => new { e.Text, e.Start }),
+                ipAddresses = signals.IpAddresses.Select(ip => new { ip.Text, ip.Start })
+            } : null
         }, JsonOptions);
 
     private static string FormatOcrJson(List<(string File, OcrNerResult Result)> results) =>
@@ -472,7 +596,17 @@ internal static class OutputWriter
                     type = e.Label,
                     text = e.Text,
                     confidence = Math.Round(e.Confidence, 4)
-                })
+                }),
+                signals = r.Result.Signals is { HasAnySignals: true } ? new
+                {
+                    culture = r.Result.Signals.Culture,
+                    dateTimes = r.Result.Signals.DateTimes.Select(dt => new { dt.Text, dt.Start, dt.End, dt.TypeName }),
+                    numbers = r.Result.Signals.Numbers.Select(n => new { n.Text, n.Start, n.Value, n.TypeName }),
+                    urls = r.Result.Signals.Urls.Select(u => new { u.Text, u.Start }),
+                    phoneNumbers = r.Result.Signals.PhoneNumbers.Select(p => new { p.Text, p.Start }),
+                    emails = r.Result.Signals.Emails.Select(e => new { e.Text, e.Start }),
+                    ipAddresses = r.Result.Signals.IpAddresses.Select(ip => new { ip.Text, ip.Start })
+                } : null
             })
         }, JsonOptions);
 

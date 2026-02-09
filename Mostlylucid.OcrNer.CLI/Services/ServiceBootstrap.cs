@@ -46,6 +46,12 @@ internal static class ServiceBootstrap
                     "aggressive" => PreprocessingLevel.Aggressive,
                     _ => PreprocessingLevel.Default
                 };
+            if (settings.AdvancedPreprocess)
+                config.EnableAdvancedPreprocessing = true;
+            if (settings.Recognizers)
+                config.EnableRecognizers = true;
+            if (settings.Culture != null)
+                config.RecognizerCulture = settings.Culture;
         });
 
         return services.BuildServiceProvider();

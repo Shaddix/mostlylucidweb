@@ -99,7 +99,9 @@
       "Bash(dos2unix:*)",
       "Bash(node:*)",
       "Bash(where:*)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(del \"C:\\\\Blog\\\\mostlylucidweb\\\\Mostlylucid\\\\test-ner-output.json\")",
+      "Bash(del C:Blogmostlylucidwebtest-ner.json)"
     ],
     "deny": [],
     "ask": []

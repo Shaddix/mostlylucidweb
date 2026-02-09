@@ -85,11 +85,15 @@ public static class ServiceCollectionExtensions
         // Infrastructure
         services.AddSingleton<ModelDownloader>();
         services.AddSingleton<ImagePreprocessor>();
+        services.AddSingleton<OpenCvPreprocessor>();
 
         // Core services
         services.AddSingleton<INerService, NerService>();
         services.AddSingleton<IOcrService, OcrService>();
         services.AddSingleton<IOcrNerPipeline, OcrNerPipeline>();
+
+        // Microsoft.Recognizers.Text service
+        services.AddSingleton<ITextRecognizerService, TextRecognizerService>();
 
         // Florence-2 vision service
         services.AddSingleton<IVisionService, VisionService>();

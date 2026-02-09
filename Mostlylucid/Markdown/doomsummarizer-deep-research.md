@@ -85,8 +85,8 @@ flowchart TD
     end
 
     subgraph SYNTH["SYNTHESIZE"]
-        Segments --> Standard["Standard Path\n1 LLM Call"]
-        Segments --> LongForm["Long-Form Path\nN+3 LLM Calls"]
+        Segments --> Standard["Standard Path - 1 LLM Call"]
+        Segments --> LongForm["Long-Form Path - N+3 LLM Calls"]
     end
 
     style REDUCE fill:#1a1a2e,color:#e0e0e0
@@ -107,14 +107,14 @@ A small local sentinel model (0.6B in my case, JSON mode, temperature 0.1) inter
 
 ```mermaid
 flowchart TD
-    Q["User Query"] --> Sentinel["Sentinel: JSON Interpretation\ncategories, intent, entities,\ntemporal hints, tone"]
-    Sentinel --> Router["Source Router\nYAML category → source mapping"]
+    Q["User Query"] --> Sentinel["Sentinel: JSON Interpretation - categories, intent, entities, - temporal hints, tone"]
+    Sentinel --> Router["Source Router - YAML category → source mapping"]
     Router --> S1["gnews:AI safety"]
     Router --> S2["search:AI regulation"]
     Router --> S3["bbc:technology"]
     Router --> S4["reddit • hn"]
-    S1 & S2 & S3 & S4 --> Fetch["Parallel Fetch\ncircuit breaking + rate limiting"]
-    Fetch --> Merge["Merge + Deduplicate\n→ reduce phase"]
+    S1 & S2 & S3 & S4 --> Fetch["Parallel Fetch - circuit breaking + rate limiting"]
+    Fetch --> Merge["Merge + Deduplicate - → reduce phase"]
 
     style Sentinel fill:#1e3a5f,color:#e0e0e0
     style Router fill:#0d3b2e,color:#e0e0e0
@@ -170,17 +170,17 @@ I have six ranking signals. They have completely different scales:
 ```mermaid
 flowchart LR
     subgraph Signals
-        BM25[BM25\nKeyword Match]
-        Fresh[Freshness\n48h Half-Life]
-        Auth[Authority\nHN/Reddit Score]
-        QSim[Query Similarity\nCosine]
-        Vibe[Vibe Alignment\nCosine]
-        Qual[Quality\nClickbait Detector]
+        BM25[BM25 - Keyword Match]
+        Fresh[Freshness - 48h Half-Life]
+        Auth[Authority - HN/Reddit Score]
+        QSim[Query Similarity - Cosine]
+        Vibe[Vibe Alignment - Cosine]
+        Qual[Quality - Clickbait Detector]
     end
 
     subgraph RRF[RRF Fusion]
         direction TB
-        R[Rank Each Signal\nIndependently]
+        R[Rank Each Signal - Independently]
         F["score = Σ weight × 1/(60 + rank)"]
     end
 
@@ -209,10 +209,10 @@ A "vibe" isn't prompt wording. It's a **first-class ranking signal** embedded in
 
 ```mermaid
 flowchart LR
-    V["--vibe doom"] --> Expand["Query Expansion\n'concerning risks issues in...'"]
-    V --> Embed["Vibe Embedding\n'vulnerability breach layoffs\nrecession crisis warning...'"]
-    Embed --> Score["Cosine Similarity\nper article"]
-    Score --> RRF["RRF Signal\nweight: 0.4"]
+    V["--vibe doom"] --> Expand["Query Expansion - 'concerning risks issues in...'"]
+    V --> Embed["Vibe Embedding - 'vulnerability breach layoffs - recession crisis warning...'"]
+    Embed --> Score["Cosine Similarity - per article"]
+    Score --> RRF["RRF Signal - weight: 0.4"]
 
     style V fill:#8b0000,color:#e0e0e0
 ```
@@ -250,19 +250,19 @@ profile = L2_normalize(Σ entity_embedding × weight)
 ```mermaid
 flowchart TD
     subgraph Doc1["Article: OpenAI Safety Team"]
-        E1["OpenAI (ORG)\nIDF: high\nweight: 2.1"]
-        E2["California (LOC)\nIDF: low\nweight: 0.3"]
-        E3["Safety Team (MISC)\nIDF: high\nweight: 1.8"]
+        E1["OpenAI (ORG) - IDF: high - weight: 2.1"]
+        E2["California (LOC) - IDF: low - weight: 0.3"]
+        E3["Safety Team (MISC) - IDF: high - weight: 1.8"]
     end
 
     subgraph Doc2["Article: Almond Farming"]
-        E4["California (LOC)\nIDF: low\nweight: 0.3"]
-        E5["Almond Farmers (MISC)\nIDF: high\nweight: 1.9"]
-        E6["Drought (MISC)\nIDF: medium\nweight: 1.2"]
+        E4["California (LOC) - IDF: low - weight: 0.3"]
+        E5["Almond Farmers (MISC) - IDF: high - weight: 1.9"]
+        E6["Drought (MISC) - IDF: medium - weight: 1.2"]
     end
 
-    Doc1 --> P1["Profile Vector\nDominated by OpenAI + Safety"]
-    Doc2 --> P2["Profile Vector\nDominated by Farming + Drought"]
+    Doc1 --> P1["Profile Vector - Dominated by OpenAI + Safety"]
+    Doc2 --> P2["Profile Vector - Dominated by Farming + Drought"]
     P1 -. "low similarity" .- P2
 
     style Doc1 fill:#1a1a2e,color:#e0e0e0
@@ -282,16 +282,16 @@ If you want more detail on HNSW and DuckDB VSS, see [GraphRAG Part 2: Minimum Vi
 ```mermaid
 flowchart TD
     subgraph Retrieval["Three-Layer Retrieval (UNION)"]
-        L1["Lucene FTS\nkeyword matches"]
-        L2["Embedding HNSW\nsemantic similarity"]
-        L3["Entity Profile HNSW\nentity fingerprint match"]
+        L1["Lucene FTS - keyword matches"]
+        L2["Embedding HNSW - semantic similarity"]
+        L3["Entity Profile HNSW - entity fingerprint match"]
         L1 & L2 & L3 --> Union["Union of all candidates"]
     end
 
     subgraph Enrich["Post-RRF Enrichment"]
-        Top["Top 5 Ranked Items"] --> Agg["Aggregate Profile\nmean of entity profiles"]
-        Agg --> Graph["HNSW Search\nmin similarity: 0.30"]
-        Graph --> Related["+3 Related Articles\nscored below existing items"]
+        Top["Top 5 Ranked Items"] --> Agg["Aggregate Profile - mean of entity profiles"]
+        Agg --> Graph["HNSW Search - min similarity: 0.30"]
+        Graph --> Related["+3 Related Articles - scored below existing items"]
     end
 
     Union --> RRF["RRF Fusion"] --> Enrich
@@ -325,9 +325,9 @@ flowchart TD
     end
 
     subgraph SYNTH["Synthesis (1 LLM CALL)"]
-        Dedup --> Rerank["Semantic Re-Rank\nby query similarity"]
-        Rerank --> Budget["Smart Evidence Budgeting\nredistribute unused chars"]
-        Budget --> Gen["Single LLM Call\nwith curated evidence"]
+        Dedup --> Rerank["Semantic Re-Rank - by query similarity"]
+        Rerank --> Budget["Smart Evidence Budgeting - redistribute unused chars"]
+        Budget --> Gen["Single LLM Call - with curated evidence"]
         Gen --> Output[Final Summary]
     end
 
@@ -361,24 +361,24 @@ flowchart TD
 
     subgraph Phase2["Phase 2: Document Planning (1 SENTINEL CALL)"]
         EmbedSeg --> Summary[Build Evidence Summary]
-        Summary --> Sentinel["Sentinel: Generate Outline\nwith theme keywords per section"]
+        Summary --> Sentinel["Sentinel: Generate Outline - with theme keywords per section"]
         Sentinel --> EmbedThemes[Embed Section Themes]
     end
 
     subgraph Phase3["Phase 3: Evidence Assignment (DETERMINISTIC)"]
-        EmbedThemes --> Assign["Score: 60% theme similarity\n+ 25% salience + 15% relevance"]
+        EmbedThemes --> Assign["Score: 60% theme similarity - + 25% salience + 15% relevance"]
         Assign --> Dedup[Cross-Section Deduplication]
-        Dedup --> Gate["Quality Gates\n• Min salience 0.35\n• Min theme sim 0.45\n• Max 2 per source per section"]
+        Dedup --> Gate["Quality Gates - • Min salience 0.35 - • Min theme sim 0.45 - • Max 2 per source per section"]
     end
 
     subgraph Phase4["Phase 4: Section Generation (N+2 LLM CALLS)"]
         Gate --> Intro["Intro (sequential)"]
-        Intro --> Body["N Body Sections (parallel)\nmax 3 concurrent"]
+        Intro --> Body["N Body Sections (parallel) - max 3 concurrent"]
         Body --> Conclusion["Conclusion (sequential)"]
     end
 
     subgraph Phase5["Phase 5: Validation (DETERMINISTIC)"]
-        Conclusion --> Validate[Citation Validation\nURL + Entity Grounding]
+        Conclusion --> Validate[Citation Validation - URL + Entity Grounding]
     end
 
     subgraph Phase6["Phase 6: Assembly (DETERMINISTIC)"]
@@ -404,14 +404,14 @@ Instead, each section gets a **constrained context** that's built deterministica
 ```mermaid
 flowchart LR
     subgraph Context["Per-Section Context (ALL DETERMINISTIC)"]
-        RS["Running Summary\n1400 char budget\nrecent 2 sections: full\nolder: heading only"]
-        NP["Negative Prompts\n'Do NOT discuss: X, Y, Z'\nfrom covered concepts"]
-        EC["Entity Continuity\nre-introduce entities\nlast seen 2+ sections ago"]
-        Props["Propositions\n~15 atomic facts\nper section"]
-        Evidence["Curated Evidence\nmax 12 segments\nquality-gated"]
+        RS["Running Summary - 1400 char budget - recent 2 sections: full - older: heading only"]
+        NP["Negative Prompts - 'Do NOT discuss: X, Y, Z' - from covered concepts"]
+        EC["Entity Continuity - re-introduce entities - last seen 2+ sections ago"]
+        Props["Propositions - ~15 atomic facts - per section"]
+        Evidence["Curated Evidence - max 12 segments - quality-gated"]
     end
 
-    Context --> LLM["LLM generates\nwith full awareness\nof document state"]
+    Context --> LLM["LLM generates - with full awareness - of document state"]
 
     style Context fill:#1a1a2e,color:#e0e0e0
 ```
@@ -467,9 +467,9 @@ TextRank (Mihalcea & Tarau, 2004) does it deterministically:
 flowchart LR
     Text[Article Text] --> Split[Split into Sentences]
     Split --> EmbedS[Embed Each Sentence]
-    EmbedS --> Graph["Build Similarity Graph\n(cosine > 0.15 = edge)"]
-    Graph --> PR["PageRank\n(20 iterations, d=0.85)"]
-    PR --> Select["Select Top-K\nin Original Order"]
+    EmbedS --> Graph["Build Similarity Graph - (cosine > 0.15 = edge)"]
+    Graph --> PR["PageRank - (20 iterations, d=0.85)"]
+    PR --> Select["Select Top-K - in Original Order"]
 
     style Graph fill:#1e3a5f,color:#e0e0e0
 ```
