@@ -557,74 +557,36 @@ Florence-2 auto-downloads its models (~450MB) on first use to `{ModelDirectory}/
 
 ---
 
-## How the NER Model Actually Works
+## How the NER Pipeline Works Internally
 
-If you're curious about what happens between "text in" and "entities out", here's the simplified version. The `NerService` does this in three steps:
+The NER pipeline follows the same three-step process covered in detail in [Part 1](/blog/simple-ocr-ner-extraction): **tokenize → infer → decode**. Part 1 walks through every concept — WordPiece tokenization, ONNX tensor inference, BIO tag decoding, softmax confidence — from scratch with a complete buildable example.
 
-### Step 1: WordPiece Tokenization
+Here's what the package adds beyond the manual approach:
 
-BERT doesn't read words - it reads **tokens**. The custom `BertNerTokenizer` breaks your text into sub-word pieces that BERT understands. It also tracks where each token came from in the original text (character offsets), which is how we know entity positions later.
+### Offset Tracking
+
+Part 1's tokenizer converts text to token IDs. The package's `BertNerTokenizer` also tracks **character offsets** — so you know exactly where in the source text each entity was found:
 
 ```csharp
 // From BertNerTokenizer.cs
-// "John Smith works at Microsoft" becomes tokens like:
-// [CLS] John Smith works at Micro ##soft [SEP] [PAD] [PAD] ...
+// "John Smith works at Microsoft" becomes:
+// [CLS] John Smith works at Micro ##soft [SEP] [PAD] ...
 //
-// Each token tracks its source offset:
+// Each token tracks its source position:
 // "John"     → chars 0-4
 // "Smith"    → chars 5-10
 // "Micro"    → chars 20-29  (WordPiece splits "Microsoft")
-// "##soft"   → chars 20-29  (same source range as "Micro")
+// "##soft"   → chars 20-29  (same source range)
 ```
 
-The `##` prefix is WordPiece notation meaning "continuation of the previous word". This is how BERT handles words it hasn't seen before - it breaks them into known sub-pieces.
+This is how `NerEntity.StartOffset` and `EndOffset` work — they map back to exact character positions in your original text.
 
-### Step 2: ONNX Inference
+### Confidence-Filtered Entity Extraction
 
-The tokenized input goes through the BERT model as three tensors. From `NerService.RunInference()`:
+Part 1's decoder produces all entities. The package filters during decoding — low-confidence noise never reaches your code:
 
 ```csharp
 // From NerService.cs
-var inputIdsTensor = new DenseTensor<long>(tokenized.InputIds, [1, seqLen]);
-var attentionMaskTensor = new DenseTensor<long>(tokenized.AttentionMask, [1, seqLen]);
-var tokenTypeIdsTensor = new DenseTensor<long>(tokenized.TokenTypeIds, [1, seqLen]);
-
-var inputs = new List<NamedOnnxValue>
-{
-    NamedOnnxValue.CreateFromTensor("input_ids", inputIdsTensor),
-    NamedOnnxValue.CreateFromTensor("attention_mask", attentionMaskTensor),
-    NamedOnnxValue.CreateFromTensor("token_type_ids", tokenTypeIdsTensor)
-};
-
-using var results = _session!.Run(inputs);
-// Output: logits with shape [1, seqLen, 9] — one of 9 labels per token
-```
-
-The model outputs **logits** (raw scores) for 9 possible labels per token.
-
-### Step 3: BIO Tag Decoding
-
-The 9 labels follow the **BIO scheme** - a standard NER encoding where B = Beginning, I = Inside, O = Outside:
-
-```csharp
-// From NerService.cs
-private static readonly string[] DefaultLabels =
-    ["O", "B-MISC", "I-MISC", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC"];
-```
-
-Here's how a sentence gets decoded:
-
-```text
-Token:    John    Smith   works   at   Microsoft   in   Seattle
-Label:    B-PER   I-PER   O       O    B-ORG       O    B-LOC
-Meaning:  Start   Continue Not    Not  Start       Not  Start
-          Person  Person   entity entity Org        entity Location
-```
-
-`B-PER` starts a new person entity. `I-PER` continues it. So "John" + "Smith" merge into one entity: "John Smith" (PER). The `DecodeEntities()` method handles this merging, including confidence filtering:
-
-```csharp
-// From NerService.cs - entity creation with confidence threshold
 private void FlushEntity(
     List<NerEntity> entities, string text,
     string type, int start, int end, float confidence)
@@ -757,18 +719,16 @@ The repo includes a command-line tool built with [Spectre.Console](https://spect
 ### Quick Start
 
 ```bash
-cd Mostlylucid.OcrNer.CLI
-
 # NER from text (auto-detected)
-dotnet run -- "John Smith works at Microsoft in Seattle"
+ocrner "John Smith works at Microsoft in Seattle"
 
 # OCR from an image (auto-detected)
-dotnet run -- invoice.png
+ocrner invoice.png
 
 # Explicit commands
-dotnet run -- ner "Marie Curie won the Nobel Prize in Stockholm"
-dotnet run -- ocr scan.png
-dotnet run -- caption photo.jpg
+ocrner ner "Marie Curie won the Nobel Prize in Stockholm"
+ocrner ocr scan.png
+ocrner caption photo.jpg
 ```
 
 **Smart routing**: the CLI auto-detects your intent. From `Program.cs`:
@@ -799,27 +759,12 @@ If you pass a text string, it runs NER. If you pass an image file, glob, or dire
 
 ### Real Output
 
-Here's actual output from running the CLI:
+Here's actual output from running the CLI against real sample documents.
+
+**NER from text:**
 
 ```bash
-dotnet run -- ner "John Smith works at Microsoft in Seattle, Washington."
-```
-
-```text
-Input: John Smith works at Microsoft in Seattle, Washington.
-
-╭──────┬────────────┬────────────┬──────────╮
-│ Type │ Entity     │ Confidence │ Position │
-├──────┼────────────┼────────────┼──────────┤
-│ PER  │ John Smith │ 100%       │ 0-10     │
-│ ORG  │ Microsoft  │ 100%       │ 20-29    │
-│ LOC  │ Seattle    │ 100%       │ 33-40    │
-│ LOC  │ Washington │ 100%       │ 42-52    │
-╰──────┴────────────┴────────────┴──────────╯
-```
-
-```bash
-dotnet run -- ner "Marie Curie won the Nobel Prize in Stockholm"
+ocrner ner "Marie Curie won the Nobel Prize in Stockholm"
 ```
 
 ```text
@@ -832,49 +777,105 @@ dotnet run -- ner "Marie Curie won the Nobel Prize in Stockholm"
 ╰──────┴─────────────┴────────────┴──────────╯
 ```
 
-### JSON Output
-
-Save to JSON for programmatic use:
+**NER with recognizers** - combining BERT entities with rule-based signal extraction:
 
 ```bash
-dotnet run -- ner "John Smith works at Microsoft in Seattle, Washington." -o results.json
+ocrner ner "Shelby Lucier from SCS Agency in Cambridge, UK sent an invoice on 13/02/15. Call 07981423683." -r
+```
+
+```text
+╭──────┬───────────────┬────────────┬──────────╮
+│ Type │ Entity        │ Confidence │ Position │
+├──────┼───────────────┼────────────┼──────────┤
+│ PER  │ Shelby Lucier │ 100%       │ 0-13     │
+│ ORG  │ SCS Agency    │ 100%       │ 19-29    │
+│ LOC  │ Cambridge     │ 100%       │ 33-42    │
+│ LOC  │ UK            │ 100%       │ 44-46    │
+╰──────┴───────────────┴────────────┴──────────╯
+
+── Recognized Signals ─────────────────────────
+  Type       Text          Details
+  DateTime   13/02/15      datetimeV2.date
+  Phone      07981423683
+```
+
+BERT finds the people, organizations, and locations. The recognizers catch the date and phone number — structured patterns that a neural network would be unreliable at extracting.
+
+**OCR from a scanned document** (an Amazon shareholder letter, scanned with hole-punch marks):
+
+```bash
+ocrner ocr shareholder-letter.jpg -q
+```
+
+```text
+╭──────┬───────────────┬────────────┬──────────╮
+│ Type │ Entity        │ Confidence │ Position │
+├──────┼───────────────┼────────────┼──────────┤
+│ ORG  │ Amazon        │ 87%        │ 285-291  │
+│ PER  │ Jeff          │ 99%        │ 293-297  │
+│ ORG  │ AWS           │ 95%        │ 984-987  │
+│ LOC  │ America       │ 98%        │ 2315-2322│
+╰──────┴───────────────┴────────────┴──────────╯
+OCR Confidence: 89%
+```
+
+Tesseract extracts near-verbatim text from the scanned letter at 89% confidence, and NER correctly identifies Amazon, Jeff (Bezos), AWS, and North America.
+
+### Tesseract vs Florence-2: A Real Comparison
+
+Same scanned shareholder letter processed by both engines:
+
+| | Tesseract (`ocrner ocr`) | Florence-2 (`ocrner caption --ocr`) |
+|---|---|---|
+| **Speed** | ~200ms | ~14s |
+| **OCR accuracy** | Near-verbatim, 89% confidence | Heavily garbled, hallucinated phrases |
+| **Key text** | "Over the past 25 years at Amazon, I've had the opportunity..." | "Over the past 25 years at Amazon. I've had the opportunity to write many narrative, email..." |
+| **NER entities** | Jeff (PER), Amazon (ORG), AWS (ORG), America (LOC) | N/A (text too garbled for reliable NER) |
+| **Caption** | N/A | "A paper with some text" |
+
+Florence-2 is a **vision** model — it understands scenes, objects, and spatial relationships. It was never designed to compete with Tesseract at reading document text. Use it when you need image *understanding* (what's in this photo?), not text *extraction* (what does this document say?).
+
+### JSON Output for Automation & LLM Tools
+
+The `--json` flag outputs structured JSON to stdout with all logging suppressed — designed for piping into other tools, LLM function calling, or automation scripts:
+
+```bash
+ocrner ner "Shelby Lucier from SCS Agency in Cambridge, UK sent an invoice on 13/02/15. Call 07981423683." -r --json
 ```
 
 ```json
 {
-  "sourceText": "John Smith works at Microsoft in Seattle, Washington.",
+  "command": "ner",
+  "success": true,
+  "sourceText": "Shelby Lucier from SCS Agency in Cambridge, UK...",
   "entityCount": 4,
   "entities": [
-    {
-      "type": "PER",
-      "text": "John Smith",
-      "confidence": 0.9996,
-      "startOffset": 0,
-      "endOffset": 10
-    },
-    {
-      "type": "ORG",
-      "text": "Microsoft",
-      "confidence": 0.9988,
-      "startOffset": 20,
-      "endOffset": 29
-    },
-    {
-      "type": "LOC",
-      "text": "Seattle",
-      "confidence": 0.9991,
-      "startOffset": 33,
-      "endOffset": 40
-    },
-    {
-      "type": "LOC",
-      "text": "Washington",
-      "confidence": 0.9988,
-      "startOffset": 42,
-      "endOffset": 52
-    }
-  ]
+    { "type": "PER", "text": "Shelby Lucier", "confidence": 0.9996, "startOffset": 0, "endOffset": 13 },
+    { "type": "ORG", "text": "SCS Agency", "confidence": 0.999, "startOffset": 19, "endOffset": 29 },
+    { "type": "LOC", "text": "Cambridge", "confidence": 0.9975, "startOffset": 33, "endOffset": 42 },
+    { "type": "LOC", "text": "UK", "confidence": 0.9991, "startOffset": 44, "endOffset": 46 }
+  ],
+  "signals": {
+    "dateTimes": [{ "text": "13/02/15", "typeName": "datetimeV2.date" }],
+    "phoneNumbers": [{ "text": "07981423683" }]
+  }
 }
+```
+
+This makes the CLI usable as a **tool** for LLMs and agents. An LLM can call `ocrner ner "..." --json`, parse the JSON response, and reason over the structured entities — no custom code needed. Pipe into `jq`, feed to an agent framework, or read from any language:
+
+```bash
+# Pipe to jq for quick filtering
+ocrner ocr invoice.png --json | jq '.results[0].entities[] | select(.type == "PER")'
+
+# Use from Python, Node, or any language that can shell out
+echo "John Smith at Microsoft" | ocrner ner --json
+```
+
+To save to a file instead, use `-o` with a `.json` extension — same structured data, written to disk:
+
+```bash
+ocrner ocr "scans/*.png" -o results.json
 ```
 
 ### Batch Processing
@@ -883,19 +884,20 @@ Process multiple images with glob patterns or directories:
 
 ```bash
 # All PNGs in a directory
-dotnet run -- ocr "scans/*.png" -o results.json
+ocrner ocr "scans/*.png" -o results.json
 
 # All images in a folder
-dotnet run -- ocr ./documents/
+ocrner ocr ./documents/
 
 # Batch captioning with Florence-2
-dotnet run -- caption "photos/*.jpg" --ocr -o captions.md
+ocrner caption "photos/*.jpg" --ocr -o captions.md
 ```
 
 ### All CLI Options
 
 | Flag | Applies to | Description |
 |------|------------|-------------|
+| `--json` | `ner`, `ocr`, `caption` | Structured JSON to stdout (implies `--quiet`, suppresses all logging) |
 | `-c` | `ner`, `ocr` | Minimum entity confidence threshold (0.0-1.0) |
 | `--language` | `ocr` | Tesseract language (for example `eng`, `fra`) |
 | `--max-tokens` | `ner`, `ocr` | Maximum BERT sequence length |

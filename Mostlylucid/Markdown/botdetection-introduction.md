@@ -1,6 +1,10 @@
-# **mostlylucid.botdetection: Fighting Back Against Scrapers (Part 1)**
+# **StyloBot: Fighting Back Against Scrapers (Part 1)**
 
 *Scrapers are about to start using AI to mimic real users - so I built a bot detector that learns, adapts, and fights back.*
+
+**[Read Part 2: How Bots Got Smarter - The New Frontier in Bot Detection](https://www.mostlylucid.net/blog/botdetection-part2-signature-pipeline-and-stylobot-architecture)**
+
+**[👉 See It Live: StyloBot.net](https://stylobot.net)** - This is the real production system detecting your request in single milliseconds (CPU-only, no GPU needed). Try it yourself, see the scores, understand the signals.
 
 **Key concept: Behavioural Routing.** This enables a new category - where transparent, adjustable "teams" of detectors and learning systems reflexively route traffic based on learned behaviour patterns, not static rules. With the [YARP Gateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway), bots never reach your backend. Or use the middleware to build behavioural routing directly into your app layer.
 
@@ -19,7 +23,7 @@
 
 Bot detection has quietly become one of the hardest problems in modern web engineering.
 
-Not because bots got smarter - but because **AI made it trivial to mimic genuine user behaviour**:
+**The problem just changed.** Three years ago, you could block 95% of bots with regex on the User-Agent string. Not anymore. Not because bots got smarter on their own - but because **large language models made it trivial to mimic genuine user behaviour at scale**. An LLM-powered scraper doesn't just blindly request the same path repeatedly. It understands your site structure, adapts when blocked, and requests pages in realistic order. It's indistinguishable from a human except in aggregate behavior.
 
 * Rotating residential proxiess
 * Perfectly valid browser fingerprints
@@ -27,17 +31,18 @@ Not because bots got smarter - but because **AI made it trivial to mimic genuine
 * Executing JavaScript
 * Adapting when blocked
 
-Commercial solutions solve this, but they’re expensive (£3K+/month is typical), closed-source, and tied to specific CDNs. You never really know what’s happening under the hood.
+Commercial solutions solve this, but they're expensive (£3K-£50K/month is typical depending on scale), closed-source, and tied to specific CDNs. You never really know what's happening under the hood. And they have a limitation: most were built for the 2022 threat landscape (headless browsers, distributed proxies). They stop before v4—the LLM-powered frontier. If you're being scraped by intelligent automation, they work okay. If you're under coordinated, intelligent, adaptive attack, they're playing catch-up.
 
 I wanted something different:
 
-* Open
-* Local
-* Understandable
-* Easy to extend
-* Cheap to run (yes, even on a Raspberry Pi)
+* **Open** - You can read, audit, and modify every detection rule
+* **Local** - No 3rd-party API calls, no data leaving your infrastructure
+* **Understandable** - Explainable decisions, not a black-box ML model
+* **Easy to extend** - Add custom detectors for your specific threat surface
+* **Cheap to run** - CPU, not licensing costs (yes, even on a Raspberry Pi)
+* **Built for v4** - Handles the modern LLM-driven frontier, not just yesterday's attacks
 
-So I built **mostlylucid.botdetection** - a modular, learning bot detection engine for .NET.
+So I built **StyloBot** - a modular, learning bot detection engine for .NET. Free, unlicensed, designed from the ground up for the new bot era.
 
 It started simple… and then grew into something far more interesting.
 
@@ -80,13 +85,37 @@ This is the foundation of the whole design:
 
 ## Philosophy of the System
 
-At its core, this project isn’t really about bot detection at all - it’s about treating traffic as a living system rather than a stream of isolated requests. 
+At its core, this project isn't really about bot detection at all - it's about **treating traffic as a living system** rather than a stream of isolated requests.
 
-Modern scrapers behave more like adaptive organisms: they learn, mutate, probe for weaknesses, and respond to pressure. So the defence must evolve too. 
+**Why this matters now:** LLM-powered bots aren't dumb. They adapt. An LLM bot hits your API, gets rate-limited, changes User-Agent, rotates IP, requests related products (like a human would), then systematically extracts data. Static rules can't keep up. But an adaptive system can.
 
-The philosophy here is simple: observe signals, combine them, let them interact, and adapt over time. Instead of a single "bot/not-bot" check, the engine becomes a network of small detectors, each contributing evidence into a shared blackboard, where higher-order behaviours can emerge. Policies become composable flows, not hard-coded rules. Reputation shifts gradually instead of flipping states. AI is just another contributor, not a monolith.
+Modern scrapers behave like organisms: they learn, mutate, probe for weaknesses, and respond to pressure. So the defence must evolve too.
 
-The system is built to be transparent, explainable, extensible, and self-correcting, with the long-term goal of behaving less like a firewall and more like an immune system: fast at the edge, intelligent in the core, and always learning.
+The philosophy here is simple:
+
+1. **Observe many signals** - UA, headers, IP, behavioral patterns, cross-layer consistency
+2. **Combine them** - Don't trust one signal. Aggregate evidence.
+3. **Let them interact** - A perfect UA is suspicious if the IP is a datacenter. Headers are suspicious if they're missing real-browser markers.
+4. **Adapt over time** - Patterns decay. New patterns emerge. Learn continuously.
+
+Instead of a single "bot/not-bot" check, the engine becomes **a network of small detectors**, each contributing evidence into a shared decision-making layer. Policies become composable flows, not hard-coded rules. Reputation shifts gradually instead of flipping states. AI is just another contributor, weighted alongside heuristics—not a monolith.
+
+The system is built to be **transparent, explainable, extensible, and self-correcting**, with the long-term goal of behaving less like a firewall and more like an **immune system**: fast at the edge, intelligent in the core, and always learning.
+
+---
+
+## **Why Single-Signal Detection Fails (And How StyloBot Avoids It)**
+
+Most systems rely on one or two signals:
+
+- **"Block if User-Agent says 'bot'"** → Easily spoofed. Modern bots use real User-Agent strings.
+- **"Block if rate > X requests/sec"** → Intelligent bots throttle. You'll block real power-users.
+- **"Block if IP is in a datacenter"** → Residential proxy networks have real home ISPs. Good luck.
+- **"Block if JavaScript doesn't execute"** → Headless browsers execute JS perfectly fine.
+
+The pattern: **any single signal can be faked.** The solution: **don't rely on one signal.**
+
+StyloBot combines many weak signals into a strong verdict. A perfect User-Agent is fine. A perfect User-Agent *plus* a datacenter IP *plus* missing security headers *plus* request rate anomalies *plus* cross-layer inconsistency = bot.
 
 ---
 
@@ -94,7 +123,7 @@ The system is built to be transparent, explainable, extensible, and self-correct
 
 Requests flow through several small detectors, each contributing a little piece of evidence.
 
-Think of it as an airport security checkpoint… but fast.
+Think of it as airport security: one TSA agent checking documents isn't enough. But three agents checking documents, boarding passes, and baggage together catch what one misses.
 
 ```mermaid
 flowchart TB
@@ -159,6 +188,8 @@ This catches the adaptive bots - the ones most people *think* they're catching w
 
 ## **Try It in 10 Seconds**
 
+### Local Installation
+
 ```bash
 dotnet add package Mostlylucid.BotDetection
 ```
@@ -172,7 +203,11 @@ app.UseBotDetection();
 app.Run();
 ```
 
-That’s it. Everything works out of the box.
+That's it. Everything works out of the box.
+
+### See It Live First
+
+Don't want to install yet? **[Visit stylobot.net](https://stylobot.net)** to see the production system in action. Submit requests, watch them analyzed in single milliseconds with full early-exit enabled. No signup, fully interactive—it's the real deal.
 
 ---
 
@@ -192,7 +227,7 @@ Consistency is the sleeper feature - modern bots can spoof *one* signal but usua
 
 ## **A Real Detection Result (Broken Down)**
 
-Here's what a real detection looks like - this is from the demo running the `fastpath` policy (all detectors in parallel). In production, most requests exit early after just 2-3 detectors agree.
+Here's what a real detection looks like - actual data from **[stylobot.net](https://stylobot.net)** running in production with early-exit enabled. You can generate these same results yourself by testing on the live site. The latencies shown are real CPU-only performance, no slowdown for visibility.
 
 ### Summary
 
@@ -362,7 +397,7 @@ The category breakdown shows the tension:
 if (context.IsBot())
     return Results.StatusCode(403);
 
-var score = context.GetBotConfidence();  // 0.0–1.0
+var score = context.GetBotConfidence();  // 0.0-1.0
 var risk  = context.GetRiskBand();       // Low/Elevated/Medium/High
 ```
 
@@ -379,8 +414,8 @@ Risk levels guide the action:
 | Risk     | Confidence | Recommended Action |
 | -------- | ---------- | ------------------ |
 | Low      | < 0.3      | Allow              |
-| Elevated | 0.3–0.5    | Log / rate-limit   |
-| Medium   | 0.5–0.7    | Challenge          |
+| Elevated | 0.3-0.5    | Log / rate-limit   |
+| Medium   | 0.5-0.7    | Challenge          |
 | High     | > 0.7      | Block              |
 
 ---
@@ -393,7 +428,7 @@ Not required - but useful for catching advanced automation.
 
 The system includes a heuristic detector that uses logistic regression with dynamically learned weights. It starts with sensible defaults and evolves based on detection feedback.
 
-Typical latency: **1–5ms**
+Typical latency: **1-5ms**
 
 ```json
 {
@@ -536,7 +571,7 @@ services:
 This is Part 1 (the overview).
 The next parts dig deeper:
 
-* **Part 2**: The detection pipeline - fast, slow, and coordinated
+* **Part 2**: [How Bots Got Smarter - The New Frontier in Bot Detection](https://www.mostlylucid.net/blog/botdetection-part2-signature-pipeline-and-stylobot-architecture)
 * **Part 3**: Behaviour analytics
 * **Part 4**: Client-side fingerprinting
 * **Part 5**: The heuristic detector - learning weights in real-time
@@ -552,14 +587,45 @@ If you want a bot detector you can *understand*, *extend*, and *run anywhere*, t
 
 ---
 
-## **Links**
+## **Academic & Industry Reading**
+
+If you want to dive into why bot detection is hard and what the research says:
+
+### Bot Detection & Evasion
+- [Imperva: The State of Bot Traffic Report 2024](https://www.imperva.com/blog/bot-attack-trends/) - Real-world bot attack data
+- [OWASP: Bot Management](https://owasp.org/www-community/attacks/Bot_attack) - Security fundamentals
+- [Cloudflare: Bot Detection Overview](https://www.cloudflare.com/learning/bots/what-is-bot-detection/) - Industry perspective
+
+### Network Fingerprinting
+- [JA3: SSL/TLS Client Fingerprinting](https://github.com/salesforce/ja3) - TLS signature matching (the standard)
+- [TCP/IP Fingerprinting: p0f Reference](https://lcamtuf.coredump.cx/p0f3/) - Network-layer OS detection
+- [HTTP/2 Fingerprinting Techniques](https://www.cloudflare.com/learning/http/http2/) - How browsers differ in HTTP/2
+
+### Behavioral Analysis & Anomaly Detection
+- [Outlier Detection in Time Series Data (ACM)](https://en.wikipedia.org/wiki/Anomaly_detection) - Statistical foundations
+- [Markov Chains in Intrusion Detection](https://en.wikipedia.org/wiki/Markov_chain) - State transition modeling
+
+### LLM-Powered Threats & Data Poisoning
+- [Data Poisoning Attacks on Machine Learning (arXiv: 1811.03728)](https://arxiv.org/abs/1811.03728) - Why scrapers target your data
+- [Extracting Training Data from Large Language Models (arXiv: 2302.07933)](https://arxiv.org/abs/2302.07933) - Why bots want your content
+- [Web Scraping and Copyright Issues](https://en.wikipedia.org/wiki/Web_scraping#Legal_issues) - The legal angle
+
+### Headless Browser Detection
+- [Puppeteer & Playwright Detection](https://antoinevastel.com/blog/detect-puppeteer-and-playwright/) - How headless browsers are identified
+- [Canvas Fingerprinting & Evasion](https://cvdazzle.com/) - Client-side detection techniques
+
+---
+
+## **Project Links**
 
 * **GitHub:** full docs
-  [https://github.com/scottgal/mostlylucid.nugetpackages](https://github.com/scottgal/mostlylucid.nugetpackages)
+  [https://github.com/scottgal/stylobot](https://github.com/scottgal/stylobot)
 * **NuGet:** install the package
   [https://www.nuget.org/packages/mostlylucid.botdetection](https://www.nuget.org/packages/mostlylucid.botdetection)
 * **Docker Hub:** YARP gateway
-  [https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway](https://hub.docker.com/r/scottgal/mostlylucid.yarpgateway)
+  [https://hub.docker.com/r/scottgal/stylobot-gateway](https://hub.docker.com/r/scottgal/stylobot-gateway)
 
-**Unlicense – public domain. Use it however you want.**
+---
+
+**Unlicense - public domain. Use it however you want.**
 
