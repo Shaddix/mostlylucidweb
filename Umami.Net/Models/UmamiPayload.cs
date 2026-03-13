@@ -18,6 +18,8 @@ public class UmamiPayload
     public string? Name { get; set; }
 
     public string? SessionId { get; set; }
+    
+    public string? Id { get; set; }
 
     [JsonPropertyName("ip")] public string? IpAddress { get; set; }
 

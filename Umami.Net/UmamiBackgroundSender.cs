@@ -54,7 +54,7 @@ public class UmamiBackgroundSender(IServiceScopeFactory scopeFactory, ILogger<Um
     }
 
     public async Task Identify(string? email = null, string? username = null,
-        string? sessionId = null, string? userId = null, UmamiEventData? eventData = null,
+        string? sessionId = null, string? userId = null, string? distinctId = null, UmamiEventData? eventData = null,
         bool useDefaultUserAgent = false)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
@@ -71,6 +71,7 @@ public class UmamiBackgroundSender(IServiceScopeFactory scopeFactory, ILogger<Um
         {
             Data = eventData,
             SessionId = sessionId,
+            Id = distinctId,
             UseDefaultUserAgent = useDefaultUserAgent
         };
         var payloadService = scope.ServiceProvider.GetRequiredService<PayloadService>();
@@ -78,13 +79,14 @@ public class UmamiBackgroundSender(IServiceScopeFactory scopeFactory, ILogger<Um
         await Send(payload, eventType: "identify");
     }
 
-    public async Task IdentifySession(string sessionId, UmamiEventData? eventData = null,
+    public async Task IdentifySession(string sessionId, string? distinctId = null, UmamiEventData? eventData = null,
         bool useDefaultUserAgent = false)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var thisPayload = new UmamiPayload
         {
             SessionId = sessionId,
+            Id = distinctId,
             Data = eventData ?? new UmamiEventData(),
             UseDefaultUserAgent = useDefaultUserAgent
         };

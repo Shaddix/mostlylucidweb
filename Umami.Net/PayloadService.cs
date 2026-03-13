@@ -59,6 +59,8 @@ public class PayloadService(
         if (payload.SessionId != null)
             newPayload.SessionId = payload.SessionId;
 
+        if (payload.Id != null)
+            newPayload.Id = payload.Id;
 
         newPayload.UserAgent = payload.UserAgent ?? DefaultUserAgent;
 

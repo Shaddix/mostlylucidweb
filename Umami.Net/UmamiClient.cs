@@ -172,9 +172,11 @@ public class UmamiClient(
 
     public async Task<UmamiDataResponse?> IdentifyAndDecode(string sessionId, string? email = null,
         string? username = null,
-        string? userId = null, UmamiEventData? eventData = null)
+        string? userId = null,
+        string? distinctId = null,
+        UmamiEventData? eventData = null)
     {
-        var response = await Identify(email, username, sessionId, userId, eventData);
+        var response = await Identify(email, username, sessionId, userId, distinctId, eventData);
         return await DecodeResponse(response);
     }
 
@@ -186,12 +188,13 @@ public class UmamiClient(
     }
 
     public async Task<HttpResponseMessage> Identify(string? email = null, string? username = null,
-        string? sessionId = null, string? userId = null, UmamiEventData? eventData = null)
+        string? sessionId = null, string? userId = null, string? distinctId = null, UmamiEventData? eventData = null)
     {
         var emailData = BuildEventData(email, username, userId, eventData);
         var payload = new UmamiPayload
         {
             SessionId = sessionId,
+            Id = distinctId,
             Data = emailData
         };
 
